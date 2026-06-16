@@ -50,7 +50,13 @@
                             </span>
                             <span class="c-colon">:</span>
                         }
-                        @if (lastTextEntry.IsContentStreaming) {
+                        @if (m.ChatActivity.IsActive) {
+                            <span class="c-live-talking">
+                                <chat-activity-svg size="4" isActive="true"/>
+                                @m.ChatActivity.TalkingCount talking · live
+                            </span>
+                        }
+                        else if (lastTextEntry.IsContentStreaming) {
                             <chat-activity-svg size="4" isActive="true"/>
                         }
                         else {
@@ -217,11 +223,13 @@
             isUnreadByOthers = ownAuthorId is not null && await IsUnreadByOthers(lastEntry, ownAuthorId, cancellationToken);
             lastTextEntryIcons = GetIcons(lastEntry);
         }
+        var chatActivity = await Hub.ChatActivityUI.Get(chatId, cancellationToken).ConfigureAwait(false);
 
          return new() {
             ListKind = listKind,
             Chat = chatState.Chat,
             AudioState = chatState.AudioState,
+            ChatActivity = chatActivity,
             NotificationMode = chatInfo.ChatUserSettings.NotificationMode,
             IsSelected = chatState.IsSelected,
             UnreadCount = chatInfo.UnreadCount,
@@ -320,6 +328,7 @@
         public string LastTextEntryIcons { get; init; } = "";
         public ChatEntry? LastTextEntry { get; init; }
         public ChatAudioState? AudioState { get; init; }
+        public ChatActivity ChatActivity { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
         public Trimmed<int> UnreadCount { get; init; }
         public bool HasUnreadMentions { get; init; }

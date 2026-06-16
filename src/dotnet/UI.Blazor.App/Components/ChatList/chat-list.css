@@ -219,6 +219,11 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply line-clamp-2;
     @apply whitespace-normal;
 }
+.chat-list .navbar-item-content .c-last-message .c-live-talking {
+    @apply flex items-center gap-1;
+    @apply min-w-8 truncate;
+    @apply text-primary;
+}
 
 .chat-list .navbar-item .btn {
     @apply w-8 h-full;

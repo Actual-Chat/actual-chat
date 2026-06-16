@@ -54,6 +54,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public VideoQualityUI VideoQualityUI => field ??= Services.GetRequiredService<VideoQualityUI>();
     public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
     public LiveSessionUI LiveSessionUI => field ??= Services.GetRequiredService<LiveSessionUI>();
+    public ChatActivityUI ChatActivityUI => field ??= Services.GetRequiredService<ChatActivityUI>();
     public new NotificationUI NotificationUI => field ??= Services.GetRequiredService<NotificationUI>();
     public LanguageUI LanguageUI => field ??= Services.GetRequiredService<LanguageUI>();
     public EditMembersUI EditMembersUI => field ??= Services.GetRequiredService<EditMembersUI>();
