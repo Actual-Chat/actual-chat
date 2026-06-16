@@ -35,6 +35,8 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         UserId userId,
         bool micMuted,
         CancellationToken cancellationToken);
+    Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken);
+    Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken);
     Task UpdateSummary(
         ChatId chatId,
         LiveConversationSummary summary,

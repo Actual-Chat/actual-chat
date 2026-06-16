@@ -81,14 +81,16 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, false, default);
 
-        // act + assert
-        (await backend.IsParticipant(chatId, account.Id, default)).Should().BeFalse();
-
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, true, default);
+        // act + assert — a streamer is auto-registered as a participant (recorders join the registry)
         (await backend.IsParticipant(chatId, account.Id, default)).Should().BeTrue();
 
+        // an explicit leave removes them
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, false, default);
         (await backend.IsParticipant(chatId, account.Id, default)).Should().BeFalse();
+
+        // and they can re-join
+        await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, true, default);
+        (await backend.IsParticipant(chatId, account.Id, default)).Should().BeTrue();
     }
 
     [Fact]
@@ -135,5 +137,70 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeFalse();
         live.ClosingAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LiveSessionExposesHostAndMembers()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+
+        // assert — the session projects the host + the auto-registered streamer as a member
+        var liveSession = await backend.GetLiveSession(chatId, default);
+        liveSession.Should().NotBeNull();
+        liveSession!.Host.Should().Be(author.Id);
+        liveSession.Conversation.Should().NotBeNull();
+        var hostMember = liveSession.Members.SingleOrDefault(m => m.AuthorId == author.Id);
+        hostMember.Should().NotBeNull();
+        hostMember!.Group.Should().Be(MemberGroup.Host);
+    }
+
+    [Fact]
+    public async Task SetRulesPersistsVoiceModeOverride()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+
+        // act — a controller forces transcript-only (no live voice)
+        await backend.SetRules(chatId, new SessionRules { VoiceModeOverride = Users.VoiceMode.JustText }, default);
+
+        // assert
+        var liveSession = await backend.GetLiveSession(chatId, default);
+        liveSession!.Rules.VoiceModeOverride.Should().Be(Users.VoiceMode.JustText);
+    }
+
+    [Fact]
+    public async Task MutePeerSetsForcedMuted()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+
+        // act
+        await backend.MutePeer(chatId, author.Id, true, default);
+
+        // assert
+        var liveSession = await backend.GetLiveSession(chatId, default);
+        var member = liveSession!.Members.Single(m => m.AuthorId == author.Id);
+        member.ForcedMuted.Should().BeTrue();
     }
 }

@@ -92,7 +92,11 @@ public partial class AudioStreamingBackend
         var chatVoiceMode = await userSettingsUI
             .GetChatVoiceMode(chatId, cancellationToken)
             .ConfigureAwait(false);
-        var mustStreamVoice = chatVoiceMode.VoiceMode.HasVoice();
+        // A live-session VoiceMode override (set by a controller via Manage) merges
+        // most-restrictive-wins with the user's per-chat VoiceMode.
+        var liveState = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var effectiveVoiceMode = (liveState?.Rules ?? SessionRules.Default).Merge(chatVoiceMode.VoiceMode);
+        var mustStreamVoice = effectiveVoiceMode.HasVoice();
 
         var recordedAt = default(Moment) + TimeSpan.FromSeconds(sourceStartOffsetSeconds);
         using var audio = new AudioSource(

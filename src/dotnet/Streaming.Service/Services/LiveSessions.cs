@@ -51,4 +51,29 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         await Backend.SetMicMuted(chatId, account.Id, micMuted, cancellationToken).ConfigureAwait(false);
     }
+
+    public async Task SetRules(Session session, ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
+    {
+        await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
+        await Backend.SetRules(chatId, rules, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task MutePeer(Session session, ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken)
+    {
+        await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
+        await Backend.MutePeer(chatId, targetAuthorId, muted, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Host or chat admin may manage the live session.
+    private async Task RequireManage(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        if (chat.Rules.IsOwner())
+            return;
+        var live = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live?.Host is { } host && chat.Rules.Author?.Id is { } actingAuthorId && host == actingAuthorId)
+            return;
+        throw StandardError.Constraint("Only the call host or a chat admin can manage the live session.");
+    }
 }
