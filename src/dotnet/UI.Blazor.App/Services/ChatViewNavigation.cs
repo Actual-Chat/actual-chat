@@ -4,7 +4,8 @@ public sealed record ChatViewNavigation(
     long EntryLid,
     bool MustHighlight,
     bool ShowInTheMiddle = true,
-    bool ShouldRestoreViewPosition = false)
+    bool ShouldRestoreViewPosition = false,
+    bool KeepConversationsCollapsed = false)
 {
     // This record relies on referential equality
     public bool Equals(ChatViewNavigation? other) => ReferenceEquals(this, other);
