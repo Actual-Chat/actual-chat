@@ -51,11 +51,12 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
             Font = UIFont.SystemFontOfSize(17),
             TextColor = UIColor.White,
             BackgroundColor = new UIColor(red: 0.18f, green: 0.18f, blue: 0.19f, alpha: 1.0f),
-            BorderStyle = UITextBorderStyle.RoundedRect,
-            LeftView = new UIView(new CGRect(0, 0, 40, 40)),
+            LeftView = new UIView(new CGRect(0, 0, 44, 44)),
             LeftViewMode = UITextFieldViewMode.Always,
             ReturnKeyType = UIReturnKeyType.Search,
         };
+        searchField.Layer.CornerRadius = 22;
+        searchField.ClipsToBounds = true;
         searchField.EditingChanged += Safe(() => ShareUI.SetFilter(searchField.Text ?? ""));
         searchField.ShouldReturn = textField => {
             textField.ResignFirstResponder();
@@ -84,20 +85,30 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         var commentField = new UITextField
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            Placeholder = "Add a comment",
+            Placeholder = "Add your comment (optional)",
             Font = UIFont.SystemFontOfSize(17),
             TextColor = UIColor.White,
             BackgroundColor = new UIColor(red: 0.18f, green: 0.18f, blue: 0.19f, alpha: 1.0f),
-            BorderStyle = UITextBorderStyle.RoundedRect,
-            LeftView = new UIView(new CGRect(0, 0, 12, 44)),
+            LeftView = new UIView(new CGRect(0, 0, 44, 44)),
             LeftViewMode = UITextFieldViewMode.Always,
             ReturnKeyType = UIReturnKeyType.Default,
         };
+        commentField.Layer.CornerRadius = 22;
+        commentField.ClipsToBounds = true;
         commentField.EditingChanged += Safe(() => ShareUI.SetComment(commentField.Text ?? ""));
         commentField.ShouldReturn = textField => {
             textField.ResignFirstResponder();
             return true;
         };
+
+        // Add comment icon to the left view with proper centering
+        var commentIcon = new UIImageView(UIImage.GetSystemImage("message"))
+        {
+            Frame = new CGRect(12, 12, 20, 20),
+            TintColor = UIColor.LightGray,
+            ContentMode = UIViewContentMode.ScaleAspectFit
+        };
+        commentField.LeftView.AddSubview(commentIcon);
         AddSubview(commentField);
         _commentBottomConstraint = commentField.BottomAnchor.ConstraintEqualTo(SafeAreaLayoutGuide.BottomAnchor, -8);
         ObserveKeyboard();
