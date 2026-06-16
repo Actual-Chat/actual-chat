@@ -67,17 +67,20 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         if (isServer) {
             services.AddScoped<DateTimeConverter>(c => new ServerSideDateTimeConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
-            // In Server mode, register as scoped (IJSRuntime is scoped per Blazor circuit).
-            // Its background loop is started per-circuit by AppScopedServiceStarter.AfterFirstRender;
-            // EnsureSynced() additionally forces an immediate sync before the first recording.
+        }
+        else
+            services.AddScoped<DateTimeConverter>(c => new ClientSizeDateTimeConverter(c)); // WASM & MAUI
+        // ServerTimeSync needs the IJSRuntime bound to the active scope:
+        // - Server: the per-circuit IJSRuntime;
+        // - MAUI: the per-WebView-page IJSRuntime — the root (non-scoped) one isn't attached to a
+        //   WebView, so its JS calls throw "Cannot invoke JavaScript outside of a WebView context".
+        // Both start the background loop from AppScopedServiceStarter.AfterFirstRender, once JS is ready;
+        // EnsureSynced() additionally forces an immediate sync before the first recording.
+        // WASM has a single, always-ready IJSRuntime, so a hosted service is fine there.
+        if (isServer || isMauiApp)
             services.AddScoped(c => new ServerTimeSync(c));
-        }
-        else {
-            services.AddScoped<DateTimeConverter>(c => new ClientSizeDateTimeConverter(c)); // WASM
-            // In WASM, hosted service auto-starts the background sync loop.
-            // Also makes ServerTimeSync resolvable via GetService<ServerTimeSync>().
+        else
             services.AddHostedService(c => new ServerTimeSync(c));
-        }
         services.AddScoped(c => new FontSizeUI(c.UIHub()));
 
         // UI events
