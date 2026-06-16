@@ -72,3 +72,4 @@ sw.js
 .home
 .claude/worktrees/
 .claude/scheduled_tasks.lock
+.superpowers/
