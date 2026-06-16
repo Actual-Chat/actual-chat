@@ -28,7 +28,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
             Text = "Share with",
-            Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold),
+            Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold)!,
             TextColor = UIColor.White,
             TextAlignment = UITextAlignment.Center
         };
@@ -38,8 +38,8 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         _sendButton = new UIButton(UIButtonType.System);
         _sendButton.TranslatesAutoresizingMaskIntoConstraints = false;
         _sendButton.SetTitle("Send", UIControlState.Normal);
-        _sendButton.TitleLabel.Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold);
-        _sendButton.Enabled = false;
+        _sendButton.TitleLabel.Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold)!;
+        _sendButton.Enabled = model?.CanSend ?? false;
         _sendButton.TouchUpInside += Safe(() => ShareUI.StartSending());
         AddSubview(_sendButton);
 
@@ -159,11 +159,11 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         _keyboardShowObserver = UIKeyboard.Notifications.ObserveWillShow((_, e) => {
             var keyboardHeight = e.FrameEnd.Height;
             _commentBottomConstraint.Constant = -(keyboardHeight - SafeAreaInsets.Bottom + 8);
-            UIView.Animate(e.AnimationDuration, () => LayoutIfNeeded());
+            UIView.Animate(e.AnimationDuration, LayoutIfNeeded);
         });
         _keyboardHideObserver = UIKeyboard.Notifications.ObserveWillHide((_, e) => {
             _commentBottomConstraint.Constant = -8;
-            UIView.Animate(e.AnimationDuration, () => LayoutIfNeeded());
+            UIView.Animate(e.AnimationDuration, LayoutIfNeeded);
         });
     }
 

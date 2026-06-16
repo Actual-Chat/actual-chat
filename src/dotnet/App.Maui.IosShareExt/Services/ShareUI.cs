@@ -72,8 +72,6 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId)
                 return;
 
-            // Pre-select the suggested chat if the user can send to it, but still
-            // show the selection screen so a comment can be added before sending.
             var contactId = ContactId.NewAny(ownAccount.Id, chatId);
             var contact = await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
             if (contact is null || !CanSendTo(contact))
