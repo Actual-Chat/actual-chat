@@ -110,7 +110,7 @@
             && m.ReadEntryLid > ChatView.ItemVisibility.Value.MaxMessageLid;
         _ = mustNavigateToUnread
             ? ChatView.NavigateToNext(m.ReadEntryLid.GetValueOrDefault(), true)
-            : ChatView.NavigateTo(m.LastEntryLid, false, true);
+            : ChatView.NavigateTo(m.LastEntryLid, false, true, keepConversationsCollapsed: true);
     }
 
     // Nested types

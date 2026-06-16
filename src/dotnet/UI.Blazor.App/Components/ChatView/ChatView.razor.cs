@@ -207,12 +207,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         await NavigateTo(navEntry.LocalId, highlight, updateReadPosition).ConfigureAwait(false);
     }
 
-    public async Task NavigateTo(long entryLid, bool highlight, bool updateReadPosition = false)
+    public async Task NavigateTo(long entryLid, bool highlight, bool updateReadPosition = false, bool keepConversationsCollapsed = false)
     {
         await WhenInitialized;
         if (updateReadPosition)
             _shownReadEntryLid.Value = UpdateReadPosition(entryLid);
-        _nextNavigation.Value = new ChatViewNavigation(entryLid, highlight);
+        _nextNavigation.Value = new ChatViewNavigation(entryLid, highlight, KeepConversationsCollapsed: keepConversationsCollapsed);
     }
 
     public override string ToString()

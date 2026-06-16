@@ -65,7 +65,7 @@ public partial class ChatUI
             .ToList();
 
         var showConversations = chat.IsSummarized ?? false;
-        if (showConversations && dataQuery.Navigation is { ShouldRestoreViewPosition: false }) {
+        if (showConversations && dataQuery.Navigation is { ShouldRestoreViewPosition: false, KeepConversationsCollapsed: false }) {
             var conversationRanges = chatRangeMetaList
                 .SelectMany(rm => rm.ConversationLidRanges)
                 .EnsureMonotonic()
