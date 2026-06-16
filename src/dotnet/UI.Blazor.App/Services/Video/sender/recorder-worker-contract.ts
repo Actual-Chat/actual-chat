@@ -106,12 +106,12 @@ export interface RecorderWorker extends SharedSettingsWorker {
 
     // ---- WebRTC sender backend (experimental, parallel to the above) ----
     // The encoded frames arrive via the Encoded Transform port, not RPC: main
-    // attaches `RTCRtpScriptTransform(thisWorker, tierOptions)` to each tier's
-    // RTCRtpSender. `webRtcStart` configures the wire sender the tap feeds;
-    // `webRtcGenerateKeyFrame` re-keys one tier (Safari path).
+    // attaches one `RTCRtpScriptTransform(thisWorker, simulcastOptions)` to the
+    // sender. `webRtcStart` configures the wire sender the tap feeds;
+    // `webRtcGenerateKeyFrame` re-keys all layers (Safari path).
     webRtcStart(opts: WebRtcStartOptions): Promise<void>;
     webRtcStop(): Promise<void>;
-    webRtcGenerateKeyFrame(tier: number): Promise<void>;
+    webRtcGenerateKeyFrame(): Promise<void>;
     // Cumulative top-tier frames pushed to the wire (RpcStream) — the real
     // send rate is the per-second delta. Top tier encodes every source moment,
     // so its count is the source/send fps without dividing by layer count.

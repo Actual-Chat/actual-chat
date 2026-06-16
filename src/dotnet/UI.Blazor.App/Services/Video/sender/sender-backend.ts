@@ -3,8 +3,8 @@
 //   - WebCodecs: implemented by the worker `Recorder` (one VideoEncoder per
 //     tier); the main-thread `VideoRecorder` already exposes equivalents
 //     (reconfigureLayers / setTargetFps / requestKeyframe / setGateOpen).
-//   - WebRTC: implemented by `WebRtcSender` (N single-encoding loopback PCs,
-//     encoded frames tapped via RTCRtpScriptTransform).
+//   - WebRTC: implemented by `WebRtcSender` (one loopback PC running native
+//     simulcast, all layers tapped via a single RTCRtpScriptTransform).
 //
 // Keeping the surface identical lets the QC layer treat the two backends
 // interchangeably (Phase 2 of the WebRTC-backend plan).
@@ -26,7 +26,7 @@ export interface ISenderBackend {
     setTargetFps(fps: number): void | Promise<void>;
 
     // Force the next frame of every active tier to be a keyframe.
-    // WebCodecs: keyframe policy flag. WebRTC: encoding active-toggle (Chrome)
+    // WebCodecs: keyframe policy flag. WebRTC: per-encoding active-toggle (Chrome)
     // + RTCRtpScriptTransformer.generateKeyFrame (Safari/FF).
     requestKeyframe(): void | Promise<void>;
 

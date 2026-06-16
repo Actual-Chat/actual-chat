@@ -1,9 +1,10 @@
-// WebRTC sender backend — main-thread controller. Owns the camera track and
-// N single-encoding loopback PeerConnections (one per ladder tier). WebRTC
-// encodes (zero-copy HW path), and each tier's encoded frames are tapped via
-// RTCRtpScriptTransform whose target is a recorder-worker instance — the worker
-// maps them to the existing wire DTO and pushes over the same RpcStream the
-// WebCodecs path uses. The server, fan-out and receiver are unchanged.
+// WebRTC sender backend — main-thread controller. Owns the camera track and one
+// loopback PeerConnection running native simulcast (one encoding per ladder
+// tier). WebRTC encodes (zero-copy HW path), and ALL layers' encoded frames are
+// tapped via a single RTCRtpScriptTransform whose target is a recorder-worker
+// instance — the worker demuxes them by SSRC, maps to the existing wire DTO, and
+// pushes over the same RpcStream the WebCodecs path uses. The server, fan-out and
+// receiver are unchanged.
 //
 // This is the experimental, flag-free entry point: `globalThis.voxtWebRtc`.
 // It deliberately does NOT touch the production `VideoRecorder`; it reuses the
@@ -30,8 +31,12 @@ import type {
     RecorderWorkerCallbacks,
 } from '../recorder-worker-contract';
 import type { ISenderBackend } from '../sender-backend';
-import { LoopbackTier } from './loopback-connection';
-import type { WebRtcStartOptions, WebRtcTierTransformOptions } from './webrtc-contract';
+import { LoopbackConnection, type LoopbackLayer } from './loopback-connection';
+import type {
+    WebRtcLayer,
+    WebRtcStartOptions,
+    WebRtcSimulcastTransformOptions,
+} from './webrtc-contract';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 
@@ -109,7 +114,7 @@ export class WebRtcSender implements ISenderBackend {
     private worker: (RecorderWorker & Disposable) | null = null;
     private sharedSettingsReg: Disposable | null = null;
     private track: MediaStreamTrack | null = null;
-    private tiers: LoopbackTier[] = [];
+    private connection: LoopbackConnection | null = null;
     private specs: TierSpec[] = [];
     private cameraWidth = 0;
     private cameraHeight = 0;
@@ -131,6 +136,10 @@ export class WebRtcSender implements ISenderBackend {
     private codecString = '';
     private lastDiag: WebRtcDiagnostics | null = null;
     private lastBytesByTier = new Map<number, { bytes: number; ts: number }>();
+    // One-shot guard for the "HEVC simulcast collapsed to fewer layers than the
+    // ladder" warning (GPU/driver dependent — single-PC simulcast has no N-PC
+    // fallback, so a collapse just yields a shorter ladder, surfaced here).
+    private collapseWarned = false;
 
     get isRunning(): boolean { return this.running; }
 
@@ -211,6 +220,11 @@ export class WebRtcSender implements ISenderBackend {
         C(`camera acquired ${this.cameraWidth}x${this.cameraHeight}@${s.frameRate ?? FPS}, tiers=${this.specs.length}`);
 
         // 4) Configure the worker's wire sender.
+        const ladder: WebRtcLayer[] = this.specs.map((spec, i) => ({
+            layerId: i,
+            width: spec.width,
+            height: spec.height,
+        }));
         const startOpts: WebRtcStartOptions = {
             chatId: params.chatId,
             apiUrl,
@@ -224,39 +238,37 @@ export class WebRtcSender implements ISenderBackend {
                 codecSettings: '',
             },
             layerCount: this.specs.length,
+            ladder,
             frameDurationMicros: Math.round(1_000_000 / FPS),
         };
         C('calling worker.webRtcStart…');
         await worker.webRtcStart(startOpts);
-        C('worker.webRtcStart done — creating loopback PCs');
+        C('worker.webRtcStart done — creating simulcast loopback PC');
 
-        // 5) One loopback PC per tier, each tapped into the worker.
-        const codecPrefs = codecsForCategory(codec.category);
-        this.tiers = this.specs.map((spec, i) => {
-            const transformOptions: WebRtcTierTransformOptions = {
-                kind: 'webrtc-tier',
-                tier: i,
-                layerId: i,
-                layerCount: this.specs.length,
-                width: spec.width,
-                height: spec.height,
-                codec: codec.wireCodec,
-            };
-            return new LoopbackTier({
-                track,
-                worker: workerInstance,
-                transformOptions,
-                scaleResolutionDownBy: Math.max(1, this.cameraWidth / spec.width),
-                maxBitrate: spec.maxBitrate,
-                maxFramerate: FPS,
-                codecPreferences: codecPrefs,
-            });
+        // 5) One loopback PC running native simulcast; all layers tapped into
+        //    the worker through a single transform.
+        const layers: LoopbackLayer[] = this.specs.map((spec, i) => ({
+            layerId: i,
+            rid: `t${i}`,
+            scaleResolutionDownBy: Math.max(1, this.cameraWidth / spec.width),
+            maxBitrate: spec.maxBitrate,
+            maxFramerate: FPS,
+        }));
+        const transformOptions: WebRtcSimulcastTransformOptions = {
+            kind: 'webrtc-simulcast',
+            ladder,
+            codec: codec.wireCodec,
+        };
+        this.connection = new LoopbackConnection({
+            track,
+            worker: workerInstance,
+            transformOptions,
+            layers,
+            codecPreferences: codecsForCategory(codec.category),
         });
-        C(`connecting ${this.tiers.length} loopback PC(s)…`);
-        await Promise.all(this.tiers.map(t => t.connect().catch((e: unknown) => {
-            CE(`tier ${t.tier} connect failed`, e);
-        })));
-        C('all tiers connected');
+        C(`connecting simulcast loopback PC (${layers.length} layers)…`);
+        await this.connection.connect();
+        C('simulcast loopback connected');
 
         this.running = true;
 
@@ -269,22 +281,21 @@ export class WebRtcSender implements ISenderBackend {
     }
 
     private async sampleDiag(): Promise<void> {
-        const stats = await Promise.all(this.tiers.map(t => t.getStats().catch(() => null)));
+        const stats = await (this.connection?.getStats().catch(() => []) ?? Promise.resolve([]));
         const now = performance.now();
         const tiers: WebRtcTierDiagnostics[] = [];
         let aggKbps = 0;
         for (const s of stats) {
-            if (!s) continue;
-            const prev = this.lastBytesByTier.get(s.tier);
+            const prev = this.lastBytesByTier.get(s.layerId);
             let kbps = 0;
             if (prev) {
                 const dt = (now - prev.ts) / 1000;
                 if (dt > 0) kbps = Math.max(0, (s.bytesSent - prev.bytes) * 8 / 1000 / dt);
             }
-            this.lastBytesByTier.set(s.tier, { bytes: s.bytesSent, ts: now });
+            this.lastBytesByTier.set(s.layerId, { bytes: s.bytesSent, ts: now });
             const hw = s.powerEfficient ?? !isSoftwareEncoder(s.encoderImplementation);
             tiers.push({
-                layerId: s.tier,
+                layerId: s.layerId,
                 width: s.width,
                 height: s.height,
                 fps: Math.round(s.fps),
@@ -310,6 +321,12 @@ export class WebRtcSender implements ISenderBackend {
             encoderImplementation: top?.encoderImplementation ?? '',
             hardwareAccelerated: tiers.length > 0 && tiers.every(t => t.hardwareAccelerated),
         };
+        if (!this.collapseWarned && tiers.length > 0 && tiers.length < this.specs.length) {
+            this.collapseWarned = true;
+            warnLog?.log(`simulcast collapsed: ${tiers.length}/${this.specs.length} layers encoding `
+                + `(${this.codecString} simulcast may be single-layer on this GPU)`);
+            CE(`simulcast collapsed to ${tiers.length}/${this.specs.length} layers`);
+        }
     }
 
     private async sampleFps(): Promise<void> {
@@ -332,8 +349,8 @@ export class WebRtcSender implements ISenderBackend {
         return {
             running: this.running,
             camera: `${this.cameraWidth}x${this.cameraHeight}`,
-            tierCount: this.tiers.length,
-            tiers: this.tiers.map(t => t.getState()),
+            layerCount: this.specs.length,
+            connection: this.connection?.getState() ?? null,
         };
     }
 
@@ -341,37 +358,39 @@ export class WebRtcSender implements ISenderBackend {
 
     reconfigureLayers(configs: readonly EncoderConfigPerLayer[]): void {
         const activeCount = configs.length;
-        this.tiers.forEach((tier, i) => {
+        this.connection?.applyLayers(this.specs.map((_, i) => {
             if (i < activeCount) {
                 const cfg = configs[i];
-                tier.applyParameters({
+
+                return {
                     active: true,
                     maxBitrate: cfg.bitrate,
                     scaleResolutionDownBy: Math.max(1, this.cameraWidth / cfg.width),
                     maxFramerate: cfg.framerate,
-                });
-            } else {
-                tier.applyParameters({ active: false });
+                };
             }
-        });
+
+            return { active: false };
+        }));
     }
 
     setTargetFps(fps: number): void {
         const active = fps > 0;
-        for (const tier of this.tiers)
-            tier.applyParameters({ active, ...(active ? { maxFramerate: fps } : {}) });
+        this.connection?.applyLayers(this.specs.map(() =>
+            active ? { active: true, maxFramerate: fps } : { active: false }));
     }
 
     async requestKeyframe(): Promise<void> {
-        await Promise.all(this.tiers.map(async tier => {
-            await tier.forceKeyFrame();
-            await this.worker?.webRtcGenerateKeyFrame(tier.tier);
-        }));
+        // No active-toggle: toggling a simulcast encoding off→on collapses HEVC
+        // on Chrome's SimulcastEncoderAdapter. Chrome also lacks
+        // generateKeyFrame on the send transform, so we rely on the loopback's
+        // natural keyframe cadence there; the worker keys via generateKeyFrame
+        // on Safari.
+        await this.worker?.webRtcGenerateKeyFrame();
     }
 
     setGateOpen(open: boolean): void {
-        for (const tier of this.tiers)
-            tier.applyParameters({ active: open });
+        this.connection?.applyLayers(this.specs.map(() => ({ active: open })));
     }
 
     async stop(): Promise<void> {
@@ -384,8 +403,8 @@ export class WebRtcSender implements ISenderBackend {
         this.lastSentAtMs = 0;
         this.lastDiag = null;
         this.lastBytesByTier.clear();
-        for (const tier of this.tiers) tier.close();
-        this.tiers = [];
+        this.connection?.close();
+        this.connection = null;
         try { await this.worker?.webRtcStop(); } catch { /* ignore */ }
         try { this.sharedSettingsReg?.dispose(); } catch { /* ignore */ }
         this.sharedSettingsReg = null;

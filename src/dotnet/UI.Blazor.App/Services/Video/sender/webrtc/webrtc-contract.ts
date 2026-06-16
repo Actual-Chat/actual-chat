@@ -15,6 +15,15 @@ export interface WebRtcStreamFormat {
     codecSettings: string;
 }
 
+// One ladder tier. `layerId` is the bottom-first wire layer index; `width` is
+// the tier's encoded width, used to map an encoded frame's resolution → layerId
+// (the simulcast transform exposes the SSRC, not the rid, on Chrome).
+export interface WebRtcLayer {
+    layerId: number;
+    width: number;
+    height: number;
+}
+
 // RPC payload: main → recorder worker, before any transform is attached.
 // Configures streaming context + the wire sender the tap feeds.
 export interface WebRtcStartOptions {
@@ -26,27 +35,25 @@ export interface WebRtcStartOptions {
     // Top-tier format announced on the first keyframe (sender.init).
     format: WebRtcStreamFormat;
     layerCount: number;
+    // Bottom-first ladder, used by the tap to map SSRC → layerId by resolution.
+    ladder: WebRtcLayer[];
     // Per-frame estimated duration in microseconds (1e6 / fps) — the tap has
     // no real frame-duration signal, so the producer supplies the nominal one.
     frameDurationMicros: number;
 }
 
 // Options object passed to `new RTCRtpScriptTransform(worker, options)` and
-// read back in the worker as `transformer.options`. Identifies which ladder
-// tier this transform's encoded frames belong to.
-export interface WebRtcTierTransformOptions {
-    kind: 'webrtc-tier';
-    tier: number;
-    layerId: number;
-    layerCount: number;
-    width: number;
-    height: number;
+// read back in the worker as `transformer.options`. A single transform carries
+// all simulcast layers of one sender; the tap demuxes them by SSRC → layerId.
+export interface WebRtcSimulcastTransformOptions {
+    kind: 'webrtc-simulcast';
+    ladder: WebRtcLayer[];
     codec: string;
 }
 
-export function isWebRtcTierTransformOptions(o: unknown): o is WebRtcTierTransformOptions {
+export function isWebRtcSimulcastTransformOptions(o: unknown): o is WebRtcSimulcastTransformOptions {
     return !!o && typeof o === 'object'
-        && (o as { kind?: unknown }).kind === 'webrtc-tier';
+        && (o as { kind?: unknown }).kind === 'webrtc-simulcast';
 }
 
 // Receiver-side transform on the loopback's inbound PC. Frames are read and

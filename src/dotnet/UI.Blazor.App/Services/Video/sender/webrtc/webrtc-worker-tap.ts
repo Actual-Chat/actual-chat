@@ -1,17 +1,19 @@
 // Worker-side WebRTC tap. Installed in the recorder worker's global scope:
-// `self.onrtctransform` fires once per tier transform main attaches. Each
-// encoded RTCEncodedVideoFrame is mapped to the existing VideoStreamFrame wire
-// DTO and pushed into the same `createSender` → push-to-pull-buffer → RpcStream
-// path the WebCodecs pipeline uses. Frames are enqueued onward too, keeping the
-// loopback PC's RTCP/BWE alive.
+// `self.onrtctransform` fires once for the sender's single simulcast transform.
+// That one transform carries ALL ladder layers interleaved; we demux them to
+// tiers by SSRC (`metadata.rid` is absent on Chrome) and map each frame to the
+// existing VideoStreamFrame wire DTO, pushed into the same `createSender` →
+// push-to-pull-buffer → RpcStream path the WebCodecs pipeline uses. Frames are
+// enqueued onward too, keeping the loopback PC's RTCP/BWE alive.
 
 import { getLogs } from 'logging';
 import { FloodGate } from '../../operators/flood-gate';
 import type { StreamSenderLike, VideoStreamFrame } from '../../operators/wire-send';
 import {
-    isWebRtcTierTransformOptions,
+    isWebRtcSimulcastTransformOptions,
     isWebRtcDropTransformOptions,
     type WebRtcStartOptions,
+    type WebRtcSimulcastTransformOptions,
 } from './webrtc-contract';
 
 const { infoLog, warnLog } = getLogs('VideoPipeline');
@@ -21,10 +23,21 @@ const { infoLog, warnLog } = getLogs('VideoPipeline');
 const C = (...a: unknown[]): void => console.info('[voxtWebRtc/worker]', ...a);
 
 const TICKS_PER_MICROSECOND = 10;
+const RTP_CLOCK_HZ = 90000;
 
 interface TierCounter {
     index: number;
     lastKfIndex: number;
+}
+
+// Per-SSRC layer assignment + timestamp anchor. `baseOffsetMicros` seeds the
+// tier's stream-relative start from arrival (layers begin within a few ms of
+// each other); per-frame offset then advances on the RTP clock, so intra-layer
+// cadence is jitter-free and all tiers share one capture timeline.
+interface SsrcAnchor {
+    layerId: number;
+    baseRtp: number;
+    baseOffsetMicros: number;
 }
 
 interface TapState {
@@ -35,7 +48,8 @@ interface TapState {
     startMs: number;
     initSent: boolean;
     tiers: Map<number, TierCounter>;
-    transformers: Map<number, RTCRtpScriptTransformer>;
+    ssrcAnchors: Map<number, SsrcAnchor>;
+    transformer: RTCRtpScriptTransformer | null;
     // Cumulative top-tier frames actually pushed to the wire sender.
     topTierFramesSent: number;
 }
@@ -55,7 +69,7 @@ export interface WebRtcTapDeps {
 export interface WebRtcTapHandlers {
     webRtcStart: (opts: WebRtcStartOptions) => void;
     webRtcStop: () => void;
-    webRtcGenerateKeyFrame: (tier: number) => Promise<void>;
+    webRtcGenerateKeyFrame: () => Promise<void>;
     webRtcGetSentFrameCount: () => number;
 }
 
@@ -66,18 +80,22 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
         const opts = transformer.options;
         if (isWebRtcDropTransformOptions(opts)) {
             // Loopback receiver: discard frames before the decoder (no decode).
-            C(`onrtctransform: tier ${opts.tier} receiver drop attached`);
+            C('onrtctransform: receiver drop attached');
             void pumpDrop(transformer);
+
             return;
         }
-        if (!isWebRtcTierTransformOptions(opts)) {
+        if (!isWebRtcSimulcastTransformOptions(opts)) {
             // Not ours — pass frames through untouched.
             void pipePassthrough(transformer);
+
             return;
         }
-        C(`onrtctransform: tier ${opts.tier} attached`);
-        state?.transformers.set(opts.tier, transformer);
-        void pumpTier(transformer, opts);
+        C(`onrtctransform: simulcast transform attached (${opts.ladder.length} layers)`);
+        if (state)
+            state.transformer = transformer;
+
+        void pumpSimulcast(transformer, opts);
     };
 
     return {
@@ -101,7 +119,8 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
                 startMs: Number.NaN,
                 initSent: false,
                 tiers: new Map(),
-                transformers: new Map(),
+                ssrcAnchors: new Map(),
+                transformer: null,
                 topTierFramesSent: 0,
             };
             C(`webRtcStart: chatId=${opts.chatId} layers=${opts.layerCount} codec=${opts.format.codec}`);
@@ -110,11 +129,16 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
         webRtcStop(): void {
             stopTap();
         },
-        async webRtcGenerateKeyFrame(tier: number): Promise<void> {
-            const t = state?.transformers.get(tier);
-            if (!t || typeof t.generateKeyFrame !== 'function') return;
-            try { await t.generateKeyFrame(); }
-            catch (e) { warnLog?.log(`generateKeyFrame(tier=${tier}) failed`, e); }
+        async webRtcGenerateKeyFrame(): Promise<void> {
+            const t = state?.transformer;
+            if (!t || typeof t.generateKeyFrame !== 'function')
+                return;
+
+            try {
+                await t.generateKeyFrame();
+            } catch (e) {
+                warnLog?.log('generateKeyFrame failed', e);
+            }
         },
         webRtcGetSentFrameCount(): number {
             return state?.topTierFramesSent ?? 0;
@@ -122,80 +146,133 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
     };
 }
 
+// Private methods
+
 function stopTap(): void {
     const s = state;
     state = null;
-    if (!s) return;
-    try { s.sender.dispose?.(); } catch { /* ignore */ }
+    if (!s)
+        return;
+
+    try {
+        s.sender.dispose?.();
+    } catch { /* ignore */ }
     s.tiers.clear();
-    s.transformers.clear();
+    s.ssrcAnchors.clear();
     infoLog?.log('webRtcStop: tap disposed');
 }
 
-async function pumpTier(
+async function pumpSimulcast(
     transformer: RTCRtpScriptTransformer,
-    opts: import('./webrtc-contract').WebRtcTierTransformOptions,
+    opts: WebRtcSimulcastTransformOptions,
 ): Promise<void> {
     const reader = transformer.readable.getReader();
     const writer = transformer.writable.getWriter();
     try {
         for (;;) {
             const { value: frame, done } = await reader.read();
-            if (done) break;
-            try { onEncodedFrame(opts, frame); }
-            catch (e) { warnLog?.log(`onEncodedFrame(tier=${opts.tier}) failed`, e); }
+            if (done)
+                break;
+
+            try {
+                onEncodedFrame(opts, frame);
+            } catch (e) {
+                warnLog?.log('onEncodedFrame failed', e);
+            }
             // Keep the loopback alive (RTCP/BWE) — we copied the bytes above.
             await writer.write(frame);
         }
     } catch (e) {
-        warnLog?.log(`pumpTier(tier=${opts.tier}) ended`, e);
+        warnLog?.log('pumpSimulcast ended', e);
     }
 }
 
+// Maps an encoded frame's resolution to a bottom-first ladder layerId. Chrome
+// omits `rid` from the frame metadata, so resolution is the demux key (paired
+// with the SSRC anchor that caches the result per substream).
+function layerIdForWidth(opts: WebRtcSimulcastTransformOptions, width: number | undefined): number | null {
+    if (width == null)
+        return null;
+
+    let best: number | null = null;
+    let bestDiff = Number.POSITIVE_INFINITY;
+    for (const l of opts.ladder) {
+        const diff = Math.abs(l.width - width);
+        if (diff < bestDiff) {
+            bestDiff = diff;
+            best = l.layerId;
+        }
+    }
+
+    return best;
+}
+
 function onEncodedFrame(
-    opts: import('./webrtc-contract').WebRtcTierTransformOptions,
+    opts: WebRtcSimulcastTransformOptions,
     frame: RTCEncodedVideoFrame,
 ): void {
     const s = state;
-    if (!s) return;
+    if (!s)
+        return;
 
     const now = performance.now();
-    if (Number.isNaN(s.startMs)) s.startMs = now;
+    if (Number.isNaN(s.startMs))
+        s.startMs = now;
 
-    let tc = s.tiers.get(opts.tier);
-    if (!tc) { tc = { index: 0, lastKfIndex: -1 }; s.tiers.set(opts.tier, tc); }
+    const meta = frame.getMetadata();
+    const ssrc = meta.synchronizationSource ?? 0;
+    const rtpTs = meta.rtpTimestamp ?? frame.timestamp;
+
+    let anchor = s.ssrcAnchors.get(ssrc);
+    if (!anchor) {
+        const layerId = layerIdForWidth(opts, meta.width);
+        if (layerId == null)
+            // No resolution yet (rare leading delta) — can't classify; drop it.
+            return;
+
+        anchor = { layerId, baseRtp: rtpTs, baseOffsetMicros: (now - s.startMs) * 1000 };
+        s.ssrcAnchors.set(ssrc, anchor);
+        C(`layer ${layerId} ← ssrc ${ssrc} (${meta.width}x${meta.height})`);
+    }
+    const layerId = anchor.layerId;
+
+    let tc = s.tiers.get(layerId);
+    if (!tc) {
+        tc = { index: 0, lastKfIndex: -1 };
+        s.tiers.set(layerId, tc);
+    }
 
     const isKey = frame.type === 'key';
     const index = tc.index++;
-    if (index === 0)
-        C(`first encoded frame tapped: tier ${opts.tier} type=${frame.type} ${frame.data.byteLength}B`);
-    if (isKey) tc.lastKfIndex = index;
+    if (isKey)
+        tc.lastKfIndex = index;
+
     // -1 sentinel until this tier's first keyframe — server/receiver won't
     // misclassify a pre-keyframe delta as a keyframe.
     const keyFrameIndex = tc.lastKfIndex;
 
-    const offsetMicros = Math.round((now - s.startMs) * 1000);
-    const offset = offsetMicros * TICKS_PER_MICROSECOND;
+    const offsetMicros = anchor.baseOffsetMicros + ((rtpTs - anchor.baseRtp) / RTP_CLOCK_HZ) * 1e6;
+    const offset = Math.round(offsetMicros) * TICKS_PER_MICROSECOND;
     const duration = s.opts.frameDurationMicros * TICKS_PER_MICROSECOND;
 
     const src = new Uint8Array(frame.data);
     const data = new Uint8Array(src.byteLength);
     data.set(src);
 
-    const meta = frame.getMetadata();
     const dto: VideoStreamFrame = {
         offset,
         offsetEpoch: 0,
         duration,
         keyFrameIndex,
         index,
-        width: meta.width ?? opts.width,
-        height: meta.height ?? opts.height,
+        width: meta.width ?? 0,
+        height: meta.height ?? 0,
         data,
-        layerId: opts.layerId,
-        layerCount: opts.layerCount,
+        layerId,
+        layerCount: s.opts.layerCount,
     };
-    if (isKey) dto.codec = opts.codec;
+    if (isKey)
+        dto.codec = opts.codec;
 
     // First keyframe on any tier announces the stream (sender.init → PushStream).
     if (!s.initSent && isKey && s.sender.init) {
@@ -208,21 +285,20 @@ function onEncodedFrame(
             codecSettings: s.opts.format.codecSettings,
         });
         s.initSent = true;
-        C(`sender.init() fired (first keyframe, tier ${opts.tier}) — PushStream starting`);
+        C(`sender.init() fired (first keyframe, layer ${layerId}) — PushStream starting`);
     }
     if (s.initSent) {
         void s.sender.send({ layers: [dto] });
         // Top tier encodes every source moment → its count is the send fps.
-        if (opts.layerId === opts.layerCount - 1)
+        if (layerId === s.opts.layerCount - 1)
             s.topTierFramesSent++;
-        if (index > 0 && index % 90 === 0)
-            C(`tier ${opts.tier}: ${index} frames tapped & pushed`);
     }
 }
 
 async function pipePassthrough(transformer: RTCRtpScriptTransformer): Promise<void> {
-    try { await transformer.readable.pipeTo(transformer.writable); }
-    catch { /* transform ended */ }
+    try {
+        await transformer.readable.pipeTo(transformer.writable);
+    } catch { /* transform ended */ }
 }
 
 // Receiver-side: drain the readable and DROP every frame (never enqueue to the
@@ -233,7 +309,8 @@ async function pumpDrop(transformer: RTCRtpScriptTransformer): Promise<void> {
     try {
         for (;;) {
             const { done } = await reader.read();
-            if (done) break;
+            if (done)
+                break;
             // frame intentionally discarded
         }
     } catch { /* transform ended */ }

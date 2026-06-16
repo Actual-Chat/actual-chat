@@ -276,7 +276,7 @@ streamingContext.sessionTokenProvider = () =>
     Promise.resolve(SharedSettings.current.sessionToken ?? '');
 
 // WebRTC sender backend: installs `self.onrtctransform`, reusing the same
-// createSender → wire path. Main attaches the per-tier transforms to this worker.
+// createSender → wire path. Main attaches the simulcast transform to this worker.
 const webRtcTap = installWebRtcTap({ createSender, configureStreaming });
 
 const deps: RecorderWorkerDeps = {
