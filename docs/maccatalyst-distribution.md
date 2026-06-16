@@ -61,11 +61,6 @@ open ../../../artifacts/bin/App.Maui/debug_net10.0-maccatalyst_maccatalyst-arm64
 # Against dev backend (dev.voxt.ai): -p:IsDevMaui=true  -> Voxt (Dev).app
 ```
 
-**Gotcha:** all Mac Catalyst configs share `IntermediateOutputPath=artifacts/out`
-(hardcoded; `fix-codesigning.sh` paths depend on it). Switching between Debug and
-Release locally cross-contaminates that dir and yields an unsigned app or undefined
-`_callback_*` linker symbols. If you switch configs, run `rm -rf artifacts/out` first.
-
 ## Local build (App Store signed `.pkg`)
 
 `publish-maccatalyst` builds, signs the `.app` with the Apple Distribution cert, and —
@@ -96,10 +91,9 @@ or a manual run with `buildAppFor`), build via the `publish-maccatalyst` target
 (which emits the installer-signed `.pkg` directly), then validate + upload with
 `altool -t macos`.
 
-The Release config signs the `.app` (and nested code) with the Apple Distribution cert,
-`fix-codesigning.sh` repairs the SDK codesign regression (see below), and the SDK's
-`CreatePackage`/`EnablePackageSigning` produces the `.pkg` — no manual re-sign or
-`productbuild` step.
+The Release config signs the `.app` (and nested code) with the Apple Distribution cert
+and the SDK's `CreatePackage`/`EnablePackageSigning` produces the `.pkg` — no manual
+re-sign or `productbuild` step.
 
 ### Required GitHub secrets
 
