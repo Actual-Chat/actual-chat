@@ -28,6 +28,19 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         => LiveSessions.Get(Session, chatId, cancellationToken);
 
     [ComputeMethod]
+    public virtual Task<LiveSession?> GetLiveSession(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.GetLiveSession(Session, chatId, cancellationToken);
+
+    public Task SetMicMuted(ChatId chatId, bool micMuted, CancellationToken cancellationToken)
+        => LiveSessions.SetMicMuted(Session, chatId, micMuted, cancellationToken);
+
+    public Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
+        => LiveSessions.SetRules(Session, chatId, rules, cancellationToken);
+
+    public Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken)
+        => LiveSessions.MutePeer(Session, chatId, targetAuthorId, muted, cancellationToken);
+
+    [ComputeMethod]
     public virtual async Task<bool> AmIInLiveConversation(ChatId chatId, CancellationToken cancellationToken)
     {
         var audio = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);

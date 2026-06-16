@@ -23,6 +23,11 @@
                         TabsClass="left-panel-tabs wide-left-panel-tabs"
                         BottomHill="true">
 
+                        @if (m.ShowCallTab) {
+                            <Tab @key="@("call")" Id="call" Title="Call" Order="-1">
+                                <CallList ChatId="@chat.Id"/>
+                            </Tab>
+                        }
                         @if (m.ShowMembersTab) {
                             <Tab @key="@("members")" Id="members" Title="Members" Order="0">
                                 <AuthorList ChatId="@chat.Id"/>
@@ -98,9 +103,11 @@
         // Disable 'members' tab for the announcements chat
         var showMemberTab = chat.Id != Constants.Chat.AnnouncementsChatId && rules.CanSeeMembers();
         var enableIncompleteUI = !Hub.UrlMapper.IsVoxt;
+        var liveSession = await Hub.LiveSessionUI.GetLiveSession(chatId, cancellationToken).ConfigureAwait(false);
 
         return new () {
             Chat = chat,
+            ShowCallTab = liveSession is not null,
             ShowMembersTab = showMemberTab,
             ShowContentItemsTab = enableIncompleteUI,
         };
@@ -114,7 +121,8 @@
 
         public Chat? Chat { get; init; }
         public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place or ChatKind.Peer;
-        public bool ShowTabs => ShowMembersTab || ShowContentItemsTab || ShowThreads;
+        public bool ShowTabs => ShowCallTab || ShowMembersTab || ShowContentItemsTab || ShowThreads;
+        public bool ShowCallTab { get; init; }
         public bool ShowMembersTab { get; init; }
         public bool ShowContentItemsTab { get; init; }
     }
