@@ -1,0 +1,162 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Live
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, CallList.Model>
+@{
+    var m = State.Value;
+    var live = m.Session;
+    if (live is null) {
+        <div class="call-list-tab"><div class="c-empty">No active call.</div></div>
+        return;
+    }
+    var groups = new (string Title, MemberGroup Group)[] {
+        ("Host", MemberGroup.Host),
+        ("Others", MemberGroup.Other),
+        ("Exited", MemberGroup.Exited),
+    };
+}
+<div class="call-list-tab">
+    <div class="c-rules">
+        <span class="c-rules-title">Rules</span>
+        <span class="c-rules-text">@RulesText(live.Rules)</span>
+    </div>
+    @if (m.IsController) {
+        <div class="c-manage">
+            <span class="c-manage-title">Manage</span>
+            <div class="c-manage-buttons">
+                <button class="c-toggle @(TranscriptOn(live.Rules) ? "on" : "off")" @onclick="@(() => ToggleTranscript(live))" title="Transcription">
+                    <i class="icon-voice-to-text-message"></i>
+                </button>
+                <button class="c-toggle @(VoiceOn(live.Rules) ? "on" : "off")" @onclick="@(() => ToggleVoice(live))" title="Voice streaming">
+                    <i class="icon-mic-2"></i>
+                </button>
+                <button class="c-toggle @(live.Rules.ScreenShareAllowed ? "on" : "off")" @onclick="@(() => ToggleScreenShare(live))" title="Screen share">
+                    <i class="icon-screen-share"></i>
+                </button>
+                <button class="c-toggle @(live.Rules.RecordingAllowed ? "on" : "off")" @onclick="@(() => ToggleRecording(live))" title="Recording">
+                    <i class="icon-video"></i>
+                </button>
+            </div>
+        </div>
+    }
+    <div class="c-content">
+        @foreach (var (title, group) in groups) {
+            var members = live.Members.Where(x => x.Group == group).ToList();
+            if (members.Count == 0)
+                continue;
+            <div class="c-group-title">@title — @members.Count</div>
+            @foreach (var member in members) {
+                <div class="c-member-row" @key="@member.AuthorId.Value">
+                    <AuthorBadge
+                        AuthorId="@member.AuthorId"
+                        ShowPresence="true"
+                        ShowPresenceText="true"
+                        IsShortPresenceText="true"
+                        Click="@_onClickCallback"/>
+                    <div class="c-member-state">
+                        @if (member.HasScreenShare) {
+                            <i class="icon-screen-share" title="Screen sharing"></i>
+                        }
+                        @if (member.HasCamera) {
+                            <i class="icon-video" title="Camera on"></i>
+                        }
+                        @if (member.IsMicOpen) {
+                            <i class="@(member.MicMuted || member.ForcedMuted ? "icon-mic-off muted" : "icon-mic-2 active")"
+                               title="@(member.ForcedMuted ? "Muted by host" : member.MicMuted ? "Muted" : "Mic on")"></i>
+                        }
+                        else if (member.IsListening) {
+                            <i class="icon-voice-01" title="Listening"></i>
+                        }
+                        @if (m.IsController && member.Group != MemberGroup.Exited) {
+                            <button class="c-mute-btn" @onclick="@(() => OnMute(live.ChatId, member))">
+                                @(member.ForcedMuted ? "Unmute" : "Mute")
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private EventCallback<AuthorId> _onClickCallback;
+
+    private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
+    private AuthorUI AuthorUI => Hub.AuthorUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+
+    protected override void OnInitialized()
+        => _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(authorId => _ = AuthorUI.Show(authorId));
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (ChatId is null || ChatId.Value.IsNullOrEmpty())
+            return Model.None;
+
+        var live = await LiveSessionUI.GetLiveSession(ChatId, cancellationToken).ConfigureAwait(true);
+        if (live is null)
+            return Model.None;
+
+        var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(true);
+        var rules = await Chats.GetRules(Session, ChatId, cancellationToken).ConfigureAwait(true);
+        var isController = rules.IsOwner() || (ownAuthor is not null && live.Host == ownAuthor.Id);
+        return new Model { Session = live, OwnAuthorId = ownAuthor?.Id, IsController = isController };
+    }
+
+    private Task OnMute(ChatId chatId, LiveSessionMember member)
+        => LiveSessionUI.MutePeer(chatId, member.AuthorId, !member.ForcedMuted, CancellationToken.None);
+
+    private Task ToggleTranscript(LiveSession live)
+        => SetVoiceMode(live, !TranscriptOn(live.Rules), VoiceOn(live.Rules));
+    private Task ToggleVoice(LiveSession live)
+        => SetVoiceMode(live, TranscriptOn(live.Rules), !VoiceOn(live.Rules));
+    private Task ToggleScreenShare(LiveSession live)
+        => LiveSessionUI.SetRules(live.ChatId, live.Rules with { ScreenShareAllowed = !live.Rules.ScreenShareAllowed }, CancellationToken.None);
+    private Task ToggleRecording(LiveSession live)
+        => LiveSessionUI.SetRules(live.ChatId, live.Rules with { RecordingAllowed = !live.Rules.RecordingAllowed }, CancellationToken.None);
+
+    private Task SetVoiceMode(LiveSession live, bool transcript, bool voice) {
+        var mode = (transcript, voice) switch {
+            (true, true) => VoiceMode.TextAndVoice,
+            (true, false) => VoiceMode.JustText,
+            (false, true) => VoiceMode.JustVoice,
+            _ => VoiceMode.JustText,
+        };
+        return LiveSessionUI.SetRules(live.ChatId, live.Rules with { VoiceModeOverride = mode }, CancellationToken.None);
+    }
+
+    private static bool TranscriptOn(SessionRules r) => r.VoiceModeOverride is not VoiceMode.JustVoice;
+    private static bool VoiceOn(SessionRules r) => r.VoiceModeOverride is not VoiceMode.JustText;
+
+    private static string RulesText(SessionRules r) {
+        var parts = new List<string>();
+        parts.Add(TranscriptOn(r) ? "Transcription" : "No transcription");
+        parts.Add(VoiceOn(r) ? "Voice" : "No voice");
+        if (!r.ScreenShareAllowed)
+            parts.Add("No screen share");
+        if (!r.RecordingAllowed)
+            parts.Add("No recording");
+        return string.Join(", ", parts);
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public LiveSession? Session { get; init; }
+        public AuthorId? OwnAuthorId { get; init; }
+        public bool IsController { get; init; }
+    }
+}

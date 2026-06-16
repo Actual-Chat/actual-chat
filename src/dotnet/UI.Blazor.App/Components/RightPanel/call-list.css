@@ -1,0 +1,64 @@
+.call-list-tab {
+    @apply flex flex-col;
+    @apply w-full h-full;
+    @apply overflow-y-auto;
+}
+.call-list-tab .c-empty {
+    @apply p-4;
+    @apply text-03 text-center;
+}
+.call-list-tab .c-rules,
+.call-list-tab .c-manage {
+    @apply flex items-center gap-2;
+    @apply px-4 py-2;
+    @apply border-b border-separator;
+}
+.call-list-tab .c-rules-title,
+.call-list-tab .c-manage-title {
+    @apply text-caption-1 text-03;
+    @apply min-w-16;
+}
+.call-list-tab .c-rules-text {
+    @apply text-caption-1 text-02;
+}
+.call-list-tab .c-manage-buttons {
+    @apply flex items-center gap-3 ml-auto;
+}
+.call-list-tab .c-toggle {
+    @apply flex items-center justify-center;
+    @apply w-9 h-9 rounded-full;
+    @apply text-2xl;
+}
+.call-list-tab .c-toggle.on {
+    @apply bg-primary text-04;
+}
+.call-list-tab .c-toggle.off {
+    @apply bg-03 text-03;
+}
+.call-list-tab .c-group-title {
+    @apply px-4 pt-3 pb-1;
+    @apply text-caption-4 text-03 uppercase;
+}
+.call-list-tab .c-member-row {
+    @apply flex items-center gap-2;
+    @apply px-4 py-1;
+}
+.call-list-tab .c-member-row > .avatar-badge {
+    @apply flex-1 min-w-0;
+}
+.call-list-tab .c-member-state {
+    @apply flex items-center gap-2 flex-none;
+}
+.call-list-tab .c-member-state i {
+    @apply text-xl text-03;
+}
+.call-list-tab .c-member-state i.active {
+    @apply text-danger;
+}
+.call-list-tab .c-member-state i.muted {
+    @apply text-03;
+}
+.call-list-tab .c-mute-btn {
+    @apply text-caption-1 text-primary;
+    @apply px-2 py-0.5;
+}

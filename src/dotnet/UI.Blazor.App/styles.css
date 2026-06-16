@@ -73,6 +73,7 @@
 @import './Components/Reactions/reactions-menu.css';
 @import './Components/Reactions/emoji-preview.css';
 @import './Components/RecordingSubHeader/recording-sub-header.css';
+@import './Components/RightPanel/call-list.css';
 @import './Components/RightPanel/right-panel.css';
 @import './Components/SearchPanel/search-panel.css';
 @import './Components/Settings/settings-modal.css';
