@@ -23,14 +23,14 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         using var outBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
         var hwFormat = engine.Input.GetOutputFormat();
         using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
-        // Voice processing (AEC/NS/AGC) breaks on Mac Catalyst: the engine's recording
-        // graph has no active output side, so the VoiceProcessor's downlink DSP can't get
-        // valid sample timestamps and either errors out continuously or delivers a single
-        // initial buffer then goes silent. We tried wiring a silent AVAudioPlayerNode to
-        // MainMixerNode — it suppressed the error spam but didn't restore steady-state
-        // frame delivery. Until we find a stable workaround, ship without VP on Mac
-        // Catalyst (no AEC/NS/AGC; desktops are typically used with headphones so echo is
-        // a minor regression vs iOS).
+        // TODO(FC): restore AEC/NS/AGC on Mac Catalyst.
+        // Voice processing breaks on Mac Catalyst: the engine's recording graph has no
+        // active output side, so the VoiceProcessor's downlink DSP can't get valid sample
+        // timestamps and either errors out continuously or delivers a single initial
+        // buffer then goes silent. Wiring a silent AVAudioPlayerNode to MainMixerNode
+        // suppressed the error spam but didn't restore steady-state frame delivery.
+        // Until we find a stable workaround, ship without VP on Mac Catalyst (desktops
+        // are typically used with headphones, so echo is a minor regression vs iOS).
         if (!OperatingSystem.IsMacCatalyst())
             engine.Input.SetVoiceProcessingEnabled(true);
         using var _2 = engine.Input.Tap(HandleSamples);
