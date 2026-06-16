@@ -72,8 +72,8 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId)
                 return;
 
-            // Auto-send only if the user can actually send to the suggested chat,
-            // otherwise fall through to manual contact selection.
+            // Pre-select the suggested chat if the user can send to it, but still
+            // show the selection screen so a comment can be added before sending.
             var contactId = ContactId.NewAny(ownAccount.Id, chatId);
             var contact = await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
             if (contact is null || !CanSendTo(contact))
@@ -81,7 +81,8 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
             _selectedIds.Add(contactId);
             _canSend.Value = true;
-            StartSending();
+            if (chatId is PlaceChatId placeChatId)
+                SelectedPlaceId.Value = placeChatId.PlaceId;
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to initialize");
