@@ -17,6 +17,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<double> _uploadPct;
     private readonly FuncWorker _sendWorker;
     private SearchQuery _searchQuery;
+    private string _comment = "";
     private readonly MutableState<bool> _isInitialized;
     private readonly MutableState<bool> _isSending;
     private readonly MutableState<bool> _isSent;
@@ -164,6 +165,9 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             _ = IsContactSelected(contactId, default);
     }
 
+    public void SetComment(string comment)
+        => _comment = comment;
+
     public void SetFilter(string filter)
     {
         Log.LogInformation("Set filter: {Filter}", filter);
@@ -199,7 +203,11 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         {
             var chatIds = _selectedIds.Select(x => x.ChatId).Distinct().ToList();
             SuggestShareContacts([.._selectedIds]);
-            var text = await SharedInputs.GetText(cancellationToken).ConfigureAwait(false);
+            var sharedText = await SharedInputs.GetText(cancellationToken).ConfigureAwait(false);
+            var comment = _comment.Trim();
+            var text = comment.IsNullOrEmpty()
+                ? sharedText
+                : sharedText.IsNullOrWhiteSpace() ? comment : $"{comment}\n{sharedText}";
             var fileInputs = await SharedInputs.ListFiles(cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Text: {Text}, Files: {Files}", text.ToPrivate(), fileInputs.Count);
             if (text.IsNullOrWhiteSpace() && fileInputs.Count == 0) {

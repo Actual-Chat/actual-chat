@@ -7,6 +7,9 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
 {
     private ShareUI ShareUI => field ??= Services.GetRequiredService<ShareUI>();
     private UIButton _sendButton = null!;
+    private NSLayoutConstraint _commentBottomConstraint = null!;
+    private NSObject? _keyboardShowObserver;
+    private NSObject? _keyboardHideObserver;
 
     protected override void OnInitialRender(Model? model)
     {
@@ -69,11 +72,6 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         searchField.LeftView.AddSubview(searchIcon);
         AddSubview(searchField);
 
-        // Add tap gesture to dismiss keyboard when tapping outside
-        var tapGesture = new UITapGestureRecognizer(() => searchField.ResignFirstResponder());
-        tapGesture.CancelsTouchesInView = false;
-        AddGestureRecognizer(tapGesture);
-
         // Place list
         var placeListView = new PlaceListView(Hub);
         AddSubview(placeListView);
@@ -81,6 +79,36 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         // Contact list
         var contactListView = new ContactListView(Hub);
         AddSubview(contactListView);
+
+        // Comment field
+        var commentField = new UITextField
+        {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+            Placeholder = "Add a comment",
+            Font = UIFont.SystemFontOfSize(17),
+            TextColor = UIColor.White,
+            BackgroundColor = new UIColor(red: 0.18f, green: 0.18f, blue: 0.19f, alpha: 1.0f),
+            BorderStyle = UITextBorderStyle.RoundedRect,
+            LeftView = new UIView(new CGRect(0, 0, 12, 44)),
+            LeftViewMode = UITextFieldViewMode.Always,
+            ReturnKeyType = UIReturnKeyType.Default,
+        };
+        commentField.EditingChanged += Safe(() => ShareUI.SetComment(commentField.Text ?? ""));
+        commentField.ShouldReturn = textField => {
+            textField.ResignFirstResponder();
+            return true;
+        };
+        AddSubview(commentField);
+        _commentBottomConstraint = commentField.BottomAnchor.ConstraintEqualTo(SafeAreaLayoutGuide.BottomAnchor, -8);
+        ObserveKeyboard();
+
+        // Add tap gesture to dismiss keyboard when tapping outside
+        var tapGesture = new UITapGestureRecognizer(() => {
+            searchField.ResignFirstResponder();
+            commentField.ResignFirstResponder();
+        });
+        tapGesture.CancelsTouchesInView = false;
+        AddGestureRecognizer(tapGesture);
 
         NSLayoutConstraint.ActivateConstraints([
             closeButton.TopAnchor.ConstraintEqualTo(SafeAreaLayoutGuide.TopAnchor, 12),
@@ -106,8 +134,35 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
             contactListView.TopAnchor.ConstraintEqualTo(placeListView.BottomAnchor, 16),
             contactListView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
             contactListView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-            contactListView.BottomAnchor.ConstraintEqualTo(SafeAreaLayoutGuide.BottomAnchor)
+            contactListView.BottomAnchor.ConstraintEqualTo(commentField.TopAnchor, -8),
+
+            commentField.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, 16),
+            commentField.TrailingAnchor.ConstraintEqualTo(TrailingAnchor, -16),
+            commentField.HeightAnchor.ConstraintEqualTo(44),
+            _commentBottomConstraint,
         ]);
+    }
+
+    private void ObserveKeyboard()
+    {
+        _keyboardShowObserver = UIKeyboard.Notifications.ObserveWillShow((_, e) => {
+            var keyboardHeight = e.FrameEnd.Height;
+            _commentBottomConstraint.Constant = -(keyboardHeight - SafeAreaInsets.Bottom + 8);
+            UIView.Animate(e.AnimationDuration, () => LayoutIfNeeded());
+        });
+        _keyboardHideObserver = UIKeyboard.Notifications.ObserveWillHide((_, e) => {
+            _commentBottomConstraint.Constant = -8;
+            UIView.Animate(e.AnimationDuration, () => LayoutIfNeeded());
+        });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) {
+            _keyboardShowObserver?.Dispose();
+            _keyboardHideObserver?.Dispose();
+        }
+        base.Dispose(disposing);
     }
 
     protected override void OnStateChanged(Model? model)
