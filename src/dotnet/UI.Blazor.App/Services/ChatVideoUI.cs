@@ -49,6 +49,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private IAuthors Authors => Hub.Authors;
     private ILiveVideoStreams LiveVideoStreams => Hub.LiveVideoStreams;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private CameraUI CameraUI => Hub.CameraUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
@@ -230,6 +231,15 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             await modeRef.WhenClosed.ConfigureAwait(true);
             if (!model.IsConfirmed)
                 return;
+
+            // Apply the mic choice from the preview modal: start recording when
+            // the user left mic on, stop it when they turned it off while it was live.
+            if (model.IsMicOn) {
+                if (await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(true))
+                    await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
+            }
+            else if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(true) == chatId)
+                await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
 
             if (!model.IsVideoOn) {
                 // Viewer join: only opening the panel — no recording / streaming.

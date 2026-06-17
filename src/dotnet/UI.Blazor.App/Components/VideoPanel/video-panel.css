@@ -466,6 +466,9 @@ body.hoverable .btn-video-panel.btn-h:hover {
 .video-panel-footer .btn-video-panel.btn-h {
     @apply w-12 h-12;
 }
+.video-panel-footer .btn-incut {
+    @apply w-12 h-12;
+}
 body.hoverable .video-panel .video-panel-toolbar > button:hover,
 .touch-capable .video-panel .video-panel-toolbar > button:active {
     @apply text-[var(--white-50)];

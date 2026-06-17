@@ -116,13 +116,9 @@
         <div class="video-panel-toolbar video-panel-footer">
             @if (isMobileOrNarrow) {
                 <HeaderButton
-                    Click="@OnSwitchCamera"
-                    Class="btn-video-panel"
-                    IsDisabled="@(!isOwnCameraStreaming)"
-                    data-menu="@(MenuRef.New<CameraMenu>(CameraMenuRequester, m.SelectedCameraDeviceId ?? "").ToString())"
-                    data-menu-trigger="@MenuTrigger.Secondary"
-                    data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
-                    <i class="icon-camera-switch text-lg"></i>
+                    Click="@(() => OnVideoClick(!isOwnCameraStreaming))"
+                    Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
+                    <i class="icon-video text-lg"></i>
                 </HeaderButton>
             } else {
                 <HeaderButton
@@ -143,12 +139,25 @@
                     <i class="icon-recorder-right-half right"></i>
                 }
             </HeaderButton>
-            <HeaderButton
-                Click="@(() => OnVideoClick(!isOwnCameraStreaming))"
-                Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
-                <i class="icon-video text-lg"></i>
-            </HeaderButton>
-            @if (!isMobileOrNarrow) {
+            @if (isMobileOrNarrow) {
+                @if (isOwnCameraStreaming) {
+                    <HeaderButton
+                        Click="@OnSwitchCamera"
+                        Class="btn-video-panel"
+                        data-menu="@(MenuRef.New<CameraMenu>(CameraMenuRequester, m.SelectedCameraDeviceId ?? "").ToString())"
+                        data-menu-trigger="@MenuTrigger.Secondary"
+                        data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
+                        <i class="icon-camera-switch text-lg"></i>
+                    </HeaderButton>
+                } else {
+                    <div class="btn-incut"></div>
+                }
+            } else {
+                <HeaderButton
+                    Click="@(() => OnVideoClick(!isOwnCameraStreaming))"
+                    Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
+                    <i class="icon-video text-lg"></i>
+                </HeaderButton>
                 <HeaderButton Click="@OnToggleChatVisibilityClick" Class="@("btn-video-panel chat-btn " + chatBtnCls)">
                     <i class="icon-message-ellipse text-lg"></i>
                 </HeaderButton>

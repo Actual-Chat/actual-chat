@@ -182,6 +182,9 @@
 .join-video-call-modal .btn-round.mic-btn .rec-icon i.left {
     @apply -mr-0.5;
 }
+.join-video-call-modal .btn-round.mic-btn.mic-on {
+    @apply text-primary;
+}
 .join-video-call-modal .btn-round.mic-btn.recording {
     @apply text-danger;
 }

@@ -90,7 +90,7 @@
 
                     @* Mic button *@
                     <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
-                        @if (_isRecording) {
+                        @if (_isMicOn) {
                             <i class="icon-mic-2 text-2xl"></i>
                         } else {
                             <i class="icon-mic-off text-2xl"></i>
@@ -111,7 +111,7 @@
 
                     @* Mic button *@
                     <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
-                        @if (_isRecording) {
+                        @if (_isMicOn) {
                             <i class="icon-mic-2 text-2xl"></i>
                         } else {
                             <i class="icon-mic-off text-2xl"></i>
@@ -173,7 +173,8 @@
     private bool _isVideoOn = true;
     private bool _isBlurEnabled;
     private bool _isCameraMirrored = true;
-    private bool _isRecording;
+    private bool _isMicOn = true;
+    private bool _isChatMicLive;
     private CameraPermissionState _permission = CameraPermissionState.Unknown;
     private List<VideoDevice> _videoDevices = new();
     private VideoDevice? _selectedDevice;
@@ -244,7 +245,11 @@
         var settings = await settingsTask;
         _isBlurEnabled = settings.IsBackgroundBlurEnabledOrDefault;
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
-        _isRecording = recordingChatId == ModalModel.Chat.Id;
+        _isChatMicLive = recordingChatId == ModalModel.Chat.Id;
+        // Join mode: the mic button is a preview intent (default on), applied on
+        // "Start video". Settings mode stays live, so it mirrors the actual
+        // recording state and toggles take effect immediately.
+        _isMicOn = !IsSettingsMode || _isChatMicLive;
         _isVideoOn = !IsSettingsMode
             || await ChatVideoUI.IsOwnCameraRecording(ModalModel.Chat.Id).ConfigureAwait(true);
 
@@ -525,6 +530,7 @@
         ModalModel.SelectedDeviceId = _selectedDevice?.DeviceId;
         ModalModel.IsBlurEnabled = _isBlurEnabled;
         ModalModel.IsVideoOn = _isVideoOn;
+        ModalModel.IsMicOn = _isMicOn;
         ModalModel.IsConfirmed = true;
 
         _ = CommitMirrorChoice();  // fire-and-forget — no need to block close on a settings write
@@ -533,23 +539,36 @@
     }
 
     private async Task OnMicToggle() {
+        _isMicOn = !_isMicOn;
+        StateHasChanged();
+
+        // Join mode: preview intent only — applied on "Start video".
+        if (!IsSettingsMode)
+            return;
+
+        // Settings mode: live editing — apply immediately.
         var chatId = (ChatId?)ModalModel.Chat.Id;
         if (chatId is null)
             return;
-
-        if (_isRecording) {
-            await ChatAudioUI.SetRecordingChatId(null);
-            _isRecording = false;
-        } else {
-            if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(CancellationToken.None))
+        if (_isMicOn) {
+            if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(CancellationToken.None)) {
+                _isMicOn = false;
+                StateHasChanged();
                 return;
+            }
             await ChatAudioUI.SetRecordingChatId(chatId);
-            _isRecording = true;
+        } else {
+            await ChatAudioUI.SetRecordingChatId(null);
         }
+        _isChatMicLive = _isMicOn;
     }
 
+    // Red when the chat mic is actually live; blue when it's only the preview
+    // intent that will start on "Start video".
     private string MicBtnClass()
-        => _isRecording ? "mic-btn recording" : "mic-btn";
+        => _isMicOn
+            ? _isChatMicLive ? "mic-btn recording" : "mic-btn mic-on"
+            : "mic-btn";
 
     private string VideoWrapperBtnClass()
         => _isVideoOn ? "video-btn-on" : "video-btn-off";
@@ -782,6 +801,9 @@
         // false = user toggled video off; the caller should join as a viewer
         // (no recording, no streaming) instead of starting StartVideoStreaming.
         public bool IsVideoOn { get; set; }
+        // Mic intent chosen in the preview modal: true = start mic recording on
+        // join, false = leave it off (stopping it if this chat was recording).
+        public bool IsMicOn { get; set; }
     }
 
     public sealed record ComputedModel(bool HasActiveSession, string? LastRecorderError);
