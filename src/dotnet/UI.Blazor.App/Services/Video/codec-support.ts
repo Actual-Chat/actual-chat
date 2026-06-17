@@ -125,7 +125,11 @@ const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; co
 // REPRESENTATIVE_CODECS so callers outside detection (e.g. JoinVideoCallModal's
 // pre-flight probe) stay in sync with what's actually enabled.
 export function getActiveEncoderCategoriesByPriority(): readonly CodecInfo['category'][] {
-    return REPRESENTATIVE_CODECS.map(c => c.category);
+    const all = REPRESENTATIVE_CODECS.map(c => c.category);
+    // Honor the Force-H.264 diagnostic the same way detectSupportedCodecsUncached
+    // does, so every codec-policy consumer (incl. the WebRTC backend, which picks its
+    // codec from this list rather than from detectSupportedCodecs) stays in sync.
+    return readForceH264OnlyFromStorage() ? all.filter(c => c === 'h264') : all;
 }
 
 async function detectSupportedCodecsUncached(width: number, height: number): Promise<CodecInfo[]> {

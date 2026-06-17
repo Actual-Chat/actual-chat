@@ -140,6 +140,9 @@ export class WebRtcSender implements ISenderBackend {
 
     // Diagnostics: chosen codec + sampled per-tier (simulcast layer) stats.
     private codecString = '';
+    // The negotiated codec category — the owner compares it to the desired policy
+    // category to decide whether a codec change needs a sender restart.
+    private codecCategoryValue: WebRtcCodecCategory | null = null;
     private lastDiag: WebRtcDiagnostics | null = null;
     private lastBytesByTier = new Map<number, { bytes: number; ts: number }>();
     // One-shot guard for the "HEVC simulcast collapsed to fewer layers than the
@@ -156,6 +159,9 @@ export class WebRtcSender implements ISenderBackend {
     private reconfigureCooldownUntilMs = 0;
 
     get isRunning(): boolean { return this.running; }
+
+    // Negotiated codec category (null until start picks one).
+    get codecCategory(): WebRtcCodecCategory | null { return this.codecCategoryValue; }
 
     getPreviewTrack(): MediaStreamTrack | null { return this.track; }
 
@@ -204,6 +210,7 @@ export class WebRtcSender implements ISenderBackend {
         if (!codec)
             throw new Error('WebRtcSender: no usable WebRTC send codec');
         this.codecString = codec.wireCodec;
+        this.codecCategoryValue = codec.category;
         C(`codec picked: ${codec.category} → ${codec.wireCodec}`);
 
         // 3) Acquire camera at the top-tier resolution (or reuse the caller's).

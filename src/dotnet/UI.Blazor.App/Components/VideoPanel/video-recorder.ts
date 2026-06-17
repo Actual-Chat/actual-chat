@@ -1090,6 +1090,55 @@ export class VideoRecorder {
         }
     }
 
+    // Restart the WebRTC sender if the desired codec category (policy + audience)
+    // no longer matches the one currently negotiated on the loopback.
+    private async maybeSwitchWebRtcCodec(codecs: string[]): Promise<void> {
+        const sender = this.webRtcSender;
+        if (!sender) return;
+        const desiredCat = this.toWebRtcPreferredCodecs(codecs)?.[0];
+        if (!desiredCat || desiredCat === sender.codecCategory)
+            return;
+
+        infoLog?.log(`WebRTC codec switch ${sender.codecCategory} → ${desiredCat} (policy/audience change)`);
+        await this.restartWebRtcWithCurrentConfig();
+    }
+
+    // Stop the current WebRtcSender and start a fresh one with the current codec
+    // policy — the loopback negotiates the codec once at connect(), so a codec
+    // change requires a full teardown + reconnect (mirrors the WebCodecs
+    // restartWithCurrentConfig, but for the WebRTC backend).
+    private async restartWebRtcWithCurrentConfig(): Promise<void> {
+        const old = this.webRtcSender;
+        if (!old) return;
+        try { await old.stop(); } catch { /* ignore */ }
+        // After stop(): a caller-supplied (warmup/openGate) track survives; a
+        // sender-owned (startRecording) preview track is now ended — re-acquire it
+        // by device id instead.
+        const liveTrack = this.inputTrack?.readyState === 'live' ? this.inputTrack : null;
+        const sender = new WebRtcSender();
+        this.webRtcSender = sender;
+        try {
+            await sender.start(liveTrack
+                ? { chatId: this.chatId, track: liveTrack, preferredCodecs: this.toWebRtcPreferredCodecs(this.audienceCodecs) }
+                : { chatId: this.chatId, deviceId: this.selectedCameraDeviceId ?? undefined, preferredCodecs: this.toWebRtcPreferredCodecs(this.audienceCodecs) });
+            const preview = sender.getPreviewTrack();
+            if (preview && preview !== this.inputTrack) {
+                this.inputTrack = preview;
+                this.previewTrack = preview;
+                this.previewCanvasFallback = false;
+                this.notifyPreviewTrackChanged();
+            }
+            this.setRecordingState('recording');
+            infoLog?.log(`WebRTC codec switch: restarted (${sender.codecCategory})`);
+        } catch (e) {
+            this.webRtcSender = null;
+            this.setRecordingState('error');
+            const message = e instanceof Error ? e.message : String(e);
+            errorLog?.log('WebRTC codec switch restart failed:', e);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
+        }
+    }
+
     public async startRecording(chatId: string, audienceCodecs?: string[], maxLayerCount = 3): Promise<void> {
         this.chatId = chatId;
         this.audienceCodecs = audienceCodecs;
@@ -1470,6 +1519,12 @@ export class VideoRecorder {
 
     public async updateSupportedDecoderCodecs(codecs: string[]): Promise<void> {
         this.audienceCodecs = codecs;
+        if (this.webRtcSender) {
+            // WebRTC backend: the loopback can't swap codecs live, so restart the
+            // sender if the policy/audience now prefers a different codec category.
+            await this.maybeSwitchWebRtcCodec(codecs);
+            return;
+        }
         if (!this.worker) return;
 
         const allowedCategories = this.allowedCodecCategories(codecs);
