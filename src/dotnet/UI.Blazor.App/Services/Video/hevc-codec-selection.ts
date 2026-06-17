@@ -81,11 +81,32 @@ export function getCodecCandidates(codec: string, description?: ArrayBuffer): st
         return candidates;
     }
 
+    // No description (WebRTC ships Annex-B `hev1` with in-band params). The
+    // announced level can be lower than the bitstream's, which makes Chrome's
+    // configure() succeed but decode() silently drop every chunk — the same trap
+    // the description branch guards against. Probe higher levels first; declaring
+    // a higher level than the bitstream is safe, a lower one drops frames.
+    const lc = codec.toLowerCase();
+    if (lc.startsWith('hev1.') || lc.startsWith('hvc1.')) {
+        const seen = new Set<string>();
+        const out: string[] = [];
+        const add = (c: string) => { if (!seen.has(c)) { seen.add(c); out.push(c); } };
+        add(replaceHevcLevel(codec, 153)); // 5.1 — admits up to 4K
+        add(replaceHevcLevel(codec, 123)); // 4.1 — admits up to 1080p
+        add(codec);                         // announced, as-is
+        return out;
+    }
+
     return [mapCodecToWebCodecs(codec, description)];
 }
 
 function replaceHevcTier(codec: string, tier: 'H' | 'L'): string {
     return codec.replace(/\.([HL])(\d+)(?=\.|$)/i, `.${tier}$2`);
+}
+
+// Replace the level_idc in a HEVC codec string's `.{H|L}{levelIdc}` token.
+function replaceHevcLevel(codec: string, levelIdc: number): string {
+    return codec.replace(/\.([HL])\d+(?=\.|$)/i, `.$1${levelIdc}`);
 }
 
 // Probe each candidate against isConfigSupported with the FULL config —

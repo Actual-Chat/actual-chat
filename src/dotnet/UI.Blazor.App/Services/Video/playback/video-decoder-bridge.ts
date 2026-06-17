@@ -65,10 +65,14 @@ interface PendingDecode {
     rotation: RotationQuarter;
 }
 
-// HEVC (hev1/hvc1) needs a description; AVC and AV1 inline codec parameters in
-// the bytestream and can configure without one.
+// Only `hvc1` HEVC needs an out-of-band description; AVC, AV1 and `hev1` HEVC
+// inline their parameter sets in the bytestream and configure without one.
 function canConfigureWithoutDescription(codec: string): boolean {
-    return codec.startsWith('avc1') || codec.startsWith('av01');
+    // `hev1` carries VPS/SPS/PPS in-band (Annex-B), so — like avc1/av01 — it
+    // needs no out-of-band description. Only `hvc1` (parameter sets out-of-band)
+    // requires the hvcC. WebRTC's encoded transform emits `hev1`, so a WebRTC
+    // HEVC stream decodes from its in-band keyframe params with no description.
+    return codec.startsWith('avc1') || codec.startsWith('av01') || codec.startsWith('hev1');
 }
 
 // Owns the WebCodecs decoder lifecycle and the push→pull bridge: holds the
