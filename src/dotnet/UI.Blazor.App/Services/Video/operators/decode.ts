@@ -36,6 +36,8 @@ export interface DecodeOptions {
     // without resetting the counter; the bridge then switches to unbounded
     // recovery so a single transient failure never tears down a working codec.
     onCodecProven?: (codec: string) => void;
+    // Fired when the decoder hangs on a not-yet-proven codec (see bridge).
+    onDecoderHang?: () => void;
     framesUntilProven?: number;
     now?: () => number;
     maxRecoveries?: number;
@@ -84,6 +86,7 @@ async function* decodeAsync(
         createDecoder: opts.createDecoder,
         onCodecExhausted: opts.onCodecExhausted,
         onCodecProven: opts.onCodecProven,
+        onDecoderHang: opts.onDecoderHang,
         framesUntilProven: Math.max(1, opts.framesUntilProven ?? 10),
         maxRecoveries: opts.maxRecoveries ?? 4,
         decoderHangTimeoutMs: opts.decoderHangTimeoutMs ?? 2_000,

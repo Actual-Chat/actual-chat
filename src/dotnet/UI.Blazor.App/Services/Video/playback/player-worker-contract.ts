@@ -147,4 +147,10 @@ export interface PlayerWorkerCallbacks {
     // thread uses this to suppress future codec-exclusion requests for the
     // same codec category.
     onCodecProven(streamId: string, codec: string): void;
+
+    // Fired when the worker's decoder hangs on a not-yet-proven codec. Main
+    // thread responds with a PLI so the keyframe-gated reactive recovery (and,
+    // if the codec truly can't decode, the eventual exclusion + codec switch)
+    // advances fast instead of waiting on the sender's periodic keyframe.
+    onDecoderHang(streamId: string): void;
 }

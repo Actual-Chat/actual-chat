@@ -67,6 +67,7 @@ export interface PlayerConfig {
     // -- lifecycle --
     streamStallTimeoutMs?: number;
     reportCodecProven?: (codec: string) => void;
+    reportDecoderHang?: () => void;
 }
 
 // One running pipeline (one stream). Multiple Players can share a
@@ -182,6 +183,7 @@ export class Player {
                 initialConfig: config.initialDecoderConfig,
                 createDecoder: config.createDecoder,
                 onCodecProven: config.reportCodecProven,
+                onDecoderHang: config.reportDecoderHang,
                 abortSignal,
                 frameDurationMs,
             }),

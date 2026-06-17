@@ -44,6 +44,11 @@ export interface VideoDecoderBridgeOptions {
     }) => DecoderLike;
     onCodecExhausted?: (codec: string) => void;
     onCodecProven?: (codec: string) => void;
+    // Fired each time the hang watchdog trips while the codec is not yet proven.
+    // The reactive codec-exclusion path advances only on keyframes, so the main
+    // thread uses this to nudge the sender with a PLI and pull the next recovery
+    // keyframe fast instead of waiting on the encoder's periodic one.
+    onDecoderHang?: () => void;
     // All defaulted by the caller (decode operator).
     framesUntilProven: number;
     maxRecoveries: number;
@@ -161,6 +166,8 @@ export class VideoDecoderBridge {
         if (this.currentStats)
             this.currentStats.hangRateIn60s = this.hangTimestamps.length;
         this.lastDecoderActivityMs = now;
+        if (!this.codecProofTracker.isProven())
+            this.opts.onDecoderHang?.();
         // pendingError now opens the pump's backpressure gate; wake it so it
         // consumes the recovery keyframe (a hung decoder won't drain pending).
         this.whenSpaceAvailable.notify();

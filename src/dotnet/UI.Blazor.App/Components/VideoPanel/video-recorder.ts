@@ -1096,6 +1096,8 @@ export class VideoRecorder {
         const sender = this.webRtcSender;
         if (!sender) return;
         const desiredCat = this.toWebRtcPreferredCodecs(codecs)?.[0];
+        infoLog?.log(
+            `maybeSwitchWebRtcCodec: audience=[${codecs.join(', ')}] current=${sender.codecCategory} desired=${desiredCat ?? '(none)'}`);
         if (!desiredCat || desiredCat === sender.codecCategory)
             return;
 

@@ -235,6 +235,11 @@ export class VideoPlayer {
     // this is now driven by the worker's epoch-reset operator).
     private lastKeyFrameRequestTime = 0;
     private readonly keyFrameRequestCooldownMs = 10000;
+    // Separate, much shorter cooldown for the hang-recovery PLI: it must pull
+    // recovery keyframes quickly so a not-yet-proven codec reaches either a
+    // successful decode or exclusion in a few seconds, not tens of seconds.
+    private lastRecoveryKeyFrameRequestMs = 0;
+    private readonly recoveryKeyFrameCooldownMs = 1500;
 
     // Render-quality hint state.
     private resizeObserver: ResizeObserver | null = null;
@@ -517,6 +522,10 @@ export class VideoPlayer {
                         debugLog?.log(`Worker reported codec proven: stream=${streamId}, codec=${codec} → ${category}`);
                         if (category && category !== 'unknown')
                             markDecoderCodecProven(category);
+                        return Promise.resolve();
+                    },
+                    onDecoderHang: () => {
+                        this.requestRecoveryKeyFrame();
                         return Promise.resolve();
                     },
                 }
@@ -828,6 +837,23 @@ export class VideoPlayer {
                 .catch(() => { /* worker stub is a no-op; ignore */ });
         streamingApi.liveVideoStreams.RequestKeyFrame(RPC_SESSION_DEFAULT, this.streamId)
             .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
+    }
+
+    // Worker reported the decoder hung on a not-yet-proven codec. Recovery only
+    // advances on keyframes; on the WebRTC backend those are sparse, so nudge
+    // the sender with a PLI (own short cooldown). h264 is the universal fallback
+    // and never excluded, so don't bother probing it.
+    private requestRecoveryKeyFrame(): void {
+        if (!this.shouldRequestCodecExclusion() || isDecoderCodecProven(this.codecCategory))
+            return;
+        const now = performance.now();
+        if (now - this.lastRecoveryKeyFrameRequestMs < this.recoveryKeyFrameCooldownMs)
+            return;
+        this.lastRecoveryKeyFrameRequestMs = now;
+
+        infoLog?.log(`requestRecoveryKeyFrame: hung+unproven ${this.codecCategory}, stream=${this.streamId}`);
+        streamingApi.liveVideoStreams.RequestKeyFrame(RPC_SESSION_DEFAULT, this.streamId)
+            .catch((e: unknown) => warnLog?.log('RequestKeyFrame (recovery) error:', e));
     }
 
     public async startPull(streamId: string, skipToMs: number): Promise<void> {

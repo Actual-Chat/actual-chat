@@ -53,6 +53,7 @@ interface PlayerWorkerHooks {
     reportError?: (streamId: string, error: string) => void;
     reportStreamEnded?: (streamId: string, reason: string) => void;
     reportCodecProven?: (streamId: string, codec: string) => void;
+    reportDecoderHang?: (streamId: string) => void;
     reportTraceKillInjected?: () => void;
     prewarmRpc?: (apiUrl: string) => void;
 }
@@ -173,6 +174,9 @@ export const playerWorkerImpl: PlayerWorker = {
             streamStallTimeoutMs: getStreamStallTimeoutMs(),
             reportCodecProven: h.reportCodecProven
                 ? (codec: string): void => h.reportCodecProven?.(opts.streamId, codec)
+                : undefined,
+            reportDecoderHang: h.reportDecoderHang
+                ? (): void => h.reportDecoderHang?.(opts.streamId)
                 : undefined,
         };
 

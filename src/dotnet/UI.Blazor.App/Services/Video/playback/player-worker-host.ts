@@ -160,6 +160,7 @@ __setPlayerWorkerHooks({
     reportError: (streamId, error) => callbacks.onError(streamId, error),
     reportStreamEnded: (streamId, reason) => callbacks.onStreamEnded(streamId, reason),
     reportCodecProven: (streamId, codec) => callbacks.onCodecProven(streamId, codec),
+    reportDecoderHang: streamId => callbacks.onDecoderHang(streamId),
     reportTraceKillInjected: () => callbacks.onTraceKillInjected(),
     prewarmRpc(apiUrl) {
         // Main fires this with rpcNoWait right after constructing the
