@@ -63,6 +63,13 @@ interface TapState {
 
 let state: TapState | null = null;
 
+// Loopback-receiver (drop) transforms, one per simulcast tier. Chrome's send
+// transform has no generateKeyFrame, but the RECEIVER transform's
+// sendKeyFrameRequest() emits an RTCP PLI → the loopback encoder produces a real
+// keyframe (no active-toggle, so no HEVC collapse). Keyed by tier so a keyframe
+// request can target a single layer.
+const dropTransformers = new Map<number, RTCRtpScriptTransformer>();
+
 export interface WebRtcTapDeps {
     createSender: (chatId: string, floodGate: FloodGate) => StreamSenderLike;
     configureStreaming: (opts: {
@@ -88,7 +95,9 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
         const opts = transformer.options;
         if (isWebRtcDropTransformOptions(opts)) {
             // Loopback receiver: discard frames before the decoder (no decode).
-            C('onrtctransform: receiver drop attached');
+            // Keep the transformer so a keyframe request can PLI this tier.
+            C(`onrtctransform: receiver drop attached (tier ${opts.tier})`);
+            dropTransformers.set(opts.tier, transformer);
             void pumpDrop(transformer);
 
             return;
@@ -146,15 +155,34 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
             C(`webRtcSetGateOpen: ${open}`);
         },
         async webRtcGenerateKeyFrame(): Promise<void> {
-            const t = state?.transformer;
-            if (!t || typeof t.generateKeyFrame !== 'function')
-                return;
-
-            try {
-                await t.generateKeyFrame();
-            } catch (e) {
-                warnLog?.log('generateKeyFrame failed', e);
+            // Safari: the send transform can ask its own encoder directly.
+            const sendT = state?.transformer as (RTCRtpScriptTransformer & {
+                generateKeyFrame?: () => Promise<void>;
+            }) | null | undefined;
+            if (sendT && typeof sendT.generateKeyFrame === 'function') {
+                try {
+                    await sendT.generateKeyFrame();
+                    return;
+                } catch (e) {
+                    warnLog?.log('generateKeyFrame failed', e);
+                }
             }
+            // Chrome: PLI each tier's loopback receiver → encoder re-keys that layer.
+            const requests: Promise<void>[] = [];
+            for (const t of dropTransformers.values()) {
+                const recvT = t as RTCRtpScriptTransformer & {
+                    sendKeyFrameRequest?: () => Promise<void> | void;
+                };
+                if (typeof recvT.sendKeyFrameRequest !== 'function')
+                    continue;
+
+                try {
+                    requests.push(Promise.resolve(recvT.sendKeyFrameRequest()));
+                } catch (e) {
+                    warnLog?.log('sendKeyFrameRequest failed', e);
+                }
+            }
+            await Promise.allSettled(requests);
         },
         webRtcGetSentFrameCount(): number {
             return state?.topTierFramesSent ?? 0;
@@ -175,6 +203,7 @@ function stopTap(): void {
     } catch { /* ignore */ }
     s.tiers.clear();
     s.ssrcAnchors.clear();
+    dropTransformers.clear();
     infoLog?.log('webRtcStop: tap disposed');
 }
 

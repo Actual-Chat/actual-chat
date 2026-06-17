@@ -1496,6 +1496,11 @@ export class VideoRecorder {
     }
 
     public forceKeyFrame(): void {
+        if (this.webRtcSender) {
+            // WebRTC backend: route to the loopback receiver's PLI path.
+            void this.webRtcSender.requestKeyframe();
+            return;
+        }
         if (!this.worker) {
             warnLog?.log('forceKeyFrame: no active worker');
             return;
