@@ -1,14 +1,12 @@
 using ActualChat.Audio;
-using ActualChat.IO;
 using ActualChat.Streaming;
 using ActualChat.Streaming.Services.Transcribers;
-using ActualLab.IO;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
 [Collection(nameof(TranscriptionCollection))]
 public class FakeTranscriberTest(ITestOutputHelper @out, ILogger<FakeTranscriberTest> log)
-    : TestBase(@out, log)
+    : TranscriberTestBase(@out, log)
 {
     private const double MinWordsPerSecond = 1.5;
     private const double MaxWordsPerSecond = 5.0;
@@ -95,19 +93,6 @@ public class FakeTranscriberTest(ITestOutputHelper @out, ILogger<FakeTranscriber
         WriteLine($"Mean WPS over {samples.Count} runs: {mean:F2} (range [{samples.Min():F2}, {samples.Max():F2}])");
         mean.Should().BeApproximately(MeanWordsPerSecond, 0.15);
     }
-
-    private async Task<AudioSource> GetAudio(FilePath fileName)
-    {
-        var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
-        var isWebMStream = fileName.Extension == ".webm";
-        var converter = isWebMStream
-            ? (IAudioStreamConverter)new WebMStreamConverter(MomentClockSet.Default, Log)
-            : new ActualOpusStreamConverter(MomentClockSet.Default, Log);
-        return await converter.FromByteStream(byteStream, CancellationToken.None);
-    }
-
-    private static FilePath GetAudioFilePath(FilePath fileName)
-        => new FilePath(Environment.CurrentDirectory) & "data" & fileName;
 
     private IServiceProvider CreateServices()
         => new ServiceCollection()
