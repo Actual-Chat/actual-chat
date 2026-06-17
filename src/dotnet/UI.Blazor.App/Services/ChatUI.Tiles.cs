@@ -286,10 +286,10 @@ public partial class ChatUI
         var groupedItems = GroupAuthorMessages(items);
 
         if (expandedConversations.Count == 0)
-            return new ChatItems(groupedItems, hasMoreBefore, hasMoreAfter);
+            return new ChatItems(DistinctByRenderKey(groupedItems), hasMoreBefore, hasMoreAfter);
 
         var groupedTiles = GroupExpandedConversations(groupedItems);
-        return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter);
+        return new ChatItems(DistinctByRenderKey(groupedTiles), hasMoreBefore, hasMoreAfter);
 
         bool TryGetIdTilesToLoad(
             ChatDataQuery dataQuery1,
@@ -762,37 +762,48 @@ public partial class ChatUI
 
     private static List<ChatMessage> GroupExpandedConversations(IReadOnlyList<ChatMessage> messages)
     {
+        // A conversation's items must collapse into exactly one block: two ExpandedConversationMessage
+        // blocks for the same conversation share one @key (ConversationBlock + StartEntryLid), and
+        // duplicate sibling @keys throw inside Blazor's keyed render-tree diff ("Attempting to return
+        // wrong pooled instance"), tearing down the circuit. Coalesce every item of a conversation into
+        // a single block - even when a stray item or a re-emitted header from a neighbouring tile splits
+        // its run - instead of emitting a fresh block per run.
         var result = new List<ChatMessage>();
-        var groupedItems = new List<ChatMessage>();
-        Conversation? ongoingConversation = null;
-        var ongoingConversationItems = new List<ChatMessage>();
+        var conversationItems = new Dictionary<ConversationId, List<ChatMessage>>();
+        var conversationIndex = new Dictionary<ConversationId, int>();
 
         foreach (var item in messages)
-            if (item.Conversation == null || item is ConversationMessage) {
-                FinalizeOngoingConversation();
-                groupedItems.Add(item);
-            }
+            if (item.Conversation == null || item is ConversationMessage)
+                result.Add(item);
             else {
-                if (ongoingConversation != null && ongoingConversation.Id != item.Conversation.Id)
-                    FinalizeOngoingConversation();
-
-                ongoingConversation = item.Conversation;
-                ongoingConversationItems.Add(item);
+                var conversationId = item.Conversation.Id;
+                if (conversationItems.TryGetValue(conversationId, out var items))
+                    items.Add(item);
+                else {
+                    conversationItems.Add(conversationId, [item]);
+                    conversationIndex.Add(conversationId, result.Count);
+                    result.Add(item); // placeholder - replaced by the assembled block below
+                }
             }
 
-        FinalizeOngoingConversation();
-        result.AddRange(groupedItems);
+        foreach (var (conversationId, items) in conversationItems)
+            result[conversationIndex[conversationId]] =
+                new ExpandedConversationMessage(items[0].Conversation!, DistinctByRenderKey(items));
+
         return result;
+    }
 
-        void FinalizeOngoingConversation()
-        {
-            if (ongoingConversation == null)
-                return;
-
-            groupedItems.Add(new ExpandedConversationMessage(ongoingConversation, ongoingConversationItems));
-            ongoingConversation = null;
-            ongoingConversationItems = [];
-        }
+    // Sibling render keys must be unique - Blazor's keyed render-tree diff throws on duplicate @key
+    // siblings. Keep the first occurrence and drop the rest; two items only share a render key when they
+    // are the same (Kind, Id), so no distinct item is ever lost.
+    private static List<ChatMessage> DistinctByRenderKey(IReadOnlyList<ChatMessage> items)
+    {
+        var seen = new HashSet<string>(items.Count, StringComparer.Ordinal);
+        var result = new List<ChatMessage>(items.Count);
+        foreach (var item in items)
+            if (seen.Add(item.Key.Value))
+                result.Add(item);
+        return result;
     }
 
     private Task PrefetchChatInfo(ChatId chatId, CancellationToken cancellationToken)
