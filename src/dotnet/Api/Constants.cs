@@ -184,6 +184,19 @@ public static partial class Constants
         public static readonly TimeSpan OfflineTimeout = TimeSpan.FromMinutes(10);
     }
 
+    public static class LiveLocation
+    {
+        public static readonly TimeSpan UpdatePeriod = TimeSpan.FromSeconds(10);
+        public static readonly TimeSpan StaleTimeout = TimeSpan.FromSeconds(30);
+        public static readonly TimeSpan MinCacheDuration = TimeSpan.FromSeconds(30);
+        public static readonly TimeSpan MaxDuration = TimeSpan.FromHours(8);
+        public static readonly ApiArray<TimeSpan> Durations = new[] {
+            TimeSpan.FromMinutes(15),
+            TimeSpan.FromHours(1),
+            TimeSpan.FromHours(8),
+        }.ToApiArray();
+    }
+
     public static class Messages
     {
         public static readonly string RecordingSkeleton = "🎙…";
