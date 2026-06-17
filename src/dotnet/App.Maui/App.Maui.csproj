@@ -704,8 +704,10 @@
     <MauiAsset Include="wwwroot\loading_icon_voxt.svg" />
     <!-- wwwroot/index.html is generated from index.htm by UpdateBundleHash and gitignored.
          Declare it explicitly so MSBuild's static-web-asset list includes it even when
-         the file doesn't exist at evaluation time (clean CI checkout). -->
-    <Content Include="wwwroot\index.html" />
+         the file doesn't exist at evaluation time (clean CI checkout). When it already
+         exists (incremental/local build) the default Content glob covers it, so skip the
+         explicit item to avoid a duplicate (NETSDK1022). -->
+    <Content Include="wwwroot\index.html" Condition="!Exists('$(MSBuildThisFileDirectory)wwwroot\index.html')" />
   </ItemGroup>
 
   <ItemGroup>
