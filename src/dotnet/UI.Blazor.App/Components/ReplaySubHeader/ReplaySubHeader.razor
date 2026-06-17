@@ -13,8 +13,9 @@
         3 => 3,
         _ => maxAvatars,
     };
+    var isLoading = m?.IsLoading == true;
     var showDivider = participantCount > 0 && participantCount <= 3;
-    var showSkeletons = participantCount > 2;
+    var showSkeletons = isLoading || participantCount > 2;
     var slotsCls = $"c-slots-{slotCount}";
     var speed = m?.Speed ?? ChatAudioUI.ReplaySettings.Value.Speed;
     var speedLabel = Math.Abs(speed - 1.0) < 0.01 ? "1x" : $"{speed:0.##}x";
@@ -62,11 +63,16 @@
             } else {
                 <div class="c-title">@titleLabel</div>
             }
-            @if (dateLabel.Length > 0) {
+            @if (isLoading) {
+                <div class="c-date-skeleton" aria-hidden="true"></div>
+            } else if (dateLabel.Length > 0) {
                 <div class="c-date">@dateLabel</div>
             }
         </div>
         <div class="c-playback">
+            @if (isLoading) {
+                <div class="replay-spinner animate-spin"></div>
+            } else {
             @if (ScreenSize.IsWide()) {
                 <ButtonRound Tooltip="Backward" Click="@OnBackward" Class="btn-xs btn-transparent hover-primary-icon">
                     <i class="icon-rewind-left-fill text-2xl"></i>
@@ -88,6 +94,7 @@
                 <ButtonRound Tooltip="Stop" Click="@OnStop" Class="btn-xs btn-transparent hover-primary-icon">
                     <i class="icon-stop-fill text-2xl"></i>
                 </ButtonRound>
+            }
             }
         </div>
         <div class="c-actions">
@@ -135,6 +142,16 @@
         var chatTitle = chat?.Title ?? "";
         var participantCount = await GetParticipantCount(chatId, cancellationToken).ConfigureAwait(false);
 
+        Model Loading() => new() {
+            ChatId = chatId,
+            IsLoading = true,
+            ChatTitle = chatTitle,
+            ShowChatTitle = chatId != selectedChatId,
+            Speed = replayState.Speed,
+            ParticipantCount = participantCount,
+            AuthorIds = [],
+        };
+
         // Paused state: player is stopped, but we still show the banner
         if (replayState.PausedAt is { } pausedAt)
             return new() {
@@ -153,7 +170,7 @@
         if (player is null) {
             // This happens when player is being disposed, which means this method
             // will soon recompute anyway.
-            return lastState; // Keep the last state to avoid blinking
+            return lastState ?? Loading(); // Keep the last state to avoid blinking
         }
         var isPaused = await player.Playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
         var playback = player.Playback;
@@ -188,7 +205,7 @@
         // No playing tracks yet (e.g. resuming) — keep last state to avoid blinking
         if (lastState is not null && lastState.ChatId == chatId)
             return lastState with { Player = player, IsPaused = isPaused };
-        return null;
+        return Loading();
     }
 
     private async Task<int> GetParticipantCount(ChatId chatId, CancellationToken cancellationToken) {
@@ -253,6 +270,7 @@
     public sealed record Model
     {
         public Moment? PlayingAt { get; init; }
+        public bool IsLoading { get; init; }
         public bool IsPaused { get; init; }
         public double Speed { get; init; } = 1.0;
         public ChatReplayPlayer? Player { get; init; }
