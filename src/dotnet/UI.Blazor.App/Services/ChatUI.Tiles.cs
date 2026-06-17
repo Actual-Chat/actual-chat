@@ -754,7 +754,9 @@ public partial class ChatUI
             // Always wrap into a group, even for a single message: this keeps the virtual list
             // item key stable ("{firstId}-group") when the next same-author message joins the block,
             // so the first message isn't torn down and re-created on every follow-up message.
-            result.Add(new ChatEntryAuthorGroup(groupedItems[0].Entry.AuthorId, groupedItems) {
+            // DistinctByRenderKey: a boundary-duplicated entry (same id, differing Date/Flags so the
+            // tile-boundary skip missed it) must not surface twice as a keyed child inside the group.
+            result.Add(new ChatEntryAuthorGroup(groupedItems[0].Entry.AuthorId, DistinctByRenderKey(groupedItems)) {
                 Conversation = groupedItems[0].Conversation,
             });
         }
@@ -796,10 +798,11 @@ public partial class ChatUI
     // Sibling render keys must be unique - Blazor's keyed render-tree diff throws on duplicate @key
     // siblings. Keep the first occurrence and drop the rest; two items only share a render key when they
     // are the same (Kind, Id), so no distinct item is ever lost.
-    private static List<ChatMessage> DistinctByRenderKey(IReadOnlyList<ChatMessage> items)
+    private static List<T> DistinctByRenderKey<T>(IReadOnlyList<T> items)
+        where T : ChatMessage
     {
         var seen = new HashSet<string>(items.Count, StringComparer.Ordinal);
-        var result = new List<ChatMessage>(items.Count);
+        var result = new List<T>(items.Count);
         foreach (var item in items)
             if (seen.Add(item.Key.Value))
                 result.Add(item);
