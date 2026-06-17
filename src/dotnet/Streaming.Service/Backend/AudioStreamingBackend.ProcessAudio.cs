@@ -487,11 +487,17 @@ public partial class AudioStreamingBackend
 
             var finalText = realtimeText;
             var finalTimeMap = realtimeTimeMap;
-            if (refinedTranscript is not null && !ShouldUseOriginalTranscript(realtimeText, refinedTranscript.Text)) {
-                finalText = refinedTranscript.Text;
-                finalTimeMap = refinedTranscript.TimeMap.IsDegenerate && !realtimeTimeMap.IsDegenerate
-                    ? LinearMapDtwRemapper.Remap(realtimeText, refinedTranscript.Text, realtimeTimeMap, LinearMapAlignmentMode.RetranscribeSameAudio)
-                    : refinedTranscript.TimeMap;
+            if (refinedTranscript is not null) {
+                if (realtimeText.ShouldUseOriginalTranscript(refinedTranscript.Text))
+                    Log.LogInformation(
+                        "TranscribeAudio: entry #{EntryId} rejected refined transcript. Original: '{OriginalTranscript}', refined: '{RefinedTranscript}'",
+                        textEntry.Id, realtimeText, refinedTranscript.Text);
+                else {
+                    finalText = refinedTranscript.Text;
+                    finalTimeMap = refinedTranscript.TimeMap.IsDegenerate && !realtimeTimeMap.IsDegenerate
+                        ? LinearMapDtwRemapper.Remap(realtimeText, refinedTranscript.Text, realtimeTimeMap, LinearMapAlignmentMode.RetranscribeSameAudio)
+                        : refinedTranscript.TimeMap;
+                }
             }
 
             var change = EmptyRegex.IsMatch(realtimeText)
@@ -555,15 +561,4 @@ public partial class AudioStreamingBackend
                 .Set(userChatRecordingDetectedLanguage, cancellationToken)
                 .ConfigureAwait(false);
         }, Log, "Failed to apply transcription detected language", cancellationToken);
-
-    private static bool ShouldUseOriginalTranscript(string realtimeText, string refinedText)
-    {
-        if (refinedText.Length >= realtimeText.Length)
-            return false;
-        if (realtimeText.Length > 50)
-            return refinedText.Length < 0.9 * realtimeText.Length;
-        if (realtimeText.Length > 25)
-            return refinedText.Length < 0.8 * realtimeText.Length;
-        return true;
-    }
 }
