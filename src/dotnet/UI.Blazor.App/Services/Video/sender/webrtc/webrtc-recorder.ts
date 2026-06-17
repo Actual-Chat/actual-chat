@@ -47,6 +47,9 @@ const CE = (...a: unknown[]): void => console.error('[voxtWebRtc]', ...a);
 
 const KEYFRAME_INTERVAL_MS = 3000;
 const FPS = 30;
+// Settle window after a ladder change before the collapse check may fire again —
+// covers the lagging per-tier fps EMA while a restored tier ramps back up.
+const RECONFIGURE_COOLDOWN_MS = 3000;
 
 interface TierSpec {
     width: number;
@@ -105,6 +108,9 @@ export interface WebRtcStartParams {
     // provided, the sender reuses it and does NOT stop it on stop() — the caller
     // owns its lifetime. When omitted, the sender opens (and stops) its own.
     track?: MediaStreamTrack;
+    // When false the wire gate starts CLOSED (encoder runs, nothing reaches the
+    // server until setGateOpen(true)) — VideoRecorder warmup. Defaults to true.
+    initialGateOpen?: boolean;
 }
 
 export class WebRtcSender implements ISenderBackend {
@@ -140,6 +146,14 @@ export class WebRtcSender implements ISenderBackend {
     // ladder" warning (GPU/driver dependent — single-PC simulcast has no N-PC
     // fallback, so a collapse just yields a shorter ladder, surfaced here).
     private collapseWarned = false;
+    // Layers QC currently wants encoding (reconfigureLayers count). The collapse
+    // warning compares against this, not the full ladder, so deliberate shedding
+    // doesn't false-fire.
+    private intendedActiveCount = 0;
+    // Suppresses the collapse check for a settle window after a ladder change:
+    // WebRTC's per-tier framesPerSecond is a lagging EMA, so a just-restored tier
+    // reads fps 0 for ~1-2s while ramping — a transient, not a real collapse.
+    private reconfigureCooldownUntilMs = 0;
 
     get isRunning(): boolean { return this.running; }
 
@@ -194,6 +208,7 @@ export class WebRtcSender implements ISenderBackend {
 
         // 3) Acquire camera at the top-tier resolution (or reuse the caller's).
         this.specs = buildTierSpecs();
+        this.intendedActiveCount = this.specs.length;
         const top = this.specs[this.specs.length - 1];
         let track: MediaStreamTrack;
         if (params.track) {
@@ -240,6 +255,7 @@ export class WebRtcSender implements ISenderBackend {
             layerCount: this.specs.length,
             ladder,
             frameDurationMicros: Math.round(1_000_000 / FPS),
+            initialGateOpen: params.initialGateOpen ?? true,
         };
         C('calling worker.webRtcStart…');
         await worker.webRtcStart(startOpts);
@@ -321,11 +337,16 @@ export class WebRtcSender implements ISenderBackend {
             encoderImplementation: top?.encoderImplementation ?? '',
             hardwareAccelerated: tiers.length > 0 && tiers.every(t => t.hardwareAccelerated),
         };
-        if (!this.collapseWarned && tiers.length > 0 && tiers.length < this.specs.length) {
+        // Count tiers actually encoding (fps > 0); a shed tier (active=false)
+        // still appears in getStats with fps→0, so compare encoding tiers to the
+        // QC-intended count — deliberate shedding must not look like a collapse.
+        const encodingNow = tiers.filter(t => t.fps > 0).length;
+        const settled = performance.now() >= this.reconfigureCooldownUntilMs;
+        if (settled && !this.collapseWarned && encodingNow > 0 && encodingNow < this.intendedActiveCount) {
             this.collapseWarned = true;
-            warnLog?.log(`simulcast collapsed: ${tiers.length}/${this.specs.length} layers encoding `
+            warnLog?.log(`simulcast collapsed: ${encodingNow}/${this.intendedActiveCount} layers encoding `
                 + `(${this.codecString} simulcast may be single-layer on this GPU)`);
-            CE(`simulcast collapsed to ${tiers.length}/${this.specs.length} layers`);
+            CE(`simulcast collapsed to ${encodingNow}/${this.intendedActiveCount} layers`);
         }
     }
 
@@ -356,8 +377,14 @@ export class WebRtcSender implements ISenderBackend {
 
     // ---- ISenderBackend ----
 
+    // Layer shedding + per-tier quality. `active` is the on-demand layer lever
+    // (a shed tier truly stops encoding — real CPU+bandwidth savings; siblings
+    // undisturbed). It does NOT touch maxFramerate — that lever is owned by
+    // setTargetFps (global) and a per-tier framerate can't isolate one tier.
     reconfigureLayers(configs: readonly EncoderConfigPerLayer[]): void {
         const activeCount = configs.length;
+        this.intendedActiveCount = activeCount;
+        this.reconfigureCooldownUntilMs = performance.now() + RECONFIGURE_COOLDOWN_MS;
         this.connection?.applyLayers(this.specs.map((_, i) => {
             if (i < activeCount) {
                 const cfg = configs[i];
@@ -366,7 +393,6 @@ export class WebRtcSender implements ISenderBackend {
                     active: true,
                     maxBitrate: cfg.bitrate,
                     scaleResolutionDownBy: Math.max(1, this.cameraWidth / cfg.width),
-                    maxFramerate: cfg.framerate,
                 };
             }
 
@@ -374,10 +400,12 @@ export class WebRtcSender implements ISenderBackend {
         }));
     }
 
+    // Global frame rate. WebRTC paces the shared capture to the lowest per-tier
+    // maxFramerate, so this applies ONE rate to all tiers (a per-tier cap can't
+    // isolate). Never writes `active` — that would un-shed a dropped tier.
     setTargetFps(fps: number): void {
-        const active = fps > 0;
-        this.connection?.applyLayers(this.specs.map(() =>
-            active ? { active: true, maxFramerate: fps } : { active: false }));
+        const maxFramerate = Math.max(1, fps);
+        this.connection?.applyLayers(this.specs.map(() => ({ maxFramerate })));
     }
 
     async requestKeyframe(): Promise<void> {
@@ -389,8 +417,10 @@ export class WebRtcSender implements ISenderBackend {
         await this.worker?.webRtcGenerateKeyFrame();
     }
 
+    // Warmup → live wire gate. Tap-side (encoder stays warm, no bulk `active`
+    // transition); the tap resumes each tier at its next keyframe.
     setGateOpen(open: boolean): void {
-        this.connection?.applyLayers(this.specs.map(() => ({ active: open })));
+        void this.worker?.webRtcSetGateOpen(open);
     }
 
     async stop(): Promise<void> {

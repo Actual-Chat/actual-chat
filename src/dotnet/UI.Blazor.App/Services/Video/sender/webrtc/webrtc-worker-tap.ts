@@ -28,6 +28,10 @@ const RTP_CLOCK_HZ = 90000;
 interface TierCounter {
     index: number;
     lastKfIndex: number;
+    // False until this tier's wire stream (re)starts at a keyframe. A WebRTC tap
+    // can't drop individual deltas (it breaks the decoder reference chain), so a
+    // tier resumes forwarding only on a keyframe after the gate (re)opens.
+    forwarding: boolean;
 }
 
 // Per-SSRC layer assignment + timestamp anchor. `baseOffsetMicros` seeds the
@@ -47,6 +51,9 @@ interface TapState {
     // performance.now() at the first encoded frame; anchors stream-relative offset.
     startMs: number;
     initSent: boolean;
+    // Wire gate: when false the encoder keeps running (loopback fed) but no frame
+    // reaches our wire sender — warmup semantics, mirrors the WebCodecs wireGate.
+    gateOpen: boolean;
     tiers: Map<number, TierCounter>;
     ssrcAnchors: Map<number, SsrcAnchor>;
     transformer: RTCRtpScriptTransformer | null;
@@ -69,6 +76,7 @@ export interface WebRtcTapDeps {
 export interface WebRtcTapHandlers {
     webRtcStart: (opts: WebRtcStartOptions) => void;
     webRtcStop: () => void;
+    webRtcSetGateOpen: (open: boolean) => void;
     webRtcGenerateKeyFrame: () => Promise<void>;
     webRtcGetSentFrameCount: () => number;
 }
@@ -118,6 +126,7 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
                 opts,
                 startMs: Number.NaN,
                 initSent: false,
+                gateOpen: opts.initialGateOpen ?? true,
                 tiers: new Map(),
                 ssrcAnchors: new Map(),
                 transformer: null,
@@ -128,6 +137,13 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
         },
         webRtcStop(): void {
             stopTap();
+        },
+        webRtcSetGateOpen(open: boolean): void {
+            if (!state)
+                return;
+
+            state.gateOpen = open;
+            C(`webRtcSetGateOpen: ${open}`);
         },
         async webRtcGenerateKeyFrame(): Promise<void> {
             const t = state?.transformer;
@@ -238,7 +254,7 @@ function onEncodedFrame(
 
     let tc = s.tiers.get(layerId);
     if (!tc) {
-        tc = { index: 0, lastKfIndex: -1 };
+        tc = { index: 0, lastKfIndex: -1, forwarding: false };
         s.tiers.set(layerId, tc);
     }
 
@@ -250,6 +266,22 @@ function onEncodedFrame(
     // -1 sentinel until this tier's first keyframe — server/receiver won't
     // misclassify a pre-keyframe delta as a keyframe.
     const keyFrameIndex = tc.lastKfIndex;
+
+    // Wire gate (checked before the byte copy so a closed gate is cheap). When
+    // closed the encoder keeps running but nothing reaches our sender; on reopen
+    // a tier resumes forwarding only at a keyframe (deltas before it are
+    // undecodable on their own).
+    if (!s.gateOpen) {
+        tc.forwarding = false;
+
+        return;
+    }
+    if (!tc.forwarding) {
+        if (!isKey)
+            return;
+
+        tc.forwarding = true;
+    }
 
     const offsetMicros = anchor.baseOffsetMicros + ((rtpTs - anchor.baseRtp) / RTP_CLOCK_HZ) * 1e6;
     const offset = Math.round(offsetMicros) * TICKS_PER_MICROSECOND;

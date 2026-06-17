@@ -315,6 +315,7 @@ const deps: RecorderWorkerDeps = {
     // -- WebRTC sender backend --
     webRtcStart: webRtcTap.webRtcStart,
     webRtcStop: webRtcTap.webRtcStop,
+    webRtcSetGateOpen: webRtcTap.webRtcSetGateOpen,
     webRtcGenerateKeyFrame: webRtcTap.webRtcGenerateKeyFrame,
     webRtcGetSentFrameCount: webRtcTap.webRtcGetSentFrameCount,
 

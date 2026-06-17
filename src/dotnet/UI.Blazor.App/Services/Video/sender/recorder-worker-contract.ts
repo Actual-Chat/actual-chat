@@ -111,6 +111,9 @@ export interface RecorderWorker extends SharedSettingsWorker {
     // `webRtcGenerateKeyFrame` re-keys all layers (Safari path).
     webRtcStart(opts: WebRtcStartOptions): Promise<void>;
     webRtcStop(): Promise<void>;
+    // Wire gate for warmup → live: encoder keeps running, frames reach the server
+    // only while open. Avoids toggling encoding.active (collapses HEVC simulcast).
+    webRtcSetGateOpen(open: boolean): Promise<void>;
     webRtcGenerateKeyFrame(): Promise<void>;
     // Cumulative top-tier frames pushed to the wire (RpcStream) — the real
     // send rate is the per-second delta. Top tier encodes every source moment,

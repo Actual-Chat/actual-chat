@@ -73,6 +73,7 @@ export interface RecorderWorkerDeps {
     // sender these set up.
     webRtcStart?: (opts: WebRtcStartOptions) => void | Promise<void>;
     webRtcStop?: () => void;
+    webRtcSetGateOpen?: (open: boolean) => void;
     webRtcGenerateKeyFrame?: () => void | Promise<void>;
     webRtcGetSentFrameCount?: () => number;
 
@@ -408,6 +409,12 @@ export const recorderWorkerImpl: RecorderWorker = {
     async webRtcStop(): Promise<void> {
         const s = requireState();
         s.deps.webRtcStop?.();
+        await Promise.resolve();
+    },
+
+    async webRtcSetGateOpen(open: boolean): Promise<void> {
+        const s = requireState();
+        s.deps.webRtcSetGateOpen?.(open);
         await Promise.resolve();
     },
 

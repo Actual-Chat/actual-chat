@@ -40,6 +40,9 @@ export interface WebRtcStartOptions {
     // Per-frame estimated duration in microseconds (1e6 / fps) — the tap has
     // no real frame-duration signal, so the producer supplies the nominal one.
     frameDurationMicros: number;
+    // When false the tap starts with the wire gate CLOSED: the encoder runs but
+    // no frame reaches the server until webRtcSetGateOpen(true). Defaults to true.
+    initialGateOpen?: boolean;
 }
 
 // Options object passed to `new RTCRtpScriptTransform(worker, options)` and
