@@ -345,8 +345,9 @@ body.narrow .landing .page-links .page-links-wrapper {
     @apply bg-[url('images/ellipses-mobile.svg')];
 }
 .landing .page.page-1 > .c-content .main-text {
-    @apply gap-y-8 items-start;
+    @apply gap-y-[clamp(0.75rem,3.2vh,2rem)] items-start;
     @apply pt-0;
+    align-self: safe center;
 }
 body.narrow .landing .page.page-1 > .c-content .main-text {
     @apply gap-y-4 items-center;
@@ -355,7 +356,7 @@ body.narrow .landing .page.page-1 > .c-content .main-text {
     @apply md:items-center;
 }
 .landing .page-1 > .c-content .main-text .main-text-wrapper {
-    @apply flex-y gap-y-8 ;
+    @apply flex-y gap-y-[clamp(0.75rem,3.2vh,2rem)];
     @apply p-0;
     @apply w-auto md:w-100 lg:w-120;
     @apply md:text-3xl font-normal text-06;
@@ -366,7 +367,10 @@ body.narrow .landing .page-1 > .c-content .main-text .main-text-wrapper {
 }
 .landing .page-1 > .c-content .main-text .main-text-wrapper .c-title {
     @apply flex-y;
-    @apply text-3.5xl md:text-headline-4 lg:text-headline-3;
+    @apply text-3.5xl;
+    @apply md:font-semibold;
+    @apply md:text-[clamp(1.875rem,4vh,2.5rem)] md:leading-[clamp(2.25rem,4.8vh,3rem)];
+    @apply lg:text-[clamp(2.5rem,5.6vh,3.5rem)] lg:leading-[clamp(3rem,6.8vh,4.25rem)];
 }
 body.narrow .landing .page-1 > .c-content .main-text .main-text-wrapper .c-title {
     @apply items-center;
@@ -375,8 +379,10 @@ body.narrow .landing .page-1 > .c-content .main-text .main-text-wrapper .c-title
     @apply inline-flex items-center gap-x-3;
 }
 .landing .page-1 .page-1-handwrite {
-    @apply -mb-2 md:-mb-4;
-    @apply font-handwriting font-normal text-4.5xl md:text-7xl;
+    @apply font-handwriting font-normal;
+    font-size: 1.3em;
+    line-height: 1;
+    margin-bottom: -0.2em;
 }
 .landing .page-1 .main-text .main-text-wrapper .c-description {
     @apply flex-y;
@@ -400,7 +406,7 @@ body.narrow .landing .page-1 .main-text .c-description {
 .landing .page-1 .main-text .c-btn-group {
     @apply flex-y gap-4;
     @apply w-full md:w-100 lg:w-120;
-    @apply py-4;
+    @apply py-[clamp(0.5rem,1.6vh,1rem)];
 }
 .landing .page-1 > .c-content .main-image {
     @apply hidden md:flex justify-end;
@@ -1756,7 +1762,8 @@ body.narrow .btn.cookie-btn {
 ul.custom-list {
     @apply flex-y gap-y-2;
     @apply mx-0 pl-0;
-    @apply font-normal text-2xl md:text-3.5xl leading-7 md:leading-12;
+    @apply font-normal text-2xl leading-7;
+    @apply md:text-[clamp(1.5rem,3.2vh,2rem)] md:leading-[clamp(2rem,4.8vh,3rem)];
     list-style: none;
 }
 .custom-list li {
