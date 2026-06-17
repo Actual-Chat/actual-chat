@@ -1,7 +1,5 @@
-using ActualChat.Audio;
 using ActualChat.Chat.ML;
 using ActualChat.Hosting;
-using ActualChat.IO;
 using ActualChat.Module;
 using ActualChat.Streaming;
 using ActualChat.Streaming.Services.Transcribers;
@@ -15,7 +13,7 @@ public class RefinePipelineDiagnosticTest(
     IConfiguration configuration,
     ITestOutputHelper @out,
     ILogger<RefinePipelineDiagnosticTest> log
-    ) : TestBase(@out, log)
+    ) : TranscriberTestBase(@out, log)
 {
     private CoreServerSettings CoreServerSettings { get; }
         = configuration.Settings<CoreServerSettings>(nameof(CoreSettings));
@@ -152,33 +150,6 @@ public class RefinePipelineDiagnosticTest(
 
         return cyrillic * 100 / letters >= 60 ? "Cyrillic" : "non-Cyrillic";
     }
-
-    private async Task<AudioSource> GetAudio(FilePath fileName, bool withDelay)
-    {
-        var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
-        var converter = fileName.Extension == ".webm"
-            ? (IAudioStreamConverter)new WebMStreamConverter(MomentClockSet.Default, Log)
-            : new ActualOpusStreamConverter(MomentClockSet.Default, Log);
-        var audio = await converter.FromByteStream(byteStream, CancellationToken.None);
-        if (!withDelay)
-            return audio;
-
-        var delayedFrames = audio.GetFrames(CancellationToken.None)
-            .Select(async (AudioFrame f, CancellationToken _) => {
-                await Task.Delay(20).ConfigureAwait(false);
-                return f;
-            });
-        return new AudioSource(
-            MomentClockSet.Default.SystemClock.Now,
-            audio.Format,
-            delayedFrames,
-            TimeSpan.Zero,
-            Log,
-            CancellationToken.None);
-    }
-
-    private static FilePath GetAudioFilePath(FilePath fileName)
-        => new FilePath(Environment.CurrentDirectory) & "data" & fileName;
 
     private IServiceProvider CreateServices()
         => new ServiceCollection()

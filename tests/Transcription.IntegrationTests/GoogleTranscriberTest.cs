@@ -1,11 +1,8 @@
-using ActualChat.Audio;
 using ActualChat.Hosting;
-using ActualChat.IO;
 using ActualChat.Module;
 using ActualChat.Streaming;
 using ActualChat.Streaming.Services.Transcribers;
 using Microsoft.Extensions.Configuration;
-using ActualLab.IO;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
@@ -14,7 +11,7 @@ public class GoogleTranscriberTest(
     IConfiguration configuration,
     ITestOutputHelper @out,
     ILogger<GoogleTranscriberTest> log
-    ) : TestBase(@out, log)
+    ) : TranscriberTestBase(@out, log)
 {
     private CoreServerSettings CoreServerSettings { get; }
         = configuration.Settings<CoreServerSettings>(nameof(CoreSettings));
@@ -78,36 +75,6 @@ public class GoogleTranscriberTest(
             WriteLine(t.ToString());
         transcripts.Last().TimeRange.Start.Should().Be(0);
     }
-
-    private async Task<AudioSource> GetAudio(FilePath fileName, bool? webMStream = null, bool withDelay = false)
-    {
-        var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
-        var isWebMStream = webMStream ?? fileName.Extension == ".webm";
-        var converter = isWebMStream
-            ? (IAudioStreamConverter)new WebMStreamConverter(MomentClockSet.Default, Log)
-            : new ActualOpusStreamConverter(MomentClockSet.Default, Log);
-        var audio = await converter.FromByteStream(byteStream, CancellationToken.None);
-        if (!withDelay)
-            return audio;
-
-        var delayedFrames = audio.GetFrames(CancellationToken.None)
-            .Select(async (AudioFrame f, CancellationToken _) => {
-                await Task.Delay(20).ConfigureAwait(false);
-                return f;
-            });
-        var delayedAudio = new AudioSource(
-            MomentClockSet.Default.SystemClock.Now,
-            audio.Format,
-            delayedFrames,
-            TimeSpan.Zero,
-            Log,
-            CancellationToken.None);
-
-        return delayedAudio;
-    }
-
-    private static FilePath GetAudioFilePath(FilePath fileName)
-        => new FilePath(Environment.CurrentDirectory) & "data" & fileName;
 
     private IServiceProvider CreateServices()
         => new ServiceCollection()
