@@ -5,7 +5,7 @@
 
 <div class="chat-message-editor-menu">
     @if (HostInfo.HostKind.IsMauiApp()
-        && HostInfo.AppKind is AppKind.Android or AppKind.Ios) {
+        && HostInfo.AppKind is AppKind.Android or AppKind.Ios or AppKind.MacOS) {
         <MenuEntry
             Icon="icon-image"
             Text="Choose Photo"
