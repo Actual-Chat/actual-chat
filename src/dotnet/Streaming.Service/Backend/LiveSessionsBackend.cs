@@ -231,19 +231,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             return;
         }
 
-        if (!state.TranscriptionOn) {
-            // Phone-mode call: nothing to materialize, the block just disappears.
-            await _redisScope.Remove(chatId.Value).ConfigureAwait(false);
-            await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
-            InvalidateGet(chatId);
-            await EnqueueLiveNotification(chatId, "Voice chat ended", isFinal: true, state.StartEntryLid, cancellationToken).ConfigureAwait(false);
-            return;
-        }
-
         if (state.IsClosing)
             return;
 
-        // Transcription-on close is finalized by LiveConversationSummaryFlow (materialize or vanish).
+        // Stream-less: mark closing; Get() finalizes after CloseTimeout. Transcription-on is
+        // materialized by LiveConversationSummaryFlow; phone-mode is vanished by SelfClose.
         state = state with {
             IsClosing = true,
             ClosingAt = Clocks.SystemClock.Now,
