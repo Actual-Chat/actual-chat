@@ -77,6 +77,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var state = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (state is null)
             return null;
+        if (state.SessionStartedAt is null)
+            return null;
 
         var audio = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
         var video = await LiveVideoBackend.List(chatId, cancellationToken).ConfigureAwait(false);
@@ -127,7 +129,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return new LiveSession {
             ChatId = chatId,
             Host = host,
-            StartedAt = state.StartedAt,
+            StartedAt = state.SessionStartedAt ?? state.StartedAt,
             Rules = state.Rules ?? SessionRules.Default,
             Members = members,
             Conversation = state,
