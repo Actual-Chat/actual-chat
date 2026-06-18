@@ -8,7 +8,8 @@ namespace ActualChat.UI.Blazor.App.Components;
 // right-panel grid uses, yields a flat newest-first window (index 0 = newest), and
 // extends it at either edge on demand while trimming the far edge to cap the window at
 // MaxWindow (the loaded buffer is kept, so trimmed items re-reveal without a refetch).
-// Load* return the signed shift of existing items' indices (prepend +N, far-edge trim -N).
+// Load* return how many items were added at the requested edge; the far edge is trimmed to
+// cap the window, so the viewer re-locates the active item by Id after a load.
 // Items are synthetic ChatEntryAttachments built from VisualMediaItem; Width/Height are
 // filled lazily via GetEntry in EnsureResolved.
 public sealed class MediaIndexCollectionView : IMediaCollectionView
@@ -76,11 +77,13 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
         var items = await RevealOlder(Batch, cancellationToken).ConfigureAwait(false);
         AppendSynthetic(items);
-        return -TrimFront();
+        TrimFront();
+        return items.Count;
     }
 
     public async ValueTask EnsureResolved(int index, CancellationToken cancellationToken)
     {
+        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
         var from = Math.Max(0, index - ResolveRadius);
         var to = Math.Min(_items.Count - 1, index + ResolveRadius);
         for (var i = from; i <= to; i++) {
