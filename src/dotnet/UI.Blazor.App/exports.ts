@@ -54,6 +54,7 @@ export * from './Components/TranslationSubHeader/translation-svg.lit';
 export * from './Components/SubHeader/sub-header';
 export * from './Components/SubHeader/sub-header.lit';
 export * from './Services/LanguageUI/language-ui';
+export * from './Services/Location/location-tracker';
 export * from './Services/SendingMessages/send-message-requests';
 export * from './Services/FileUploads/upload-sessions';
 

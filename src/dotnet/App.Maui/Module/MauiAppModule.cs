@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Audio;
+using ActualChat.App.Maui.Location;
 using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
@@ -51,6 +52,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<CameraPermissionHandler>(c => new MauiCameraPermissionHandler(c.UIHub()));
+        services.AddScoped<LocationPermissionHandler>(c => new MauiLocationPermissionHandler(c.UIHub()));
         services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
         services.AddScoped<ReportUI>(c => new MauiReportUI(c.UIHub())); // Replaces base no-op ReportUI
 
@@ -85,6 +87,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<AudioWidget>(c => new AndroidAudioWidget(c.AppUIHub()));
         services.AddSingleton<VoiceActivityDetector>(c => new TfLiteVoiceActivityDetector(c));
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
+        services.AddScoped<ILocationTracker>(c => new AndroidLocationTracker(c.AppUIHub()));
 #elif IOS || MACCATALYST
         services.AddScoped<AudioFocusUI>(c => new AppleAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new AppleTuneUI(c.UIHub()));
@@ -97,6 +100,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 #endif
         services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
         services.AddScoped<IAudioCapture>(c => new AppleAudioCapture(c.AppUIHub()));
+        services.AddScoped<ILocationTracker>(c => new AppleLocationTracker(c.AppUIHub()));
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));

@@ -313,21 +313,39 @@ UI shell) can proceed in parallel once phase 1's contracts exist.
    phase-2 map, feeds it the reactive `List`, updates markers live.
 - **Gate:** seed shares server-side; markers render and move on web/desktop.
 
-### Phase 4 — MAUI capture (iOS + Android), device
-1. `ILocationTracker` (shared, `App.Maui`) — `StartAsync(accuracy)`/`StopAsync()`
-   + `IState<GeoPoint?> LastKnown`.
-2. **Android:** `FusedLocationProviderClient` driven by a foreground service
+### Phase 4 — MAUI capture (iOS + Android), device ✅ code-complete (device gate pending)
+1. `ILocationTracker` (cross-platform, `UI.Blazor.App/Services/Location`) — `Start`/`Stop`
+   + `IState<GeoPoint?> LastKnown` (no `Async` suffix per coding style; accuracy is
+   fixed to "best" for v1 rather than a parameter). Implemented on **every** platform,
+   not just MAUI: a `WebLocationTracker` (UI.Blazor.App) uses the browser
+   `navigator.geolocation.watchPosition` JS API (registered for non-MAUI hosts in
+   `BlazorUIAppModule`, mirroring `WebMicrophonePermissionHandler`), so web/desktop can
+   also act as a location source. MAUI overrides it per platform below. (Whether the
+   *Share location* entry-point is exposed on web is a Phase-5 UI gating decision; the
+   menu stays MAUI-only for now.)
+2. **Android:** `AndroidLocationForegroundService`
    `[Service(ForegroundServiceType = ForegroundService.TypeLocation)]` (template:
-   `AndroidAudioWidgetForegroundService`) + persistent notification; manifest
-   permissions (`ACCESS_FINE/COARSE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`;
-   **no** `ACCESS_BACKGROUND_LOCATION`).
-3. **iOS:** `CLLocationManager` (`RequestWhenInUseAuthorization`,
-   `AllowsBackgroundLocationUpdates = true`); Info.plist
+   `AndroidAudioWidgetForegroundService`) + persistent notification; the service owns
+   the location source and pushes points to `AndroidLocationTracker` via a static
+   bridge. Manifest: `ACCESS_FINE/COARSE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`
+   (**no** `ACCESS_BACKGROUND_LOCATION`); the `[Service]` attribute emits the
+   `<service>` entry (no manual manifest declaration, matching the audio widget).
+   **Deviation:** uses the framework `LocationManager` (always available, no extra
+   dependency) instead of `FusedLocationProviderClient`, which would require adding
+   `Xamarin.GooglePlayServices.Location` (only `…Auth`/`…CroNet` are referenced today).
+   Swappable later behind `ILocationTracker` if fused accuracy/battery is needed.
+3. **iOS/MacCatalyst:** `AppleLocationTracker` (`MaciOS/Location`) — `CLLocationManager`
+   (`RequestWhenInUseAuthorization`, `AllowsBackgroundLocationUpdates = true`,
+   `PausesLocationUpdatesAutomatically = false`); Info.plist
    `NSLocationWhenInUseUsageDescription` + `location` background mode.
 4. `LocationPermissionHandler` (abstract, `UI.Blazor`) + `MauiLocationPermissionHandler`
-   (`App.Maui`, copy of `MauiMicrophonePermissionHandler`) +
-   troubleshoot modal; DI in `MauiProgram.{iOS,Android}.cs` + `MauiAppModule.cs`.
-- **Gate (device):** tracker emits positions foreground **and** backgrounded;
+   (`App.Maui`, copy of `MauiCameraPermissionHandler` — `LocationWhenInUse`; Troubleshoot
+   uses `AppInfo.ShowSettingsUI()`, no custom modal for v1); DI for the abstract handler +
+   per-platform `ILocationTracker` in `MauiAppModule.cs`.
+- **Verified here:** `App.Maui` compiles clean for `net10.0-android` **and**
+  `net10.0-maccatalyst` (same Apple/CoreLocation path as iOS); `UI.Blazor.App`
+  (web tracker) compiles; `tsc --noEmit` + eslint clean — 0 errors.
+- **Gate (device, pending):** tracker emits positions foreground **and** backgrounded;
   permission grant/deny/limited handled.
 
 ### Phase 5 — MAUI control flow (start/stop), device

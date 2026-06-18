@@ -43,6 +43,8 @@
 	</dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Need access to your microphone to record audio messages</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Share your live location with people in a chat while location sharing is active.</string>
 	<key>aps-environment</key>
 	<string>development</string>
 	<key>MinimumOSVersion</key>
@@ -53,6 +55,7 @@
 		<string>voip</string>
 		<string>fetch</string>
 		<string>remote-notification</string>
+		<string>location</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Need access to your camera to take photos and share them with other users.</string>
