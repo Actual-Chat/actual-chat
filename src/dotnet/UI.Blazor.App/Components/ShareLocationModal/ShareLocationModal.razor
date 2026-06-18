@@ -1,0 +1,50 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<ShareLocationModal.Model>
+
+<DialogFrame
+    Class="share-location-modal modal-sm"
+    Title="Share location"
+    HasCloseButton="true">
+    <Body>
+        <div class="c-content">
+            <div class="c-hint">Share your live location with everyone in this chat for:</div>
+            @foreach (var duration in Constants.LiveLocation.Durations) {
+                <Button Class="btn-modal c-duration" Click="@(() => OnPick(duration))">@Describe(duration)</Button>
+            }
+            @if (ModalModel.IsSharing) {
+                <Button Class="btn-modal btn-danger c-stop" Click="@OnStop">Stop sharing</Button>
+            }
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnPick(TimeSpan duration) {
+        ModalModel.SelectedDuration = duration;
+        Modal.Close();
+    }
+
+    private void OnStop() {
+        ModalModel.StopRequested = true;
+        Modal.Close();
+    }
+
+    private static string Describe(TimeSpan duration) {
+        if (duration < TimeSpan.FromHours(1))
+            return $"{(int)duration.TotalMinutes} min";
+
+        var hours = (int)duration.TotalHours;
+        return hours == 1 ? "1 hour" : $"{hours} hours";
+    }
+
+    // Nested types
+
+    public sealed class Model {
+        public bool IsSharing { get; init; }
+        public TimeSpan? SelectedDuration { get; set; }
+        public bool StopRequested { get; set; }
+    }
+}

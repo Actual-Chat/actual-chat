@@ -65,7 +65,7 @@
         => ModalUI.Show(new LiveLocationMapModal.Model(Chat.Id));
 
     private Task OnStop()
-        => UICommander.Run(new LiveLocations_Stop(Session, Chat.Id));
+        => Services.GetRequiredService<LocationUI>().StopSharing(Chat.Id, CancellationToken.None);
 
     private static string Describe(Model m) {
         if (m.IsOwnSharing) {

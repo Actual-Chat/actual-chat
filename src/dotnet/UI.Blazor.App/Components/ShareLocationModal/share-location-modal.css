@@ -1,0 +1,14 @@
+.share-location-modal .c-content {
+    @apply flex-y gap-y-2;
+    @apply p-4;
+}
+.share-location-modal .c-hint {
+    @apply mb-2;
+    @apply text-02;
+}
+.share-location-modal .c-duration {
+    @apply w-full;
+}
+.share-location-modal .c-stop {
+    @apply w-full mt-2;
+}

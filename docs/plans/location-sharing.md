@@ -348,17 +348,27 @@ UI shell) can proceed in parallel once phase 1's contracts exist.
 - **Gate (device, pending):** tracker emits positions foreground **and** backgrounded;
   permission grant/deny/limited handled.
 
-### Phase 5 — MAUI control flow (start/stop), device
+### Phase 5 — MAUI control flow (start/stop), device ✅ code-complete (device gate pending)
 1. Menu entry "Share location" in `ChatMessageEditorMenu.razor` (inside the
    existing MAUI-Android/iOS `@if`) → publishes `ShareLocationButtonClickEvent`.
 2. `ShareLocationButtonClickEvent` + `<OnUIEvent>` handler in
-   `ChatMessageEditor.razor` → ensure permission → open `ShareLocationModal`
-   (duration picker / "Stop").
-3. `LiveLocationReporter : UIWorkerBase<AppUIHub>` (shape of `AppPresenceReporter`)
-   — while a local share is active, push `LiveLocations_Update` every
-   `UpdatePeriod`; start/stop the tracker + FG service driven by
-   `ILiveLocations.IsSharing`; stop on expiry.
-- **Gate (device):** start → others see live movement on web; lock phone /
+   `ChatMessageEditor.razor` → opens `ShareLocationModal` (durations from
+   `Constants.LiveLocation.Durations`, plus "Stop sharing" when already sharing) →
+   on a duration pick, ensures permission via `LocationPermissionHandler.CheckOrRequest()`
+   then calls `LocationUI.StartSharing`; on Stop, calls `LocationUI.StopSharing`.
+3. **`LocationUI : UIWorkerBase<AppUIHub>`** (shape of `AppPresenceReporter`, not a
+   separate `LiveLocationReporter` — folded into a `*UI` coordinator per repo
+   convention). Holds the desired share as `MutableState<ActiveShare?>` (ChatId +
+   ExpiresAt); the `OnRun` loop starts/stops the `ILocationTracker`, sends
+   `LiveLocations_Start` on the first fix then `LiveLocations_Update` every
+   `UpdatePeriod`, and auto-stops (sends `LiveLocations_Stop`) at `ExpiresAt`.
+   Started in `AppScopedServiceStarter`. The Phase-3 banner's Stop now routes through
+   `LocationUI.StopSharing` (clears local state + sends the Stop command), so stopping
+   from the banner and from the modal converge.
+   *Note:* drive is local (`ActiveShare`) rather than server `IsSharing`, so the
+   sharer's own device controls capture without round-trip lag; `Stop` is idempotent.
+- **Verified here:** `UI.Blazor.App` + `App.Maui` (`net10.0-android`) compile — 0 errors.
+- **Gate (device, pending):** start → others see live movement on web; lock phone /
   switch apps → keeps updating; stop or expiry → marker disappears, coords scrubbed.
 
 ### Phase 6 — Polish
