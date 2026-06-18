@@ -33,7 +33,7 @@
                     </div>
                 }
                 else if (childItem.IsGroup) {
-                    <div class="group" >
+                    <div @key="@childItem.Key" class="group" >
                         @RenderChatMessage!((childItem, chatContext))
                     </div>
                 }
