@@ -153,6 +153,7 @@
     private int _initialSlide;
     private bool _loadInFlight;
     private bool _windowDirty;
+    private bool _disposed;
     private int _pendingActiveIndex = -1;
     private DotNetObjectReference<VisualMediaViewerModal> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -165,6 +166,7 @@
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
 
     public async ValueTask DisposeAsync() {
+        _disposed = true;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
@@ -184,7 +186,7 @@
             StateHasChanged();
             return;
         }
-        if (_windowDirty) {
+        if (_windowDirty && !_disposed) {
             _windowDirty = false;
             var index = _pendingActiveIndex;
             _pendingActiveIndex = -1;
@@ -201,31 +203,51 @@
 
     [JSInvokable]
     public async Task SlideChanged(int selectedSlide) {
+        if (_disposed)
+            return;
+
         _selectedSlide = selectedSlide;
-        var frontDelta = 0;
+        var activeId = Collection.Items.ElementAtOrDefault(_selectedSlide)?.Id ?? default;
+        var added = 0;
         if (!_loadInFlight) {
             _loadInFlight = true;
             try {
                 if (Collection.HasOlder && _selectedSlide >= Collection.Items.Count - 1 - LoadThreshold)
-                    frontDelta += await Collection.LoadOlder(default).ConfigureAwait(true);
+                    added += await Collection.LoadOlder(default).ConfigureAwait(true);
                 if (Collection.HasNewer && _selectedSlide <= LoadThreshold)
-                    frontDelta += await Collection.LoadNewer(default).ConfigureAwait(true);
+                    added += await Collection.LoadNewer(default).ConfigureAwait(true);
             }
             finally {
                 _loadInFlight = false;
             }
         }
-        if (frontDelta != 0)
-            _selectedSlide += frontDelta;
+        if (_disposed)
+            return;
+
+        // Prepends and far-edge trims shift the active item's index; re-locate it by Id.
+        var movedTo = added > 0 ? IndexOf(activeId) : -1;
+        if (movedTo >= 0)
+            _selectedSlide = movedTo;
         await Collection.EnsureResolved(_selectedSlide, default).ConfigureAwait(true);
+        if (_disposed)
+            return;
+
         _windowDirty = true;
-        _pendingActiveIndex = frontDelta != 0 ? _selectedSlide : -1;
+        _pendingActiveIndex = movedTo >= 0 && movedTo != selectedSlide ? _selectedSlide : -1;
         StateHasChanged();
     }
 
     [JSInvokable]
     public Task OnVideoPlaybackStopped()
         => AudioFocusUI.TryRecover();
+
+    private int IndexOf(Symbol id) {
+        var items = Collection.Items;
+        for (var i = 0; i < items.Count; i++)
+            if (items[i].Id == id)
+                return i;
+        return -1;
+    }
 
     private string GetPreviewUrl(ChatEntryAttachment attachment) {
         var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
