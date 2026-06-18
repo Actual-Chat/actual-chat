@@ -286,10 +286,10 @@ public partial class ChatUI
         var groupedItems = GroupAuthorMessages(items);
 
         if (expandedConversations.Count == 0)
-            return new ChatItems(DistinctByRenderKey(groupedItems), hasMoreBefore, hasMoreAfter);
+            return new ChatItems(groupedItems, hasMoreBefore, hasMoreAfter);
 
         var groupedTiles = GroupExpandedConversations(groupedItems);
-        return new ChatItems(DistinctByRenderKey(groupedTiles), hasMoreBefore, hasMoreAfter);
+        return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter);
 
         bool TryGetIdTilesToLoad(
             ChatDataQuery dataQuery1,
@@ -754,9 +754,7 @@ public partial class ChatUI
             // Always wrap into a group, even for a single message: this keeps the virtual list
             // item key stable ("{firstId}-group") when the next same-author message joins the block,
             // so the first message isn't torn down and re-created on every follow-up message.
-            // DistinctByRenderKey: a boundary-duplicated entry (same id, differing Date/Flags so the
-            // tile-boundary skip missed it) must not surface twice as a keyed child inside the group.
-            result.Add(new ChatEntryAuthorGroup(groupedItems[0].Entry.AuthorId, DistinctByRenderKey(groupedItems)) {
+            result.Add(new ChatEntryAuthorGroup(groupedItems[0].Entry.AuthorId, groupedItems) {
                 Conversation = groupedItems[0].Conversation,
             });
         }
@@ -802,24 +800,10 @@ public partial class ChatUI
             if (blockConversation == null)
                 return;
 
-            result.Add(new ExpandedConversationMessage(blockConversation, DistinctByRenderKey(blockItems)));
+            result.Add(new ExpandedConversationMessage(blockConversation, blockItems));
             blockConversation = null;
             blockItems = [];
         }
-    }
-
-    // Sibling render keys must be unique - Blazor's keyed render-tree diff throws on duplicate @key
-    // siblings. Keep the first occurrence and drop the rest; two items only share a render key when they
-    // are the same (Kind, Id), so no distinct item is ever lost.
-    private static List<T> DistinctByRenderKey<T>(IReadOnlyList<T> items)
-        where T : ChatMessage
-    {
-        var seen = new HashSet<string>(items.Count, StringComparer.Ordinal);
-        var result = new List<T>(items.Count);
-        foreach (var item in items)
-            if (seen.Add(item.Key.Value))
-                result.Add(item);
-        return result;
     }
 
     private Task PrefetchChatInfo(ChatId chatId, CancellationToken cancellationToken)
