@@ -30,6 +30,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<bool> _isVideoPanelCollapsed;
     private readonly MutableState<bool> _isVideoPanelHidden;
     private readonly MutableState<bool> _isVideoPanelExpanded;
+    private readonly MutableState<bool> _isVideoPanelEqualLayout;
     private readonly MutableState<bool?> _isVideoPanelChatVisible;
 
     // Set when a remote stream completes normally (sender intentionally ended).
@@ -65,6 +66,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _isVideoPanelCollapsed = StateFactory.NewMutable(false);
         _isVideoPanelHidden = StateFactory.NewMutable(false);
         _isVideoPanelExpanded = StateFactory.NewMutable(false);
+        _isVideoPanelEqualLayout = StateFactory.NewMutable(false);
         _isVideoPanelChatVisible = StateFactory.NewMutable((bool?)null);
     }
 
@@ -104,6 +106,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<bool> GetIsVideoPanelExpanded(CancellationToken cancellationToken = default)
         => await _isVideoPanelExpanded.Use(cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual async Task<bool> GetIsVideoPanelEqualLayout(CancellationToken cancellationToken = default)
+        => await _isVideoPanelEqualLayout.Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
     public virtual async Task<bool?> GetIsVideoPanelChatVisible(CancellationToken cancellationToken = default)
@@ -177,6 +183,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             _isVideoPanelHidden.Value = false;
         }
     }
+
+    public void SetVideoPanelEqualLayout(bool equal)
+        => _isVideoPanelEqualLayout.Value = equal;
 
     public void SetVideoPanelChatVisible(bool? visible)
         => _isVideoPanelChatVisible.Value = visible;

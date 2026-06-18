@@ -444,7 +444,8 @@ body.hoverable .btn-video-panel.btn-h:hover {
     pointer-events: none;
 }
 .btn-video-panel.btn-h.btn-video-toggle.on,
-.btn-video-panel.btn-h.chat-btn.on {
+.btn-video-panel.btn-h.chat-btn.on,
+.btn-video-panel.btn-h.layout-toggle-btn.on {
     background: var(--blue-50-50);
     color: var(--blue-95);
 }
@@ -868,6 +869,97 @@ body.narrow .video-panel-content .video-track-player.pip-overlay .video-particip
 }
 .video-panel.expanded:has(.video-panel-chat) .video-panel-content {
     width: calc(100% - var(--video-panel-chat-width) - 0.5rem);
+}
+
+/* ── Equal layout: split the content box into N equal regions instead of
+   "one focused + sidebar". Toggled by the header grid button
+   (ChatVideoUI.SetVideoPanelEqualLayout); only in expanded/fullscreen.
+   The same tiles (item-focused + item-x) re-flow as equal grid cells; the
+   region count comes from `tiles-N` (VideoPanelLayout.TileCount). Templates
+   are orientation-aware via a container query on the content box, so they
+   adapt whether the panel is portrait (mobile) or landscape (desktop / chat
+   open). PiP overlays are hidden here (they aren't counted in tiles-N). ── */
+/* The orientation container is the CONTENT box — its width is already trimmed
+   by the chat panel (see the :has(.video-panel-chat) rule above), so the split
+   follows the actual video area, not the whole panel. The grid itself lives on
+   the inner `.c-grid` wrapper, because an element can't react to its own
+   container query. In the default sidebar layout `.c-grid` is display:contents
+   — transparent — so tiles stay direct flex children of .video-panel-content. */
+.c-grid {
+    display: contents;
+}
+.video-panel.expanded.layout-equal .video-panel-content {
+    container: vp-content / size;
+}
+.video-panel.expanded.layout-equal .c-grid {
+    @apply grid gap-0.5;
+    @apply w-full h-full;
+    grid-auto-rows: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+}
+/* Mobile: the expanded panel has no edge padding (desktop already adds
+   safe-area + 0.5rem), so keep tiles off the screen edge here. */
+body.narrow .video-panel.expanded.layout-equal .c-grid {
+    @apply p-0.5;
+}
+.video-panel.expanded.layout-equal .c-grid .video-track-player.pip-overlay {
+    @apply hidden;
+}
+.video-panel.expanded.layout-equal .video-track-player.item-focused,
+.video-panel.expanded.layout-equal .video-track-player.item-x {
+    @apply relative inset-auto;
+    @apply w-full h-full;
+    @apply rounded-lg border-0;
+    @apply overflow-hidden;
+}
+/* Stable positions: ignore the focus-driven `order` (item-N) so tiles keep
+   their source order (sorted by stream start time in the markup) instead of
+   the active speaker jumping to the front. The speaker is shown by the ring
+   below, which moves between fixed cells rather than reshuffling them. */
+.video-panel.expanded.layout-equal .c-grid .video-track-player {
+    order: 0;
+}
+/* Active speaker highlight: any tile whose author is currently streaming audio
+   (VAD-gated, includes the local user — see `.speaking` in the markup) gets a
+   red ring. Drawn as an ::after overlay rather than `outline`/`border` because
+   the tile's video canvas is an absolutely-positioned child that would paint
+   over a plain outline, and a real border would resize the tile (jitter) as the
+   ring appears/disappears. The overlay sits above the canvas (z-index, like the
+   participant label) and matches the tile's rounded corners. */
+.video-panel.expanded.layout-equal .video-track-player.speaking::after {
+    @apply content-empty;
+    @apply absolute inset-0 z-20;
+    @apply pointer-events-none;
+    border: 0.125rem solid var(--danger-light);
+    border-radius: inherit;
+}
+.video-panel.expanded.layout-equal .c-grid.tiles-1 {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+}
+.video-panel.expanded.layout-equal .c-grid.tiles-4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+@container vp-content (orientation: portrait) {
+    .video-panel.expanded.layout-equal .c-grid.tiles-2 {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+    }
+    .video-panel.expanded.layout-equal .c-grid.tiles-3 {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(3, 1fr);
+    }
+}
+@container vp-content (orientation: landscape) {
+    .video-panel.expanded.layout-equal .c-grid.tiles-2 {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr;
+    }
+    .video-panel.expanded.layout-equal .c-grid.tiles-3 {
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: 1fr;
+    }
 }
 
 @keyframes smoothHideVideoPanelContent {
