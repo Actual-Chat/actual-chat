@@ -46,7 +46,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task PhoneModeConversationVanishesOnClose()
+    public async Task PhoneModeRoutesThroughCloseGrace()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -272,5 +272,36 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var liveSession = await backend.GetLiveSession(chatId, default);
         liveSession.Should().NotBeNull();
         liveSession!.StartedAt.Should().NotBe(default);
+    }
+
+    [Fact]
+    public async Task SessionPersistsAcrossVadGap()
+    {
+        // arrange — two peers stream, so a session latches
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_020), null, true, default);
+        var latchedAt = (await backend.Get(chatId, default))!.SessionStartedAt;
+        latchedAt.Should().NotBeNull();
+
+        // act — VAD silence: all streams end, then a peer speaks again within the grace window
+        await backend.OnStreamsChanged(chatId, default);
+        var closing = await backend.Get(chatId, default);
+        closing!.IsClosing.Should().BeTrue();           // in the close-grace, not removed
+        closing.SessionStartedAt.Should().Be(latchedAt); // latch unchanged during the gap
+        (await backend.GetLiveSession(chatId, default)).Should().NotBeNull(); // session still exposed
+
+        await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
+
+        // assert — reactivated; same latch, still a session
+        var live = await backend.Get(chatId, default);
+        live!.IsClosing.Should().BeFalse();
+        live.SessionStartedAt.Should().Be(latchedAt);
+        (await backend.GetLiveSession(chatId, default)).Should().NotBeNull();
     }
 }
