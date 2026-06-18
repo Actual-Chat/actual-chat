@@ -150,8 +150,9 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
 
-        // act
+        // act — need 2 peers for GetLiveSession to return non-null
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_011), null, true, default);
 
         // assert — the session projects the host + the auto-registered streamer as a member
         var liveSession = await backend.GetLiveSession(chatId, default);
@@ -174,6 +175,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_012), null, true, default);
 
         // act — a controller forces transcript-only (no live voice)
         await backend.SetRules(chatId, new SessionRules { VoiceModeOverride = Users.VoiceMode.JustText }, default);
@@ -194,6 +196,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_013), null, true, default);
 
         // act
         await backend.MutePeer(chatId, author.Id, true, default);
@@ -231,5 +234,33 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         live = await backend.Get(chatId, default);
         live!.AuthorIds.Should().HaveCount(2);
         live.SessionStartedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetLiveSessionNullUntilSecondStreamer()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act — single streamer: conversation exists, but no session yet
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+
+        // assert
+        (await backend.Get(chatId, default)).Should().NotBeNull();
+        (await backend.GetLiveSession(chatId, default)).Should().BeNull();
+
+        // act — 2nd peer streams
+        var peer2 = AuthorId.New(chatId, 777_002);
+        await backend.OnStreamRegistered(chatId, peer2, null, true, default);
+
+        // assert — the session is now exposed, started at the latch moment
+        var liveSession = await backend.GetLiveSession(chatId, default);
+        liveSession.Should().NotBeNull();
+        liveSession!.StartedAt.Should().NotBe(default);
     }
 }
