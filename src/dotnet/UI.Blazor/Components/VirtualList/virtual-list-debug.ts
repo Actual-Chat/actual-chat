@@ -194,7 +194,12 @@ export class VirtualListDebug {
         const centre = vr.height / 2;
         let best: { key: string; top: number } | null = null;
         let bestDist = Infinity;
-        for (const li of Array.from(this.vl.containerRef.querySelectorAll<HTMLElement>('li.item[data-key]'))) {
+        for (const li of Array.from(this.vl.containerRef.querySelectorAll<HTMLElement>('li.item[data-key], .group .item[data-key]'))) {
+            // Skip data-skip and sticky rows (e.g. the pinned conversation header): a correctly-pinned
+            // sticky element reads as a jump to this scroll-relative check (drift === dScroll), a false
+            // positive. The real anchoring already excludes these from pivots.
+            if (li.dataset.skip === 'true' || window.getComputedStyle(li).position === 'sticky')
+                continue;
             const r = li.getBoundingClientRect();
             if (r.height <= 0 || r.bottom <= vr.top || r.top >= vr.bottom)
                 continue;

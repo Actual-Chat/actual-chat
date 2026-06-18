@@ -461,8 +461,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         UpdateNewMessagesLineDebounce(items, readEntryLid);
         DebugLog?.LogDebug(
-            "GetData: loaded {Count} items, first={First}, last={Last}, hasBefore={HasBefore}, hasAfter={HasAfter}, navKey={NavEntryLid}, mustScroll={MustScroll}",
+            "GetData: loaded {Count} items ({RowCount} rows), first={First}, last={Last}, hasBefore={HasBefore}, hasAfter={HasAfter}, navKey={NavEntryLid}, mustScroll={MustScroll}",
             items.Count,
+            items.Sum(i => i.GetLeafMessages().Count()),
             items.Count > 0 ? items[0].Id : 0,
             items.Count > 0 ? items[^1].Id : 0,
             hasBefore,

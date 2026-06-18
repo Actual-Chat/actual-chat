@@ -764,35 +764,48 @@ public partial class ChatUI
 
     private static List<ChatMessage> GroupExpandedConversations(IReadOnlyList<ChatMessage> messages)
     {
-        // A conversation's items must collapse into exactly one block: two ExpandedConversationMessage
-        // blocks for the same conversation share one @key (ConversationBlock + StartEntryLid), and
-        // duplicate sibling @keys throw inside Blazor's keyed render-tree diff ("Attempting to return
-        // wrong pooled instance"), tearing down the circuit. Coalesce every item of a conversation into
-        // a single block - even when a stray item or a re-emitted header from a neighbouring tile splits
-        // its run - instead of emitting a fresh block per run.
+        // Wrap every item of one expanded conversation into a single ExpandedConversationMessage in
+        // source order - the block is the sticky containing element for the conversation header and
+        // author avatars (position: sticky is bounded by the block <li>), and the VirtualList still
+        // virtualizes its inner .item rows. Interrupting ThreadMessages (Conversation == null) whose
+        // lid falls inside the conversation's range stay inside the block, in place - so the block's
+        // first/last leaf are the true window ends (VirtualListData.KeyRange stays correct) and there
+        // is exactly one block per conversation (unique StartEntryLid @key, no duplicate-@key crash).
         var result = new List<ChatMessage>();
-        var conversationItems = new Dictionary<ConversationId, List<ChatMessage>>();
-        var conversationIndex = new Dictionary<ConversationId, int>();
+        Conversation? blockConversation = null;
+        var blockItems = new List<ChatMessage>();
 
-        foreach (var item in messages)
-            if (item.Conversation == null || item is ConversationMessage)
-                result.Add(item);
-            else {
-                var conversationId = item.Conversation.Id;
-                if (conversationItems.TryGetValue(conversationId, out var items))
-                    items.Add(item);
-                else {
-                    conversationItems.Add(conversationId, [item]);
-                    conversationIndex.Add(conversationId, result.Count);
-                    result.Add(item); // placeholder - replaced by the assembled block below
-                }
+        foreach (var item in messages) {
+            var conversation = item.Conversation;
+            var belongs = blockConversation != null
+                && (conversation != null
+                    ? conversation.Id == blockConversation.Id
+                    : blockConversation.EntryLidRange.Contains(item.Id));
+            if (belongs) {
+                blockItems.Add(item);
+                continue;
             }
 
-        foreach (var (conversationId, items) in conversationItems)
-            result[conversationIndex[conversationId]] =
-                new ExpandedConversationMessage(items[0].Conversation!, DistinctByRenderKey(items));
-
+            FinalizeBlock();
+            if (conversation != null && item is not ConversationMessage) {
+                blockConversation = conversation;
+                blockItems.Add(item);
+            }
+            else
+                result.Add(item);
+        }
+        FinalizeBlock();
         return result;
+
+        void FinalizeBlock()
+        {
+            if (blockConversation == null)
+                return;
+
+            result.Add(new ExpandedConversationMessage(blockConversation, DistinctByRenderKey(blockItems)));
+            blockConversation = null;
+            blockItems = [];
+        }
     }
 
     // Sibling render keys must be unique - Blazor's keyed render-tree diff throws on duplicate @key
