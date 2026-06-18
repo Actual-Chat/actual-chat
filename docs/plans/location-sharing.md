@@ -295,7 +295,7 @@ UI shell) can proceed in parallel once phase 1's contracts exist.
 7. EF migration in **`Chat.Service.Migration`** (`dotnet ef migrations add LiveLocations`).
 - **Gate:** integration tests below pass (`Chat.IntegrationTests` or equivalent).
 
-### Phase 2 — Map component (web/TS), no device  *(∥ phase 3)*
+### Phase 2 — Map component (web/TS), no device  *(∥ phase 3)* ✅ done
 1. Add `maplibre-gl` to root `package.json`.
 2. TS module `src/nodejs/src/.../live-location-map.ts` exposing
    `init(el, style)`, `setMarkers(markers)`, `dispose()`; render avatar pins,

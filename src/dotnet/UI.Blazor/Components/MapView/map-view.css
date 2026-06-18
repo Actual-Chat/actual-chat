@@ -1,0 +1,5 @@
+.map-view {
+    @apply relative;
+    @apply w-full h-full;
+    @apply overflow-hidden;
+}
