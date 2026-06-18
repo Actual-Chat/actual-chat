@@ -17,7 +17,12 @@
                     <AvatarCircle Avatar="@avatar" Size="@SquareSize.Size7"/>
                 }
             </div>
-            <div class="c-text">@Describe(m)</div>
+            <div class="c-text">
+                @Describe(m)
+                @if (FormatRemaining(m.OwnExpiresAt) is { Length: > 0 } remaining) {
+                    <span class="c-countdown">· @remaining left</span>
+                }
+            </div>
         </div>
     </Body>
     <Buttons>
@@ -29,6 +34,7 @@
 
 @code {
     private const int MaxAvatars = 3;
+    private static readonly TimeSpan CountdownTickPeriod = TimeSpan.FromSeconds(30);
 
     private Chat Chat => ChatContext.Chat;
     private IAuthors Authors => Hub.Authors;
@@ -51,14 +57,19 @@
             return Model.None;
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var isOwnSharing = ownAuthor != null && locations.Any(x => x.AuthorId == ownAuthor.Id);
+        var ownLocation = ownAuthor != null
+            ? locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id)
+            : null;
         var avatars = new List<Avatar>(locations.Count);
         foreach (var location in locations) {
             var author = await Authors.Get(Session, chatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
             if (author != null)
                 avatars.Add(author.Avatar);
         }
-        return new Model(avatars.ToApiArray(), locations.Count, isOwnSharing);
+        if (ownLocation != null)
+            Computed.GetCurrent().Invalidate(CountdownTickPeriod);
+
+        return new Model(avatars.ToApiArray(), locations.Count, ownLocation != null, ownLocation?.ExpiresAt);
     }
 
     private Task OnOpenMap()
@@ -66,6 +77,20 @@
 
     private Task OnStop()
         => Services.GetRequiredService<LocationUI>().StopSharing(Chat.Id, CancellationToken.None);
+
+    private string FormatRemaining(Moment? expiresAt) {
+        if (expiresAt is not { } moment)
+            return "";
+
+        var remaining = moment - Clocks.ServerClock.Now;
+        if (remaining <= TimeSpan.Zero)
+            return "";
+
+        if (remaining.TotalHours >= 1)
+            return $"{(int)remaining.TotalHours}h {remaining.Minutes}m";
+
+        return $"{Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes))}m";
+    }
 
     private static string Describe(Model m) {
         if (m.IsOwnSharing) {
@@ -83,7 +108,7 @@
 
     // Nested types
 
-    public sealed record Model(ApiArray<Avatar> Avatars, int Count, bool IsOwnSharing) {
+    public sealed record Model(ApiArray<Avatar> Avatars, int Count, bool IsOwnSharing, Moment? OwnExpiresAt = null) {
         public static readonly Model None = new([], 0, false);
     }
 }

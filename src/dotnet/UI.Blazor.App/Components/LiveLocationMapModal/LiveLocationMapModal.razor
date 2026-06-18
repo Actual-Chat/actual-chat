@@ -57,7 +57,7 @@
                 location.AuthorId.Value,
                 location.Point.Latitude,
                 location.Point.Longitude,
-                author?.Avatar.Name,
+                isOwn ? "You" : author?.Avatar.Name,
                 isOwn ? OwnMarkerColor : OthersMarkerColor));
         }
         var center = locations[0].Point;

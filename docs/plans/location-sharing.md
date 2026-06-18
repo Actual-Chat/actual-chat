@@ -371,10 +371,23 @@ UI shell) can proceed in parallel once phase 1's contracts exist.
 - **Gate (device, pending):** start → others see live movement on web; lock phone /
   switch apps → keeps updating; stop or expiry → marker disappears, coords scrubbed.
 
-### Phase 6 — Polish
-- Banner/notification copy; own-marker vs others styling; marker clustering;
-  expiry/countdown UX; battery tuning (update cadence, accuracy mode); error/no-fix
-  and permission-revoked-mid-share handling.
+### Phase 6 — Polish ◑ partial (web-verifiable items done; device items deferred)
+Done (compile-verified):
+- **Expiry/countdown UX** — the banner shows time-left for the current user's own share
+  ("… · 12m left"), self-ticking every 30 s via `Computed.Invalidate` and refreshed on
+  each update; coarse h/m formatting.
+- **Own-vs-others marker** — own map marker is green and labelled **"You"**; others are
+  blue and labelled by author name.
+- **Banner copy** — "You are sharing your location" / "You and N others…" / "N people…".
+
+Deferred (need a device / out of v1 scope):
+- **Battery tuning** (update cadence vs. accuracy mode) — measure on-device first.
+- **Permission-revoked-mid-share** + **no-fix/timeout UX** — the web tracker logs a warn on
+  geolocation error today; surfacing it as a toast/inline state needs the device flows
+  (Phase 4 gate) to design against real OS behaviour.
+- **Marker clustering** — unnecessary for the handful of simultaneous sharers in v1.
+- **Notification copy** — the Android FG-service notification text ("Sharing your location")
+  is set; richer copy/actions are a device-side follow-up.
 - **Gate:** battery sanity over a 1 h share; QA pass on web + both platforms.
 
 ---

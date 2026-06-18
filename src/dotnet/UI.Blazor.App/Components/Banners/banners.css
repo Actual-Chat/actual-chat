@@ -135,3 +135,7 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 .live-location-banner .c-text {
     @apply text-text-1;
 }
+.live-location-banner .c-countdown {
+    @apply ml-1;
+    @apply text-02;
+}
