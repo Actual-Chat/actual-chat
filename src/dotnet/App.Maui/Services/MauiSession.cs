@@ -54,6 +54,17 @@ public sealed class MauiSession(IServiceProvider services)
             Log.LogWarning("Stored session is invalid - will reload");
             await Store(validSession).ConfigureAwait(false);
             TrueSessionResolver.Replace(validSession);
+            // Reloading mid-startup recreates the WebView while the first Blazor scope is
+            // still initializing, leaving a half-disposed scope with a disconnected JS runtime
+            // (=> endless JSDisconnectedException in the post-reload sign-in UI). Wait until the
+            // initial scope is fully rendered so this becomes a clean, single reload instead.
+            try {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                await AppServicesAccessor.WhenBlazorAppServicesReady(true, cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                Log.LogWarning("Timed out waiting for the app to render before reload - reloading anyway");
+            }
             Services.GetRequiredService<ReloadUI>().Reload(true, true);
         });
     }
