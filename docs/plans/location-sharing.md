@@ -226,13 +226,10 @@ component in `UI.Blazor` calling it via JS interop (pattern: existing TS modules
 wired into Blazor). Markers (avatar pins) update from the reactive `List`.
 
 MapLibre renders **vector tiles**, so it needs a **style + tile source** (unlike
-Leaflet's plain raster URL). Options, isolated behind our module so the source is
-swappable without touching UI:
-- A free/demo public style for early dev (e.g. the MapLibre demo style or a free
-  OpenFreeMap/MapTiler-style endpoint),
-- A self-hosted style + tiles, or
-- A paid vector-tile host (e.g. MapTiler) via config/secret — same swap pattern
-  as the licensing note's tile discussion.
+Leaflet's plain raster URL). *Stage-1 source: **OpenFreeMap*** (free, no key, no
+billing) via its public style URL, isolated behind our module so it's swappable
+to a self-hosted OpenFreeMap or a paid host (e.g. MapTiler) before production
+scale without touching UI.
 
 Render the required attribution for whichever tile/data source is used
 ("© OpenStreetMap contributors" for OSM-derived tiles). Decide the concrete tile
@@ -368,13 +365,15 @@ UI shell) can proceed in parallel once phase 1's contracts exist.
 
 ## Open questions
 
-1. **Vector-tile style/source for MapLibre.** Renderer is decided: **MapLibre GL
-   (BSD-3, vector).** MapLibre needs a style + vector-tile source. Options: a
-   free/demo public style for dev, self-hosted tiles, or a paid host (e.g.
-   MapTiler) via config/secret. Free public endpoints typically have rate/usage
-   limits, so production scale likely needs self-hosted or paid tiles. All are
-   swappable behind our module. — confirm the v1 source (default: a free public
-   style for dev, decide production source before launch).
+1. **Vector-tile style/source for MapLibre.** *Decided:* renderer **MapLibre GL
+   (BSD-3, vector)**; stage-1 tile source **OpenFreeMap** (free, no API key, no
+   billing, self-hostable). Google Maps was evaluated and rejected for stage 1
+   (needs a billing account + API key + the WebView key-restriction problem, for
+   ~$0 benefit at low volume — both clients render the map as JS in a
+   `BlazorWebView`, so no native SDK is involved either way). The style URL is
+   isolated behind our module; **self-host OpenFreeMap or move to a paid host
+   (e.g. MapTiler) before relying on it at production scale** (public endpoint
+   has no SLA).
 2. **Service placement.** *Decided:* host inside `Chat.Service` as a `Reactions`-
    style sibling pair (chat-scoped, shards by `ChatId`, author/membership auth
    already present) — no new service trio.
