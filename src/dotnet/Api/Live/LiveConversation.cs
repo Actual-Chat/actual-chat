@@ -43,6 +43,8 @@ public sealed partial record LiveConversation
     public AuthorId Host { get; init; } = null!;
     [DataMember(Order = 16), MemoryPackOrder(16), Key(16)]
     public SessionRules Rules { get; init; } = SessionRules.Default;
+    [DataMember(Order = 17), MemoryPackOrder(17), Key(17)]
+    public Moment? SessionStartedAt { get; init; }
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ConversationId ConversationId => ConversationId.New(ChatId, StartEntryLid);

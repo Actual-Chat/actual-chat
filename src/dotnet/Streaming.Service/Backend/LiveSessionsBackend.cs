@@ -193,6 +193,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             };
         }
 
+        if (state.SessionStartedAt is null && state.AuthorIds.Count >= 2)
+            state = state with {
+                SessionStartedAt = now,
+                Version = VersionGenerator.NextVersion(state.Version),
+            };
+
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
         // Register the streamer as a participant so per-peer mute flags have a home
         // (grouping uses live-stream state, so a stale entry never misgroups an active streamer).
