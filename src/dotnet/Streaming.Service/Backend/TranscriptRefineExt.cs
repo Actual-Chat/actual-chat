@@ -23,30 +23,41 @@ internal static class TranscriptRefineExt
 
     public static TextScript GetDominantScript(this string text)
     {
-        int latin = 0, cyrillic = 0, greek = 0, other = 0;
+        Span<int> counts = stackalloc int[(int)TextScript.Other + 1];
         foreach (var ch in text) {
-            if (!char.IsLetter(ch))
-                continue;
-            if (ch is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= 'À' and <= 'ɏ')
-                latin++;
-            else if (ch is >= 'Ѐ' and <= 'ӿ')
-                cyrillic++;
-            else if (ch is >= 'Ͱ' and <= 'Ͽ')
-                greek++;
-            else
-                other++;
+            if (char.IsLetter(ch))
+                counts[(int)Classify(ch)]++;
         }
-        var max = Math.Max(Math.Max(latin, cyrillic), Math.Max(greek, other));
-        if (max == 0)
-            return TextScript.None;
-        if (max == cyrillic)
-            return TextScript.Cyrillic;
-        if (max == latin)
-            return TextScript.Latin;
-        if (max == greek)
-            return TextScript.Greek;
-        return TextScript.Other;
+        var dominant = TextScript.None;
+        var max = 0;
+        for (var i = 1; i < counts.Length; i++) {
+            if (counts[i] > max) {
+                max = counts[i];
+                dominant = (TextScript)i;
+            }
+        }
+        return dominant;
     }
+
+    private static TextScript Classify(char ch)
+        => ch switch {
+            >= 'a' and <= 'z' or >= 'A' and <= 'Z'
+                or >= 'À' and <= 'ɏ' // Latin-1 Supplement + Latin Extended-A/B
+                or >= 'Ḁ' and <= 'ỿ' // Latin Extended Additional (Vietnamese)
+                => TextScript.Latin,
+            >= 'Ѐ' and <= 'ԯ' => TextScript.Cyrillic, // Cyrillic + Cyrillic Supplement
+            >= 'Ͱ' and <= 'Ͽ' => TextScript.Greek, // Greek and Coptic
+            >= '一' and <= '鿿' or >= '㐀' and <= '䶿' // CJK ideographs (Chinese, Japanese kanji)
+                or >= '぀' and <= 'ヿ' // Hiragana + Katakana (Japanese)
+                => TextScript.Cjk,
+            >= '가' and <= '힣' or >= 'ᄀ' and <= 'ᇿ' or >= '㄰' and <= '㆏'
+                => TextScript.Hangul, // Korean
+            >= '฀' and <= '๿' => TextScript.Thai,
+            >= 'ऀ' and <= 'ॿ' => TextScript.Devanagari, // Hindi, Marathi
+            >= '؀' and <= 'ۿ' or >= 'ݐ' and <= 'ݿ' => TextScript.Arabic, // Urdu
+            >= '஀' and <= '௿' => TextScript.Tamil,
+            _ => TextScript.Other,
+        };
 }
 
-internal enum TextScript { None, Latin, Cyrillic, Greek, Other }
+internal enum TextScript { None, Latin, Cyrillic, Greek, Cjk, Hangul, Thai, Devanagari, Arabic, Tamil, Other }
