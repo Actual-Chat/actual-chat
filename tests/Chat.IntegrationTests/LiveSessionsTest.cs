@@ -203,4 +203,33 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var member = liveSession!.Members.Single(m => m.AuthorId == author.Id);
         member.ForcedMuted.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task SessionLatchesOnSecondStreamer()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act — first (and only) streamer: not a session yet
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+
+        // assert
+        var live = await backend.Get(chatId, default);
+        live.Should().NotBeNull();
+        live!.SessionStartedAt.Should().BeNull();
+
+        // act — a second distinct peer starts streaming
+        var peer2 = AuthorId.New(chatId, 777_001);
+        await backend.OnStreamRegistered(chatId, peer2, null, true, default);
+
+        // assert — the session latches
+        live = await backend.Get(chatId, default);
+        live!.AuthorIds.Should().HaveCount(2);
+        live.SessionStartedAt.Should().NotBeNull();
+    }
 }
