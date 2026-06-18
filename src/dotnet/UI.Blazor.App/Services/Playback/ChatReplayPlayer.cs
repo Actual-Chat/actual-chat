@@ -6,6 +6,12 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class ChatReplayPlayer : ChatPlayer
 {
+    // Identifies the replay currently being played by this (reused) player.
+    // ReplaySubHeader trusts the playback position only once this matches the
+    // active ReplayState — otherwise the player is still winding down a previous run.
+    public Moment CurrentStartAt { get; private set; }
+    public TimeSpan CurrentRewindOffset { get; private set; }
+
     public ChatReplayPlayer(AppUIHub hub, ChatId chatId)
         : base(hub, chatId)
         => PlayerKind = ChatPlayerKind.Replaying;
@@ -48,6 +54,8 @@ public sealed class ChatReplayPlayer : ChatPlayer
             speed = replayState.Speed;
             rewindOffset = replayState.RewindOffset;
         }
+        CurrentStartAt = startAt;
+        CurrentRewindOffset = rewindOffset;
         var sleepDurationAtStart = SleepDuration.Value;
         var pauseDurationAtStart = Playback.TotalPauseDuration.Value;
 
