@@ -18,7 +18,7 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
     // Must exceed Batch + 2*viewer LoadThreshold so that after a far-edge trim the active
     // slide can't land back inside the opposite edge's load zone (which would thrash loads).
     private const int MaxWindow = 40;
-    private const int ResolveRadius = 2;
+    private const int ResolveRadius = 4;
 
     private readonly AppUIHub _hub;
     private readonly Session _session;
