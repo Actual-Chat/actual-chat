@@ -26,6 +26,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbReadPositionsStat> ReadPositionsStats { get; protected set; } = null!;
     public DbSet<DbAlias> Aliases { get; protected set; } = null!;
     public DbSet<DbConversation> Conversations { get; protected set; } = null!;
+    public DbSet<DbLiveLocation> LiveLocations { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -137,6 +138,13 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         conversation.Property(e => e.AuthorIds).UseCollation("C");
         conversation.HasIndex(x => new { x.ChatId, x.StartEntryLid }).IsUnique().IncludeProperties(nameof(DbConversation.EndEntryLid));
         conversation.HasIndex(x => new { x.ChatId, x.EndEntryLid }).IsDescending(false, true).IsUnique().IncludeProperties(nameof(DbConversation.StartEntryLid));
+
+        var liveLocation = model.Entity<DbLiveLocation>();
+        liveLocation.Property(e => e.Id).UseCollation("C");
+        liveLocation.Property(e => e.ChatId).UseCollation("C");
+        liveLocation.Property(e => e.AuthorId).UseCollation("C");
+        liveLocation.HasIndex(e => e.ChatId);
+        liveLocation.HasIndex(e => e.ExpiresAt);
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");

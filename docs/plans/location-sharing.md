@@ -268,7 +268,7 @@ building/green. Phases 1–3 need no device; 4–5 need physical iOS + Android.
 Dependency order: 1 → (2 ∥ 3) → 4 → 5 → 6. Phase 2 (map) and phase 3 (viewing
 UI shell) can proceed in parallel once phase 1's contracts exist.
 
-### Phase 0 — Scaffolding & shared types
+### Phase 0 — Scaffolding & shared types ✅ done
 - Add `GeoPoint` (`Latitude`, `Longitude`, `float? Accuracy`, `float? Bearing`)
   and `LiveLocation` DTO to **`ActualChat.Api`** (`[DataContract]` +
   `[MemoryPackable]` + `[MessagePackObject]`, like `Reaction`).
@@ -276,7 +276,7 @@ UI shell) can proceed in parallel once phase 1's contracts exist.
   `MinCacheDuration` 30 s, allowed durations 15 m / 1 h / 8 h, `MaxDuration`).
 - **Gate:** `dotnet build ActualChat.CI.slnf` green.
 
-### Phase 1 — Backend (`Chat.Service`), no device
+### Phase 1 — Backend (`Chat.Service`), no device ✅ done
 1. `Chat.Contracts/ILiveLocationsBackend.cs` — `Get`/`List`/`IsSharing` compute
    methods + `LiveLocationsBackend_Start/Update/Stop` commands
    (`IHasShardKey<ChatId>`), mirroring `IReactionsBackend`.
