@@ -100,6 +100,9 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     [ComputeMethod]
     protected virtual async Task<State> ListRaw(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Fusion keeps Computed.Current set only for the synchronous prefix of a compute
+        // method, so capture it here — reading it past an await throws "Computed.Current is null".
+        var computed = Computed.GetCurrent();
         var now = Clocks.SystemClock.Now;
         if (_listRawPrimer.TryUsePrimed(chatId, out var primed))
             return WithAutoInvalidation(primed);
@@ -154,7 +157,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
             var minBeginsAt = state.Streams.Min(x => x.BeginsAt);
             var delay = (minBeginsAt + StreamTtl - now + MinInvDelay).Clamp(MinInvDelay, StreamTtl);
-            Computed.GetCurrent().Invalidate(delay);
+            computed.Invalidate(delay);
             return state;
         }
     }

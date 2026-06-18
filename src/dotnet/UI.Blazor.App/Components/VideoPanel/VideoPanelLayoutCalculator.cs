@@ -116,7 +116,12 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             .Capture(() => GetActiveSpeakerState(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
-        await foreach (var (state, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var (state, error) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            // Changes yields error snapshots too, with a null value — skip them
+            // instead of NRE-ing on the deconstruct below.
+            if (error is not null)
+                continue;
+
             var (speakersWithVideo, screenCastAuthorIds) = state;
             lock (_trackFocusLock) {
                 // ScreenCasts are primary-only. Backend/client gates allow only
@@ -149,7 +154,12 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             .Capture(() => GetLayoutInputs(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
-        await foreach (var (inputs, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var (inputs, error) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            // Changes yields error snapshots too, with a null value — skip them
+            // instead of NRE-ing on the deconstruct below.
+            if (error is not null)
+                continue;
+
             var layout = BuildLayout(inputs);
             if (layout != _layout.Value)
                 _layout.Value = layout;
