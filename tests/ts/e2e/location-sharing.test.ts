@@ -1,0 +1,107 @@
+/**
+ * E2E test: live location sharing.
+ *
+ * Drives the full web flow with a mocked browser geolocation:
+ *   "+" menu -> Share location -> pick a duration -> banner appears ->
+ *   open the map (a MapLibre marker renders) -> move the mock position ->
+ *   Stop -> banner disappears.
+ *
+ * Prerequisites:
+ * - Server running (server-loop / run-watch).
+ * - Optionally, Chrome with remote debugging: `c chrome` (port 9222) to watch live.
+ *
+ * Run:
+ *   npx vitest run tests/ts/e2e/location-sharing.test.ts --config vitest.config.e2e.ts
+ */
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import type { Page } from 'playwright';
+import {
+    BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding, screenshot,
+    waitForChatReady, waitForEditor, type BrowserConnection,
+} from './helpers';
+
+const shot = (name: string) => screenshot('e2e', name);
+
+// A shared chat the test user can join, so it has an editor + Banners host to share from.
+const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
+
+// London -> Paris, to prove the marker tracks position updates.
+const START = { latitude: 51.5074, longitude: -0.1278, accuracy: 12 };
+const MOVED = { latitude: 48.8566, longitude: 2.3522, accuracy: 12 };
+
+describe('live location sharing', () => {
+    let conn: BrowserConnection;
+    let page: Page;
+
+    beforeAll(async () => {
+        conn = await connectBrowser();
+        await conn.context.grantPermissions(['geolocation'], { origin: BASE_URL });
+        await conn.context.setGeolocation(START);
+        page = await conn.context.newPage();
+        await ensureSignedIn(page);
+    }, 120_000);
+
+    afterAll(async () => {
+        await page.close();
+        if (conn.ownsBrowser) {
+            await conn.context.close();
+            await conn.browser.close();
+        }
+    });
+
+    it('shares location, shows the banner + map marker, then stops', async () => {
+        // arrange — open a chat we can post in
+        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
+        await waitForChatReady(page);
+        await skipOnboarding(page);
+
+        const joinButton = page.locator('button:has-text("Join this chat")');
+        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await joinButton.click();
+            await page.waitForTimeout(1500);
+        }
+
+        await waitForEditor(page);
+
+        // act — open the "+" menu and start a share
+        await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
+        await page.locator('text=Share location').first().click({ force: true });
+
+        const modal = page.locator('.share-location-modal').first();
+        await modal.waitFor({ state: 'visible', timeout: 10_000 });
+        await page.screenshot({ path: shot('loc-modal') });
+        await modal.locator('button:has-text("15 min")').first().click();
+
+        // assert — the chat banner reflects the active share
+        const banner = page.locator('.live-location-banner').first();
+        await banner.waitFor({ state: 'visible', timeout: 20_000 });
+        expect((await banner.innerText()).toLowerCase()).toContain('sharing your location');
+        await page.screenshot({ path: shot('loc-banner') });
+
+        // act — open the map modal from the banner
+        await banner.locator('.c-body').first().click();
+        const mapModal = page.locator('.live-location-map-modal').first();
+        await mapModal.waitFor({ state: 'visible', timeout: 10_000 });
+
+        // assert — a MapLibre marker renders for the share
+        const marker = mapModal.locator('.maplibregl-marker').first();
+        await marker.waitFor({ state: 'visible', timeout: 15_000 });
+        await page.screenshot({ path: shot('loc-map') });
+
+        // act — move the position; the marker should track it (still exactly one)
+        await conn.context.setGeolocation(MOVED);
+        await page.waitForTimeout(2_000);
+        expect(await mapModal.locator('.maplibregl-marker').count()).toBe(1);
+        await page.screenshot({ path: shot('loc-map-moved') });
+
+        // act — close the map, then stop sharing from the banner
+        await page.keyboard.press('Escape');
+        await mapModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
+        await banner.locator('button:has-text("Stop")').first().click();
+
+        // assert — the banner disappears once the share is stopped
+        await banner.waitFor({ state: 'hidden', timeout: 20_000 });
+        await page.screenshot({ path: shot('loc-stopped') });
+    }, 180_000);
+});
