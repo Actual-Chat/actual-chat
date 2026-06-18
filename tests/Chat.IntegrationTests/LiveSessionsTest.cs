@@ -62,8 +62,18 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // assert
         (await backend.Get(chatId, default)).Should().NotBeNull();
 
-        // act — phone-mode close removes the block immediately
+        // act — no streams remain; phone mode now uses the same close grace as transcription
+        // (it does NOT vanish immediately, so a VAD gap between utterances doesn't flap the call)
         await backend.OnStreamsChanged(chatId, default);
+
+        // assert — still present, marked closing, finalization deferred to the grace timeout
+        var live = await backend.Get(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeTrue();
+        live.ClosingAt.Should().NotBeNull();
+
+        // act — explicit close removes it (stands in for the post-grace SelfClose)
+        await backend.Close(chatId, default);
 
         // assert
         (await backend.Get(chatId, default)).Should().BeNull();
