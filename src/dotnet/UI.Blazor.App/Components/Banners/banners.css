@@ -119,3 +119,19 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     @apply w-full md:max-w-80;
     @apply mt-4;
 }
+
+/* ── Live-location banner ── */
+
+.live-location-banner .c-body {
+    @apply flex-x items-center gap-x-2;
+    @apply cursor-pointer;
+}
+.live-location-banner .c-avatars {
+    @apply flex-x items-center;
+}
+.live-location-banner .c-avatars .avatar-circle:not(:first-child) {
+    @apply -ml-2;
+}
+.live-location-banner .c-text {
+    @apply text-text-1;
+}

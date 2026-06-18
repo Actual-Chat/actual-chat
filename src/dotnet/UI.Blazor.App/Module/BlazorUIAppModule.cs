@@ -145,6 +145,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<ApiKeyCreateModal.Model, ApiKeyCreateModal>()
             .Add<EmojiModal.Model, EmojiModal>()
             .Add<ReportModal.Model, ReportModal>()
+            .Add<LiveLocationMapModal.Model, LiveLocationMapModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map

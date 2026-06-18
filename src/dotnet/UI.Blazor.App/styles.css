@@ -61,6 +61,7 @@
 @import './Components/LeftPanel/LeftSearchPanel/recently-viewed-groups.css';
 @import './Components/LeftPanel/LeftSearchPanel/recently-contacted-people.css';
 @import './Components/LeftPanel/LeftSearchPanel/recently-contacted-user.css';
+@import './Components/LiveLocationMapModal/live-location-map-modal.css';
 @import './Components/LogView/log-view.css';
 @import './Components/LogView/report-modal.css';
 @import './Components/ChatQuickNavModal/chat-quick-nav-modal.css';

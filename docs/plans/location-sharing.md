@@ -305,7 +305,7 @@ UI shell) can proceed in parallel once phase 1's contracts exist.
    free public style.
 - **Gate:** `npm run build:Verify` green; component renders static sample markers.
 
-### Phase 3 — Viewing UI shell (web), no device  *(∥ phase 2)*
+### Phase 3 — Viewing UI shell (web), no device  *(∥ phase 2)* ✅ done
 1. `ChatLiveLocationBanner.razor` — pinned in chat view, reactive on
    `ILiveLocations.List(chatId)`: sharer avatars + count; tap opens map; "Stop"
    when current author is sharing.
