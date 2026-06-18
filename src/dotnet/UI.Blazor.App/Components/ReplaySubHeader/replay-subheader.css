@@ -77,10 +77,6 @@ a.c-title {
     @apply truncate;
     @apply text-caption-8 text-03;
 }
-.replay-subheader .c-date-skeleton {
-    @apply mt-0.5 h-2.5 w-20 rounded-full;
-    background-color: var(--border-replay);
-}
 .replay-subheader .c-playback {
     @apply flex-none flex-x items-center gap-x-0.5 md:gap-x-1;
     @apply p-0.5;

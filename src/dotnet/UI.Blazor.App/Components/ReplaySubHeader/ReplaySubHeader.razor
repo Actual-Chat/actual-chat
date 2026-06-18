@@ -51,7 +51,7 @@
                 Class="c-authors"
                 MaxCount="@slotCount"
                 Size="@size"
-                AuthorIds="@m?.AuthorIds"
+                AuthorIds="@m.AuthorIds"
                 IsListening="true"/>
         </div>
         @if (showDivider) {
@@ -63,9 +63,7 @@
             } else {
                 <div class="c-title">@titleLabel</div>
             }
-            @if (isLoading) {
-                <div class="c-date-skeleton" aria-hidden="true"></div>
-            } else if (dateLabel.Length > 0) {
+            @if (dateLabel.Length > 0) {
                 <div class="c-date">@dateLabel</div>
             }
         </div>
@@ -142,21 +140,13 @@
         var chatTitle = chat?.Title ?? "";
         var participantCount = await GetParticipantCount(chatId, cancellationToken).ConfigureAwait(false);
 
-        Model Loading() => new() {
-            ChatId = chatId,
-            IsLoading = true,
-            ChatTitle = chatTitle,
-            ShowChatTitle = chatId != selectedChatId,
-            Speed = replayState.Speed,
-            ParticipantCount = participantCount,
-            AuthorIds = [],
-        };
-
         // Paused state: player is stopped, but we still show the banner
         if (replayState.PausedAt is { } pausedAt)
             return new() {
                 ChatId = chatId,
                 PlayingAt = pausedAt,
+                StartAt = replayState.StartAt,
+                RewindOffset = replayState.RewindOffset,
                 Player = null,
                 IsPaused = true,
                 Speed = replayState.Speed,
@@ -170,7 +160,7 @@
         if (player is null) {
             // This happens when player is being disposed, which means this method
             // will soon recompute anyway.
-            return lastState ?? Loading(); // Keep the last state to avoid blinking
+            return SameReplay(lastState) || IsResume(lastState) ? lastState! : Loading(); // Keep the last state to avoid blinking
         }
         var isPaused = await player.Playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
         var playback = player.Playback;
@@ -189,10 +179,18 @@
 
             playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
         }
-        if (playingAt.HasValue)
+
+        // The replay player is reused across replays, so it may still be winding down
+        // a previous run with stale tracks. Trust its position only once it has
+        // (re)started for the current replay; until then we stay in Loading.
+        var runMatches = player.CurrentStartAt == replayState.StartAt
+            && player.CurrentRewindOffset == replayState.RewindOffset;
+        if (runMatches && playingAt.HasValue)
             return new() {
                 ChatId = chatId,
                 PlayingAt = playingAt,
+                StartAt = replayState.StartAt,
+                RewindOffset = replayState.RewindOffset,
                 Player = player,
                 IsPaused = isPaused,
                 Speed = replayState.Speed,
@@ -202,10 +200,48 @@
                 ParticipantCount = participantCount,
             };
 
-        // No playing tracks yet (e.g. resuming) — keep last state to avoid blinking
-        if (lastState is not null && lastState.ChatId == chatId)
-            return lastState with { Player = player, IsPaused = isPaused };
+        // No playing tracks yet — keep last state within the same replay (e.g. an
+        // inter-entry gap) or while resuming from pause; a new replay falls back to
+        // Loading. Re-stamp the replay key so the next recompute still matches.
+        if (SameReplay(lastState) || IsResume(lastState))
+            return lastState! with {
+                StartAt = replayState.StartAt,
+                RewindOffset = replayState.RewindOffset,
+                Player = player,
+                IsPaused = isPaused,
+            };
         return Loading();
+
+        // A change of (ChatId, StartAt, RewindOffset) means a new replay was started,
+        // so the previous banner state must not be reused — we show Loading until the
+        // new playback reaches the requested position.
+        bool SameReplay(Model? s)
+            => s is { } m
+               && m.ChatId == chatId
+               && m.StartAt == replayState.StartAt
+               && m.RewindOffset == replayState.RewindOffset;
+
+        // Resuming from pause continues from the position already shown on the banner,
+        // so it's not a position jump — keep the current content instead of flashing
+        // Loading while the stream is re-established.
+        bool IsResume(Model? s)
+            => s is { IsPaused: true, PlayingAt: { } pausedAt }
+               && s.ChatId == chatId
+               && replayState.PausedAt is null
+               && pausedAt == replayState.StartAt;
+
+        Model Loading() => new() {
+            ChatId = chatId,
+            IsLoading = true,
+            PlayingAt = replayState.StartAt,
+            StartAt = replayState.StartAt,
+            RewindOffset = replayState.RewindOffset,
+            ChatTitle = chatTitle,
+            ShowChatTitle = chatId != selectedChatId,
+            Speed = replayState.Speed,
+            ParticipantCount = participantCount,
+            AuthorIds = [],
+        };
     }
 
     private async Task<int> GetParticipantCount(ChatId chatId, CancellationToken cancellationToken) {
@@ -276,6 +312,8 @@
         public ChatReplayPlayer? Player { get; init; }
         public string ChatTitle { get; init; } = "";
         public required ChatId ChatId { get; init; }
+        public Moment StartAt { get; init; }
+        public TimeSpan RewindOffset { get; init; }
         public bool ShowChatTitle { get; init; }
         public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
         public int ParticipantCount { get; init; }
