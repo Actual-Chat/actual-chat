@@ -10,15 +10,25 @@ public class MauiSystemSettingsUI : SystemSettingsUI
     [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiSystemSettingsUI))]
     public MauiSystemSettingsUI() { }
 
-    public override Task Open()
+    public override Task Open(SystemSettingsSection section = SystemSettingsSection.App)
     {
         // AppInfo.ShowSettingsUI() deep-links to the iOS per-app Settings page (app-settings:),
-        // which is a silent no-op on Mac Catalyst — macOS has no such page. Open the System
-        // Settings privacy pane directly instead so users can unblock camera/mic access.
+        // which has no handler on macOS — a silent no-op on Mac Catalyst. Open the matching
+        // System Settings privacy pane directly instead so users can unblock access.
         if (OperatingSystem.IsMacCatalyst())
-            return MauiBrowser.Open("x-apple.systempreferences:com.apple.preference.security?Privacy_Camera");
+            return MauiBrowser.Open(MacPrivacyPaneUrl(section));
 
         AppInfo.Current.ShowSettingsUI();
         return Task.CompletedTask;
+    }
+
+    private static string MacPrivacyPaneUrl(SystemSettingsSection section)
+    {
+        const string prefix = "x-apple.systempreferences:com.apple.preference.security?";
+        return section switch {
+            SystemSettingsSection.Camera => $"{prefix}Privacy_Camera",
+            SystemSettingsSection.Microphone => $"{prefix}Privacy_Microphone",
+            _ => $"{prefix}Privacy",
+        };
     }
 }

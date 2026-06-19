@@ -353,7 +353,7 @@
         };
 
     private Task OnOpenSettingsClick()
-        => SystemSettingsUI.Open();
+        => SystemSettingsUI.Open(SystemSettingsSection.Camera);
 
     private async Task OnAllowCameraClick() {
         // CheckOrRequest will prompt only when state is Prompt; for Denied the
