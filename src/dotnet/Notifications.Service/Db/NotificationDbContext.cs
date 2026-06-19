@@ -8,7 +8,6 @@ namespace ActualChat.Notifications.Db;
 public class NotificationDbContext(DbContextOptions<NotificationDbContext> options) : DbContextBase(options)
 {
     public DbSet<DbDevice> Devices { get; protected set; } = null!;
-    public DbSet<DbNotification> Notifications { get; protected set; } = null!;
     public DbSet<DbExplicitNotification> ExplicitNotifications { get; protected set; } = null!;
     public DbSet<DbUserNotifications> UserNotifications { get; protected set; } = null!;
 
@@ -29,13 +28,6 @@ public class NotificationDbContext(DbContextOptions<NotificationDbContext> optio
         var device = model.Entity<DbDevice>();
         device.Property(e => e.Id).UseCollation("C");
         device.Property(e => e.UserId).UseCollation("C");
-
-        var notification = model.Entity<DbNotification>();
-        notification.Property(e => e.Id).UseCollation("C");
-        notification.Property(e => e.UserId).UseCollation("C");
-        notification.Property(e => e.ChatId).UseCollation("C");
-        notification.Property(e => e.AuthorId).UseCollation("C");
-        notification.Property(e => e.SimilarityKey).UseCollation("C");
 
         var manualNotification = model.Entity<DbExplicitNotification>();
         manualNotification.Property(e => e.Id).UseCollation("C");

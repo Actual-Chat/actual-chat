@@ -43,7 +43,6 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<IDbInitializer, NotificationDbInitializer>();
         dbModule.AddDbContextServices<NotificationDbContext>(services,
             db => {
-                db.AddEntityResolver<string, DbNotification>();
                 db.AddEntityResolver<string, DbExplicitNotification>();
             });
 

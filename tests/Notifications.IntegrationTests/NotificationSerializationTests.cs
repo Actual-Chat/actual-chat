@@ -147,15 +147,6 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
         deserialized.Notification.Id.Should().Be(cmd.Notification.Id);
     }
 
-    [Fact]
-    public void NotificationsBackend_Upsert_Basic()
-    {
-        var notification = MessageNotification.New(TestUserId, TestChatId) with { Version = 1, Title = "Test" };
-        var cmd = new NotificationsBackend_Upsert(notification);
-        var deserialized = AssertMessagePackRoundtrip(cmd);
-        deserialized.Notification.Id.Should().Be(cmd.Notification.Id);
-    }
-
     private T AssertMessagePackRoundtrip<T>(T value)
     {
         var result = value.PassThroughMessagePackByteSerializer(Out);

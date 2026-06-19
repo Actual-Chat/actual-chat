@@ -27,8 +27,6 @@ public class NotificationsBackend(IServiceProvider services)
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
-    private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
-        = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
     private IDbEntityResolver<string, DbExplicitNotification> DbExplicitNotificationResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbExplicitNotification>>();
 
@@ -39,15 +37,6 @@ public class NotificationsBackend(IServiceProvider services)
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private ILogger? DebugLog => Log;
-
-    // [ComputeMethod]
-    public virtual async Task<Notification?> Get(
-        NotificationId notificationId,
-        CancellationToken cancellationToken)
-    {
-        var dbNotification = await DbNotificationResolver.Get(notificationId.Value, cancellationToken).ConfigureAwait(false);
-        return dbNotification?.ToModel();
-    }
 
     // [ComputeMethod]
     public virtual async Task<ExplicitNotification?> GetExplicit(ExplicitNotificationId notificationId, CancellationToken cancellationToken)
@@ -74,24 +63,6 @@ public class NotificationsBackend(IServiceProvider services)
             subscriberIds = await FilterByNotificationMode(subscriberIds, chatId, cancellationToken).ConfigureAwait(false);
             return subscriberIds;
         }
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
-        UserId userId, Moment minSentAt, CancellationToken cancellationToken)
-    {
-        await PseudoListRecentNotificationIds(userId).ConfigureAwait(false);
-
-        // Get notifications for last day
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        return (
-            from n in dbContext.Notifications
-            where n.UserId == userId.Value && n.SentAt >= minSentAt.ToDateTimeClamped()
-            orderby n.SentAt descending, n.Version descending, n.Id
-            select NotificationId.Parse(n.Id)
-            ).ToList();
     }
 
     // [ComputeMethod]
@@ -176,68 +147,6 @@ public class NotificationsBackend(IServiceProvider services)
         var notificationId = command.NotificationId;
         DebugLog?.LogInformation("-> OnHandle. NotificationId={NotificationId}", notificationId);
         await ApplyHardUpdate(notificationId.UserId, [], [notificationId], cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
-    public virtual async Task<bool> OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken)
-    {
-        var notification = command.Notification;
-        var sid = notification.Id.Value;
-        var userId = notification.UserId.Require();
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invIsCreate = context.Operation.Items.KeylessGet(false);
-            if (invIsCreate) // Created
-                _ = PseudoListRecentNotificationIds(userId);
-
-            // Created or Updated
-            _ = Get(notification.Id, default);
-            return default;
-        }
-
-        try {
-            var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-            await using var __ = dbContext.ConfigureAwait(false);
-
-            var dbNotification = await dbContext.Notifications.ForUpdate()
-                .FirstOrDefaultAsync(e => e.Id == sid, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (dbNotification == null) {
-                // Create
-                notification = notification with {
-                    Version = VersionGenerator.NextVersion(),
-                    CreatedAt = notification.CreatedAt == default
-                        ? notification.SentAt
-                        : notification.CreatedAt,
-                };
-                dbNotification = new DbNotification();
-                dbNotification.UpdateFrom(notification);
-                dbContext.Notifications.Add(dbNotification);
-                context.Operation.Items.KeylessSet(true);
-            }
-            else {
-                // Update
-                var throttleInterval = GetThrottleInterval(notification);
-                if (notification.SentAt.ToDateTime() - dbNotification.SentAt < throttleInterval)
-                    return false; // skip update and avoid sending notification if notification for the user has already been sent recently
-
-                notification = notification with {
-                    Version = VersionGenerator.NextVersion(notification.Version),
-                };
-                dbNotification.UpdateFrom(notification);
-                context.Operation.Items.KeylessSet(false);
-            }
-
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (DbUpdateConcurrencyException e) when(e.Entries.All(en => en.State == EntityState.Added)) {
-            // Notification has already been created for another message, let's skip
-            return false;
-        }
-
-        return true;
     }
 
     // [CommandHandler]
@@ -399,8 +308,8 @@ public class NotificationsBackend(IServiceProvider services)
             .Where(a => a.UserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
-        await dbContext.Notifications
-            .Where(a => a.UserId == userId.Value)
+        await dbContext.UserNotifications
+            .Where(a => a.Id == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -535,12 +444,6 @@ public class NotificationsBackend(IServiceProvider services)
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
-    // Protected methods
-
-    // [ComputeMethod]
-    public virtual Task<Unit> PseudoListRecentNotificationIds(UserId userId)
-        => ActualLab.Async.TaskExt.UnitTask;
-
     // Private methods
 
     private async Task SendChatMessageNotification(
@@ -661,16 +564,6 @@ public class NotificationsBackend(IServiceProvider services)
         }
     }
 
-
-    private static TimeSpan? GetThrottleInterval(Notification notification)
-    {
-        if (notification.Kind == NotificationKind.Message)
-            return Constants.Notification.ThrottleIntervals.Message;
-        if (notification.Kind == NotificationKind.Reaction)
-            return Constants.Notification.ThrottleIntervals.Message;
-
-        return null;
-    }
 
     private async Task<IReadOnlyList<Device>> ListDevices(
         UserId userId, Symbol sessionHash, Moment? minActiveAt, CancellationToken cancellationToken)

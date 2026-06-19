@@ -7,32 +7,6 @@ public class NotificationTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
-    public async Task ParallelInsertsWithSameIdAreSafe()
-    {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
-        var account = await tester.SignInAsBob();
-
-        var notification = MessageNotification.New(account.Id, Constants.Chat.DefaultChatId) with {
-            Title = "Notify",
-            Text = "Hello",
-        };
-
-        var tasks = new List<Task<bool>>();
-        for (int i = 0; i < 20; i++) {
-            var upsert = new NotificationsBackend_Upsert(notification);
-            // ReSharper disable once AccessToDisposedClosure
-            var task = Task.Run(() => tester.Commander.Call(upsert, true));
-            tasks.Add(task);
-        }
-
-        var results = await Task.WhenAll(tasks);
-        WriteLine(string.Join(", ", results));
-
-        results.Should().ContainSingle(r => r);
-    }
-
-    [Fact]
     public async Task ParallelNotificationsAreSafe()
     {
         var appHost = AppHost;
