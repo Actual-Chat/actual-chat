@@ -193,18 +193,21 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
 
     private async Task<Notification> GetNotification(AccountFull user, ChatEntryId entryId)
     {
-        Notification? notification = null!;
+        Notification notification = null!;
         await TestExt.When(async () => {
-            var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(user.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(1), CancellationToken.None);
-            ids.Should().NotBeEmpty();
-            var retrieved = await ids.Select(x => Tester.NotificationsBackend.Get(x, CancellationToken.None)).Collect();
-            var notifications = retrieved.SkipNullItems()
-                .OfType<ChatEntryRelatedNotification>()
-                .Where(x => x.EntryId == entryId)
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(user.Id, CancellationToken.None);
+            var notifications = info.Displayed
+                .Where(n => EntryIdOf(n) == entryId)
                 .ToList();
             notifications.Should().HaveCount(1);
             notification = notifications[0];
         }, TimeSpan.FromSeconds(10));
         return notification;
+
+        static ChatEntryId? EntryIdOf(Notification n) => n switch {
+            ChatEntryNotification e => e.EntryId,
+            ChatEntryRelatedNotification r => r.EntryId,
+            _ => null,
+        };
     }
 }
