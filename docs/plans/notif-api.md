@@ -1,6 +1,7 @@
 # Notifications redesign — `feat/notif-api`
 
-**Status:** in progress · **Branch:** `feat/notif-api` · **Started:** 2026-05-20
+**Status:** Phases 1–7 complete (client-side device reconciliation deferred) ·
+**Branch:** `feat/notif-api` · **Started:** 2026-05-20
 
 ## 1. Background
 
@@ -179,10 +180,27 @@ handler. Dismissals (clear-on-read) lower the count via a silent push.
   from the effective count (no latch) — reading clears it. There is no eager read-position
   trigger; reconciliation converges on the next `OnNotify`/`OnProcess`/`OnHandle` (and
   Phase 6's `ListActive`). Verified by `NotificationReadReconciliationTest`.
-- **Phase 6 — Client.** `ListActive` consumer, iOS badge simplification, silent
-  dismissal handling, client-side reconciliation.
-- **Phase 7 — Tests, cleanup, docs.** Replace `NotificationFlowTest`; retire the old
-  `DbNotification` write path; flesh out this doc.
+- **Phase 6 — Client.** ✅ Done (core). `INotifications.ListActive(Session)` projects
+  `GetUserNotificationInfo(...).Displayed` (no per-id `Get` loop; `MinCacheDuration = 30`
+  keeps it alive ≥ the throttle window — resolves open detail #2). `NotificationStack`
+  reads `ListActive` instead of `ListRecentNotificationIds` + `Get`. Badge has a single
+  source of truth: `AppIconBadgeUpdater` watches the `ListActive` count so the foreground
+  badge matches the server push `aps.badge`, and the iOS receive handler no longer overrides
+  the badge with the unread-chat count. Silent dismissal is handled on all three platforms:
+  the server carries the dropped notifications' **tags** (chatId) in the silent push
+  (`SendDismissal` + `DismissedTags`; iOS matches by `ThreadIdentifier`), and web /
+  Android / iOS drop the matching delivered notification by tag.
+  **Deferred:** client-side reconciliation that ensures every unread chat has a device
+  notification — it overlaps the server population re-check and is a larger surface.
+- **Phase 7 — Tests, cleanup, docs.** ✅ Done. `NotificationContentTest` and the
+  `WaitForChatEntryNotification` helper (used by `Retranscribe*NotifyFlowTest`) now read
+  `GetUserNotificationInfo().Displayed` (open detail #6). The legacy `DbNotification` path
+  is deleted — `Get` / `ListRecentNotificationIds` / `PseudoListRecentNotificationIds` /
+  `OnUpsert`, the `DbNotification` entity + `DbSet` + resolver registration, and the
+  `notifications` table (migration `DropNotificationsTable`); `OnRemoveAccount` now clears
+  the `user_notifications` blob. `_softBuffers` is now evicted on drain (open detail #4).
+  `OnUpsertExplicitNotification` / `GetExplicit` / `DbExplicitNotification` are kept (non-goal).
+  Verified: full `Notifications.IntegrationTests` suite green.
 
 Tests rely on the FCM test sink (Phase 3) — `IFirebaseMessagingClient` is replaced
 with a logging + callback sink in integration tests so sends are observable without
@@ -206,18 +224,18 @@ hitting Firebase.
 ## 6. Open details (resolved as we build)
 
 1. Cleanest shard-ownership-gain hook for the optional warm-up scan — v1 relies on
-   the next `Notify`/`ListActive` instead.
-2. Exact `[ComputeMethod]` retention knob keeping `GetUserNotificationInfo` alive
-   ≥ the throttle window.
-3. Web client consumers of `Get` / `ListRecentNotificationIds` — confirm before
-   retiring them in Phase 7.
-4. `_softBuffers` (the per-`UserId` soft-buffer map) is currently never evicted —
-   bounded by active users per shard. Add TTL-based eviction (or reuse the
-   `MemoryCache` pattern of `_recentChatsWithNotifications`) before Phase 7.
+   the next `Notify`/`ListActive` instead. **Still v1-deferred.**
+2. ✅ **Resolved.** `GetUserNotificationInfo` is kept alive ≥ the throttle window via the
+   client `ListActive` wrapper's `[ComputeMethod(MinCacheDuration = 30)]` (mirrors
+   `IUserPresences.Get`).
+3. ✅ **Resolved.** The only web consumer was `NotificationStack`, now migrated to
+   `ListActive`; the legacy `Get` / `ListRecentNotificationIds` were removed in Phase 7.
+4. ✅ **Resolved.** `_softBuffers` is evicted on drain (`DrainSoftBuffer` + `IsRemoved`
+   tombstone for the enqueue/drain race); the map is bounded to users with in-flight
+   soft updates.
 5. `UnsentDelta` is still unused: Phase 5 sends dismissal pushes eagerly inside
    `ApplyHardUpdate` (consistent with how new-notification pushes work). The field
    remains available for a future crash-recovery refinement (committed-but-unpushed).
-6. `NotificationContentTest` and similar tests still read via the legacy
-   `ListRecentNotificationIds` / `Get` (`DbNotification`), which `OnNotify` no
-   longer populates after Phase 2 — they must move to `GetUserNotificationInfo`
-   in Phase 7 (or sooner).
+   **Intentional, unchanged.**
+6. ✅ **Resolved.** `NotificationContentTest` and the `WaitForChatEntryNotification`
+   helper now read `GetUserNotificationInfo().Displayed`.
