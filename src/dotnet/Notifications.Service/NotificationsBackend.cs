@@ -668,12 +668,17 @@ public class NotificationsBackend(IServiceProvider services)
 
     private void EnqueueSoft(UserId userId, Notification notification, UserNotificationInfo info)
     {
-        var buffer = _softBuffers.GetOrAdd(userId, static _ => new SoftBuffer());
         bool mustSchedule;
-        lock (buffer.Lock) {
-            buffer.Pending.Add(notification);
-            mustSchedule = !buffer.IsProcessScheduled;
-            buffer.IsProcessScheduled = true;
+        while (true) {
+            var buffer = _softBuffers.GetOrAdd(userId, static _ => new SoftBuffer());
+            lock (buffer.Lock) {
+                if (buffer.IsRemoved)
+                    continue; // a concurrent drain evicted this instance -> get/create a fresh one
+                buffer.Pending.Add(notification);
+                mustSchedule = !buffer.IsProcessScheduled;
+                buffer.IsProcessScheduled = true;
+            }
+            break;
         }
         if (!mustSchedule)
             return;
@@ -701,11 +706,12 @@ public class NotificationsBackend(IServiceProvider services)
 
         lock (buffer.Lock) {
             buffer.IsProcessScheduled = false;
-            if (buffer.Pending.Count == 0)
-                return [];
-
             var batch = new List<Notification>(buffer.Pending);
             buffer.Pending.Clear();
+            // Evict the now-drained buffer so the map stays bounded by users with in-flight
+            // soft updates. IsRemoved makes a racing EnqueueSoft retry with a fresh instance.
+            buffer.IsRemoved = true;
+            _softBuffers.TryRemove(new KeyValuePair<UserId, SoftBuffer>(userId, buffer));
             return batch;
         }
     }
@@ -797,5 +803,6 @@ public class NotificationsBackend(IServiceProvider services)
         public readonly Lock Lock = new();
         public readonly List<Notification> Pending = [];
         public bool IsProcessScheduled;
+        public bool IsRemoved;
     }
 }
