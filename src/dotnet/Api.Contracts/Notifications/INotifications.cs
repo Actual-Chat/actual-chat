@@ -10,6 +10,8 @@ public interface INotifications : IComputeService
     [ComputeMethod(MinCacheDuration = 10)]
     Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
         Session session, Moment minSentAt, CancellationToken cancellationToken);
+    [ComputeMethod(MinCacheDuration = 30)]
+    Task<ApiArray<Notification>> ListActive(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
     Task<bool> HasNotifiedMentionedMembers(
         Session session, ChatEntryId chatEntryId, CancellationToken cancellationToken);

@@ -34,15 +34,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var minSentAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
-        var notificationIds = await Notifications.ListRecentNotificationIds(Session, minSentAt, cancellationToken).ConfigureAwait(false);
-        var notifications = new List<Notification>();
-        foreach (var notificationId in notificationIds) {
-            var notification = await Notifications.Get(Session, notificationId, cancellationToken).ConfigureAwait(false);
-            if (notification != null)
-                notifications.Add(notification);
-        }
-
+        var notifications = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
         return new () {
             Notifications = notifications.ToList(),
         };

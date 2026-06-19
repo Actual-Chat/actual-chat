@@ -36,6 +36,14 @@ public class NotificationsService(IServiceProvider services) : INotifications
     }
 
     // [ComputeMethod]
+    public virtual async Task<ApiArray<Notification>> ListActive(Session session, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var info = await Backend.GetUserNotificationInfo(account.Id, cancellationToken).ConfigureAwait(false);
+        return info.Displayed;
+    }
+
+    // [ComputeMethod]
     public virtual async Task<bool> HasNotifiedMentionedMembers(
         Session session,
         ChatEntryId chatEntryId,
