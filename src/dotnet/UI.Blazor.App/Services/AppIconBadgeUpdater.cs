@@ -20,22 +20,23 @@ public class AppIconBadgeUpdater(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
         if (badge is null)
             return;
 
-        var lastUnreadCount = -1;
-        var chatListUI = Hub.ChatListUI;
-        var cUnreadCount0 = await Computed
-            .Capture(() => chatListUI.UnreadChatCount.Use(cancellationToken), cancellationToken)
+        var lastCount = -1;
+        var notifications = Hub.Notifications;
+        var session = Hub.Session;
+        var cActive0 = await Computed
+            .Capture(() => notifications.ListActive(session, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        var changes = cUnreadCount0.Changes(cancellationToken);
-        await foreach (var cUnreadCount in changes.ConfigureAwait(false)) {
-            if (cUnreadCount.HasError)
+        var changes = cActive0.Changes(cancellationToken);
+        await foreach (var cActive in changes.ConfigureAwait(false)) {
+            if (cActive.HasError)
                 continue;
 
-            var unreadCount = cUnreadCount.Value.Value;
-            if (unreadCount == lastUnreadCount)
+            var count = cActive.Value.Count;
+            if (count == lastCount)
                 continue;
 
-            badge.SetUnreadChatCount(unreadCount);
-            lastUnreadCount = unreadCount;
+            badge.SetUnreadChatCount(count);
+            lastCount = count;
         }
     }
 }

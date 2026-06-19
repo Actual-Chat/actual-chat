@@ -76,10 +76,7 @@ public class IosPushNotifications : UIServiceBase<AppUIHub>, IDeviceTokenRetriev
         }, Log, "Notifications permission request failed", cancellationToken);
 
     private void OnNotificationReceived(object? sender, FCMNotificationReceivedEventArgs e)
-        => _ = DispatchToBlazor(_ => {
-            var unreadChatCount = Hub.ChatListUI.UnreadChatCount.Value.Value;
-            UNUserNotificationCenter.Current.SetBadgeCount(unreadChatCount, null);
-        }, "PushNotifications.OnNotificationReceived()");
+    { }
 
     private static void OnNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)
     {
