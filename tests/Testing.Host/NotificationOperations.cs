@@ -10,17 +10,10 @@ public static class NotificationOperations
         ChatEntryId entryId,
         TimeSpan? timeout = null)
     {
-        var clocks = tester.AppServices.Clocks();
         ChatEntryRelatedNotification notification = null!;
         await TestExt.When(async () => {
-            var ids = await tester.NotificationsBackend.ListRecentNotificationIds(
-                userId, clocks.SystemClock.Now - TimeSpan.FromMinutes(1), CancellationToken.None);
-            ids.Should().NotBeEmpty();
-            var retrieved = await ids
-                .Select(x => tester.NotificationsBackend.Get(x, CancellationToken.None))
-                .Collect();
-            var notifications = retrieved
-                .SkipNullItems()
+            var info = await tester.NotificationsBackend.GetUserNotificationInfo(userId, CancellationToken.None);
+            var notifications = info.Displayed
                 .OfType<ChatEntryRelatedNotification>()
                 .Where(x => x.EntryId == entryId)
                 .ToList();
