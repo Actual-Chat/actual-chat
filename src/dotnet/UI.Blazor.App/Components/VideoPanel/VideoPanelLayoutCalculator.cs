@@ -16,6 +16,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private readonly MutableState<VideoPanelLayout> _layout;
     private readonly MutableState<ImmutableArray<AuthorId>> _focusedSpeakerIds;
+    private readonly MutableState<AuthorId?> _pinnedAuthorId;
     private readonly Lock _trackFocusLock = new Lock();
     private CancellationTokenSource? _focusDebounceCts;
     private AuthorId? _pendingFocusCandidate;
@@ -28,6 +29,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     {
         _layout = hub.StateFactory.NewMutable(VideoPanelLayout.New);
         _focusedSpeakerIds = StateFactory.NewMutable(ImmutableArray<AuthorId>.Empty);
+        _pinnedAuthorId = StateFactory.NewMutable((AuthorId?)null);
     }
 
     void INotifyInitialized.Initialized()
@@ -42,6 +44,12 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
     public Task<VideoPanelLayout> GetLayout(CancellationToken cancellationToken)
         => _layout.Use(cancellationToken);
+
+    public Task<AuthorId?> GetPinnedAuthor(CancellationToken cancellationToken)
+        => _pinnedAuthorId.Use(cancellationToken);
+
+    public void SetPinnedAuthor(AuthorId? authorId)
+        => _pinnedAuthorId.Value = authorId;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -98,6 +106,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     protected virtual async Task<LayoutInputs> GetLayoutInputs(CancellationToken cancellationToken)
     {
         var focusedIds = await _focusedSpeakerIds.Use(cancellationToken).ConfigureAwait(false);
+        var pinnedAuthorId = await _pinnedAuthorId.Use(cancellationToken).ConfigureAwait(false);
         var isOwnRecording = await ChatVideoUI.IsOwnCameraRecording(ChatId, cancellationToken).ConfigureAwait(false);
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(ChatId, cancellationToken).ConfigureAwait(false);
         var screenSize = await Hub.BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
@@ -105,7 +114,8 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             screenSize.IsNarrow(),
             isOwnRecording,
             remoteStreams,
-            focusedIds);
+            focusedIds,
+            pinnedAuthorId);
     }
 
     // Private methods
@@ -159,6 +169,14 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             // instead of NRE-ing on the deconstruct below.
             if (error is not null)
                 continue;
+
+            // Auto-unpin: a manually pinned author who's no longer streaming releases
+            // the pin and restores active-speaker auto-focus. Clearing the state re-emits
+            // a clean layout; BuildLayout below already ignores the stale pin (the author
+            // isn't in RemoteStreams), so this doesn't flicker.
+            if (inputs.PinnedAuthorId is { } pinned
+                && inputs.RemoteStreams.All(s => s.AuthorId != pinned))
+                _pinnedAuthorId.Value = null;
 
             var layout = BuildLayout(inputs);
             if (layout != _layout.Value)
@@ -300,17 +318,27 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
     private static VideoPanelLayout BuildLayout(LayoutInputs inputs)
     {
-        var (isNarrow, hasOwnCamera, remoteStreams, focusedIds) = inputs;
+        var (isNarrow, hasOwnCamera, remoteStreams, focusedIds, pinnedAuthorId) = inputs;
         var hasRemote = remoteStreams.Length > 0;
+
+        // Manual pin: a pinned author takes (and holds) the focused slot in place of
+        // the active-speaker focus history — we just move it to the front of the focus
+        // order. An active remote screencast still wins the focused slot (handled
+        // below), so the pin is effectively suspended while someone is screencasting
+        // and resumes afterwards. Only honored while the author still has a stream —
+        // otherwise it's treated as cleared (CalculateLayout resets the state).
+        var effectiveFocusedIds = pinnedAuthorId is { } pinned && remoteStreams.Any(s => s.AuthorId == pinned)
+            ? focusedIds.Remove(pinned).Insert(0, pinned)
+            : focusedIds;
 
         // Build ordered display list from focus history + active streams
         var maxSlots = isNarrow ? MaxDisplaySlotsNarrow : MaxDisplaySlotsWide;
-        var displayList = BuildDisplayList(remoteStreams, focusedIds, maxSlots);
+        var displayList = BuildDisplayList(remoteStreams, effectiveFocusedIds, maxSlots);
         // Only remote screencasts can be primary on this client. Own screencast
         // is intentionally not shown on the local user's screen at all — they
         // already see what they're sharing through the OS-level share UI, and
         // surfacing it here would push remote speakers out of the focused slot.
-        var primaryScreenCast = SelectPrimaryRemoteScreenCast(displayList, focusedIds);
+        var primaryScreenCast = SelectPrimaryRemoteScreenCast(displayList, effectiveFocusedIds);
         var hasScreenCastPrimary = primaryScreenCast is not null;
 
         var ownCameraClass = !hasOwnCamera ? ""
@@ -401,9 +429,10 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         bool IsNarrowScreen,
         bool HasOwnCameraPreview,
         VideoStreamInfo[] RemoteStreams,
-        ImmutableArray<AuthorId> FocusedSpeakerIds)
+        ImmutableArray<AuthorId> FocusedSpeakerIds,
+        AuthorId? PinnedAuthorId)
     {
-        public static readonly LayoutInputs None = new(true, false, [], []);
+        public static readonly LayoutInputs None = new(true, false, [], [], default);
     }
 
     private sealed record RemoteScreenCastPrimary(AuthorStreamGroup Group);
