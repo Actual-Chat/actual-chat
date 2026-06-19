@@ -247,15 +247,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-9
 		docs\index.md = docs\index.md
 		docs\Run-Docs.cmd = docs\Run-Docs.cmd
 		docs\running-voxt.md = docs\running-voxt.md
-		docs\av-sync.md = docs\av-sync.md
 		docs\sanitizer.md = docs\sanitizer.md
 		docs\native-aot.md = docs\native-aot.md
 		docs\safe-areas.md = docs\safe-areas.md
-		docs\audio-pipeline.md = docs\audio-pipeline.md
-		docs\video-pipeline.md = docs\video-pipeline.md
-		docs\audio-pipeline-now.md = docs\audio-pipeline-now.md
-		docs\video-pipeline-now.md = docs\video-pipeline-now.md
-		docs\video-pipeline-wip.md = docs\video-pipeline-wip.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"
