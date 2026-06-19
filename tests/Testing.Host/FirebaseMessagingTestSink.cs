@@ -39,14 +39,14 @@ public sealed class FirebaseMessagingTestSink(ILogger<FirebaseMessagingTestSink>
     }
 
     public Task SendDismissal(
-        IReadOnlyCollection<NotificationId> dismissedIds,
+        IReadOnlyCollection<Notification> dismissedNotifications,
         IReadOnlyCollection<Symbol> deviceIds,
         int badgeCount,
         CancellationToken cancellationToken)
     {
         log.LogInformation("SendDismissal: {Count} id(s) -> {DeviceCount} device(s), badge={Badge}",
-            dismissedIds.Count, deviceIds.Count, badgeCount);
-        Add(new FirebaseSentMessage(null, [..dismissedIds], [..deviceIds], badgeCount));
+            dismissedNotifications.Count, deviceIds.Count, badgeCount);
+        Add(new FirebaseSentMessage(null, [..dismissedNotifications.Select(n => n.Id)], [..deviceIds], badgeCount));
         return Task.CompletedTask;
     }
 

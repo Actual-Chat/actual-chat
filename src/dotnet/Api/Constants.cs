@@ -263,9 +263,10 @@ public static partial class Constants
             public const string ImageUrl = "imageUrl";
             public const string Timestamp = "timestamp";
             public const string DismissedIds = "dismissedIds";
+            public const string DismissedTags = "dismissedTags";
 
             public static readonly string[] ValidKeys = {
-                Body, ChatId, ChatEntryId, DismissedIds, LastEntryLocalId, Icon, ImageUrl, Kind, Link, NotificationId, Tag, Title, Timestamp
+                Body, ChatId, ChatEntryId, DismissedIds, DismissedTags, LastEntryLocalId, Icon, ImageUrl, Kind, Link, NotificationId, Tag, Title, Timestamp
             };
 
             public static bool IsValidKey(string key)

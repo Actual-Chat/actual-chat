@@ -48,11 +48,7 @@ public class FirebaseMessagingClient(
 
         var isChatRelated = chatId is not null;
         var isEntryRelated = entryId is not null;
-        var tag = isEntryRelated
-            ? entryId!.ChatId.Value
-            : isChatRelated
-                ? chatId!.Value
-                : "topic";
+        var tag = GetTag(notification);
         var link = isEntryRelated ? UrlMapper.ToAbsolute(Links.Chat(entryId))
             : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId!))
             : "";
@@ -133,7 +129,7 @@ public class FirebaseMessagingClient(
     }
 
     public async Task SendDismissal(
-        IReadOnlyCollection<NotificationId> dismissedIds,
+        IReadOnlyCollection<Notification> dismissedNotifications,
         IReadOnlyCollection<Symbol> deviceIds,
         int badgeCount,
         CancellationToken cancellationToken)
@@ -141,8 +137,11 @@ public class FirebaseMessagingClient(
         if (deviceIds.Count == 0)
             return;
 
+        var dismissedIds = dismissedNotifications.Select(n => n.Id.Value);
+        var dismissedTags = dismissedNotifications.Select(GetTag).Distinct();
         var data = new Dictionary<string, string>() {
-            { Constants.Notification.MessageDataKeys.DismissedIds, string.Join(',', dismissedIds.Select(id => id.Value)) },
+            { Constants.Notification.MessageDataKeys.DismissedIds, string.Join(',', dismissedIds) },
+            { Constants.Notification.MessageDataKeys.DismissedTags, string.Join(',', dismissedTags) },
         };
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
@@ -169,6 +168,11 @@ public class FirebaseMessagingClient(
             .ConfigureAwait(false);
         await HandleBatchResponse(batchResponse, deviceIds, cancellationToken).ConfigureAwait(false);
     }
+
+    private static string GetTag(Notification notification)
+        => notification is ChatNotification chatNotification
+            ? chatNotification.ChatId.Value
+            : "topic";
 
     private async Task HandleBatchResponse(
         BatchResponse batchResponse,
