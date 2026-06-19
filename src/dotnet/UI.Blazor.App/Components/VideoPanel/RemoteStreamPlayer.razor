@@ -5,7 +5,8 @@
     var m = State.Value;
 }
 
-<VideoTrackPlayer StreamInfo="@StreamInfo" AuthorName="@m.AuthorName" FocusedClass="@Class" />
+<VideoTrackPlayer StreamInfo="@StreamInfo" AuthorName="@m.AuthorName" FocusedClass="@Class"
+                  OnClick="@(() => OnTileClick.InvokeAsync(StreamInfo.AuthorId))" />
 
 @code {
     private IAuthors Authors => Hub.Authors;
@@ -13,6 +14,7 @@
     [Parameter, EditorRequired]
     public VideoStreamInfo StreamInfo { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback<AuthorId> OnTileClick { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

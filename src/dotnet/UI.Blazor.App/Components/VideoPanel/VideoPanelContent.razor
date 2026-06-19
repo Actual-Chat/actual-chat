@@ -122,6 +122,20 @@
             </div>
         </div>
 
+        @* Pin toggle: fixes the focused (big) tile on a chosen author instead of
+           auto-following the active speaker. Absolutely positioned under the
+           expand button; only in the default (non-equal) layout and when there's
+           a remote tile to focus. *@
+        @if (m is { IsEqualLayout: false, IsCollapsed: false, IsHidden: false } && hasRemoteStreams) {
+            <HeaderButton
+                Class="@("btn-video-panel btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnTogglePinClick">
+                <i class="icon-pin text-lg"></i>
+            </HeaderButton>
+        }
+
         @* Footer for mobile full-screen video *@
         <div class="video-panel-toolbar video-panel-footer">
             @if (isMobileOrNarrow) {
@@ -193,7 +207,8 @@
                 }
                 if (m.SpeakingAuthorIds is { } speaking && speaking.Contains(streamInfo.AuthorId))
                     remoteStreamCls += " speaking";
-                <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" Class="@remoteStreamCls" />
+                <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" Class="@remoteStreamCls"
+                                    OnTileClick="@OnTilePinClick" />
                 var pipStream = layout.GetPipStreamFor(streamInfo.StreamId);
                 if (pipStream is not null) {
                     <RemoteStreamPlayer
@@ -209,7 +224,7 @@
                the only stream in the panel: without this tile the sharing
                user sees nothing at all. *@
             @if (isOwnCameraStreaming) {
-                var ownSpeakingCls = m.SpeakingAuthorIds is { } ownSpeaking && ownSpeaking.Contains(m.OwnAuthorId) ? " speaking" : "";
+                var ownSpeakingCls = m.SpeakingAuthorIds is { } ownSpeaking && m.OwnAuthorId is { } ownAuthorId && ownSpeaking.Contains(ownAuthorId) ? " speaking" : "";
                 <VideoStreamingPreview
                     @key="@("own-camera-" + Chat.Id.Value)"
                     SourceKind="@VideoSourceKind.Camera"
@@ -467,14 +482,18 @@
         // points at own).
         var speakingAuthorIds = await Hub.LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var ownAuthorId = ownAuthor?.Id ?? default;
+        var ownAuthorId = ownAuthor?.Id;
         // Equal layout has no focused tile, so the header name tracks the current speaker
         // and — unlike focus — may be the local user. Show "You" when we're the sole speaker;
         // if a remote is also talking the focused remote name stays.
-        if (isEqualLayout && isExpanded && ownAuthorId != default
-            && speakingAuthorIds.Contains(ownAuthorId)
-            && !speakingAuthorIds.Any(a => a != ownAuthorId))
+        if (isEqualLayout && isExpanded && ownAuthorId is { } ownId
+            && speakingAuthorIds.Contains(ownId)
+            && !speakingAuthorIds.Any(a => a != ownId))
             focusedName = "You";
+
+        var pinnedAuthorId = await _layoutCalculator.GetPinnedAuthor(cancellationToken).ConfigureAwait(false);
+        // Author shown in the big tile right now — what the pin button pins when toggled on.
+        var focusedAuthorId = GetFocusedRemoteAuthorId(layout, remoteStreams);
 
 #if false
         Log.LogWarning("[VideoPanelContent] ComputeState: remoteStreams=[{Streams}], isOwnRecording={IsOwnRecording}, isOwnScreenCasting={IsOwnScreenCasting}",
@@ -499,7 +518,17 @@
             IsChatVisible: isChatVisible,
             SelectedCameraDeviceId: selectedCameraDeviceId,
             SpeakingAuthorIds: speakingAuthorIds,
-            OwnAuthorId: ownAuthorId);
+            OwnAuthorId: ownAuthorId,
+            IsPinned: pinnedAuthorId is not null,
+            FocusedAuthorId: focusedAuthorId);
+    }
+
+    private static AuthorId? GetFocusedRemoteAuthorId(VideoPanelLayout layout, VideoStreamInfo[] remoteStreams) {
+        var focused = layout.RemoteStreamPlayerClasses.FirstOrDefault(c => c.Class.Contains("item-focused"));
+        if (focused is null)
+            return null;
+        var stream = remoteStreams.FirstOrDefault(s => s.StreamId.Value == focused.StreamId);
+        return stream?.AuthorId;
     }
 
     private async Task<string?> GetFocusedParticipantName(
@@ -532,6 +561,23 @@
         _ = ChatAudioUI.SetListeningState(Chat.Id, false);
         ChatVideoUI.StopStreaming();
         ChatVideoUI.CloseVideoPanel();
+    }
+
+    private void OnTilePinClick(AuthorId authorId) {
+        // Pin is a default-layout concept; equal has no focused tile.
+        if (State.Value.IsEqualLayout)
+            return;
+        _layoutCalculator?.SetPinnedAuthor(authorId);
+    }
+
+    private void OnTogglePinClick() {
+        if (_layoutCalculator is null)
+            return;
+        var m = State.Value;
+        if (m.IsPinned)
+            _layoutCalculator.SetPinnedAuthor(null);
+        else if (m.FocusedAuthorId is { } focused)
+            _layoutCalculator.SetPinnedAuthor(focused);
     }
 
     private void OnToggleRecordingClick(bool enable)
@@ -629,7 +675,9 @@
         bool? IsChatVisible = null,
         string? SelectedCameraDeviceId = null,
         AuthorId[]? SpeakingAuthorIds = null,
-        AuthorId OwnAuthorId = default
+        AuthorId? OwnAuthorId = null,
+        bool IsPinned = false,
+        AuthorId? FocusedAuthorId = null
     ) {
         public static readonly Model Loading = new(null, VideoPanelLayout.New, [], false, false, false, 0, false);
     }

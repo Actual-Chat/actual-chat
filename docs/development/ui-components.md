@@ -99,7 +99,7 @@ Standard components inside (buttons, separators, tiles, inputs) do NOT need extr
 .amazing-panel .btn.amazing-panel-btn { }
 ```
 
-When adding a custom class to a button, use the `btn-` prefix followed by the purpose: `btn-rec`, `btn-save`, `btn-confirm`. Do not put `btn` at the end (`rec-btn`, `save-form-btn`).
+Button classes must **start** with `btn-`, followed by the purpose: `btn-primary`, `btn-save`, `btn-confirm`, `btn-rec`, `btn-pin-toggle`. Never put `btn` at the end (`rec-btn`, `save-form-btn`, `pin-toggle-btn`).
 
 ### Toggle State
 

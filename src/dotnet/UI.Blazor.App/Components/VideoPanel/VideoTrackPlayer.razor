@@ -24,7 +24,8 @@
         _                                                   => "",
     };
 }
-<div class="video-track-player remote-video-container has-source-aspect @FocusedClass @sourceKindCls" style="@aspectRatioStyle">
+<div class="video-track-player remote-video-container has-source-aspect @FocusedClass @sourceKindCls" style="@aspectRatioStyle"
+     @onclick="@OnClick" @onclick:stopPropagation="true">
     @* Low-res intrinsic resolution: WebGPU renders to a 64×64 swap chain
        and CSS `object-cover` upscales to fill the focused tile. The heavy
        bilinear upscale on top of the Kawase blur produces a soft backdrop. *@
@@ -75,6 +76,9 @@
 
     [Parameter]
     public string FocusedClass { get; set; } = "";
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
 
     public Task WhenCompleted => _whenCompletedSource.Task;
 
