@@ -69,6 +69,13 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
         var data = new NotificationData(message.MessageId ?? "", dataRaw);
 
+        if (data.DismissedTags.Count > 0) {
+            var notificationManager = NotificationManagerCompat.From(this)!;
+            foreach (var tag in data.DismissedTags)
+                notificationManager.Cancel(tag, 0);
+            return;
+        }
+
         if (data.NotificationKind == NotificationKind.Attention
             && ShowGetAttentionNotification(data, message.SentTime))
             return;

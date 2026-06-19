@@ -52,4 +52,8 @@ public class NotificationData(string messageId, Dictionary<string, string> data)
 
     public string? Tag
         => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Tag, "").NullIfEmpty();
+
+    public IReadOnlyList<string> DismissedTags
+        => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.DismissedTags, "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }

@@ -10,7 +10,7 @@ public interface IFirebaseMessagingClient
         CancellationToken cancellationToken);
 
     Task SendDismissal(
-        IReadOnlyCollection<NotificationId> dismissedIds,
+        IReadOnlyCollection<Notification> dismissedNotifications,
         IReadOnlyCollection<Symbol> deviceIds,
         int badgeCount,
         CancellationToken cancellationToken);

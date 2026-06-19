@@ -587,16 +587,16 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     private async Task SendDismissal(
-        UserId userId, IReadOnlyCollection<NotificationId> dismissedIds, int badgeCount, CancellationToken cancellationToken)
+        UserId userId, IReadOnlyCollection<Notification> dismissed, int badgeCount, CancellationToken cancellationToken)
     {
         var devices = await ListDevices(userId, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0)
             return;
 
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
-        DebugLog?.LogInformation("-> SendDismissal. UserId={UserId}, NotificationIds#={Count}, DeviceIds#={DeviceIdCount}",
-            userId, dismissedIds.Count, deviceIds.Count);
-        await FirebaseMessagingClient.SendDismissal(dismissedIds, deviceIds, badgeCount, cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogInformation("-> SendDismissal. UserId={UserId}, Notifications#={Count}, DeviceIds#={DeviceIdCount}",
+            userId, dismissed.Count, deviceIds.Count);
+        await FirebaseMessagingClient.SendDismissal(dismissed, deviceIds, badgeCount, cancellationToken).ConfigureAwait(false);
     }
 
     // A chat notification is read once the user's Read position has advanced past its entry.
@@ -834,9 +834,9 @@ public class NotificationsBackend(IServiceProvider services)
             .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
 
-        var (info, dismissedIds) = await Reconcile(
+        var (info, dismissed) = await Reconcile(
             dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId)).ConfigureAwait(false);
-        if (notifications.Count == 0 && dismissedIds.Count == 0)
+        if (notifications.Count == 0 && dismissed.Count == 0)
             return; // Nothing changed (e.g. OnHandle for an already-dismissed notification)
 
         if (dbUserNotifications != null)
@@ -857,7 +857,7 @@ public class NotificationsBackend(IServiceProvider services)
             dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
                 .FirstAsync(x => x.Id == userId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            (info, dismissedIds) = await Reconcile(dbUserNotifications.ToModel()).ConfigureAwait(false);
+            (info, dismissed) = await Reconcile(dbUserNotifications.ToModel()).ConfigureAwait(false);
             dbUserNotifications.UpdateFrom(info);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -871,20 +871,20 @@ public class NotificationsBackend(IServiceProvider services)
         var toPush = notifications.LastOrDefault(n => info.Displayed.Any(d => d.Id == n.Id));
         if (toPush != null)
             await Send(userId, toPush, info.Displayed.Count, cancellationToken).ConfigureAwait(false);
-        if (dismissedIds.Count > 0)
-            await SendDismissal(userId, dismissedIds, info.Displayed.Count, cancellationToken).ConfigureAwait(false);
+        if (dismissed.Count > 0)
+            await SendDismissal(userId, dismissed, info.Displayed.Count, cancellationToken).ConfigureAwait(false);
         return;
 
-        async Task<(UserNotificationInfo Info, IReadOnlyList<NotificationId> DismissedIds)> Reconcile(UserNotificationInfo committed)
+        async Task<(UserNotificationInfo Info, IReadOnlyList<Notification> Dismissed)> Reconcile(UserNotificationInfo committed)
         {
             var current = committed;
-            var dismissed = new List<NotificationId>();
+            var dismissed = new List<Notification>();
             foreach (var existing in committed.Displayed) {
                 var isGone = handledIds.Contains(existing.Id)
                     || await IsRead(userId, existing, cancellationToken).ConfigureAwait(false);
                 if (isGone) {
                     current = current with { Displayed = current.Displayed.Without(x => x.Id == existing.Id) };
-                    dismissed.Add(existing.Id);
+                    dismissed.Add(existing);
                 }
             }
             foreach (var notification in notifications)
