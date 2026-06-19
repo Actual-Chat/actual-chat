@@ -457,7 +457,8 @@ body.hoverable .btn-video-panel.btn-h:hover {
     @apply absolute z-[1000] top-14 left-2;
 }
 .video-panel.expanded .btn-pin-toggle {
-    @apply top-17 left-4;
+    top: calc(3.75rem + var(--safe-area-top));
+    left: calc(1rem + var(--safe-area-left));
 }
 .btn-video-panel.btn-h.talking {
     @apply bg-[var(--magenta-30-50)];
