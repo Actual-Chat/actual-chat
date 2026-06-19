@@ -17,25 +17,6 @@ public class NotificationsService(IServiceProvider services) : INotifications
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
-    public virtual async Task<Notification?> Get(
-        Session session, NotificationId notificationId, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (notificationId.UserId != account.Id)
-            throw Unauthorized();
-
-        return await Backend.Get(notificationId, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
-        Session session, Moment minSentAt, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return await Backend.ListRecentNotificationIds(account.Id, minSentAt, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
     public virtual async Task<ApiArray<Notification>> ListActive(Session session, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);

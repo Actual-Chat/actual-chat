@@ -8,16 +8,11 @@ namespace ActualChat.Notifications;
 public interface INotificationsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<Notification?> Get(NotificationId notificationId, CancellationToken cancellationToken);
-    [ComputeMethod]
     Task<ExplicitNotification?> GetExplicit(ExplicitNotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
-        UserId userId, Moment minSentAt, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserNotificationInfo> GetUserNotificationInfo(UserId userId, CancellationToken cancellationToken);
 
@@ -29,8 +24,6 @@ public interface INotificationsBackend : IComputeService, IBackendService
     Task OnProcess(NotificationsBackend_Process command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnHandle(NotificationsBackend_Handle command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task<bool> OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnUpsertExplicitNotification(
         NotificationsBackend_UpsertExplicitNotification command,
@@ -91,19 +84,6 @@ public sealed partial record NotificationsBackend_Handle(
 {
     [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => NotificationId.UserId;
-}
-
-/// <summary>
-/// Command to create or update a notification record.
-/// </summary>
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record NotificationsBackend_Upsert(
-    [property: DataMember, Key(0)] Notification Notification
-) : ICommand<bool>, IBackendCommand, IHasShardKey<UserId>
-{
-    [IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => Notification.UserId;
 }
 
 /// <summary>
