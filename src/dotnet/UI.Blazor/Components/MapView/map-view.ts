@@ -49,10 +49,8 @@ export class MapView {
                 continue;
             }
 
-            const marker = new maplibregl.Marker({ color: m.color ?? '#2563eb' })
+            const marker = new maplibregl.Marker({ element: MapView.createMarkerElement(m) })
                 .setLngLat([m.longitude, m.latitude]);
-            if (m.label != null)
-                marker.setPopup(new maplibregl.Popup().setText(m.label));
             marker.addTo(this.map);
             this.markers.set(m.id, marker);
         }
@@ -69,5 +67,25 @@ export class MapView {
         this.resizeObserver.disconnect();
         this.markers.clear();
         this.map.remove();
+    }
+
+    // Private methods
+
+    // A colored pin with an always-visible name label below it (the default MapLibre
+    // marker only shows the name in a click-to-open popup).
+    private static createMarkerElement(m: MapMarker): HTMLElement {
+        const el = document.createElement('div');
+        el.className = 'map-marker';
+        const pin = document.createElement('div');
+        pin.className = 'c-pin';
+        pin.style.backgroundColor = m.color ?? '#2563eb';
+        el.appendChild(pin);
+        if (m.label != null && m.label !== '') {
+            const label = document.createElement('div');
+            label.className = 'c-label';
+            label.textContent = m.label;
+            el.appendChild(label);
+        }
+        return el;
     }
 }
