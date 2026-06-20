@@ -15,11 +15,13 @@
             https://*.boringavatars.com/
             https://i.ytimg.com
             https://static.klipy.com
+            https://tiles.openfreemap.org
             content: blob: data:;
         media-src 'self' https://voxt.ai https://*.voxt.ai content: blob: data:;
         style-src 'self' 'unsafe-inline';
         frame-src https://www.youtube.com/;
         object-src 'none';
+        worker-src 'self' blob:;
         script-src 'self'
             'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
             'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg='
@@ -34,6 +36,7 @@
             wss://*.voxt.ai
             https://*.dicebear.com
             https://*.ingest.sentry.io
+            https://tiles.openfreemap.org
             https://firebaseinstallations.googleapis.com
             https://fcmregistrations.googleapis.com
             https://firebase.googleapis.com

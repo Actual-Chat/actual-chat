@@ -79,7 +79,15 @@ describe('live location sharing', () => {
         expect((await banner.innerText()).toLowerCase()).toContain('sharing your location');
         await page.screenshot({ path: shot('loc-banner') });
 
-        // act — open the map modal from the banner
+        // act — open the map modal from the banner (arm the tile listener BEFORE the click,
+        // so we don't miss the tile requests fired during map init)
+        // Match an ACTUAL tile/glyph fetch (not just the style JSON): proves the map has a
+        // real viewport and is painting — guards against the CSP block AND the 0-size-in-modal
+        // bug where the style loads but no tiles are ever requested.
+        const tileLoaded = page.waitForResponse(
+            r => /tiles\.openfreemap\.org\/(planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url())
+                && r.ok(),
+            { timeout: 20_000 });
         await banner.locator('.c-body').first().click();
         const mapModal = page.locator('.live-location-map-modal').first();
         await mapModal.waitFor({ state: 'visible', timeout: 10_000 });
@@ -87,6 +95,12 @@ describe('live location sharing', () => {
         // assert — a MapLibre marker renders for the share
         const marker = mapModal.locator('.maplibregl-marker').first();
         await marker.waitFor({ state: 'visible', timeout: 15_000 });
+
+        // assert — real OpenFreeMap tiles load (not blank: CSP allows the host AND the map
+        // got a non-zero viewport)
+        const tileResp = await tileLoaded;
+        expect(tileResp.ok()).toBe(true);
+        await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
         await page.screenshot({ path: shot('loc-map') });
 
         // act — move the position; the marker should track it (still exactly one)

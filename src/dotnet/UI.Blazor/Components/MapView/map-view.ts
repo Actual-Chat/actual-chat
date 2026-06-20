@@ -19,6 +19,7 @@ interface MapViewOptions {
 export class MapView {
     private readonly map: MlMap;
     private readonly markers = new Map<string, MlMarker>();
+    private readonly resizeObserver: ResizeObserver;
 
     public static create(element: HTMLElement, options: MapViewOptions): MapView {
         return new MapView(element, options);
@@ -31,6 +32,11 @@ export class MapView {
             center: [options.centerLongitude, options.centerLatitude],
             zoom: options.zoom,
         });
+        // The map is often created while its container is still 0-sized (e.g. inside a
+        // modal that's mid-open-animation); MapLibre then loads no tiles and stays blank.
+        // Re-measure whenever the container resizes so tiles load once it has real size.
+        this.resizeObserver = new ResizeObserver(() => this.map.resize());
+        this.resizeObserver.observe(element);
     }
 
     public setMarkers(markers: MapMarker[]): void {
@@ -60,6 +66,7 @@ export class MapView {
     }
 
     public dispose(): void {
+        this.resizeObserver.disconnect();
         this.markers.clear();
         this.map.remove();
     }
