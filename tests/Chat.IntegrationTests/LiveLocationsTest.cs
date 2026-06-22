@@ -1,4 +1,7 @@
+using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
+using Microsoft.EntityFrameworkCore;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -97,5 +100,44 @@ public class LiveLocationsTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // act & assert - Bob is not a member, so sharing is rejected
         await Assert.ThrowsAnyAsync<Exception>(() => Bob.Commander.Call(
             new LiveLocations_Start(bobSession, chatId, new GeoPoint(1, 2), TimeSpan.FromHours(1))));
+    }
+
+    [Fact]
+    public async Task CleanupRemovesExpiredShares()
+    {
+        // arrange - a share that expires almost immediately
+        var session = Alice.Session;
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Cleanup" });
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        await Alice.Commander.Call(
+            new LiveLocations_Start(session, chatId, new GeoPoint(10, 20), TimeSpan.FromSeconds(1)), ct);
+
+        var dbHub = fixture.AppHost.Services.DbHub<ChatDbContext>();
+        var prefix = chatId.Value + ":";
+        await AssertShareCount(dbHub, prefix, 1, ct);
+
+        // act - run the same predicate LiveLocationsCleanup uses (verifies the
+        // StartedAt + Duration SQL translation and the data-at-rest scrub)
+        await Task.Delay(TimeSpan.FromSeconds(1.5), ct);
+        DateTime now = DateTime.UtcNow;
+        await using (var dbContext = await dbHub.CreateDbContext(readWrite: true, ct)) {
+            await dbContext.LiveLocations
+                .Where(x => x.StartedAt + x.Duration < now)
+                .ExecuteDeleteAsync(ct);
+        }
+
+        // assert - the expired row is gone
+        await AssertShareCount(dbHub, prefix, 0, ct);
+    }
+
+    // Private methods
+
+    private static async Task AssertShareCount(
+        DbHub<ChatDbContext> dbHub, string idPrefix, int expected, CancellationToken cancellationToken)
+    {
+        await using var dbContext = await dbHub.CreateDbContext(cancellationToken);
+        var count = await dbContext.LiveLocations.CountAsync(x => x.Id.StartsWith(idPrefix), cancellationToken);
+        count.Should().Be(expected);
     }
 }
