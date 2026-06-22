@@ -159,9 +159,12 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<AppScopedServiceStarter>(c => new AppScopedServiceStarter(c.AppUIHub()));
         services.AddSingleton<AppNonScopedServiceStarter>(c => new AppNonScopedServiceStarter(c));
         services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c.AppUIHub()));
+        services.AddScoped<NotificationReconciler>(c => new NotificationReconciler(c.AppUIHub()));
 
-        if (HostInfo.HostKind.IsServerOrWasmApp())
+        if (HostInfo.HostKind.IsServerOrWasmApp()) {
             services.AddScoped<IDataCollectionSettingsUI>(c => new WebDataCollectionSettingsUI(c));
+            services.AddScoped<IDeviceNotifications>(c => new WebDeviceNotifications(c.AppUIHub()));
+        }
 
         fusion.AddService<AppPresenceReporter>(ServiceLifetime.Scoped);
 

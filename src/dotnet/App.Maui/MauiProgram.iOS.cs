@@ -26,6 +26,7 @@ public static partial class MauiProgram
         services.AddScoped<IosPushNotifications>(c => new IosPushNotifications(c.AppUIHub()));
         services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<IosPushNotifications>());
+        services.AddScoped<IDeviceNotifications>(_ => new IosDeviceNotifications());
         services.AddScoped<IRecordingPermissionRequester>(_ => new AppleRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);

@@ -40,6 +40,7 @@ public static partial class MauiProgram
         // to have single audio channel controlled with volume buttons
         //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
         services.AddScoped<INotificationsPermission>(c => new AndroidNotificationsPermission(c.AppUIHub()));
+        services.AddScoped<IDeviceNotifications>(_ => new AndroidDeviceNotifications());
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
         services.AddSingleton(c => new NativeGoogleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
