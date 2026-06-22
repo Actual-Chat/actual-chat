@@ -145,7 +145,8 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
             alice.Id, chatId, ChatPositionKind.Read, new ChatPosition(entry.LocalId)));
 
         // The read alone triggers reconciliation: a silent dismissal push goes out and the
-        // notification leaves the displayed set.
+        // notification leaves the displayed set. The read-reconcile event is delay-collapsed
+        // (Constants.Notification.ReadReconcileWindow), so allow for that window.
         await TestExt.When(() => {
             var dismissals = Sink.Messages
                 .Where(m => m.IsDismissal && m.DeviceIds.Contains(deviceId))
@@ -153,7 +154,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
             dismissals.Should().NotBeEmpty();
             dismissals[^1].BadgeCount.Should().Be(0);
             return Task.CompletedTask;
-        }, TimeSpan.FromSeconds(10));
+        }, Constants.Notification.ReadReconcileWindow + TimeSpan.FromSeconds(10));
 
         var info2 = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
         info2.Displayed.Should().BeEmpty();

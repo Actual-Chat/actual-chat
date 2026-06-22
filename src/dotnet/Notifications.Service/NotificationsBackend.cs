@@ -448,12 +448,11 @@ public class NotificationsBackend(IServiceProvider services)
         if (Invalidation.IsActive)
             return;
 
-        var (userId, chatId, entryLid) = eventCommand;
-        if (entryLid <= 0)
-            return;
+        var (userId, chatId, _) = eventCommand;
 
-        // Cheap gate: avoid the operation + row lock + push path unless this user actually has a
-        // displayed notification in this chat that the new read position now covers.
+        // Cheap gate: avoid the operation + row lock + push path unless this user has a displayed
+        // notification anchored to this chat. The event's EntryLid is advisory (collapsed events
+        // keep the window's first advance) — ApplyHardUpdate re-checks the live Read position.
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var dbUserNotifications = await dbContext.UserNotifications
@@ -462,15 +461,14 @@ public class NotificationsBackend(IServiceProvider services)
         if (dbUserNotifications is null)
             return;
 
-        var hasDismissable = dbUserNotifications.ToModel().Displayed.Any(n => {
+        var hasNotificationInChat = dbUserNotifications.ToModel().Displayed.Any(n => {
             var (anchorChatId, anchorEntryLid) = GetReadAnchor(n);
-            return anchorChatId == chatId && anchorEntryLid > 0 && anchorEntryLid <= entryLid;
+            return anchorChatId == chatId && anchorEntryLid > 0;
         });
-        if (!hasDismissable)
+        if (!hasNotificationInChat)
             return;
 
-        DebugLog?.LogInformation("-> OnReadPositionChangedEvent. UserId={UserId}, ChatId={ChatId}, EntryLid={EntryLid}",
-            userId, chatId, entryLid);
+        DebugLog?.LogInformation("-> OnReadPositionChangedEvent. UserId={UserId}, ChatId={ChatId}", userId, chatId);
         await ApplyHardUpdate(userId, [], [], cancellationToken).ConfigureAwait(false);
     }
 

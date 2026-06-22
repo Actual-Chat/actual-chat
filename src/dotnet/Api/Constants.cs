@@ -288,6 +288,10 @@ public static partial class Constants
         // Once a user accumulates this many displayed notifications without engaging,
         // the backend goes dormant and stops all work until an engagement signal.
         public const int DormancyThreshold = 64;
+        // Read-position advances are frequent (~1/s while scrolling); the read-reconcile event
+        // is collapsed to one per (user, chat) per this window via a delay-bucketed event uuid.
+        // This bounds the background-banner dismissal lag on other devices (in-app is instant).
+        public static readonly TimeSpan ReadReconcileWindow = TimeSpan.FromSeconds(15);
     }
 
     public static class Media
