@@ -479,36 +479,49 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    private async Task Send(UserId userId, Notification notification, int badgeCount, CancellationToken cancellationToken1)
+    // [CommandHandler]
+    // The actual FCM send, run as a queued command so NATS retries it on transient failure and
+    // it isn't lost if the pushing node dies mid-send.
+    public virtual async Task OnPush(NotificationsBackend_Push command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // No state change, nothing to invalidate
+
+        var (notification, badgeCount) = command;
+        var userId = notification.UserId.Require();
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
-        var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken1).ConfigureAwait(false);
+        var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0) {
             Log.LogInformation("No recipient devices found for notification #{NotificationId}", notification.Id);
             return;
         }
 
-        var account = await AccountsBackend.Get(userId, cancellationToken1).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         var isAdmin = account is { IsAdmin: true };
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
         var entryId = GetEntryId(notification);
-        DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
+        DebugLog?.LogInformation("-> OnPush. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}, DeviceIds#={DeviceIdCount}",
             entryId, userId, notification.Id, deviceIds.Count);
-        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, badgeCount, cancellationToken1).ConfigureAwait(false);
-        DebugLog?.LogInformation("<- Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
-            entryId, userId, notification.Id, deviceIds.Count);
+        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, badgeCount, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task SendDismissal(
-        UserId userId, IReadOnlyCollection<Notification> dismissed, int badgeCount, CancellationToken cancellationToken)
+    // [CommandHandler]
+    public virtual async Task OnPushDismissal(NotificationsBackend_PushDismissal command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // No state change, nothing to invalidate
+
+        var (userId, dismissed, badgeCount) = command;
+        if (dismissed.Count == 0)
+            return;
+
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0)
             return;
 
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
-        DebugLog?.LogInformation("-> SendDismissal. UserId={UserId}, Notifications#={Count}, DeviceIds#={DeviceIdCount}",
+        DebugLog?.LogInformation("-> OnPushDismissal. UserId={UserId}, Notifications#={Count}, DeviceIds#={DeviceIdCount}",
             userId, dismissed.Count, deviceIds.Count);
         await FirebaseMessagingClient.SendDismissal(dismissed, deviceIds, badgeCount, cancellationToken).ConfigureAwait(false);
     }
@@ -856,9 +869,11 @@ public class NotificationsBackend(IServiceProvider services)
             .Select(g => g.MaxBy(n => n.SentAt)!)
             .ToList();
         foreach (var notification in toPush)
-            await Send(userId, notification, badgeCount, cancellationToken).ConfigureAwait(false);
+            await Queues.Enqueue(new NotificationsBackend_Push(notification, badgeCount), cancellationToken).ConfigureAwait(false);
         if (dismissed.Count > 0)
-            await SendDismissal(userId, dismissed, badgeCount, cancellationToken).ConfigureAwait(false);
+            await Queues.Enqueue(
+                    new NotificationsBackend_PushDismissal(userId, dismissed.ToApiArray(), badgeCount), cancellationToken)
+                .ConfigureAwait(false);
         return;
 
         async Task<(UserNotificationInfo Info, IReadOnlyList<Notification> Dismissed)> Reconcile(UserNotificationInfo committed)
