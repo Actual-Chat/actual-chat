@@ -8,6 +8,7 @@ using ActualChat.Sharding;
 using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Notifications;
 
@@ -37,6 +38,7 @@ public class NotificationsBackend(IServiceProvider services)
         = services.GetRequiredService<IFirebaseMessagingClient>();
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
+    private CancellationToken StopToken { get; } = services.GetService<IHostApplicationLifetime>().StopToken();
     private ILogger? DebugLog => Log;
 
     // [ComputeMethod]
@@ -764,13 +766,16 @@ public class NotificationsBackend(IServiceProvider services)
         => _ = Task.Run(async () => {
             try {
                 if (delay > TimeSpan.Zero)
-                    await Task.Delay(delay).ConfigureAwait(false);
-                await Commander.Call(new NotificationsBackend_Process(userId), CancellationToken.None).ConfigureAwait(false);
+                    await Task.Delay(delay, StopToken).ConfigureAwait(false);
+                await Commander.Call(new NotificationsBackend_Process(userId), StopToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                // Host is shutting down; the soft buffer is in-memory and intentionally transient.
             }
             catch (Exception e) {
                 Log.LogError(e, "Deferred notification processing failed for UserId={UserId}", userId);
             }
-        });
+        }, StopToken);
 
     private List<Notification> DrainSoftBuffer(UserId userId)
     {
