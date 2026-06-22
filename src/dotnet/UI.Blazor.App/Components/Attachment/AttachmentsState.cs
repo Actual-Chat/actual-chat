@@ -53,6 +53,14 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         var overallProgress = stageInfo.BaseProgress
             + (int)(uploadProgress.StageProgress * stageInfo.StageWidth / 100);
 
+        var uploadFraction = uploadProgress.Stage switch {
+            UploadStage.New or UploadStage.ClientProcessing => 0d,
+            UploadStage.Uploading => Math.Clamp(uploadProgress.StageProgress / 100d, 0d, 1d),
+            _ => 1d, // Uploaded / ServerProcessing / Completed — bytes are already uploaded
+        };
+        var totalBytes = uploadProgress.TotalBytes;
+        var uploadedBytes = (long)(totalBytes * uploadFraction);
+
         var isReady = uploadProgress.IsReady;
         var isFailed = uploadProgress.IsFailed;
         var details = (isReady, isFailed) switch {
@@ -64,6 +72,8 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
             IsInProgress = !isReady && !isFailed,
             IsReady = isReady,
             IsFailed = isFailed,
+            UploadProgress = uploadedBytes,
+            UploadSize = totalBytes,
         };
     }
 

@@ -7,4 +7,6 @@ public sealed record AttachmentProgress(double Progress, string Details = "")
     public bool IsInProgress { get; init; }
     public bool IsReady { get; init; }
     public bool IsFailed { get; init; }
+    public long UploadProgress { get; init; }
+    public long UploadSize { get; init; }
 }

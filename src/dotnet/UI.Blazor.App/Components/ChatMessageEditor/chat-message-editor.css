@@ -480,6 +480,15 @@ body.narrow .narrow-panel .attachment-filename {
 .attachment-upload-failed {
     @apply bg-danger;
 }
+.attachment-upload-size {
+    @apply absolute top-1 left-1 z-20;
+    @apply px-1.5 py-0.5;
+    @apply rounded-md;
+    @apply text-white;
+    @apply text-caption-8;
+    @apply pointer-events-none;
+    background-color: rgba(0, 0, 0, 0.55);
+}
 
 /* Related Chat Entry Panel (Reply, Edit) */
 .related-chat-entry-panel {
