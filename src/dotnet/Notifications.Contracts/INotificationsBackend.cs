@@ -25,6 +25,10 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnHandle(NotificationsBackend_Handle command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnPush(NotificationsBackend_Push command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnPushDismissal(NotificationsBackend_PushDismissal command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task<bool> OnUpsertExplicitNotification(
         NotificationsBackend_UpsertExplicitNotification command,
         CancellationToken cancellationToken);
@@ -84,6 +88,32 @@ public sealed partial record NotificationsBackend_Handle(
 {
     [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => NotificationId.UserId;
+}
+
+// Delivers a notification to the user's devices. Enqueued (not called in-process) so NATS
+// retries the FCM send on transient failure and it survives a push-side crash.
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_Push(
+    [property: DataMember, Key(0)] Notification Notification,
+    [property: DataMember, Key(1)] int BadgeCount
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, IgnoreMember]
+    public UserId ShardKey => Notification.UserId;
+}
+
+// Pushes a silent dismissal (badge update + drop the dismissed banners) to the user's devices.
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_PushDismissal(
+    [property: DataMember, Key(0)] UserId UserId,
+    [property: DataMember, Key(1)] ApiArray<Notification> Dismissed,
+    [property: DataMember, Key(2)] int BadgeCount
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, IgnoreMember]
+    public UserId ShardKey => UserId;
 }
 
 /// <summary>
