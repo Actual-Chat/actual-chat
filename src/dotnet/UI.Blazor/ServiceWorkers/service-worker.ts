@@ -124,8 +124,10 @@ const messaging = getMessaging(app);
 debugLog?.log(`Subscribing to FCM background messages`);
 onBackgroundMessage(messaging, async payload => {
     debugLog?.log(`onBackgroundMessage: got FCM background message, payload:`, payload);
-    // @ts-expect-error TODO: fix errors
-    const dismissedTags = payload.data.dismissedTags as string | undefined;
+    const data = payload.data;
+    if (!data)
+        return;
+    const dismissedTags = data.dismissedTags as string | undefined;
     if (dismissedTags) {
         for (const dismissedTag of dismissedTags.split(',')) {
             const toDismiss = await sw.registration.getNotifications({ tag: dismissedTag });
@@ -134,12 +136,10 @@ onBackgroundMessage(messaging, async payload => {
         }
         return;
     }
-    // @ts-expect-error TODO: fix errors
-    const tag = payload.data.tag;
+    const tag = data.tag;
     const options: NotificationOptions = {
         tag: tag.toString(),
-        // @ts-expect-error TODO: fix errors
-        icon: payload.data.icon,
+        icon: data.icon,
         // @ts-expect-error TODO: fix errors
         body: payload.notification.body,
         data: {

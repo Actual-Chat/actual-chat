@@ -17,7 +17,7 @@ public class AndroidDeviceNotifications : IDeviceNotifications
         CancellationToken cancellationToken)
     {
         var activeTags = active.Select(x => x.Tag).ToHashSet(StringComparer.Ordinal);
-        var notificationManager = NotificationManagerCompat.From(Application.Context);
+        var notificationManager = NotificationManagerCompat.From(Android.App.Application.Context);
 
         var shownTags = new HashSet<string>(StringComparer.Ordinal);
         var shown = notificationManager.ActiveNotifications;
@@ -37,33 +37,8 @@ public class AndroidDeviceNotifications : IDeviceNotifications
                 continue;
             var info = active.FirstOrDefault(x => x.Tag == tag);
             if (info != null)
-                Show(notificationManager, info);
+                NotificationHelper.ShowChatNotification(info.Tag, info.Title, info.Text, info.IconUrl, info.Url);
         }
         return Task.CompletedTask;
-    }
-
-    // Mirrors FirebaseMessagingService.ShowChatMessageNotification (kept separate so the proven
-    // push path is untouched).
-    private static void Show(NotificationManagerCompat notificationManager, ActiveNotificationInfo info)
-    {
-        var context = Application.Context;
-        var contentIntent = NotificationHelper.CreateViewIntent(context, info.Url);
-        var contentPendingIntent = PendingIntent.GetActivity(context, 0,
-            contentIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
-
-        var notificationBuilder = new NotificationCompat.Builder(context, NotificationHelper.Constants.DefaultChannelId)
-            .SetContentTitle(info.Title)!
-            .SetSmallIcon(Resource.Drawable.notification_app_icon)!
-            .SetColor(0x0036A3)!
-            .SetContentText(info.Text)!
-            .SetContentIntent(contentPendingIntent)!
-            .SetAutoCancel(true)!
-            .SetPriority((int)NotificationPriority.High)!;
-        if (!info.IconUrl.IsNullOrEmpty()) {
-            var largeImage = NotificationHelper.GetImage(info.IconUrl);
-            if (largeImage != null)
-                notificationBuilder.SetLargeIcon(largeImage);
-        }
-        notificationManager.Notify(info.Tag, 0, notificationBuilder.Build());
     }
 }

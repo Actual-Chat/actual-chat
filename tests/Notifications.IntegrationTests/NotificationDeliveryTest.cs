@@ -101,13 +101,15 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         await Tester.SignIn(bob);
         await Tester.CreateTextEntry(chat2, "First in chat2");
 
-        // Both chats are displayed (mute doesn't retroactively remove chat1)...
+        // The muted chat1 is excluded from the active set (single source of truth), so only
+        // chat2 remains displayed...
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-            info.Displayed.Should().HaveCount(2);
+            var displayed = info.Displayed.Should().ContainSingle().Subject;
+            displayed.Text.Should().Be("First in chat2");
         }, TimeSpan.FromSeconds(10));
 
-        // ...but the chat2 delivery push carries a badge of 1 (chat1 is muted, so excluded).
+        // ...and the chat2 delivery push carries a badge of 1 (chat1 is muted, so excluded).
         await TestExt.When(() => {
             var chat2Push = Sink.Messages
                 .Where(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId) && m.Notification!.Text == "First in chat2")

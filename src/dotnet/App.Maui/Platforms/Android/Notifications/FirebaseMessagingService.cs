@@ -121,34 +121,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     private void ShowChatMessageNotification(NotificationData data)
     {
-        var contentIntent = NotificationHelper.CreateViewIntent(this, data.Link);
-        var body = data.Body!;
-        Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}'", body.ToPrivate());
-
-        // Generate an unique(ish) request code for a PendingIntent.
-        //var pendingIntentRequestCode = NotificationHelper.RequestCodeProvider.IncrementAndGet();
-        var contentPendingIntent = PendingIntent.GetActivity(this, 0,
-            contentIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
-
-        var notificationBuilder = new NotificationCompat.Builder(this, NotificationHelper.Constants.DefaultChannelId)
-            .SetContentTitle(data.Title!)!
-            // The small icon should be opaque white
-            // https://doc.batch.com/android/advanced/customizing-notifications/#setting-up-custom-push-icons
-            // ReSharper disable once AccessToStaticMemberViaDerivedType
-            .SetSmallIcon(Resource.Drawable.notification_app_icon)!
-            .SetColor(0x0036A3)!
-            .SetContentText(body)!
-            .SetContentIntent(contentPendingIntent)!
-            .SetAutoCancel(true)! // closes notification after tap
-            .SetPriority((int)NotificationPriority.High)!;
-        var imageUrl = data.ImageUrl;
-        if (imageUrl != null) {
-            var largeImage = NotificationHelper.GetImage(imageUrl);
-            if (largeImage != null)
-                notificationBuilder.SetLargeIcon(largeImage);
-        }
-        var notification = notificationBuilder.Build();
-        var notificationManager = NotificationManagerCompat.From(this)!;
-        notificationManager.Notify(data.Tag, 0, notification);
+        Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}'", data.Body!.ToPrivate());
+        NotificationHelper.ShowChatNotification(data.Tag!, data.Title!, data.Body!, data.ImageUrl, data.Link);
     }
 }
