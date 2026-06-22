@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Notifications.Db;
@@ -77,12 +78,10 @@ public class NotificationsBackend(IServiceProvider services)
         var info = dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId);
 
         // Population re-check: hide notifications whose entry the user has since read.
-        // This method calls IChatPositionsBackend.Get, so Fusion re-invalidates it
-        // whenever a read position advances.
-        var displayed = info.Displayed;
-        foreach (var notification in info.Displayed)
-            if (await IsRead(userId, notification, cancellationToken).ConfigureAwait(false))
-                displayed = displayed.Without(x => x.Id == notification.Id);
+        // This reads IChatPositionsBackend.Get (once per distinct chat), so Fusion
+        // re-invalidates this method whenever a read position advances.
+        var readPositions = await GetReadPositions(userId, info.Displayed, cancellationToken).ConfigureAwait(false);
+        var displayed = info.Displayed.Without(n => IsRead(n, readPositions));
         if (displayed.Count == info.Displayed.Count)
             return info;
 
@@ -301,8 +300,10 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         var userId = command.UserId;
-        var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
+        var context = CommandContext.GetCurrent();
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+        context.Operation.MustStore(false);
 
         var removedDeviceCount = await dbContext.Devices
             .Where(a => a.UserId == userId.Value)
@@ -313,8 +314,15 @@ public class NotificationsBackend(IServiceProvider services)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("Removed {Count} devices", removedDeviceCount);
+        context.Operation.AddCompletionHandler(scope => {
+            using (Invalidation.Begin()) {
+                _ = GetUserNotificationInfo(userId, default);
+                _ = ListDevices(userId, default);
+            }
+            return Task.CompletedTask;
+        });
+        Log.LogInformation("Removed account notification data: {DeviceCount} device(s), UserId={UserId}",
+            removedDeviceCount, userId);
     }
 
     // [CommandHandler]
@@ -492,7 +500,8 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task SendDismissal(
         UserId userId, IReadOnlyCollection<Notification> dismissed, int badgeCount, CancellationToken cancellationToken)
     {
-        var devices = await ListDevices(userId, cancellationToken).ConfigureAwait(false);
+        var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
+        var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0)
             return;
 
@@ -502,22 +511,86 @@ public class NotificationsBackend(IServiceProvider services)
         await FirebaseMessagingClient.SendDismissal(dismissed, deviceIds, badgeCount, cancellationToken).ConfigureAwait(false);
     }
 
-    // A chat notification is read once the user's Read position has advanced past its entry.
-    private async Task<bool> IsRead(UserId userId, Notification notification, CancellationToken cancellationToken)
+    // Fetches each distinct chat's Read position once (in parallel) instead of one sequential
+    // round-trip per notification. Read-state is then evaluated per notification *instance*
+    // against its own EntryLid — two notifications can share a NotificationId (chat-keyed dedup)
+    // yet anchor to different entries.
+    private async Task<IReadOnlyDictionary<ChatId, long>> GetReadPositions(
+        UserId userId, IEnumerable<Notification> notifications, CancellationToken cancellationToken)
     {
-        var (chatId, entryLid) = notification switch {
+        var chatIds = notifications
+            .Select(n => GetReadAnchor(n).ChatId)
+            .Where(c => c is not null)
+            .Distinct()
+            .ToList();
+        if (chatIds.Count == 0)
+            return ReadOnlyDictionary<ChatId, long>.Empty;
+
+        var positions = await chatIds
+            .Select(async chatId => (
+                ChatId: chatId!,
+                ReadEntryLid: (await ChatPositionsBackend
+                    .Get(userId, chatId!, ChatPositionKind.Read, cancellationToken)
+                    .ConfigureAwait(false)).EntryLid))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        return positions.ToDictionary(x => x.ChatId, x => x.ReadEntryLid);
+    }
+
+    // A chat notification is read once the user's Read position has advanced past its entry.
+    private static bool IsRead(Notification notification, IReadOnlyDictionary<ChatId, long> readPositions)
+    {
+        var (chatId, entryLid) = GetReadAnchor(notification);
+        if (chatId is null || entryLid <= 0)
+            return false;
+        return readPositions.TryGetValue(chatId, out var readEntryLid) && readEntryLid >= entryLid;
+    }
+
+    // Badge count excludes notifications whose chat the user has muted (mute may happen
+    // after the notification was displayed). Mute mode is read once per distinct chat.
+    private async Task<int> CountUnmuted(
+        UserId userId, ApiArray<Notification> displayed, CancellationToken cancellationToken)
+    {
+        if (displayed.Count == 0)
+            return 0;
+
+        var byChat = displayed
+            .Select(n => (Notification: n, ChatId: GetReadAnchor(n).ChatId))
+            .Where(x => x.ChatId is not null)
+            .GroupBy(x => x.ChatId)
+            .ToList();
+        if (byChat.Count == 0)
+            return displayed.Count; // no chat-related notifications -> nothing to mute
+
+        var muteByChat = await byChat
+            .Select(async g => (
+                ChatId: g.Key,
+                IsMuted: await IsMuted(userId, g.Key!, cancellationToken).ConfigureAwait(false)))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        var mutedChatIds = muteByChat.Where(x => x.IsMuted).Select(x => x.ChatId).ToHashSet();
+
+        return displayed.Count(n => {
+            var chatId = GetReadAnchor(n).ChatId;
+            return chatId is null || !mutedChatIds.Contains(chatId);
+        });
+    }
+
+    private async Task<bool> IsMuted(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var kvas = ServerKvasBackend.ForUser(userId);
+        var notificationMode = await kvas.ChatUserSettings(chatId)
+            .Get(x => x.NotificationMode, cancellationToken)
+            .ConfigureAwait(false);
+        return notificationMode == ChatNotificationMode.Muted;
+    }
+
+    private static (ChatId? ChatId, long EntryLid) GetReadAnchor(Notification notification)
+        => notification switch {
             ChatEntryRelatedNotification n => (n.ChatId, n.EntryLid),
             ChatEntryNotification n => (n.ChatId, n.EntryLid),
-            _ => (default(ChatId), 0L),
+            _ => (null, 0L),
         };
-        if (entryLid <= 0)
-            return false;
-
-        var position = await ChatPositionsBackend
-            .Get(userId, chatId, ChatPositionKind.Read, cancellationToken)
-            .ConfigureAwait(false);
-        return position.EntryLid >= entryLid;
-    }
 
     private async ValueTask EnqueueMessageRelatedNotifications(
         ChatId chatId,
@@ -767,27 +840,37 @@ public class NotificationsBackend(IServiceProvider services)
             return Task.CompletedTask;
         });
 
-        var toPush = notifications.LastOrDefault(n => info.Displayed.Any(d => d.Id == n.Id));
-        if (toPush != null)
-            await Send(userId, toPush, info.Displayed.Count, cancellationToken).ConfigureAwait(false);
+        var badgeCount = await CountUnmuted(userId, info.Displayed, cancellationToken).ConfigureAwait(false);
+
+        // Push one banner per distinct chat (= client tag): a coalesced batch can add
+        // notifications for several chats, and a single push would silently drop the others'
+        // banners while the badge still counts them.
+        var toPush = notifications
+            .Where(n => info.Displayed.Any(d => d.Id == n.Id))
+            .GroupBy(GetPushGroupKey)
+            .Select(g => g.MaxBy(n => n.SentAt)!)
+            .ToList();
+        foreach (var notification in toPush)
+            await Send(userId, notification, badgeCount, cancellationToken).ConfigureAwait(false);
         if (dismissed.Count > 0)
-            await SendDismissal(userId, dismissed, info.Displayed.Count, cancellationToken).ConfigureAwait(false);
+            await SendDismissal(userId, dismissed, badgeCount, cancellationToken).ConfigureAwait(false);
         return;
 
         async Task<(UserNotificationInfo Info, IReadOnlyList<Notification> Dismissed)> Reconcile(UserNotificationInfo committed)
         {
+            var readPositions = await GetReadPositions(userId, committed.Displayed.Concat(notifications), cancellationToken)
+                .ConfigureAwait(false);
             var current = committed;
             var dismissed = new List<Notification>();
             foreach (var existing in committed.Displayed) {
-                var isGone = handledIds.Contains(existing.Id)
-                    || await IsRead(userId, existing, cancellationToken).ConfigureAwait(false);
+                var isGone = handledIds.Contains(existing.Id) || IsRead(existing, readPositions);
                 if (isGone) {
                     current = current with { Displayed = current.Displayed.Without(x => x.Id == existing.Id) };
                     dismissed.Add(existing);
                 }
             }
             foreach (var notification in notifications)
-                if (!await IsRead(userId, notification, cancellationToken).ConfigureAwait(false))
+                if (!IsRead(notification, readPositions))
                     current = current.WithNotification(notification);
             current = current with {
                 Version = VersionGenerator.NextVersion(current.Version),
@@ -796,6 +879,13 @@ public class NotificationsBackend(IServiceProvider services)
             };
             return (current, dismissed);
         }
+    }
+
+    // Banner grouping key = client push tag (chatId for chat notifications, else the dedup key).
+    private static string GetPushGroupKey(Notification notification)
+    {
+        var chatId = GetReadAnchor(notification).ChatId;
+        return chatId is null ? notification.SimilarityKey : chatId.Value;
     }
 
     private sealed class SoftBuffer
