@@ -48,7 +48,11 @@
         <FileAttachmentTitle Title="@attachment.FileName"/>
         <div class="c-bottom">
             <div class="c-size">
-                <span>@FileSizeFormatter.Format(attachment.Length)</span>
+                @if (isUploading && progress.UploadSize > 0) {
+                    <span>@FileSizeFormatter.FormatProgress(progress.UploadProgress, progress.UploadSize)</span>
+                } else {
+                    <span>@FileSizeFormatter.Format(attachment.Length)</span>
+                }
             </div>
             <div class="@uploadProgressClass"
                  style="@uploadStyle"

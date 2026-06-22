@@ -168,6 +168,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         return new UploadSessionProgress(uploadStage, progress) {
             IsFailed = s.IsFailed,
+            TotalBytes = s.FileProvider.Metadata.Length,
         };
     }
 

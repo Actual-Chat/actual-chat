@@ -13,4 +13,14 @@ public static class FileSizeFormatter
         double num = Math.Round(bytes / Math.Pow(1024, place), 1);
         return (Math.Sign(byteCount) * num).Format() + suf[place];
     }
+
+    public static string FormatProgress(long current, long total)
+    {
+        if (total <= 0)
+            return Format(total);
+
+        var place = Convert.ToInt32(Math.Floor(Math.Log(total, 1024)));
+        var cur = Math.Max(current, 0) / Math.Pow(1024, place);
+        return $"{cur.ToString("F2", CultureInfo.InvariantCulture)} / {Format(total)}";
+    }
 }

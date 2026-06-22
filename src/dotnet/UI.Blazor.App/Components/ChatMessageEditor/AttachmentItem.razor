@@ -48,6 +48,9 @@
                     }
                 </span>
             }
+            @if (progress.IsInProgress && progress.UploadSize > 0) {
+                <div class="attachment-upload-size">@FileSizeFormatter.FormatProgress(progress.UploadProgress, progress.UploadSize)</div>
+            }
         </div>
         <div class="attachment-filename" title="@attachment.FileName">
             @if (attachment.FileName.Length > 0) {
