@@ -50,6 +50,7 @@ body.narrow .link-preview.compact .c-info {
 }
 .link-preview .c-thumbnail.c-video {
     @apply relative;
+    @apply w-full;
     @apply cursor-pointer;
 }
 .link-preview.compact .c-thumbnail {

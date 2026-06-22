@@ -110,7 +110,7 @@
         <div class="c-content">
             @if (showAuthor) {
                 <div class="c-author-header">
-                    <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name"/>
+                    <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name" Colorize="true"/>
                     <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
                     @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
                 </div>

@@ -1254,3 +1254,33 @@
     --film-stroke: #c7a7e9;
     --film-accent: #eadfff;
 }
+
+/* Author colors — indexed by AuthorId.LocalId (see AuthorColors.cs).
+   Ordered for max successive contrast: consecutive authors (localId 1,2,3…) get far-apart hues. */
+:root, .theme-light, .theme-ash {
+    --author-self: var(--primary);
+    --author-peer: var(--violet-40);
+    --author-color-1: var(--red-50);
+    --author-color-2: var(--green-30);
+    --author-color-3: var(--blue-40);
+    --author-color-4: var(--sienna-30);
+    --author-color-5: var(--violet-40);
+    --author-color-6: var(--emerald-30);
+    --author-color-7: var(--magenta-40);
+    --author-color-8: var(--frost-30);
+    --author-color-9: var(--orange-40);
+    --author-color-10: var(--indigo-40);
+}
+.theme-dark {
+    --author-peer: var(--violet-70);
+    --author-color-1: var(--red-70);
+    --author-color-2: var(--green-70);
+    --author-color-3: var(--blue-70);
+    --author-color-4: var(--sienna-70);
+    --author-color-5: var(--violet-70);
+    --author-color-6: var(--emerald-70);
+    --author-color-7: var(--magenta-70);
+    --author-color-8: var(--frost-70);
+    --author-color-9: var(--orange-70);
+    --author-color-10: var(--indigo-70);
+}
