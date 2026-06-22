@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using Android.App;
 using AndroidX.Core.App;
@@ -83,12 +84,25 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         if (data.Title.IsNullOrEmpty() || data.Body.IsNullOrEmpty())
             return;
 
-        if (AndroidUtils.IsAppForeground() ?? false) {
-            var chatId = data.ChatId;
-            if (chatId is not null && TryGetScopedServices(out var scopedServices)) {
-                var history = scopedServices.GetRequiredService<History>();
-                if (history.LocalUrl.IsChat(out var currentChatId) && currentChatId == chatId) {
-                    Log.LogDebug("OnMessageReceived: notification in the current chat #{ChatId}", chatId);
+        var chatId = data.ChatId;
+        if (chatId is not null && TryGetScopedServices(out var scopedServices)) {
+            // Skip if the user is currently viewing this chat.
+            if ((AndroidUtils.IsAppForeground() ?? false)
+                && scopedServices.GetRequiredService<History>().LocalUrl.IsChat(out var currentChatId)
+                && currentChatId == chatId) {
+                Log.LogDebug("OnMessageReceived: notification in the current chat #{ChatId}", chatId);
+                return;
+            }
+
+            // Skip if this device has already read past the notification's entry. Uses the cached
+            // read position (non-blocking) — it's fresher than the server's debounced cursor. If
+            // there's no cached value (the chat was never opened here), don't suppress.
+            var entryLid = data.EntryLocalId;
+            if (entryLid > 0) {
+                var chatUI = scopedServices.GetRequiredService<ChatUI>();
+                var cReadEntryLid = Computed.GetExisting(() => chatUI.GetReadEntryLid(chatId, default));
+                if (cReadEntryLid is not null && cReadEntryLid.IsValue(out var readEntryLid) && readEntryLid >= entryLid) {
+                    Log.LogDebug("OnMessageReceived: already read on this device #{ChatId} @ {EntryLid}", chatId, entryLid);
                     return;
                 }
             }

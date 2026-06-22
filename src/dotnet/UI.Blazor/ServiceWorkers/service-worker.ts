@@ -136,6 +136,17 @@ onBackgroundMessage(messaging, async payload => {
         }
         return;
     }
+    // Skip the banner if the user is actively viewing this chat in a visible tab — they're
+    // already seeing the messages; no OS notification needed (the server still dismisses it
+    // for other devices once the read position advances).
+    const link = data.link;
+    if (link) {
+        const chatUrl = new URL(link, self.location.origin);
+        const chatHref = chatUrl.origin + chatUrl.pathname;
+        const windowClients = await sw.clients.matchAll({ type: 'window' });
+        if (windowClients.some(c => c.visibilityState === 'visible' && c.url.startsWith(chatHref)))
+            return;
+    }
     const tag = data.tag;
     const options: NotificationOptions = {
         tag: tag.toString(),

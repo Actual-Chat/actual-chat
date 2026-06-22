@@ -53,6 +53,14 @@ public class NotificationData(string messageId, Dictionary<string, string> data)
     public string? Tag
         => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Tag, "").NullIfEmpty();
 
+    // The local id of the entry this notification points at (for the read-position skip).
+    public long EntryLocalId {
+        get {
+            data.TryGetValue(Constants.Notification.MessageDataKeys.ChatEntryId, out var sEntryId);
+            return ChatEntryId.TryParse(sEntryId, out var entryId) ? entryId.LocalId : LastEntryLocalId;
+        }
+    }
+
     public IReadOnlyList<string> DismissedTags
         => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.DismissedTags, "")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
