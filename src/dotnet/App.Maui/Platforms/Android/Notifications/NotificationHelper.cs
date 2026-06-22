@@ -2,6 +2,7 @@ using Android.App;
 using Android.Content;
 using Android.Graphics;
 using Android.Media;
+using AndroidX.Core.App;
 using Application = Android.App.Application;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using AtomicInteger = Java.Util.Concurrent.Atomic.AtomicInteger;
@@ -26,6 +27,31 @@ public static class NotificationHelper
     {
         public const string DefaultChannelId = "default_channel";
         public const string AttentionChannelId = "internal_attention_channel";
+    }
+
+    // Builds and shows a chat notification under the given tag. Shared by the FCM receive path
+    // and the client reconciler's create-missing path so they stay identical.
+    public static void ShowChatNotification(string tag, string title, string body, string? imageUrl, string? link)
+    {
+        var context = Application.Context;
+        var contentIntent = CreateViewIntent(context, link);
+        var contentPendingIntent = PendingIntent.GetActivity(context, 0,
+            contentIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
+
+        var builder = new NotificationCompat.Builder(context, Constants.DefaultChannelId)
+            .SetContentTitle(title)!
+            .SetSmallIcon(Resource.Drawable.notification_app_icon)!
+            .SetColor(0x0036A3)!
+            .SetContentText(body)!
+            .SetContentIntent(contentPendingIntent)!
+            .SetAutoCancel(true)!
+            .SetPriority((int)NotificationPriority.High)!;
+        if (!imageUrl.IsNullOrEmpty()) {
+            var largeImage = GetImage(imageUrl);
+            if (largeImage != null)
+                builder.SetLargeIcon(largeImage);
+        }
+        NotificationManagerCompat.From(context)!.Notify(tag, 0, builder.Build());
     }
 
     public static Bitmap? GetImage(string imageUrl)

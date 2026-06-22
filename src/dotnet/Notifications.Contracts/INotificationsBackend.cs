@@ -93,25 +93,25 @@ public sealed partial record NotificationsBackend_Handle(
 }
 
 // Delivers a notification to the user's devices. Enqueued (not called in-process) so NATS
-// retries the FCM send on transient failure and it survives a push-side crash.
+// retries the FCM send on transient failure and it survives a push-side crash. The badge is not
+// carried — OnPush recomputes it from current state at delivery (avoids stale/out-of-order badges).
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Push(
-    [property: DataMember, Key(0)] Notification Notification,
-    [property: DataMember, Key(1)] int BadgeCount
+    [property: DataMember, Key(0)] Notification Notification
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Notification.UserId;
 }
 
-// Pushes a silent dismissal (badge update + drop the dismissed banners) to the user's devices.
+// Pushes a silent dismissal to the user's devices: closes the given banners (tags fully gone) and
+// refreshes the badge (recomputed at delivery by OnPushDismissal).
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_PushDismissal(
     [property: DataMember, Key(0)] UserId UserId,
-    [property: DataMember, Key(1)] ApiArray<Notification> Dismissed,
-    [property: DataMember, Key(2)] int BadgeCount
+    [property: DataMember, Key(1)] ApiArray<Notification> Dismissed
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, IgnoreMember]

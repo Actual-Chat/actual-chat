@@ -70,8 +70,14 @@ public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
             // backgrounded was already create-handled by the active-changes driver (the app stays
             // alive while backgrounded); re-creating here could resurrect a banner read elsewhere.
             if (wasBackground && !isBackground) {
-                var active = await Hub.Notifications.ListActive(Hub.Session, cancellationToken).ConfigureAwait(false);
-                await deviceNotifications.Reconcile(ToInfos(active), [], cancellationToken).ConfigureAwait(false);
+                try {
+                    var active = await Hub.Notifications.ListActive(Hub.Session, cancellationToken).ConfigureAwait(false);
+                    await deviceNotifications.Reconcile(ToInfos(active), [], cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                    // A transient ListActive/reconcile failure on one resume must not kill the loop.
+                    Log.LogWarning(e, "Foreground notification reconcile failed");
+                }
             }
             wasBackground = isBackground;
         }
