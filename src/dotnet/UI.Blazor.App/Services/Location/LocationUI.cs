@@ -11,7 +11,6 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
 {
     private readonly MutableState<ActiveShare?> _share;
 
-    private ILiveLocations LiveLocations => Hub.LiveLocations;
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
     private Moment CpuNow => Clocks.CpuClock.Now;
 

@@ -7,18 +7,14 @@ public sealed class AppleLocationTracker : ILocationTracker
 {
     private readonly MutableState<GeoPoint?> _lastKnown;
     private CLLocationManager? _manager;
-    private ILogger Log { get; }
 
     public IState<GeoPoint?> LastKnown => _lastKnown;
     public bool IsTracking { get; private set; }
 
     public AppleLocationTracker(AppUIHub hub)
-    {
-        _lastKnown = hub.StateFactory.NewMutable(
+        => _lastKnown = hub.StateFactory.NewMutable(
             (GeoPoint?)null,
             StateCategories.Get(GetType(), nameof(LastKnown)));
-        Log = hub.Services.LogFor(GetType());
-    }
 
     public Task Start(CancellationToken cancellationToken)
     {
