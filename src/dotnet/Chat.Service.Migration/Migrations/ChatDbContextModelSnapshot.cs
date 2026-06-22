@@ -879,6 +879,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("chat_id")
                         .UseCollation("C");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<TimeSpan>("Duration")
                         .HasColumnType("interval")
                         .HasColumnName("duration");
@@ -891,13 +895,9 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("longitude");
 
-                    b.Property<DateTime>("StartedAt")
+                    b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("started_at");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
+                        .HasColumnName("modified_at");
 
                     b.HasKey("Id")
                         .HasName("pk_live_locations");

@@ -71,12 +71,12 @@ public class LiveLocationsBackend(IServiceProvider services)
                 Id = id,
                 ChatId = chatId.Value,
                 AuthorId = authorId.Value,
-                StartedAt = now,
+                CreatedAt = now,
             };
             dbContext.Add(dbLiveLocation);
         }
         else
-            dbLiveLocation.StartedAt = now;
+            dbLiveLocation.CreatedAt = now;
         UpdatePosition(dbLiveLocation, point, now);
         dbLiveLocation.Duration = Duration(duration);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -146,7 +146,7 @@ public class LiveLocationsBackend(IServiceProvider services)
 
     private static Moment ActiveUntil(LiveLocation model)
     {
-        var staleUntil = model.UpdatedAt + Constants.LiveLocation.StaleTimeout;
+        var staleUntil = model.ModifiedAt + Constants.LiveLocation.StaleTimeout;
         return model.ExpiresAt < staleUntil ? model.ExpiresAt : staleUntil;
     }
 
@@ -165,6 +165,6 @@ public class LiveLocationsBackend(IServiceProvider services)
         dbLiveLocation.Longitude = point.Longitude;
         dbLiveLocation.Accuracy = point.Accuracy;
         dbLiveLocation.Bearing = point.Bearing;
-        dbLiveLocation.UpdatedAt = now;
+        dbLiveLocation.ModifiedAt = now;
     }
 }

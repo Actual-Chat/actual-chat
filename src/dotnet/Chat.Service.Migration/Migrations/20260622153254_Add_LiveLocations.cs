@@ -22,8 +22,8 @@ namespace ActualChat.Chat.Migrations
                     longitude = table.Column<double>(type: "double precision", nullable: false),
                     accuracy = table.Column<float>(type: "real", nullable: true),
                     bearing = table.Column<float>(type: "real", nullable: true),
-                    started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     duration = table.Column<TimeSpan>(type: "interval", nullable: false)
                 },
                 constraints: table =>

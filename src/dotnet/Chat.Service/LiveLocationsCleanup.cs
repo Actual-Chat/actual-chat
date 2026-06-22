@@ -23,7 +23,7 @@ public sealed class LiveLocationsCleanup : ActivatedWorkerBase
 
         DateTime now = Clocks.SystemClock.Now;
         await dbContext.LiveLocations
-            .Where(x => x.StartedAt + x.Duration < now)
+            .Where(x => x.CreatedAt + x.Duration < now)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
         return true;

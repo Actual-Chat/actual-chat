@@ -10,11 +10,11 @@ public sealed partial record LiveLocation(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId AuthorId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] GeoPoint Point,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] Moment StartedAt,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] Moment UpdatedAt,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] Moment CreatedAt,
+    [property: DataMember, MemoryPackOrder(4), Key(4)] Moment ModifiedAt,
     [property: DataMember, MemoryPackOrder(5), Key(5)] TimeSpan Duration
 )
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public Moment ExpiresAt => StartedAt + Duration;
+    public Moment ExpiresAt => CreatedAt + Duration;
 }

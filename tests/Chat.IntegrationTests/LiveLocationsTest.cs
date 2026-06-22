@@ -118,12 +118,12 @@ public class LiveLocationsTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         await AssertShareCount(dbHub, prefix, 1, ct);
 
         // act - run the same predicate LiveLocationsCleanup uses (verifies the
-        // StartedAt + Duration SQL translation and the data-at-rest scrub)
+        // CreatedAt + Duration SQL translation and the data-at-rest scrub)
         await Task.Delay(TimeSpan.FromSeconds(1.5), ct);
         DateTime now = DateTime.UtcNow;
         await using (var dbContext = await dbHub.CreateDbContext(readWrite: true, ct)) {
             await dbContext.LiveLocations
-                .Where(x => x.StartedAt + x.Duration < now)
+                .Where(x => x.CreatedAt + x.Duration < now)
                 .ExecuteDeleteAsync(ct);
         }
 
