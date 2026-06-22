@@ -20,4 +20,10 @@ public static class StandardRpcStream
 
     public static RpcStream<T> NewTranscriptDelivery<T>(IAsyncEnumerable<T> source, bool allowReconnect = true)
         => NewAudioDelivery(source, allowReconnect);
+
+    public static RpcStream<T> NewUpload<T>(IAsyncEnumerable<T> source)
+        => new(source) {
+            AckPeriod = Constants.Uploads.RpcStreamAckPeriod,
+            AckAdvance = Constants.Uploads.RpcStreamAckAdvance,
+        };
 }

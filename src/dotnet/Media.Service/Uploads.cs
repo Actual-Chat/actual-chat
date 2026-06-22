@@ -1,5 +1,6 @@
 using ActualChat.Flows;
 using ActualChat.Media.Flows;
+using ActualLab.Rpc;
 
 namespace ActualChat.Media;
 
@@ -59,6 +60,62 @@ public class Uploads(IServiceProvider services) : IUploads
         var upload = await Backend.Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
         EnsureCanAccessUpload(upload, user);
         return await Commander.Call(new UploadsBackend_Append(uploadId, offset, data), cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task<long> AppendStream(
+        Session session,
+        UploadId uploadId,
+        long offset,
+        RpcStream<byte[]> dataStream,
+        CancellationToken cancellationToken)
+    {
+        var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var upload = await Backend.Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
+        EnsureCanAccessUpload(upload, user);
+
+        const int alignment = Constants.Uploads.StorageBlockAlignment;
+        const int flushSize = Constants.Uploads.FlushSize;
+        var maxFlushInterval = Constants.Uploads.MaxFlushInterval;
+
+        var currentOffset = offset;
+        var buffer = new byte[flushSize];
+        var bufferLength = 0;
+        var lastFlushAt = Stopwatch.GetTimestamp();
+        try {
+            await foreach (var subChunk in dataStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                var srcOffset = 0;
+                while (srcOffset < subChunk.Length) {
+                    var toCopy = Math.Min(flushSize - bufferLength, subChunk.Length - srcOffset);
+                    Array.Copy(subChunk, srcOffset, buffer, bufferLength, toCopy);
+                    bufferLength += toCopy;
+                    srcOffset += toCopy;
+
+                    var flushBySize = bufferLength >= flushSize;
+                    var flushByTime = bufferLength >= alignment
+                        && Stopwatch.GetElapsedTime(lastFlushAt) >= maxFlushInterval;
+                    if (flushBySize || flushByTime) {
+                        // GCS requires non-final chunks to be 256 KB-aligned, so flush the
+                        // largest aligned prefix and keep the remainder buffered.
+                        var blockLength = bufferLength - bufferLength % alignment;
+                        currentOffset = await Flush(buffer[..blockLength], currentOffset).ConfigureAwait(false);
+                        var remaining = bufferLength - blockLength;
+                        if (remaining > 0)
+                            Array.Copy(buffer, blockLength, buffer, 0, remaining);
+                        bufferLength = remaining;
+                        lastFlushAt = Stopwatch.GetTimestamp();
+                    }
+                }
+            }
+            if (bufferLength > 0)
+                currentOffset = await Flush(buffer[..bufferLength], currentOffset).ConfigureAwait(false);
+        }
+        finally {
+            dataStream.Disconnect();
+        }
+        return currentOffset;
+
+        async Task<long> Flush(byte[] block, long currentOffset1)
+            => await Commander.Call(new UploadsBackend_Append(uploadId, currentOffset1, block), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
