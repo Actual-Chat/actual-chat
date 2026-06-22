@@ -49,7 +49,7 @@ public class LiveLocationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnStart(LiveLocationsBackend_Start command, CancellationToken cancellationToken)
+    public virtual async Task OnReport(LiveLocationsBackend_Report command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, point, duration) = command;
         if (Invalidation.IsActive) {
@@ -66,6 +66,11 @@ public class LiveLocationsBackend(IServiceProvider services)
         var dbLiveLocation = await dbContext.LiveLocations.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
+
+        // A position-only report (no duration) updates an active share but never starts one.
+        if (dbLiveLocation == null && duration == null)
+            return;
+
         if (dbLiveLocation == null) {
             dbLiveLocation = new DbLiveLocation {
                 Id = id,
@@ -75,34 +80,12 @@ public class LiveLocationsBackend(IServiceProvider services)
             };
             dbContext.Add(dbLiveLocation);
         }
-        else
-            dbLiveLocation.CreatedAt = now;
+        else if (duration != null)
+            dbLiveLocation.CreatedAt = now; // (Re)start resets the share window
+
         UpdatePosition(dbLiveLocation, point, now);
-        dbLiveLocation.Duration = Duration(duration);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
-    public virtual async Task OnUpdate(LiveLocationsBackend_Update command, CancellationToken cancellationToken)
-    {
-        var (chatId, authorId, point) = command;
-        if (Invalidation.IsActive) {
-            _ = Get(chatId, authorId, default);
-            _ = List(chatId, default);
-            return;
-        }
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var id = DbLiveLocation.ComposeId(chatId, authorId);
-        var dbLiveLocation = await dbContext.LiveLocations.ForUpdate()
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-            .ConfigureAwait(false);
-        if (dbLiveLocation == null)
-            return; // Not sharing - nothing to update
-
-        UpdatePosition(dbLiveLocation, point, Clocks.SystemClock.Now);
+        if (duration is { } value)
+            dbLiveLocation.Duration = Duration(value);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

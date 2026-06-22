@@ -11,28 +11,20 @@ public interface ILiveLocations : IComputeService
     Task<ApiArray<LiveLocation>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task OnStart(LiveLocations_Start command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnUpdate(LiveLocations_Update command, CancellationToken cancellationToken);
+    Task OnReport(LiveLocations_Report command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnStop(LiveLocations_Stop command, CancellationToken cancellationToken);
 }
 
+// A position report: non-null Duration starts (or restarts) the share for that window;
+// null Duration updates the position of an already-active share.
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record LiveLocations_Start(
+public sealed partial record LiveLocations_Report(
     [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] GeoPoint Point,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] TimeSpan Duration
-) : ISessionCommand<Unit>, IApiCommand;
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record LiveLocations_Update(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] GeoPoint Point
+    [property: DataMember, MemoryPackOrder(3), Key(3)] TimeSpan? Duration
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

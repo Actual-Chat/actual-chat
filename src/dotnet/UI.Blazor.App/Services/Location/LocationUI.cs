@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// Drives the local user's live-location share: starts/stops the platform
-/// <see cref="ILocationTracker"/> and pushes <see cref="LiveLocations_Update"/> every
+/// <see cref="ILocationTracker"/> and pushes <see cref="LiveLocations_Report"/> every
 /// <see cref="Constants.LiveLocation.UpdatePeriod"/> until the share is stopped or expires.
 /// </summary>
 public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
@@ -97,16 +97,14 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
     private async Task Push(ActiveShare share, GeoPoint point, bool alreadyStarted, CancellationToken cancellationToken)
     {
         try {
-            if (alreadyStarted) {
-                await Commander.Call(new LiveLocations_Update(Session, share.ChatId, point), cancellationToken)
-                    .ConfigureAwait(false);
-                return;
+            // The first push carries the remaining duration to start the share; later pushes
+            // omit it (null) and only update the position.
+            TimeSpan? duration = null;
+            if (!alreadyStarted) {
+                var remaining = share.ExpiresAt - CpuNow;
+                duration = remaining < TimeSpan.Zero ? TimeSpan.Zero : remaining;
             }
-
-            var duration = share.ExpiresAt - CpuNow;
-            if (duration < TimeSpan.Zero)
-                duration = TimeSpan.Zero;
-            await Commander.Call(new LiveLocations_Start(Session, share.ChatId, point, duration), cancellationToken)
+            await Commander.Call(new LiveLocations_Report(Session, share.ChatId, point, duration), cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {

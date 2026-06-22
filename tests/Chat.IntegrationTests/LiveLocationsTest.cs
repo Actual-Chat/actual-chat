@@ -42,7 +42,7 @@ public class LiveLocationsTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act - start sharing
         var point = new GeoPoint(51.5074, -0.1278, 12f, 90f);
-        await Alice.Commander.Call(new LiveLocations_Start(session, chatId, point, TimeSpan.FromHours(1)), ct);
+        await Alice.Commander.Call(new LiveLocations_Report(session, chatId, point, TimeSpan.FromHours(1)), ct);
 
         // assert - visible via List/Get/IsSharing
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
@@ -55,7 +55,7 @@ public class LiveLocationsTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act - update position
         var point2 = new GeoPoint(48.8566, 2.3522);
-        await Alice.Commander.Call(new LiveLocations_Update(session, chatId, point2), ct);
+        await Alice.Commander.Call(new LiveLocations_Report(session, chatId, point2, null), ct);
 
         // assert - position reflects the update
         await cList.When(x => x.Count == 1 && x.Single().Point.Latitude == 48.8566, ct)
@@ -83,7 +83,7 @@ public class LiveLocationsTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act - share for a short window
         await Alice.Commander.Call(
-            new LiveLocations_Start(session, chatId, new GeoPoint(10, 20), TimeSpan.FromSeconds(2)), ct);
+            new LiveLocations_Report(session, chatId, new GeoPoint(10, 20), TimeSpan.FromSeconds(2)), ct);
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
 
         // assert - the share disappears on its own once expired (no stop command)
@@ -99,7 +99,7 @@ public class LiveLocationsTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act & assert - Bob is not a member, so sharing is rejected
         await Assert.ThrowsAnyAsync<Exception>(() => Bob.Commander.Call(
-            new LiveLocations_Start(bobSession, chatId, new GeoPoint(1, 2), TimeSpan.FromHours(1))));
+            new LiveLocations_Report(bobSession, chatId, new GeoPoint(1, 2), TimeSpan.FromHours(1))));
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class LiveLocationsTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var ct = cts.Token;
         await Alice.Commander.Call(
-            new LiveLocations_Start(session, chatId, new GeoPoint(10, 20), TimeSpan.FromSeconds(1)), ct);
+            new LiveLocations_Report(session, chatId, new GeoPoint(10, 20), TimeSpan.FromSeconds(1)), ct);
 
         var dbHub = fixture.AppHost.Services.DbHub<ChatDbContext>();
         var prefix = chatId.Value + ":";

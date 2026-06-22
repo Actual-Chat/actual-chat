@@ -28,7 +28,7 @@ public class LiveLocations(IServiceProvider services) : ILiveLocations
     }
 
     // [CommandHandler]
-    public virtual async Task OnStart(LiveLocations_Start command, CancellationToken cancellationToken)
+    public virtual async Task OnReport(LiveLocations_Report command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -41,25 +41,7 @@ public class LiveLocations(IServiceProvider services) : ILiveLocations
         if (author == null)
             return;
 
-        await Commander.Call(new LiveLocationsBackend_Start(chatId, author.Id, point, duration), true, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
-    public virtual async Task OnUpdate(LiveLocations_Update command, CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return;
-
-        var (session, chatId, point) = command;
-        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        chatRules.Require(ChatPermissions.Write);
-
-        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author == null)
-            return;
-
-        await Commander.Call(new LiveLocationsBackend_Update(chatId, author.Id, point), true, cancellationToken)
+        await Commander.Call(new LiveLocationsBackend_Report(chatId, author.Id, point, duration), true, cancellationToken)
             .ConfigureAwait(false);
     }
 
