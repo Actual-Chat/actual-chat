@@ -48,7 +48,7 @@ public class FirebaseMessagingClient(
 
         var isChatRelated = chatId is not null;
         var isEntryRelated = entryId is not null;
-        var tag = GetTag(notification);
+        var tag = GetChatTag(notification) ?? "topic";
         var link = isEntryRelated ? UrlMapper.ToAbsolute(Links.Chat(entryId))
             : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId!))
             : "";
@@ -138,7 +138,12 @@ public class FirebaseMessagingClient(
             return;
 
         var dismissedIds = dismissedNotifications.Select(n => n.Id.Value);
-        var dismissedTags = dismissedNotifications.Select(GetTag).Distinct();
+        // Only chat-derived tags are emitted: a client closes every notification sharing a tag,
+        // so the non-chat "topic" fallback must never be a dismissal tag.
+        var dismissedTags = dismissedNotifications
+            .Select(GetChatTag)
+            .Where(tag => tag is not null)
+            .Distinct();
         var data = new Dictionary<string, string>() {
             { Constants.Notification.MessageDataKeys.DismissedIds, string.Join(',', dismissedIds) },
             { Constants.Notification.MessageDataKeys.DismissedTags, string.Join(',', dismissedTags) },
@@ -169,10 +174,16 @@ public class FirebaseMessagingClient(
         await HandleBatchResponse(batchResponse, deviceIds, cancellationToken).ConfigureAwait(false);
     }
 
-    private static string GetTag(Notification notification)
-        => notification is ChatNotification chatNotification
-            ? chatNotification.ChatId.Value
-            : "topic";
+    // The push tag groups notifications on the device (one banner per chat). Returns null for
+    // non-chat notifications so they don't collapse under a shared fallback tag. Parses
+    // defensively: a ChatNotification whose similarity key isn't a ChatId yields null.
+    private static string? GetChatTag(Notification notification)
+        => notification switch {
+            ChatEntryRelatedNotification n => n.ChatId.Value,
+            ChatEntryNotification n => n.ChatId.Value,
+            ChatNotification n when ChatId.TryParse(n.SimilarityKey, out var chatId) => chatId.Value,
+            _ => null,
+        };
 
     private async Task HandleBatchResponse(
         BatchResponse batchResponse,
