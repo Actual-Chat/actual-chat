@@ -11,6 +11,7 @@ export * from './Services/DebugUI/debug-ui';
 export * from './Services/DeviceAwakeUI/device-awake-ui';
 export * from './Services/ElementReference/element-utils'
 export * from './Services/FileUploads/chunked-file-upload';
+export * from './Services/FileUploads/stream-file-upload';
 export * from './Services/FileUploads/web-uploads';
 export * from './Services/FocusUI/focus-ui'
 export * from './Services/History/history'
