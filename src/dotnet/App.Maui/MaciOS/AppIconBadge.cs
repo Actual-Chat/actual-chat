@@ -5,6 +5,6 @@ namespace ActualChat.App.Maui;
 
 public class AppIconBadge : IAppIconBadge
 {
-    public void SetUnreadChatCount(int count)
+    public void SetBadgeCount(int count)
         => UNUserNotificationCenter.Current.SetBadgeCount(count, null);
 }

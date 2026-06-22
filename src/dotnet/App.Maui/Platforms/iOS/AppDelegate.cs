@@ -52,6 +52,27 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
         base.DidEnterBackground(application);
     }
 
+    // Silent dismissal pushes (content-available, no alert) are delivered here, not to the
+    // Plugin.Firebase NotificationReceived event — that only fires for foreground alert pushes.
+    // iOS applies aps.badge from the payload automatically; we only drop the dismissed banners.
+    public override void DidReceiveRemoteNotification(
+        UIApplication application, NSDictionary userInfo, Action<UIBackgroundFetchResult> completionHandler)
+    {
+        try {
+            var dismissedTags = (userInfo[new NSString(Constants.Notification.MessageDataKeys.DismissedTags)] as NSString)?.ToString();
+            if (!dismissedTags.IsNullOrEmpty()) {
+                var tags = dismissedTags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                RemoveDeliveredNotifications(tags);
+                completionHandler(UIBackgroundFetchResult.NewData);
+                return;
+            }
+        }
+        catch (Exception e) {
+            Log.LogError(e, "DidReceiveRemoteNotification failed");
+        }
+        completionHandler(UIBackgroundFetchResult.NoData);
+    }
+
     [Export ("messaging:didReceiveRegistrationToken:")]
     public void DidReceiveRegistrationToken (Firebase.CloudMessaging.Messaging messaging, string fcmToken)
     {
@@ -67,6 +88,17 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     }
 
     // Private methods
+
+    // Removes delivered notifications whose thread (= chat tag) is being dismissed.
+    private static void RemoveDeliveredNotifications(IReadOnlyCollection<string> dismissedTags)
+        => UNUserNotificationCenter.Current.GetDeliveredNotifications(delivered => {
+            var toRemove = delivered
+                .Where(n => dismissedTags.Contains(n.Request.Content.ThreadIdentifier))
+                .Select(n => n.Request.Identifier)
+                .ToArray();
+            if (toRemove.Length > 0)
+                UNUserNotificationCenter.Current.RemoveDeliveredNotifications(toRemove);
+        });
 
     private static void RegisterBadgeNotifications()
         => UNUserNotificationCenter.Current.RequestAuthorization(

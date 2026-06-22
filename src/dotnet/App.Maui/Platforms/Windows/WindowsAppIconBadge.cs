@@ -11,7 +11,7 @@ public class WindowsAppIconBadge : IAppIconBadge
     // would throw another COMException, flooding the FCE log each time the unread count ticks.
     private static volatile bool _isUnsupported;
 
-    public void SetUnreadChatCount(int count)
+    public void SetBadgeCount(int count)
     {
         if (_isUnsupported)
             return;

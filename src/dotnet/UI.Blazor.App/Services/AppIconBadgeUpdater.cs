@@ -4,15 +4,13 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public interface IAppIconBadge
 {
-    void SetUnreadChatCount(int count);
+    void SetBadgeCount(int count);
 }
 
 public class AppIconBadgeUpdater(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 {
     protected override Task OnRun(CancellationToken cancellationToken)
-        => Task.WhenAll(
-            UpdateAppIconBadge(cancellationToken),
-            Task.CompletedTask); // Just to add more items w/o need to worry about comma :)
+        => UpdateAppIconBadge(cancellationToken);
 
     private async Task UpdateAppIconBadge(CancellationToken cancellationToken)
     {
@@ -35,7 +33,7 @@ public class AppIconBadgeUpdater(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
             if (count == lastCount)
                 continue;
 
-            badge.SetUnreadChatCount(count);
+            badge.SetBadgeCount(count);
             lastCount = count;
         }
     }
