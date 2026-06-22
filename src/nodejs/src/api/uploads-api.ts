@@ -11,9 +11,15 @@
 // only for disambiguation against browser globals or in-scope name clashes.
 // See api.ts for the rationale.
 
-import { defineRpcService, type RpcHub } from 'actuallab-rpc';
+import { defineRpcService, RpcRemoteExecutionMode, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';
 import type { Int64 } from './rpc-scalars.js';
+
+// Stream-push semantics for AppendStream: wait for the WS before the initial
+// send, skip the call on same-peer reconnect (stream resumes via ACK). No
+// AllowResend — on peer change the call + stream fail and the caller retries
+// from the server offset. Matches the audio/video PushStream mode.
+const StreamUploadMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect;
 
 // --- IUploads (chunked upload control + chunk push) ---
 // Both methods use RpcRemoteExecutionMode.Default (= AwaitForConnection
@@ -27,6 +33,10 @@ import type { Int64 } from './rpc-scalars.js';
 export const UploadsDef = defineRpcService('IUploads', {
     GetOffset: { args: ['session', 'uploadId'] },
     OnAppend: { args: ['command'] },
+    AppendStream: {
+        args: ['session', 'uploadId', 'offset', 'dataStream'],
+        remoteExecutionMode: StreamUploadMode,
+    },
 });
 
 /** Matches .NET Uploads_Append: AppMessagePackKeylessResolver serializes
@@ -42,6 +52,9 @@ export interface UploadsAppendCommand {
 export interface UploadsClient {
     GetOffset(session: string, uploadId: string): Promise<Int64>;
     OnAppend(command: UploadsAppendCommand): Promise<Int64>;
+    /** Streams upload data as RpcStream<byte[]> sub-chunks. `dataStreamRef` is
+     *  a local RpcStream's `toRef(peer)` value (see audio/video PushStream). */
+    AppendStream(session: string, uploadId: string, offset: Int64, dataStreamRef: unknown): Promise<Int64>;
 }
 
 /** Uploads module — pass `uploadsApi` to `Api.init` to enable the typed client.

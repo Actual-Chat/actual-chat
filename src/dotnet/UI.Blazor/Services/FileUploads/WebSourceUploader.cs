@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class WebSourceUploader(IJSRuntime js) : IFileUploader
 {
-    private static readonly string JSStartMethod = $"{BlazorUICoreModule.ImportName}.ChunkedFileUpload.startWithReporter";
+    private static readonly string JSStartMethod = $"{BlazorUICoreModule.ImportName}.StreamFileUpload.startWithReporter";
 
     public bool CanUpload(IUploadStreamSource source) => source is WebUploadStreamSource;
 

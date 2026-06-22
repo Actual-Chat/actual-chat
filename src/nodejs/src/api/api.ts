@@ -125,6 +125,17 @@ export class MediaRpcStreamOptions {
     static transcriptDelivery<T>(): RpcStreamOptions<T> {
         return MediaRpcStreamOptions.audioDelivery<T>();
     }
+
+    // File upload (client -> server). Mirrors .NET Constants.Uploads:
+    // ack ~256 KB, in-flight window ~1 MB at 16 KB sub-chunks.
+    static upload<T>(): RpcStreamOptions<T> {
+        return {
+            isRealTime: false,
+            allowReconnect: true,
+            ackPeriod: 16,
+            ackAdvance: 64,
+        };
+    }
 }
 
 export interface ApiInitOptions {

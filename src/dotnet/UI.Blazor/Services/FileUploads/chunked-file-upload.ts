@@ -10,7 +10,7 @@ const { debugLog, infoLog, warnLog, errorLog } = getLogs('FileUpload');
 // resolved at WS handshake), matching audio-streamer.ts's RPC_SESSION_DEFAULT.
 const RPC_SESSION_DEFAULT = '~';
 
-type ProgressReporter = (progressPercent: number) => void;
+export type ProgressReporter = (progressPercent: number) => void;
 
 export class FileUploadProgressReporter {
     constructor(private blazorRef: DotNet.DotNetObject)
@@ -218,7 +218,7 @@ export class ChunkedFileUpload implements IFileUpload {
 
 /** Maps a server-side upload exception (carried via RPC error TypeName) to the
  *  matching JS error class. Falls through with the original error otherwise. */
-function mapUploadError(e: unknown): unknown {
+export function mapUploadError(e: unknown): unknown {
     if (e instanceof Error) {
         const typeName = (e as { typeName?: string }).typeName;
         if (typeName === 'ActualChat.UploadNotFoundException')
@@ -232,7 +232,7 @@ function mapUploadError(e: unknown): unknown {
 }
 
 /** Connectivity / disposed-peer style failures that should trigger a reconnect-and-retry. */
-function isConnectivityError(e: unknown): boolean {
+export function isConnectivityError(e: unknown): boolean {
     if (e instanceof OffsetConflictError || e instanceof UploadNotFoundError || e instanceof UploadTransientFailure)
         return false;
     if (isAbortError(e))
@@ -240,7 +240,7 @@ function isConnectivityError(e: unknown): boolean {
     return e instanceof Error;
 }
 
-function isAbortError(e: unknown): boolean {
+export function isAbortError(e: unknown): boolean {
     return e instanceof DOMException && e.name === 'AbortError';
 }
 
@@ -343,11 +343,11 @@ class ChunkSizeSelector
     }
 }
 
-class UploadNotFoundError extends Error {
+export class UploadNotFoundError extends Error {
 }
 
-class UploadTransientFailure extends Error {
+export class UploadTransientFailure extends Error {
 }
 
-class OffsetConflictError extends Error {
+export class OffsetConflictError extends Error {
 }
