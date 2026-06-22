@@ -80,8 +80,10 @@ public class LiveLocationsBackend(IServiceProvider services)
             };
             dbContext.Add(dbLiveLocation);
         }
-        else if (duration != null)
-            dbLiveLocation.CreatedAt = now; // (Re)start resets the share window
+        else if (duration != null) {
+            // A (re)start resets the share window so the new duration measures from now.
+            dbLiveLocation.CreatedAt = now;
+        }
 
         UpdatePosition(dbLiveLocation, point, now);
         if (duration is { } value)

@@ -16,8 +16,10 @@ public interface ILiveLocations : IComputeService
     Task OnStop(LiveLocations_Stop command, CancellationToken cancellationToken);
 }
 
-// A position report: non-null Duration starts (or restarts) the share for that window;
-// null Duration updates the position of an already-active share.
+/// <summary>
+/// A position report: non-null <see cref="Duration"/> starts (or restarts) the share for
+/// that window; null updates the position of an already-active share.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record LiveLocations_Report(
