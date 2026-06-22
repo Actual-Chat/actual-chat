@@ -5,11 +5,19 @@ using Notification = ActualChat.Notifications.Notification;
 namespace ActualChat.UI.Blazor.App.Services;
 
 // Client-side safety net: keeps the device's OS notifications in sync with the server's active
-// set (INotifications.ListActive). Reactively prunes notifications that are no longer active —
-// healing a lost silent-dismissal push or a read on another device — both when the active set
-// changes and whenever the app returns to the foreground (where a missed dismissal can surface).
+// set (INotifications.ListActive).
+// - Prune: removes notifications that are no longer active — healing a lost silent-dismissal push
+//   or a read on another device. Runs on every active-set change and on foreground resume.
+// - Create: re-shows a notification that newly entered the active set but isn't on the device —
+//   healing a dropped delivery push. Only newly-added tags are create candidates, so dismissing a
+//   banner (which doesn't change the active set) never resurrects it. iOS is prune-only.
 public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 {
+    private HashSet<string> _lastActiveTags = new(StringComparer.Ordinal);
+    private bool _isInitialized;
+
+    private UrlMapper UrlMapper => field ??= Services.UrlMapper();
+
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var deviceNotifications = Services.GetService<IDeviceNotifications>();
@@ -29,7 +37,17 @@ public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
         await foreach (var c in cActive.Changes(cancellationToken).ConfigureAwait(false)) {
             if (c.HasError)
                 continue;
-            await Reconcile(deviceNotifications, c.Value, cancellationToken).ConfigureAwait(false);
+
+            var infos = ToInfos(c.Value);
+            var currentTags = infos.Select(x => x.Tag).ToHashSet(StringComparer.Ordinal);
+            // First observation seeds the baseline without creating, so existing unread chats
+            // don't all pop as banners on startup.
+            var createTags = _isInitialized
+                ? currentTags.Where(t => !_lastActiveTags.Contains(t)).ToList()
+                : [];
+            _lastActiveTags = currentTags;
+            _isInitialized = true;
+            await deviceNotifications.Reconcile(infos, createTags, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -48,25 +66,26 @@ public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
                 continue;
 
             var isBackground = c.Value;
-            // Re-prune on resume even if the active set is unchanged: a dismissal push may have
-            // been dropped while we were backgrounded.
+            // On resume only prune (createTags empty): a notification that arrived while we were
+            // backgrounded was already create-handled by the active-changes driver (the app stays
+            // alive while backgrounded); re-creating here could resurrect a banner read elsewhere.
             if (wasBackground && !isBackground) {
                 var active = await Hub.Notifications.ListActive(Hub.Session, cancellationToken).ConfigureAwait(false);
-                await Reconcile(deviceNotifications, active, cancellationToken).ConfigureAwait(false);
+                await deviceNotifications.Reconcile(ToInfos(active), [], cancellationToken).ConfigureAwait(false);
             }
             wasBackground = isBackground;
         }
     }
 
-    private static Task Reconcile(
-        IDeviceNotifications deviceNotifications, ApiArray<Notification> active, CancellationToken cancellationToken)
-    {
-        var infos = active
+    private List<ActiveNotificationInfo> ToInfos(ApiArray<Notification> active)
+        => active
             .Select(n => (Tag: n.GetChatTag(), Notification: n))
             .Where(x => x.Tag is not null)
-            .Select(x => new ActiveNotificationInfo(x.Tag!, x.Notification.Title, x.Notification.Text, x.Notification.IconUrl, ""))
+            .Select(x => new ActiveNotificationInfo(
+                x.Tag!,
+                x.Notification.Title,
+                x.Notification.Text,
+                x.Notification.IconUrl,
+                UrlMapper.ToAbsolute(x.Notification.GetChatLink())))
             .ToList();
-        // Prune is idempotent, so overlapping runs from the two drivers are harmless.
-        return deviceNotifications.Reconcile(infos, cancellationToken);
-    }
 }

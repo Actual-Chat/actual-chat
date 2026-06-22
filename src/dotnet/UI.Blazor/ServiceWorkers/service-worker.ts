@@ -46,16 +46,45 @@ sw.addEventListener('notificationclick', (event: NotificationEvent) => {
 sw.addEventListener('message', (event: ExtendableEvent & { data?: any }) => {
     if (event.data?.type !== 'RECONCILE_NOTIFICATIONS')
         return;
-    event.waitUntil(reconcileNotifications(event.data.activeTags ?? []));
+    event.waitUntil(reconcileNotifications(event.data.active ?? [], event.data.createTags ?? []));
 });
 
-// Closes shown notifications whose tag is no longer in the server's active set.
-const reconcileNotifications = async function(activeTags: string[]): Promise<void> {
-    const active = new Set<string>(activeTags);
+// Reconciles shown notifications against the server's active set: closes ones no longer active,
+// and re-shows newly-active ones (createTags) that aren't shown — but only while no tab is
+// visible (a visible tab's in-app UI already shows them).
+const reconcileNotifications = async function(active: any[], createTags: string[]): Promise<void> {
+    const activeTags = new Set<string>(active.map(x => x.tag));
     const shown = await sw.registration.getNotifications();
-    for (const notification of shown)
-        if (notification.tag && !active.has(notification.tag))
+    const shownTags = new Set<string>();
+    for (const notification of shown) {
+        if (!notification.tag)
+            continue;
+        if (!activeTags.has(notification.tag))
             notification.close();
+        else
+            shownTags.add(notification.tag);
+    }
+
+    if (!createTags || createTags.length === 0)
+        return;
+
+    const clients = await sw.clients.matchAll({ type: 'window' });
+    if (clients.some(c => c.visibilityState === 'visible'))
+        return;
+
+    for (const tag of createTags) {
+        if (shownTags.has(tag))
+            continue;
+        const item = active.find(x => x.tag === tag);
+        if (!item)
+            continue;
+        await sw.registration.showNotification(item.title, {
+            tag: item.tag,
+            icon: item.iconUrl,
+            body: item.text,
+            data: { url: item.url },
+        });
+    }
 }
 
 const onNotificationClick = async function(event: NotificationEvent): Promise<any> {

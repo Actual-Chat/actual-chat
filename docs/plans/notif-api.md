@@ -190,8 +190,7 @@ handler. Dismissals (clear-on-read) lower the count via a silent push.
   the server carries the dropped notifications' **tags** (chatId) in the silent push
   (`SendDismissal` + `DismissedTags`; iOS matches by `ThreadIdentifier`), and web /
   Android / iOS drop the matching delivered notification by tag.
-  **Deferred:** client-side reconciliation that ensures every unread chat has a device
-  notification — it overlaps the server population re-check and is a larger surface.
+  **Client-side reconciliation (`NotificationReconciler`)** — see §8.
 - **Phase 7 — Tests, cleanup, docs.** ✅ Done. `NotificationContentTest` and the
   `WaitForChatEntryNotification` helper (used by `Retranscribe*NotifyFlowTest`) now read
   `GetUserNotificationInfo().Displayed` (open detail #6). The legacy `DbNotification` path
@@ -205,6 +204,45 @@ handler. Dismissals (clear-on-read) lower the count via a silent push.
 Tests rely on the FCM test sink (Phase 3) — `IFirebaseMessagingClient` is replaced
 with a logging + callback sink in integration tests so sends are observable without
 hitting Firebase.
+
+## 8. Client-side reconciliation (`NotificationReconciler`)
+
+The push transport is best-effort (FCM/APNs can drop; the silent dismissal push is
+throttled). `NotificationReconciler` (a shared `UIWorkerBase` in `UI.Blazor.App`,
+started like `AppIconBadgeUpdater`) is the client backstop that keeps the device's OS
+notifications in sync with the server's `ListActive`. It reacts to two signals — the
+`ListActive` compute changing, and a foreground resume (`BackgroundStateTracker`) — and
+calls a per-platform `IDeviceNotifications`:
+
+- **Prune** (all platforms): remove any shown notification whose tag (= chatId) is no
+  longer active. Heals a lost silent-dismissal push or a read on another device. Idempotent.
+- **Create** (web + Android): re-show a notification that **newly entered** the active set
+  but isn't on the device. Heals a dropped delivery push. The reconciler tracks the previous
+  active-tag set and passes only **newly-added** tags as create candidates, so dismissing a
+  banner (which doesn't change the active set) never resurrects it — no per-platform
+  dismissal tracking needed. Web additionally suppresses create while a tab is visible (the
+  in-app UI covers it). Tag content (title/text/icon/absolute deep-link via
+  `NotificationExt.GetChatLink` + `UrlMapper`) rides in `ActiveNotificationInfo`.
+
+`GetChatTag` was lifted to `NotificationExt` so the FCM send path and the client reconciler
+derive the device tag identically.
+
+### iOS create-missing / NSE (deferred decision)
+
+iOS is **prune-only** — it ignores `createTags`. Reason: iOS gives no user-dismissal
+callback and renders alert pushes without running our code, so we can't distinguish a
+*dropped* push from a banner the user *swiped away*; create-missing would resurrect
+dismissed notifications. The clean fix is a **Notification Service Extension** that records
+delivered tags into an **App Group**, giving the "delivered on this device" signal iOS
+withholds — then iOS create-missing becomes `active − delivered − shown`, like web/Android.
+An NSE also unlocks rich (image) and E2E-encrypted notification content. We deferred it:
+the standalone payoff (a missed banner reappearing on reopen) is modest versus adding an
+NSE target + App Group. **Revisit when we want rich or E2E-encrypted iOS notifications** —
+fold create-missing in then. (A silent-dismissal NSE does *not* help: the NSE only runs for
+alert pushes, not the `content-available` dismissal push.)
+
+Not buildable/testable in Docker: the MAUI iOS/Android `IDeviceNotifications` impls and the
+web service-worker create path (no browser) — verified by build only.
 
 ## 5. Reuse
 
