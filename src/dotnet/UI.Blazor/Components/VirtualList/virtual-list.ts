@@ -1081,8 +1081,15 @@ export class VirtualList {
 
         this.updateState('endAnchor: on', this.state, { isEndAnchorVisible: true });
         if (this.state.renderState.hasVeryLastItem) {
-            const edgeKey = this.getLastItemKey()!;
-            this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
+            // Both edges visible (content shorter than viewport) → defaultEdge wins, mirroring updateVisibleItems.
+            // Without this a Start-edge list (media/files/links) gets pinned to End the moment its end anchor
+            // scrolls in, dropping a single item or the empty placeholder to the bottom instead of the top.
+            const firstRef = this.getFirstItemRef();
+            const firstVisible = firstRef != null && this.isItemPartiallyVisible(firstRef);
+            if (this.defaultEdge === VirtualListEdge.End || !firstVisible) {
+                const edgeKey = this.getLastItemKey()!;
+                this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
+            }
         }
         this.updateVisibleKeysThrottled();
     }
@@ -1970,8 +1977,11 @@ export class VirtualList {
                     reCenter();
 
                 // Bottom cap: clip the wrapper to the newest so scrolling down hard-stops there natively (no
-                // chain reposition — safe, unlike a top cap). After re-center so `end` is final.
-                if (this.isInfinite && rs.hasVeryLastItem && CutVirtualSpaceAtBottom) {
+                // chain reposition — safe, unlike a top cap). After re-center so `end` is final. End-edge only:
+                // on a Start-edge list this cap leaves no room below short content to scroll its first item up
+                // to the viewport top, stranding a single item / the empty placeholder at the bottom.
+                if (this.isInfinite && rs.hasVeryLastItem && CutVirtualSpaceAtBottom
+                    && this.defaultEdge === VirtualListEdge.End) {
                     totalSize = end + endAnchorSize;
                     bottomCapped = true;
                 }
