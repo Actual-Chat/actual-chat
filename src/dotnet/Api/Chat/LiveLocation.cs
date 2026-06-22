@@ -2,7 +2,8 @@ namespace ActualChat.Chat;
 
 /// <summary>
 /// A snapshot of an author's live location share in a chat: their latest
-/// <see cref="Point"/> plus the share's start, last-update, and expiry moments.
+/// <see cref="Point"/> plus the share's start, last-update moments and its
+/// <see cref="Duration"/> (from which <see cref="ExpiresAt"/> is derived).
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record LiveLocation(
@@ -11,5 +12,9 @@ public sealed partial record LiveLocation(
     [property: DataMember, MemoryPackOrder(2), Key(2)] GeoPoint Point,
     [property: DataMember, MemoryPackOrder(3), Key(3)] Moment StartedAt,
     [property: DataMember, MemoryPackOrder(4), Key(4)] Moment UpdatedAt,
-    [property: DataMember, MemoryPackOrder(5), Key(5)] Moment ExpiresAt
-);
+    [property: DataMember, MemoryPackOrder(5), Key(5)] TimeSpan Duration
+)
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public Moment ExpiresAt => StartedAt + Duration;
+}

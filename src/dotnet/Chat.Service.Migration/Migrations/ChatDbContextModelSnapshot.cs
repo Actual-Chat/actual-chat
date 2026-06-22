@@ -879,9 +879,9 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("chat_id")
                         .UseCollation("C");
 
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
+                    b.Property<TimeSpan>("Duration")
+                        .HasColumnType("interval")
+                        .HasColumnName("duration");
 
                     b.Property<double>("Latitude")
                         .HasColumnType("double precision")
@@ -903,8 +903,6 @@ namespace ActualChat.Chat.Migrations
                         .HasName("pk_live_locations");
 
                     b.HasIndex("ChatId");
-
-                    b.HasIndex("ExpiresAt");
 
                     b.ToTable("live_locations");
                 });

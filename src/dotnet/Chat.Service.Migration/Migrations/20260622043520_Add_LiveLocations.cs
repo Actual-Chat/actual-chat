@@ -24,7 +24,7 @@ namespace ActualChat.Chat.Migrations
                     bearing = table.Column<float>(type: "real", nullable: true),
                     started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    duration = table.Column<TimeSpan>(type: "interval", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -35,11 +35,6 @@ namespace ActualChat.Chat.Migrations
                 name: "IX_live_locations_chat_id",
                 table: "live_locations",
                 column: "chat_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_live_locations_expires_at",
-                table: "live_locations",
-                column: "expires_at");
         }
 
         /// <inheritdoc />

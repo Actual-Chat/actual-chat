@@ -62,7 +62,6 @@ public class LiveLocationsBackend(IServiceProvider services)
         await using var __ = dbContext.ConfigureAwait(false);
 
         var now = Clocks.SystemClock.Now;
-        var expiresAt = now + Duration(duration);
         var id = DbLiveLocation.ComposeId(chatId, authorId);
         var dbLiveLocation = await dbContext.LiveLocations.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
@@ -79,7 +78,7 @@ public class LiveLocationsBackend(IServiceProvider services)
         else
             dbLiveLocation.StartedAt = now;
         UpdatePosition(dbLiveLocation, point, now);
-        dbLiveLocation.ExpiresAt = expiresAt;
+        dbLiveLocation.Duration = Duration(duration);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

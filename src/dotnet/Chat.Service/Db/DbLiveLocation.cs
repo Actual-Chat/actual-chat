@@ -24,10 +24,7 @@ public class DbLiveLocation : IHasId<string>, IRequirementTarget
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public DateTime ExpiresAt {
-        get => field.DefaultKind(DateTimeKind.Utc);
-        set => field = value.DefaultKind(DateTimeKind.Utc);
-    }
+    public TimeSpan Duration { get; set; }
 
     public static string ComposeId(ChatId chatId, AuthorId authorId)
         => $"{chatId}:{authorId}";
@@ -41,5 +38,5 @@ public class DbLiveLocation : IHasId<string>, IRequirementTarget
             new GeoPoint(Latitude, Longitude, Accuracy, Bearing),
             StartedAt.ToMoment(),
             UpdatedAt.ToMoment(),
-            ExpiresAt.ToMoment());
+            Duration);
 }
