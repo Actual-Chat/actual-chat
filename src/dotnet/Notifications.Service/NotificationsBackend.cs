@@ -440,6 +440,41 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [EventHandler]
+    // Reconciles read notifications promptly when a Read position advances, so a notification
+    // read on one device is dropped (and a silent dismissal pushed) on the others without waiting
+    // for the user's next notification event.
+    public virtual async Task OnReadPositionChangedEvent(ReadPositionChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (userId, chatId, entryLid) = eventCommand;
+        if (entryLid <= 0)
+            return;
+
+        // Cheap gate: avoid the operation + row lock + push path unless this user actually has a
+        // displayed notification in this chat that the new read position now covers.
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+        var dbUserNotifications = await dbContext.UserNotifications
+            .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbUserNotifications is null)
+            return;
+
+        var hasDismissable = dbUserNotifications.ToModel().Displayed.Any(n => {
+            var (anchorChatId, anchorEntryLid) = GetReadAnchor(n);
+            return anchorChatId == chatId && anchorEntryLid > 0 && anchorEntryLid <= entryLid;
+        });
+        if (!hasDismissable)
+            return;
+
+        DebugLog?.LogInformation("-> OnReadPositionChangedEvent. UserId={UserId}, ChatId={ChatId}, EntryLid={EntryLid}",
+            userId, chatId, entryLid);
+        await ApplyHardUpdate(userId, [], [], cancellationToken).ConfigureAwait(false);
+    }
+
+    // [EventHandler]
     public virtual async Task OnSignedOut(UserSignedOutEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
