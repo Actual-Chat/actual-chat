@@ -12,4 +12,21 @@ public static class NotificationExt
             ChatNotification n when ChatId.TryParse(n.SimilarityKey, out var chatId) => chatId.Value,
             _ => null,
         };
+
+    // The in-app deep link a notification points at (entry if it has one, else the chat).
+    // Mirrors the link the FCM send path builds; used by the client reconciler to create a
+    // missing notification with a working tap target.
+    public static LocalUrl GetChatLink(this Notification notification)
+    {
+        var entryId = notification switch {
+            ChatEntryRelatedNotification n when n.EntryLid > 0 => (ChatEntryId?)n.EntryId,
+            ChatEntryNotification n => n.EntryId,
+            _ => null,
+        };
+        if (entryId is { } e)
+            return Links.Chat(e);
+        return ChatId.TryParse(notification.GetChatTag() ?? "", out var chatId)
+            ? Links.Chat(chatId)
+            : Links.Chats;
+    }
 }

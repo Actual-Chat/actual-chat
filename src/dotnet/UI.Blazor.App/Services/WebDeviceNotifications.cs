@@ -12,9 +12,9 @@ public class WebDeviceNotifications(AppUIHub hub) : IDeviceNotifications
 
     private IJSRuntime JS => hub.JS;
 
-    public async Task Reconcile(IReadOnlyList<ActiveNotificationInfo> active, CancellationToken cancellationToken)
-    {
-        var activeTags = active.Select(x => x.Tag).Distinct().ToArray();
-        await JS.InvokeVoidAsync(JSReconcileMethod, cancellationToken, [(object)activeTags]).ConfigureAwait(false);
-    }
+    public async Task Reconcile(
+        IReadOnlyList<ActiveNotificationInfo> active,
+        IReadOnlyCollection<string> createTags,
+        CancellationToken cancellationToken)
+        => await JS.InvokeVoidAsync(JSReconcileMethod, cancellationToken, active, createTags).ConfigureAwait(false);
 }

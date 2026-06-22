@@ -7,6 +7,14 @@ import { BrowserInit } from '../UI.Blazor/Services/BrowserInit/browser-init';
 
 const { debugLog, warnLog, errorLog } = getLogs('NotificationUI');
 
+interface ActiveNotificationInfo {
+    tag: string;
+    title: string;
+    text: string;
+    iconUrl: string;
+    url: string;
+}
+
 export class NotificationUI {
     private static backendRef?: DotNet.DotNetObject;
     private static hostKind?: HostKind;
@@ -84,15 +92,16 @@ export class NotificationUI {
         }
     }
 
-    /** Called by Blazor: asks the service worker to close any shown notification whose tag is
-     *  not in the server's active set (heals a lost dismissal push or a read on another device). */
-    public static async reconcileNotifications(activeTags: string[]): Promise<void> {
+    /** Called by Blazor: asks the service worker to reconcile shown notifications against the
+     *  server's active set — close ones no longer active, and (re)show newly-active ones that
+     *  aren't shown (createTags), healing a lost dismissal push or a dropped delivery push. */
+    public static async reconcileNotifications(active: ActiveNotificationInfo[], createTags: string[]): Promise<void> {
         try {
             const registration = await navigator.serviceWorker.getRegistration('sw.js');
             const sw = registration?.active;
             if (!sw)
                 return;
-            sw.postMessage({ type: 'RECONCILE_NOTIFICATIONS', activeTags });
+            sw.postMessage({ type: 'RECONCILE_NOTIFICATIONS', active, createTags });
         }
         catch (error) {
             warnLog?.log(`reconcileNotifications: failed`, error);
