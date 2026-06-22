@@ -20,6 +20,15 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     public bool IsReplacement
         => Kind != ChatMessageKind.None;
 
+    // Returns a shallow copy with NextMessage set. Used to assemble per-snapshot forward links
+    // without mutating the shared, cached tile items (see ChatUI.GetTiles).
+    public ChatMessage WithNextMessage(ChatMessage? next)
+    {
+        var clone = (ChatMessage)MemberwiseClone();
+        clone.NextMessage = next;
+        return clone;
+    }
+
     public IEnumerable<ChatMessage> GetLeafMessages()
     {
         if (!IsGroup)

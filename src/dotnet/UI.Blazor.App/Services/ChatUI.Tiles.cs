@@ -214,13 +214,6 @@ public partial class ChatUI
             prevMessage = tile.Items[^1];
         }
 
-        // Fix NextMessage reference for cached tiles
-        if (tiles.Count > 0) {
-            for (int i = 0; i < tiles.Count - 1; i++)
-                tiles[i].Items[^1].NextMessage = tiles[i + 1].Items[0];
-            tiles[^1].Items[^1].NextMessage = null;
-        }
-
         // A chat whose only entries are removed loads zero id-tiles, so the per-tile loop above never
         // runs and never merges the optimistic "sending" messages. Build the tail tile explicitly for
         // that case so they still surface - and so this query depends on OnNewMessagesChanged. When tiles
@@ -265,6 +258,14 @@ public partial class ChatUI
                     items.RemoveAt(newMessagesLineIndex);
                     break;
                 }
+
+        // Re-link NextMessage along the final visual order on per-assembly copies.
+        // Tile items come from the cached GetTile compute method and are shared across list
+        // snapshots; mutating their NextMessage in place races between snapshots and corrupts
+        // selection edges (selection-start/end in ChatEntryMessageView). Iterate in reverse so each
+        // clone points at the next clone, keeping the forward chain private and consistent.
+        for (var i = items.Count - 1; i >= 0; i--)
+            items[i] = items[i].WithNextMessage(i + 1 < items.Count ? items[i + 1] : null);
 
         var direction = dataQuery.StartOffset != 0
             ? dataQuery.StartOffset < 0 ? -1 : 1
