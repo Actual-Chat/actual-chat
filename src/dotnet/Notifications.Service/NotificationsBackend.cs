@@ -863,17 +863,18 @@ public class NotificationsBackend(IServiceProvider services)
         // Push one banner per distinct chat (= client tag): a coalesced batch can add
         // notifications for several chats, and a single push would silently drop the others'
         // banners while the badge still counts them.
+        // Pushes go out as operation events (the transactional outbox): they're persisted to
+        // _events in this same commit and DbEventForwarder hands them to the queue, so a push
+        // is never lost if this node dies after the commit.
         var toPush = notifications
             .Where(n => info.Displayed.Any(d => d.Id == n.Id))
             .GroupBy(GetPushGroupKey)
             .Select(g => g.MaxBy(n => n.SentAt)!)
             .ToList();
         foreach (var notification in toPush)
-            await Queues.Enqueue(new NotificationsBackend_Push(notification, badgeCount), cancellationToken).ConfigureAwait(false);
+            context.Operation.AddEvent(new NotificationsBackend_Push(notification, badgeCount));
         if (dismissed.Count > 0)
-            await Queues.Enqueue(
-                    new NotificationsBackend_PushDismissal(userId, dismissed.ToApiArray(), badgeCount), cancellationToken)
-                .ConfigureAwait(false);
+            context.Operation.AddEvent(new NotificationsBackend_PushDismissal(userId, dismissed.ToApiArray(), badgeCount));
         return;
 
         async Task<(UserNotificationInfo Info, IReadOnlyList<Notification> Dismissed)> Reconcile(UserNotificationInfo committed)
