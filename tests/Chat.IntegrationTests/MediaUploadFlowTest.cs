@@ -1,5 +1,5 @@
-using ActualChat.Media;
 using ActualChat.Testing.Host;
+using ActualLab.Rpc;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -81,6 +81,49 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         await Assert.ThrowsAnyAsync<Exception>(async () => {
             await uploads.GetOffset(session, uploadId, default);
         });
+    }
+
+    [Fact]
+    public async Task ShouldUploadFileViaStream()
+    {
+        // Arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var session = tester.Session;
+        await tester.SignInAsUniqueBob();
+
+        var services = tester.AppServices;
+        var commander = tester.Commander;
+        var uploads = services.GetRequiredService<IUploads>();
+
+        var scope = "stream-scope";
+        // 2.5 MB exercises two full 1 MB flush blocks + a 0.5 MB tail
+        var testData = new byte[(5 * 1024 * 1024) / 2];
+        for (var i = 0; i < testData.Length; i++)
+            testData[i] = (byte)(i * 31 + 7);
+
+        var mediaId = await commander.Call(new Media_ReserveMedia(session, scope));
+        var metadata = new PropertyBag()
+            .Set("FileName", "test.bin")
+            .Set("ContentType", "application/octet-stream");
+        var tag = $"MediaUploadStreamTest/v1/{scope}";
+        var uploadId = await commander.Call(new Uploads_Create(session, testData.Length, tag, metadata));
+
+        // Act: stream the data in small sub-chunks
+        var newOffset = await uploads.AppendStream(session, uploadId, 0, ToRpcStream(testData, 64 * 1024), default);
+
+        // Assert: server accumulated all bytes
+        newOffset.Should().Be(testData.Length);
+        var offset = await uploads.GetOffset(session, uploadId, default);
+        offset.Should().Be(testData.Length);
+
+        // Assert: stored content matches byte-for-byte (block assembly is correct)
+        var storage = services.GetRequiredService<UploadsStorage>();
+        var stored = await storage.GetDataFile(uploadId, default);
+        await using (stored.ConfigureAwait(false)) {
+            using var ms = new MemoryStream();
+            await stored.CopyToAsync(ms);
+            ms.ToArray().Should().Equal(testData);
+        }
     }
 
     [Fact]
@@ -176,5 +219,21 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         progress = await mediaProgressBackend.Get(mediaId, default);
         progress.Should().BeNull();
+    }
+
+    private static RpcStream<byte[]> ToRpcStream(byte[] data, int subChunkSize)
+    {
+        return StandardRpcStream.NewUpload(Produce());
+
+        async IAsyncEnumerable<byte[]> Produce()
+        {
+            for (var pos = 0; pos < data.Length; pos += subChunkSize) {
+                var size = Math.Min(subChunkSize, data.Length - pos);
+                var chunk = new byte[size];
+                Array.Copy(data, pos, chunk, 0, size);
+                yield return chunk;
+                await Task.Yield();
+            }
+        }
     }
 }

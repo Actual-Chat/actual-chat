@@ -123,11 +123,11 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(_ => new BlazorAppLifecycle());
 
         // Uploads
-        // if (hostKind.IsApp())
-        //     services.AddScoped<IFileUploader, WebSourceRpcUploader>();
-        // else
-            services.AddScoped<IFileUploader, WebSourceUploader>();
-        services.AddScoped<IFileUploader, StreamUploader>();
+        services.AddScoped<IFileUploader, WebSourceUploader>();
+        if (isMauiApp)
+            services.AddScoped<IFileUploader, StreamRpcUploader>();
+        else
+            services.AddScoped<IFileUploader, StreamUploader>();
         services.AddScoped<FileUploader>();
 
         // Fusion-based UI services
