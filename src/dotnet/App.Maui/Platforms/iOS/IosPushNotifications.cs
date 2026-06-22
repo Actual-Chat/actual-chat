@@ -75,22 +75,10 @@ public class IosPushNotifications : UIServiceBase<AppUIHub>, IDeviceTokenRetriev
             NotificationUI.SetIsGranted(isGranted);
         }, Log, "Notifications permission request failed", cancellationToken);
 
+    // Silent dismissal pushes are handled in AppDelegate.DidReceiveRemoteNotification — iOS does
+    // not route content-available background pushes to this Plugin.Firebase event.
     private void OnNotificationReceived(object? sender, FCMNotificationReceivedEventArgs e)
-    {
-        if (!e.Notification.Data.TryGetValue(Constants.Notification.MessageDataKeys.DismissedTags, out var dismissedTagsRaw)
-            || dismissedTagsRaw.IsNullOrEmpty())
-            return;
-
-        var dismissedTags = dismissedTagsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        NotificationCenter.GetDeliveredNotifications(delivered => {
-            var toRemove = delivered
-                .Where(n => dismissedTags.Contains(n.Request.Content.ThreadIdentifier))
-                .Select(n => n.Request.Identifier)
-                .ToArray();
-            if (toRemove.Length > 0)
-                NotificationCenter.RemoveDeliveredNotifications(toRemove);
-        });
-    }
+    { }
 
     private static void OnNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)
     {
