@@ -27,17 +27,6 @@ public class LiveLocations(IServiceProvider services) : ILiveLocations
         return await Backend.List(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    // [ComputeMethod]
-    public virtual async Task<bool> IsSharing(Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author == null)
-            return false;
-
-        var location = await Backend.Get(chatId, author.Id, cancellationToken).ConfigureAwait(false);
-        return location != null;
-    }
-
     // [CommandHandler]
     public virtual async Task OnStart(LiveLocations_Start command, CancellationToken cancellationToken)
     {

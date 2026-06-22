@@ -9,8 +9,6 @@ public interface ILiveLocations : IComputeService
     Task<LiveLocation?> Get(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<LiveLocation>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<bool> IsSharing(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnStart(LiveLocations_Start command, CancellationToken cancellationToken);
