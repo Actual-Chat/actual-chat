@@ -503,6 +503,9 @@ body.hoverable .content-list-rows .c-file-row:hover,
 .content-list-links .item {
     @apply px-2 py-1;
 }
+.content-list-links .item:has(.c-empty) {
+    @apply py-0;
+}
 .content-list-links .message-link-preview {
     @apply w-full;
     @apply truncate;
