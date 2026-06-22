@@ -43,6 +43,21 @@ sw.addEventListener('notificationclick', (event: NotificationEvent) => {
     event.waitUntil(onNotificationClick(event));
 }, true);
 
+sw.addEventListener('message', (event: ExtendableEvent & { data?: any }) => {
+    if (event.data?.type !== 'RECONCILE_NOTIFICATIONS')
+        return;
+    event.waitUntil(reconcileNotifications(event.data.activeTags ?? []));
+});
+
+// Closes shown notifications whose tag is no longer in the server's active set.
+const reconcileNotifications = async function(activeTags: string[]): Promise<void> {
+    const active = new Set<string>(activeTags);
+    const shown = await sw.registration.getNotifications();
+    for (const notification of shown)
+        if (notification.tag && !active.has(notification.tag))
+            notification.close();
+}
+
 const onNotificationClick = async function(event: NotificationEvent): Promise<any> {
     stopEvent(event);
     event.notification.close();

@@ -84,6 +84,21 @@ export class NotificationUI {
         }
     }
 
+    /** Called by Blazor: asks the service worker to close any shown notification whose tag is
+     *  not in the server's active set (heals a lost dismissal push or a read on another device). */
+    public static async reconcileNotifications(activeTags: string[]): Promise<void> {
+        try {
+            const registration = await navigator.serviceWorker.getRegistration('sw.js');
+            const sw = registration?.active;
+            if (!sw)
+                return;
+            sw.postMessage({ type: 'RECONCILE_NOTIFICATIONS', activeTags });
+        }
+        catch (error) {
+            warnLog?.log(`reconcileNotifications: failed`, error);
+        }
+    }
+
     /** Called by Blazor */
     public static async deleteDeviceToken(): Promise<void> {
         const { firebaseApp } = BrowserInit;
