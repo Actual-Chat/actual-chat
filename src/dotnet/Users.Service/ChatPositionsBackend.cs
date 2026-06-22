@@ -69,6 +69,10 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
         context.Operation.Items.KeylessSet(hasChanges);
 
         if (kind == ChatPositionKind.Read && hasChanges) {
+            // Let the notifications backend reconcile this user's read notifications promptly
+            // instead of waiting for their next notification event (cross-device read dismissal).
+            context.Operation.AddEvent(new ReadPositionChangedEvent(userId, chatId, position.EntryLid));
+
             var stat = await ChatsBackend.GetReadPositionsStat(chatId, cancellationToken).ConfigureAwait(false);
             var needUpdateStat = stat is null || MightUpdateStat(stat, userId, position.EntryLid);
             // Do not send update stat command if we know a priori it won't affect stat.

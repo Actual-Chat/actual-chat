@@ -118,6 +118,47 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task ReadingAChatEagerlyDismissesItsNotification()
+    {
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Eager dismiss chat");
+        await Tester.InviteToChat(chatId, alice);
+        var deviceId = await RegisterDevice(alice.Id);
+        Sink.Clear();
+
+        await Tester.SignIn(bob);
+        var entry = await Tester.CreateTextEntry(chatId, "Hi Alice");
+
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            info.Displayed.Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+        await TestExt.When(() => {
+            Sink.Messages.Should().Contain(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId));
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+
+        // Alice reads the chat — and crucially NO further message is sent.
+        await Commander.Call(new ChatPositionsBackend_Set(
+            alice.Id, chatId, ChatPositionKind.Read, new ChatPosition(entry.LocalId)));
+
+        // The read alone triggers reconciliation: a silent dismissal push goes out and the
+        // notification leaves the displayed set.
+        await TestExt.When(() => {
+            var dismissals = Sink.Messages
+                .Where(m => m.IsDismissal && m.DeviceIds.Contains(deviceId))
+                .ToList();
+            dismissals.Should().NotBeEmpty();
+            dismissals[^1].BadgeCount.Should().Be(0);
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+
+        var info2 = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+        info2.Displayed.Should().BeEmpty();
+    }
+
     private async Task<Symbol> RegisterDevice(UserId userId)
     {
         var deviceId = new Symbol("test-device-" + userId.Value);
