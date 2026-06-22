@@ -73,6 +73,22 @@ body.hoverable .chat-message-author-name:hover {
     @apply opacity-80;
 }
 
+.author-color-1 { --author-color: var(--author-color-1); }
+.author-color-2 { --author-color: var(--author-color-2); }
+.author-color-3 { --author-color: var(--author-color-3); }
+.author-color-4 { --author-color: var(--author-color-4); }
+.author-color-5 { --author-color: var(--author-color-5); }
+.author-color-6 { --author-color: var(--author-color-6); }
+.author-color-7 { --author-color: var(--author-color-7); }
+.author-color-8 { --author-color: var(--author-color-8); }
+.author-color-9 { --author-color: var(--author-color-9); }
+.author-color-10 { --author-color: var(--author-color-10); }
+.author-color-self { --author-color: var(--author-self); }
+.author-color-peer { --author-color: var(--author-peer); }
+.chat-message-author-name[class*="author-color-"] {
+    color: var(--author-color);
+}
+
 .forwarded-message .forwarded-chat-header {
     @apply flex-x items-center gap-x-1;
     @apply min-w-0;

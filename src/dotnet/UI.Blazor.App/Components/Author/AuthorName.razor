@@ -10,12 +10,13 @@
                 AuthorUI.Show(author.Id);
         })
         : Click;
+    var cls = Colorize ? $"{Class} {AuthorColors.GetColorClass(AuthorId, m?.IsOwn ?? false)}" : Class;
 }
 
 <span class="hidden author-id">@($"{AuthorId?.Value}->{author?.Id.Value}->{author?.Avatar.Id}->{author?.Avatar.Name}")</span>
 <AvatarName
     Avatar="@author?.Avatar"
-    Class="@Class"
+    Class="@cls"
     IsAnonymous="@(author?.IsAnonymous ?? false)"
     IsOwn="@isOwn"
     Click="@onClick"/>
@@ -24,6 +25,7 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool ShowDetailsOnClick { get; set; } = true;
     [Parameter] public bool ShowAsOwn { get; set; }
+    [Parameter] public bool Colorize { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
