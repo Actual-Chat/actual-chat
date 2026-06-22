@@ -97,8 +97,10 @@ export class NotificationUI {
      *  aren't shown (createTags), healing a lost dismissal push or a dropped delivery push. */
     public static async reconcileNotifications(active: ActiveNotificationInfo[], createTags: string[]): Promise<void> {
         try {
-            const registration = await navigator.serviceWorker.getRegistration('sw.js');
-            const sw = registration?.active;
+            // serviceWorker.ready reliably resolves to the active registration for our scope;
+            // getRegistration('sw.js') is a URL lookup that can return undefined even when registered.
+            const registration = await navigator.serviceWorker.ready;
+            const sw = registration.active;
             if (!sw)
                 return;
             sw.postMessage({ type: 'RECONCILE_NOTIFICATIONS', active, createTags });
