@@ -20,14 +20,14 @@ public class AndroidDeviceNotifications : IDeviceNotifications
         var notificationManager = NotificationManagerCompat.From(Android.App.Application.Context);
 
         var shownTags = new HashSet<string>(StringComparer.Ordinal);
-        var shown = notificationManager.ActiveNotifications;
+        var shown = notificationManager?.ActiveNotifications;
         if (shown != null)
             foreach (var statusBarNotification in shown) {
                 var tag = statusBarNotification.Tag;
                 if (tag.IsNullOrEmpty())
                     continue;
                 if (!activeTags.Contains(tag))
-                    notificationManager.Cancel(tag, statusBarNotification.Id);
+                    notificationManager?.Cancel(tag, statusBarNotification.Id);
                 else
                     shownTags.Add(tag);
             }
