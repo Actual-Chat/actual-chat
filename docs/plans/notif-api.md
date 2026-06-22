@@ -1,6 +1,6 @@
 # Notifications redesign — `feat/notif-api`
 
-**Status:** Phases 1–7 complete (client-side device reconciliation deferred) ·
+**Status:** Phases 1–7 complete; client-side reconciliation (prune + create on web/Android, iOS prune-only) shipped — see §8 ·
 **Branch:** `feat/notif-api` · **Started:** 2026-05-20
 
 ## 1. Background
@@ -66,26 +66,30 @@ Idempotent — a missed or duplicated run converges on the next pass.
 
 ### 3.3 Data model
 
-`NotificationItem` — union with an abstract-record base (MessagePack `[Union]`).
-These types are **MessagePack-only — no MemoryPack**. Three levels:
+`Notification` — union with an abstract-record base (MessagePack `[Union]`).
+These types are **MessagePack-only — no MemoryPack**. The hierarchy:
 
-- `NotificationItem` (abstract) — carries only the identity/dedup key
+- `Notification` (abstract) — carries only the identity/dedup key
   (`NotificationId`, which encodes `UserId`/`Kind`/`SimilarityKey`), `Title`, `Text`,
   `CreatedAt`. It makes **no** assumption that a notification is chat-related.
-- `ChatNotificationItem` (abstract) — for chat-related notifications: adds `ChatId`,
-  `EntryLid` (the entry the notification points at and the read-detection anchor),
-  and `AuthorId`. `ChatId` is stored explicitly — legacy `Attention`/`NotifyMembers`
-  notifications use a timestamp as their similarity key, so it can't be derived from
-  `SimilarityKey` universally; revisit once similarity-key formation is normalized.
-- One concrete record **per `NotificationKind`** — `MessageNotificationItem`,
-  `ReplyNotificationItem`, `InvitationNotificationItem`, `MentionNotificationItem`,
-  `ReactionNotificationItem`, `AttentionNotificationItem`, `NewThreadNotificationItem`
-  — union tags match the `NotificationKind` enum values.
+- `ChatNotification` (abstract) — for chat-related notifications: adds `AuthorId`.
+  `ChatId` is **derived** (computed), not stored: `ChatId.Parse(SimilarityKey)` for
+  chat-keyed notifications. Two sub-bases refine this:
+  - `ChatEntryRelatedNotification` — keyed by chat, **stores `EntryLid`** (the entry
+    the notification points at and the read-detection anchor); `EntryId` is computed
+    from `ChatId`+`EntryLid`. Used by `Message`/`Reply`/`Thread`.
+  - `ChatEntryNotification` — keyed by the entry (`SimilarityKey` is a `ChatEntryId`),
+    so `ChatId`/`EntryLid` are derived from `EntryId`. Used by `Mention`/`Reaction`/
+    `Attention`.
+- One concrete record **per `NotificationKind`** — `MessageNotification`,
+  `ReplyNotification`, `InvitationNotification`, `MentionNotification`,
+  `ReactionNotification`, `AttentionNotification`, `ThreadNotification` — union tags
+  match the `NotificationKind` enum values.
 
 Minimum data stored; richer data (icon, author, reaction emoji) pulled at send time.
 `Text` *is* stored (tiny).
 
-`UserNotificationInfo` — one small blob per user: `Displayed: ApiArray<NotificationItem>`
+`UserNotificationInfo` — one small blob per user: `Displayed: ApiArray<Notification>`
 (converged set, one item per `SimilarityKey`), `UnsentDelta: NotificationDelta`
 (`Upserts` + `DismissedIds`), `LastPushAt`, `IsDormant`, `Version`.
 
@@ -142,7 +146,7 @@ handler. Dismissals (clear-on-read) lower the count via a silent push.
 
 ## 4. Implementation plan
 
-- **Phase 1 — Contracts & data model.** `NotificationItem` union, `UserNotificationInfo`
+- **Phase 1 — Contracts & data model.** `Notification` union, `UserNotificationInfo`
   / `NotificationDelta`, extend `INotifications`/`INotificationsBackend`,
   `DbUserNotifications` + migration.
 - **Phase 2 — `NotificationsBackend` core.** ✅ Done. Rebased on `ShardedDbServiceBase`;
