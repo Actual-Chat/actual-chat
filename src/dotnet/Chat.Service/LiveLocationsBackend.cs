@@ -15,7 +15,13 @@ public class LiveLocationsBackend(IServiceProvider services)
     {
         var id = DbLiveLocation.ComposeId(chatId, authorId);
         var dbLiveLocation = await DbLiveLocationResolver.Get(id, cancellationToken).ConfigureAwait(false);
-        return dbLiveLocation == null ? null : Active(dbLiveLocation.ToModel());
+        var liveLocation = dbLiveLocation?.ToModel();
+        if (liveLocation is null || liveLocation.ExpiresAt <= Clocks.SystemClock.Now)
+            return null;
+
+        Computed.GetCurrent().Invalidate(liveLocation.ExpiresAt - Clocks.SystemClock.Now);
+        return liveLocation;
+
     }
 
     // [ComputeMethod]
@@ -115,17 +121,5 @@ public class LiveLocationsBackend(IServiceProvider services)
         // Removing the row scrubs the coordinates so a stopped share leaves no residual position
         dbContext.Remove(dbLiveLocation);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    // Private methods
-
-    private LiveLocation? Active(LiveLocation model)
-    {
-        var now = Clocks.SystemClock.Now;
-        if (model.ExpiresAt <= now)
-            return null;
-
-        Computed.GetCurrent().Invalidate(model.ExpiresAt - now);
-        return model;
     }
 }
