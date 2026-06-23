@@ -13,6 +13,19 @@ public static class LoggingExt
     public static readonly FilePath DevLog;
     public static LogLevel MinLevel { get; private set; }
 
+    private static readonly string[] NotificationLogCategories = [
+        "ActualChat.App.Maui.FirebaseMessagingService",
+        "ActualChat.App.Maui.NotificationHelper",
+        "ActualChat.App.Maui.AndroidDeviceNotifications",
+        "ActualChat.App.Maui.AppDelegate",
+        "ActualChat.App.Maui.IosPushNotifications",
+        "ActualChat.App.Maui.IosDeviceNotifications",
+        "ActualChat.App.Maui.Services.MauiNotifications",
+        "ActualChat.UI.Blazor.App.NotificationUI",
+        "ActualChat.UI.Blazor.App.Services.NotificationReconciler",
+        "ActualChat.UI.Blazor.App.Services.WebDeviceNotifications",
+    ];
+
     static LoggingExt()
     {
         var devLogEnvVar = Environment.GetEnvironmentVariable("ActualChat_DevLog");
@@ -35,6 +48,10 @@ public static class LoggingExt
             .AddFilter("System", LogLevel.Warning)
             .AddFilter("Microsoft", LogLevel.Warning)
             .AddFilter("ActualChat", MinLevel);
+        // Notifications troubleshooting: keep the push receive/show/register/reconcile path at Debug
+        // even in Release builds, where MinLevel is Information and would drop these LogDebug lines.
+        foreach (var category in NotificationLogCategories)
+            logging.AddFilter(category, LogLevel.Debug);
 #if false
         // Extra logging for profiling / perf. works:
         logging
