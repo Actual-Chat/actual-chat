@@ -120,16 +120,15 @@
 .playable-text-markup .highlight {
     @apply text-primary;
 }
-.playable-text-markup .playing-start:after,
-.playable-text-markup .playing-start .painted:after {
-    border-radius: 6px 0 0 6px;
+.playable-text-markup .playing-start {
+    border-bottom-left-radius: 6px;
+    border-top-left-radius: 6px;
 }
-.playable-text-markup .playing-end:after,
-.playable-text-markup .playing-end .painted:after {
-    border-radius: 0 6px 6px 0;
+.playable-text-markup .playing-end {
+    border-bottom-right-radius: 6px;
+    border-top-right-radius: 6px;
 }
-.playable-text-markup .playing-start-end:after,
-.playable-text-markup .playing-start-end .painted:after {
+.playable-text-markup .playing-start-end {
     border-radius: 6px;
 }
 .playable-text-markup .played-start {
@@ -165,61 +164,57 @@
     border-top-right-radius: 6px;
 }
 
-.playable-text-markup .playing {
-    @apply relative;
+.playable-text-markup .played,
+.playable-text-markup .played .painted {
+    @apply bg-[var(--pt-played)];
 }
-.playable-text-markup .playing:after,
-.playable-text-markup .painted:after {
-    @apply content-empty;
-    @apply absolute z-minus inset-0;
-    filter: opacity(0.2);
+.playable-text-markup .playing,
+.playable-text-markup .playing .painted {
+    @apply bg-[var(--pt-playing)];
 }
-.playable-text-color-blue .playing,
-.playable-text-color-blue .played,
-.playable-text-color-blue .playing .painted,
-.playable-text-color-blue .played .painted {
-    @apply bg-[var(--blue-80-20)];
+.playable-text-color-1 {
+    --pt-playing: color-mix(in srgb, var(--author-color-1) 40%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-1) 20%, transparent);
 }
-.playable-text-color-blue .playing:after,
-.playable-text-color-blue .playing .painted:after {
-    @apply bg-[var(--blue-50)];
+.playable-text-color-2 {
+    --pt-playing: color-mix(in srgb, var(--author-color-2) 40%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-2) 20%, transparent);
 }
-.playable-text-color-green .playing,
-.playable-text-color-green .played,
-.playable-text-color-green .playing .painted,
-.playable-text-color-green .played .painted {
-    @apply bg-[var(--green-80-20)];
+.playable-text-color-3 {
+    --pt-playing: color-mix(in srgb, var(--author-color-3) 40%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-3) 20%, transparent);
 }
-.playable-text-color-green .playing:after,
-.playable-text-color-green .playing .painted:after {
-    @apply bg-[var(--green-50)];
+.playable-text-color-4 {
+    --pt-playing: color-mix(in srgb, var(--author-color-4) 40%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-4) 20%, transparent);
 }
-.playable-text-color-purple .playing,
-.playable-text-color-purple .played,
-.playable-text-color-purple .playing .painted,
-.playable-text-color-purple .played .painted {
-    @apply bg-[var(--violet-80-20)];
+.playable-text-color-5 {
+    --pt-playing: color-mix(in srgb, var(--author-color-5) 40%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-5) 20%, transparent);
 }
-.playable-text-color-purple .playing:after,
-.playable-text-color-purple .playing .painted:after {
-    @apply bg-[var(--violet-50)];
+.playable-text-color-6 {
+    --pt-playing: color-mix(in srgb, var(--author-color-6) 40%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-6) 20%, transparent);
 }
-.playable-text-color-yellow .playing,
-.playable-text-color-yellow .played,
-.playable-text-color-yellow .playing .painted,
-.playable-text-color-yellow .played .painted {
-    @apply bg-[var(--sienna-80-20)];
+.playable-text-color-7 {
+    --pt-playing: color-mix(in srgb, var(--author-color-7) 40%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-7) 20%, transparent);
 }
-.playable-text-color-yellow .playing:after,
-.playable-text-color-yellow .playing .painted:after {
-    @apply bg-[var(--sienna-50)];
+.playable-text-color-8 {
+    --pt-playing: color-mix(in srgb, var(--author-color-8) 40%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-8) 20%, transparent);
+}
+.playable-text-color-9 {
+    --pt-playing: color-mix(in srgb, var(--author-color-9) 40%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-9) 20%, transparent);
+}
+.playable-text-color-10 {
+    --pt-playing: color-mix(in srgb, var(--author-color-10) 40%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-10) 20%, transparent);
 }
 .playable-text-markup .played.last-word,
 .playable-text-markup .playing.last-word {
     @apply !bg-transparent;
-}
-.playable-text-markup .playing.last-word:after {
-    @apply !hidden;
 }
 .playable-text-markup .painted {
     @apply relative;
