@@ -9,7 +9,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 public sealed class ContentListItem : IVirtualListItem, IEquatable<ContentListItem>
 {
     public required string Key { get; init; }
-    public bool IsGroup { get; init; }
+    public bool IsHeader { get; init; }
     public bool IsEmptyPlaceholder { get; init; }
     public long Version { get; init; }
 
@@ -18,7 +18,11 @@ public sealed class ContentListItem : IVirtualListItem, IEquatable<ContentListIt
     public IReadOnlyList<IChatContentItem> Items { get; init; } = [];
     public ChatEntry? LinkEntry { get; init; }
 
-    public bool ShouldSkipKey => IsGroup;
+    // Date headers are ordinary list items (so they occupy space in the scroll geometry) that merely skip
+    // the key protocol: their synthetic "g:" key must never anchor a load query or a sticky edge. They are
+    // not VirtualList groups — those wrap child items, headers don't.
+    public bool IsGroup => false;
+    public bool ShouldSkipKey => IsHeader;
 
     public bool Equals(ContentListItem? other)
         => other is not null && Key == other.Key && Version == other.Version;

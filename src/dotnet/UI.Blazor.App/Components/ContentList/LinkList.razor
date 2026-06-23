@@ -15,7 +15,7 @@
         @if (item.IsEmptyPlaceholder) {
             <div class="c-empty">No links yet</div>
         }
-        else if (item.IsGroup) {
+        else if (item.IsHeader) {
             <div class="c-group-header">@item.GroupTitle</div>
         }
         else {

@@ -15,7 +15,7 @@
         @if (item.IsEmptyPlaceholder) {
             <div class="c-empty">No files yet</div>
         }
-        else if (item.IsGroup) {
+        else if (item.IsHeader) {
             <div class="c-group-header">@item.GroupTitle</div>
         }
         else {
