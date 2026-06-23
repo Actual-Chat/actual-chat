@@ -3,14 +3,7 @@
 @inherits ComputedMarkupViewBase<PlayableTextMarkup, PlayableTextMarkupView.Model>
 @{
     var m = _rendered = State.Value;
-    var colorCls = m.Color switch {
-        PlayableTextColor.Blue => "playable-text-color-blue",
-        PlayableTextColor.Purple => "playable-text-color-purple",
-        PlayableTextColor.Yellow => "playable-text-color-yellow",
-        PlayableTextColor.Green => "playable-text-color-green",
-        null => "",
-        _ => throw StandardError.Internal("Invalid Model.Color value."),
-        };
+    var colorCls = "playable-text-color-" + (AuthorColors.GetIndex(Entry.AuthorId) + 1);
     var playOnClickIsEnabled = !m.HasSelection;
     var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : " play-disabled");
 }
@@ -59,7 +52,6 @@
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
-    private PlayableTextPaletteProvider PaletteProvider => Hub.PlayableTextPaletteProvider;
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -101,12 +93,9 @@
                 HighlightedWords = highlightedWords,
             };
 
-        var colorLease = ActualizeColorLease(model, rendered);
         var map = EnrichMapWithPlayedStatus(model.Map, rendered.Map);
         return new() {
             Map = map,
-            ColorLease = colorLease,
-            Color = colorLease?.Color ?? rendered.Color,
             HasSelection = hasSelection,
         };
 
@@ -216,24 +205,6 @@
         return enrichedMap;
     }
 
-    private IPlayableTextColorLease? ActualizeColorLease(Model model, Model lastModel)
-    {
-        var colorLease = lastModel.ColorLease;
-        var hasActivePlaying = model.HasActivePlaying;
-        if (hasActivePlaying) {
-            colorLease ??= PaletteProvider
-                .GetPalette(Entry.ChatId)
-                .RentColor(Entry.AuthorId.Value, Entry.LocalId);
-        }
-        else {
-            if (colorLease != null) {
-                colorLease.Release();
-                colorLease = null;
-            }
-        }
-        return colorLease;
-    }
-
     private string GetPlayingClass(WordPlayback status, WordPlayback nextStatus) {
         if (status == WordPlayback.None)
             return "";
@@ -265,8 +236,6 @@
     }
 
     public override async ValueTask DisposeAsync() {
-        var m = State.Value;
-        m.ColorLease?.Release();
         await JSRef.DisposeSilentlyAsync("dispose");
         BlazorRef.DisposeSilently();
         await base.DisposeAsync();
@@ -302,9 +271,6 @@
         public static readonly Model None = new();
 
         public WordPlayback[]? Map { get; init; }
-        public PlayableTextColor? Color { get; init; }
-        public IPlayableTextColorLease? ColorLease { get; init; }
-        public bool HasActivePlaying => Map?.Any(c => c.HasFlag(WordPlayback.Playing)) ?? false;
         public bool HasSelection { get; init; }
         public IReadOnlySet<string> HighlightedWords { get; init; } = ApiSet<string>.Empty;
     }

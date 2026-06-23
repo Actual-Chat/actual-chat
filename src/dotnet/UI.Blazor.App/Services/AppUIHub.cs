@@ -70,8 +70,6 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public AudioAttachmentPlayer AudioAttachmentPlayer => field ??= Services.GetRequiredService<AudioAttachmentPlayer>();
     public OptimisticReactions OptimisticReactions => field ??= Services.GetRequiredService<OptimisticReactions>();
 
-    public PlayableTextPaletteProvider PlayableTextPaletteProvider
-        => field ??= Services.GetRequiredService<PlayableTextPaletteProvider>();
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => field ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     public MarkupHelpers MarkupHelpers => field ??= new MarkupHelpers(this);
