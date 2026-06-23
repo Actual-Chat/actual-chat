@@ -17,28 +17,32 @@
             var brokenLastWord = new MarkupString(InsertBreaks(lastWord.Value, 10));
             var firstPart = Markup.Text[..lastWord.TextRange.Start];
             @firstPart
-            <span class="last-word @colorCls">@brokenLastWord @LastFragment</span>
+            <span class="last-word">@brokenLastWord @LastFragment</span>
         }
     } else {
-        @for (var i = 0; i < Markup.Words.Length; i++) {
-            var word = Markup.Words[i];
-            var status = m.Map != null ? m.Map[i] : WordPlayback.None;
-            var nextStatus = m.Map != null && i < Markup.Words.Length - 1
-                ? m.Map[i + 1]
-                : WordPlayback.None;
-            var cls = GetPlayingClass(status, nextStatus);
-            var highlightedCls = m.HighlightedWords.Count > 0 && m.HighlightedWords.Contains(word.Value.TrimNonLetterOrDigits(), StringComparer.OrdinalIgnoreCase)
-                ? "highlight"
-                : "";
-            if (i != Markup.Words.Length - 1) {
-                <span class="@cls @highlightedCls playable-word">@word.Value</span>
-            } else if (LastFragment != null) {
-                var brokenLastWord = new MarkupString(InsertBreaks(word.Value, 10));
-                <span class="@cls @highlightedCls playable-word last-word"><span class="painted">@brokenLastWord</span> @LastFragment</span>
-            } else {
-                var brokenLastWord = new MarkupString(InsertBreaks(word.Value, 10));
-                <span class="@cls @highlightedCls playable-word last-word">@brokenLastWord</span>
+        var wordCount = Markup.Words.Length;
+        RenderFragment<int> renderWord = i =>
+            @<span class="playable-word @(IsHighlighted(i) ? "highlight" : "")">@if (i == wordCount - 1) {
+                @(new MarkupString(InsertBreaks(Markup.Words[i].Value, 10)))
             }
+            else {
+                @Markup.Words[i].Value
+            }</span>;
+        foreach (var run in BuildRuns(m.Map, wordCount)) {
+            if (run.Fill == WordPlayback.None) {
+                for (var i = run.Start; i <= run.End; i++) {
+                    @renderWord(i)
+                }
+            }
+            else {
+                var runCls = run.Fill == WordPlayback.Playing ? "playing-run" : "played-run";
+                <span class="@runCls">@for (var i = run.Start; i <= run.End; i++) {
+                    @renderWord(i)
+                }</span>
+            }
+        }
+        if (LastFragment != null) {
+            <span class="last-word">@(" ")@LastFragment</span>
         }
     }
 </span>
@@ -136,20 +140,6 @@
             if (isEmpty)
                 return Model.None;
 
-            for (var i = 0; i < markup.Words.Length; i++) {
-                var prev = i > 0 ? map1[i - 1] : WordPlayback.None;
-                var current = map1[i];
-                var next = i < map1.Length - 1 ? map1[i + 1] : WordPlayback.None;
-                var actual = current;
-                if (current == WordPlayback.Playing) {
-                    if (prev == WordPlayback.None)
-                        actual |= WordPlayback.PlayingStart;
-                    if (next == WordPlayback.None)
-                        actual |= WordPlayback.PlayingEnd;
-                }
-                map1[i] = actual;
-            }
-
             return new() { Map = map1 };
         }
     }
@@ -172,67 +162,38 @@
 
     private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)
     {
-        WordPlayback[] enrichedMap;
-        if (map == null) {
-            enrichedMap = lastMap
+        if (map == null)
+            return lastMap
                 .Select(c => c == WordPlayback.None ? WordPlayback.None : WordPlayback.Played)
                 .ToArray();
-        }
-        else {
-            enrichedMap = lastMap.Zip(map,
-                (last, current) => current != WordPlayback.None
-                    ? current
-                    : last == WordPlayback.None
-                        ? WordPlayback.None
-                        : WordPlayback.Played)
-                .ToArray();
-        }
 
-        for (int i = 0; i < enrichedMap.Length; i++) {
-            var current = enrichedMap[i];
-            var prev = i > 0 ? enrichedMap[i - 1] : WordPlayback.None;
-            var next = i < enrichedMap.Length - 1 ? enrichedMap[i + 1] : WordPlayback.None;
-            var actual = current;
-            if (current == WordPlayback.Played) {
-                if (prev == WordPlayback.None)
-                    actual |= WordPlayback.PlayedStart;
-                if (next == WordPlayback.None)
-                    actual |= WordPlayback.PlayedEnd;
-            }
-            enrichedMap[i] = actual;
-        }
-
-        return enrichedMap;
+        return lastMap.Zip(map,
+            (last, current) => current != WordPlayback.None
+                ? current
+                : last == WordPlayback.None
+                    ? WordPlayback.None
+                    : WordPlayback.Played)
+            .ToArray();
     }
 
-    private string GetPlayingClass(WordPlayback status, WordPlayback nextStatus) {
-        if (status == WordPlayback.None)
-            return "";
-        if (status.HasFlag(WordPlayback.Played)) {
-            var cls = "played";
-            var start = status.HasFlag(WordPlayback.PlayedStart);
-            var end = status.HasFlag(WordPlayback.PlayedEnd);
-            if (start)
-                cls += " played-start";
-            if (end)
-                cls += " played-end";
-            return cls;
+    private static List<(WordPlayback Fill, int Start, int End)> BuildRuns(WordPlayback[] map, int count) {
+        var runs = new List<(WordPlayback, int, int)>();
+        var i = 0;
+        while (i < count) {
+            var fill = map[i];
+            var j = i + 1;
+            while (j < count && map[j] == fill)
+                j++;
+            runs.Add((fill, i, j - 1));
+            i = j;
         }
-        if (status.HasFlag(WordPlayback.Playing)) {
-            var cls = "playing";
-            var start = status.HasFlag(WordPlayback.PlayingStart);
-            var end = status.HasFlag(WordPlayback.PlayingEnd);
-            if (start && end)
-                cls += " playing-start-end";
-            else if (start)
-                cls += " playing-start";
-            else if (end)
-                cls += " playing-end";
-            if (nextStatus == WordPlayback.None)
-                cls += " played-end";
-            return cls;
-        }
-        return "";
+        return runs;
+    }
+
+    private bool IsHighlighted(int index) {
+        var m = _rendered;
+        return m is { HighlightedWords.Count: > 0 }
+            && m.HighlightedWords.Contains(Markup.Words[index].Value.TrimNonLetterOrDigits(), StringComparer.OrdinalIgnoreCase);
     }
 
     public override async ValueTask DisposeAsync() {
@@ -256,16 +217,7 @@
 
     // Nested types
 
-    [Flags]
-    public enum WordPlayback {
-        None         = 0x00,
-        Playing      = 0x10,
-        PlayingStart = Playing | 0x01,
-        PlayingEnd   = Playing | 0x02,
-        Played       = 0x80,
-        PlayedStart  = Played | 0x01,
-        PlayedEnd    = Played | 0x02,
-    }
+    public enum WordPlayback { None, Playing, Played }
 
     public sealed record Model {
         public static readonly Model None = new();
