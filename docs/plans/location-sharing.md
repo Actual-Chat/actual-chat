@@ -338,13 +338,22 @@ UI shell) can proceed in parallel once phase 1's contracts exist.
    (`RequestWhenInUseAuthorization`, `AllowsBackgroundLocationUpdates = true`,
    `PausesLocationUpdatesAutomatically = false`); Info.plist
    `NSLocationWhenInUseUsageDescription` + `location` background mode.
-4. `LocationPermissionHandler` (abstract, `UI.Blazor`) + `MauiLocationPermissionHandler`
+4. **Windows:** `MauiGeolocationTracker` (`App.Maui/Services`) — MAUI Essentials
+   `IGeolocation.StartListeningForegroundAsync` + `LocationChanged` /
+   `StopListeningForeground()`. Windows has no background-foreground-service requirement,
+   so the cross-platform Essentials API suffices (it's foreground-only, which is why
+   Android/iOS can't use it). `Package.appxmanifest` gains the `location` DeviceCapability.
+   *(Essentials is used for permissions on all MAUI platforms via `Permissions.LocationWhenInUse`;
+   only the location streaming is native on Android/iOS.)*
+5. `LocationPermissionHandler` (abstract, `UI.Blazor`) + `MauiLocationPermissionHandler`
    (`App.Maui`, copy of `MauiCameraPermissionHandler` — `LocationWhenInUse`; Troubleshoot
    uses `AppInfo.ShowSettingsUI()`, no custom modal for v1); DI for the abstract handler +
    per-platform `ILocationTracker` in `MauiAppModule.cs`.
 - **Verified here:** `App.Maui` compiles clean for `net10.0-android` **and**
-  `net10.0-maccatalyst` (same Apple/CoreLocation path as iOS); `UI.Blazor.App`
-  (web tracker) compiles; `tsc --noEmit` + eslint clean — 0 errors.
+  `net10.0-maccatalyst` (same Apple/CoreLocation path as iOS; the Essentials-based
+  Windows tracker also compiles on these TFMs since it lives in shared `Services/`);
+  `UI.Blazor.App` (web tracker) compiles; `tsc --noEmit` + eslint clean — 0 errors.
+  The `#if WINDOWS` registration + Windows TFM itself are unbuildable on macOS.
 - **Gate (device, pending):** tracker emits positions foreground **and** backgrounded;
   permission grant/deny/limited handled.
 
