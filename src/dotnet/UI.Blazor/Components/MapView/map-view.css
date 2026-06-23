@@ -10,11 +10,20 @@
     @apply w-3.5 h-3.5 rounded-full border-2 border-white;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
 }
-.map-view .map-marker .c-label {
-    @apply absolute left-1/2 mt-1 px-1.5 py-0.5 rounded;
-    @apply bg-01 text-01 text-xs;
+.map-view .map-marker .c-caption {
+    @apply absolute left-1/2 mt-1 flex flex-col items-center gap-0.5;
     top: 100%;
     transform: translateX(-50%);
+}
+.map-view .map-marker .c-label {
+    @apply px-1.5 py-0.5 rounded;
+    @apply bg-01 text-01 text-xs;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.map-view .map-marker .c-sublabel {
+    @apply px-1.5 py-0.5 rounded;
+    @apply bg-01 text-02 text-xxs;
     white-space: nowrap;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }

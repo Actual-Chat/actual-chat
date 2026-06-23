@@ -187,7 +187,6 @@ public static partial class Constants
     public static class LiveLocation
     {
         public static readonly TimeSpan UpdatePeriod = TimeSpan.FromSeconds(10);
-        public static readonly TimeSpan StaleTimeout = TimeSpan.FromSeconds(30);
         public static readonly IReadOnlyDictionary<TimeSpan, string> Durations = new Dictionary<TimeSpan, string> {
             [TimeSpan.FromMinutes(15)] = "15 min",
             [TimeSpan.FromHours(1)] = "1 hour",

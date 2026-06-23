@@ -5,4 +5,5 @@ public sealed record MapMarker(
     double Latitude,
     double Longitude,
     string? Label = null,
-    string? Color = null);
+    string? Color = null,
+    string? SubLabel = null);

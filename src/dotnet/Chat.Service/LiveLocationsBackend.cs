@@ -1,5 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -8,14 +7,14 @@ namespace ActualChat.Chat;
 public class LiveLocationsBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), ILiveLocationsBackend
 {
+    private IDbEntityResolver<string, DbLiveLocation> DbLiveLocationResolver
+        => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbLiveLocation>>();
+
     // [ComputeMethod]
     public virtual async Task<LiveLocation?> Get(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
     {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
         var id = DbLiveLocation.ComposeId(chatId, authorId);
-        var dbLiveLocation = await dbContext.LiveLocations.Get(id, cancellationToken).ConfigureAwait(false);
+        var dbLiveLocation = await DbLiveLocationResolver.Get(id, cancellationToken).ConfigureAwait(false);
         return dbLiveLocation == null ? null : Active(dbLiveLocation.ToModel());
     }
 
@@ -35,13 +34,12 @@ public class LiveLocationsBackend(IServiceProvider services)
         Moment? soonestExpiry = null;
         foreach (var dbLiveLocation in dbLiveLocations) {
             var model = dbLiveLocation.ToModel();
-            var activeUntil = ActiveUntil(model);
-            if (activeUntil <= now)
+            if (model.ExpiresAt <= now)
                 continue;
 
             result.Add(model);
-            if (soonestExpiry is not { } value || activeUntil < value)
-                soonestExpiry = activeUntil;
+            if (soonestExpiry is not { } value || model.ExpiresAt < value)
+                soonestExpiry = model.ExpiresAt;
         }
         if (soonestExpiry is { } expiry)
             Computed.GetCurrent().Invalidate(expiry - now);
@@ -124,26 +122,10 @@ public class LiveLocationsBackend(IServiceProvider services)
     private LiveLocation? Active(LiveLocation model)
     {
         var now = Clocks.SystemClock.Now;
-        var activeUntil = ActiveUntil(model);
-        if (activeUntil <= now)
+        if (model.ExpiresAt <= now)
             return null;
 
-        Computed.GetCurrent().Invalidate(activeUntil - now);
+        Computed.GetCurrent().Invalidate(model.ExpiresAt - now);
         return model;
-    }
-
-    private static Moment ActiveUntil(LiveLocation model)
-    {
-        var staleUntil = model.ModifiedAt + Constants.LiveLocation.StaleTimeout;
-        return model.ExpiresAt < staleUntil ? model.ExpiresAt : staleUntil;
-    }
-
-    private static TimeSpan Duration(TimeSpan duration)
-    {
-        var maxDuration = Constants.LiveLocation.MaxDuration;
-        if (duration <= TimeSpan.Zero || duration > maxDuration)
-            return maxDuration;
-
-        return duration;
     }
 }

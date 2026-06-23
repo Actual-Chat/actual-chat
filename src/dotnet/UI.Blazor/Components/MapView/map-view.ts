@@ -7,6 +7,7 @@ interface MapMarker {
     longitude: number;
     label?: string;
     color?: string;
+    subLabel?: string;
 }
 
 interface MapViewOptions {
@@ -46,6 +47,7 @@ export class MapView {
             const existing = this.markers.get(m.id);
             if (existing != null) {
                 existing.setLngLat([m.longitude, m.latitude]);
+                MapView.setSubLabel(existing.getElement(), m.subLabel ?? '');
                 continue;
             }
 
@@ -71,7 +73,7 @@ export class MapView {
 
     // Private methods
 
-    // A colored pin with an always-visible name label below it (the default MapLibre
+    // A colored pin with an always-visible caption below it (the default MapLibre
     // marker only shows the name in a click-to-open popup).
     private static createMarkerElement(m: MapMarker): HTMLElement {
         const el = document.createElement('div');
@@ -80,12 +82,34 @@ export class MapView {
         pin.className = 'c-pin';
         pin.style.backgroundColor = m.color ?? '#2563eb';
         el.appendChild(pin);
+        const caption = document.createElement('div');
+        caption.className = 'c-caption';
+        el.appendChild(caption);
         if (m.label != null && m.label !== '') {
             const label = document.createElement('div');
             label.className = 'c-label';
             label.textContent = m.label;
-            el.appendChild(label);
+            caption.appendChild(label);
         }
+        MapView.setSubLabel(el, m.subLabel ?? '');
         return el;
+    }
+
+    private static setSubLabel(el: HTMLElement, text: string): void {
+        const caption = el.querySelector('.c-caption');
+        if (caption == null)
+            return;
+
+        let sub = caption.querySelector<HTMLElement>('.c-sublabel');
+        if (text === '') {
+            sub?.remove();
+            return;
+        }
+        if (sub == null) {
+            sub = document.createElement('div');
+            sub.className = 'c-sublabel';
+            caption.appendChild(sub);
+        }
+        sub.textContent = text;
     }
 }

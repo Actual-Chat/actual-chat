@@ -30,6 +30,7 @@
 
     private IAuthors Authors => Hub.Authors;
     private ILiveLocations LiveLocations => Hub.LiveLocations;
+    private LiveTime LiveTime => Hub.LiveTime;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -53,12 +54,14 @@
         foreach (var location in locations) {
             var author = await Authors.Get(Session, chatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
             var isOwn = ownAuthor != null && location.AuthorId == ownAuthor.Id;
+            var updatedAt = await LiveTime.GetDeltaText(location.ModifiedAt, cancellationToken).ConfigureAwait(false);
             markers.Add(new MapMarker(
                 location.AuthorId.Value,
                 location.Point.Latitude,
                 location.Point.Longitude,
                 isOwn ? "You" : author?.Avatar.Name,
-                isOwn ? OwnMarkerColor : OthersMarkerColor));
+                isOwn ? OwnMarkerColor : OthersMarkerColor,
+                $"updated {updatedAt}"));
         }
         var center = locations[0].Point;
         return new ComputedModel(markers.ToApiArray(), center.Latitude, center.Longitude);
