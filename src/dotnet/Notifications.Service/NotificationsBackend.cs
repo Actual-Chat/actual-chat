@@ -602,7 +602,14 @@ public class NotificationsBackend(IServiceProvider services)
         var (chatId, entryLid) = GetReadAnchor(notification);
         if (chatId is null || entryLid <= 0)
             return false;
-        return readPositions.TryGetValue(chatId, out var readEntryLid) && readEntryLid >= entryLid;
+        if (!readPositions.TryGetValue(chatId, out var readEntryLid))
+            return false;
+        // A read position of 0 means "never read"; long.MaxValue is the client's "unbounded"
+        // sentinel that must never gate a real entry (it would suppress every notification in the
+        // chat forever). Treat both as "not read".
+        if (readEntryLid is <= 0 or long.MaxValue)
+            return false;
+        return readEntryLid >= entryLid;
     }
 
     // Returns the muted chats among the notifications' chats, reading mute mode once per distinct
