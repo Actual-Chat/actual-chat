@@ -4,5 +4,19 @@
     "frontend-design@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "code-review@claude-plugins-official": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "agent",
+            "statusMessage": "Checking code style…",
+            "prompt": "Hook input: $ARGUMENTS\n\nTake tool_input.file_path. If it doesn't end in .cs/.ts/.razor/.scss, reply exactly \"No review needed.\" and stop.\n\nElse read docs/CODING_STYLE.md and the file. List only style-guide violations as bullets citing file_path:line. Style only — no logic/naming/correctness. None → reply exactly \"No style violations.\""
+          }
+        ]
+      }
+    ]
   }
 }
