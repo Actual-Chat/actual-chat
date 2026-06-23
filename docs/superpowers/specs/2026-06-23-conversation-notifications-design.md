@@ -21,20 +21,23 @@ notifications against the *old* flat `Notification` type. After rebasing onto
 semantics — not a real fit.
 
 This design introduces a first-class **conversation notification** that covers
-both live and regular (split-flow) conversations, replacing per-message
-notifications in summarized chats.
+both live and regular (split-flow) conversations. It is an *additional*,
+conversation-granularity signal; it does not replace per-message
+notifications. The only message-notification suppression is live-specific
+(see Suppression).
 
 ## Goals
 
 - A single notification *type* for conversations, shared by live and regular.
 - Notify across a conversation's observable lifecycle, coalescing into one
   updating banner per conversation.
-- In summarized chats, notify at conversation granularity instead of per
-  message.
+- Add conversation-granularity notifications *alongside* existing per-message
+  notifications (additive, not a replacement).
 
 ## Non-goals
 
-- No change to non-summarized chats (per-message notifications unchanged).
+- No change to per-message notifications other than the existing
+  live-session-participant suppression (see Suppression).
 - No new discrete "conversation closed" signal for regular conversations
   (none exists in the data model; see below).
 - No client/UI redesign beyond what the shared union type already drives
@@ -59,9 +62,9 @@ into creation. And nothing marks a regular conversation "closed": the split
 flow simply stops re-summarizing a segment. So regular conversations get a
 single `Created` notification, updatable on re-summarize.
 
-Mentions, replies, reactions, and attention notifications are **not** affected
-— they remain individually delivered even in summarized chats. Only the
-broadcast **Message** path is suppressed (see Suppression).
+These are additive: per-message, mention, reply, reaction, and attention
+notifications keep firing as today. The sole exception is the live-session
+suppression in Suppression below.
 
 ## New type: `ConversationNotification`
 
@@ -160,13 +163,24 @@ it.)
 
 ## Suppression
 
-`NotificationsBackend.OnChatEntryChangedEvent` currently suppresses the Message
-path for entries at/after an active live conversation's `StartEntryLid`.
-Generalize this: suppress the Message path whenever **`chat.IsSummarized`** is
-true. This covers both the live-conversation tail and ordinary summarized-chat
-messages, with conversation notifications replacing them.
+The **only** message-notification suppression is live-specific: while a live
+session is active, suppress the Message path for messages **authored by a
+session participant** — the call's own transcript. Everything else (including
+non-participant messages typed during the call, and all messages in regular
+summarized chats) notifies unchanged.
 
-Non-summarized chats keep firing per-message notifications unchanged.
+`NotificationsBackend.OnChatEntryChangedEvent` already does this, but keys off
+the `entry.HasAudio` proxy. Refine it to an explicit author-membership test
+against `LiveConversation.AuthorIds`:
+
+```
+var live = await LiveSessionsBackend.Get(entry.ChatId, ct);
+if (live is { } lc && entry.LocalId >= lc.StartEntryLid && lc.AuthorIds.Contains(entry.AuthorId))
+    return; // session participant's message during the call
+```
+
+Conversation notifications are therefore **additive**, never a replacement for
+per-message notifications.
 
 ## Wording (defaults; tune later)
 
@@ -212,8 +226,9 @@ No new helper duplicates an existing one.
     non-author; re-summarize title change → banner update (same Id).
   - Live conversation Started → Titled → Final all coalesce to one Id;
     participants excluded; non-participants notified.
-  - Summarized chat: per-message Message notifications suppressed; Mention /
-    Reply still delivered. Non-summarized chat: per-message unchanged.
+  - Live session active: a session participant's message is NOT message-notified;
+    a non-participant's message during the call IS; mentions/replies always are.
+    No active session → per-message notifications unchanged.
   - Read past `EndEntryLid` clears the conversation notification.
 
 ## Open points (defaulted)
