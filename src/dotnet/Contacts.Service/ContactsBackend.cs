@@ -47,8 +47,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 throw new ArgumentOutOfRangeException(nameof(contactId));
 
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            var isBannedByPeer = await IsBanned(userId, ownerId, cancellationToken).ConfigureAwait(false);
-            contact = contact with { Account = account.ToAccount(), IsBannedByPeer = isBannedByPeer };
+            var isBlockedByPeer = await IsBlocked(userId, ownerId, cancellationToken).ConfigureAwait(false);
+            contact = contact with { Account = account.ToAccount(), IsBlockedByPeer = isBlockedByPeer };
         }
 
         if (contactId.ChatId != Constants.Chat.AnnouncementsChatId)
@@ -112,7 +112,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var sContactIds = await dbContext.Contacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .Where(a => a.PlaceId == sPlaceId)
-            .Where(a => !a.IsBanned)
+            .Where(a => a.State != ContactState.Blocked)
             .OrderByDescending(a => a.TouchedAt)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
@@ -144,7 +144,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ContactId[]> ListBannedIds(UserId ownerId, CancellationToken cancellationToken)
+    public virtual async Task<ContactId[]> ListBlockedIds(UserId ownerId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(ownerId);
 
@@ -154,7 +154,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var idPrefix = ownerId.Value + ' ';
         var sContactIds = await dbContext.Contacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
-            .Where(a => a.IsBanned)
+            .Where(a => a.State == ContactState.Blocked)
             .OrderByDescending(a => a.TouchedAt)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
@@ -163,7 +163,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> IsBanned(UserId ownerId, UserId otherUserId, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsBlocked(UserId ownerId, UserId otherUserId, CancellationToken cancellationToken)
     {
         if (ownerId == otherUserId)
             return false;
@@ -172,7 +172,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         var contactId = ContactId.NewUser(ownerId, otherUserId);
         var dbContact = await DbContactResolver.Get(contactId.Value, cancellationToken).ConfigureAwait(false);
-        return dbContact?.IsBanned ?? false;
+        return dbContact?.State == ContactState.Blocked;
     }
 
     // [ComputeMethod]
@@ -335,11 +335,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 if (chatId is PeerChatId peerChatId) {
                     var otherUserId = peerChatId.AnotherUserIdOrNull(ownerId);
                     if (otherUserId is not null) {
-                        _ = IsBanned(ownerId, otherUserId, default);
-                        // Other side's IsBannedByPeer depends on ownerId's IsBanned
+                        _ = IsBlocked(ownerId, otherUserId, default);
+                        // Other side's IsBlockedByPeer depends on ownerId's IsBlocked
                         _ = Get(otherUserId, ContactId.NewUser(otherUserId, ownerId), default);
                     }
-                    _ = ListBannedIds(ownerId, default);
+                    _ = ListBlockedIds(ownerId, default);
                 }
             }
             return default!;
@@ -464,32 +464,33 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [CommandHandler]
-    public virtual async Task OnSetIsBanned(ContactsBackend_SetIsBanned command, CancellationToken cancellationToken)
+    public virtual async Task OnSetIsBlocked(ContactsBackend_SetIsBlocked command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (id, isBanned) = command;
+        var (id, isBlocked) = command;
         id.Require();
         if (id.ChatId is not PeerChatId)
-            throw StandardError.Constraint("Only peer contacts can be banned.");
+            throw StandardError.Constraint("Only peer contacts can be blocked.");
 
         var ownerId = id.OwnerId;
         var existing = await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
-        if (existing.IsStored()) {
-            if (existing.IsBanned == isBanned)
+        if (existing.Version != 0) {
+            if (existing.IsBlocked == isBlocked)
                 return;
 
-            var change = Change.Update(existing with { IsBanned = isBanned });
+            var newState = isBlocked ? ContactState.Blocked : ContactState.Regular;
+            var change = Change.Update(existing with { State = newState });
             var cmd = new ContactsBackend_Change(id, existing.Version, change);
             await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         }
         else {
-            // Contact doesn't exist yet (e.g. you've never opened the chat); create with IsBanned set
-            if (!isBanned)
+            // Contact doesn't exist yet (e.g. you've never opened the chat); create it as Blocked
+            if (!isBlocked)
                 return;
 
-            var change = Change.Create(new Contact(id) { IsBanned = true });
+            var change = Change.Create(new Contact(id) { State = ContactState.Blocked });
             var cmd = new ContactsBackend_Change(id, null, change);
             await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         }

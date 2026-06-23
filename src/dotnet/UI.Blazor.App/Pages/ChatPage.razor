@@ -218,14 +218,14 @@
         var otherUserId = chatId is PeerChatId peerChatId
             ? peerChatId.UserIds.OtherThan(account.Id)
             : null;
-        var isBanned = false;
-        var isBannedByPeer = false;
+        var isBlocked = false;
+        var isBlockedByPeer = false;
         ContactId? peerContactId = null;
         if (chatId is PeerChatId) {
             var peerContact = await Contacts.GetForChat(session, chatId, cancellationToken).ConfigureAwait(false);
             if (peerContact is not null) {
-                isBanned = peerContact.IsBanned;
-                isBannedByPeer = peerContact.IsBannedByPeer;
+                isBlocked = peerContact.IsBlocked;
+                isBlockedByPeer = peerContact.IsBlockedByPeer;
                 peerContactId = peerContact.Id;
             }
         }
@@ -255,8 +255,8 @@
             HasMultipleAvatars = hasMultipleAvatars,
             CanJoinWithGuestAccount = canJoinWithGuestAccount,
             CanJoinAnonymously = canJoinAnonymously,
-            IsBanned = isBanned,
-            IsBannedByPeer = isBannedByPeer,
+            IsBlocked = isBlocked,
+            IsBlockedByPeer = isBlockedByPeer,
             PeerContactId = peerContactId,
         };
     }
@@ -402,8 +402,8 @@
         public bool CanJoinWithGuestAccount { get; init; }
         public bool CanJoinAnonymously { get; init; }
         public bool ShouldJoinPlaceFirst { get; init; }
-        public bool IsBanned { get; init; }
-        public bool IsBannedByPeer { get; init; }
+        public bool IsBlocked { get; init; }
+        public bool IsBlockedByPeer { get; init; }
         public ContactId? PeerContactId { get; init; }
 
         // This record relies on referential equality

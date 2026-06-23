@@ -85,7 +85,7 @@ public class ChatBlockTest(ChatCollection.AppHostFixture fixture, ITestOutputHel
     }
 
     [Fact]
-    public async Task BlockedPeerIsHiddenFromContactListAndShownInBannedList()
+    public async Task BlockedPeerIsHiddenFromContactListAndShownInBlockedList()
     {
         // arrange
         await using var aliceTester = AppHost.NewBlazorTester(Out);
@@ -105,13 +105,13 @@ public class ChatBlockTest(ChatCollection.AppHostFixture fixture, ITestOutputHel
             var ids = await contacts.ListIds(aliceTester.Session, null, ct);
             ids.Should().NotContain(bobContactId);
 
-            var banned = await contacts.ListBannedIds(aliceTester.Session, ct);
-            banned.Should().Contain(bobContactId);
+            var blocked = await contacts.ListBlockedIds(aliceTester.Session, ct);
+            blocked.Should().Contain(bobContactId);
         });
     }
 
     [Fact]
-    public async Task IsBannedByPeerIsTrueForOtherSide()
+    public async Task IsBlockedByPeerIsTrueForOtherSide()
     {
         // arrange
         await using var aliceTester = AppHost.NewBlazorTester(Out);
@@ -129,8 +129,8 @@ public class ChatBlockTest(ChatCollection.AppHostFixture fixture, ITestOutputHel
         await ComputedTest.When(async ct => {
             var bobContactForAlice = await bobContacts.GetForChat(bobTester.Session, chatId, ct);
             bobContactForAlice.Should().NotBeNull();
-            bobContactForAlice!.IsBanned.Should().BeFalse();
-            bobContactForAlice.IsBannedByPeer.Should().BeTrue();
+            bobContactForAlice!.IsBlocked.Should().BeFalse();
+            bobContactForAlice.IsBlockedByPeer.Should().BeTrue();
         });
     }
 
@@ -149,17 +149,17 @@ public class ChatBlockTest(ChatCollection.AppHostFixture fixture, ITestOutputHel
         await BlockUser(aliceTester, alice.Id, bob.Id);
         var blockedPost = () => bobTester.CreateTextEntry(chatId, "blocked");
         await blockedPost.Should().ThrowAsync<InvalidOperationException>();
-        await BlockUser(aliceTester, alice.Id, bob.Id, isBanned: false);
+        await BlockUser(aliceTester, alice.Id, bob.Id, isBlocked: false);
 
         // assert
         var entry = await bobTester.CreateTextEntry(chatId, "back to talking");
         entry.Content.Should().Be("back to talking");
     }
 
-    private static Task BlockUser(IWebTester tester, UserId ownerId, UserId otherUserId, bool isBanned = true)
+    private static Task BlockUser(IWebTester tester, UserId ownerId, UserId otherUserId, bool isBlocked = true)
     {
         var contactId = ContactId.NewUser(ownerId, otherUserId);
-        var cmd = new Contacts_SetIsBanned(tester.Session, contactId, isBanned);
+        var cmd = new Contacts_SetIsBlocked(tester.Session, contactId, isBlocked);
         return tester.Commander.Call(cmd);
     }
 }

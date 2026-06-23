@@ -36,7 +36,7 @@
                     Type="@ButtonType.Button"
                     Class="btn-modal warning-item"
                     Click="@OnToggleBlock">
-                    @(_contact.IsBanned ? "Unblock user" : "Block user")
+                    @(_contact.IsBlocked ? "Unblock user" : "Block user")
                 </Button>
             </FormBlock>
         }
@@ -98,7 +98,7 @@
         if (_contact is null)
             return;
 
-        var command = new Contacts_SetIsBanned(Session, _contact.Id, !_contact.IsBanned);
+        var command = new Contacts_SetIsBlocked(Session, _contact.Id, !_contact.IsBlocked);
         var (_, error) = await UICommander.Run(command);
         if (error != null)
             return;

@@ -15,14 +15,14 @@ public interface IContacts : IComputeService
     [ComputeMethod(MinCacheDuration = 300), RemoteComputeMethod(MinCacheDuration = 600)]
     Task<PlaceId[]> ListPlaceIds(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 300), RemoteComputeMethod(MinCacheDuration = 600)]
-    Task<ContactId[]> ListBannedIds(Session session, CancellationToken cancellationToken);
+    Task<ContactId[]> ListBlockedIds(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnTouch(Contacts_Touch command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnSetIsBanned(Contacts_SetIsBanned command, CancellationToken cancellationToken);
+    Task OnSetIsBlocked(Contacts_SetIsBlocked command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
@@ -34,10 +34,10 @@ public sealed partial record Contacts_Touch(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Contacts_SetIsBanned(
+public sealed partial record Contacts_SetIsBlocked(
     [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1), Key(1)] ContactId Id,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] bool IsBanned
+    [property: DataMember, MemoryPackOrder(2), Key(2)] bool IsBlocked
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

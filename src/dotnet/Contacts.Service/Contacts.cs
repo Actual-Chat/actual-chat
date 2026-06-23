@@ -59,12 +59,12 @@ public class Contacts(IServiceProvider services) : IContacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ContactId[]> ListBannedIds(
+    public virtual async Task<ContactId[]> ListBlockedIds(
         Session session,
         CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return await Backend.ListBannedIds(account.Id, cancellationToken).ConfigureAwait(false);
+        return await Backend.ListBlockedIds(account.Id, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -133,22 +133,22 @@ public class Contacts(IServiceProvider services) : IContacts
     }
 
     // [CommandHandler]
-    public virtual async Task OnSetIsBanned(Contacts_SetIsBanned command, CancellationToken cancellationToken)
+    public virtual async Task OnSetIsBlocked(Contacts_SetIsBlocked command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, id, isBanned) = command;
+        var (session, id, isBlocked) = command;
         id.Require();
         if (id.ChatId is not PeerChatId)
-            throw StandardError.Constraint("Only peer contacts can be banned.");
+            throw StandardError.Constraint("Only peer contacts can be blocked.");
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (id.OwnerId != account.Id)
             throw Unauthorized();
 
-        var setIsBannedCommand = new ContactsBackend_SetIsBanned(id, isBanned);
-        await Commander.Call(setIsBannedCommand, true, cancellationToken).ConfigureAwait(false);
+        var setIsBlockedCommand = new ContactsBackend_SetIsBlocked(id, isBlocked);
+        await Commander.Call(setIsBlockedCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Protected methods

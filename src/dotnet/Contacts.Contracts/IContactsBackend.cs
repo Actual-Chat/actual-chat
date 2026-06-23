@@ -18,9 +18,9 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ContactId[]> ListIds(UserId ownerId, PlaceId? placeId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ContactId[]> ListBannedIds(UserId ownerId, CancellationToken cancellationToken);
+    Task<ContactId[]> ListBlockedIds(UserId ownerId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<bool> IsBanned(UserId ownerId, UserId otherUserId, CancellationToken cancellationToken);
+    Task<bool> IsBlocked(UserId ownerId, UserId otherUserId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<PlaceId[]> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -41,7 +41,7 @@ public interface IContactsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnTouch(ContactsBackend_Touch command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnSetIsBanned(ContactsBackend_SetIsBanned command, CancellationToken cancellationToken);
+    Task OnSetIsBlocked(ContactsBackend_SetIsBlocked command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -104,13 +104,13 @@ public sealed partial record ContactsBackend_Touch(
 }
 
 /// <summary>
-/// Command to set a peer contact's banned flag.
+/// Command to set a peer contact's blocked flag.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ContactsBackend_SetIsBanned(
+public sealed partial record ContactsBackend_SetIsBlocked(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ContactId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] bool IsBanned
+    [property: DataMember, MemoryPackOrder(1), Key(1)] bool IsBlocked
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ContactId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

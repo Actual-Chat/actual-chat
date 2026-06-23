@@ -11,14 +11,14 @@
         <chat-view-footer-skeleton/>
     } else if (chat is null) {
         <ReadOnlyChatFooter Text="" />
-    } else if (m.IsBanned) {
+    } else if (m.IsBlocked) {
         <div class="chat-footer readonly">
             <div class="c-content">
                 <span>You blocked this user.</span>
                 <Button Class="btn-sm btn-primary ml-2" Click="@OnUnblock">Unblock</Button>
             </div>
         </div>
-    } else if (m.IsBannedByPeer) {
+    } else if (m.IsBlockedByPeer) {
         <ReadOnlyChatFooter Text="This user has blocked you."/>
     } else {
         @if (m.CanPost) {
@@ -91,6 +91,6 @@
         if (Model?.PeerContactId is not { } contactId)
             return Task.CompletedTask;
 
-        return UICommander.Run(new Contacts_SetIsBanned(Session, contactId, false));
+        return UICommander.Run(new Contacts_SetIsBlocked(Session, contactId, false));
     }
 }
