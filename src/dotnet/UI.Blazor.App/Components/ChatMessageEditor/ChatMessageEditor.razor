@@ -118,6 +118,9 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private SendingMessages SendingMessages => Hub.SendingMessages;
+    private LocationUI LocationUI => Hub.LocationUI;
+    private LocationPermissionHandler LocationPermission
+        => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
     private RecentMentionsUI RecentMentionsUI => Hub.Services.GetRequiredService<RecentMentionsUI>();
     private FileAttachments FileAttachments { get; set; } = null!;
     private IAttachmentFilePicker? AttachmentFilePicker { get; set; }
@@ -402,19 +405,17 @@
         var model = new ShareLocationModal.Model { IsSharing = isSharing };
         await (await ModalUI.Show(model).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
 
-        var locationUI = Services.GetRequiredService<LocationUI>();
         if (model.StopRequested) {
-            await locationUI.StopSharing(chatId, CancellationToken.None).ConfigureAwait(true);
+            await LocationUI.StopSharing(chatId, CancellationToken.None).ConfigureAwait(true);
             return;
         }
         if (model.SelectedDuration is not { } duration)
             return;
 
-        var permissions = Services.GetRequiredService<LocationPermissionHandler>();
-        if (!await permissions.CheckOrRequest().ConfigureAwait(true))
+        if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
             return;
 
-        await locationUI.StartSharing(chatId, duration, CancellationToken.None).ConfigureAwait(true);
+        await LocationUI.StartSharing(chatId, duration, CancellationToken.None).ConfigureAwait(true);
     }
 
     private async Task OnEmojiButtonClick(string tabId = "emoji") {

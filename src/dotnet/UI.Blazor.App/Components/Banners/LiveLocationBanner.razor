@@ -76,7 +76,7 @@
         => ModalUI.Show(new LiveLocationMapModal.Model(Chat.Id));
 
     private Task OnStop()
-        => Services.GetRequiredService<LocationUI>().StopSharing(Chat.Id, CancellationToken.None);
+        => Hub.LocationUI.StopSharing(Chat.Id, CancellationToken.None);
 
     private string FormatRemaining(Moment? expiresAt) {
         if (expiresAt is not { } moment)
