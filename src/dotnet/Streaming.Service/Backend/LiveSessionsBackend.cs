@@ -1,7 +1,5 @@
-using ActualChat.Chat;
 using ActualChat.Live;
-using ActualChat.Media;
-using ActualChat.Notification;
+using ActualChat.Notifications;
 using ActualChat.Queues;
 using ActualChat.Redis;
 using ActualLab.Locking;

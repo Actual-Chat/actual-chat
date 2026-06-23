@@ -2,7 +2,7 @@ using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
 using ActualChat.Live;
-using ActualChat.Notification;
+using ActualChat.Notifications;
 using ActualChat.Queues;
 using ActualChat.Streaming;
 
