@@ -14,9 +14,10 @@ public static partial class MauiProgram
 {
     private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
-        // Push notifications are not wired up on MacCatalyst yet (no Firebase native bindings).
+        // Push delivery is not wired up on MacCatalyst yet (no Firebase native bindings),
+        // but the notification permission prompt works via UNUserNotificationCenter.
         services.AddTransient<IDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
-        services.AddScoped<INotificationsPermission>(_ => new MacNotificationsPermission());
+        services.AddScoped<INotificationsPermission>(c => new AppleNotificationsPermission(c.AppUIHub()));
         services.AddScoped<IRecordingPermissionRequester>(_ => new AppleRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
