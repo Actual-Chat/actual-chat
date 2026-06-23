@@ -21,6 +21,40 @@ const { debugLog, infoLog, warnLog, errorLog } = getLogs('FileUpload');
 // resolved at WS handshake), matching audio-streamer.ts's RPC_SESSION_DEFAULT.
 const RPC_SESSION_DEFAULT = '~';
 
+// Wraps an async progress sink so callers can fire `(pct) => void` freely while
+// at most one underlying call stays in flight: while one runs, the latest value
+// is remembered and sent once it resolves (trailing-edge coalescing). Without
+// this, one report per 16 KB sub-chunk floods the JS->.NET render channel and
+// the progress bar lags far behind the actual upload.
+function coalesceProgress(report: (progressPercent: number) => PromiseLike<unknown>): ProgressReporter {
+    let inFlight = false;
+    let pending: number | null = null;
+    let lastSent = -1;
+
+    const pump = async (): Promise<void> => {
+        inFlight = true;
+        try {
+            while (pending !== null) {
+                const pct = Math.trunc(pending);
+                pending = null;
+                if (pct === lastSent)
+                    continue;
+                lastSent = pct;
+                await report(pct);
+            }
+        }
+        finally {
+            inFlight = false;
+        }
+    };
+
+    return (progressPercent: number) => {
+        pending = progressPercent;
+        if (!inFlight)
+            void pump();
+    };
+}
+
 /**
  * Streaming upload — pushes file data as an RpcStream<byte[]> of small
  * sub-chunks to IUploads.AppendStream instead of one large OnAppend per chunk.
@@ -29,7 +63,6 @@ const RPC_SESSION_DEFAULT = '~';
  */
 export class StreamFileUpload implements IFileUpload {
     private static readonly subChunkSize = 16 * 1024; // 16 KB per RpcStream item
-
     private readonly whenCompletedSource: PromiseSource<void> = new PromiseSource<void>();
     private readonly abortController: AbortController = new AbortController();
     private readonly connectionScope: string;
@@ -54,7 +87,7 @@ export class StreamFileUpload implements IFileUpload {
     ): StreamFileUpload {
         const blob = source.getBlob();
         const reporter = new FileUploadProgressReporter(blazorRef);
-        const upload = new StreamFileUpload(uploadId, blob, pct => void reporter.reportProgress(pct));
+        const upload = new StreamFileUpload(uploadId, blob, coalesceProgress(pct => reporter.reportProgress(pct)));
         upload.whenCompleted.then(() => {
             void reporter.reportUploadSucceed();
         }).catch((e: unknown) => {
