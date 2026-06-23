@@ -14,7 +14,6 @@
 
     private void OnClick() {
         var contact = ChatState.Contact;
-        var command = new Contacts_SetIsBlocked(Session, contact.Id, !contact.IsBlocked);
-        _ = UICommander.Run(command);
+        _ = Hub.PeerBlockUI.SetBlocked(contact.Id, !contact.IsBlocked);
     }
 }

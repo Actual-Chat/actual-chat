@@ -98,8 +98,7 @@
         if (_contact is null)
             return;
 
-        var command = new Contacts_SetIsBlocked(Session, _contact.Id, !_contact.IsBlocked);
-        var (_, error) = await UICommander.Run(command);
+        var (_, error) = await Hub.PeerBlockUI.SetBlocked(_contact.Id, !_contact.IsBlocked);
         if (error != null)
             return;
 
