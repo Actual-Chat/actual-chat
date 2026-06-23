@@ -35,6 +35,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public VideoTranscoder VideoTranscoder => field ??= Services.GetRequiredService<VideoTranscoder>();
 
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
+    public PeerBlockUI PeerBlockUI => field ??= Services.GetRequiredService<PeerBlockUI>();
     public AttachmentsState AttachmentsState => field ??= Services.GetRequiredService<AttachmentsState>();
     public SendingMessages SendingMessages => field ??= Services.GetRequiredService<SendingMessages>();
     public UploadSessions UploadSessions => field ??= Services.GetRequiredService<UploadSessions>();

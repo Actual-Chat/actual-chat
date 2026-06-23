@@ -61,7 +61,7 @@
     }
 
     private Task OnUnblock(ContactId contactId)
-        => UICommander.Run(new Contacts_SetIsBlocked(Session, contactId, false));
+        => Hub.PeerBlockUI.SetBlocked(contactId, false);
 
     // Nested types
 

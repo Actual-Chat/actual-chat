@@ -91,6 +91,6 @@
         if (Model?.PeerContactId is not { } contactId)
             return Task.CompletedTask;
 
-        return UICommander.Run(new Contacts_SetIsBlocked(Session, contactId, false));
+        return Hub.PeerBlockUI.SetBlocked(contactId, false);
     }
 }

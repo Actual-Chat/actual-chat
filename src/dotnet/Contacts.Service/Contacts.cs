@@ -174,9 +174,18 @@ public class Contacts(IServiceProvider services) : IContacts
         return change;
 
         static Contact EnsureStored(Contact contact)
-            => contact.State == ContactState.Temporary
-                ? contact with { State = ContactState.Regular }
-                : contact;
+        {
+            // Blocking is owned exclusively by OnSetIsBlocked (which bypasses this path)
+            // and is valid only for peer contacts. The generic change path normalizes any
+            // other state to Regular; an existing peer block is preserved so that e.g.
+            // renaming a blocked peer doesn't unblock it.
+            var state = contact.State;
+            if (state == ContactState.Temporary)
+                state = ContactState.Regular;
+            else if (state == ContactState.Blocked && contact.Kind != ContactKind.User)
+                state = ContactState.Regular;
+            return state == contact.State ? contact : contact with { State = state };
+        }
     }
 
     private static Exception Unauthorized()

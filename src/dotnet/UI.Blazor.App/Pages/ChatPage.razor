@@ -94,6 +94,7 @@
     protected IAccounts Accounts => Hub.Accounts;
     protected IAvatars Avatars => Hub.Avatars;
     protected IContacts Contacts => Hub.Contacts;
+    protected PeerBlockUI PeerBlockUI => Hub.PeerBlockUI;
     protected IAliases Aliases => Hub.Aliases;
     protected ChatUI ChatUI => Hub.ChatUI;
     protected ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -218,17 +219,7 @@
         var otherUserId = chatId is PeerChatId peerChatId
             ? peerChatId.UserIds.OtherThan(account.Id)
             : null;
-        var isBlocked = false;
-        var isBlockedByPeer = false;
-        ContactId? peerContactId = null;
-        if (chatId is PeerChatId) {
-            var peerContact = await Contacts.GetForChat(session, chatId, cancellationToken).ConfigureAwait(false);
-            if (peerContact is not null) {
-                isBlocked = peerContact.IsBlocked;
-                isBlockedByPeer = peerContact.IsBlockedByPeer;
-                peerContactId = peerContact.Id;
-            }
-        }
+        var blockState = await PeerBlockUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
         var hasMultipleAvatars = false;
         var canJoinWithGuestAccount = false;
         var canJoinAnonymously = false;
@@ -255,9 +246,9 @@
             HasMultipleAvatars = hasMultipleAvatars,
             CanJoinWithGuestAccount = canJoinWithGuestAccount,
             CanJoinAnonymously = canJoinAnonymously,
-            IsBlocked = isBlocked,
-            IsBlockedByPeer = isBlockedByPeer,
-            PeerContactId = peerContactId,
+            IsBlocked = blockState.IsBlocked,
+            IsBlockedByPeer = blockState.IsBlockedByPeer,
+            PeerContactId = blockState.ContactId,
         };
     }
 

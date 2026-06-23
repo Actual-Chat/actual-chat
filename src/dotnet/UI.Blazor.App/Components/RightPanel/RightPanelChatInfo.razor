@@ -65,17 +65,14 @@
 
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
         var chatUserSettings = await UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
-        var isPeer = chatId is PeerChatId;
-        Contact? peerContact = null;
-        if (isPeer)
-            peerContact = await Hub.Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var blockState = await Hub.PeerBlockUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             NotificationMode = chatUserSettings.NotificationMode,
             ShowSummarizationToggle = isOwner,
             IsSummarized = Chat.IsSummarized ?? false,
-            ShowBlockToggle = isPeer && peerContact is not null,
-            IsBlocked = peerContact?.IsBlocked ?? false,
-            PeerContactId = peerContact?.Id,
+            ShowBlockToggle = blockState.CanBlock,
+            IsBlocked = blockState.IsBlocked,
+            PeerContactId = blockState.ContactId,
         };
     }
 
@@ -86,10 +83,10 @@
 
     private Task OnBlockToggleChanged(bool isBlocked) {
         var m = State.Value;
-        if (m.PeerContactId is null)
+        if (m.PeerContactId is not { } contactId)
             return Task.CompletedTask;
 
-        return UICommander.Run(new Contacts_SetIsBlocked(Session, m.PeerContactId, isBlocked));
+        return Hub.PeerBlockUI.SetBlocked(contactId, isBlocked);
     }
 
     private Task OnSummarizeToggleChanged(bool isSummarized) {
