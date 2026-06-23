@@ -7,6 +7,7 @@ public static class NotificationExt
     // reconciler so both derive the same tag.
     public static string? GetChatTag(this Notification notification)
         => notification switch {
+            ConversationNotification n => n.ChatId.Value,
             ChatEntryRelatedNotification n => n.ChatId.Value,
             ChatEntryNotification n => n.ChatId.Value,
             ChatNotification n when ChatId.TryParse(n.SimilarityKey, out var chatId) => chatId.Value,
@@ -19,6 +20,7 @@ public static class NotificationExt
     public static LocalUrl GetChatLink(this Notification notification)
     {
         var entryId = notification switch {
+            ConversationNotification n => (ChatEntryId?)ChatEntryId.New(n.ChatId, n.StartEntryLid),
             ChatEntryRelatedNotification n when n.EntryLid > 0 => (ChatEntryId?)n.EntryId,
             ChatEntryNotification n => n.EntryId,
             _ => null,

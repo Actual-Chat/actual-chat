@@ -44,6 +44,9 @@ public sealed partial record ConversationBackend_Change(
     [property: DataMember, MemoryPackOrder(2), Key(2)] Change<ConversationDiff> Change
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>
 {
+    [DataMember, MemoryPackOrder(3), Key(3)]
+    public bool IsLiveMaterialization { get; init; }
+
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ShardKey => ConversationId.ChatId;
 }
@@ -60,6 +63,8 @@ public sealed partial record ConversationBackend_Summarize(
 {
     [DataMember, MemoryPackOrder(2), Key(2)]
     public Moment DelayUntil { get; init; }
+    [DataMember, MemoryPackOrder(3), Key(3)]
+    public bool IsLiveMaterialization { get; init; }
 
     ChatId IHasShardKey<ChatId>.ShardKey => ChatId;
     TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);

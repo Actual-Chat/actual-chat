@@ -236,6 +236,15 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         conversation = dbConversation.Require().ToModel();
         context.Operation.Items.KeylessSet(conversation);
+
+        var titleOrDescriptionChanged = oldConversation is null
+            || oldConversation.Title != conversation.Title
+            || oldConversation.Description != conversation.Description;
+        if (!change.IsRemove() && titleOrDescriptionChanged) {
+            var changeKind = change.IsCreate(out _) ? ChangeKind.Create : ChangeKind.Update;
+            context.Operation.AddEvent(
+                new ConversationChangedEvent(conversation, oldConversation, changeKind, command.IsLiveMaterialization));
+        }
         return conversation;
 
         Conversation ApplyDiff(Conversation originalConversation, ConversationDiff? diff) {
@@ -338,7 +347,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var change = existingConversation != null
             ? Change.Update(DiffEngine.Diff<Conversation, ConversationDiff>(existingConversation, conversation))
             : Change.Create(new ConversationDiff(conversation));
-        var changeCommand = new ConversationBackend_Change(conversationId, expectedVersion, change);
+        var changeCommand = new ConversationBackend_Change(conversationId, expectedVersion, change) {
+            IsLiveMaterialization = command.IsLiveMaterialization,
+        };
         return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
     }
 
