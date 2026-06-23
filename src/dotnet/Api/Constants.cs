@@ -188,12 +188,13 @@ public static partial class Constants
     {
         public static readonly TimeSpan UpdatePeriod = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan StaleTimeout = TimeSpan.FromSeconds(30);
-        public static readonly TimeSpan[] Durations = [
-            TimeSpan.FromMinutes(15),
-            TimeSpan.FromHours(1),
-            TimeSpan.FromHours(8),
-        ];
-        public static readonly TimeSpan MaxDuration = Durations.Max();
+        public static readonly IReadOnlyDictionary<TimeSpan, string> Durations = new Dictionary<TimeSpan, string> {
+            [TimeSpan.FromMinutes(15)] = "15 min",
+            [TimeSpan.FromHours(1)] = "1 hour",
+            [TimeSpan.FromHours(8)] = "8 hours",
+        };
+        public static readonly TimeSpan MinDuration = Durations.Keys.Min();
+        public static readonly TimeSpan MaxDuration = Durations.Keys.Max();
     }
 
     public static class Messages

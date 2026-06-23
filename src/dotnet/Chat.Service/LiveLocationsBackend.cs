@@ -80,14 +80,17 @@ public class LiveLocationsBackend(IServiceProvider services)
             };
             dbContext.Add(dbLiveLocation);
         }
-        else if (duration != null) {
+        else if (duration != null)
             // A (re)start resets the share window so the new duration measures from now.
             dbLiveLocation.CreatedAt = now;
-        }
 
-        UpdatePosition(dbLiveLocation, point, now);
+        dbLiveLocation.Latitude = point.Latitude;
+        dbLiveLocation.Longitude = point.Longitude;
+        dbLiveLocation.Accuracy = point.Accuracy;
+        dbLiveLocation.Bearing = point.Bearing;
+        dbLiveLocation.ModifiedAt = now;
         if (duration is { } value)
-            dbLiveLocation.Duration = Duration(value);
+            dbLiveLocation.Duration = value.Clamp(Constants.LiveLocation.MinDuration, Constants.LiveLocation.MaxDuration);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -142,14 +145,5 @@ public class LiveLocationsBackend(IServiceProvider services)
             return maxDuration;
 
         return duration;
-    }
-
-    private static void UpdatePosition(DbLiveLocation dbLiveLocation, GeoPoint point, Moment now)
-    {
-        dbLiveLocation.Latitude = point.Latitude;
-        dbLiveLocation.Longitude = point.Longitude;
-        dbLiveLocation.Accuracy = point.Accuracy;
-        dbLiveLocation.Bearing = point.Bearing;
-        dbLiveLocation.ModifiedAt = now;
     }
 }
