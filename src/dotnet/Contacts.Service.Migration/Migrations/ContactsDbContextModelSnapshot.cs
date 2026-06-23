@@ -39,10 +39,6 @@ namespace ActualChat.Contacts.Migrations
                         .HasColumnType("text")
                         .HasColumnName("external_contact_name");
 
-                    b.Property<bool>("IsBanned")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_banned");
-
                     b.Property<bool>("IsPinned")
                         .HasColumnType("boolean")
                         .HasColumnName("is_pinned");

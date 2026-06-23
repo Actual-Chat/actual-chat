@@ -46,7 +46,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var ids = await Contacts.ListBannedIds(Session, cancellationToken).ConfigureAwait(false);
+        var ids = await Contacts.ListBlockedIds(Session, cancellationToken).ConfigureAwait(false);
         var items = new List<Item>(ids.Length);
         foreach (var id in ids) {
             var contact = await Contacts.Get(Session, id, cancellationToken).ConfigureAwait(false);
@@ -54,14 +54,14 @@
                 continue;
 
             var avatar = contact.Account.Avatar;
-            var name = contact.PeerRename ?? avatar.Name;
+            var name = contact.PreferredPeerName ?? avatar.Name;
             items.Add(new Item(id, name, avatar));
         }
         return new Model(items);
     }
 
     private Task OnUnblock(ContactId contactId)
-        => UICommander.Run(new Contacts_SetIsBanned(Session, contactId, false));
+        => UICommander.Run(new Contacts_SetIsBlocked(Session, contactId, false));
 
     // Nested types
 

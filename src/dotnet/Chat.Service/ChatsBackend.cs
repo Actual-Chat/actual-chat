@@ -48,7 +48,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
     private IContactsBackend ContactsBackend => field ??= Services.GetRequiredService<IContactsBackend>();
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
-    private IContactsBackend ContactsBackend => field ??= Services.GetRequiredService<IContactsBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private HostInfo HostInfo => field ??= Services.HostInfo();
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
@@ -1283,8 +1282,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             if (chatId is PeerChatId banCheckChatId && ChangeAffectsPeerContent(change)) {
                 var (userId1, userId2) = banCheckChatId.UserIds;
-                if (await ContactsBackend.IsBanned(userId1, userId2, cancellationToken).ConfigureAwait(false)
-                    || await ContactsBackend.IsBanned(userId2, userId1, cancellationToken).ConfigureAwait(false))
+                if (await ContactsBackend.IsBlocked(userId1, userId2, cancellationToken).ConfigureAwait(false)
+                    || await ContactsBackend.IsBlocked(userId2, userId1, cancellationToken).ConfigureAwait(false))
                     throw StandardError.Constraint("You cannot send messages in this chat.");
             }
 

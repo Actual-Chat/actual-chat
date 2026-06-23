@@ -37,14 +37,14 @@
     }
     @if (m.ShowBlockToggle) {
         <RightPanelChatInfoItem
-            Click="@(_ => OnBlockToggleChanged(!m.IsBanned))"
+            Click="@(_ => OnBlockToggleChanged(!m.IsBlocked))"
             Content="Block user"
-            Hint="@(m.IsBanned ? "Blocked" : "Not blocked")">
+            Hint="@(m.IsBlocked ? "Blocked" : "Not blocked")">
             <Icon>
-                <i class="text-2xl icon-block @(m.IsBanned ? "text-danger" : "text-03")"></i>
+                <i class="text-2xl icon-block @(m.IsBlocked ? "text-danger" : "text-03")"></i>
             </Icon>
             <Right>
-                <Toggle Class="mr-2" IsChecked="@m.IsBanned"/>
+                <Toggle Class="mr-2" IsChecked="@m.IsBlocked"/>
             </Right>
         </RightPanelChatInfoItem>
     }
@@ -74,7 +74,7 @@
             ShowSummarizationToggle = isOwner,
             IsSummarized = Chat.IsSummarized ?? false,
             ShowBlockToggle = isPeer && peerContact is not null,
-            IsBanned = peerContact?.IsBanned ?? false,
+            IsBlocked = peerContact?.IsBlocked ?? false,
             PeerContactId = peerContact?.Id,
         };
     }
@@ -84,12 +84,12 @@
             => UserSettingsUI.ChatUserSettings(Chat.Id)
                 .Update(x => x with { NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default, }, ct));
 
-    private Task OnBlockToggleChanged(bool isBanned) {
+    private Task OnBlockToggleChanged(bool isBlocked) {
         var m = State.Value;
         if (m.PeerContactId is null)
             return Task.CompletedTask;
 
-        return UICommander.Run(new Contacts_SetIsBanned(Session, m.PeerContactId, isBanned));
+        return UICommander.Run(new Contacts_SetIsBlocked(Session, m.PeerContactId, isBlocked));
     }
 
     private Task OnSummarizeToggleChanged(bool isSummarized) {
@@ -108,7 +108,7 @@
         public bool HideNotificationsToggle { get; init; }
         public bool ShowSummarizationToggle { get; init; }
         public bool ShowBlockToggle { get; init; }
-        public bool IsBanned { get; init; }
+        public bool IsBlocked { get; init; }
         public ContactId? PeerContactId { get; init; }
     }
 }

@@ -5,7 +5,7 @@
 <MenuEntry
     Class="warning-item"
     Icon="icon-block"
-    Text="@(ChatState.Contact.IsBanned ? "Unblock user" : "Block user")"
+    Text="@(ChatState.Contact.IsBlocked ? "Unblock user" : "Block user")"
     Click="@OnClick">
 </MenuEntry>
 
@@ -14,7 +14,7 @@
 
     private void OnClick() {
         var contact = ChatState.Contact;
-        var command = new Contacts_SetIsBanned(Session, contact.Id, !contact.IsBanned);
+        var command = new Contacts_SetIsBlocked(Session, contact.Id, !contact.IsBlocked);
         _ = UICommander.Run(command);
     }
 }
