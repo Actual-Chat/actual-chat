@@ -69,7 +69,7 @@ internal static class ContentListPlumbing
         };
 
     public static ContentListItem GroupHeader(string key, string title)
-        => new() { Key = $"g:{key}", IsGroup = true, GroupTitle = title };
+        => new() { Key = $"g:{key}", IsHeader = true, GroupTitle = title };
 
     public static long SumVersion(IReadOnlyList<IChatContentItem> items)
     {

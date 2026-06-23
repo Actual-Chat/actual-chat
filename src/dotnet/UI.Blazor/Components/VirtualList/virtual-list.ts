@@ -1328,7 +1328,9 @@ export class VirtualList {
         this.visibilityObserver.observe(itemRef);
         itemRef.addEventListener('touchend', this.onInteractiveEvent, { passive: true });
         itemRef.addEventListener('click', this.onInteractiveEvent, { passive: true });
-        newItem.shouldSkipKey = itemRef.dataset.skip === 'true';
+        // Blazor renders a true bool attribute as a valueless boolean attribute (data-skip=""), not
+        // data-skip="true"; treat any present, non-"false" value as skip so the flag isn't silently lost.
+        newItem.shouldSkipKey = itemRef.dataset.skip != null && itemRef.dataset.skip !== 'false';
         return newItem;
     }
 
