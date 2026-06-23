@@ -55,7 +55,8 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     // Silent dismissal pushes (content-available, no alert) are delivered here, not to the
     // Plugin.Firebase NotificationReceived event — that only fires for foreground alert pushes.
     // iOS applies aps.badge from the payload automatically; we only drop the dismissed banners.
-    public override void DidReceiveRemoteNotification(
+    [Export("application:didReceiveRemoteNotification:fetchCompletionHandler:")]
+    public void DidReceiveRemoteNotification(
         UIApplication application, NSDictionary userInfo, Action<UIBackgroundFetchResult> completionHandler)
     {
         try {
