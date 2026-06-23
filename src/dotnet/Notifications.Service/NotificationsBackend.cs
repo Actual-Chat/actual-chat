@@ -370,26 +370,22 @@ public class NotificationsBackend(IServiceProvider services)
         if (Invalidation.IsActive)
             return;
 
-        var (chatId, content, isFinal, startEntryLid) = command;
+        var (chatId, content, _, startEntryLid) = command;
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
             return;
 
         var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
-        var phase = isFinal ? "final" : "start";
-        var similarityKey = $"{chatId.Value}:live:{startEntryLid}:{phase}";
         var now = Clocks.CoarseSystemClock.Now;
         foreach (var userId in userIds) {
             // Joined users (and streamers, who signal participation) already see the call live.
             if (await LiveSessionsBackend.IsParticipant(chatId, userId, cancellationToken).ConfigureAwait(false))
                 continue;
 
-            var notificationId = NotificationId.New(userId, NotificationKind.Message, similarityKey);
-            var notification = new Notification(notificationId) {
+            var notification = MessageNotification.New(userId, chatId, startEntryLid) with {
                 Title = chat.Title,
-                Content = content,
+                Text = content,
                 SentAt = now,
-                ChatNotification = new ChatNotificationOption(chatId),
             };
             await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
         }
