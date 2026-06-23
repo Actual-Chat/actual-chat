@@ -127,13 +127,13 @@ export class MediaRpcStreamOptions {
     }
 
     // File upload (client -> server). Mirrors .NET Constants.Uploads:
-    // ack ~256 KB, in-flight window ~1 MB at 16 KB sub-chunks.
+    // ack ~256 KB, in-flight window ~4 MB at 16 KB sub-chunks.
     static upload<T>(): RpcStreamOptions<T> {
         return {
             isRealTime: false,
             allowReconnect: true,
             ackPeriod: 16,
-            ackAdvance: 64,
+            ackAdvance: 256,
         };
     }
 }

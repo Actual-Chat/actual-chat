@@ -12,7 +12,7 @@ public static partial class Constants
 
         // RpcStream flow control: client->server upload, must not drop data.
         public const int RpcStreamAckPeriod = 16; // ack every 16 sub-chunks (~256 KB)
-        public const int RpcStreamAckAdvance = 64; // 64 sub-chunks credit window (~1 MB)
+        public const int RpcStreamAckAdvance = 256; // 256 sub-chunks credit window (~4 MB)
 
         // Server-side: accumulate sub-chunks and forward to the backend in
         // blocks. Flush when the buffer reaches FlushSize, or — to bound how
