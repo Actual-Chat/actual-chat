@@ -13,5 +13,6 @@ public enum NotificationKind
     Reaction,
     Attention,
     Thread,
+    Conversation,
     Invalid, // Must be the very last entry here - it is used in NotificationId parsing logic
 }

@@ -29,7 +29,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public long LastSummaryEndLid { get; set; }
     [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
-    public bool StartNotificationSent { get; set; }
+    public bool TitledNotificationSent { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
@@ -51,11 +51,9 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
                     .UpdateSummary(ChatId, ToLiveSummary(summary, entries), cancellationToken)
                     .ConfigureAwait(false);
                 LastSummaryEndLid = entries[^1].LocalId;
-                if (!StartNotificationSent && !summary.Title.IsNullOrEmpty()) {
-                    await Services.Queues()
-                        .Enqueue(new NotificationsBackend_NotifyLiveConversation(ChatId, $"Voice chat: {summary.Title}", false, live.StartEntryLid), cancellationToken)
-                        .ConfigureAwait(false);
-                    StartNotificationSent = true;
+                if (!TitledNotificationSent && !summary.Title.IsNullOrEmpty()) {
+                    await Notify(live, ConversationNotificationPhase.Titled, $"Voice chat: {summary.Title}", cancellationToken).ConfigureAwait(false);
+                    TitledNotificationSent = true;
                 }
             }
         }
@@ -74,15 +72,19 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         if (meetsThreshold) {
             var range = new Range<long>(live.StartEntryLid, entries[^1].LocalId + 1);
             await Services.Queues()
-                .Enqueue(new ConversationBackend_Summarize(ChatId, [range]), cancellationToken)
+                .Enqueue(new ConversationBackend_Summarize(ChatId, [range]) { IsLiveMaterialization = true }, cancellationToken)
                 .ConfigureAwait(false);
         }
         var finalContent = live.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {live.Title}";
-        await Services.Queues()
-            .Enqueue(new NotificationsBackend_NotifyLiveConversation(ChatId, finalContent, true, live.StartEntryLid), cancellationToken)
-            .ConfigureAwait(false);
+        await Notify(live, ConversationNotificationPhase.Final, finalContent, cancellationToken).ConfigureAwait(false);
         await LiveSessionsBackend.Close(ChatId, cancellationToken).ConfigureAwait(false);
     }
+
+    private Task Notify(LiveConversation live, ConversationNotificationPhase phase, string text, CancellationToken cancellationToken)
+        => Services.Queues()
+            .Enqueue(
+                new NotificationsBackend_NotifyConversation(live.ConversationId, phase, text, live.EndEntryLid, live.AuthorIds),
+                cancellationToken);
 
     private async Task<IReadOnlyList<ChatEntrySlim>> GetEntries(long startEntryLid, CancellationToken cancellationToken)
     {

@@ -69,6 +69,35 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
+    public void ConversationNotification_Basic()
+    {
+        var conversationId = ConversationId.New(TestChatId, 2067);
+        var notification = ConversationNotification.New(TestUserId, conversationId, 2100) with {
+            Version = 1,
+            Title = "Good chat",
+            Text = "Voice chat: weekend plans",
+        };
+
+        notification.ChatId.Should().Be(TestChatId);
+        notification.StartEntryLid.Should().Be(2067);
+        notification.EndEntryLid.Should().Be(2100);
+        notification.SimilarityKey.Should().Be(conversationId.Value);
+        notification.Kind.Should().Be(NotificationKind.Conversation);
+        AssertMessagePackRoundtrip(notification);
+    }
+
+    [Fact]
+    public void ConversationNotification_ChatTagAndLink()
+    {
+        var conversationId = ConversationId.New(TestChatId, 2067);
+        var notification = ConversationNotification.New(TestUserId, conversationId, 2100);
+
+        // The tag groups under the chat banner — NOT the raw "chatId:lid" similarity key.
+        notification.GetChatTag().Should().Be(TestChatId.Value);
+        notification.GetChatLink().Should().Be(Links.Chat(ChatEntryId.New(TestChatId, 2067)));
+    }
+
+    [Fact]
     public void ExplicitNotification_Basic()
     {
         var id = ExplicitNotificationId.New(
@@ -195,6 +224,22 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
             (deserialized, original) => {
                 deserialized.UserId.Should().Be(original.UserId);
                 deserialized.ChatEntryId.Should().Be(original.ChatEntryId);
+            }, Out);
+    }
+
+    [Fact]
+    public void NotificationsBackend_NotifyConversation_Basic()
+    {
+        var conversationId = ConversationId.New(TestChatId, 2067);
+        var authorId = AuthorId.New(TestChatId, 5);
+        var cmd = new NotificationsBackend_NotifyConversation(
+            conversationId, ConversationNotificationPhase.Titled, "Voice chat: plans", 2100, [authorId]);
+        cmd.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.ConversationId.Should().Be(original.ConversationId);
+                deserialized.Phase.Should().Be(original.Phase);
+                deserialized.EndEntryLid.Should().Be(original.EndEntryLid);
+                deserialized.AuthorIds.Should().Equal(original.AuthorIds);
             }, Out);
     }
 }

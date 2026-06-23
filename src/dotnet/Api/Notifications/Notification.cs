@@ -18,6 +18,7 @@ namespace ActualChat.Notifications;
 [Union(5, typeof(ReactionNotification))]
 [Union(6, typeof(AttentionNotification))]
 [Union(7, typeof(ThreadNotification))]
+[Union(8, typeof(ConversationNotification))]
 public abstract partial record Notification(
     [property: DataMember(Order = 0), Key(0)] NotificationId Id,
     [property: DataMember(Order = 1), Key(1)] long Version = 0

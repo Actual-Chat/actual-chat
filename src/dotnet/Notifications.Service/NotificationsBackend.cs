@@ -363,28 +363,45 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnNotifyLiveConversation(
-        NotificationsBackend_NotifyLiveConversation command,
+    public virtual async Task OnNotifyConversation(
+        NotificationsBackend_NotifyConversation command,
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;
 
-        var (chatId, content, _, startEntryLid) = command;
+        var (conversationId, phase, text, endEntryLid, authorIds) = command;
+        var chatId = conversationId.ChatId;
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
             return;
 
+        var authorUserIds = new HashSet<UserId>();
+        AuthorFull? primaryAuthor = null;
+        foreach (var authorId in authorIds) {
+            var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+            if (author is null)
+                continue;
+
+            primaryAuthor ??= author;
+            authorUserIds.Add(author.UserId);
+        }
+        var iconUrl = primaryAuthor is null ? "" : NotificationHelper.GetIconUrl(chat, primaryAuthor, UrlMapper);
+
+        // Started/Titled/Final are live phases; their joined participants already see the call live.
+        var isLive = phase != ConversationNotificationPhase.Created;
         var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
         var now = Clocks.CoarseSystemClock.Now;
         foreach (var userId in userIds) {
-            // Joined users (and streamers, who signal participation) already see the call live.
-            if (await LiveSessionsBackend.IsParticipant(chatId, userId, cancellationToken).ConfigureAwait(false))
+            if (authorUserIds.Contains(userId))
+                continue;
+            if (isLive && await LiveSessionsBackend.IsParticipant(chatId, userId, cancellationToken).ConfigureAwait(false))
                 continue;
 
-            var notification = MessageNotification.New(userId, chatId, startEntryLid) with {
+            var notification = ConversationNotification.New(userId, conversationId, endEntryLid) with {
                 Title = chat.Title,
-                Text = content,
+                Text = text,
+                IconUrl = iconUrl,
                 SentAt = now,
             };
             await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
@@ -406,11 +423,11 @@ public class NotificationsBackend(IServiceProvider services)
         if (!ShouldNotify(entry, oldEntry, changeKind))
             return;
 
-        // Suppress per-message notifications for call-generated (audio) entries inside an active
-        // live conversation — non-joined users get only START/FINAL, joined users get none. Typed
-        // text posted during the call still notifies normally.
+        // Suppress per-message notifications for a session participant's own entries inside an
+        // active live conversation — the call's own transcript. Non-participants' messages typed
+        // during the call still notify normally.
         var live = await LiveSessionsBackend.Get(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (live is { } lc && entry.LocalId >= lc.StartEntryLid && entry.HasAudio)
+        if (live is { } lc && entry.LocalId >= lc.StartEntryLid && lc.AuthorIds.Contains(entry.AuthorId))
             return;
 
         await SendChatMessageNotification(entry, author, cancellationToken).ConfigureAwait(false);
@@ -478,6 +495,25 @@ public class NotificationsBackend(IServiceProvider services)
         await EnqueueMessageRelatedNotifications(
                 parentChatId, null, creator, text, NotificationKind.Thread, similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    // [EventHandler]
+    public virtual async Task OnConversationChangedEvent(ConversationChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (conversation, _, changeKind, suppressNotification) = eventCommand;
+        if (suppressNotification || changeKind == ChangeKind.Remove)
+            return; // A live conversation's materialization is already covered by its Final notification
+
+        var command = new NotificationsBackend_NotifyConversation(
+            conversation.Id,
+            ConversationNotificationPhase.Created,
+            conversation.Title,
+            conversation.EndEntryLid,
+            conversation.AuthorIds);
+        await Queues.Enqueue(command, cancellationToken).ConfigureAwait(false);
     }
 
     // [EventHandler]
@@ -688,6 +724,7 @@ public class NotificationsBackend(IServiceProvider services)
 
     private static (ChatId? ChatId, long EntryLid) GetReadAnchor(Notification notification)
         => notification switch {
+            ConversationNotification n => (n.ChatId, n.EndEntryLid),
             ChatEntryRelatedNotification n => (n.ChatId, n.EntryLid),
             ChatEntryNotification n => (n.ChatId, n.EntryLid),
             _ => (null, 0L),
@@ -822,6 +859,7 @@ public class NotificationsBackend(IServiceProvider services)
 
     private static ChatEntryId? GetEntryId(Notification notification)
         => notification switch {
+            ConversationNotification n => ChatEntryId.New(n.ChatId, n.StartEntryLid),
             ChatEntryRelatedNotification n => n.EntryId,
             ChatEntryNotification n => n.EntryId,
             _ => null,

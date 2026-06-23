@@ -43,7 +43,7 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnNotifyMentionedMembers(NotificationsBackend_NotifyMentionedMembers command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnNotifyLiveConversation(NotificationsBackend_NotifyLiveConversation command, CancellationToken cancellationToken);
+    Task OnNotifyConversation(NotificationsBackend_NotifyConversation command, CancellationToken cancellationToken);
 
     // Events
 
@@ -53,6 +53,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     Task OnReactionChangedEvent(ReactionChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnChatChangedEventEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnConversationChangedEvent(ConversationChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnReadPositionChangedEvent(ReadPositionChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
@@ -191,20 +193,33 @@ public sealed partial record NotificationsBackend_NotifyMembers(
 }
 
 /// <summary>
-/// Command to notify a chat's subscribers (minus current participants) that a live
-/// conversation has started or ended.
+/// A point in a conversation's lifecycle that a <see cref="ConversationNotification"/> reports.
+/// Live conversations go Started → Titled → Final; regular ones emit a single Created.
+/// </summary>
+public enum ConversationNotificationPhase
+{
+    Started = 0,
+    Titled,
+    Created,
+    Final,
+}
+
+/// <summary>
+/// Command to notify a chat's subscribers (minus the conversation's authors, and for live
+/// phases minus current participants) about a conversation lifecycle change.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record NotificationsBackend_NotifyLiveConversation(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Content,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] bool IsFinal,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] long StartEntryLid
+public sealed partial record NotificationsBackend_NotifyConversation(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ConversationId ConversationId,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ConversationNotificationPhase Phase,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] string Text,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] long EndEntryLid,
+    [property: DataMember, MemoryPackOrder(4), Key(4)] IReadOnlyList<AuthorId> AuthorIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ChatId ShardKey => ConversationId.ChatId;
 }
 
 /// <summary>
