@@ -1,91 +1,90 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// Drives the local user's live-location share: starts/stops the platform
+/// Drives the local user's live-location shares: starts/stops the platform
 /// <see cref="ILocationTracker"/> and pushes <see cref="LiveLocations_Report"/> every
-/// <see cref="Constants.LiveLocation.UpdatePeriod"/> until the share is stopped or expires.
+/// <see cref="Constants.LiveLocation.UpdatePeriod"/> to every chat the user is sharing to,
+/// until each share is stopped or expires.
 /// </summary>
 public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
 {
-    private readonly MutableState<ActiveShare?> _share;
+    private readonly MutableState<ImmutableDictionary<ChatId, ActiveShare>> _shares;
 
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
     private Moment CpuNow => Clocks.CpuClock.Now;
 
     public LocationUI(AppUIHub hub) : base(hub)
-        => _share = StateFactory.NewMutable(
-            (ActiveShare?)null,
-            StateCategories.Get(GetType(), nameof(_share)));
+        => _shares = StateFactory.NewMutable(
+            ImmutableDictionary<ChatId, ActiveShare>.Empty,
+            StateCategories.Get(GetType(), nameof(_shares)));
 
     public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
     {
-        var maxDuration = Constants.LiveLocation.MaxDuration;
-        if (duration > maxDuration)
-            duration = maxDuration;
-
-        _share.Value = new ActiveShare(chatId, CpuNow + duration);
+        _shares.Value = _shares.Value.SetItem(chatId, new ActiveShare(chatId, CpuNow + duration));
         return Task.CompletedTask;
     }
 
     public async Task StopSharing(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (_share.Value is { } share && share.ChatId == chatId)
-            _share.Value = null;
-
+        _shares.Value = _shares.Value.Remove(chatId);
         await Stop(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var tracker = Tracker;
-        var started = false;
-        ChatId? trackingChatId = null;
-        var lastPushAt = CpuNow;
+        var pushStates = new Dictionary<ChatId, PushState>();
+        var period = Constants.LiveLocation.UpdatePeriod;
         while (!cancellationToken.IsCancellationRequested) {
-            var share = _share.Value;
-            if (share is { } s && s.ExpiresAt <= CpuNow) {
-                await Stop(s.ChatId, cancellationToken).ConfigureAwait(false);
-                _share.Value = null;
-                share = null;
+            var now = CpuNow;
+            var shares = _shares.Value;
+
+            foreach (var share in shares.Values.Where(x => x.ExpiresAt <= now).ToList()) {
+                await Stop(share.ChatId, cancellationToken).ConfigureAwait(false);
+                shares = shares.Remove(share.ChatId);
             }
-            if (share is null) {
+            if (!ReferenceEquals(shares, _shares.Value))
+                _shares.Value = shares;
+
+            foreach (var chatId in pushStates.Keys.Where(x => !shares.ContainsKey(x)).ToList())
+                pushStates.Remove(chatId);
+
+            if (shares.IsEmpty) {
                 if (tracker.IsTracking)
                     await tracker.Stop(cancellationToken).ConfigureAwait(false);
-                started = false;
-                await _share.Computed.When(x => x is not null, cancellationToken).ConfigureAwait(false);
+                await _shares.Computed.When(x => !x.IsEmpty, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
-            if (started && trackingChatId is { } tc && tc != share.ChatId) {
-                await Stop(tc, cancellationToken).ConfigureAwait(false);
-                started = false;
-            }
-            trackingChatId = share.ChatId;
             if (!tracker.IsTracking)
                 await tracker.Start(cancellationToken).ConfigureAwait(false);
 
             var point = tracker.LastKnown.Value;
-            var isPushDue = !started || CpuNow - lastPushAt >= Constants.LiveLocation.UpdatePeriod;
-            if (point is not null && isPushDue) {
-                await Push(share, point, started, cancellationToken).ConfigureAwait(false);
-                started = true;
-                lastPushAt = CpuNow;
-            }
+            var dueIn = period;
+            foreach (var share in shares.Values) {
+                pushStates.TryGetValue(share.ChatId, out var state);
+                var isPushDue = !state.Started || now - state.LastPushAt >= period;
+                if (point is not null && isPushDue) {
+                    await Push(share, point, state.Started, cancellationToken).ConfigureAwait(false);
+                    state = new PushState(true, now);
+                    pushStates[share.ChatId] = state;
+                }
 
-            var dueIn = started
-                ? lastPushAt + Constants.LiveLocation.UpdatePeriod - CpuNow
-                : Constants.LiveLocation.UpdatePeriod;
-            var untilExpiry = share.ExpiresAt - CpuNow;
-            if (untilExpiry < dueIn)
-                dueIn = untilExpiry;
+                var shareDueIn = state.Started ? state.LastPushAt + period - now : period;
+                var untilExpiry = share.ExpiresAt - now;
+                if (untilExpiry < shareDueIn)
+                    shareDueIn = untilExpiry;
+                if (shareDueIn < dueIn)
+                    dueIn = shareDueIn;
+            }
             if (dueIn < TimeSpan.Zero)
                 dueIn = TimeSpan.Zero;
 
             using var delayCts = cancellationToken.CreateLinkedTokenSource();
-            var whenShareChanged = _share.Computed.WhenInvalidated(delayCts.Token);
+            var whenSharesChanged = _shares.Computed.WhenInvalidated(delayCts.Token);
             var whenLocationChanged = tracker.LastKnown.Computed.WhenInvalidated(delayCts.Token);
             var whenDue = Task.Delay(dueIn, delayCts.Token);
-            await Task.WhenAny(whenShareChanged, whenLocationChanged, whenDue).ConfigureAwait(false);
+            await Task.WhenAny(whenSharesChanged, whenLocationChanged, whenDue).ConfigureAwait(false);
             delayCts.CancelAndDisposeSilently();
         }
     }
@@ -126,4 +125,6 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
     // Nested types
 
     private sealed record ActiveShare(ChatId ChatId, Moment ExpiresAt);
+
+    private readonly record struct PushState(bool Started, Moment LastPushAt);
 }
