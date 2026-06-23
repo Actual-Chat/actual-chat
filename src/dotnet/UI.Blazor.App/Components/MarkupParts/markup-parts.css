@@ -120,21 +120,6 @@
 .playable-text-markup .highlight {
     @apply text-primary;
 }
-.playable-text-markup .playing-start {
-    border-bottom-left-radius: 6px;
-    border-top-left-radius: 6px;
-}
-.playable-text-markup .playing-end {
-    border-bottom-right-radius: 6px;
-    border-top-right-radius: 6px;
-}
-.playable-text-markup .playing-start-end {
-    border-radius: 6px;
-}
-.playable-text-markup .played-start {
-    border-bottom-left-radius: 6px;
-    border-top-left-radius: 6px;
-}
 
 .selected-word-float {
     @apply absolute z-modal-overlay;
@@ -159,18 +144,17 @@
     }
 }
 
-.playable-text-markup .played-end {
-    border-bottom-right-radius: 6px;
-    border-top-right-radius: 6px;
-}
-
-.playable-text-markup .played,
-.playable-text-markup .played .painted {
+.playable-text-markup .played-run {
     @apply bg-[var(--pt-played)];
+    border-radius: 6px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
 }
-.playable-text-markup .playing,
-.playable-text-markup .playing .painted {
+.playable-text-markup .playing-run {
     @apply bg-[var(--pt-playing)];
+    border-radius: 6px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
 }
 .playable-text-color-1 {
     --pt-playing: color-mix(in srgb, var(--author-color-1) 40%, transparent);
@@ -212,15 +196,6 @@
     --pt-playing: color-mix(in srgb, var(--author-color-10) 40%, transparent);
     --pt-played: color-mix(in srgb, var(--author-color-10) 20%, transparent);
 }
-.playable-text-markup .played.last-word,
-.playable-text-markup .playing.last-word {
-    @apply !bg-transparent;
-}
-.playable-text-markup .painted {
-    @apply relative;
-    @apply rounded-r-md;
-}
-
 .preformatted-text-markup {
     @apply bg-02;
     @apply whitespace-pre-wrap;

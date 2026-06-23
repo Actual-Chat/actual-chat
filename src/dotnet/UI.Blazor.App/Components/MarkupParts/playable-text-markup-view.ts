@@ -69,7 +69,8 @@ export class PlayableTextMarkupView {
         const wordSpan = target.closest('.playable-word')
             ?? (target.classList.contains('playable-word') ? target : null);
         if (wordSpan) {
-            const index = Array.prototype.indexOf.call(this.element.childNodes, wordSpan) as number;
+            const wordSpans = this.element.querySelectorAll('.playable-word');
+            const index = Array.prototype.indexOf.call(wordSpans, wordSpan) as number;
             if (index >= 0 && index < this.words.length)
                 return this.words[index];
         }
