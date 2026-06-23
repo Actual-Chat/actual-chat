@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
 @implements IVirtualListDataSource<ContentListItem>
+@using ActualChat.Media
 
 <div class="content-list-with-visor">
 <ContentListDateVisor/>
@@ -20,21 +21,25 @@
         }
         else {
             var file = (FileItem)item.Items[0];
-            var url = UrlMapper.ContentUrl(file.BlobId);
-            var menuRef = MenuRef.New<ChatContentItemMenu>(file.EntryId.Value).ToString();
-            var ext = ContentListPlumbing.FileExtension(file.FileName);
-            var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(ext, "file-default");
-            var fileIcon = fileCls == FileTypeHelper.FileClasses[FileType.Multimedia] ? "icon-play-fill" : "icon-file";
-            <a class="c-file-row" href="@url" target="_blank" rel="noopener" role="button" data-menu="@menuRef" data-visor-date="@item.VisorDate">
-                <div class="c-file-icon @fileCls">
-                    <i class="@fileIcon"></i>
-                </div>
-                <div class="c-file-info">
-                    <FileAttachmentTitle Title="@file.FileName"/>
-                    <div class="c-file-size">@FileSizeFormatter.Format(file.Size)</div>
-                    <div class="c-file-date">@FormatDate(file.At)</div>
-                </div>
-            </a>
+            if (MediaTypeExt.IsAudio(file.ContentType)) {
+                <AudioFileRow File="@file" VisorDate="@item.VisorDate"/>
+            }
+            else {
+                var url = UrlMapper.ContentUrl(file.BlobId);
+                var menuRef = MenuRef.New<ChatContentItemMenu>(file.EntryId.Value, file.LocalIndex.ToString()).ToString();
+                var ext = ContentListPlumbing.FileExtension(file.FileName);
+                var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(ext, "file-default");
+                <a class="c-file-row" href="@url" target="_blank" rel="noopener" role="button" data-menu="@menuRef" data-visor-date="@item.VisorDate">
+                    <div class="c-file-icon @fileCls">
+                        <i class="icon-file"></i>
+                    </div>
+                    <div class="c-file-info">
+                        <FileAttachmentTitle Title="@file.FileName"/>
+                        <div class="c-file-size">@FileSizeFormatter.Format(file.Size)</div>
+                        <div class="c-file-date">@FormatDate(file.At)</div>
+                    </div>
+                </a>
+            }
         }
     </Item>
     <Skeleton>

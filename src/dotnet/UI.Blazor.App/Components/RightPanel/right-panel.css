@@ -454,6 +454,14 @@ body.hoverable .thread-list-item:hover {
 }
 .content-list-grid .image-attachment image-skeleton {
     @apply w-full h-full;
+    outline: 0.25rem solid transparent;
+    outline-offset: -0.25rem;
+    transition: filter 0.15s ease, outline-color 0.15s ease;
+}
+body.hoverable .content-list-grid .image-attachment:hover image-skeleton {
+    outline-color: var(--primary);
+    filter: brightness(1.12);
+    transition-delay: 0.15s;
 }
 .content-list-grid .c-video {
     @apply bg-black;
@@ -464,9 +472,11 @@ body.hoverable .thread-list-item:hover {
     @apply text-3xl text-white;
 }
 .content-list-rows .c-file-row {
-    @apply flex items-center gap-3;
-    @apply w-full px-3 py-2.5;
+    @apply flex items-center gap-2;
+    @apply w-full px-3 py-1;
+    @apply h-14 overflow-hidden;
     @apply border-b border-separator;
+    @apply no-underline;
 }
 body.hoverable .content-list-rows .c-file-row:hover,
 .touch-capable .content-list-rows .c-file-row:active {
@@ -474,21 +484,21 @@ body.hoverable .content-list-rows .c-file-row:hover,
 }
 .content-list-rows .c-file-icon {
     @apply flex-none flex items-center justify-center;
-    @apply w-12 h-12 rounded-xl;
+    @apply w-9 h-9 rounded-lg;
     @apply text-white;
 }
 .content-list-rows .c-file-icon i {
-    @apply text-2xl;
+    @apply text-lg;
 }
 .content-list-rows .c-file-icon.file-default {
     @apply bg-cancel text-01;
 }
 .content-list-rows .c-file-info {
-    @apply min-w-0 flex-1 flex-y gap-y-0.5;
+    @apply min-w-0 flex-1 flex-y gap-y-0;
 }
 .content-list-rows .c-normal-title {
     @apply flex-x;
-    @apply text-headline-1 text-02;
+    @apply text-sm text-02 leading-tight;
 }
 .content-list-rows .c-normal-title .c-start {
     @apply truncate;
@@ -498,7 +508,33 @@ body.hoverable .content-list-rows .c-file-row:hover,
 }
 .content-list-rows .c-file-size,
 .content-list-rows .c-file-date {
-    @apply text-sm text-03;
+    @apply text-xs text-03 leading-tight;
+}
+.content-list-rows .c-file-row.is-current {
+    background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.content-list-rows .c-file-row.is-current .c-normal-title {
+    @apply text-primary;
+}
+.content-list-rows .c-file-row.is-current .c-file-icon {
+    @apply bg-primary;
+}
+.content-list-rows .c-file-meta {
+    @apply flex-x items-center justify-between gap-x-2;
+    @apply text-xs text-03 leading-tight;
+    @apply whitespace-nowrap;
+}
+.content-list-rows .c-file-meta .c-meta-left {
+    @apply flex-x items-center min-w-0;
+}
+.content-list-rows .c-file-meta .c-sep {
+    @apply px-1;
+}
+.content-list-rows .c-file-meta .c-time {
+    @apply flex-none;
+}
+.content-list-rows .c-file-row .c-progress {
+    @apply w-full h-2 mt-0.5;
 }
 .content-list-links .item {
     @apply px-2 py-1;

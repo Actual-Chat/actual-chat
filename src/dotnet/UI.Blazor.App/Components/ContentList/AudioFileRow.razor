@@ -1,0 +1,134 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, AudioFileRow.Model>
+@{
+    var m = State.Value;
+    var ext = ContentListPlumbing.FileExtension(File.FileName);
+    var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(ext, "file-default");
+    var icon = m.IsPlaying ? "icon-pause-fill" : "icon-play-fill";
+    var rowCls = m.IsCurrent ? "c-file-row is-current" : "c-file-row";
+    var menuRef = MenuRef.New<ChatContentItemMenu>(File.EntryId.Value, File.LocalIndex.ToString()).ToString();
+    var fraction = m.Duration is { } d && d.TotalSeconds > 0
+        ? Math.Clamp(m.Position.TotalSeconds / d.TotalSeconds, 0, 1)
+        : 0;
+}
+
+<div class="@rowCls" role="button" data-menu="@menuRef" data-visor-date="@VisorDate" @onclick="@OnToggle">
+    <div class="c-file-icon @fileCls">
+        <i class="@icon"></i>
+    </div>
+    <div class="c-file-info">
+        <FileAttachmentTitle Title="@File.FileName"/>
+        @if (m.IsCurrent) {
+            <div class="c-file-meta">
+                <div class="c-meta-left">
+                    <span class="c-file-size">@FileSizeFormatter.Format(File.Size)</span>
+                    <span class="c-sep">·</span>
+                    <span class="c-file-date">@FormatDate(File.At)</span>
+                </div>
+                <div class="c-time">@FormatTime(m.Position) / @(m.Duration is { } dur ? FormatTime(dur) : "--:--")</div>
+            </div>
+            <div class="c-progress" style="--progress: @fraction.ToString("0.######")">
+                <div class="c-progress-track"></div>
+                <div class="c-progress-fill"></div>
+                <div class="c-progress-thumb"></div>
+                <input type="range"
+                       class="c-progress-input"
+                       min="0" max="1" step="0.001"
+                       value="@fraction.ToString("0.######")"
+                       disabled="@(m.Duration is null)"
+                       aria-label="Seek"
+                       @oninput="OnSeek"
+                       @onclick:stopPropagation />
+            </div>
+        } else {
+            <div class="c-file-size">@FileSizeFormatter.Format(File.Size)</div>
+            <div class="c-file-date">@FormatDate(File.At)</div>
+        }
+    </div>
+</div>
+
+@code {
+    private AudioAttachmentPlayer Player => Hub.AudioAttachmentPlayer;
+    private IChats Chats => Hub.Chats;
+
+    [Parameter, EditorRequired] public FileItem File { get; set; } = null!;
+    [Parameter] public string VisorDate { get; set; } = "";
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                InitialValue = Model.Empty,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var entry = await Chats.GetEntry(Session, File.EntryId, cancellationToken).ConfigureAwait(false);
+        var attachment = entry?.Attachments.FirstOrDefault(a => a.Index == File.LocalIndex);
+        if (attachment is null || !attachment.IsAudio())
+            return Model.Empty;
+
+        var state = await Player.State.Use(cancellationToken).ConfigureAwait(false);
+        var isCurrent = state is not null && state.AttachmentId == attachment.Id;
+        return new Model {
+            Attachment = attachment,
+            IsCurrent = isCurrent,
+            IsPlaying = isCurrent && state!.IsPlaying,
+            Position = isCurrent ? state!.Position : default,
+            Duration = isCurrent ? state!.Duration : null,
+        };
+    }
+
+    private async Task OnToggle() {
+        var m = State.Value;
+        if (m.Attachment is not { } a)
+            return;
+
+        if (m.IsCurrent) {
+            if (m.IsPlaying)
+                await Player.Pause();
+            else
+                await Player.Resume();
+        } else {
+            await Player.Play(a);
+        }
+    }
+
+    private Task OnSeek(ChangeEventArgs e) {
+        if (e.Value is not string s || !double.TryParse(s, out var fraction))
+            return Task.CompletedTask;
+
+        var m = State.Value;
+        if (m.Duration is not { } d)
+            return Task.CompletedTask;
+
+        return Player.Seek(d * fraction).AsTask();
+    }
+
+    private string FormatDate(Moment at) {
+        var date = DateTimeConverter.ToLocalTime(at);
+        var today = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
+        return date.Year == today.Year
+            ? date.ToString("d MMM, HH:mm")
+            : date.ToString("d MMM yyyy, HH:mm");
+    }
+
+    private static string FormatTime(TimeSpan t) {
+        if (t < TimeSpan.Zero)
+            t = TimeSpan.Zero;
+        return t.TotalHours >= 1
+            ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}"
+            : $"{t.Minutes:00}:{t.Seconds:00}";
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model Empty = new();
+        public ChatEntryAttachment? Attachment { get; init; }
+        public bool IsCurrent { get; init; }
+        public bool IsPlaying { get; init; }
+        public TimeSpan Position { get; init; }
+        public TimeSpan? Duration { get; init; }
+    }
+}

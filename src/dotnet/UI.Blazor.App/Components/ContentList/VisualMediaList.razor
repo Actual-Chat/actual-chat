@@ -23,7 +23,7 @@
             <div class="c-media-row" data-visor-date="@item.VisorDate">
                 @foreach (var media in item.Items.Cast<VisualMediaItem>()) {
                     var url = UrlMapper.ContentUrl(media.BlobId);
-                    var menuRef = MenuRef.New<ChatContentItemMenu>(media.EntryId.Value).ToString();
+                    var menuRef = MenuRef.New<ChatContentItemMenu>(media.EntryId.Value, media.LocalIndex.ToString()).ToString();
                     if (MediaTypeExt.IsSupportedVideo(media.ContentType)) {
                         var thumb = media.ThumbnailBlobId.IsNullOrEmpty() ? "" : UrlMapper.ContentUrl(media.ThumbnailBlobId);
                         <a class="image-attachment c-video" @key="@media.Id"

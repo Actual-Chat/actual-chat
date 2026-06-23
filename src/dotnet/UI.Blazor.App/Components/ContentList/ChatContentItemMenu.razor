@@ -1,5 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedMenuBase<AppUIHub, Unit>
+@using ActualChat.UI.Blazor.App.Module
+@inherits ComputedMenuBase<AppUIHub, ChatContentItemMenu.Model>
+@{
+    var m = State.Value;
+}
 
 <div class="message-menu">
     <MenuEntry
@@ -7,31 +11,76 @@
         Text="Go to message"
         Click="@OnGoToMessage">
     </MenuEntry>
+    @if (!m.DownloadUrl.IsNullOrEmpty()) {
+        <MenuEntry
+            Icon="icon-download"
+            Text="Download"
+            Click="@OnDownload">
+        </MenuEntry>
+    }
 </div>
 
 @code {
     private ChatEntryId _entryId = null!;
+    private int? _index;
 
     private ChatUI ChatUI => Hub.ChatUI;
+    private IChats Chats => Hub.Chats;
 
     protected override void OnParametersSet() {
-        if (Arguments is not [var sEntryId])
+        switch (Arguments) {
+        case [var sEntryId]:
+            _entryId = ChatEntryId.Parse(sEntryId);
+            _index = null;
+            break;
+        case [var sEntryId, var sIndex]:
+            _entryId = ChatEntryId.Parse(sEntryId);
+            _index = int.Parse(sIndex);
+            break;
+        default:
             throw new ArgumentOutOfRangeException(nameof(Arguments));
-
-        _entryId = ChatEntryId.Parse(sEntryId);
+        }
     }
 
-    protected override ComputedState<Unit>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = default,
+            InitialValue = Model.None,
             Category = GetStateCategory(GetType()),
         };
 
-    protected override Task<Unit> ComputeState(CancellationToken cancellationToken)
-        => ActualLab.Async.TaskExt.UnitTask;
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (_index is not { } index)
+            return Model.None;
+
+        var entry = await Chats.GetEntry(Session, _entryId, cancellationToken).ConfigureAwait(false);
+        var attachment = entry?.Attachments.FirstOrDefault(a => a.Index == index);
+        if (attachment is null)
+            return Model.None;
+
+        return new Model {
+            DownloadUrl = UrlMapper.ContentUrl(attachment.Media.BlobId),
+            FileName = attachment.Media.FileName,
+        };
+    }
 
     private async Task OnGoToMessage() {
         await WhenClosed;
         ChatUI.HighlightEntry(_entryId, navigate: true);
+    }
+
+    private Task OnDownload() {
+        var m = State.Value;
+        if (m.DownloadUrl.IsNullOrEmpty())
+            return Task.CompletedTask;
+
+        return JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.downloadFile", m.DownloadUrl, m.FileName).AsTask();
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+        public string DownloadUrl { get; init; } = "";
+        public string FileName { get; init; } = "";
     }
 }
