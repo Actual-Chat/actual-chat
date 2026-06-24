@@ -35,6 +35,12 @@ const RequestDataTimeout = 800;
 // the wrapper is revealed regardless (e.g. an empty chat that never "places").
 const EdgePlacedEpsilon = 8;
 const RevealTimeout = 1500;
+// Min edge re-pin distance. A re-pin re-derives the target scrollTop from the DOM; when already flush
+// that target sits ~1 device px off the current scrollTop on fractional-DPI screens (scrollTop quantizes
+// to integer CSS px, which isn't a whole device px at e.g. dpr 2.5). Writing it re-snaps the scroll and
+// flips it ±1px on every re-pin — a visible jitter on each render that re-pins (e.g. a late avatar load).
+// The residual is unclosable, so skip re-pins below 1px; a real edge change is many px.
+const EdgeRepinEpsilon = 1;
 // Fixed scroll size of an infinite (scrollbar-less) list — its wrapper height. Kept well under the
 // browser's max element height (Firefox ≈ 17.9M); at ~50px/item that is still ~200k items of scroll.
 // Must match InfiniteSize in VirtualList.razor.cs.
@@ -1755,7 +1761,8 @@ export class VirtualList {
                 useSmoothScroll = useSmoothScroll && !isFarFromEdge;
             },
             write: () => {
-                this.scrollController.scrollTo(targetScrollTop, { smooth: useSmoothScroll });
+                if (Math.abs(this.ref.scrollTop - targetScrollTop) >= EdgeRepinEpsilon)
+                    this.scrollController.scrollTo(targetScrollTop, { smooth: useSmoothScroll });
                 if (edge == VirtualListEdge.End) {
                     void this.turnOnIsEndAnchorVisible();
                     this.turnOffIsEndAnchorVisibleDebounced.reset();
