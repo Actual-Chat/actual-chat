@@ -68,73 +68,77 @@
 <div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @collapsedCls @hiddenCls @expandedCls @equalLayoutCls">
     <div class="c-container">
         <div class="video-panel-toolbar video-panel-header">
-            <div class="c-left">
-                <HeaderButton Class="btn-video-panel expand-btn show-with-delay" Click="@OnExpandClick">
-                    <i class="icon-expand text-lg collapsed-video-panel"></i>
-                    <i class="icon-collapse text-lg expanded-video-panel"></i>
-                </HeaderButton>
-                @if (m.IsExpanded) {
-                    <HeaderButton
-                        Class="@("btn-video-panel layout-toggle-btn " + (m.IsEqualLayout ? "on" : ""))"
-                        StopPropagation="true"
-                        PreventDefault="true"
-                        Click="@(() => ChatVideoUI.SetVideoPanelEqualLayout(!m.IsEqualLayout))">
-                        <i class="icon-grid text-lg"></i>
+            <div class="header-row">
+                <div class="c-left">
+                    <HeaderButton Class="btn-video-panel expand-btn show-with-delay" Click="@OnExpandClick">
+                        <i class="icon-expand text-lg collapsed-video-panel"></i>
+                        <i class="icon-collapse text-lg expanded-video-panel"></i>
                     </HeaderButton>
-                }
-            </div>
-
-            @if (m.VideoStreamMemberCount > 0 || !string.IsNullOrEmpty(m.FocusedParticipantName)) {
-                <div class="c-center">
-                    @if (!string.IsNullOrEmpty(m.FocusedParticipantName)) {
-                        <div class="c-member-name">@m.FocusedParticipantName</div>
-                    }
-                    @if (m.VideoStreamMemberCount > 0) {
-                        <div class="c-member-count">@m.VideoStreamMemberCount members</div>
+                    @if (m.IsExpanded) {
+                        <HeaderButton
+                            Class="@("btn-video-panel layout-toggle-btn " + (m.IsEqualLayout ? "on" : ""))"
+                            StopPropagation="true"
+                            PreventDefault="true"
+                            Click="@(() => ChatVideoUI.SetVideoPanelEqualLayout(!m.IsEqualLayout))">
+                            <i class="icon-grid text-lg"></i>
+                        </HeaderButton>
                     }
                 </div>
-            }
 
-            <div class="c-right">
-                <HeaderButton
-                    Class="btn-video-panel btn-video-menu"
-                    StopPropagation="true"
-                    PreventDefault="true"
-                    data-menu="@videoMenuRef"
-                    data-menu-trigger="Primary">
-                    <i class="icon-more-vertical text-lg"></i>
-                </HeaderButton>
-                <HeaderButton
-                    Class="btn-video-panel video-panel-collapse-toggle"
-                    StopPropagation="true"
-                    PreventDefault="true"
-                    Click="@(() => ChatVideoUI.SetVideoPanelExpanded(true))">
-                    <i class="icon-expand text-lg"></i>
-                </HeaderButton>
-                <HeaderButton
-                    Class="btn-video-panel talking"
-                    StopPropagation="true"
-                    PreventDefault="true"
-                    Click="@OnHangUpClick"
-                    TooltipPosition="FloatingPosition.Bottom">
-                    <i class="icon-phone-off"></i>
-                </HeaderButton>
+                @if (m.VideoStreamMemberCount > 0 || !string.IsNullOrEmpty(m.FocusedParticipantName)) {
+                    <div class="c-center">
+                        @if (!string.IsNullOrEmpty(m.FocusedParticipantName)) {
+                            <div class="c-member-name">@m.FocusedParticipantName</div>
+                        }
+                        @if (m.VideoStreamMemberCount > 0) {
+                            <div class="c-member-count">@m.VideoStreamMemberCount members</div>
+                        }
+                    </div>
+                }
+
+                <div class="c-right">
+                    <HeaderButton
+                        Class="btn-video-panel btn-video-menu"
+                        StopPropagation="true"
+                        PreventDefault="true"
+                        data-menu="@videoMenuRef"
+                        data-menu-trigger="Primary">
+                        <i class="icon-more-vertical text-lg"></i>
+                    </HeaderButton>
+                    <HeaderButton
+                        Class="btn-video-panel video-panel-collapse-toggle"
+                        StopPropagation="true"
+                        PreventDefault="true"
+                        Click="@(() => ChatVideoUI.SetVideoPanelExpanded(true))">
+                        <i class="icon-expand text-lg"></i>
+                    </HeaderButton>
+                    <HeaderButton
+                        Class="btn-video-panel talking"
+                        StopPropagation="true"
+                        PreventDefault="true"
+                        Click="@OnHangUpClick"
+                        TooltipPosition="FloatingPosition.Bottom">
+                        <i class="icon-phone-off"></i>
+                    </HeaderButton>
+                </div>
             </div>
-        </div>
 
-        @* Pin toggle: fixes the focused (big) tile on a chosen author instead of
-           auto-following the active speaker. Absolutely positioned under the
-           expand button; only in the default (non-equal) layout and when there's
-           a remote tile to focus. *@
-        @if (m is { IsEqualLayout: false, IsCollapsed: false, IsHidden: false } && hasRemoteStreams) {
-            <HeaderButton
-                Class="@("btn-video-panel btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnTogglePinClick">
-                <i class="icon-pin text-lg"></i>
-            </HeaderButton>
-        }
+            @* Pin toggle: fixes the focused (big) tile on a chosen author instead
+               of auto-following the active speaker. Second header row, pinned left;
+               hides together with the header. Only in the default (non-equal) layout
+               with a remote tile. *@
+            @if (m is { IsEqualLayout: false, IsCollapsed: false, IsHidden: false } && hasRemoteStreams) {
+                <div class="header-row header-row-pin">
+                    <HeaderButton
+                        Class="@("btn-video-panel btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
+                        StopPropagation="true"
+                        PreventDefault="true"
+                        Click="@OnTogglePinClick">
+                        <i class="icon-pin text-lg"></i>
+                    </HeaderButton>
+                </div>
+            }
+        </div>
 
         @* Footer for mobile full-screen video *@
         <div class="video-panel-toolbar video-panel-footer">
@@ -565,7 +569,10 @@
 
     private void OnTilePinClick(AuthorId authorId) {
         // Pin is a default-layout concept; equal has no focused tile.
-        if (State.Value.IsEqualLayout)
+        // Tapping the focused (big) tile is a toolbar toggle, not a pin — only
+        // small tiles pin. The big tile is pinned via the pin button only.
+        var m = State.Value;
+        if (m.IsEqualLayout || authorId == m.FocusedAuthorId)
             return;
         _layoutCalculator?.SetPinnedAuthor(authorId);
     }

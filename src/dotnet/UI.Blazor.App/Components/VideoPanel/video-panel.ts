@@ -294,8 +294,11 @@ export class VideoPanel {
         return canvas; // fallback
     }
 
-    private isOnVideo(target: HTMLElement): boolean {
-        return target.closest('.remote-video-container') != null
+    // Toolbar toggle fires only on the focused (big) tile. Small tiles are
+    // reserved for pin-on-tap (handled in Blazor), so a tap there must not
+    // toggle the header/footer.
+    private isOnFocusedTile(target: HTMLElement): boolean {
+        return target.closest('.remote-video-container.item-focused') != null
             && !target.closest('.video-panel-toolbar')
             && !target.closest('.video-panel-chat');
     }
@@ -352,7 +355,7 @@ export class VideoPanel {
                     if (Date.now() - this.lastMouseDragEndTime < 300)
                         return false;
 
-                    return this.isOnVideo(e.target as HTMLElement);
+                    return this.isOnFocusedTile(e.target as HTMLElement);
                 })
             )
             .subscribe(() => this.videoPanel.classList.toggle('toolbar-hidden'));
@@ -435,7 +438,7 @@ export class VideoPanel {
 
     private onTouchStart(e: TouchEvent): void {
         const target = e.target as HTMLElement;
-        const onVideo = this.isOnVideo(target);
+        const onVideo = this.isOnFocusedTile(target);
         const onScreenCast = this.isOnScreenCast(target);
 
         // Track screencast touches for move/end filtering
