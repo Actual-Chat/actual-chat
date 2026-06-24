@@ -22,11 +22,30 @@
     "seq": {
       "command": "tools/seq-mcp-mcp-wrapper"
     },
+    "sentry": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@sentry/mcp-server@latest"
+      ],
+      "env": {
+        "SENTRY_ACCESS_TOKEN": "${SENTRY_ACCESS_TOKEN}",
+        "SENTRY_HOST": "sentry.io"
+      }
+    },
     "voxt-robokitty": {
       "type": "http",
       "url": "https://voxt.ai/api/mcp",
       "headers": {
         "Authorization": "Bearer ${ActualChat_RoboKitty_API_Key}"
+      }
+    },
+    "voxt-robokitty-dev": {
+      "type": "http",
+      "url": "https://dev.voxt.ai/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ActualChat_RoboKitty_Dev_API_Key}"
       }
     }
   }
