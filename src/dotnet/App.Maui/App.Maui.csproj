@@ -188,6 +188,14 @@
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
     <PackageReference Include="ActualLab.Opus.MaciOS" />
+    <PackageReference Include="AdamE.Firebase.iOS.Core" />
+    <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
+    <!-- Firebase 12.5.0.4 pins these Google native deps at versions whose base build lacks a
+         MacCatalyst slice; the 4-part revisions add it, so FBLPromises.framework et al. embed. -->
+    <PackageReference Include="AdamE.Google.iOS.PromisesObjC" />
+    <PackageReference Include="AdamE.Google.iOS.GoogleUtilities" />
+    <PackageReference Include="AdamE.Google.iOS.Nanopb" />
+    <PackageReference Include="AdamE.Google.iOS.GoogleDataTransport" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
 
@@ -637,6 +645,12 @@
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-ios'))">
+    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-maccatalyst'))">
+    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-maccatalyst'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
   </ItemGroup>
 

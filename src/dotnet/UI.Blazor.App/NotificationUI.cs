@@ -220,6 +220,8 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
                     return DeviceType.iOSApp;
                 case AppKind.Windows:
                     return DeviceType.WindowsApp;
+                case AppKind.MacOS:
+                    return DeviceType.MacOSApp;
                 }
 
             return DeviceType.WebBrowser;

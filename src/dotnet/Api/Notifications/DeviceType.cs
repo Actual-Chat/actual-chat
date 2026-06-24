@@ -10,4 +10,5 @@ public enum DeviceType
     WindowsApp = 1,
     iOSApp = 2,
     AndroidApp = 3,
+    MacOSApp = 4,
 }

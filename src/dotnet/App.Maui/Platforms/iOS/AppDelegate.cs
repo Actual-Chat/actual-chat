@@ -58,48 +58,13 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     [Export("application:didReceiveRemoteNotification:fetchCompletionHandler:")]
     public void DidReceiveRemoteNotification(
         UIApplication application, NSDictionary userInfo, Action<UIBackgroundFetchResult> completionHandler)
-    {
-        try {
-            var dismissedTags = (userInfo[new NSString(Constants.Notification.MessageDataKeys.DismissedTags)] as NSString)?.ToString();
-            if (!dismissedTags.IsNullOrEmpty()) {
-                var tags = dismissedTags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                RemoveDeliveredNotifications(tags);
-                completionHandler(UIBackgroundFetchResult.NewData);
-                return;
-            }
-        }
-        catch (Exception e) {
-            Log.LogError(e, "DidReceiveRemoteNotification failed");
-        }
-        completionHandler(UIBackgroundFetchResult.NoData);
-    }
+        => completionHandler(AppleNotifications.HandleRemoteNotification(userInfo, Log));
 
     [Export ("messaging:didReceiveRegistrationToken:")]
     public void DidReceiveRegistrationToken (Firebase.CloudMessaging.Messaging messaging, string fcmToken)
-    {
-        // Monitor token generation: To be notified whenever the token is updated.
-        var token = fcmToken;
-        Log.LogDebug("OnNewToken: '{Token}'", token);
-        var appServices = IPlatformApplication.Current?.Services;
-        var mauiNotifications = appServices?.GetService<MauiNotifications>();
-        if (mauiNotifications != null )
-            _ = BackgroundTask.Run(
-                () => mauiNotifications.RefreshNotificationToken(token, DeviceType.iOSApp, CancellationToken.None),
-                Log, "DidReceiveRegistrationToken failed");
-    }
+        => AppleNotifications.ForwardRegistrationToken(fcmToken, DeviceType.iOSApp, Log);
 
     // Private methods
-
-    // Removes delivered notifications whose thread (= chat tag) is being dismissed.
-    private static void RemoveDeliveredNotifications(IReadOnlyCollection<string> dismissedTags)
-        => UNUserNotificationCenter.Current.GetDeliveredNotifications(delivered => {
-            var toRemove = delivered
-                .Where(n => dismissedTags.Contains(n.Request.Content.ThreadIdentifier))
-                .Select(n => n.Request.Identifier)
-                .ToArray();
-            if (toRemove.Length > 0)
-                UNUserNotificationCenter.Current.RemoveDeliveredNotifications(toRemove);
-        });
 
     private static void RegisterBadgeNotifications()
         => UNUserNotificationCenter.Current.RequestAuthorization(
