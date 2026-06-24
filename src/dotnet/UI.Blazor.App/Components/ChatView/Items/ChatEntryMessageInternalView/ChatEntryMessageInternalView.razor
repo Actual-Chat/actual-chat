@@ -45,30 +45,40 @@
     // Log.LogInformation("Rendering ChatEntryMessageInternalView for #{EntryId} (IsStreaming: {IsStreaming}, Translation: {TranslationState})",
     //     message.Entry.Id, m.IsStreaming, m.Translation);
 
+    var status = ChatMessageSendingStatus.MessageStatus.Default;
+    if (entry.IsSending) {
+        if (!entry.HasUploadingAttachments)
+            status = ChatMessageSendingStatus.MessageStatus.Sending;
+    }
+    else if (entry.HasUploadingAttachments) {
+        // Use default
+    }
+    else if (IsUnreadByOthers) {
+        if (entry.Attachments.Length == 0)
+            status = ChatMessageSendingStatus.MessageStatus.Unread;
+    }
+    var showTextStatus = status == ChatMessageSendingStatus.MessageStatus.Unread && IsUnreadByOthersBlockStart;
+
     // Should be named __builder
     // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
     RenderFragment statusFragment = (__builder) => {
-        var status = ChatMessageSendingStatus.MessageStatus.Default;
-        if (entry.IsSending) {
-            if (!entry.HasUploadingAttachments)
-                status = ChatMessageSendingStatus.MessageStatus.Sending;
-        }
-        else if (entry.HasUploadingAttachments) {
-            // Use default
-        }
-        else if (IsUnreadByOthers) {
-            if (entry.Attachments.Length == 0)
-                status = ChatMessageSendingStatus.MessageStatus.Unread;
-        }
-        var showTextStatus = status == ChatMessageSendingStatus.MessageStatus.Unread && IsUnreadByOthersBlockStart;
         @* <span>@entry.Id.LocalId : @entry.Version</span> *@
         @TranslationFragments.TranslationMark(m.Translation)
         @if (status != ChatMessageSendingStatus.MessageStatus.Default) {
             <ChatMessageSendingStatus Status="@status" IsDotOnly="@(!showTextStatus)" />
         }
     };
+
+    // No visible content (no text, status icon, translation mark or entry-kind sign) → mark the markup
+    // empty so it renders hidden from the first frame. The JS used to add this one frame late, which made
+    // attachment-only messages render ~1 text line taller, then collapse — re-anchoring the list (a jump).
+    var isEmptyMarkup = !m.IsStreaming
+        && trimmedContent.IsNullOrEmpty()
+        && m.Translation == TranslationState.None
+        && status == ChatMessageSendingStatus.MessageStatus.Default
+        && !message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign);
 }
-<div @ref="Ref" class="chat-message-markup @translationCls @streamingCls">
+<div @ref="Ref" class="chat-message-markup @translationCls @streamingCls @(isEmptyMarkup ? "empty" : "")">
     @if (!isEmojiOnly && !isGifOnly && !isCodeBlockOnly && message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
         <ChatEntryKindView IsTranscribed="@entry.HasAudio"/>
     }

@@ -44,11 +44,6 @@ export class ChatEntryMessageInternalView {
         if (!this.messageMarkup)
             return;
 
-        const content = this.messageMarkup.textContent;
-        const hasChildren = this.messageMarkup.querySelector('img, svg') !== null;
-        if (!content && !hasChildren && !this.messageMarkup.classList.contains('streaming'))
-            this.messageMarkup.classList.add('empty');
-
         const isStreaming = this.messageMarkup.classList.contains('streaming');
 
         this.classObserver = new MutationObserver(this.stateHandler);
