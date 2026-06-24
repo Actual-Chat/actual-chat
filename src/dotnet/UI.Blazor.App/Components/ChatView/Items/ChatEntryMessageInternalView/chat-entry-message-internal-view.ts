@@ -12,7 +12,6 @@ const importantClasses = new Set([
 ]);
 
 export class ChatEntryMessageInternalView {
-    private blazorRef: DotNet.DotNetObject;
     private readonly messageMarkup: HTMLElement;
     private playableText: HTMLElement | null;
     private markupHeight = 0;
@@ -34,12 +33,11 @@ export class ChatEntryMessageInternalView {
     private slowDebouncedChangeSize: ResettableFunc<[height: number]>;
     private disposed$: Subject<void> = new Subject<void>();
 
-    static create(blazorRef: DotNet.DotNetObject, messageMarkup: HTMLElement): ChatEntryMessageInternalView {
-        return new ChatEntryMessageInternalView(blazorRef, messageMarkup);
+    static create(messageMarkup: HTMLElement): ChatEntryMessageInternalView {
+        return new ChatEntryMessageInternalView(messageMarkup);
     }
 
-    constructor(blazorRef: DotNet.DotNetObject, messageMarkup: HTMLElement) {
-        this.blazorRef = blazorRef;
+    constructor(messageMarkup: HTMLElement) {
         this.messageMarkup = messageMarkup;
         if (!this.messageMarkup)
             return;
