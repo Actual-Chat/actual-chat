@@ -13,15 +13,13 @@ public class LiveLocationsBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<LiveLocation?> Get(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
     {
-        var id = DbLiveLocation.ComposeId(chatId, authorId);
-        var dbLiveLocation = await DbLiveLocationResolver.Get(id, cancellationToken).ConfigureAwait(false);
+        var dbLiveLocation = await DbLiveLocationResolver.Get(authorId.Value, cancellationToken).ConfigureAwait(false);
         var liveLocation = dbLiveLocation?.ToModel();
         if (liveLocation is null || liveLocation.ExpiresAt <= Clocks.SystemClock.Now)
             return null;
 
         Computed.GetCurrent().Invalidate(liveLocation.ExpiresAt - Clocks.SystemClock.Now);
         return liveLocation;
-
     }
 
     // [ComputeMethod]
@@ -66,7 +64,7 @@ public class LiveLocationsBackend(IServiceProvider services)
         await using var __ = dbContext.ConfigureAwait(false);
 
         var now = Clocks.SystemClock.Now;
-        var id = DbLiveLocation.ComposeId(chatId, authorId);
+        var id = authorId.Value;
         var dbLiveLocation = await dbContext.LiveLocations.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
@@ -79,7 +77,6 @@ public class LiveLocationsBackend(IServiceProvider services)
             dbLiveLocation = new DbLiveLocation {
                 Id = id,
                 ChatId = chatId.Value,
-                AuthorId = authorId.Value,
                 CreatedAt = now,
             };
             dbContext.Add(dbLiveLocation);
@@ -111,7 +108,7 @@ public class LiveLocationsBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var id = DbLiveLocation.ComposeId(chatId, authorId);
+        var id = authorId.Value;
         var dbLiveLocation = await dbContext.LiveLocations.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);

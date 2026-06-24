@@ -142,7 +142,6 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         var liveLocation = model.Entity<DbLiveLocation>();
         liveLocation.Property(e => e.Id).UseCollation("C");
         liveLocation.Property(e => e.ChatId).UseCollation("C");
-        liveLocation.Property(e => e.AuthorId).UseCollation("C");
         liveLocation.HasIndex(e => e.ChatId);
 
         var operation = model.Entity<DbOperation>();

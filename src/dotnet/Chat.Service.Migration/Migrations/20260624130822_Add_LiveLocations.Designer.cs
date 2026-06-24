@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20260622153254_Add_LiveLocations")]
+    [Migration("20260624130822_Add_LiveLocations")]
     partial class Add_LiveLocations
     {
         /// <inheritdoc />
@@ -865,12 +865,6 @@ namespace ActualChat.Chat.Migrations
                     b.Property<float?>("Accuracy")
                         .HasColumnType("real")
                         .HasColumnName("accuracy");
-
-                    b.Property<string>("AuthorId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("author_id")
-                        .UseCollation("C");
 
                     b.Property<float?>("Bearing")
                         .HasColumnType("real")

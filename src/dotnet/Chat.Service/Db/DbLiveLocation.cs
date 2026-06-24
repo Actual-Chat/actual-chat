@@ -8,7 +8,6 @@ public class DbLiveLocation : IHasId<string>, IRequirementTarget
 {
     [DbKey] public string Id { get; set; } = null!;
     public string ChatId { get; set; } = "";
-    public string AuthorId { get; set; } = "";
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public float? Accuracy { get; set; }
@@ -25,16 +24,12 @@ public class DbLiveLocation : IHasId<string>, IRequirementTarget
     }
 
     public TimeSpan Duration { get; set; }
-
-    public static string ComposeId(ChatId chatId, AuthorId authorId)
-        => $"{chatId}:{authorId}";
-
     public DbLiveLocation() { }
 
     public LiveLocation ToModel()
         => new(
             ActualChat.ChatId.Parse(ChatId),
-            ActualChat.AuthorId.Parse(AuthorId),
+            ActualChat.AuthorId.Parse(Id),
             new GeoPoint(Latitude, Longitude, Accuracy, Bearing),
             CreatedAt.ToMoment(),
             ModifiedAt.ToMoment(),

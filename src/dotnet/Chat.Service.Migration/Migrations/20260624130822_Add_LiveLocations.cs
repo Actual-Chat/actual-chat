@@ -17,7 +17,6 @@ namespace ActualChat.Chat.Migrations
                 {
                     id = table.Column<string>(type: "text", nullable: false, collation: "C"),
                     chat_id = table.Column<string>(type: "text", nullable: false, collation: "C"),
-                    author_id = table.Column<string>(type: "text", nullable: false, collation: "C"),
                     latitude = table.Column<double>(type: "double precision", nullable: false),
                     longitude = table.Column<double>(type: "double precision", nullable: false),
                     accuracy = table.Column<float>(type: "real", nullable: true),

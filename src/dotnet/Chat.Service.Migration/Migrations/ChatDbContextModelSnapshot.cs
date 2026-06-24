@@ -863,12 +863,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("real")
                         .HasColumnName("accuracy");
 
-                    b.Property<string>("AuthorId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("author_id")
-                        .UseCollation("C");
-
                     b.Property<float?>("Bearing")
                         .HasColumnType("real")
                         .HasColumnName("bearing");
