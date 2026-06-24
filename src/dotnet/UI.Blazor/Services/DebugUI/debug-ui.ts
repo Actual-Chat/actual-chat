@@ -277,6 +277,40 @@ export class DebugUI {
         return all;
     }
 
+    /** Returns message-item height changes (post-initial-measurement resizes) across all live lists —
+     *  use to find messages that don't reserve their final height up-front. Requires virtualListDebug(true).
+     *  Returns an offenders summary (by key, largest jump first) plus raw events. Pass clear=true to drain. */
+    public static listMessageResizes(clear = false): unknown {
+        interface Rec { key: string; kind: string; delta: number; ageMs: number; late: boolean }
+        const reg = ((globalThis as Record<string, unknown>).__vlDebugs ?? {}) as
+            Record<string, { itemResizeList?: Rec[]; clearItemResizes?: () => void }>;
+        const all: Rec[] = [];
+        for (const d of Object.values(reg)) {
+            if (d.itemResizeList)
+                all.push(...d.itemResizeList);
+            if (clear)
+                d.clearItemResizes?.();
+        }
+        const byKey = new Map<string, {
+            key: string; kind: string; count: number; totalDelta: number;
+            maxAbsDelta: number; firstAgeMs: number; late: boolean;
+        }>();
+        for (const r of all) {
+            const e = byKey.get(r.key) ?? {
+                key: r.key, kind: r.kind, count: 0, totalDelta: 0,
+                maxAbsDelta: 0, firstAgeMs: r.ageMs, late: false,
+            };
+            e.count++;
+            e.totalDelta += r.delta;
+            e.maxAbsDelta = Math.max(e.maxAbsDelta, Math.abs(r.delta));
+            e.firstAgeMs = Math.min(e.firstAgeMs, r.ageMs);
+            e.late = e.late || r.late;
+            byKey.set(r.key, e);
+        }
+        const offenders = [...byKey.values()].sort((a, b) => b.maxAbsDelta - a.maxAbsDelta);
+        return { total: all.length, offenders, raw: all };
+    }
+
     private static setVideoTraceKill(
         kind: VideoTraceKillKind,
         avgPeriod: VideoTraceKillPeriodInput,
