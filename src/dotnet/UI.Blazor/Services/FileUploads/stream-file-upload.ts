@@ -62,7 +62,8 @@ function coalesceProgress(report: (progressPercent: number) => PromiseLike<unkno
  * keep-alive can interleave on slow links (no head-of-line blocking).
  */
 export class StreamFileUpload implements IFileUpload {
-    private static readonly subChunkSize = 16 * 1024; // 16 KB per RpcStream item
+    private static readonly SubChunkSize = 16 * 1024; // 16 KB per RpcStream item
+    private static readonly ReadBlockSize = 1024 * 1024; // read the blob 1 MB at a time, then slice
     private readonly whenCompletedSource: PromiseSource<void> = new PromiseSource<void>();
     private readonly abortController: AbortController = new AbortController();
     private readonly connectionScope: string;
@@ -205,17 +206,27 @@ export class StreamFileUpload implements IFileUpload {
         }
     }
 
+    // Read the blob a block at a time and hand out 16 KB sub-chunks as zero-copy
+    // views into it (instead of one async blob read per sub-chunk): ~64x fewer
+    // reads and allocations. subarray views are safe here — msgpack encodes a
+    // Uint8Array by its byteOffset/byteLength and copies on send, and the block
+    // is never mutated.
     private async *readSubChunks(startOffset: number, signal: AbortSignal): AsyncIterable<Uint8Array> {
         const size = this.blob.size;
         let pos = startOffset;
         while (pos < size) {
             signal.throwIfAborted();
-            this.abortController.signal.throwIfAborted();
-            const end = Math.min(pos + StreamFileUpload.subChunkSize, size);
-            const buffer = new Uint8Array(await this.blob.slice(pos, end).arrayBuffer());
-            pos = end;
-            yield buffer;
-            this.progressReporter((pos / size) * 100);
+            const blockEnd = Math.min(pos + StreamFileUpload.ReadBlockSize, size);
+            const block = new Uint8Array(await this.blob.slice(pos, blockEnd).arrayBuffer());
+            for (let off = 0; off < block.length; off += StreamFileUpload.SubChunkSize) {
+                this.abortController.signal.throwIfAborted();
+                const subEnd = Math.min(off + StreamFileUpload.SubChunkSize, block.length);
+                const sub = block.subarray(off, subEnd);
+                pos += sub.length;
+                yield sub;
+
+                this.progressReporter((pos / size) * 100);
+            }
         }
     }
 
