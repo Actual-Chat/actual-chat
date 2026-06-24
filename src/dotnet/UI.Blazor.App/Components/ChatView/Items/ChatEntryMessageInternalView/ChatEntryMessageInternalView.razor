@@ -167,7 +167,6 @@
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
-    private DotNetObjectReference<ChatEntryMessageInternalView> BlazorRef { get; set; } = null!;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
@@ -180,8 +179,6 @@
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
 
         // Log.LogInformation("ChatEntryMessageInternalView.DisposeAsync: {Id}", _textEntryId);
         TranscriptStreamReaderCache.TryGetValue(_textEntryId, out var cached);
@@ -219,10 +216,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 JSCreateMethod,
-                BlazorRef,
                 Ref);
         }
     }
