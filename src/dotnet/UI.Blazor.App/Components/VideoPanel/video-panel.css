@@ -307,8 +307,15 @@ body.narrow .video-panel .btn-video-hide {
 }
 .video-panel .video-panel-header {
     @apply inset-x-0 top-0;
-    @apply flex-x items-center justify-between;
+    @apply flex-y gap-2;
     @apply pt-2 px-2;
+}
+.video-panel .video-panel-header .header-row {
+    @apply relative w-full;
+    @apply flex-x items-center justify-between;
+}
+.video-panel .video-panel-header .header-row-pin {
+    @apply justify-start;
 }
 .video-panel .video-panel-header .c-left,
 .video-panel .video-panel-header .c-right {
@@ -378,11 +385,9 @@ body.wide .video-panel.expanded .video-panel-footer {
     @apply pointer-events-none;
 }
 .video-panel.expanded .video-panel-header {
+    @apply flex-y h-auto items-stretch;
     @apply pt-4 px-4;
     top: var(--vp-safe-top);
-}
-body.device-mobile.narrow .video-panel.expanded .video-panel-header {
-    @apply pt-0;
 }
 .video-panel.expanded .video-panel-footer {
     @apply justify-center gap-4;
@@ -449,16 +454,6 @@ body.hoverable .btn-video-panel.btn-h:hover {
 .btn-video-panel.btn-h.btn-pin-toggle.on {
     @apply bg-[var(--blue-50-50)];
     @apply text-[var(--blue-95)];
-}
-/* Pin toggle sits as an absolute control under the expand button (top-left),
-   aligned with it: toolbar px-4 + header px-2 from the edge, one button-row
-   (h-10) + the pt-2/gap-2 spacing below. */
-.video-panel .btn-pin-toggle {
-    @apply absolute z-[1000] top-14 left-2;
-}
-.video-panel.expanded .btn-pin-toggle {
-    top: calc(3.75rem + var(--safe-area-top));
-    left: calc(1rem + var(--safe-area-left));
 }
 .btn-video-panel.btn-h.talking {
     @apply bg-[var(--magenta-30-50)];
