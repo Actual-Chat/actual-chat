@@ -820,6 +820,7 @@ export class VirtualList {
                 if (size == 0)
                     itemRefsWithWrongSize.push(itemRef);
                 else {
+                    this.debug?.noteItemMeasure(key, size, item.createdAt, itemRef);
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
                     const oldSize = item.size;

@@ -15,6 +15,9 @@ type VlDebugGlobal = typeof globalThis & {
 const Eps = 8;
 const GapEps = 24;
 const JumpEps = 12;
+// An existing item that resizes within this window of first appearing is a layout-shift offender
+// (it didn't reserve its final height up-front); later resizes are usually genuine edits.
+const LateResizeMs = 2500;
 
 // What a live VirtualList exposes to the checker. Kept structural so the debug module stays
 // decoupled from the (large) VirtualList class; the instance is passed in via an `any` cast.
@@ -43,6 +46,31 @@ export interface VlViolation {
     message: string;
     detail: Record<string, unknown>;
     snapshot: VlSnapshot;
+}
+
+// A compact structural snapshot of a list item at a given measurement, for diffing what changed
+// between the first (pre-settle) and final layout. `rows` lists descendants with their heights.
+export interface ItemFingerprint {
+    h: number;
+    html: string;
+    rows: { tag: string; cls: string; h: number }[];
+}
+
+// A post-initial-measurement height change of a list item — i.e. a message that didn't settle on
+// its final height at first measurement. `late` ones (soon after the item appeared) are the offenders.
+// `before`/`after` capture the item's structure at the previous and current measurement.
+export interface ItemResize {
+    key: string;
+    chatEntryId: string | null;
+    kind: string;
+    from: number;
+    to: number;
+    delta: number;
+    ageMs: number;
+    late: boolean;
+    at: number;
+    before: ItemFingerprint;
+    after: ItemFingerprint;
 }
 
 export interface VlSnapshot {
@@ -88,8 +116,12 @@ export class VirtualListDebug {
     private timer: ReturnType<typeof setInterval> | null = null;
     private lastRequestSnapshot: VlSnapshot | null = null;
     private readonly recent: VlViolation[] = [];
+    private readonly itemResizes: ItemResize[] = [];
+    private readonly lastMeasure = new Map<string, { size: number; fp: ItemFingerprint }>();
     private lastLoggedSig = '';
     private lastLoggedAt = 0;
+    private lastResizeLogKey = '';
+    private lastResizeLogAt = 0;
     // No-jump tracking: a keyed item's viewport-relative position across consecutive checks.
     private lastAnchor: { key: string; top: number; scrollTop: number; time: number } | null = null;
     private lastRendering = false;
@@ -229,6 +261,49 @@ export class VirtualListDebug {
     public clear(): void { this.recent.length = 0; }
     public get lastRequest(): VlSnapshot | null { return this.lastRequestSnapshot; }
 
+    // Called by VirtualList on every item measurement. Snapshots the item's structure each time and,
+    // when the size changed vs the previous measurement, records a resize carrying the before/after
+    // snapshots — so the pre-settle (first-pass) DOM that caused the height change is captured.
+    public noteItemMeasure(key: string, size: number, createdAt: number, el: HTMLElement): void {
+        const fp = itemFingerprint(el);
+        const prev = this.lastMeasure.get(key);
+        this.lastMeasure.set(key, { size, fp });
+        if (!prev || prev.size === size)
+            return;
+
+        const ageMs = Math.max(0, Date.now() - createdAt);
+        const r: ItemResize = {
+            key,
+            chatEntryId: el.querySelector<HTMLElement>('[data-chat-entry-id]')?.dataset.chatEntryId
+                ?? el.dataset.chatEntryId ?? null,
+            kind: classifyItemContent(el),
+            from: prev.size,
+            to: size,
+            delta: size - prev.size,
+            ageMs: Math.round(ageMs),
+            late: ageMs < LateResizeMs,
+            at: Math.round(performance.now()),
+            before: prev.fp,
+            after: fp,
+        };
+        this.itemResizes.push(r);
+        if (this.itemResizes.length > 500)
+            this.itemResizes.shift();
+        // Deduped console log: same key within 1s logs once.
+        if (key === this.lastResizeLogKey && r.at - this.lastResizeLogAt < 1000)
+            return;
+
+        this.lastResizeLogKey = key;
+        this.lastResizeLogAt = r.at;
+        const sign = r.delta >= 0 ? '+' : '';
+        const tag = r.late ? ' LATE' : '';
+        warnLog?.log(
+            `⤡ resize "${key}" ${r.from}→${r.to} ${sign}${r.delta}px +${r.ageMs}ms${tag} ${r.kind}`);
+    }
+
+    public get itemResizeList(): ItemResize[] { return this.itemResizes; }
+    public clearItemResizes(): void { this.itemResizes.length = 0; }
+
     private report(v: VlViolation): void {
         this.recent.push(v);
         if (this.recent.length > 200)
@@ -314,6 +389,50 @@ export class VirtualListDebug {
 }
 
 // Helpers
+
+// Compact structural snapshot of an item: its height, a trimmed outerHTML, and a depth-first list
+// of descendants with heights (capped) — enough to diff which sub-block changed height.
+function itemFingerprint(el: HTMLElement): ItemFingerprint {
+    const rows: { tag: string; cls: string; h: number }[] = [];
+    const walk = (node: Element) => {
+        for (const c of Array.from(node.children)) {
+            if (rows.length >= 30)
+                return;
+            const r = c.getBoundingClientRect();
+            if (r.height > 0) {
+                const cls = (c.getAttribute('class') ?? '').slice(0, 40);
+                rows.push({ tag: c.tagName.toLowerCase(), cls, h: Math.round(r.height) });
+            }
+            walk(c);
+        }
+    };
+    walk(el);
+    return {
+        h: Math.round(el.getBoundingClientRect().height),
+        html: el.outerHTML.replace(/\s+/g, ' ').slice(0, 500),
+        rows,
+    };
+}
+
+// Best-effort content classification for a list item, for the resize tracker's `kind` field.
+function classifyItemContent(el: HTMLElement): string {
+    if (el.querySelector('.image-attachment'))
+        return 'image';
+    if (el.querySelector('.video-attachment, video'))
+        return 'video';
+    if (el.querySelector('.file-attachment'))
+        return 'file';
+    if (el.querySelector('.link-preview, link-preview'))
+        return 'link-preview';
+    if (el.querySelector('.audio-attachment, audio-player, audio'))
+        return 'audio';
+    if ((el.dataset.key ?? '').endsWith('-date-line'))
+        return 'date-line';
+    if (el.classList.contains('group') || el.querySelector('.chat-message-group'))
+        return 'message-group';
+
+    return 'text';
+}
 
 // Total px of [0, height] covered by the given (viewport-relative) intervals.
 function coveredPx(height: number, intervals: { top: number; bottom: number }[]): number {

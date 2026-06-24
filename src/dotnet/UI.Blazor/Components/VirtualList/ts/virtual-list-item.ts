@@ -6,6 +6,7 @@ export class VirtualListItem {
         this.size = -1;
     }
 
+    public readonly createdAt = Date.now();
     public range?: NumberRange;
     public size?: number;
     public shouldSkipKey = false;
