@@ -99,6 +99,11 @@ export class ScrollController {
                 const limits = this.getEffectiveScrollLimits();
                 top = clamp(top, limits.min, limits.max);
             }
+            // An authoritative scroll to a new position supersedes a settling overscroll bounce; without this
+            // the spring's per-frame boundary write keeps yanking scrollTop back to its now-stale edge (e.g.
+            // the content grew and we re-pinned past it), stranding the list above the edge.
+            if (this.isReturning && Math.abs(top - this.overscrollBoundary) > FixPrecisionPx)
+                this.finishOverscrollReturn();
             if (options.smooth === false) {
                 this.element.scrollTop = top;
                 void this.element.offsetHeight; // Triggers reflow
