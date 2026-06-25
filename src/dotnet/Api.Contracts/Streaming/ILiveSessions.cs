@@ -14,6 +14,9 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<LiveSession?> GetLiveSession(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<bool> HasRecorder(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     Task SetParticipation(
         Session session,

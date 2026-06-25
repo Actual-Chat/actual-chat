@@ -51,9 +51,10 @@
                             <span class="c-colon">:</span>
                         }
                         @if (m.ChatActivity.IsActive) {
+                            var talking = m.ChatActivity.TalkingCount;
                             <span class="c-live-talking">
                                 <chat-activity-svg size="4" isActive="true"/>
-                                @m.ChatActivity.TalkingCount talking · live
+                                @(talking > 0 ? $"{talking} talking · live" : "live")
                             </span>
                         }
                         else if (lastTextEntry.IsContentStreaming) {

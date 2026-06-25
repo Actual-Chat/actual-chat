@@ -9,18 +9,18 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
-    public async Task TranscriptionConversationStartsThenMarksClosing()
+    public async Task SessionStaysLiveWhileRecordingThenCloses()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        await tester.SignInAsUniqueBob();
+        var account = await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         author.Should().NotBeNull();
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
 
-        // act
+        // act — a streamer registers (auto-joins the registry as a recorder)
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
         // assert
@@ -30,10 +30,16 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         live.AuthorIds.Should().Contain(author.Id);
         live.IsClosing.Should().BeFalse();
 
-        // act — no live streams remain, so close detection marks it closing (the flow finalizes it)
+        // act — the voice stream ends (VAD silence) but the mic stays on (still recording)
         await backend.OnStreamsChanged(chatId, default);
 
-        // assert
+        // assert — recording keeps the session live through the speech gap
+        (await backend.Get(chatId, default))!.IsClosing.Should().BeFalse();
+
+        // act — recording stops (mic off)
+        await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
+
+        // assert — now it winds down (enters the close grace)
         live = await backend.Get(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeTrue();
@@ -46,11 +52,11 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task PhoneModeRoutesThroughCloseGrace()
+    public async Task PhoneModeStaysLiveWhileRecordingThenCloses()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        await tester.SignInAsUniqueBob();
+        var account = await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
@@ -62,11 +68,16 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // assert
         (await backend.Get(chatId, default)).Should().NotBeNull();
 
-        // act — no streams remain; phone mode now uses the same close grace as transcription
-        // (it does NOT vanish immediately, so a VAD gap between utterances doesn't flap the call)
+        // act — VAD gap: the voice stream ends, mic still on → recording keeps the call live
         await backend.OnStreamsChanged(chatId, default);
 
-        // assert — still present, marked closing, finalization deferred to the grace timeout
+        // assert — not closing (a silence between utterances doesn't flap the call)
+        (await backend.Get(chatId, default))!.IsClosing.Should().BeFalse();
+
+        // act — recording stops → the close grace begins
+        await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
+
+        // assert — present, marked closing, finalization deferred to the grace timeout
         var live = await backend.Get(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeTrue();
@@ -108,15 +119,15 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        await tester.SignInAsUniqueBob();
+        var account = await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
-        // act — no live streams remain, so it transitions to closing and stamps ClosingAt
-        await backend.OnStreamsChanged(chatId, default);
+        // act — recording stops with no streams → transitions to closing and stamps ClosingAt
+        await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
 
         // assert — ClosingAt drives the self-heal timeout that vanishes a flow-less conversation
         var live = await backend.Get(chatId, default);
@@ -130,16 +141,16 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        await tester.SignInAsUniqueBob();
+        var account = await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
-        await backend.OnStreamsChanged(chatId, default);
+        await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
         (await backend.Get(chatId, default))!.IsClosing.Should().BeTrue();
 
-        // act — a stream registers again before finalization
+        // act — recording resumes before finalization
         await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
 
         // assert — re-open clears both the closing flag and the timeout stamp
@@ -289,16 +300,17 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var latchedAt = (await backend.Get(chatId, default))!.SessionStartedAt;
         latchedAt.Should().NotBeNull();
 
-        // act — VAD silence: all streams end, then a peer speaks again within the grace window
+        // act — VAD silence: all voice streams end, but the peers keep their mics on (recording)
         await backend.OnStreamsChanged(chatId, default);
-        var closing = await backend.Get(chatId, default);
-        closing!.IsClosing.Should().BeTrue();           // in the close-grace, not removed
-        closing.SessionStartedAt.Should().Be(latchedAt); // latch unchanged during the gap
+
+        // assert — recording keeps the session fully live (no closing) through the gap
+        var afterGap = await backend.Get(chatId, default);
+        afterGap!.IsClosing.Should().BeFalse();           // recording holds it open
+        afterGap.SessionStartedAt.Should().Be(latchedAt); // latch unchanged during the gap
         (await backend.GetLiveSession(chatId, default)).Should().NotBeNull(); // session still exposed
 
+        // a fresh utterance changes nothing — still the same live session
         await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
-
-        // assert — reactivated; same latch, still a session
         var live = await backend.Get(chatId, default);
         live!.IsClosing.Should().BeFalse();
         live.SessionStartedAt.Should().Be(latchedAt);
@@ -362,5 +374,70 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // assert — the live block is now present
         var tileAfter = await conversations.GetTile(chatId, tileRange, default);
         tileAfter.Should().Contain(c => c.Id == live.ConversationId);
+    }
+
+    [Fact]
+    public async Task SilentRecorderStaysPresentMember()
+    {
+        // arrange — two peers latch a session
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_040), null, true, default);
+
+        // act — voice streams end (silence) but the recording participation stays
+        await backend.OnStreamsChanged(chatId, default);
+
+        // assert — the silent recorder is still mic-on and not Exited
+        var liveSession = await backend.GetLiveSession(chatId, default);
+        liveSession.Should().NotBeNull();
+        var me = liveSession!.Members.Single(m => m.AuthorId == author.Id);
+        me.IsMicOpen.Should().BeTrue();
+        me.Group.Should().NotBe(MemberGroup.Exited);
+    }
+
+    [Fact]
+    public async Task ListenersAloneDoNotKeepAlive()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+
+        // act — the only participant switches from recording to listening
+        await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, true, default);
+
+        // assert — a listener alone does not keep the session alive
+        var live = await backend.Get(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HasRecorderReflectsRegistry()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act + assert — a streamer is a recorder
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        (await backend.HasRecorder(chatId, default)).Should().BeTrue();
+
+        // recording stops → no recorder
+        await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
+        (await backend.HasRecorder(chatId, default)).Should().BeFalse();
     }
 }

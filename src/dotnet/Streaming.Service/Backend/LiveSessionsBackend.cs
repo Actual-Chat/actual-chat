@@ -22,6 +22,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // LiveConversationSummaryFlow within this window (flow not scheduled when global
     // summarization is off, or it threw), the backend vanishes it and sends FINAL itself.
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(90);
+    // Grace once nobody is recording/streaming before a phone-mode session winds down.
+    private static readonly TimeSpan RecordingCloseGrace = TimeSpan.FromSeconds(30);
 
     private readonly RedisScope<LiveSessionState> _redisScope;
     private readonly RedisMultiHashMap<ParticipationInfo> _participants;
@@ -59,8 +61,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (state is null)
             return null;
 
+        // Transcription keeps the longer grace so LiveConversationSummaryFlow can finalize;
+        // a phone-mode session winds down on the shorter recording grace.
+        var grace = state.TranscriptionOn ? CloseTimeout : RecordingCloseGrace;
         if (state is { IsClosing: true, ClosingAt: { } closingAt }
-            && Clocks.SystemClock.Now - closingAt > CloseTimeout) {
+            && Clocks.SystemClock.Now - closingAt > grace) {
             _ = SelfClose(chatId);
             return null;
         }
@@ -107,13 +112,22 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (author is null)
                 continue;
             var m = For(author.Id);
+            var isRecorder = IsFreshRecorder(info, cutoff);
+            var isListener = info.Kind == ParticipationKind.AudioListen && info.RegisteredAt >= cutoff;
             byAuthor[author.Id] = m with {
-                IsListening = m.IsListening || (info.Kind == ParticipationKind.AudioListen && info.RegisteredAt >= cutoff),
+                IsMicOpen = m.IsMicOpen || isRecorder,
+                IsListening = m.IsListening || isListener,
                 MicMuted = info.MicMuted,
                 ForcedMuted = info.ForcedMuted,
                 JoinedAt = info.RegisteredAt,
             };
         }
+
+        // Crash backstop: if the session is alive only on (now-vanished) signals, start the grace.
+        // Reuses the already-read streams/participants — no extra Redis round-trips.
+        if (!state.IsClosing && audio.Count == 0 && video.Count == 0
+            && !participants.Values.Any(p => IsFreshRecorder(p, cutoff)))
+            _ = StartClosingGrace(chatId);
 
         var members = byAuthor.Values
             .Select(m => m with {
@@ -147,6 +161,20 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
         var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
         return info.RegisteredAt >= cutoff;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<bool> HasRecorder(ChatId chatId, CancellationToken cancellationToken)
+    {
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
+        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        var hasRecorder = participants.Values.Any(p => IsFreshRecorder(p, cutoff));
+        if (hasRecorder)
+            // Re-check so a stale (crashed) recorder drops without an explicit off signal.
+            Computed.GetCurrent().Invalidate(SelfHealDelay);
+        return hasRecorder;
     }
 
     public virtual async Task OnStreamRegistered(
@@ -212,37 +240,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     {
         using var _ = Computed.BeginIsolation();
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
-
-        var state = await SafeGet(chatId).ConfigureAwait(false);
-        if (state is null)
-            return;
-
-        var audio = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
-        var video = await LiveVideoBackend.List(chatId, cancellationToken).ConfigureAwait(false);
-        var hasStreams = audio.Count > 0 || video.Count > 0;
-
-        if (hasStreams) {
-            if (!state.IsClosing)
-                return;
-
-            state = state with { IsClosing = false, ClosingAt = null, Version = VersionGenerator.NextVersion(state.Version) };
-            await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
-            InvalidateGet(chatId);
-            return;
-        }
-
-        if (state.IsClosing)
-            return;
-
-        // Stream-less: mark closing; Get() finalizes after CloseTimeout. Transcription-on is
-        // materialized by LiveConversationSummaryFlow; phone-mode is vanished by SelfClose.
-        state = state with {
-            IsClosing = true,
-            ClosingAt = Clocks.SystemClock.Now,
-            Version = VersionGenerator.NextVersion(state.Version),
-        };
-        await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
-        InvalidateGet(chatId);
+        await EvaluateLiveness(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task Close(ChatId chatId, CancellationToken cancellationToken)
@@ -262,6 +260,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         bool isActive,
         CancellationToken cancellationToken)
     {
+        using var _ = Computed.BeginIsolation();
+        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+
         if (isActive) {
             // Preserve mute flags across heartbeats / kind changes.
             var existing = await SafeGetParticipant(chatId, userId).ConfigureAwait(false);
@@ -272,7 +273,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         else
             await _participants.Remove(chatId.Value, userId.Value).ConfigureAwait(false);
         InvalidateIsParticipant(chatId, userId);
+        InvalidateHasRecorder(chatId);
         InvalidateGetLiveSession(chatId);
+        // Recording turned on/off flips liveness (a vanished last recorder starts the grace).
+        await EvaluateLiveness(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task SetMicMuted(
@@ -379,6 +383,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             existing?.MicMuted ?? false, existing?.ForcedMuted ?? false);
         await _participants.Set(chatId.Value, author.UserId.Value, info).ConfigureAwait(false);
         InvalidateIsParticipant(chatId, author.UserId);
+        InvalidateHasRecorder(chatId);
     }
 
     private async Task<Dictionary<string, ParticipationInfo?>> SafeGetHashMap(ChatId chatId)
@@ -389,6 +394,50 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to read participants from Redis for chat #{ChatId}", chatId);
             return [];
+        }
+    }
+
+    private static bool IsFreshRecorder(ParticipationInfo? info, Moment cutoff)
+        => info is { Kind: ParticipationKind.Record } && info.RegisteredAt >= cutoff;
+
+    private async Task<bool> HasLiveSignal(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var audio = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        if (audio.Count > 0)
+            return true;
+        var video = await LiveVideoBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        if (video.Count > 0)
+            return true;
+        return await HasRecorder(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Caller must hold the change lock + Computed.BeginIsolation().
+    private async Task EvaluateLiveness(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        if (state is null)
+            return;
+
+        var isActive = await HasLiveSignal(chatId, cancellationToken).ConfigureAwait(false);
+        if (isActive == !state.IsClosing)
+            return; // already active+open or inactive+closing
+
+        state = isActive
+            ? state with { IsClosing = false, ClosingAt = null, Version = VersionGenerator.NextVersion(state.Version) }
+            : state with { IsClosing = true, ClosingAt = Clocks.SystemClock.Now, Version = VersionGenerator.NextVersion(state.Version) };
+        await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
+        InvalidateGet(chatId);
+    }
+
+    private async Task StartClosingGrace(ChatId chatId)
+    {
+        try {
+            using var _ = Computed.BeginIsolation();
+            using var lockHolder = await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false);
+            await EvaluateLiveness(chatId, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "StartClosingGrace failed for chat #{ChatId}", chatId);
         }
     }
 
@@ -434,6 +483,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     {
         using (Invalidation.Begin())
             _ = GetLiveSession(chatId, default);
+    }
+
+    private void InvalidateHasRecorder(ChatId chatId)
+    {
+        using (Invalidation.Begin())
+            _ = HasRecorder(chatId, default);
     }
 
     private void InvalidateIsParticipant(ChatId chatId, UserId userId)
