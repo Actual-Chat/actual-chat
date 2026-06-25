@@ -19,6 +19,7 @@
             <div class="c-panel-tabs">
                 @if (m.ShowTabs) {
                     <TabPanel
+                        @ref="_tabPanel"
                         @key="@chat.Id.Value"
                         TabsClass="left-panel-tabs wide-left-panel-tabs"
                         BottomHill="true">
@@ -60,12 +61,14 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.RightPanelCollapse.create";
 
+    private TabPanel? _tabPanel;
+    private ChatId _tabChatId;
+    private bool _wasShowCallTab;
+    private bool _pendingCallSelect;
     private Chat? Chat => ChatContext?.Chat;
     private IChats Chats => Hub.Chats;
-
     private IJSObjectReference? JSRef { get; set; }
     private ElementReference Ref { get; set; }
-
     [CascadingParameter] public ChatContext? ChatContext { get; set; }
 
     public override ValueTask DisposeAsync() {
@@ -83,6 +86,33 @@
             return;
         }
         JSRef ??= await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+        AutoSelectCallTab();
+    }
+
+    private void AutoSelectCallTab() {
+        // When a live session starts, switch to the Call tab — but only if the user was on Members,
+        // so a deliberately-opened Threads/Media tab (or a manual return to Members mid-call) is left alone.
+        if (State.Value.Chat is not { } chat)
+            return;
+        var showCallTab = State.Value.ShowCallTab;
+        if (chat.Id != _tabChatId) {
+            _tabChatId = chat.Id;
+            _wasShowCallTab = showCallTab;
+            _pendingCallSelect = false;
+            return;
+        }
+        if (showCallTab && !_wasShowCallTab && _tabPanel?.SelectedTabId == "members")
+            _pendingCallSelect = true;
+        _wasShowCallTab = showCallTab;
+
+        // Re-apply until it sticks: TabPanel re-resolves its own selection back to the previously
+        // rendered tab (Members) after render, so a single imperative set can be raced away.
+        if (_pendingCallSelect && _tabPanel is { } tabPanel) {
+            if (showCallTab && tabPanel.SelectedTabId == "members")
+                tabPanel.SelectedTabId = "call";
+            else
+                _pendingCallSelect = false; // landed on Call, user navigated elsewhere, or session ended
+        }
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
