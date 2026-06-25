@@ -35,7 +35,7 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
     {
         lock (Lock)
             _shares.Value = _shares.Value.Where(x => x.ChatId != chatId).ToArray();
-        await Stop(chatId, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new LiveLocations_Stop(Session, chatId), cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -84,17 +84,4 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
 
     private ValueTask<ActiveShare[]> DropExpired(ActiveShare[] shares, CancellationToken cancellationToken)
         => new (shares.Where(x => x.ExpiresAt > ServerNow).ToArray());
-
-    private async Task Stop(ChatId chatId, CancellationToken cancellationToken)
-    {
-        if (chatId.Value.IsNullOrEmpty())
-            return;
-
-        try {
-            await Commander.Call(new LiveLocations_Stop(Session, chatId), cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Stop failed for chat {ChatId}", chatId);
-        }
-    }
 }
