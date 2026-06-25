@@ -409,6 +409,13 @@
             await LocationUI.StopSharing(chatId, CancellationToken.None).ConfigureAwait(true);
             return;
         }
+        if (model.SendCurrentRequested) {
+            if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
+                return;
+
+            await LocationUI.SendCurrentLocation(chatId, CancellationToken.None).ConfigureAwait(true);
+            return;
+        }
         if (model.SelectedDuration is not { } duration)
             return;
 

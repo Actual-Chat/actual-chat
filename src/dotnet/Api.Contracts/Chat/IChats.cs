@@ -198,6 +198,7 @@ public sealed partial record Chats_UpsertEntry(
     [DataMember, MemoryPackOrder(12), Key(6)] public bool HasUploadingAttachments { get; init; }
     [DataMember, MemoryPackOrder(13), Key(7)] public string ClientId { get; init; } = "";
     [DataMember, MemoryPackOrder(14), Key(8)] public ChatEntryForwarded? Forwarded { get; init; }
+    // TODO: SharedLocationId instead???
     [DataMember, MemoryPackOrder(15), Key(9)] public GeoPoint? Location { get; init; }
     [DataMember, MemoryPackOrder(16), Key(10)] public TimeSpan? LiveDuration { get; init; }
 }

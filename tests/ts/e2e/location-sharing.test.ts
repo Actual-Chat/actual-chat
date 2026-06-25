@@ -30,7 +30,7 @@ const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 const START = { latitude: 51.5074, longitude: -0.1278, accuracy: 12 };
 const MOVED = { latitude: 48.8566, longitude: 2.3522, accuracy: 12 };
 
-describe('live location sharing', () => {
+describe('location sharing', () => {
     let conn: BrowserConnection;
     let page: Page;
 
@@ -117,5 +117,51 @@ describe('live location sharing', () => {
         // assert — the banner disappears once the share is stopped
         await banner.waitFor({ state: 'hidden', timeout: 20_000 });
         await page.screenshot({ path: shot('loc-stopped') });
+    }, 180_000);
+
+    it('sends current location once as a message with an inline map', async () => {
+        // arrange — open a chat we can post in
+        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
+        await waitForChatReady(page);
+        await skipOnboarding(page);
+
+        const joinButton = page.locator('button:has-text("Join this chat")');
+        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await joinButton.click();
+            await page.waitForTimeout(1500);
+        }
+
+        await waitForEditor(page);
+        await conn.context.setGeolocation(START);
+
+        // act — open the "+" menu and send the current location once
+        await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
+        await page.locator('text=Share location').first().click({ force: true });
+
+        const modal = page.locator('.share-location-modal').first();
+        await modal.waitFor({ state: 'visible', timeout: 10_000 });
+
+        // arm the tile listener before posting so we don't miss the inline-map tile requests
+        const tileLoaded = page.waitForResponse(
+            r => /tiles\.openfreemap\.org\/(planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url())
+                && r.ok(),
+            { timeout: 20_000 });
+        await modal.locator('button:has-text("Send current location")').first().click();
+
+        // assert — a one-shot location message appears in the chat stream with an inline map marker
+        const locationMessage = page.locator('.location-message').last();
+        await locationMessage.waitFor({ state: 'visible', timeout: 20_000 });
+        const marker = locationMessage.locator('.maplibregl-marker').first();
+        await marker.waitFor({ state: 'visible', timeout: 15_000 });
+
+        // assert — the inline map actually paints real tiles (not blank)
+        const tileResp = await tileLoaded;
+        expect(tileResp.ok()).toBe(true);
+        await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
+        await page.screenshot({ path: shot('loc-one-shot') });
+
+        // assert — there is no live-share banner for a one-shot send (it's a static message)
+        const banner = page.locator('.live-location-banner').first();
+        expect(await banner.isVisible({ timeout: 2_000 }).catch(() => false)).toBe(false);
     }, 180_000);
 });

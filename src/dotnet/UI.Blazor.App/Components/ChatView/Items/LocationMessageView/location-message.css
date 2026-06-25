@@ -1,0 +1,12 @@
+/* TODO: fixed height */
+/* TODO: flex? */
+.location-message {
+    margin-top: .25rem;
+    max-width: 20rem;
+}
+.location-message .c-map {
+    width: 100%;
+    height: 11rem;
+    border-radius: .75rem;
+    overflow: hidden;
+}

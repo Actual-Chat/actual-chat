@@ -1,0 +1,40 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, SharedLocation?>
+@{
+    var location = State.Value;
+    // TODO: just image without map rendering
+}
+@if (location is not null) {
+    <div class="location-message">
+        <MapView
+            Class="c-map"
+            Zoom="15"
+            CenterLatitude="@location.Point.Latitude"
+            CenterLongitude="@location.Point.Longitude"
+            Markers="@Markers(location)"/>
+    </div>
+}
+
+@code {
+    private ISharedLocations SharedLocations => Hub.SharedLocations;
+
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+
+    protected override ComputedState<SharedLocation?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<SharedLocation?>.Options() {
+                InitialValue = null,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<SharedLocation?> ComputeState(CancellationToken cancellationToken) {
+        if (Entry.LocationId is not { } locationId)
+            return null;
+
+        return await SharedLocations.Get(Session, Entry.ChatId, locationId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static IReadOnlyList<MapMarker> Markers(SharedLocation location)
+        => [new MapMarker(location.Id.Value, location.Point.Latitude, location.Point.Longitude)];
+}
