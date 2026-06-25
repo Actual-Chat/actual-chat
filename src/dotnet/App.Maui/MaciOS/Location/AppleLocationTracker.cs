@@ -1,12 +1,12 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.Users;
 using CoreLocation;
 
 namespace ActualChat.App.Maui.Location;
 
 public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
 {
-    private const double DistanceFilterMeters = 50;
-
+    private readonly AppUIHub _hub;
     private readonly MutableState<GeoPoint?> _lastKnown;
     private CLLocationManager? _manager;
 
@@ -14,22 +14,27 @@ public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
     public bool IsTracking { get; private set; }
 
     public AppleLocationTracker(AppUIHub hub)
-        => _lastKnown = hub.StateFactory.NewMutable(
+    {
+        _hub = hub;
+        _lastKnown = hub.StateFactory.NewMutable(
             (GeoPoint?)null,
             StateCategories.Get(GetType(), nameof(LastKnown)));
+    }
 
-    public Task Start(CancellationToken cancellationToken)
+    public async Task Start(CancellationToken cancellationToken)
     {
         if (IsTracking)
-            return Task.CompletedTask;
+            return;
 
         IsTracking = true;
+        var settings = await _hub.LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        var accuracy = settings.LocationAccuracyOrDefault;
         MainThread.BeginInvokeOnMainThread(() => {
             _manager ??= CreateManager();
+            Apply(_manager, accuracy);
             _manager.RequestWhenInUseAuthorization();
             _manager.StartUpdatingLocation();
         });
-        return Task.CompletedTask;
     }
 
     public Task Stop(CancellationToken cancellationToken)
@@ -64,13 +69,22 @@ public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
     private CLLocationManager CreateManager()
     {
         var manager = new CLLocationManager {
-            DesiredAccuracy = CLLocation.AccuracyBest,
-            DistanceFilter = DistanceFilterMeters,
             AllowsBackgroundLocationUpdates = true,
             PausesLocationUpdatesAutomatically = true,
         };
         manager.LocationsUpdated += OnLocationsUpdated;
         return manager;
+    }
+
+    private static void Apply(CLLocationManager manager, GeoTrackingAccuracy accuracy)
+    {
+        var (desiredAccuracy, distanceFilter) = accuracy switch {
+            GeoTrackingAccuracy.High => (CLLocation.AccuracyBest, 10d),
+            GeoTrackingAccuracy.Low => (CLLocation.AccuracyHundredMeters, 100d),
+            _ => (CLLocation.AccuracyNearestTenMeters, 50d),
+        };
+        manager.DesiredAccuracy = desiredAccuracy;
+        manager.DistanceFilter = distanceFilter;
     }
 
     private void OnLocationsUpdated(object? sender, CLLocationsUpdatedEventArgs e)
@@ -81,6 +95,7 @@ public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
 
         var accuracy = location.HorizontalAccuracy >= 0 ? (float)location.HorizontalAccuracy : (float?)null;
         var bearing = location.Course >= 0 ? (float)location.Course : (float?)null;
-        _lastKnown.Value = new GeoPoint(location.Coordinate.Latitude, location.Coordinate.Longitude, accuracy, bearing);
+        var coordinate = location.Coordinate;
+        _lastKnown.Value = new GeoPoint(coordinate.Latitude, coordinate.Longitude, accuracy, bearing);
     }
 }

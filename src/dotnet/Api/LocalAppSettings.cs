@@ -24,6 +24,7 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     } = ApiMap<string, bool>.Empty;
 
     [DataMember, MemoryPackOrder(4), Key(4)] public bool? IsVideoDiagnosticsEnabled { get; init; }
+    [DataMember, MemoryPackOrder(5), Key(5)] public GeoTrackingAccuracy? LocationAccuracy { get; init; }
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;
@@ -31,6 +32,8 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     public bool IsBackgroundBlurEnabledOrDefault => IsBackgroundBlurEnabled ?? false;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsVideoDiagnosticsEnabledOrDefault => IsVideoDiagnosticsEnabled ?? false;
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public GeoTrackingAccuracy LocationAccuracyOrDefault => LocationAccuracy ?? GeoTrackingAccuracy.Balanced;
 }
 
 public static class LocalAppSettingsExt
