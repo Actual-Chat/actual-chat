@@ -50,24 +50,37 @@ export class TabPanel {
         }
 
         this.mutationObserver = new MutationObserver((mutations) => {
+            let needsUpdate = false;
             for (const mutation of mutations) {
                 if (
                     mutation.type === 'attributes' &&
-                    mutation.attributeName === 'class' &&
                     mutation.target instanceof HTMLElement &&
                     mutation.target.classList.contains('btn-group-container')
                 ) {
-                    const target = mutation.target;
-                    if (target.classList.contains('selected-tab')) {
-                        this.activeTab = target;
-                        this.updateHillPosition();
-                    }
+                    needsUpdate = true;
+                }
+                else if (mutation.type === 'childList') {
+                    // A tab button was inserted/removed (e.g. the Call tab appearing): a node added
+                    // already-selected fires no attribute mutation, so track its size and reposition here.
+                    mutation.addedNodes.forEach(node => {
+                        if (node instanceof HTMLElement && node.classList.contains('btn-group-container'))
+                            this.resizeObserver?.observe(node);
+                    });
+                    needsUpdate = true;
+                }
+            }
+            if (needsUpdate) {
+                const active = this.tabs?.querySelector('.btn-group-container.selected-tab');
+                if (active) {
+                    this.activeTab = active;
+                    fastRaf(() => this.updateHillPosition());
                 }
             }
         });
 
         this.mutationObserver.observe(tabPanel, {
             attributes: true,
+            childList: true,
             subtree: true,
             attributeFilter: ['class'],
         });
