@@ -52,6 +52,8 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
 
     public async Task StopSharing(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Start/stop is device-local: only the device that started a share can stop it,
+        // using the SharedLocationId it persisted in _shares.
         ActiveShare[] stopped;
         lock (Lock) {
             stopped = _shares.Value.Where(x => x.ChatId == chatId).ToArray();

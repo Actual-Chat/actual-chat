@@ -39,6 +39,8 @@ describe('location sharing', () => {
         await conn.context.grantPermissions(['geolocation'], { origin: BASE_URL });
         await conn.context.setGeolocation(START);
         page = await conn.context.newPage();
+        page.on('pageerror', e => console.log('PAGEERROR:', e.message));
+        page.on('console', m => { if (m.type() === 'error') console.log('CONSOLE.ERROR:', m.text()); });
         await ensureSignedIn(page);
     }, 120_000);
 
@@ -164,4 +166,37 @@ describe('location sharing', () => {
         const banner = page.locator('.live-location-banner').first();
         expect(await banner.isVisible({ timeout: 2_000 }).catch(() => false)).toBe(false);
     }, 180_000);
+
+    // Every duration option must start a live share (the banner appears), not just the first one.
+    for (const label of ['15 minutes', '1 hour', '8 hours']) {
+        it(`starts a live share for "${label}"`, async () => {
+            await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
+            await waitForChatReady(page);
+            await skipOnboarding(page);
+
+            const joinButton = page.locator('button:has-text("Join this chat")');
+            if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+                await joinButton.click();
+                await page.waitForTimeout(1500);
+            }
+
+            await waitForEditor(page);
+            await conn.context.setGeolocation(START);
+
+            await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
+            await page.locator('text=Share location').first().click({ force: true });
+
+            const modal = page.locator('.share-location-modal').first();
+            await modal.waitFor({ state: 'visible', timeout: 10_000 });
+            await modal.locator(`button:has-text("${label}")`).first().click();
+
+            // assert — the banner reflects the active share for this duration
+            const banner = page.locator('.live-location-banner').first();
+            await banner.waitFor({ state: 'visible', timeout: 20_000 });
+
+            // cleanup — stop the share so the next duration starts clean
+            await banner.locator('button:has-text("Stop")').first().click();
+            await banner.waitFor({ state: 'hidden', timeout: 20_000 });
+        }, 120_000);
+    }
 });
