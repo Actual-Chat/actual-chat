@@ -42,6 +42,12 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
             return;
         }
 
+        // Pre-latch (solo): the normal ConversationSplitFlow owns summarization, so don't double-summarize.
+        if (live.SessionStartedAt is null) {
+            Runtime.StageResumeIn(Throttle);
+            return;
+        }
+
         var entries = await GetEntries(live.StartEntryLid, cancellationToken).ConfigureAwait(false);
         var hasEnoughNew = entries.Count > 0 && entries[^1].LocalId > LastSummaryEndLid;
         if (hasEnoughNew) {
@@ -63,8 +69,14 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
     // Private methods
 
-    private async Task Finalize(LiveConversation live, CancellationToken cancellationToken)
+    private async Task Finalize(LiveSessionState live, CancellationToken cancellationToken)
     {
+        if (live.SessionStartedAt is null) {
+            // Never became a call: the solo entries are owned by ConversationSplitFlow — just vanish.
+            await LiveSessionsBackend.Close(ChatId, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         var entries = await GetEntries(live.StartEntryLid, cancellationToken).ConfigureAwait(false);
         var wordCount = entries.Sum(WordCount);
         var meetsThreshold = entries.Count >= Settings.Summarization.MinConversationEntries
@@ -80,7 +92,8 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         await LiveSessionsBackend.Close(ChatId, cancellationToken).ConfigureAwait(false);
     }
 
-    private Task Notify(LiveConversation live, ConversationNotificationPhase phase, string text, CancellationToken cancellationToken)
+    private Task Notify(
+        LiveSessionState live, ConversationNotificationPhase phase, string text, CancellationToken cancellationToken)
         => Services.Queues()
             .Enqueue(
                 new NotificationsBackend_NotifyConversation(live.ConversationId, phase, text, live.EndEntryLid, live.AuthorIds),
@@ -97,7 +110,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
             .ToList();
     }
 
-    private static LiveConversationSummary ToLiveSummary(ConversationSummary summary, IReadOnlyList<ChatEntrySlim> entries)
+    private static LiveSessionSummary ToLiveSummary(ConversationSummary summary, IReadOnlyList<ChatEntrySlim> entries)
         => new() {
             Title = summary.Title,
             Description = summary.Description,

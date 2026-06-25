@@ -8,9 +8,11 @@ namespace ActualChat.Streaming;
 /// </summary>
 public interface ILiveSessions : IComputeService
 {
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    Task<LiveConversation?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<LiveSessionState?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<LiveSession?> GetLiveSession(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     Task SetParticipation(

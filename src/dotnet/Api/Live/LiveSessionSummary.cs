@@ -1,10 +1,10 @@
 namespace ActualChat.Live;
 
 /// <summary>
-/// The evolving summary fields written into a <see cref="LiveConversation"/> by the live summary loop.
+/// The evolving summary fields written into a <see cref="LiveSessionState"/> by the live summary loop.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public sealed partial record LiveConversationSummary
+public sealed partial record LiveSessionSummary
 {
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public string Title { get; init; } = "";

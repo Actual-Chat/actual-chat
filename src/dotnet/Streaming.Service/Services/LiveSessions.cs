@@ -14,7 +14,8 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     private ILiveSessionsBackend Backend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
 
     // [ComputeMethod]
-    public virtual async Task<LiveConversation?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<LiveSessionState?> Get(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();

@@ -127,8 +127,8 @@
         var translated = await ConversationUI.GetTranslatedConversation(conversation, cancellationToken).ConfigureAwait(true);
 
         var chatId = conversation.Id.ChatId;
-        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(true);
-        var isLive = live != null && live.ConversationId == conversation.Id;
+        var live = await LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(true);
+        var isLive = live != null && live.Id == conversation.Id;
         var isJoined = isLive && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(true);
         var isVoiceOnly = isLive && live!.Title.IsNullOrEmpty() && live.Summary.IsNullOrEmpty();
         return new ConversationLiveState(translated, isLive, isJoined, isVoiceOnly);

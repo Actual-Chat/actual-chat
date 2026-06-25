@@ -23,7 +23,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // summarization is off, or it threw), the backend vanishes it and sends FINAL itself.
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(90);
 
-    private readonly RedisScope<LiveConversation> _redisScope;
+    private readonly RedisScope<LiveSessionState> _redisScope;
     private readonly RedisMultiHashMap<ParticipationInfo> _participants;
     private readonly AsyncLockSet<ChatId> _changeLocks = new(LockReentryMode.CheckedFail);
 
@@ -42,16 +42,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         LiveVideoBackend = services.GetRequiredService<ILiveVideoBackend>();
         VersionGenerator = services.GetRequiredService<VersionGenerator<long>>();
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
-        _redisScope = new RedisScope<LiveConversation>(redisDb, "live-conv:state", Log) {
+        _redisScope = new RedisScope<LiveSessionState>(redisDb, "live-session:state", Log) {
             DefaultTtl = KeyTtl,
         };
-        _participants = new RedisMultiHashMap<ParticipationInfo>(redisDb, "live-conv:participants", Log) {
+        _participants = new RedisMultiHashMap<ParticipationInfo>(redisDb, "live-session:participants", Log) {
             HashTtl = KeyTtl,
         };
     }
 
     // [ComputeMethod]
-    public virtual async Task<LiveConversation?> Get(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<LiveSessionState?> Get(ChatId chatId, CancellationToken cancellationToken)
     {
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
@@ -130,7 +130,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             StartedAt = state.SessionStartedAt ?? state.StartedAt,
             Rules = state.Rules ?? SessionRules.Default,
             Members = members,
-            Conversation = state,
+            Conversation = state.ToConversation(),
+            TranscriptionOn = state.TranscriptionOn,
             Version = state.Version,
         };
     }
@@ -164,7 +165,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var startEntryLid = transcriptionOn && entryLid is { } lid
                 ? lid
                 : (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
-            state = new LiveConversation {
+            state = new LiveSessionState {
                 ChatId = chatId,
                 StartEntryLid = startEntryLid,
                 EndEntryLid = startEntryLid,
@@ -174,9 +175,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 TranscriptionOn = transcriptionOn,
                 Version = VersionGenerator.NextVersion(),
             };
-            if (!transcriptionOn)
-                // Phone-mode START fires immediately; transcription's first notification is the Titled summary (in the flow).
-                await EnqueueLiveNotification(state, ConversationNotificationPhase.Started, "Voice chat started", cancellationToken).ConfigureAwait(false);
         }
         else {
             var authorIds = state.AuthorIds.Contains(authorId)
@@ -193,11 +191,15 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             };
         }
 
-        if (state.SessionStartedAt is null && state.AuthorIds.Count >= 2)
+        if (state.SessionStartedAt is null && state.AuthorIds.Count >= 2) {
             state = state with {
                 SessionStartedAt = now,
                 Version = VersionGenerator.NextVersion(state.Version),
             };
+            if (!state.TranscriptionOn)
+                // Phone-mode START fires at the 2+ latch; transcription's first notification is the Titled summary (in the flow).
+                await EnqueueLiveNotification(state, ConversationNotificationPhase.Started, "Voice chat started", cancellationToken).ConfigureAwait(false);
+        }
 
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
         // Register the streamer as a participant so per-peer mute flags have a home
@@ -317,7 +319,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     public virtual async Task UpdateSummary(
         ChatId chatId,
-        LiveConversationSummary summary,
+        LiveSessionSummary summary,
         CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
@@ -343,7 +345,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     // Private methods
 
-    private async Task<LiveConversation?> SafeGet(ChatId chatId)
+    private async Task<LiveSessionState?> SafeGet(ChatId chatId)
     {
         try {
             return await _redisScope.Get(chatId.Value).ConfigureAwait(false);
@@ -397,8 +399,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (state is not { IsClosing: true })
                 return;
 
-            var content = state.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {state.Title}";
-            await EnqueueLiveNotification(state, ConversationNotificationPhase.Final, content, CancellationToken.None).ConfigureAwait(false);
+            // A session that never latched (solo) leaves its ordinary split-flow conversations behind;
+            // only a latched session sends FINAL and is covered by its own materialization.
+            if (state.SessionStartedAt is not null) {
+                var content = state.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {state.Title}";
+                await EnqueueLiveNotification(state, ConversationNotificationPhase.Final, content, CancellationToken.None).ConfigureAwait(false);
+            }
             await Close(chatId, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -407,7 +413,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     private Task EnqueueLiveNotification(
-        LiveConversation state,
+        LiveSessionState state,
         ConversationNotificationPhase phase,
         string content,
         CancellationToken cancellationToken)

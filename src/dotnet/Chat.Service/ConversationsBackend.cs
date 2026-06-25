@@ -81,13 +81,21 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        // A latched live session owns its range: replace any solo-era conversations it overlaps with
+        // the single live range (the UI swaps the regular block for the live one).
         var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (live is { } lc && lc.StartEntryLid < idTileRange.End && lc.EndEntryLid >= idTileRange.Start) {
+        if (live is { SessionStartedAt: not null } lc
+            && lc.StartEntryLid < idTileRange.End && lc.EndEntryLid >= idTileRange.Start) {
             var liveRange = new Range<long>(lc.StartEntryLid, lc.EndEntryLid + 1);
-            if (!conversationRanges.Contains(liveRange)) {
-                conversationRanges.Add(liveRange);
-                conversationRanges = conversationRanges.OrderBy(r => r.Start).ToList();
-            }
+            conversationRanges = conversationRanges
+                .Where(r => r.IntersectWith(liveRange).IsEmpty)
+                .Append(liveRange)
+                .OrderBy(r => r.Start)
+                .ToList();
+            if (previousConversationRange is { } prev && !prev.IntersectWith(liveRange).IsEmpty)
+                previousConversationRange = null;
+            if (nextConversationRange is { } next && !next.IntersectWith(liveRange).IsEmpty)
+                nextConversationRange = null;
         }
 
         return new ConversationRangeMeta(chatId,
@@ -116,14 +124,17 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .OrderBy(c => c!.EntryLidRange.Start)
             .ToList()!;
 
-        // The live conversation isn't persisted yet — inject its synthetic projection directly.
+        // A latched live session owns its range: drop any solo-era conversations it overlaps and inject
+        // its synthetic block instead (the UI swaps the regular block for the live one).
         var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (live is { } lc) {
+        if (live is { SessionStartedAt: not null } lc) {
             var liveConversation = lc.ToConversation();
-            if (!liveConversation.EntryLidRange.IntersectWith(lidTileRange).IsEmpty
-                && result.All(c => c!.Id != liveConversation.Id)) {
-                result.Add(liveConversation);
-                result = result.OrderBy(c => c!.EntryLidRange.Start).ToList();
+            if (!liveConversation.EntryLidRange.IntersectWith(lidTileRange).IsEmpty) {
+                result = result
+                    .Where(c => c!.EntryLidRange.IntersectWith(liveConversation.EntryLidRange).IsEmpty)
+                    .Append(liveConversation)
+                    .OrderBy(c => c!.EntryLidRange.Start)
+                    .ToList()!;
             }
         }
 
