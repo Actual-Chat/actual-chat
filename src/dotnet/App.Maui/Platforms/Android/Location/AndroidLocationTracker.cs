@@ -3,7 +3,7 @@ using Android.Content;
 
 namespace ActualChat.App.Maui.Location;
 
-public sealed class AndroidLocationTracker : ILocationTracker
+public sealed class AndroidLocationTracker : ILocationTracker, IDisposable
 {
     private static volatile AndroidLocationTracker? _instance;
 
@@ -45,6 +45,19 @@ public sealed class AndroidLocationTracker : ILocationTracker
         Context.StopService(intent);
         return Task.CompletedTask;
     }
+
+    public void Dispose()
+    {
+        Interlocked.CompareExchange(ref _instance, null, this);
+        if (!IsTracking)
+            return;
+
+        IsTracking = false;
+        var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
+        Context.StopService(intent);
+    }
+
+    // Internal methods
 
     internal static void ReportLocation(GeoPoint point)
     {
