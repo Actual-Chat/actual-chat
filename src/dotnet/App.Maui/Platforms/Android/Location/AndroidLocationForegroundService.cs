@@ -13,6 +13,7 @@ namespace ActualChat.App.Maui.Location;
 public sealed class AndroidLocationForegroundService : Service, ILocationListener
 {
     public const string ActionStart = "ACTION_START";
+    public const string ExtraAccuracy = "EXTRA_ACCURACY";
     private const string ChannelId = "location_sharing";
     private const int NotificationId = 3002;
     private LocationManager? _locationManager;
@@ -39,8 +40,9 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
         if ((intent?.Action ?? "") != ActionStart)
             return StartCommandResult.NotSticky;
 
+        var accuracy = (GeoTrackingAccuracy)intent!.GetIntExtra(ExtraAccuracy, (int)GeoTrackingAccuracy.Balanced);
         StartForeground1(BuildNotification());
-        StartLocationUpdates();
+        StartLocationUpdates(accuracy);
         return StartCommandResult.Sticky;
     }
 
@@ -57,7 +59,7 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
 
     // Private methods
 
-    private void StartLocationUpdates()
+    private void StartLocationUpdates(GeoTrackingAccuracy accuracy)
     {
         _locationManager = (LocationManager?)GetSystemService(LocationService);
         if (_locationManager is null) {
@@ -66,11 +68,18 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
         }
 
         var minTimeMs = (long)Constants.Location.UpdatePeriod.TotalMilliseconds;
+        var minDistanceM = accuracy switch {
+            GeoTrackingAccuracy.High => 10f,
+            GeoTrackingAccuracy.Low => 100f,
+            _ => 50f,
+        };
         try {
             if (_locationManager.IsProviderEnabled(LocationManager.GpsProvider))
-                _locationManager.RequestLocationUpdates(LocationManager.GpsProvider, minTimeMs, 0f, this, Looper.MainLooper);
+                _locationManager.RequestLocationUpdates(
+                    LocationManager.GpsProvider, minTimeMs, minDistanceM, this, Looper.MainLooper);
             else if (_locationManager.IsProviderEnabled(LocationManager.NetworkProvider))
-                _locationManager.RequestLocationUpdates(LocationManager.NetworkProvider, minTimeMs, 0f, this, Looper.MainLooper);
+                _locationManager.RequestLocationUpdates(
+                    LocationManager.NetworkProvider, minTimeMs, minDistanceM, this, Looper.MainLooper);
             else
                 Log.LogWarning("StartLocationUpdates: no location provider is enabled");
         }

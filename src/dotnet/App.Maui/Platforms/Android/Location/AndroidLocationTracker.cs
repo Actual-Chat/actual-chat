@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.Users;
 using Android.Content;
 
 namespace ActualChat.App.Maui.Location;
@@ -9,6 +10,7 @@ public sealed class AndroidLocationTracker : ILocationTracker, IDisposable
 
     private static Context Context => Platform.AppContext;
 
+    private readonly AppUIHub _hub;
     private readonly MutableState<GeoPoint?> _lastKnown;
 
     public IState<GeoPoint?> LastKnown => _lastKnown;
@@ -16,22 +18,24 @@ public sealed class AndroidLocationTracker : ILocationTracker, IDisposable
 
     public AndroidLocationTracker(AppUIHub hub)
     {
+        _hub = hub;
         _lastKnown = hub.StateFactory.NewMutable(
             (GeoPoint?)null,
             StateCategories.Get(GetType(), nameof(LastKnown)));
         Interlocked.Exchange(ref _instance, this);
     }
 
-    public Task Start(CancellationToken cancellationToken)
+    public async Task Start(CancellationToken cancellationToken)
     {
         if (IsTracking)
-            return Task.CompletedTask;
+            return;
 
         IsTracking = true;
+        var settings = await _hub.LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
         intent.SetAction(AndroidLocationForegroundService.ActionStart);
+        intent.PutExtra(AndroidLocationForegroundService.ExtraAccuracy, (int)settings.LocationAccuracyOrDefault);
         Context.StartForegroundService(intent);
-        return Task.CompletedTask;
     }
 
     public Task Stop(CancellationToken cancellationToken)
