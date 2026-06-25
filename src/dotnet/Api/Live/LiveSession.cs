@@ -20,12 +20,11 @@ public sealed partial record LiveSession
     [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
     public IReadOnlyList<LiveSessionMember> Members { get; init; } = [];
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
-    public LiveConversation? Conversation { get; init; }
+    public Conversation? Conversation { get; init; }
     [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
     public long Version { get; init; }
-
+    [DataMember(Order = 7), MemoryPackOrder(7), Key(7)]
+    public bool TranscriptionOn { get; init; }
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool TranscriptionOn => Conversation?.TranscriptionOn ?? false;
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public ConversationId? ConversationId => Conversation?.ConversationId;
+    public ConversationId? ConversationId => Conversation?.Id;
 }

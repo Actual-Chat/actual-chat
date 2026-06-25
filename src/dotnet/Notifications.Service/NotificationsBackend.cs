@@ -423,11 +423,12 @@ public class NotificationsBackend(IServiceProvider services)
         if (!ShouldNotify(entry, oldEntry, changeKind))
             return;
 
-        // Suppress per-message notifications for a session participant's own entries inside an
-        // active live conversation — the call's own transcript. Non-participants' messages typed
-        // during the call still notify normally.
+        // Suppress per-message notifications for a session participant's own entries inside a
+        // latched live session — the call's own transcript. Solo (pre-latch) transcription and
+        // non-participants' messages typed during the call still notify normally.
         var live = await LiveSessionsBackend.Get(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (live is { } lc && entry.LocalId >= lc.StartEntryLid && lc.AuthorIds.Contains(entry.AuthorId))
+        if (live is { SessionStartedAt: not null } lc
+            && entry.LocalId >= lc.StartEntryLid && lc.AuthorIds.Contains(entry.AuthorId))
             return;
 
         await SendChatMessageNotification(entry, author, cancellationToken).ConfigureAwait(false);

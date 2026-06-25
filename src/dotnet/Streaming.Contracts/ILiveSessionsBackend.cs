@@ -10,7 +10,7 @@ namespace ActualChat.Streaming;
 public interface ILiveSessionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<LiveConversation?> Get(ChatId chatId, CancellationToken cancellationToken);
+    Task<LiveSessionState?> Get(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<LiveSession?> GetLiveSession(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -39,6 +39,6 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken);
     Task UpdateSummary(
         ChatId chatId,
-        LiveConversationSummary summary,
+        LiveSessionSummary summary,
         CancellationToken cancellationToken);
 }

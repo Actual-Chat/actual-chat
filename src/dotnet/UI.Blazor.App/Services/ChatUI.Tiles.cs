@@ -56,7 +56,7 @@ public partial class ChatUI
         if (chat == null)
             return ChatItems.Empty;
 
-        var liveConversation = await Hub.LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var liveConversation = await Hub.LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(false);
         var amInLiveConversation = liveConversation != null
             && await Hub.LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         // Non-joined users see the live block's summary only — no live entries. The synthetic

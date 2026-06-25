@@ -69,6 +69,14 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         LastRunAt = now;
         Console.Log($"Process: LastLid={LastLid}");
 
+        // Never (re)summarize a range a latched live session owns — the live flow materializes it.
+        var live = await LiveSessionsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
+        var liveSessionRange = live is { SessionStartedAt: not null } lc
+            ? new Range<long>(lc.StartEntryLid, long.MaxValue)
+            : (Range<long>?)null;
+        bool OverlapsLiveSession(IReadOnlyList<Range<long>> ranges)
+            => liveSessionRange is { } lsr && ranges.Any(r => !r.IntersectWith(lsr).IsEmpty);
+
         var (entries, hasMore, hasImmature) = await GetEntries(LastLid, cancellationToken).ConfigureAwait(false);
         Console.Log($"Fetched {entries.Count} entries, hasMore={hasMore}, hasImmature={hasImmature}");
         var (state, groups, replySequences) = EntryGroupExtractor.ExtractGroups(ExtractorState ?? new ExtractorState(null, null), entries);
@@ -83,6 +91,10 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 continue; // The first entry in the sequence must be not a reply!
 
             var lastEntry = replySequence.Entries[^1];
+            var replyRange = new Range<long>(firstEntry.LocalId, lastEntry.LocalId + 1);
+            if (OverlapsLiveSession([replyRange]))
+                continue; // The live flow owns its range; don't append replies into it.
+
             var idRange = IdTileStack.LastLayer.GetTile(entryLid).Range;
             var rangeMeta = await ConversationsBackend.GetRangeMeta(ChatId, idRange.Start, cancellationToken).ConfigureAwait(false);
             var existingConversationIds = rangeMeta.ConversationIds;
@@ -131,6 +143,11 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 continue;
             }
 
+            if (OverlapsLiveSession(idRanges)) {
+                Console.Log("Skipping group: overlaps an active live session");
+                continue;
+            }
+
             Console.Log($"Enqueuing summarize for group: {group.Entries.Count} entries, {group.WordCount} words");
             var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
             await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
@@ -164,7 +181,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 var group = groupBuilder.Build();
 
                 var idRanges = group.LocalIdRanges;
-                if (!LastSummaryLidRanges.SequenceEqual(idRanges)) {
+                if (!LastSummaryLidRanges.SequenceEqual(idRanges) && !OverlapsLiveSession(idRanges)) {
                     Console.Log($"Enqueuing end-of-stream summarize: {group.Entries.Count} entries, {group.WordCount} words");
                     var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
                     await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
@@ -214,10 +231,9 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         var chatId = ChatId;
         var immatureMoment = now - Settings.Summarization.ChatEntrySummarizationDelay;
 
-        // An active live conversation owns the tail range [StartEntryLid, ...) — leave it alone
-        // until it closes and materializes; the split flow must not summarize it in parallel.
+        // A latched live session owns its tail [StartEntryLid, ...); pre-latch (solo) the split flow summarizes normally.
         var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        var liveStartLid = live?.StartEntryLid ?? long.MaxValue;
+        var liveStartLid = live is { SessionStartedAt: not null } ? live.StartEntryLid : long.MaxValue;
 
         // Fetch up to (BatchSize + 1) items
         var entries = await ChatsBackend.ListNewEntries(chatId, lastId, BatchSize + 1, cancellationToken).ConfigureAwait(false);

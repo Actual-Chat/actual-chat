@@ -304,4 +304,63 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         live.SessionStartedAt.Should().Be(latchedAt);
         (await backend.GetLiveSession(chatId, default)).Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task LiveBlockEntersRangeMetaOnlyAfterLatch()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        // act — a single streamer: the conversation state exists but is not yet a session
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        var live = await backend.Get(chatId, default);
+        live.Should().NotBeNull();
+        var tileStart = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(live!.StartEntryLid).Range.Start;
+
+        // assert — no live conversation block is injected for a solo streamer
+        var metaBefore = await conversations.GetRangeMeta(chatId, tileStart, default);
+        metaBefore.ConversationLidRanges.Should().NotContain(r => r.Contains(live.StartEntryLid));
+
+        // act — a second distinct peer latches the session
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_030), null, true, default);
+
+        // assert — the live block now appears in the range meta
+        var metaAfter = await conversations.GetRangeMeta(chatId, tileStart, default);
+        metaAfter.ConversationLidRanges.Should().Contain(r => r.Contains(live.StartEntryLid));
+    }
+
+    [Fact]
+    public async Task LiveBlockEntersTileOnlyAfterLatch()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        // act — a single streamer
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        var live = await backend.Get(chatId, default);
+        var tileRange = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(live!.StartEntryLid).Range;
+
+        // assert — the synthetic live block is not injected before the latch
+        var tileBefore = await conversations.GetTile(chatId, tileRange, default);
+        tileBefore.Should().NotContain(c => c.Id == live.ConversationId);
+
+        // act — a second distinct peer latches the session
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_031), null, true, default);
+
+        // assert — the live block is now present
+        var tileAfter = await conversations.GetTile(chatId, tileRange, default);
+        tileAfter.Should().Contain(c => c.Id == live.ConversationId);
+    }
 }

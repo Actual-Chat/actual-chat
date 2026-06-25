@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using ActualChat.Chat;
 using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualLab.Interception;
@@ -24,8 +25,11 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         => this.Start();
 
     [ComputeMethod]
-    public virtual Task<LiveConversation?> Get(ChatId chatId, CancellationToken cancellationToken)
-        => LiveSessions.Get(Session, chatId, cancellationToken);
+    public virtual async Task<Conversation?> GetConversation(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var state = await LiveSessions.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
+    }
 
     [ComputeMethod]
     public virtual Task<LiveSession?> GetLiveSession(ChatId chatId, CancellationToken cancellationToken)

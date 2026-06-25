@@ -3,11 +3,12 @@ using ActualChat.Chat;
 namespace ActualChat.Live;
 
 /// <summary>
-/// A conversation in progress, backed by a live audio/video session. Surfaced as a synthetic
-/// <see cref="Conversation"/> while active, then materialized into a persisted one on close.
+/// The persisted per-chat live-session state: call/lifecycle facts (host, rules, the 2+ peer latch,
+/// closing) plus the in-progress transcript block. The chat-view block is its <see cref="ToConversation"/>
+/// projection, surfaced only once the session latches.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public sealed partial record LiveConversation
+public sealed partial record LiveSessionState
 {
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public ChatId ChatId { get; init; } = null!;
@@ -45,10 +46,8 @@ public sealed partial record LiveConversation
     public SessionRules Rules { get; init; } = SessionRules.Default;
     [DataMember(Order = 17), MemoryPackOrder(17), Key(17)]
     public Moment? SessionStartedAt { get; init; }
-
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ConversationId ConversationId => ConversationId.New(ChatId, StartEntryLid);
-
     public Conversation ToConversation()
         => new(ConversationId, Version) {
             Title = Title,
