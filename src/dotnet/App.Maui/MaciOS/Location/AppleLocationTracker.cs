@@ -3,7 +3,7 @@ using CoreLocation;
 
 namespace ActualChat.App.Maui.Location;
 
-public sealed class AppleLocationTracker : ILocationTracker
+public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
 {
     private readonly MutableState<GeoPoint?> _lastKnown;
     private CLLocationManager? _manager;
@@ -39,6 +39,22 @@ public sealed class AppleLocationTracker : ILocationTracker
         _lastKnown.Value = null;
         MainThread.BeginInvokeOnMainThread(() => _manager?.StopUpdatingLocation());
         return Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        IsTracking = false;
+        var manager = Interlocked.Exchange(ref _manager, null);
+        if (manager is null)
+            return;
+
+        // TODO: check if mainthread is really required
+        await MainThread.InvokeOnMainThreadAsync(() => {
+                manager.LocationsUpdated -= OnLocationsUpdated;
+                manager.StopUpdatingLocation();
+                manager.DisposeSilently();
+            })
+            .ConfigureAwait(false);
     }
 
     // Private methods
