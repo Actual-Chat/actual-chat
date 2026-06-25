@@ -57,22 +57,28 @@
                         Click="@_onClickCallback"/>
                     <div class="c-member-state">
                         @if (member.HasScreenShare) {
-                            <i class="icon-screen-share" title="Screen sharing"></i>
+                            <i class="icon-screen-share" title="Sharing screen"></i>
                         }
                         @if (member.HasCamera) {
                             <i class="icon-video" title="Camera on"></i>
                         }
-                        @if (member.IsMicOpen) {
-                            <i class="@(member.MicMuted || member.ForcedMuted ? "icon-mic-off muted" : "icon-mic-2 active")"
-                               title="@(member.ForcedMuted ? "Muted by host" : member.MicMuted ? "Muted" : "Mic on")"></i>
+                        @{
+                            var isMuted = member.ForcedMuted || member.MicMuted;
+                            var hasMic = member.IsMicOpen || member.ForcedMuted;
+                            var micClass = isMuted ? "icon-mic-off muted" : "icon-mic-2 recording";
+                            var canMute = m.IsController && member.Group != MemberGroup.Exited;
+                        }
+                        @if (hasMic && canMute) {
+                            <button class="c-mic-btn" title="@(member.ForcedMuted ? "Unmute" : "Mute")"
+                                    @onclick="@(() => OnMute(live.ChatId, member))">
+                                <i class="@micClass"></i>
+                            </button>
+                        }
+                        else if (hasMic) {
+                            <i class="@micClass" title="@(isMuted ? "Muted" : "Recording")"></i>
                         }
                         else if (member.IsListening) {
-                            <i class="icon-voice-01" title="Listening"></i>
-                        }
-                        @if (m.IsController && member.Group != MemberGroup.Exited) {
-                            <button class="c-mute-btn" @onclick="@(() => OnMute(live.ChatId, member))">
-                                @(member.ForcedMuted ? "Unmute" : "Mute")
-                            </button>
+                            <i class="icon-listen listening" title="Listening"></i>
                         }
                     </div>
                 </div>
