@@ -34,7 +34,7 @@ public sealed class MauiGeolocationTracker : ILocationTracker
         _geolocation.LocationChanged += OnLocationChanged;
         var request = new GeolocationListeningRequest(
             GeolocationAccuracy.Best,
-            Constants.LiveLocation.UpdatePeriod);
+            Constants.Location.UpdatePeriod);
         try {
             await _geolocation.StartListeningForegroundAsync(request).ConfigureAwait(false);
         }

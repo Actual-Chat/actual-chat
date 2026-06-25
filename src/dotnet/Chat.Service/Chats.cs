@@ -411,7 +411,10 @@ public partial class Chats(IServiceProvider services) : IChats
         var attachments = command.Attachments;
         if (attachments.Length > 0 || command.HasUploadingAttachments)
             chat.Rules.Permissions.Require(ChatPermissions.Upload);
-        if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0 && !command.HasUploadingAttachments)
+        if (string.IsNullOrWhiteSpace(text)
+            && attachments.Length == 0
+            // TODO: probably decouple location creation from entry creation
+            && command is { HasUploadingAttachments: false, Location: null })
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
         ChatEntry textEntry;
@@ -493,6 +496,17 @@ public partial class Chats(IServiceProvider services) : IChats
             if (commandResult != null)
                 return commandResult;
 
+            SharedLocationId? locationId = null;
+            // TODO: probably decouple location creation from entry creation
+            if (command.Location is { } locationPoint) {
+                var newLocationId = SharedLocationId.New();
+                locationId = newLocationId;
+                await Commander.Call(
+                    new SharedLocationsBackend_Create(
+                        newLocationId, chatId, author.Id, locationPoint, command.LiveDuration ?? TimeSpan.Zero),
+                    true, cancellationToken).ConfigureAwait(false);
+            }
+
             var chatEntryId = ChatEntryId.New(chatId, 0);
             var upsertCommand = new ChatsBackend_ChangeEntry(
                 chatEntryId,
@@ -503,6 +517,7 @@ public partial class Chats(IServiceProvider services) : IChats
                     RepliedEntryLid = repliedEntryLid,
                     Forwarded = command.Forwarded,
                     Attachments = attachments.Length == 0 ? null : attachments,
+                    LocationId = locationId,
                     ClientId = command.ClientId,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);

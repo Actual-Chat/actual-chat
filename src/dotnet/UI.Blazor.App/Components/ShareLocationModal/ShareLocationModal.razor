@@ -8,7 +8,7 @@
     <Body>
         <div class="c-content">
             <div class="c-hint">Share your live location with everyone in this chat for:</div>
-            @foreach (var (duration, label) in Constants.LiveLocation.Durations) {
+            @foreach (var (duration, label) in Constants.Location.Durations) {
                 <Button Class="btn-modal c-duration" Click="@(() => OnPick(duration))">@label</Button>
             }
             @if (ModalModel.IsSharing) {

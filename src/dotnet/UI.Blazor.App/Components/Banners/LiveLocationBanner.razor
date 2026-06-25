@@ -38,7 +38,7 @@
 
     private Chat Chat => ChatContext.Chat;
     private IAuthors Authors => Hub.Authors;
-    private ILiveLocations LiveLocations => Hub.LiveLocations;
+    private ISharedLocations SharedLocations => Hub.SharedLocations;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
@@ -52,7 +52,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
-        var locations = await LiveLocations.List(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var locations = await SharedLocations.List(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (locations.Count == 0)
             return Model.None;
 
@@ -69,7 +69,7 @@
         if (ownLocation != null)
             Computed.GetCurrent().Invalidate(CountdownTickPeriod);
 
-        return new Model(avatars.ToApiArray(), locations.Count, ownLocation != null, ownLocation?.ExpiresAt);
+        return new Model(avatars.ToApiArray(), locations.Count, ownLocation != null, ownLocation?.LiveUntil);
     }
 
     private Task OnOpenMap()

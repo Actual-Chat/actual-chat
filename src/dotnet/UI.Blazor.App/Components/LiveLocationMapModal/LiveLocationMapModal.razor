@@ -29,7 +29,7 @@
     private const string OthersMarkerColor = "#2563eb";
 
     private IAuthors Authors => Hub.Authors;
-    private ILiveLocations LiveLocations => Hub.LiveLocations;
+    private ISharedLocations SharedLocations => Hub.SharedLocations;
     private LiveTime LiveTime => Hub.LiveTime;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -45,7 +45,7 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ModalModel.ChatId;
-        var locations = await LiveLocations.List(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var locations = await SharedLocations.List(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (locations.Count == 0)
             return ComputedModel.None;
 

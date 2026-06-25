@@ -22,7 +22,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IAliases Aliases => field ??= Services.GetRequiredService<IAliases>();
     public IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     public IReactions Reactions => field ??= Services.GetRequiredService<IReactions>();
-    public ILiveLocations LiveLocations => field ??= Services.GetRequiredService<ILiveLocations>();
+    public ISharedLocations SharedLocations => field ??= Services.GetRequiredService<ISharedLocations>();
     public IRoles Roles => field ??= Services.GetRequiredService<IRoles>();
     public IInvites Invites => field ??= Services.GetRequiredService<IInvites>();
     public IContacts Contacts => field ??= Services.GetRequiredService<IContacts>();

@@ -6,33 +6,40 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ActualChat.Chat.Migrations
 {
     /// <inheritdoc />
-    public partial class Add_LiveLocations : Migration
+    public partial class Add_SharedLocations : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<string>(
+                name: "location_id",
+                table: "chat_entries",
+                type: "text",
+                nullable: true);
+
             migrationBuilder.CreateTable(
-                name: "live_locations",
+                name: "shared_locations",
                 columns: table => new
                 {
                     id = table.Column<string>(type: "text", nullable: false, collation: "C"),
                     chat_id = table.Column<string>(type: "text", nullable: false, collation: "C"),
+                    author_id = table.Column<string>(type: "text", nullable: false, collation: "C"),
                     latitude = table.Column<double>(type: "double precision", nullable: false),
                     longitude = table.Column<double>(type: "double precision", nullable: false),
                     accuracy = table.Column<float>(type: "real", nullable: true),
                     bearing = table.Column<float>(type: "real", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    duration = table.Column<TimeSpan>(type: "interval", nullable: false)
+                    live_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_live_locations", x => x.id);
+                    table.PrimaryKey("pk_shared_locations", x => x.id);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_live_locations_chat_id",
-                table: "live_locations",
+                name: "ix_shared_locations_chat_id",
+                table: "shared_locations",
                 column: "chat_id");
         }
 
@@ -40,7 +47,11 @@ namespace ActualChat.Chat.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "live_locations");
+                name: "shared_locations");
+
+            migrationBuilder.DropColumn(
+                name: "location_id",
+                table: "chat_entries");
         }
     }
 }

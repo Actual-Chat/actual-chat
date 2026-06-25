@@ -56,9 +56,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IReactions, Reactions>();
         rpcHost.AddBackend<IReactionsBackend, ReactionsBackend>();
 
-        // Live locations
-        rpcHost.AddApi<ILiveLocations, LiveLocations>();
-        rpcHost.AddBackend<ILiveLocationsBackend, LiveLocationsBackend>();
+        // Shared locations
+        rpcHost.AddApi<ISharedLocations, SharedLocations>();
+        rpcHost.AddBackend<ISharedLocationsBackend, SharedLocationsBackend>();
 
         // Aliases
         rpcHost.AddLocalApi<IAliases, Aliases>();
@@ -237,13 +237,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             // DbConversation
             db.AddEntityResolver<string, DbConversation>();
 
-            // DbLiveLocation
-            db.AddEntityResolver<string, DbLiveLocation>();
+            // DbSharedLocation
+            db.AddEntityResolver<string, DbSharedLocation>();
         });
-
-        // Live locations cleanup
-        services.AddSingleton<LiveLocationsCleanup>()
-            .AddHostedService(c => c.GetRequiredService<LiveLocationsCleanup>());
     }
 
     private void AddKeyedOpenAI(IServiceCollection services, string serviceKey, string openAIModel, string openAIKey, TimeSpan? httpClientTimeout = null)

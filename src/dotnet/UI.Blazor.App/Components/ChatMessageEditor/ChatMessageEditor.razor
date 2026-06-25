@@ -401,7 +401,7 @@
 
     private async Task OnShareLocationClick() {
         var chatId = Chat.Id;
-        var isSharing = await Hub.LiveLocations.IsSharing(Session, chatId, CancellationToken.None).ConfigureAwait(true);
+        var isSharing = await Hub.SharedLocations.IsSharing(Session, chatId, CancellationToken.None).ConfigureAwait(true);
         var model = new ShareLocationModal.Model { IsSharing = isSharing };
         await (await ModalUI.Show(model).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
 

@@ -65,7 +65,7 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
             return;
         }
 
-        var minTimeMs = (long)Constants.LiveLocation.UpdatePeriod.TotalMilliseconds;
+        var minTimeMs = (long)Constants.Location.UpdatePeriod.TotalMilliseconds;
         try {
             if (_locationManager.IsProviderEnabled(LocationManager.GpsProvider))
                 _locationManager.RequestLocationUpdates(LocationManager.GpsProvider, minTimeMs, 0f, this, Looper.MainLooper);

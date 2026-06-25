@@ -79,6 +79,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public long? AudioEntryId { get; set; } // TODO(AY): Remove
     public string? AudioId { get; set; }
     public string? TimeMap { get; set; }
+    public string? LocationId { get; set; }
 
     public ChatEntry ToModel(
         IEnumerable<ChatEntryAttachment>? attachments = null,
@@ -131,6 +132,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ContentHash = new (ContentHash ?? ""),
             ContentStreamId = ContentStreamId ?? "",
             Audio = audio,
+            LocationId = SharedLocationId.ParseNullable(LocationId),
             RepliedEntryLid = RepliedChatEntryId,
             Forwarded = BuildForwarded(),
             Attachments = attachmentsArray,
@@ -242,6 +244,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AudioId = null;
             TimeMap = null;
         }
+        LocationId = model.LocationId?.Value;
     }
 
     private static LegacySystemEntry ToLegacySystemEntry(SystemEntry sys) => sys switch {
