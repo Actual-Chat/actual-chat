@@ -8,7 +8,7 @@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "UI types are expected to be untrimmed.")]
 
-<div class="ac-bubble-host">
+<div class="ac-bubble-host" data-no-inert>
     <CascadingValue Value="@this" IsFixed="true">
         @if (_bubble != null) {
             <div id="@_bubble.Id"
