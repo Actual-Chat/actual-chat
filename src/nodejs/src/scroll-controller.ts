@@ -70,8 +70,16 @@ export class ScrollController {
             const onTouchEnd = (e: TouchEvent) => { if (e.touches.length === 0) this.onTouchEnd(); };
             element.addEventListener('touchend', onTouchEnd, opts);
             element.addEventListener('touchcancel', onTouchEnd, opts);
-            // A resize (e.g. mobile keyboard hiding) changes limits without firing a scroll event.
-            this.resizeObserver = new ResizeObserver(() => this.clampToLimits());
+            // A resize (e.g. mobile keyboard hiding, or a sub-header opening/closing) changes limits without
+            // firing a scroll event. It re-pins authoritatively, so any boundary it crosses isn't a user
+            // gesture: suppress the rubber-band spring (and cancel one in flight) and snap to the new limits
+            // instead of animating a return — otherwise a viewport growth springs the edge back over ~400ms.
+            this.resizeObserver = new ResizeObserver(() => {
+                this.suppressUntil = Date.now() + ProgrammaticScrollSuppressMs;
+                if (this.isReturning)
+                    this.finishOverscrollReturn();
+                this.clampToLimits();
+            });
             this.resizeObserver.observe(element);
         }
         ScrollController.all.add(this);
