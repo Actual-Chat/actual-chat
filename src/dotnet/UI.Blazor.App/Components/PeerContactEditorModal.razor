@@ -31,10 +31,10 @@
             </FormSection>
         </FormBlock>
         @if (_contact is not null) {
-            <FormBlock>
+            <FormBlock Class="block-user-form-block">
                 <Button
                     Type="@ButtonType.Button"
-                    Class="btn-modal warning-item"
+                    Class="btn-modal btn-danger"
                     Click="@OnToggleBlock">
                     @(_contact.IsBlocked ? "Unblock user" : "Block user")
                 </Button>

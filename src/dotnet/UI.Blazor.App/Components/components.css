@@ -81,7 +81,7 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 .chat-footer {
     @apply flex justify-center items-center;
     @apply w-full h-full;
-    @apply py-0 md:py-1.5 px-2;
+    @apply py-0 md:py-2 px-2;
     @apply bg-01;
 }
 .chat-footer .c-text {

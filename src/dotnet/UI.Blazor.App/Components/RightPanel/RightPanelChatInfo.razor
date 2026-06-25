@@ -41,7 +41,7 @@
             Content="Block user"
             Hint="@(m.IsBlocked ? "Blocked" : "Not blocked")">
             <Icon>
-                <i class="text-2xl icon-block @(m.IsBlocked ? "text-danger" : "text-03")"></i>
+                <i class="text-2xl icon-slash-circle @(m.IsBlocked ? "text-danger" : "text-03")"></i>
             </Icon>
             <Right>
                 <Toggle Class="mr-2" IsChecked="@m.IsBlocked"/>

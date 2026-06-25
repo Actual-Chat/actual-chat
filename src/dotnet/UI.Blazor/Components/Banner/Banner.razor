@@ -8,7 +8,7 @@
         return;
 }
 
-<div class="banner @BannerCls @Class @_animator.Class">
+<div class="banner @BannerCls @Class @_animator.Class @(Wrap ? "banner-wrap" : "")">
     <div class="c-content">
         @if (!ScreenSize.IsNarrow()) {
             @if (Icon != null) {
@@ -20,10 +20,10 @@
         <div class="banner-body">
             @Body
         </div>
-        @if (Buttons != null || ShowDismissButton) {
+        @if (Buttons != null || (ShowDismissButton && !Wrap)) {
             <div class="banner-buttons">
                 @Buttons
-                @if (ShowDismissButton) {
+                @if (ShowDismissButton && !Wrap) {
                     <HeaderButton
                         Class="close-banner"
                         Click="OnClose"
@@ -35,6 +35,15 @@
             </div>
         }
     </div>
+    @if (ShowDismissButton && Wrap) {
+        <HeaderButton
+            Class="close-banner close-banner-abs"
+            Click="OnClose"
+            Tooltip="Dismiss"
+            TooltipPosition="FloatingPosition.Top">
+            <i class="icon-close text-2xl"></i>
+        </HeaderButton>
+    }
 </div>
 
 @code {
@@ -49,6 +58,7 @@
     [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
     [Parameter] public bool ShowDismissButton { get; set; }
+    [Parameter] public bool Wrap { get; set; }
     [Parameter] public bool IsVisible { get; set; } = true;
     [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Default;
     [Parameter] public EventCallback Dismiss { get; set; }

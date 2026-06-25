@@ -9,3 +9,7 @@
 .peer-contact-editor-modal .c-name .c-peer-own-name {
     @apply text-03 text-caption-6 truncate;
 }
+
+.block-user-form-block {
+    @apply pb-0;
+}
