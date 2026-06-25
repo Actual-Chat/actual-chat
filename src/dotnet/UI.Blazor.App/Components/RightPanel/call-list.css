@@ -41,7 +41,7 @@
     @apply flex-auto flex-y gap-y-1;
 }
 .call-list-tab .c-member-row {
-    @apply flex-x items-center gap-x-2;
+    @apply flex-x items-center gap-x-3;
     @apply h-12 px-2;
     @apply rounded-xl;
 }
@@ -55,18 +55,24 @@ body.hoverable .call-list-tab .c-member-row:hover {
     @apply font-medium text-02;
 }
 .call-list-tab .c-member-state {
-    @apply flex-x items-center gap-x-2 flex-none;
+    @apply flex-x items-center gap-x-4 flex-none;
 }
 .call-list-tab .c-member-state i {
-    @apply text-xl text-03;
+    @apply text-2xl text-03;
 }
-.call-list-tab .c-member-state i.active {
+.call-list-tab .c-member-state i.recording {
     @apply text-danger;
 }
 .call-list-tab .c-member-state i.muted {
     @apply text-03;
 }
-.call-list-tab .c-mute-btn {
-    @apply text-caption-1 text-primary;
-    @apply px-2 py-0.5;
+.call-list-tab .c-member-state i.listening {
+    @apply text-primary;
+}
+.call-list-tab .c-mic-btn {
+    @apply flex items-center justify-center;
+    @apply rounded-full;
+}
+body.hoverable .call-list-tab .c-mic-btn:hover {
+    @apply bg-hover;
 }
