@@ -114,7 +114,7 @@ public partial class AudioStreamingBackend
             OpenAudioSegmentLog);
         openSegment.SetRecordedAt(recordedAt);
 
-        // Register stream as early as possible (before creating ChatEntry)
+        // Register the voice fan-out stream only in voice mode (only voice is fanned out to peers).
         if (mustStreamVoice) {
             var streamInfo = new LiveAudioStreamInfo {
                 ChatId = chatId,
@@ -125,12 +125,16 @@ public partial class AudioStreamingBackend
                 Format = audio.Format,
             };
             await LiveAudioBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
-
-            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-            await LiveSessionsBackend
-                .OnStreamRegistered(chatId, author.Id, null, chat?.IsSummarized ?? false, cancellationToken)
-                .ConfigureAwait(false);
         }
+
+        // Join the live session for any live contribution: voice (any chat) or a streamed transcript
+        // in a summarized chat. JustText in a plain chat is just a voice-to-text message, not a session.
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var isSummarized = chat?.IsSummarized ?? false;
+        if (mustStreamVoice || isSummarized)
+            await LiveSessionsBackend
+                .OnStreamRegistered(chatId, author.Id, null, isSummarized, cancellationToken)
+                .ConfigureAwait(false);
 
         var headerFrame = new AudioFrame {
             Data = new ActualOpusStreamHeader(audio.CreatedAt, audio.Format).Serialize(),

@@ -36,6 +36,18 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         return await Backend.GetLiveSession(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<bool> HasRecorder(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        if (!chat.Rules.CanRead())
+            return false;
+
+        return await Backend.HasRecorder(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task SetParticipation(
         Session session,
         ChatId chatId,
