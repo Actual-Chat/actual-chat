@@ -7,12 +7,13 @@
         return;
 }
 
-<Banner IsVisible="@m.CanAddToContacts" Severity="BannerSeverity.Warning" ShowDismissButton="true">
+<Banner IsVisible="@m.CanAddToContacts" Severity="BannerSeverity.Default" ShowDismissButton="true" Wrap="true">
     <Body>
-        This user is not in your contact list
+        This user is not in your contact list yet
     </Body>
     <Buttons>
-        <Button Class="btn-transparent unhovered" Click="@OnAddClick">Add to contacts</Button>
+        <Button Class="btn-danger btn-sm btn-modal" Click="@OnBlockClick">Block user</Button>
+        <Button Class="btn-primary btn-sm btn-modal" Click="@OnAddClick">Add to contacts</Button>
     </Buttons>
 </Banner>
 
@@ -45,11 +46,14 @@
         await UICommander.Run(command);
     }
 
+    private Task OnBlockClick()
+        => Hub.PeerBlockUI.SetBlocked(State.Value.Contact!.Id, true);
+
     // Nested types
 
     public sealed record Model(bool IsSignedIn, Contact? Contact = null) {
         public  static readonly Model Loading = new(false);
 
-        public bool CanAddToContacts => IsSignedIn && Contact is { ChatId.Kind: ChatKind.Peer, IsRegular: false };
+        public bool CanAddToContacts => IsSignedIn && Contact is { ChatId.Kind: ChatKind.Peer, IsRegular: false, IsBlocked: false };
     }
 }

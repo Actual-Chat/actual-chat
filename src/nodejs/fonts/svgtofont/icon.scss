@@ -1,11 +1,11 @@
 @font-face {
   font-family: "icon";
-  src: url('icon.eot?t=1780419665352'); /* IE9*/
-  src: url('icon.eot?t=1780419665352#iefix') format('embedded-opentype') /* IE6-IE8 */,
-  url('icon.woff2?t=1780419665352') format('woff2'),
-  url('icon.woff?t=1780419665352') format('woff'),
-  url('icon.ttf?t=1780419665352') format('truetype'),
-  url('icon.svg?t=1780419665352') format('svg');
+  src: url('icon.eot?t=1782306345118'); /* IE9*/
+  src: url('icon.eot?t=1782306345118#iefix') format('embedded-opentype') /* IE6-IE8 */,
+  url('icon.woff2?t=1782306345118') format('woff2'),
+  url('icon.woff?t=1782306345118') format('woff'),
+  url('icon.ttf?t=1782306345118') format('truetype'),
+  url('icon.svg?t=1782306345118') format('svg');
 }
 
 [class^="icon-"], [class*=" icon-"] {
@@ -194,49 +194,50 @@
 .icon-silence::before { content: "\eab0"; }
 .icon-skip-back-fill::before { content: "\eab1"; }
 .icon-skip-forward-fill::before { content: "\eab2"; }
-.icon-sort-by-alphabet::before { content: "\eab3"; }
-.icon-sort-by-me::before { content: "\eab4"; }
-.icon-sort-by-message::before { content: "\eab5"; }
-.icon-sort-by-recent::before { content: "\eab6"; }
-.icon-star-2::before { content: "\eab7"; }
-.icon-star::before { content: "\eab8"; }
-.icon-status::before { content: "\eab9"; }
-.icon-stop-fill::before { content: "\eaba"; }
-.icon-sync::before { content: "\eabb"; }
-.icon-talking::before { content: "\eabc"; }
-.icon-text-message-2::before { content: "\eabd"; }
-.icon-text-message::before { content: "\eabe"; }
-.icon-text::before { content: "\eabf"; }
-.icon-thread::before { content: "\eac0"; }
-.icon-tldr::before { content: "\eac1"; }
-.icon-transcription::before { content: "\eac2"; }
-.icon-translate::before { content: "\eac3"; }
-.icon-translation::before { content: "\eac4"; }
-.icon-trash-fill::before { content: "\eac5"; }
-.icon-trash02::before { content: "\eac6"; }
-.icon-trash03::before { content: "\eac7"; }
-.icon-unpin-from-navbar::before { content: "\eac8"; }
-.icon-unpin::before { content: "\eac9"; }
-.icon-unread::before { content: "\eaca"; }
-.icon-upload-cloud::before { content: "\eacb"; }
-.icon-vector-left::before { content: "\eacc"; }
-.icon-vector-right::before { content: "\eacd"; }
-.icon-video-and-voice-live::before { content: "\eace"; }
-.icon-video-collapse::before { content: "\eacf"; }
-.icon-video-expand::before { content: "\ead0"; }
-.icon-video-play-live::before { content: "\ead1"; }
-.icon-video-play::before { content: "\ead2"; }
-.icon-video::before { content: "\ead3"; }
-.icon-voice-01::before { content: "\ead4"; }
-.icon-voice-and-text::before { content: "\ead5"; }
-.icon-voice-message::before { content: "\ead6"; }
-.icon-voice-to-text-message::before { content: "\ead7"; }
-.icon-volume-off-fill::before { content: "\ead8"; }
-.icon-volume-off::before { content: "\ead9"; }
-.icon-volume-settings::before { content: "\eada"; }
-.icon-volume-up-fill::before { content: "\eadb"; }
-.icon-volume-up::before { content: "\eadc"; }
-.icon-wrap::before { content: "\eadd"; }
+.icon-slash-circle::before { content: "\eab3"; }
+.icon-sort-by-alphabet::before { content: "\eab4"; }
+.icon-sort-by-me::before { content: "\eab5"; }
+.icon-sort-by-message::before { content: "\eab6"; }
+.icon-sort-by-recent::before { content: "\eab7"; }
+.icon-star-2::before { content: "\eab8"; }
+.icon-star::before { content: "\eab9"; }
+.icon-status::before { content: "\eaba"; }
+.icon-stop-fill::before { content: "\eabb"; }
+.icon-sync::before { content: "\eabc"; }
+.icon-talking::before { content: "\eabd"; }
+.icon-text-message-2::before { content: "\eabe"; }
+.icon-text-message::before { content: "\eabf"; }
+.icon-text::before { content: "\eac0"; }
+.icon-thread::before { content: "\eac1"; }
+.icon-tldr::before { content: "\eac2"; }
+.icon-transcription::before { content: "\eac3"; }
+.icon-translate::before { content: "\eac4"; }
+.icon-translation::before { content: "\eac5"; }
+.icon-trash-fill::before { content: "\eac6"; }
+.icon-trash02::before { content: "\eac7"; }
+.icon-trash03::before { content: "\eac8"; }
+.icon-unpin-from-navbar::before { content: "\eac9"; }
+.icon-unpin::before { content: "\eaca"; }
+.icon-unread::before { content: "\eacb"; }
+.icon-upload-cloud::before { content: "\eacc"; }
+.icon-vector-left::before { content: "\eacd"; }
+.icon-vector-right::before { content: "\eace"; }
+.icon-video-and-voice-live::before { content: "\eacf"; }
+.icon-video-collapse::before { content: "\ead0"; }
+.icon-video-expand::before { content: "\ead1"; }
+.icon-video-play-live::before { content: "\ead2"; }
+.icon-video-play::before { content: "\ead3"; }
+.icon-video::before { content: "\ead4"; }
+.icon-voice-01::before { content: "\ead5"; }
+.icon-voice-and-text::before { content: "\ead6"; }
+.icon-voice-message::before { content: "\ead7"; }
+.icon-voice-to-text-message::before { content: "\ead8"; }
+.icon-volume-off-fill::before { content: "\ead9"; }
+.icon-volume-off::before { content: "\eada"; }
+.icon-volume-settings::before { content: "\eadb"; }
+.icon-volume-up-fill::before { content: "\eadc"; }
+.icon-volume-up::before { content: "\eadd"; }
+.icon-wrap::before { content: "\eade"; }
 
 
 $icon-activity: '\ea01';
@@ -417,46 +418,47 @@ $icon-share: '\eaaf';
 $icon-silence: '\eab0';
 $icon-skip-back-fill: '\eab1';
 $icon-skip-forward-fill: '\eab2';
-$icon-sort-by-alphabet: '\eab3';
-$icon-sort-by-me: '\eab4';
-$icon-sort-by-message: '\eab5';
-$icon-sort-by-recent: '\eab6';
-$icon-star-2: '\eab7';
-$icon-star: '\eab8';
-$icon-status: '\eab9';
-$icon-stop-fill: '\eaba';
-$icon-sync: '\eabb';
-$icon-talking: '\eabc';
-$icon-text-message-2: '\eabd';
-$icon-text-message: '\eabe';
-$icon-text: '\eabf';
-$icon-thread: '\eac0';
-$icon-tldr: '\eac1';
-$icon-transcription: '\eac2';
-$icon-translate: '\eac3';
-$icon-translation: '\eac4';
-$icon-trash-fill: '\eac5';
-$icon-trash02: '\eac6';
-$icon-trash03: '\eac7';
-$icon-unpin-from-navbar: '\eac8';
-$icon-unpin: '\eac9';
-$icon-unread: '\eaca';
-$icon-upload-cloud: '\eacb';
-$icon-vector-left: '\eacc';
-$icon-vector-right: '\eacd';
-$icon-video-and-voice-live: '\eace';
-$icon-video-collapse: '\eacf';
-$icon-video-expand: '\ead0';
-$icon-video-play-live: '\ead1';
-$icon-video-play: '\ead2';
-$icon-video: '\ead3';
-$icon-voice-01: '\ead4';
-$icon-voice-and-text: '\ead5';
-$icon-voice-message: '\ead6';
-$icon-voice-to-text-message: '\ead7';
-$icon-volume-off-fill: '\ead8';
-$icon-volume-off: '\ead9';
-$icon-volume-settings: '\eada';
-$icon-volume-up-fill: '\eadb';
-$icon-volume-up: '\eadc';
-$icon-wrap: '\eadd';
+$icon-slash-circle: '\eab3';
+$icon-sort-by-alphabet: '\eab4';
+$icon-sort-by-me: '\eab5';
+$icon-sort-by-message: '\eab6';
+$icon-sort-by-recent: '\eab7';
+$icon-star-2: '\eab8';
+$icon-star: '\eab9';
+$icon-status: '\eaba';
+$icon-stop-fill: '\eabb';
+$icon-sync: '\eabc';
+$icon-talking: '\eabd';
+$icon-text-message-2: '\eabe';
+$icon-text-message: '\eabf';
+$icon-text: '\eac0';
+$icon-thread: '\eac1';
+$icon-tldr: '\eac2';
+$icon-transcription: '\eac3';
+$icon-translate: '\eac4';
+$icon-translation: '\eac5';
+$icon-trash-fill: '\eac6';
+$icon-trash02: '\eac7';
+$icon-trash03: '\eac8';
+$icon-unpin-from-navbar: '\eac9';
+$icon-unpin: '\eaca';
+$icon-unread: '\eacb';
+$icon-upload-cloud: '\eacc';
+$icon-vector-left: '\eacd';
+$icon-vector-right: '\eace';
+$icon-video-and-voice-live: '\eacf';
+$icon-video-collapse: '\ead0';
+$icon-video-expand: '\ead1';
+$icon-video-play-live: '\ead2';
+$icon-video-play: '\ead3';
+$icon-video: '\ead4';
+$icon-voice-01: '\ead5';
+$icon-voice-and-text: '\ead6';
+$icon-voice-message: '\ead7';
+$icon-voice-to-text-message: '\ead8';
+$icon-volume-off-fill: '\ead9';
+$icon-volume-off: '\eada';
+$icon-volume-settings: '\eadb';
+$icon-volume-up-fill: '\eadc';
+$icon-volume-up: '\eadd';
+$icon-wrap: '\eade';

@@ -1,10 +1,9 @@
-@using ActualChat.Contacts
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
 
 <MenuEntry
     Class="warning-item"
-    Icon="icon-block"
+    Icon="icon-slash-circle"
     Text="@(ChatState.Contact.IsBlocked ? "Unblock user" : "Block user")"
     Click="@OnClick">
 </MenuEntry>

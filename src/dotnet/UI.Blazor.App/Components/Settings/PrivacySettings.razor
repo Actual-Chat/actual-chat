@@ -7,36 +7,51 @@
 <TileTopic Topic="Blocked users"/>
 
 <Tile>
-    @if (m.Items.Count == 0) {
-        <TileItem IsHoverable="false">
-            <Content>You haven't blocked anyone.</Content>
-        </TileItem>
-    }
-    else {
-        @foreach (var item in m.Items) {
-            <TileItem IsHoverable="false">
-                <Icon>
-                    @if (item.Avatar is not null) {
-                        <AvatarCircle Avatar="@item.Avatar" Size="@SquareSize.Size9" IsBlurred="@false"/>
-                    }
-                </Icon>
-                <Content>
-                    <span>@item.Name</span>
-                </Content>
-                <Right>
-                    <Button Class="btn-sm btn-outline" Click="@(() => OnUnblock(item.ContactId))">
-                        Unblock
-                    </Button>
-                </Right>
-            </TileItem>
-            @if (item != m.Items[^1]) {
-                <Divider/>
+    <TileItem Click="@(m.Items.Count == 0 ? default : EventCallback.Factory.Create(this, OnToggleExpand))">
+        <Icon>
+            <i class="icon-slash-circle text-2xl"></i>
+        </Icon>
+        <Content>Blocked users</Content>
+        <Right>
+            <span class="text-03">@m.Items.Count</span>
+            @if (m.Items.Count > 0) {
+                <i class="icon-chevron-right text-2xl text-03 transition-transform @(_isExpanded ? "rotate-90" : "")"></i>
             }
-        }
-    }
+        </Right>
+    </TileItem>
 </Tile>
 
+@if (_isExpanded && m.Items.Count > 0) {
+    <Tile>
+        <div class="max-h-[80svh] overflow-y-auto">
+            @foreach (var item in m.Items) {
+                <TileItem IsHoverable="false">
+                    <Icon>
+                        <AvatarCircle Avatar="@item.Avatar" Size="@SquareSize.Size9" IsBlurred="@false"/>
+                    </Icon>
+                    <Content>
+                        <span>@item.Name</span>
+                    </Content>
+                    <Right>
+                        <ButtonRound
+                            Class="btn-xs btn-danger"
+                            Tooltip="Unblock"
+                            Click="@(() => OnUnblock(item.ContactId))">
+                            <i class="icon-minus-circle text-2xl"></i>
+                        </ButtonRound>
+                    </Right>
+                </TileItem>
+                @if (item != m.Items[^1]) {
+                    <Divider/>
+                }
+            }
+        </div>
+    </Tile>
+}
+
 @code {
+    private bool _isExpanded;
+
     private IContacts Contacts => Hub.Contacts;
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -58,6 +73,11 @@
             items.Add(new Item(id, name, avatar));
         }
         return new Model(items);
+    }
+
+    private void OnToggleExpand() {
+        _isExpanded = !_isExpanded;
+        StateHasChanged();
     }
 
     private Task OnUnblock(ContactId contactId)
