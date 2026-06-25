@@ -126,7 +126,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // Crash backstop: if the session is alive only on (now-vanished) signals, start the grace.
         // Reuses the already-read streams/participants — no extra Redis round-trips.
         if (!state.IsClosing && audio.Count == 0 && video.Count == 0
-            && !participants.Values.Any(p => IsFreshRecorder(p, cutoff)))
+            && !participants.Values.Any(p => IsFreshParticipant(p, cutoff)))
             _ = StartClosingGrace(chatId);
 
         var members = byAuthor.Values
@@ -379,7 +379,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (author is null || author.UserId.Value.IsNullOrEmpty())
             return;
         var existing = await SafeGetParticipant(chatId, author.UserId).ConfigureAwait(false);
-        var info = new ParticipationInfo(ParticipationKind.Record, Clocks.SystemClock.Now,
+        // Preserve the client's real kind — a trailing utterance must not flip a now-listening user back to Record.
+        var kind = existing?.Kind ?? ParticipationKind.Record;
+        var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
             existing?.MicMuted ?? false, existing?.ForcedMuted ?? false);
         await _participants.Set(chatId.Value, author.UserId.Value, info).ConfigureAwait(false);
         InvalidateIsParticipant(chatId, author.UserId);
@@ -400,6 +402,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private static bool IsFreshRecorder(ParticipationInfo? info, Moment cutoff)
         => info is { Kind: ParticipationKind.Record } && info.RegisteredAt >= cutoff;
 
+    private static bool IsFreshParticipant(ParticipationInfo? info, Moment cutoff)
+        => info is not null && info.RegisteredAt >= cutoff;
+
+    private async Task<bool> HasParticipant(ChatId chatId)
+    {
+        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        return participants.Values.Any(p => IsFreshParticipant(p, cutoff));
+    }
+
     private async Task<bool> HasLiveSignal(ChatId chatId, CancellationToken cancellationToken)
     {
         var audio = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
@@ -408,7 +420,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var video = await LiveVideoBackend.List(chatId, cancellationToken).ConfigureAwait(false);
         if (video.Count > 0)
             return true;
-        return await HasRecorder(chatId, cancellationToken).ConfigureAwait(false);
+        // Any present participant (recording, listening, or watching) keeps the session alive;
+        // it closes only once nobody is even listening.
+        return await HasParticipant(chatId).ConfigureAwait(false);
     }
 
     // Caller must hold the change lock + Computed.BeginIsolation().

@@ -401,7 +401,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task ListenersAloneDoNotKeepAlive()
+    public async Task ListenerKeepsSessionAliveUntilEmpty()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -412,10 +412,16 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
-        // act — the only participant switches from recording to listening
+        // act — the participant stops recording but keeps listening: still present, stays alive
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, true, default);
 
-        // assert — a listener alone does not keep the session alive
+        // assert — a listener keeps the session alive
+        (await backend.Get(chatId, default))!.IsClosing.Should().BeFalse();
+
+        // act — the listener leaves entirely: nobody is even listening now
+        await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, false, default);
+
+        // assert — the session winds down
         var live = await backend.Get(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeTrue();
@@ -438,6 +444,32 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
 
         // recording stops → no recorder
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
+        (await backend.HasRecorder(chatId, default)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TrailingUtteranceDoesNotResurrectRecorder()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // recording starts (auto-registers as a recorder)
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        (await backend.HasRecorder(chatId, default)).Should().BeTrue();
+
+        // the user stops recording but keeps listening
+        await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, true, default);
+        (await backend.HasRecorder(chatId, default)).Should().BeFalse();
+
+        // act — a trailing utterance arrives after the switch; it must NOT flip the listener back to a recorder
+        await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
+
+        // assert
         (await backend.HasRecorder(chatId, default)).Should().BeFalse();
     }
 }
