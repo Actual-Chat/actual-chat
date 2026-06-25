@@ -1,7 +1,7 @@
 .call-list-tab {
-    @apply flex flex-col;
-    @apply w-full h-full;
-    @apply overflow-y-auto;
+    @apply flex-y h-full;
+    @apply p-2;
+    @apply overflow-y-auto custom-scrollbar;
 }
 .call-list-tab .c-empty {
     @apply p-4;
@@ -9,8 +9,10 @@
 }
 .call-list-tab .c-rules,
 .call-list-tab .c-manage {
-    @apply flex items-center gap-2;
-    @apply px-4 py-2;
+    @apply flex-x items-center gap-x-2;
+    @apply px-2 py-2;
+}
+.call-list-tab .c-rules {
     @apply border-b border-separator;
 }
 .call-list-tab .c-rules-title,
@@ -22,7 +24,7 @@
     @apply text-caption-1 text-02;
 }
 .call-list-tab .c-manage-buttons {
-    @apply flex items-center gap-3 ml-auto;
+    @apply flex-x items-center gap-x-3 ml-auto;
 }
 .call-list-tab .c-toggle {
     @apply flex items-center justify-center;
@@ -35,19 +37,25 @@
 .call-list-tab .c-toggle.off {
     @apply bg-03 text-03;
 }
-.call-list-tab .c-group-title {
-    @apply px-4 pt-3 pb-1;
-    @apply text-caption-4 text-03 uppercase;
+.call-list-tab .c-content {
+    @apply flex-auto flex-y gap-y-1;
 }
 .call-list-tab .c-member-row {
-    @apply flex items-center gap-2;
-    @apply px-4 py-1;
+    @apply flex-x items-center gap-x-2;
+    @apply h-12 px-2;
+    @apply rounded-xl;
+}
+body.hoverable .call-list-tab .c-member-row:hover {
+    @apply bg-hover;
 }
 .call-list-tab .c-member-row > .avatar-badge {
     @apply flex-1 min-w-0;
 }
+.call-list-tab .c-member-row .avatar-name {
+    @apply font-medium text-02;
+}
 .call-list-tab .c-member-state {
-    @apply flex items-center gap-2 flex-none;
+    @apply flex-x items-center gap-x-2 flex-none;
 }
 .call-list-tab .c-member-state i {
     @apply text-xl text-03;
