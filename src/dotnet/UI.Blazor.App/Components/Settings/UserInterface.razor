@@ -15,24 +15,6 @@
     <ThemeSettings/>
 </Tile>
 
-<TileTopic Topic="Walk-through"/>
-<Button
-    Class="add-avatar-btn"
-    Click="@(OnRestartWalkThrough)">
-    <Icon><i class="icon-refresh text-xl"></i></Icon>
-    <Title>Restart walk-through</Title>
-</Button>
-
-@if (m.IsAdmin) {
-    <TileTopic Topic="Onboarding"/>
-    <Button
-        Class="add-avatar-btn"
-        Click="@(OnRestartOnboarding)">
-        <Icon><i class="icon-refresh text-xl"></i></Icon>
-        <Title>Restart onboarding</Title>
-    </Button>
-}
-
 @code {
     private ILogger<UserInterface> Log => field ??= Hub.LogFor<UserInterface>();
 

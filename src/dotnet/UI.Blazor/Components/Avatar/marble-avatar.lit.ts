@@ -1,53 +1,25 @@
-import { customElement, property, state } from 'lit/decorators.js';
-import { html, LitElement } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
 
 import { getRandomColor, getUnit, hashCode } from './avatar-utils';
-import { SvgCache } from './svg-cache';
+import { GeneratedAvatar } from './generated-avatar.lit';
 
 const SIZE = 80;
 const ELEMENTS = 3;
 
 @customElement('marble-avatar')
-export class MarbleAvatar extends LitElement {
-    protected createRenderRoot() {
-        return this;
-    }
-
+export class MarbleAvatar extends GeneratedAvatar {
     @property() key: string;
     @property() title: string;
     @property({ type: Boolean }) doNotBlur = false;
     @property() colors: string[] = ['F56095', 'F5CD65', '00B27D', '37D3F5', '2F89EB'];
 
-    @state() private cachedUrl: string | undefined;
-    private cachedUrlKey: string | undefined;
-    private unsubscribe: (() => void) | undefined;
-
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        this.unsubscribe?.();
-        this.unsubscribe = undefined;
+    protected getCacheKey(pixelSize: number): string {
+        const title = this.title || '';
+        return `marble-${this.key}-${title}-${this.doNotBlur ? 1 : 0}-${pixelSize}`;
     }
 
-    render() {
-        const pixelSize = Math.ceil(this.clientWidth * (window.devicePixelRatio || 1)) || SIZE;
-        const title = this.title || '';
-        const cacheKey = `marble-${this.key}-${title}-${this.doNotBlur ? 1 : 0}-${pixelSize}`;
-        const cached = this.cachedUrlKey === cacheKey ? this.cachedUrl : SvgCache.get(cacheKey);
-
-        if (cached)
-            return html`<img src='${cached}' width='100%' height='100%' draggable='false' alt='' />`;
-
-        // Cache miss: show skeleton and kick off async caching
-        const svgString = MarbleAvatar.generateSvgString(this.key, this.colors, this.title, this.doNotBlur);
-        this.unsubscribe?.();
-        this.unsubscribe = SvgCache.onCached(cacheKey, url => {
-            this.unsubscribe = undefined;
-            this.cachedUrlKey = cacheKey;
-            this.cachedUrl = url;
-        });
-        SvgCache.add(cacheKey, svgString, pixelSize);
-
-        return html`<div style='width:100%;height:100%;border-radius:50%;background:var(--background-04)'></div>`;
+    protected getSvgString(): string {
+        return MarbleAvatar.generateSvgString(this.key, this.colors, this.title, this.doNotBlur);
     }
 
     static generateSvgString(key: string, colors: string[], title: string, doNotBlur: boolean): string {

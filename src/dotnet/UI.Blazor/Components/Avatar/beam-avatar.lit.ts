@@ -1,50 +1,22 @@
-import { customElement, property, state } from 'lit/decorators.js';
-import { html, LitElement } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
 
 import { getBoolDigit, getContrast, getRandomColor, getUnit, hashCode } from './avatar-utils';
-import { SvgCache } from './svg-cache';
+import { GeneratedAvatar } from './generated-avatar.lit';
 
 const SIZE = 36;
 
 @customElement('beam-avatar')
-export class BeamAvatar extends LitElement {
-    protected createRenderRoot() {
-        return this;
-    }
-
+export class BeamAvatar extends GeneratedAvatar {
     @property() key: string;
     @property() square = false;
     @property() colors: string[] = ['FFDBA0', 'BBBEFF', '9294E1', 'FF9BC0', '0F2FE8'];
 
-    @state() private cachedUrl: string | undefined;
-    private cachedUrlKey: string | undefined;
-    private unsubscribe: (() => void) | undefined;
-
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        this.unsubscribe?.();
-        this.unsubscribe = undefined;
+    protected getCacheKey(pixelSize: number): string {
+        return `beam-${this.key}-${pixelSize}`;
     }
 
-    render() {
-        const pixelSize = Math.ceil(this.clientWidth * (window.devicePixelRatio || 1)) || SIZE;
-        const cacheKey = `beam-${this.key}-${pixelSize}`;
-        const cached = this.cachedUrlKey === cacheKey ? this.cachedUrl : SvgCache.get(cacheKey);
-
-        if (cached)
-            return html`<img src='${cached}' width='100%' height='100%' draggable='false' alt='' />`;
-
-        // Cache miss: show skeleton and kick off async caching
-        const svgString = BeamAvatar.generateSvgString(this.key, this.colors, this.square);
-        this.unsubscribe?.();
-        this.unsubscribe = SvgCache.onCached(cacheKey, url => {
-            this.unsubscribe = undefined;
-            this.cachedUrlKey = cacheKey;
-            this.cachedUrl = url;
-        });
-        SvgCache.add(cacheKey, svgString, pixelSize);
-
-        return html`<div style='width:100%;height:100%;border-radius:50%;background:var(--background-04)'></div>`;
+    protected getSvgString(): string {
+        return BeamAvatar.generateSvgString(this.key, this.colors, this.square);
     }
 
     static generateSvgString(key: string, colors: string[], square: boolean): string {
