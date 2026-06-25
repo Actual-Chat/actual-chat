@@ -9,14 +9,17 @@ using ActualChat.Streaming;
 namespace ActualChat.Chat.Flows;
 
 /// <summary>
-/// Throttled resummarization of an in-progress live conversation, and its finalization on close:
-/// materialize into a persisted <see cref="Conversation"/> when it meets the split threshold, else vanish.
+/// Throttled resummarization of an in-progress live conversation (at the split-flow cadence), and its
+/// finalization on close: materialize into a persisted <see cref="Conversation"/> when it meets the
+/// split threshold, else vanish.
 /// </summary>
 [Flow(ResumeTimeout = 60)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 {
     private const int MaxEntries = 1000;
+    // Resume throttle: kept short so a closing session is finalized before the 90s self-close; the actual
+    // resummary is additionally gated on Settings.Summarization.ResummarizationDelay.
     private static readonly TimeSpan Throttle = TimeSpan.FromSeconds(20);
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
@@ -48,9 +51,14 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
             return;
         }
 
-        var entries = await GetEntries(live.StartEntryLid, cancellationToken).ConfigureAwait(false);
+        // Summarize only mature entries (older than ChatEntrySummarizationDelay) so the collapsed block
+        // lags behind the newest message — participants keep reading the recent tail uncollapsed.
+        var entries = await GetEntries(live.StartEntryLid, matureOnly: true, cancellationToken)
+            .ConfigureAwait(false);
         var hasEnoughNew = entries.Count > 0 && entries[^1].LocalId > LastSummaryEndLid;
-        if (hasEnoughNew) {
+        var dueForResummary =
+            ResumedAt - live.LastSummaryAt >= Settings.Summarization.ResummarizationDelay;
+        if (hasEnoughNew && dueForResummary) {
             var result = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
             if (result.Summary is { } summary) {
                 await LiveSessionsBackend
@@ -77,7 +85,9 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
             return;
         }
 
-        var entries = await GetEntries(live.StartEntryLid, cancellationToken).ConfigureAwait(false);
+        // A closed session materializes its full range — nothing is "immature" once the call ended.
+        var entries = await GetEntries(live.StartEntryLid, matureOnly: false, cancellationToken)
+            .ConfigureAwait(false);
         var wordCount = entries.Sum(WordCount);
         var meetsThreshold = entries.Count >= Settings.Summarization.MinConversationEntries
             && wordCount >= Settings.Summarization.MinConversationWords;
@@ -99,13 +109,16 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
                 new NotificationsBackend_NotifyConversation(live.ConversationId, phase, text, live.EndEntryLid, live.AuthorIds),
                 cancellationToken);
 
-    private async Task<IReadOnlyList<ChatEntrySlim>> GetEntries(long startEntryLid, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<ChatEntrySlim>> GetEntries(
+        long startEntryLid, bool matureOnly, CancellationToken cancellationToken)
     {
         var entries = await ChatsBackend
             .ListNewEntries(ChatId, startEntryLid - 1, MaxEntries, cancellationToken)
             .ConfigureAwait(false);
+        var matureBefore = ResumedAt - Settings.Summarization.ChatEntrySummarizationDelay;
         return entries
-            .Where(e => !e.Content.IsNullOrEmpty())
+            .Where(e => !e.Content.IsNullOrEmpty()
+                && (!matureOnly || (e.EndsAt ?? e.BeginsAt) <= matureBefore))
             .Select(e => new ChatEntrySlim(e))
             .ToList();
     }
