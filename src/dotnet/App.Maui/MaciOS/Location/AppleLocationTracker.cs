@@ -5,6 +5,8 @@ namespace ActualChat.App.Maui.Location;
 
 public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
 {
+    private const double DistanceFilterMeters = 50;
+
     private readonly MutableState<GeoPoint?> _lastKnown;
     private CLLocationManager? _manager;
 
@@ -63,8 +65,9 @@ public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
     {
         var manager = new CLLocationManager {
             DesiredAccuracy = CLLocation.AccuracyBest,
+            DistanceFilter = DistanceFilterMeters,
             AllowsBackgroundLocationUpdates = true,
-            PausesLocationUpdatesAutomatically = false,
+            PausesLocationUpdatesAutomatically = true,
         };
         manager.LocationsUpdated += OnLocationsUpdated;
         return manager;
