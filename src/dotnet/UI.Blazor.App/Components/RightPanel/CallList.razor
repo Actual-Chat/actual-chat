@@ -44,7 +44,9 @@
             var members = live.Members.Where(x => x.Group == group).ToList();
             if (members.Count == 0)
                 continue;
-            <div class="c-group-title">@title — @members.Count</div>
+
+            var groupTitle = $"{title} — {members.Count}";
+            <Collapsed @key="@title" Title="@groupTitle" IsCollapsed="false">
             @foreach (var member in members) {
                 <div class="c-member-row" @key="@member.AuthorId.Value">
                     <AuthorBadge
@@ -75,6 +77,7 @@
                     </div>
                 </div>
             }
+            </Collapsed>
         }
     </div>
 </div>
