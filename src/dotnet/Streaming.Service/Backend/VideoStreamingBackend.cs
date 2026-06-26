@@ -141,6 +141,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         rules.Require(ChatPermissions.Write);
         rules.Require(ChatPermissions.WriteVideo);
 
+        // A controller disabled video for the session — reject all camera/screen pushes
+        // (mirrors the audio force-mute reject), so no one's video reaches the others.
+        var liveState = await LiveSessionsBackend.Get(record.ChatId, cancellationToken).ConfigureAwait(false);
+        if (liveState?.Rules is { VideoAllowed: false })
+            return;
+
         var author = await Authors
             .EnsureJoined(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);

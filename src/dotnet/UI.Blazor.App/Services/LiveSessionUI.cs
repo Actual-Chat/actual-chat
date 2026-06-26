@@ -44,6 +44,9 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken)
         => LiveSessions.MutePeer(Session, chatId, targetAuthorId, muted, cancellationToken);
 
+    public Task MuteAll(ChatId chatId, bool muted, CancellationToken cancellationToken)
+        => LiveSessions.MuteAll(Session, chatId, muted, cancellationToken);
+
     [ComputeMethod]
     public virtual async Task<bool> AmIForcedMuted(ChatId chatId, CancellationToken cancellationToken)
     {
@@ -110,11 +113,12 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
     }
 
-    // Soft forced-mute: when a controller mutes me, my own recorder stops.
+    // Soft mute enforcement: when a controller force-mutes me, or mutes everyone
+    // (MicMuted), my own recorder stops. MicMuted is peer-revocable — see RecorderToggle.
     private async Task RunForcedMuteEnforcement(CancellationToken cancellationToken)
     {
         var cMuted = await Computed
-            .Capture(() => GetForcedMutedRecordingChat(cancellationToken), cancellationToken)
+            .Capture(() => GetMutedRecordingChat(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
             if (cMuted.Value is { } chatId && !chatId.Value.IsNullOrEmpty())
@@ -126,7 +130,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     }
 
     [ComputeMethod]
-    protected virtual async Task<ChatId?> GetForcedMutedRecordingChat(CancellationToken cancellationToken)
+    protected virtual async Task<ChatId?> GetMutedRecordingChat(CancellationToken cancellationToken)
     {
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var recording = activeChats.FirstOrDefault(c => c.IsRecording);
@@ -140,7 +144,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         if (ownAuthor is null)
             return null;
         var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
-        return me is { ForcedMuted: true } ? chatId : null;
+        return me is { ForcedMuted: true } or { MicMuted: true } ? chatId : null;
     }
 
     [ComputeMethod]

@@ -21,20 +21,26 @@
         <span class="c-rules-text">@RulesText(live.Rules)</span>
     </div>
     @if (m.IsController) {
+        var anyMuted = live.Members.Any(x => x.AuthorId != m.OwnAuthorId && x.MicMuted);
         <div class="c-manage">
             <span class="c-manage-title">Manage</span>
             <div class="c-manage-buttons">
-                <button class="c-toggle @(TranscriptOn(live.Rules) ? "on" : "off")" @onclick="@(() => ToggleTranscript(live))" title="Transcription">
+                <button class="c-manage-btn @(TranscriptOn(live.Rules) ? "on" : "off")"
+                        @onclick="@(() => ToggleTranscript(live))" title="Transcription">
                     <i class="icon-voice-to-text-message"></i>
                 </button>
-                <button class="c-toggle @(VoiceOn(live.Rules) ? "on" : "off")" @onclick="@(() => ToggleVoice(live))" title="Voice streaming">
-                    <i class="icon-mic-2"></i>
+                <button class="c-manage-btn @(VoiceOn(live.Rules) ? "on" : "off")"
+                        @onclick="@(() => ToggleVoice(live))" title="Voice">
+                    <i class="icon-voice-01"></i>
                 </button>
-                <button class="c-toggle @(live.Rules.ScreenShareAllowed ? "on" : "off")" @onclick="@(() => ToggleScreenShare(live))" title="Screen share">
-                    <i class="icon-screen-share"></i>
-                </button>
-                <button class="c-toggle @(live.Rules.RecordingAllowed ? "on" : "off")" @onclick="@(() => ToggleRecording(live))" title="Recording">
+                <button class="c-manage-btn @(live.Rules.VideoAllowed ? "on" : "off")"
+                        @onclick="@(() => ToggleVideo(live))" title="Video">
                     <i class="icon-video"></i>
+                </button>
+                <button class="c-manage-btn @(anyMuted ? "on" : "off")"
+                        @onclick="@(() => ToggleMuteAll(live, !anyMuted))"
+                        title="@(anyMuted ? "Unmute all" : "Mute all")">
+                    <i class="@(anyMuted ? "icon-mic-off" : "icon-mic-2")"></i>
                 </button>
             </div>
         </div>
@@ -130,10 +136,12 @@
         => SetVoiceMode(live, !TranscriptOn(live.Rules), VoiceOn(live.Rules));
     private Task ToggleVoice(LiveSession live)
         => SetVoiceMode(live, TranscriptOn(live.Rules), !VoiceOn(live.Rules));
-    private Task ToggleScreenShare(LiveSession live)
-        => LiveSessionUI.SetRules(live.ChatId, live.Rules with { ScreenShareAllowed = !live.Rules.ScreenShareAllowed }, CancellationToken.None);
-    private Task ToggleRecording(LiveSession live)
-        => LiveSessionUI.SetRules(live.ChatId, live.Rules with { RecordingAllowed = !live.Rules.RecordingAllowed }, CancellationToken.None);
+    private Task ToggleVideo(LiveSession live)
+        => LiveSessionUI.SetRules(live.ChatId,
+            live.Rules with { VideoAllowed = !live.Rules.VideoAllowed },
+            CancellationToken.None);
+    private Task ToggleMuteAll(LiveSession live, bool muted)
+        => LiveSessionUI.MuteAll(live.ChatId, muted, CancellationToken.None);
 
     private Task SetVoiceMode(LiveSession live, bool transcript, bool voice) {
         var mode = (transcript, voice) switch {
@@ -149,13 +157,11 @@
     private static bool VoiceOn(SessionRules r) => r.VoiceModeOverride is not VoiceMode.JustText;
 
     private static string RulesText(SessionRules r) {
-        var parts = new List<string>();
-        parts.Add(TranscriptOn(r) ? "Transcription" : "No transcription");
-        parts.Add(VoiceOn(r) ? "Voice" : "No voice");
-        if (!r.ScreenShareAllowed)
-            parts.Add("No screen share");
-        if (!r.RecordingAllowed)
-            parts.Add("No recording");
+        var parts = new List<string> {
+            TranscriptOn(r) ? "Transcription" : "No transcription",
+            VoiceOn(r) ? "Voice" : "No voice",
+            r.VideoAllowed ? "Video" : "No video",
+        };
         return string.Join(", ", parts);
     }
 

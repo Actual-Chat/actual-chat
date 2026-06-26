@@ -102,6 +102,10 @@ public partial class AudioStreamingBackend
         var liveState = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         var effectiveVoiceMode = (liveState?.Rules ?? SessionRules.Default).Merge(chatVoiceMode.VoiceMode);
         var mustStreamVoice = effectiveVoiceMode.HasVoice();
+        var mustTranscribe = effectiveVoiceMode.HasText();
+        // Controller turned both voice and transcript off for the session — nothing to contribute live.
+        if (!mustStreamVoice && !mustTranscribe)
+            return;
 
         var recordedAt = default(Moment) + TimeSpan.FromSeconds(sourceStartOffsetSeconds);
         using var audio = new AudioSource(
@@ -166,18 +170,22 @@ public partial class AudioStreamingBackend
         var audioMediaIdTcs = TaskCompletionSourceExt.New<MediaId?>();
         var refineTranscriptLanguageTcs = TaskCompletionSourceExt.New<Language?>();
         var refinedTranscriptTcs = TaskCompletionSourceExt.New<Transcript?>();
-        var transcribeTask = BackgroundTask.Run(
-            () => TranscribeAudio(
-                openSegment,
-                beginsAt,
-                liveStreamId,
-                audioMediaIdTcs.Task,
-                refineTranscriptLanguageTcs,
-                refinedTranscriptTcs.Task,
-                CancellationToken.None),
-            Log,
-            $"{nameof(TranscribeAudio)} failed",
-            CancellationToken.None);
+        // Transcript off (controller set JustVoice / user JustVoice): live voice still
+        // fans out, but no transcription runs and no text entry / audio media is persisted.
+        Task? transcribeTask = null;
+        if (mustTranscribe)
+            transcribeTask = BackgroundTask.Run(
+                () => TranscribeAudio(
+                    openSegment,
+                    beginsAt,
+                    liveStreamId,
+                    audioMediaIdTcs.Task,
+                    refineTranscriptLanguageTcs,
+                    refinedTranscriptTcs.Task,
+                    CancellationToken.None),
+                Log,
+                $"{nameof(TranscribeAudio)} failed",
+                CancellationToken.None);
 
         // TODO(AK): Compensate failures during audio entry creation or saving audio blob (later)
 
@@ -201,7 +209,7 @@ public partial class AudioStreamingBackend
             openSegment.Close(openSegment.Source.Duration);
             closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
 
-            if (mustStreamVoice) {
+            if (mustStreamVoice && mustTranscribe) {
                 // Save audio blob and create Media record - use CancellationToken.None to ensure cleanup
                 audioMediaId = await AudioSegmentSaver
                     .SaveAndCreateMedia(closedSegment, chatId, beginsAt, recordedAt, CancellationToken.None)
@@ -230,9 +238,11 @@ public partial class AudioStreamingBackend
             }
         }
 
-        DispatchRefineTranscription(openSegment, closedSegment, mustStreamVoice, refineTranscriptLanguageTcs.Task, refinedTranscriptTcs);
-
-        await transcribeTask.ConfigureAwait(false);
+        if (mustTranscribe) {
+            DispatchRefineTranscription(
+                openSegment, closedSegment, mustStreamVoice, refineTranscriptLanguageTcs.Task, refinedTranscriptTcs);
+            await transcribeTask!.ConfigureAwait(false);
+        }
     }
 
     private void DispatchRefineTranscription(

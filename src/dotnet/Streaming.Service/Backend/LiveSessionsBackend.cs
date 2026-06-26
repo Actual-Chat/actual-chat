@@ -1,3 +1,4 @@
+using ActualChat.Chat;
 using ActualChat.Live;
 using ActualChat.Notifications;
 using ActualChat.Queues;
@@ -31,6 +32,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     private IChatsBackend ChatsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
+    private IRolesBackend RolesBackend { get; }
     private ILiveAudioBackend LiveAudioBackend { get; }
     private ILiveVideoBackend LiveVideoBackend { get; }
     private VersionGenerator<long> VersionGenerator { get; }
@@ -40,6 +42,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     {
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        RolesBackend = services.GetRequiredService<IRolesBackend>();
         LiveAudioBackend = services.GetRequiredService<ILiveAudioBackend>();
         LiveVideoBackend = services.GetRequiredService<ILiveVideoBackend>();
         VersionGenerator = services.GetRequiredService<VersionGenerator<long>>();
@@ -129,9 +132,17 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             && !participants.Values.Any(p => IsFreshParticipant(p, cutoff)))
             _ = StartClosingGrace(chatId);
 
+        // Owners are grouped with the host (they can manage the call too).
+        var ownerRole = (await RolesBackend.ListSystem(chatId, cancellationToken).ConfigureAwait(false))
+            .FirstOrDefault(r => r.SystemRole == SystemRole.Owner);
+        var ownerIds = ownerRole is null
+            ? new HashSet<AuthorId>()
+            : (await RolesBackend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false))
+                .ToHashSet();
+
         var members = byAuthor.Values
             .Select(m => m with {
-                Group = m.AuthorId == host ? MemberGroup.Host
+                Group = m.AuthorId == host || ownerIds.Contains(m.AuthorId) ? MemberGroup.Host
                     : m.IsMicOpen || m.HasCamera || m.HasScreenShare || m.IsListening ? MemberGroup.Other
                     : MemberGroup.Exited,
             })
@@ -333,6 +344,25 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (existing is null)
             return;
         await _participants.Set(chatId.Value, author.UserId.Value, existing with { ForcedMuted = muted }).ConfigureAwait(false);
+        InvalidateGetLiveSession(chatId);
+    }
+
+    public virtual async Task MuteAll(ChatId chatId, AuthorId exceptAuthorId, bool muted, CancellationToken cancellationToken)
+    {
+        // Soft "mute all except the actor": sets MicMuted on every other participant.
+        // Unlike ForcedMuted this is peer-revocable — a muted peer can unmute themselves.
+        var exceptUserId = (await AuthorsBackend
+            .Get(chatId, exceptAuthorId, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false))?.UserId;
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        foreach (var (userIdValue, info) in participants) {
+            if (info is null || info.MicMuted == muted)
+                continue;
+            if (exceptUserId is { } id && userIdValue == id.Value)
+                continue;
+
+            await _participants.Set(chatId.Value, userIdValue, info with { MicMuted = muted }).ConfigureAwait(false);
+        }
         InvalidateGetLiveSession(chatId);
     }
 
