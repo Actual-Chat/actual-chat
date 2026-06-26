@@ -1,5 +1,4 @@
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Users;
 using CoreLocation;
 
 namespace ActualChat.App.Maui.Location;
@@ -31,7 +30,7 @@ public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
         var accuracy = settings.LocationAccuracyOrDefault;
         MainThread.BeginInvokeOnMainThread(() => {
             _manager ??= CreateManager();
-            Apply(_manager, accuracy);
+            _manager.SetAccuracy(accuracy);
             _manager.RequestWhenInUseAuthorization();
             _manager.StartUpdatingLocation();
         });
@@ -74,17 +73,6 @@ public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
         };
         manager.LocationsUpdated += OnLocationsUpdated;
         return manager;
-    }
-
-    private static void Apply(CLLocationManager manager, GeoTrackingAccuracy accuracy)
-    {
-        var (desiredAccuracy, distanceFilter) = accuracy switch {
-            GeoTrackingAccuracy.High => (CLLocation.AccuracyBest, 10d),
-            GeoTrackingAccuracy.Low => (CLLocation.AccuracyHundredMeters, 100d),
-            _ => (CLLocation.AccuracyNearestTenMeters, 50d),
-        };
-        manager.DesiredAccuracy = desiredAccuracy;
-        manager.DistanceFilter = distanceFilter;
     }
 
     private void OnLocationsUpdated(object? sender, CLLocationsUpdatedEventArgs e)
