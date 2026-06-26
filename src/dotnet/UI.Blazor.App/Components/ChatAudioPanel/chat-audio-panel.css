@@ -565,9 +565,6 @@ body.narrow .to-thin .rec-icon.text-mode-on {
 .list-view-layout:has(.chat-activity-panel.listening) .playback-wrapper.listen-on {
     @apply outline-primary outline-offset-[-1px];
 }
-.playback-wrapper.listen-off-to-on {
-    animation: off-to-on-outline 1000ms ease-in-out forwards;
-}
 .playback-wrapper .btn::after {
     @apply content-empty;
     @apply absolute inset-0;
@@ -675,12 +672,26 @@ body.narrow .selected-language {
 }
 
 /* Inactivity */
-.inactivity-item {
-    @apply text-text-1;
+.inactivity-tile {
+    @apply h-auto p-2;
 }
-.inactivity-item > u {
+.inactivity-tile .tile-item-body-content {
     @apply font-medium;
-    @apply underline decoration-from-font underline-offset-2;
+}
+.inactivity-icon {
+    @apply flex items-center justify-center;
+    @apply h-9 w-9;
+    @apply rounded-full;
+    @apply bg-transparent text-03;
+}
+.inactivity-tile.selected {
+    @apply bg-[var(--hover-after-primary)];
+}
+.inactivity-tile.selected .inactivity-icon {
+    @apply text-primary;
+}
+.inactivity-tile.selected .tile-item-body-content {
+    @apply text-primary;
 }
 
 /* === 8. Tooltips === */
@@ -958,11 +969,6 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
 @keyframes gradientShake {
     from { transform: translateY(18%); }
     to   { transform: translateY(-18%); }
-}
-@keyframes off-to-on-outline {
-    0%   { outline-width: 1px; }
-    50%  { outline-width: 3px; }
-    100% { outline-width: 2px; }
 }
 @keyframes playback-btn-glow {
     0%, 100% {

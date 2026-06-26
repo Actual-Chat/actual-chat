@@ -22,6 +22,7 @@
     --gray-50-05: #8C8C8C0D;
     --gray-50-10: #8C8C8C1A;
     --gray-50-20: #8C8C8C33;
+    --gray-80-10: #D3D3D31A;
     --gray-80-20: #D3D3D333;
 
     --ash-99: #F5F5FC;
@@ -67,6 +68,7 @@
     --blue-50-05: #007AFF0D;
     --blue-80-50: #7CBBFF80;
     --blue-80-20: #7CBBFF33;
+    --blue-90-10: #A4CFFF1A;
 
     --frost-99: #ECFCFF;
     --frost-95: #DEF9FF;
@@ -290,8 +292,8 @@
     --text-06: var(--white);
 
     /*Primary colors for buttons, icons, etc */
-    --primary: var(--blue-50);
-    --danger: var(--magenta-50);
+    --primary: var(--blue-60);
+    --danger: var(--magenta-60);
     --danger-light: var(--magenta-70);
     --success: var(--green-40);
     --warning: var(--sienna-40);
@@ -360,12 +362,12 @@
     --cancel-text: var(--gray-30);
     --after-lighter: var(--white-05);
     --after-darker: var(--black-05);
-    --hover-after-primary: var(--blue-50-10);
-    --hover-after-danger: var(--magenta-50-10);
-    --hover-after-cancel: var(--gray-50-10);
-    --focus-after-primary: var(--blue-50-05);
-    --focus-after-danger: var(--magenta-50-05);
-    --focus-after-cancel: var(--gray-50-05);
+    --hover-after-primary: var(--blue-90-10);
+    --hover-after-danger: var(--magenta-90-10);
+    --hover-after-cancel: var(--gray-80-10);
+    --focus-after-primary: var(--blue-90-10);
+    --focus-after-danger: var(--magenta-90-10);
+    --focus-after-cancel: var(--gray-80-10);
 
     /* Post Audio Panel */
     --post-panel: var(--gray-20);
@@ -619,8 +621,8 @@
     --text-06: var(--black);
 
     /*Primary colors for buttons, icons, etc */
-    --primary: var(--blue-60);
-    --danger: var(--magenta-50);
+    --primary: var(--blue-70);
+    --danger: var(--magenta-60);
     --danger-light: var(--magenta-70);
     --success: var(--green-40);
     --warning: var(--sienna-40);
@@ -689,12 +691,12 @@
     --cancel-text: var(--ash-70);
     --after-lighter: var(--white-05);
     --after-darker: var(--black-05);
-    --hover-after-primary: var(--blue-50-10);
-    --hover-after-danger: var(--magenta-50-10);
+    --hover-after-primary: var(--blue-90-10);
+    --hover-after-danger: var(--magenta-90-10);
     --hover-after-cancel: var(--white-05);
-    --focus-after-primary: var(--blue-50-20);
-    --focus-after-danger: var(--magenta-50-20);
-    --focus-after-cancel: var(--white-10);
+    --focus-after-primary: var(--blue-90-10);
+    --focus-after-danger: var(--magenta-90-10);
+    --focus-after-cancel: var(--white-05);
 
     /* Post Audio Panel */
     --post-panel: var(--ash-14);
@@ -946,8 +948,8 @@
     --text-06: var(--white);
 
     /*Primary colors for buttons, icons, etc */
-    --primary: var(--blue-50);
-    --danger: var(--magenta-50);
+    --primary: var(--blue-60);
+    --danger: var(--magenta-60);
     --danger-light: var(--magenta-70);
     --success: var(--green-40);
     --warning: var(--sienna-40);
@@ -1016,12 +1018,12 @@
     --cancel-text: var(--gray-30);
     --after-lighter: var(--white-05);
     --after-darker: var(--black-05);
-    --hover-after-primary: var(--blue-50-10);
-    --hover-after-danger: var(--magenta-50-10);
-    --hover-after-cancel: var(--gray-50-10);
-    --focus-after-primary: var(--blue-50-05);
-    --focus-after-danger: var(--magenta-50-05);
-    --focus-after-cancel: var(--gray-50-05);
+    --hover-after-primary: var(--blue-90-10);
+    --hover-after-danger: var(--magenta-90-10);
+    --hover-after-cancel: var(--gray-80-10);
+    --focus-after-primary: var(--blue-90-10);
+    --focus-after-danger: var(--magenta-90-10);
+    --focus-after-cancel: var(--gray-80-10);
 
     /* Post Audio Panel */
     --post-panel: var(--gray-20);
