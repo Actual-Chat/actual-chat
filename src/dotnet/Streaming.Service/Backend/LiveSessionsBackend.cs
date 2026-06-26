@@ -164,6 +164,21 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // [ComputeMethod]
+    public virtual async Task<bool> IsForcedMuted(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    {
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
+        var author = await AuthorsBackend
+            .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        if (author is null || author.UserId.Value.IsNullOrEmpty())
+            return false;
+
+        var info = await SafeGetParticipant(chatId, author.UserId).ConfigureAwait(false);
+        return info?.ForcedMuted ?? false;
+    }
+
+    // [ComputeMethod]
     public virtual async Task<bool> HasRecorder(ChatId chatId, CancellationToken cancellationToken)
     {
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
