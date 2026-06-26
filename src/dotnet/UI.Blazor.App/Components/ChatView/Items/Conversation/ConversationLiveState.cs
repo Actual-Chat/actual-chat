@@ -10,4 +10,5 @@ public sealed record ConversationLiveState(
     TranslatedConversation Conversation,
     bool IsLive,
     bool IsJoined,
-    bool IsVoiceOnly);
+    bool IsVoiceOnly,
+    string ChatTitle = "");

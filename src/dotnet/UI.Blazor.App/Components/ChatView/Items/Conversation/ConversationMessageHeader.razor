@@ -8,19 +8,21 @@
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(Conversation.Id.Value, IsSeparated.ToString()))">
     <div class="bg-wrapper">
-        <HeaderButton
-            Class="btn-summary-toggle"
-            Tooltip="@tooltip"
-            Click="@OnConversationToggleClick">
-            @if (IsSeparated) {
-                <i class="icon-collapse"></i>
-            } else {
-                <i class="icon-expand"></i>
-            }
-        </HeaderButton>
+        @if (ShowToggle) {
+            <HeaderButton
+                Class="btn-summary-toggle"
+                Tooltip="@tooltip"
+                Click="@OnConversationToggleClick">
+                @if (IsSeparated) {
+                    <i class="icon-collapse"></i>
+                } else {
+                    <i class="icon-expand"></i>
+                }
+            </HeaderButton>
+        }
         <div class="c-title">
             <span class="c-tldr">
-                <i class="icon-tldr"></i>
+                <i class="@Icon"></i>
             </span>
             @Title.Text
             @TranslationFragments.TranslationMark(Title.State)
@@ -39,6 +41,8 @@
     [Parameter] public int MessageCount { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
     [Parameter] public DateTime StartsAt { get; set; }
+    [Parameter] public string Icon { get; set; } = "icon-tldr";
+    [Parameter] public bool ShowToggle { get; set; } = true;
     [Parameter] public EventCallback ConversationToggleClick { get; set; }
 
     private void OnConversationToggleClick() {

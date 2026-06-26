@@ -22,7 +22,7 @@
                     @timeTotal
                 </div>
                 <div class="c-count c-tool">
-                    @(MessageCount + " message".Pluralize(MessageCount))
+                    @(SecondLine ?? MessageCount + " message".Pluralize(MessageCount))
                 </div>
             </div>
         </div>
@@ -42,6 +42,7 @@
     [Parameter] public DateTime StartsAt { get; set; }
     [Parameter] public DateTime EndsAt { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
+    [Parameter] public string? SecondLine { get; set; }
     [Parameter] public EventCallback CopyToClipboardRequested { get; set; }
 
     private string GetConversationTimeInfoString() {

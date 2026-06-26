@@ -14,6 +14,8 @@
     var cls = $"conversation-message message-wrapper {openClass} {liveClass}";
     var attachments = conversation.Attachments;
     var canExpand = !state.IsLive || state.IsJoined;
+    var headerIcon = state is { IsLive: true, IsJoined: false } ? "icon-voice-01" : "icon-tldr";
+    var headerTitle = state.IsVoiceOnly ? TranslatedText.From(state.ChatTitle) : m.Title;
 }
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
@@ -22,22 +24,13 @@
         <div class="c-summary">
             <ConversationMessageHeader
                 Conversation="@conversation"
-                Title="@m.Title"
+                Title="@headerTitle"
+                Icon="@headerIcon"
+                ShowToggle="@(!state.IsVoiceOnly)"
                 MessageCount="@messageCount"
                 StartsAt="@startsAt"
                 ConversationToggleClick="@OnHeaderClick"/>
-            @if (state.IsLive) {
-                <div class="c-live-status">
-                    <span class="c-live-badge">@(state.IsJoined ? "live in voice" : "live")</span>
-                    @if (!state.IsJoined) {
-                        <span class="c-join-btn" @onclick="@OnJoin">Tap to join</span>
-                    }
-                </div>
-            }
-            @if (state.IsVoiceOnly) {
-                <div class="c-short">Voice only</div>
-            }
-            else {
+            @if (!state.IsVoiceOnly) {
                 <div class="c-short">
                     <MarkupView Markup="@m.Description.Markup"/>
                     @if (!_isOpen && canExpand) {
@@ -75,8 +68,12 @@
         CopyToClipboardRequested="@OnCopyToClipboardRequested"
         Authors="@conversation.AuthorIds"
         MessageCount="@messageCount"
+        SecondLine="@(state.IsVoiceOnly ? "Voice only" : null)"
         StartsAt="@startsAt"
         EndsAt="@endsAt"/>
+    @if (state is { IsLive: true, IsJoined: false }) {
+        <div class="c-join-row" @onclick="@OnJoin">Tap to join</div>
+    }
 </div>
 
 @code {
@@ -85,6 +82,7 @@
     private ChatEntry _fakeEntry = null!;
 
     private ChatUI ChatUI => Hub.ChatUI;
+    private IChats Chats => Hub.Chats;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
@@ -131,7 +129,12 @@
         var isLive = live != null && live.Id == conversation.Id;
         var isJoined = isLive && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(true);
         var isVoiceOnly = isLive && live!.Title.IsNullOrEmpty() && live.Summary.IsNullOrEmpty();
-        return new ConversationLiveState(translated, isLive, isJoined, isVoiceOnly);
+        var chatTitle = "";
+        if (isVoiceOnly) {
+            var chat = await Chats.Get(Hub.Session, chatId, cancellationToken).ConfigureAwait(true);
+            chatTitle = chat?.Title ?? "";
+        }
+        return new ConversationLiveState(translated, isLive, isJoined, isVoiceOnly, chatTitle);
     }
 
     private void OnHeaderClick() {
