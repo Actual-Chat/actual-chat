@@ -4,6 +4,7 @@ import * as path from 'path';
 import { execSync } from 'child_process';
 
 export const TEST_EMAIL = 'test-claude-agent@actual.chat';
+export const TEST_EMAIL_2 = 'test-claude-agent-2@actual.chat';
 export const TEST_OTP = '111111';
 
 export function loadBaseUrl(): string {
@@ -256,7 +257,7 @@ export async function isSignedIn(page: Page): Promise<boolean> {
     ]);
 }
 
-export async function signIn(page: Page) {
+export async function signIn(page: Page, email: string = TEST_EMAIL, otp: string = TEST_OTP) {
     const signInButton = page.locator('button.signin-button-group, button.signin-button').first();
     await signInButton.waitFor({ state: 'visible', timeout: 10000 });
     // force: a stale OnboardingModal overlay can still intercept clicks on a fresh context.
@@ -273,7 +274,7 @@ export async function signIn(page: Page) {
     await emailInput.click();
     // pressSequentially: TextBox attaches its 800ms-debounced input listener in
     // OnAfterRenderAsync, so a single fill() can land before the listener exists.
-    await emailInput.pressSequentially(TEST_EMAIL, { delay: 50 });
+    await emailInput.pressSequentially(email, { delay: 50 });
     // Tab → fires Blazor's @onchange on blur.
     await emailInput.press('Tab');
 
@@ -286,7 +287,7 @@ export async function signIn(page: Page) {
     // fill() bypasses pointer events, so digits land even if the "Register new
     // account?" ConfirmModal has already rendered on top of the TOTP step.
     for (let i = 0; i < 6; i++) {
-        await otpDigits.nth(i).fill(TEST_OTP[i]);
+        await otpDigits.nth(i).fill(otp[i]);
         await page.waitForTimeout(50);
     }
 
@@ -305,11 +306,28 @@ export async function signIn(page: Page) {
     ]).catch(() => { /* caller verifies */ });
 }
 
-export async function ensureSignedIn(page: Page) {
+export async function ensureSignedIn(page: Page, email: string = TEST_EMAIL, otp: string = TEST_OTP) {
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
     await dismissCookieConsent(page);
     if (!await isSignedIn(page))
-        await signIn(page);
+        await signIn(page, email, otp);
     await skipOnboarding(page);
+}
+
+/** Fresh, signed-in context for one user with a mocked geolocation — used by multi-user tests
+ *  where each participant needs an isolated session and its own browser-level position. */
+export async function newUserContext(
+    conn: BrowserConnection,
+    email: string,
+    geo: { latitude: number; longitude: number; accuracy?: number },
+): Promise<{ context: BrowserContext; page: Page }> {
+    const context = await conn.browser.newContext({ ignoreHTTPSErrors: true });
+    await context.grantPermissions(['geolocation'], { origin: BASE_URL });
+    await context.setGeolocation(geo);
+    const page = await context.newPage();
+    page.on('pageerror', e => console.log(`PAGEERROR[${email}]:`, e.message));
+    page.on('console', m => { if (m.type() === 'error') console.log(`CONSOLE.ERROR[${email}]:`, m.text()); });
+    await ensureSignedIn(page, email);
+    return { context, page };
 }
