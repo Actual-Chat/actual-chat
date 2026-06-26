@@ -6,22 +6,29 @@
     @apply mb-2;
     background: linear-gradient(5deg, var(--conversation-gradient-01) -96.64%, var(--conversation-gradient-02) 39.02%, var(--conversation-gradient-01) 182.11%)
 }
-.conversation-message.live {
+.conversation-message.live:not(.joined) {
+    @apply border-none;
+    background: linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%);
+}
+.conversation-message.live.joined {
     @apply border border-primary;
+    background: none;
 }
-.conversation-message .c-live-status {
-    @apply flex flex-row items-center gap-x-2;
-    @apply my-1;
+.conversation-message.live .c-title .c-tldr i {
+    @apply text-primary;
 }
-.conversation-message .c-live-badge {
-    @apply inline-flex items-center;
-    @apply px-2 py-0.5;
-    @apply rounded-full;
-    @apply text-xs font-medium uppercase;
-    @apply bg-cr-badge-selected text-cr-badge-selected-text;
+.conversation-message .c-join-row {
+    @apply block w-full;
+    @apply px-4 py-1;
+    @apply text-center text-caption-1 font-semibold uppercase;
+    @apply text-primary;
+    letter-spacing: 0.42px;
 }
-.conversation-message.live .c-join-btn {
-    @apply text-primary font-medium cursor-pointer;
+body.hoverable .conversation-message .c-join-row:hover {
+    @apply cursor-pointer;
+}
+.conversation-message .c-join-row:active {
+    @apply opacity-70;
 }
 .conversation-message .c-details {
     @apply flex-y gap-y-2;
