@@ -77,6 +77,17 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         await Backend.MutePeer(chatId, targetAuthorId, muted, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task MuteAll(Session session, ChatId chatId, bool muted, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat.Rules.Author?.Id is not { } ownAuthorId)
+            return;
+
+        await Backend.MuteAll(chatId, ownAuthorId, muted, cancellationToken).ConfigureAwait(false);
+    }
+
     // Host or chat admin may manage the live session.
     private async Task RequireManage(Session session, ChatId chatId, CancellationToken cancellationToken)
     {

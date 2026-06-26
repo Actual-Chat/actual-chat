@@ -12,14 +12,17 @@
     var isOwnVideoStreaming = isOwnCameraRecording || isOwnScreenCasting;
     var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
     var isVideoAvailable = m.IsVideoAvailable;
-    var isVideoDisabled = !isVideoAvailable;
+    var isVideoBlockedByRules = isVideoAvailable && !m.IsVideoAllowed;
+    var isVideoDisabled = !isVideoAvailable || isVideoBlockedByRules;
     var showHeaderVoiceSettings = isListening && isRecording;
     var showVideoControls = (isVideoEnabled || !isVideoAvailable)
         && (isOwnVideoStreaming || isRecording || isAnyoneVideoStreaming);
     var showHeader = showHeaderVoiceSettings || showVideoControls;
-    var screenCastTooltip = isVideoDisabled
-        ? "Unavailable in this chat"
-        : isOwnScreenCasting ? "Stop screen share" : "Share screen";
+    var screenCastTooltip = isVideoBlockedByRules
+        ? "Video is off for this call"
+        : isVideoDisabled
+            ? "Unavailable in this chat"
+            : isOwnScreenCasting ? "Stop screen share" : "Share screen";
 }
 
 <OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
@@ -88,6 +91,7 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private CameraUI CameraUI => Hub.CameraUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
@@ -114,7 +118,9 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options {
-                InitialValue = new Model(null, true, false, false, false, false, null),
+                InitialValue = new Model(
+                    null, true, false, true,
+                    false, false, false, null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -124,6 +130,8 @@
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
         var isVideoAvailable = ChatVideoUI.IsVideoAvailableNonComputed(chat);
         var isVideoEnabled = await ChatVideoUI.IsVideoAvailable(chat.Id, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionUI.GetLiveSession(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isVideoAllowed = live?.Rules.VideoAllowed ?? true;
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnCameraRecording = await ChatVideoUI.IsOwnCameraRecording(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chat.Id, cancellationToken).ConfigureAwait(false);
@@ -132,6 +140,7 @@
             audioState,
             isVideoAvailable,
             isVideoEnabled,
+            isVideoAllowed,
             isAnyoneVideoStreaming,
             isOwnCameraRecording,
             isOwnScreenCasting,
@@ -144,6 +153,7 @@
         ChatAudioState? AudioState,
         bool IsVideoAvailable,
         bool IsVideoEnabled,
+        bool IsVideoAllowed,
         bool IsAnyoneVideoStreaming,
         bool IsOwnCameraRecording,
         bool IsOwnScreenCasting,
