@@ -45,6 +45,21 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         => LiveSessions.MutePeer(Session, chatId, targetAuthorId, muted, cancellationToken);
 
     [ComputeMethod]
+    public virtual async Task<bool> AmIForcedMuted(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var live = await GetLiveSession(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is null)
+            return false;
+
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return false;
+
+        var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
+        return me is { ForcedMuted: true };
+    }
+
+    [ComputeMethod]
     public virtual async Task<bool> AmIInLiveConversation(ChatId chatId, CancellationToken cancellationToken)
     {
         var audio = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
