@@ -7,14 +7,19 @@
 
 <FormBlock Class="first last">
     @foreach (var info in ListeningModeInfo.All) {
-        RenderFragment content;
-        if (info.Duration < TimeSpan.MaxValue) {
-            content = @<span class="inactivity-item">After <u>@info.Text</u> of inactivity</span>;
-        } else {
-            content = @<span class="inactivity-item"><u>Keep listening</u> while the app is active</span>;
-        }
-        <TileItem Click="@(() => SetListeningMode(info.Mode))">
-            <Content>@content</Content>
+        var isForever = info.Duration == TimeSpan.MaxValue;
+        var title = isForever ? "Keep listening" : $"After {info.Text}";
+        var caption = isForever ? "while the app is active" : "of inactivity";
+        var iconClass = isForever ? "icon-infinity" : "icon-clock-2";
+        var selectedCls = mode == info.Mode ? "selected" : "";
+        <TileItem Class="@($"inactivity-tile {selectedCls}")" Click="@(() => SetListeningMode(info.Mode))">
+            <Icon>
+                <div class="inactivity-icon">
+                    <i class="@iconClass text-2xl"></i>
+                </div>
+            </Icon>
+            <Content>@title</Content>
+            <Caption>@caption</Caption>
             <Right>
                 @if (mode == info.Mode) {
                     <i class="icon-checkmark-simple text-primary text-2xl"></i>
@@ -31,7 +36,7 @@
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();
-        Context.Title = "Turn off listening in this chat:";
+        Context.Title = "Turn off listening in this chat";
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -59,7 +64,6 @@
         } else {
             await UserSettingsUI.UserListeningSettings().Update(x => x.WithoutAlwaysListeningChat(chatId), CancellationToken.None);
         }
-        Context.Close();
     }
 
     // Nested types

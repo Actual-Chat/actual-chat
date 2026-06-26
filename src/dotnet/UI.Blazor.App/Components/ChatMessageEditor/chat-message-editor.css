@@ -273,21 +273,17 @@ body.wide .attachment-mode .post-panel-btn.post-message {
 }
 @keyframes show-attachment-list {
     0% {
-        filter: opacity(0);
-        height: auto;
+        opacity: 0;
         transform: translateY(100%);
     }
     70% {
-        filter: opacity(0.5);
-        height: auto;
+        opacity: 0.5;
         transform: translateY(-1rem);
     }
     100% {
-        filter: opacity(1);
-        height: auto;
+        opacity: 1;
         transform: translateY(0);
     }
-
 }
 body.narrow .attachment-list-wrapper {
     @apply border-none;
@@ -347,6 +343,9 @@ body.narrow .attachment-wrapper {
     @apply p-0;
     @apply bg-post-panel;
 }
+.narrow-panel .attachment-wrapper {
+    @apply rounded;
+}
 body.narrow .chat-message-editor:not(.narrow-panel) .attachment-wrapper:has(.c-file) {
     @apply -mt-px;
     border-left: 1px solid var(--black-50);
@@ -374,13 +373,15 @@ body.narrow .attachment-wrapper.last-element {
     @apply mt-auto;
     @apply rounded-t-lg;
     @apply overflow-hidden;
+    transition: width 150ms ease, height 150ms ease;
 }
 .narrow-panel .attachment-item {
-    @apply rounded-lg;
+    @apply rounded;
 }
 .attachment-item > img, .attachment-item > video {
     @apply h-34;
     @apply object-cover;
+    transition: min-height 150ms ease;
 }
 body.narrow .attachment-item {
     @apply h-30 w-30;
@@ -468,7 +469,7 @@ body.narrow .narrow-panel .attachment-filename {
 }
 .narrow-panel .attachment-upload-progress {
     @apply bottom-0;
-    @apply h-[2px];
+    @apply h-[4px];
     @apply mt-px;
 }
 .upload-file .attachment-upload-progress {
@@ -488,6 +489,9 @@ body.narrow .narrow-panel .attachment-filename {
     @apply text-caption-8;
     @apply pointer-events-none;
     background-color: rgba(0, 0, 0, 0.55);
+}
+.narrow-panel .attachment-upload-size {
+    @apply hidden;
 }
 
 /* Related Chat Entry Panel (Reply, Edit) */
