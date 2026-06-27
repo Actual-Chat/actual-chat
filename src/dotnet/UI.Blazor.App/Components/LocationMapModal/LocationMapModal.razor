@@ -1,13 +1,13 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, LiveLocationMapModal.ComputedModel>
-@implements IModalView<LiveLocationMapModal.Model>
+@inherits ComputedStateComponent<AppUIHub, LocationMapModal.ComputedModel>
+@implements IModalView<LocationMapModal.Model>
 @{
     var m = State.Value;
 }
 
 <DialogFrame
-    Class="live-location-map-modal"
-    Title="Live location"
+    Class="location-map-modal"
+    Title="Location"
     HasCloseButton="true">
     <Body>
         <div class="c-map-host">
@@ -25,9 +25,6 @@
 </DialogFrame>
 
 @code {
-    private const string OwnMarkerColor = "#16a34a";
-    private const string OthersMarkerColor = "#2563eb";
-
     private IAuthors Authors => Hub.Authors;
     private ISharedLocations SharedLocations => Hub.SharedLocations;
     private LiveTime LiveTime => Hub.LiveTime;
@@ -45,26 +42,28 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ModalModel.ChatId;
-        var locations = await SharedLocations.List(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var locations = await GetLocations(chatId, cancellationToken).ConfigureAwait(false);
         if (locations.Count == 0)
             return ComputedModel.None;
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var markers = new List<MapMarker>(locations.Count);
         foreach (var location in locations) {
-            var author = await Authors.Get(Session, chatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
-            var isOwn = ownAuthor != null && location.AuthorId == ownAuthor.Id;
-            var updatedAt = await LiveTime.GetDeltaText(location.ModifiedAt, cancellationToken).ConfigureAwait(false);
-            markers.Add(new MapMarker(
-                location.AuthorId.Value,
-                location.Point.Latitude,
-                location.Point.Longitude,
-                isOwn ? "You" : author?.Avatar.Name,
-                isOwn ? OwnMarkerColor : OthersMarkerColor,
-                $"updated {updatedAt}"));
+            var marker = await location
+                .ToMapMarker(Session, ownAuthor?.Id, Authors, UrlMapper, LiveTime, cancellationToken)
+                .ConfigureAwait(false);
+            markers.Add(marker);
         }
         var center = locations[0].Point;
         return new ComputedModel(markers.ToApiArray(), center.Latitude, center.Longitude);
+    }
+
+    private async Task<IReadOnlyList<SharedLocation>> GetLocations(ChatId chatId, CancellationToken cancellationToken) {
+        if (ModalModel.LocationId is not { } locationId)
+            return await SharedLocations.List(Session, chatId, cancellationToken).ConfigureAwait(false);
+
+        var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken).ConfigureAwait(false);
+        return location is null ? [] : [location];
     }
 
     // Nested types
@@ -73,5 +72,5 @@
         public static readonly ComputedModel None = new([], 0, 0);
     }
 
-    public sealed record Model(ChatId ChatId);
+    public sealed record Model(ChatId ChatId, SharedLocationId? LocationId = null);
 }

@@ -8,6 +8,8 @@ interface MapMarker {
     label?: string;
     color?: string;
     subLabel?: string;
+    avatarUrl?: string;
+    avatarKey?: string;
 }
 
 interface MapViewOptions {
@@ -15,6 +17,7 @@ interface MapViewOptions {
     centerLatitude: number;
     centerLongitude: number;
     zoom: number;
+    interactive: boolean;
 }
 
 export class MapView {
@@ -32,6 +35,7 @@ export class MapView {
             style: options.styleUrl,
             center: [options.centerLongitude, options.centerLatitude],
             zoom: options.zoom,
+            interactive: options.interactive,
         });
         // The map is often created while its container is still 0-sized (e.g. inside a
         // modal that's mid-open-animation); MapLibre then loads no tiles and stays blank.
@@ -73,14 +77,15 @@ export class MapView {
 
     // Private methods
 
-    // A colored pin with an always-visible caption below it (the default MapLibre
-    // marker only shows the name in a click-to-open popup).
+    // A ringed avatar circle with an always-visible caption below it (the default
+    // MapLibre marker only shows the name in a click-to-open popup).
     private static createMarkerElement(m: MapMarker): HTMLElement {
         const el = document.createElement('div');
         el.className = 'map-marker';
         const pin = document.createElement('div');
         pin.className = 'c-pin';
-        pin.style.backgroundColor = m.color ?? '#2563eb';
+        pin.style.color = m.color ?? '#2563eb';
+        pin.appendChild(MapView.createAvatarElement(m));
         el.appendChild(pin);
         const caption = document.createElement('div');
         caption.className = 'c-caption';
@@ -93,6 +98,25 @@ export class MapView {
         }
         MapView.setSubLabel(el, m.subLabel ?? '');
         return el;
+    }
+
+    private static createAvatarElement(m: MapMarker): HTMLElement {
+        if (m.avatarUrl != null && m.avatarUrl !== '') {
+            const img = document.createElement('img');
+            img.className = 'c-avatar';
+            img.src = m.avatarUrl;
+            img.alt = m.label ?? '';
+            return img;
+        }
+        if (m.avatarKey != null && m.avatarKey !== '') {
+            const beam = document.createElement('beam-avatar');
+            beam.className = 'c-avatar';
+            beam.setAttribute('key', m.avatarKey);
+            return beam;
+        }
+        const dot = document.createElement('div');
+        dot.className = 'c-avatar c-dot';
+        return dot;
     }
 
     private static setSubLabel(el: HTMLElement, text: string): void {

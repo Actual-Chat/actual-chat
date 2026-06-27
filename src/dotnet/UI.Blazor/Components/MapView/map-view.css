@@ -7,11 +7,21 @@
     @apply relative flex items-center justify-center;
 }
 .map-view .map-marker .c-pin {
-    @apply w-3.5 h-3.5 rounded-full border-2 border-white;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+    @apply relative flex items-center justify-center;
+    @apply w-9 h-9 rounded-full bg-01;
+    padding: 2px;
+    border: 2px solid currentColor;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.map-view .map-marker .c-avatar {
+    @apply w-full h-full rounded-full;
+    @apply block object-cover;
+}
+.map-view .map-marker .c-dot {
+    background-color: currentColor;
 }
 .map-view .map-marker .c-caption {
-    @apply absolute left-1/2 mt-1 flex flex-col items-center gap-0.5;
+    @apply absolute left-1/2 mt-2 flex flex-col items-center gap-0.5;
     top: 100%;
     transform: translateX(-50%);
 }

@@ -105,7 +105,7 @@ describe('multi-user location sharing', () => {
         // act — Bob opens the map from the banner
         const bobTiles = tileLoaded(bob);
         await bobBanner.locator('.c-body').first().click();
-        const bobMap = bob.locator('.live-location-map-modal').first();
+        const bobMap = bob.locator('.location-map-modal').first();
         await bobMap.waitFor({ state: 'visible', timeout: 10_000 });
 
         // assert — exactly Alice's single marker renders, on real tiles
@@ -135,7 +135,7 @@ describe('multi-user location sharing', () => {
         // assert — Alice's map shows both markers (hers + Bob's)
         const aliceTiles = tileLoaded(alice);
         await aliceBanner.locator('.c-body').first().click();
-        const aliceMap = alice.locator('.live-location-map-modal').first();
+        const aliceMap = alice.locator('.location-map-modal').first();
         await aliceMap.waitFor({ state: 'visible', timeout: 10_000 });
         await aliceMap.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
         expect((await aliceTiles).ok()).toBe(true);

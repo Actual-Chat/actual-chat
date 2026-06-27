@@ -3,6 +3,7 @@
 .location-message {
     margin-top: .25rem;
     max-width: 20rem;
+    cursor: pointer;
 }
 .location-message .c-map {
     width: 100%;

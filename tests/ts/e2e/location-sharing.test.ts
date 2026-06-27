@@ -91,7 +91,7 @@ describe('location sharing', () => {
                 && r.ok(),
             { timeout: 20_000 });
         await banner.locator('.c-body').first().click();
-        const mapModal = page.locator('.live-location-map-modal').first();
+        const mapModal = page.locator('.location-map-modal').first();
         await mapModal.waitFor({ state: 'visible', timeout: 10_000 });
 
         // assert — a MapLibre marker renders for the share
@@ -165,6 +165,21 @@ describe('location sharing', () => {
         // assert — there is no live-share banner for a one-shot send (it's a static message)
         const banner = page.locator('.live-location-banner').first();
         expect(await banner.isVisible({ timeout: 2_000 }).catch(() => false)).toBe(false);
+
+        // assert — the inline map is NOT interactive (no MapLibre interaction handlers attached)
+        expect(await locationMessage.locator('.maplibregl-interactive').count()).toBe(0);
+
+        // act — clicking the message opens the interactive map modal
+        await locationMessage.click();
+        const mapModal = page.locator('.location-map-modal').first();
+        await mapModal.waitFor({ state: 'visible', timeout: 10_000 });
+
+        // assert — the modal map is interactive and shows the location's marker
+        await mapModal.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
+        expect(await mapModal.locator('.maplibregl-interactive').count()).toBeGreaterThan(0);
+        await page.screenshot({ path: shot('loc-one-shot-modal') });
+        await page.keyboard.press('Escape');
+        await mapModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
     }, 180_000);
 
     // Every duration option must start a live share (the banner appears), not just the first one.

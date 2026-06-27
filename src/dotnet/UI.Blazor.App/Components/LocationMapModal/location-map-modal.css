@@ -1,16 +1,16 @@
-.live-location-map-modal .dialog-body {
+.location-map-modal .dialog-body {
     @apply p-0;
 }
-.live-location-map-modal .c-map-host {
+.location-map-modal .c-map-host {
     @apply relative;
     @apply w-full;
     @apply h-128 max-h-[70vh];
     @apply overflow-hidden;
 }
-.live-location-map-modal .c-map {
+.location-map-modal .c-map {
     @apply w-full h-full;
 }
-.live-location-map-modal .c-empty {
+.location-map-modal .c-empty {
     @apply flex items-center justify-center;
     @apply w-full h-full;
     @apply p-6;

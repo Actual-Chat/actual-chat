@@ -18,6 +18,7 @@ public sealed partial class MapView : ComponentBase, IAsyncDisposable
     [Parameter] public double CenterLatitude { get; set; }
     [Parameter] public double CenterLongitude { get; set; }
     [Parameter] public double Zoom { get; set; } = 12;
+    [Parameter] public bool Interactive { get; set; } = true;
     [Parameter] public IReadOnlyList<MapMarker> Markers { get; set; } = [];
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -30,6 +31,7 @@ public sealed partial class MapView : ComponentBase, IAsyncDisposable
             centerLatitude = CenterLatitude,
             centerLongitude = CenterLongitude,
             zoom = Zoom,
+            interactive = Interactive,
         };
         _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, options).ConfigureAwait(true);
         await _jsRef.InvokeVoidAsync("setMarkers", Markers).ConfigureAwait(true);

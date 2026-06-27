@@ -73,7 +73,7 @@
     }
 
     private Task OnOpenMap()
-        => ModalUI.Show(new LiveLocationMapModal.Model(Chat.Id));
+        => ModalUI.Show(new LocationMapModal.Model(Chat.Id));
 
     private Task OnStop()
         => Hub.LocationUI.StopSharing(Chat.Id, CancellationToken.None);
