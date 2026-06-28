@@ -40,7 +40,12 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
             var cPoint = await Tracker.LastKnown.Computed
                 .When(x => x is not null, cancellationToken)
                 .ConfigureAwait(false);
-            var command = new Chats_UpsertEntry(Session, chatId, null) { Location = cPoint.Value };
+            var locationId = SharedLocationId.New();
+            await Commander.Call(
+                    new SharedLocations_Create(Session, chatId, locationId, cPoint.Value!, TimeSpan.Zero),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            var command = new Chats_UpsertEntry(Session, chatId, null) { LocationId = locationId };
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         }
         finally {
@@ -122,10 +127,13 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
         async Task PostEntry(ActiveShare share, GeoPoint point)
         {
             var liveDuration = share.ExpiresAt - ServerNow;
-            var command = new Chats_UpsertEntry(Session, share.ChatId, null) { Location = point, LiveDuration = liveDuration };
-            var entry = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-            if (entry.LocationId is not { } locationId)
-                return;
+            var locationId = SharedLocationId.New();
+            await Commander.Call(
+                    new SharedLocations_Create(Session, share.ChatId, locationId, point, liveDuration),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            var command = new Chats_UpsertEntry(Session, share.ChatId, null) { LocationId = locationId };
+            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
 
             lock (Lock)
                 _shares.Value = _shares.Value

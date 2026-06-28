@@ -35,12 +35,15 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         var ct = cts.Token;
         var point = new GeoPoint(51.5074, -0.1278, 12f, 90f);
 
-        // act - post a location-only message with no live duration
+        // act - create a frozen one-shot location, then post a message referencing it
+        var locationId = SharedLocationId.New();
+        await Alice.Commander.Call(
+            new SharedLocations_Create(session, chatId, locationId, point, TimeSpan.Zero), ct);
         var entry = await Alice.Commander.Call(
-            new Chats_UpsertEntry(session, chatId, null) { Location = point }, ct);
+            new Chats_UpsertEntry(session, chatId, null) { LocationId = locationId }, ct);
 
         // assert - the entry references a shared location that is frozen (not live)
-        entry.LocationId.Should().NotBeNull();
+        entry.LocationId.Should().Be(locationId);
         var location = await sharedLocations.Get(session, chatId, entry.LocationId!, ct);
         location.Should().NotBeNull();
         location!.Point.Should().Be(point);
@@ -69,13 +72,13 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         var cList = await Computed.Capture(() => sharedLocations.List(session, chatId, ct), ct);
         cList.Value.Count.Should().Be(0);
 
-        // act - start a live share by posting a location message with a duration
+        // act - start a live share: create the live location, then post a message referencing it
         var point = new GeoPoint(51.5074, -0.1278, 12f, 90f);
-        var entry = await Alice.Commander.Call(
-            new Chats_UpsertEntry(session, chatId, null) {
-                Location = point, LiveDuration = TimeSpan.FromHours(1),
-            }, ct);
-        var locationId = entry.LocationId!;
+        var locationId = SharedLocationId.New();
+        await Alice.Commander.Call(
+            new SharedLocations_Create(session, chatId, locationId, point, TimeSpan.FromHours(1)), ct);
+        await Alice.Commander.Call(
+            new Chats_UpsertEntry(session, chatId, null) { LocationId = locationId }, ct);
 
         // assert - visible via List/Get/IsSharing
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
@@ -117,17 +120,18 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         var cList = await Computed.Capture(() => sharedLocations.List(session, chatId, ct), ct);
 
         // act - share for a short window
-        var entry = await Alice.Commander.Call(
-            new Chats_UpsertEntry(session, chatId, null) {
-                Location = new GeoPoint(10, 20), LiveDuration = TimeSpan.FromSeconds(2),
-            }, ct);
+        var locationId = SharedLocationId.New();
+        await Alice.Commander.Call(
+            new SharedLocations_Create(session, chatId, locationId, new GeoPoint(10, 20), TimeSpan.FromSeconds(2)), ct);
+        await Alice.Commander.Call(
+            new Chats_UpsertEntry(session, chatId, null) { LocationId = locationId }, ct);
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
 
         // assert - it drops out of the live list on its own once expired (no stop command)
         await cList.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(10), ct);
 
         // assert - the frozen record is still readable as the message's history backing
-        var frozen = await sharedLocations.Get(session, chatId, entry.LocationId!, ct);
+        var frozen = await sharedLocations.Get(session, chatId, locationId, ct);
         frozen.Should().NotBeNull();
     }
 
@@ -137,8 +141,9 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         // arrange
         var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Private", IsPublic = false });
 
-        // act & assert - Bob is not a member, so posting a location message is rejected
+        // act & assert - Bob is not a member, so creating a shared location is rejected
+        var locationId = SharedLocationId.New();
         await Assert.ThrowsAnyAsync<Exception>(() => Bob.Commander.Call(
-            new Chats_UpsertEntry(Bob.Session, chatId, null) { Location = new GeoPoint(1, 2) }));
+            new SharedLocations_Create(Bob.Session, chatId, locationId, new GeoPoint(1, 2), TimeSpan.Zero)));
     }
 }

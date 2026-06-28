@@ -31,6 +31,24 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
     }
 
     // [CommandHandler]
+    public virtual async Task<SharedLocation> OnCreate(SharedLocations_Create command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId, id, point, liveDuration) = command;
+        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Write);
+
+        // TODO: command must return created SharedLocation
+        await Commander
+            .Call(new SharedLocationsBackend_Create(id, chatId, author.Id, point, liveDuration), true, cancellationToken)
+            .ConfigureAwait(false);
+        return await Backend.Get(chatId, id, cancellationToken).Require().ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
     public virtual async Task OnReport(SharedLocations_Report command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
