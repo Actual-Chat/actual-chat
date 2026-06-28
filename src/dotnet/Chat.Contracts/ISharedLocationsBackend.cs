@@ -24,6 +24,7 @@ public interface ISharedLocationsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record SharedLocationsBackend_Create(
     [property: DataMember, MemoryPackOrder(0), Key(0)] SharedLocationId Id,
+    // TODO: AuthorId already contains chatId
     [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] AuthorId AuthorId,
     [property: DataMember, MemoryPackOrder(3), Key(3)] GeoPoint Point,
