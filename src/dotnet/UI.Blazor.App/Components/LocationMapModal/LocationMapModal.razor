@@ -27,7 +27,6 @@
 @code {
     private IAuthors Authors => Hub.Authors;
     private ISharedLocations SharedLocations => Hub.SharedLocations;
-    private LiveTime LiveTime => Hub.LiveTime;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -46,11 +45,10 @@
         if (locations.Count == 0)
             return ComputedModel.None;
 
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var markers = new List<MapMarker>(locations.Count);
         foreach (var location in locations) {
             var marker = await location
-                .ToMapMarker(Session, ownAuthor?.Id, Authors, UrlMapper, LiveTime, cancellationToken)
+                .ToAvatarMarker(Session, Authors, UrlMapper, cancellationToken)
                 .ConfigureAwait(false);
             markers.Add(marker);
         }

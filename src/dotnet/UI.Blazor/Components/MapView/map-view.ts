@@ -6,8 +6,6 @@ interface MapMarker {
     latitude: number;
     longitude: number;
     label?: string;
-    color?: string;
-    subLabel?: string;
     avatarUrl?: string;
     avatarKey?: string;
 }
@@ -51,7 +49,6 @@ export class MapView {
             const existing = this.markers.get(m.id);
             if (existing != null) {
                 existing.setLngLat([m.longitude, m.latitude]);
-                MapView.setSubLabel(existing.getElement(), m.subLabel ?? '');
                 continue;
             }
 
@@ -77,30 +74,21 @@ export class MapView {
 
     // Private methods
 
-    // A ringed avatar circle with an always-visible caption below it (the default
-    // MapLibre marker only shows the name in a click-to-open popup).
+    // Two marker styles: a plain dot when there's no avatar (in-chat preview), or an
+    // author avatar in a white-bordered circle (the map modal) — Telegram-style.
     private static createMarkerElement(m: MapMarker): HTMLElement {
         const el = document.createElement('div');
         el.className = 'map-marker';
+        const avatar = MapView.createAvatarElement(m);
         const pin = document.createElement('div');
-        pin.className = 'c-pin';
-        pin.style.color = m.color ?? '#2563eb';
-        pin.appendChild(MapView.createAvatarElement(m));
+        pin.className = avatar != null ? 'c-pin c-pin-avatar' : 'c-pin c-pin-dot';
+        if (avatar != null)
+            pin.appendChild(avatar);
         el.appendChild(pin);
-        const caption = document.createElement('div');
-        caption.className = 'c-caption';
-        el.appendChild(caption);
-        if (m.label != null && m.label !== '') {
-            const label = document.createElement('div');
-            label.className = 'c-label';
-            label.textContent = m.label;
-            caption.appendChild(label);
-        }
-        MapView.setSubLabel(el, m.subLabel ?? '');
         return el;
     }
 
-    private static createAvatarElement(m: MapMarker): HTMLElement {
+    private static createAvatarElement(m: MapMarker): HTMLElement | null {
         if (m.avatarUrl != null && m.avatarUrl !== '') {
             const img = document.createElement('img');
             img.className = 'c-avatar';
@@ -114,26 +102,6 @@ export class MapView {
             beam.setAttribute('key', m.avatarKey);
             return beam;
         }
-        const dot = document.createElement('div');
-        dot.className = 'c-avatar c-dot';
-        return dot;
-    }
-
-    private static setSubLabel(el: HTMLElement, text: string): void {
-        const caption = el.querySelector('.c-caption');
-        if (caption == null)
-            return;
-
-        let sub = caption.querySelector<HTMLElement>('.c-sublabel');
-        if (text === '') {
-            sub?.remove();
-            return;
-        }
-        if (sub == null) {
-            sub = document.createElement('div');
-            sub.className = 'c-sublabel';
-            caption.appendChild(sub);
-        }
-        sub.textContent = text;
+        return null;
     }
 }

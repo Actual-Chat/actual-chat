@@ -16,9 +16,7 @@
 }
 
 @code {
-    private IAuthors Authors => Hub.Authors;
     private ISharedLocations SharedLocations => Hub.SharedLocations;
-    private LiveTime LiveTime => Hub.LiveTime;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
 
@@ -38,10 +36,7 @@
         if (location is null)
             return null;
 
-        var ownAuthor = await Authors.GetOwn(Session, Entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var marker = await location
-            .ToMapMarker(Session, ownAuthor?.Id, Authors, UrlMapper, LiveTime, cancellationToken)
-            .ConfigureAwait(false);
+        var marker = new MapMarker(location.Id.Value, location.Point.Latitude, location.Point.Longitude);
         return new Model(location.Point.Latitude, location.Point.Longitude, new[] { marker }.ToApiArray());
     }
 
