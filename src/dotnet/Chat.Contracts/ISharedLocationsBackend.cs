@@ -37,6 +37,7 @@ public sealed partial record SharedLocationsBackend_Create(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SharedLocationsBackend_Report(
+    // TODO: remove chatId?
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1), Key(1)] SharedLocationId Id,
     [property: DataMember, MemoryPackOrder(2), Key(2)] GeoPoint Point
