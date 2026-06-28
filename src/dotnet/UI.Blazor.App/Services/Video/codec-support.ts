@@ -354,6 +354,18 @@ export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', w
     return 'avc1.640028';
 }
 
+// Chrome's software H.264 encoder (OpenH264) implements only Constrained
+// Baseline — not Main/High. A High/Main string makes
+// isConfigSupported({hardwareAcceleration:'prefer-software'}) return false, so
+// the SW fallback must request Constrained Baseline (42E0xx). Universally
+// decodable, which keeps the HW→SW switch transparent to viewers.
+export function getSoftwareH264Codec(width: number, height: number): string {
+    const pixels = width * height;
+    if (pixels > 2_073_600) return 'avc1.42E034'; // L5.2 (>1080p)
+    if (pixels > 921_600) return 'avc1.42E028';    // L4.0 (1080p)
+    return 'avc1.42E01F';                          // L3.1 (≤720p)
+}
+
 export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, height: number): string {
     // Firefox: H.264 Main 3.1 is the only reliable encoder profile.
     if (DeviceInfo.isFirefox) {

@@ -49,6 +49,7 @@ import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 import {
     detectSupportedCodecs,
     getDefaultCodec,
+    getSoftwareH264Codec,
     getCodecCategory,
     getActiveEncoderCategoriesByPriority,
     probeEncoder,
@@ -466,6 +467,10 @@ export class VideoRecorder {
     // 'no-preference' when the 1-tier last-resort fallback engages so the
     // runtime encoder matches the config that actually probed working.
     private currentHardwareAcceleration: HardwareAcceleration = 'prefer-hardware';
+    // Set once the desktop-only SW-H.264 fallback engages (after HW recovery is
+    // exhausted). Locks the recorder to prefer-software H.264 and blocks server-
+    // or health-driven switches back into a wedged HW codec for the session.
+    private softwareFallbackEngaged = false;
     // Stream-mode driving downstream config (simulcast caps and layer bitrates).
     private currentMode: 'camera' | 'screen' = 'camera';
     // Top-tier encoder framerate; undefined until a recording starts. Set from
@@ -1312,6 +1317,8 @@ export class VideoRecorder {
             this.warmupTopSize = null;
             this.lastCodecSwitchAt = 0;
             this.startedAtMs = 0;
+            this.softwareFallbackEngaged = false;
+            this.currentHardwareAcceleration = 'prefer-hardware';
             this.setRecordingState('stopped');
             this.unregister();
             await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
@@ -1327,6 +1334,9 @@ export class VideoRecorder {
     public async updateSupportedDecoderCodecs(codecs: string[]): Promise<void> {
         this.audienceCodecs = codecs;
         if (!this.worker) return;
+        // SW fallback is sticky: don't let a server-driven codec switch pull us
+        // back into a wedged HW codec (H.264 is always in the audience set).
+        if (this.softwareFallbackEngaged) return;
 
         const allowedCategories = this.allowedCodecCategories(codecs);
         if (allowedCategories && ![...allowedCategories].some(c => this.supportedEncoderCategories.includes(c))) {
@@ -1897,6 +1907,13 @@ export class VideoRecorder {
         if (!this.isRecording || this.disposed)
             return;
 
+        // Once SW fallback is engaged, never re-pick — a fresh detect would
+        // resurface the wedged HW codec. Stay on SW H.264 and just retry.
+        if (this.softwareFallbackEngaged) {
+            this.scheduleRecovery(reason);
+            return;
+        }
+
         try {
             const w = this.cameraWidth || 1280;
             const h = this.cameraHeight || 720;
@@ -1947,7 +1964,10 @@ export class VideoRecorder {
                 `consecutive failed attempts (last reason: ${reason}; ` +
                 `current codec=${this.currentCodecString})`);
             this.recoveryScheduled = false;
-            void this.blazorRef.invokeMethodAsync('OnRecordingError', USER_FACING_RESTART_MESSAGE);
+            void this.engageEncoderFallback(reason).then(engaged => {
+                if (!engaged)
+                    void this.blazorRef.invokeMethodAsync('OnRecordingError', USER_FACING_RESTART_MESSAGE);
+            });
             return;
         }
         const delayMs = Math.min(3000, 200 * Math.pow(1.7, this.recoveryAttempts - 1));
@@ -1963,6 +1983,80 @@ export class VideoRecorder {
                 this.scheduleRecovery('recovery attempt failed');
             });
         }, delayMs);
+    }
+
+    // Graded last-resort escalation when normal HW recovery is exhausted
+    // (GPU reset wedges the encode block — the same event that kills WebGL
+    // contexts — yet isConfigSupported still reports the HW codec, so plain
+    // re-pick loops). Desktop-only. Two tiers, one per exhaustion:
+    //   1. Still on a non-H.264 codec (HEVC wedged, possibly via 'codec hang'
+    //      errors that never excluded it): drop that category and retry
+    //      HARDWARE H.264 — every viewer decodes H.264.
+    //   2. Already on H.264 and still failing: drop to prefer-software H.264
+    //      (OpenH264, independent of the GPU). No software HEVC exists in the
+    //      browser, so HEVC always degrades through H.264, never to SW HEVC.
+    // Returns false only when nothing is left to try (mobile, SW already
+    // engaged, or SW H.264 fails to probe) so the caller surfaces the fatal
+    // restart message.
+    private async engageEncoderFallback(reason: string): Promise<boolean> {
+        if (DeviceInfo.isMobile || this.softwareFallbackEngaged || !this.isRecording || this.disposed)
+            return false;
+
+        const currentCategory = getCodecCategory(this.currentCodecString);
+        if (currentCategory !== 'h264') {
+            excludeEncoderCodec(currentCategory);
+            this.recoveryAttempts = 0;
+            infoLog?.log(
+                `engageEncoderFallback: ${currentCategory} wedged (${reason}) → ` +
+                `excluding it, trying hardware H.264 before software`);
+            void this.repickCodecAndRestart(`${currentCategory} wedged → hardware H.264`);
+            return true;
+        }
+
+        // Software simulcast is CPU-heavy, so cap to the two lowest tiers
+        // (≤640×360), built fresh from the mode's base bitrates — NOT sliced
+        // from the live ladder, which a prior restart may have already
+        // collapsed to a single high tier (then the slice would keep 720p in
+        // software, the exact load we're avoiding).
+        const swTopWidth = 640;
+        const swTopHeight = 360;
+        const baseBitratesKbps = this.currentMode === 'screen'
+            ? VIDEO.screenCastLayerBaseBitratesKbps
+            : VIDEO.cameraLayerBaseBitratesKbps;
+        const h264Codec = getSoftwareH264Codec(swTopWidth, swTopHeight);
+        const reduced = this.withCodecBitrates(buildLadder({
+            topWidth: swTopWidth,
+            topHeight: swTopHeight,
+            tierCount: 2,
+            maxTierCount: baseBitratesKbps.length,
+            bitratesKbps: baseBitratesKbps,
+        }), h264Codec);
+        if (reduced.length === 0)
+            return false;
+
+        const probe = await probeEncoder(h264Codec, reduced, undefined, undefined, 'prefer-software');
+        if (!probe.supported) {
+            warnLog?.log(
+                `engageEncoderFallback: SW H.264 probe failed (${h264Codec}) — ` +
+                `no software fallback available`);
+            return false;
+        }
+
+        this.softwareFallbackEngaged = true;
+        this.currentCodecString = h264Codec;
+        this.currentCodecHardwareAccel = false;
+        this.currentHardwareAcceleration = 'prefer-software';
+        this.fullLayerLadder = reduced;
+        this.layers = reduced.length >= 2 ? [...reduced] : null;
+        // Let QC re-evaluate the fresh low-tier ladder, not a prior collapsed cap.
+        this.healthLayerCap = Number.MAX_SAFE_INTEGER;
+        this.recoveryAttempts = 0;
+        infoLog?.log(
+            `engageEncoderFallback: hardware H.264 wedged (${reason}) → software H.264 ` +
+            `(${h264Codec}), ${reduced.length}-tier ladder ` +
+            `[${reduced.map(l => `${l.width}x${l.height}`).join(', ')}]`);
+        this.scheduleRecovery('software fallback');
+        return true;
     }
 
     // `this.layers === null` is the "single-encoder mode" sentinel set
