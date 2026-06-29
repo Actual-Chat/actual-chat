@@ -483,7 +483,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             var newState = isBlocked ? ContactState.Blocked : ContactState.Regular;
             var change = Change.Update(existing with { State = newState });
             var cmd = new ContactsBackend_Change(id, existing.Version, change);
-            await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(cmd, false, cancellationToken).ConfigureAwait(false);
         }
         else {
             // Contact doesn't exist yet (e.g. you've never opened the chat); create it as Blocked
@@ -492,7 +492,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
             var change = Change.Create(new Contact(id) { State = ContactState.Blocked });
             var cmd = new ContactsBackend_Change(id, null, change);
-            await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(cmd, false, cancellationToken).ConfigureAwait(false);
         }
     }
 

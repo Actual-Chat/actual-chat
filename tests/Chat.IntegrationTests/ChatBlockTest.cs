@@ -131,7 +131,7 @@ public class ChatBlockTest(ChatCollection.AppHostFixture fixture, ITestOutputHel
             bobContactForAlice.Should().NotBeNull();
             bobContactForAlice.IsBlocked.Should().BeFalse();
             bobContactForAlice.IsBlockedByPeer.Should().BeTrue();
-        }, TimeSpan.FromSeconds(10));
+        });
     }
 
     [Fact]
