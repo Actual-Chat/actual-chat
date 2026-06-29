@@ -5,20 +5,22 @@
     if (authorIds.Count == 0)
         return;
 
-    var avatarSize = SquareSize.Size8;
-    var size = "w-8 h-8";
+    var avatarSize = Size;
+    var sizePx = (int)Size * 4;
+    var overlapPx = -(sizePx / 2 - 2);
+    var sizeStyle = $"--acg-circle-size: {sizePx}px; --acg-circle-overlap: {overlapPx}px;";
     var maxLength = authorIds.Count > MaxCount ? MaxCount - 1 : authorIds.Count;
     var groupCls = IsListening ? "" : "non-active";
 }
 
-<div class="author-circle-group @Class @groupCls">
+<div class="author-circle-group @Class @groupCls" style="@sizeStyle">
     @{
         var zIndex = 1;
         for (var i = 0; i < maxLength; i++) {
             var authorId = authorIds[i];
             var lastAuthorCls = i == maxLength - 1 ? "last-author" : "";
             <div class="author-circle" style="z-index: @zIndex;">
-                <div class="@size @lastAuthorCls author-wrapper">
+                <div class="@lastAuthorCls author-wrapper">
                     <AuthorCircle AuthorId="@authorId" Size="@avatarSize"/>
                 </div>
             </div>
@@ -26,7 +28,7 @@
         }
 
         if (authorIds.Count > MaxCount) {
-            <div class="@size author-circle-group-item author-circle last" style="z-index: @(zIndex + 1);">
+            <div class="author-circle-group-item author-circle last" style="z-index: @(zIndex + 1);">
                 <div class="author-circle">
                     <div class="author-wrapper">
                         @{
@@ -45,7 +47,7 @@
 @code {
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public int MaxCount { get; set; } = 5;
-    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size6;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public bool IsListening { get; set; }
 
     [Parameter, ParameterComparer(typeof(ByItemParameterComparer))]

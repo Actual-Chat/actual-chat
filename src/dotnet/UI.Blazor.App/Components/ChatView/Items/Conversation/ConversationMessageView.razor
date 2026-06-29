@@ -21,8 +21,6 @@
     @if (state.IsLive) {
         var secondLine = state.IsVoiceOnly ? "Voice only" : messageCount + " message".Pluralize(messageCount);
         var startedAt = $"Started at {startsAt:HH:mm}";
-        var firstAuthors = conversation.AuthorIds.Take(3).ToList();
-        var extraAuthorCount = Math.Clamp(conversation.AuthorIds.Count - 3, 0, 99);
         var hasSummary = !state.IsVoiceOnly;
         <div class="c-live-card">
             <div class="c-lc-title">
@@ -43,14 +41,11 @@
                 </div>
             }
             <div class="c-lc-meta-row">
-                <div class="c-lc-authors">
-                    @foreach (var authorId in firstAuthors) {
-                        <AuthorCircle AuthorId="@authorId" Size="@SquareSize.Size5"/>
-                    }
-                    @if (extraAuthorCount > 0) {
-                        <div class="author-incut ai-extra">+@extraAuthorCount</div>
-                    }
-                </div>
+                <AuthorCircleGroup
+                    Class="c-lc-authors"
+                    AuthorIds="@conversation.AuthorIds"
+                    Size="@SquareSize.Size5"
+                    MaxCount="4"/>
                 <div class="c-lc-meta">
                     <div class="c-lc-started">@startedAt</div>
                     <div class="c-lc-second">@secondLine</div>

@@ -4,8 +4,9 @@
 .author-circle {
     @apply relative;
     @apply flex items-center justify-center;
-    @apply w-9 h-9;
-    @apply -ml-4;
+    width: var(--acg-circle-size, 2.25rem);
+    height: var(--acg-circle-size, 2.25rem);
+    margin-left: var(--acg-circle-overlap, -1rem);
     @apply rounded-full;
     @apply overflow-hidden;
     transition: margin-left 0.5s ease;
