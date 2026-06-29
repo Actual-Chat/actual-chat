@@ -174,22 +174,22 @@ body.hoverable .navbar-item.active:active {
     @apply m-0 -mb-3 md:-mb-2 p-0;
 }
 
-body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:hover,
-body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:hover {
+body.hoverable .navbar-place-buttons .navbar-button .btn:hover,
+body.hoverable .navbar-chat-buttons .navbar-button .btn:hover {
     @apply bg-transparent;
 }
-body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:hover::after,
-body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:hover::after {
+body.hoverable .navbar-place-buttons .navbar-button .btn:hover::after,
+body.hoverable .navbar-chat-buttons .navbar-button .btn:hover::after {
     @apply bg-transparent;
 }
-body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:active::after,
-body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:active::after,
-body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:hover:active::after,
-body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:hover:active::after,
-body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:focus:active::after,
-body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:focus:active::after,
-body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:hover:focus:active::after,
-body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:hover:focus:active::after {
+body.hoverable .navbar-place-buttons .navbar-button .btn:active::after,
+body.hoverable .navbar-chat-buttons .navbar-button .btn:active::after,
+body.hoverable .navbar-place-buttons .navbar-button .btn:hover:active::after,
+body.hoverable .navbar-chat-buttons .navbar-button .btn:hover:active::after,
+body.hoverable .navbar-place-buttons .navbar-button .btn:focus:active::after,
+body.hoverable .navbar-chat-buttons .navbar-button .btn:focus:active::after,
+body.hoverable .navbar-place-buttons .navbar-button .btn:hover:focus:active::after,
+body.hoverable .navbar-chat-buttons .navbar-button .btn:hover:focus:active::after {
     @apply bg-transparent;
 }
 
@@ -198,8 +198,20 @@ body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:hover:focus:a
     @apply w-full;
     @apply pt-2 -mt-2;
 }
-.navbar-chat-buttons .btn.btn-square {
+.navbar-chat-buttons .btn.btn-square,
+.navbar-chat-buttons .btn.btn-round {
     @apply bg-transparent;
+}
+.navbar-chat-buttons .navbar-button .btn-round {
+    @apply min-h-0;
+    @apply text-primary;
+}
+.navbar-chat-buttons .navbar-button .btn-round,
+.navbar-chat-buttons .navbar-button .btn-round > .btn-content {
+    @apply overflow-visible;
+}
+body.narrow .navbar-chat-buttons .navbar-button .btn-round {
+    @apply w-10 h-10;
 }
 
 .navbar-button .c-chat-roulette-icon {

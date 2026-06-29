@@ -10,6 +10,7 @@
 <NavbarButton
     Class="@selectedClass"
     ButtonClass="@buttonClass"
+    IsRound="@IsRound"
     TooltipPosition="@TooltipPosition"
     Tooltip="@Tooltip"
     Click="OnClick"
@@ -31,6 +32,7 @@
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public bool CanMove { get; set; }
+    [Parameter] public bool IsRound { get; set; }
     [Parameter] public FloatingPosition TooltipPosition { get; set; } = FloatingPosition.Right;
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? BadgeContent { get; set; }
