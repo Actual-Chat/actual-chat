@@ -98,6 +98,9 @@ describe('location sharing', () => {
         const marker = mapModal.locator('.maplibregl-marker').first();
         await marker.waitFor({ state: 'visible', timeout: 15_000 });
 
+        // assert — no attribution control (MapLibre | OpenFreeMap ... info bar) is drawn
+        expect(await mapModal.locator('.maplibregl-ctrl-attrib').count()).toBe(0);
+
         // assert — real OpenFreeMap tiles load (not blank: CSP allows the host AND the map
         // got a non-zero viewport)
         const tileResp = await tileLoaded;

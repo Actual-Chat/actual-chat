@@ -34,6 +34,7 @@ export class MapView {
             center: [options.centerLongitude, options.centerLatitude],
             zoom: options.zoom,
             interactive: options.interactive,
+            attributionControl: false,
         });
         // The map is often created while its container is still 0-sized (e.g. inside a
         // modal that's mid-open-animation); MapLibre then loads no tiles and stays blank.
