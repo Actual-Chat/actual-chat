@@ -58,7 +58,7 @@
 
     private async Task<IReadOnlyList<SharedLocation>> GetLocations(ChatId chatId, CancellationToken cancellationToken) {
         if (ModalModel.LocationId is not { } locationId)
-            return await SharedLocations.List(Session, chatId, cancellationToken).ConfigureAwait(false);
+            return await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken).ConfigureAwait(false);
         return location is null ? [] : [location];

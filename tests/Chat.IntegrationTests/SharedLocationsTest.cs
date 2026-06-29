@@ -50,7 +50,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         location.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
 
         // assert - a frozen one-shot is not listed among active live shares
-        (await sharedLocations.List(session, chatId, ct)).Count.Should().Be(0);
+        (await sharedLocations.ListLive(session, chatId, ct)).Count.Should().Be(0);
         (await sharedLocations.IsSharing(session, chatId, ct)).Should().BeFalse();
 
         // assert - the LocationId round-trips through the entry read path
@@ -69,7 +69,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var ct = cts.Token;
 
-        var cList = await Computed.Capture(() => sharedLocations.List(session, chatId, ct), ct);
+        var cList = await Computed.Capture(() => sharedLocations.ListLive(session, chatId, ct), ct);
         cList.Value.Count.Should().Be(0);
 
         // act - start a live share: create the live location, then post a message referencing it
@@ -80,9 +80,9 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         await Alice.Commander.Call(
             new Chats_UpsertEntry(session, chatId, null) { LocationId = locationId }, ct);
 
-        // assert - visible via List/Get/IsSharing
+        // assert - visible via ListLive/Get/IsSharing
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
-        var shared = (await sharedLocations.List(session, chatId, ct)).Single();
+        var shared = (await sharedLocations.ListLive(session, chatId, ct)).Single();
         shared.Id.Should().Be(locationId);
         shared.AuthorId.Should().Be(author.Id);
         shared.Point.Should().Be(point);
@@ -117,7 +117,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var ct = cts.Token;
 
-        var cList = await Computed.Capture(() => sharedLocations.List(session, chatId, ct), ct);
+        var cList = await Computed.Capture(() => sharedLocations.ListLive(session, chatId, ct), ct);
 
         // act - share for a short window
         var locationId = SharedLocationId.New();

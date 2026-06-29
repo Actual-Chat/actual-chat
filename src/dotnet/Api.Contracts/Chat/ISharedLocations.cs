@@ -8,7 +8,7 @@ public interface ISharedLocations : IComputeService
     [ComputeMethod]
     Task<SharedLocation?> Get(Session session, ChatId chatId, SharedLocationId id, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<SharedLocation>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<SharedLocation>> ListLive(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<SharedLocation> OnCreate(SharedLocations_Create command, CancellationToken cancellationToken);

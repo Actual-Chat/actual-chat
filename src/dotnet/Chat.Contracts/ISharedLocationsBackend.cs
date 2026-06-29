@@ -10,7 +10,7 @@ public interface ISharedLocationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<SharedLocation?> Get(ChatId chatId, SharedLocationId id, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<SharedLocation>> List(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<SharedLocation>> ListLive(ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<SharedLocation> OnCreate(SharedLocationsBackend_Create command, CancellationToken cancellationToken);

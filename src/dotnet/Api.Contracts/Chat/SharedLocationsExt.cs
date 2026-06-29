@@ -13,7 +13,7 @@ public static class SharedLocationsExt
         if (author == null)
             return false;
 
-        var liveLocations = await sharedLocations.List(session, chatId, cancellationToken).ConfigureAwait(false);
+        var liveLocations = await sharedLocations.ListLive(session, chatId, cancellationToken).ConfigureAwait(false);
         return liveLocations.Any(x => x.AuthorId == author.Id);
     }
 }

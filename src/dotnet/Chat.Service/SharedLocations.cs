@@ -20,14 +20,14 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<SharedLocation>> List(
+    public virtual async Task<ApiArray<SharedLocation>> ListLive(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        return await Backend.List(chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.ListLive(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -43,7 +43,7 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
 
         if (liveDuration > TimeSpan.Zero) {
             // One-shot sends (zero duration) aren't live shares, so they don't count toward the cap.
-            var liveShares = await Backend.List(chatId, cancellationToken).ConfigureAwait(false);
+            var liveShares = await Backend.ListLive(chatId, cancellationToken).ConfigureAwait(false);
             var authorIds = liveShares.Select(x => x.AuthorId).ToHashSet();
             authorIds.Add(author.Id);
             if (authorIds.Count > Constants.Location.MaxSharingAuthorsPerChat)

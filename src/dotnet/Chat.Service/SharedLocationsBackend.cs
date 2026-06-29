@@ -25,7 +25,7 @@ public class SharedLocationsBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<SharedLocation>> List(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<SharedLocation>> ListLive(ChatId chatId, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -59,7 +59,7 @@ public class SharedLocationsBackend(IServiceProvider services)
         var chatId = authorId.ChatId;
         if (Invalidation.IsActive) {
             _ = Get(chatId, id, default);
-            _ = List(chatId, default);
+            _ = ListLive(chatId, default);
             return null!;
         }
 
@@ -80,7 +80,7 @@ public class SharedLocationsBackend(IServiceProvider services)
         var (chatId, id, point) = command;
         if (Invalidation.IsActive) {
             _ = Get(chatId, id, default);
-            _ = List(chatId, default);
+            _ = ListLive(chatId, default);
             return;
         }
 
@@ -110,7 +110,7 @@ public class SharedLocationsBackend(IServiceProvider services)
         var (chatId, id) = command;
         if (Invalidation.IsActive) {
             _ = Get(chatId, id, default);
-            _ = List(chatId, default);
+            _ = ListLive(chatId, default);
             return;
         }
 
