@@ -7,8 +7,6 @@ namespace ActualChat.UI.Blazor.App.Services;
 public interface ILocationTracker
 {
     IState<GeoPoint?> LastKnown { get; }
-    // TODO: remove if not used
-    bool IsTracking { get; }
 
     Task Start(CancellationToken cancellationToken);
     Task Stop(CancellationToken cancellationToken);

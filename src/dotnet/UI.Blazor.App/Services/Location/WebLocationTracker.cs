@@ -12,7 +12,7 @@ public sealed class WebLocationTracker : ILocationTracker
     private IJSObjectReference? _jsRef;
 
     public IState<GeoPoint?> LastKnown => _lastKnown;
-    public bool IsTracking { get; private set; }
+    private bool IsTracking { get; set; }
 
     public WebLocationTracker(AppUIHub hub)
     {

@@ -10,7 +10,7 @@ public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
     private CLLocationManager? _manager;
 
     public IState<GeoPoint?> LastKnown => _lastKnown;
-    public bool IsTracking { get; private set; }
+    private bool IsTracking { get; set; }
 
     public AppleLocationTracker(AppUIHub hub)
     {

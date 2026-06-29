@@ -14,7 +14,7 @@ public sealed class AndroidLocationTracker : ILocationTracker, IDisposable
     private readonly MutableState<GeoPoint?> _lastKnown;
 
     public IState<GeoPoint?> LastKnown => _lastKnown;
-    public bool IsTracking { get; private set; }
+    private bool IsTracking { get; set; }
 
     public AndroidLocationTracker(AppUIHub hub)
     {

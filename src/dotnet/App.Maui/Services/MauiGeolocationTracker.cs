@@ -15,7 +15,7 @@ public sealed class MauiGeolocationTracker : ILocationTracker
     private ILogger Log { get; }
 
     public IState<GeoPoint?> LastKnown => _lastKnown;
-    public bool IsTracking { get; private set; }
+    private bool IsTracking { get; set; }
 
     public MauiGeolocationTracker(AppUIHub hub)
     {
