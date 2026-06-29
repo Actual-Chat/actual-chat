@@ -38,7 +38,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         // act - create a frozen one-shot location, then post a message referencing it
         var locationId = SharedLocationId.New();
         await Alice.Commander.Call(
-            new SharedLocations_Create(session, chatId, locationId, point, TimeSpan.Zero), ct);
+            new SharedLocations_Report(session, chatId, locationId, point, TimeSpan.Zero), ct);
         var entry = await Alice.Commander.Call(
             new Chats_UpsertEntry(session, chatId, null) { LocationId = locationId }, ct);
 
@@ -76,7 +76,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         var point = new GeoPoint(51.5074, -0.1278, 12f, 90f);
         var locationId = SharedLocationId.New();
         await Alice.Commander.Call(
-            new SharedLocations_Create(session, chatId, locationId, point, TimeSpan.FromHours(1)), ct);
+            new SharedLocations_Report(session, chatId, locationId, point, TimeSpan.FromHours(1)), ct);
         await Alice.Commander.Call(
             new Chats_UpsertEntry(session, chatId, null) { LocationId = locationId }, ct);
 
@@ -90,7 +90,8 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // act - update position
         var point2 = new GeoPoint(48.8566, 2.3522);
-        await Alice.Commander.Call(new SharedLocations_Report(session, chatId, locationId, point2), ct);
+        await Alice.Commander.Call(
+            new SharedLocations_Report(session, chatId, locationId, point2, TimeSpan.FromHours(1)), ct);
 
         // assert - position reflects the update
         await cList.When(x => x.Single().Point.Latitude == 48.8566, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
@@ -122,7 +123,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         // act - share for a short window
         var locationId = SharedLocationId.New();
         await Alice.Commander.Call(
-            new SharedLocations_Create(session, chatId, locationId, new GeoPoint(10, 20), TimeSpan.FromSeconds(2)), ct);
+            new SharedLocations_Report(session, chatId, locationId, new GeoPoint(10, 20), TimeSpan.FromSeconds(2)), ct);
         await Alice.Commander.Call(
             new Chats_UpsertEntry(session, chatId, null) { LocationId = locationId }, ct);
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
@@ -143,7 +144,23 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // act & assert - Bob is not a member, so creating a shared location is rejected
         var locationId = SharedLocationId.New();
-        await Assert.ThrowsAnyAsync<Exception>(() => Bob.Commander.Call(
-            new SharedLocations_Create(Bob.Session, chatId, locationId, new GeoPoint(1, 2), TimeSpan.Zero)));
+        await FluentActions
+            .Awaiting(() => Bob.Commander.Call(
+                new SharedLocations_Report(Bob.Session, chatId, locationId, new GeoPoint(1, 2), TimeSpan.Zero)))
+            .Should().ThrowAsync<Exception>();
+    }
+
+    [Fact]
+    public async Task NonMemberCannotPostLocationToPublicChat()
+    {
+        // arrange - a public chat Bob can read and join, but hasn't joined
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Public", IsPublic = true });
+
+        // act & assert - sharing a location must not auto-join: Bob is rejected until he joins
+        var locationId = SharedLocationId.New();
+        await FluentActions
+            .Awaiting(() => Bob.Commander.Call(
+                new SharedLocations_Report(Bob.Session, chatId, locationId, new GeoPoint(1, 2), TimeSpan.Zero)))
+            .Should().ThrowAsync<Exception>();
     }
 }

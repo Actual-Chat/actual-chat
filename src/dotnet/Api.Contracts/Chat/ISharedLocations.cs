@@ -11,8 +11,6 @@ public interface ISharedLocations : IComputeService
     Task<ApiArray<SharedLocation>> ListLive(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<SharedLocation> OnCreate(SharedLocations_Create command, CancellationToken cancellationToken);
-    [CommandHandler]
     Task OnReport(SharedLocations_Report command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnStop(SharedLocations_Stop command, CancellationToken cancellationToken);
@@ -20,21 +18,12 @@ public interface ISharedLocations : IComputeService
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record SharedLocations_Create(
+public sealed partial record SharedLocations_Report(
     [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] SharedLocationId Id,
     [property: DataMember, MemoryPackOrder(3), Key(3)] GeoPoint Point,
     [property: DataMember, MemoryPackOrder(4), Key(4)] TimeSpan LiveDuration
-) : ISessionCommand<SharedLocation>, IApiCommand;
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record SharedLocations_Report(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] SharedLocationId Id,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] GeoPoint Point
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

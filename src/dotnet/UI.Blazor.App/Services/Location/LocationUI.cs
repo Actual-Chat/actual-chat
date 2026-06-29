@@ -39,7 +39,7 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
 
         var locationId = SharedLocationId.New();
         await Commander.Call(
-                new SharedLocations_Create(Session, chatId, locationId, point, TimeSpan.Zero),
+                new SharedLocations_Report(Session, chatId, locationId, point, TimeSpan.Zero),
                 cancellationToken)
             .ConfigureAwait(false);
         var command = new Chats_UpsertEntry(Session, chatId, null) { LocationId = locationId };
@@ -111,8 +111,9 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
                 return;
             }
 
-            await Commander.Call(new SharedLocations_Report(Session, share.ChatId, locationId, point), cancellationToken)
-                .ConfigureAwait(false);
+            var liveDuration = share.ExpiresAt - ServerNow;
+            var cmd = new SharedLocations_Report(Session, share.ChatId, locationId, point, liveDuration);
+            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
 
         async Task PostEntry(ActiveShare share, GeoPoint point)
@@ -120,7 +121,7 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
             var liveDuration = share.ExpiresAt - ServerNow;
             var locationId = SharedLocationId.New();
             await Commander.Call(
-                    new SharedLocations_Create(Session, share.ChatId, locationId, point, liveDuration),
+                    new SharedLocations_Report(Session, share.ChatId, locationId, point, liveDuration),
                     cancellationToken)
                 .ConfigureAwait(false);
             var command = new Chats_UpsertEntry(Session, share.ChatId, null) { LocationId = locationId };

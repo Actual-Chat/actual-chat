@@ -53,48 +53,35 @@ public class SharedLocationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task<SharedLocation> OnCreate(SharedLocationsBackend_Create command, CancellationToken cancellationToken)
+    public virtual async Task OnReport(SharedLocationsBackend_Report command, CancellationToken cancellationToken)
     {
         var (id, authorId, point, liveDuration) = command;
         var chatId = authorId.ChatId;
         if (Invalidation.IsActive) {
             _ = Get(chatId, id, default);
             _ = ListLive(chatId, default);
-            return null!;
-        }
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var now = Clocks.SystemClock.Now;
-        var duration = liveDuration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration);
-        var sharedLocation = new SharedLocation(id, authorId, point, now, now, duration);
-        dbContext.Add(new DbSharedLocation(sharedLocation));
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return sharedLocation;
-    }
-
-    // [CommandHandler]
-    public virtual async Task OnReport(SharedLocationsBackend_Report command, CancellationToken cancellationToken)
-    {
-        var (chatId, id, point) = command;
-        if (Invalidation.IsActive) {
-            _ = Get(chatId, id, default);
-            _ = ListLive(chatId, default);
             return;
         }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var now = Clocks.SystemClock.Now;
+        // TODO: locks on dbset?
         var dbSharedLocation = await dbContext.SharedLocations.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
-        if (dbSharedLocation == null)
+
+        // TODO: existing = dbSharedLocation.ToModel()?
+        if (dbSharedLocation is null) {
+            var duration = liveDuration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration);
+            var created = new SharedLocation(id, authorId, point, now, now, duration);
+            dbContext.Add(new DbSharedLocation(created));
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return;
+        }
 
         // A report past LiveUntil is ignored so a frozen share keeps its last position.
-        var now = Clocks.SystemClock.Now;
         var sharedLocation = dbSharedLocation.ToModel();
         if (!sharedLocation.IsLive(now))
             return;
@@ -120,7 +107,7 @@ public class SharedLocationsBackend(IServiceProvider services)
         var dbSharedLocation = await dbContext.SharedLocations.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
-        if (dbSharedLocation == null)
+        if (dbSharedLocation is null)
             return;
 
         var now = Clocks.SystemClock.Now;
