@@ -76,7 +76,7 @@ public class SharedLocationsBackend(IServiceProvider services)
             Bearing = point.Bearing,
             CreatedAt = now,
             ModifiedAt = now,
-            LiveUntil = now + liveDuration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration),
+            Duration = liveDuration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration),
         };
         dbContext.Add(dbSharedLocation);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -98,12 +98,13 @@ public class SharedLocationsBackend(IServiceProvider services)
         var dbSharedLocation = await dbContext.SharedLocations.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
+        // TODO: tomodel and use model below. probably use UpdateFrom?
         if (dbSharedLocation == null)
             return;
 
         // A report past LiveUntil is ignored so a frozen share keeps its last position.
         var now = Clocks.SystemClock.Now;
-        if (now >= dbSharedLocation.LiveUntil.ToMoment())
+        if (now >= dbSharedLocation.CreatedAt.ToMoment() + dbSharedLocation.Duration)
             return;
 
         dbSharedLocation.Latitude = point.Latitude;
@@ -136,8 +137,9 @@ public class SharedLocationsBackend(IServiceProvider services)
 
         // Freeze immediately: the last position stays as a static pin in history.
         var now = Clocks.SystemClock.Now;
-        if (dbSharedLocation.LiveUntil.ToMoment() > now) {
-            dbSharedLocation.LiveUntil = now;
+        var createdAt = dbSharedLocation.CreatedAt.ToMoment();
+        if (createdAt + dbSharedLocation.Duration > now) {
+            dbSharedLocation.Duration = now - createdAt;
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
     }

@@ -1185,9 +1185,9 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("latitude");
 
-                    b.Property<DateTime>("LiveUntil")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("live_until");
+                    b.Property<TimeSpan>("Duration")
+                        .HasColumnType("interval")
+                        .HasColumnName("duration");
 
                     b.Property<double>("Longitude")
                         .HasColumnType("double precision")

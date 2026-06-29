@@ -13,9 +13,12 @@ public sealed partial record SharedLocation(
     [property: DataMember, MemoryPackOrder(3), Key(3)] GeoPoint Point,
     [property: DataMember, MemoryPackOrder(4), Key(4)] Moment CreatedAt,
     [property: DataMember, MemoryPackOrder(5), Key(5)] Moment ModifiedAt,
-    // TODO: DURATION!!!
-    [property: DataMember, MemoryPackOrder(6), Key(6)] Moment LiveUntil
+    [property: DataMember, MemoryPackOrder(6), Key(6)] TimeSpan Duration
 )
 {
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public Moment LiveUntil => CreatedAt + Duration;
+
     public bool IsLive(Moment now) => now < LiveUntil;
 }

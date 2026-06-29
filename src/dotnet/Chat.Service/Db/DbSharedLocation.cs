@@ -25,13 +25,7 @@ public class DbSharedLocation : IHasId<string>, IRequirementTarget
         get => field.DefaultKind(DateTimeKind.Utc);
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
-
-    // TODO: persist CreatedAt + Duration instead
-    public DateTime LiveUntil {
-        get => field.DefaultKind(DateTimeKind.Utc);
-        set => field = value.DefaultKind(DateTimeKind.Utc);
-    }
-
+    public TimeSpan Duration { get; set; }
     public DbSharedLocation() { }
 
     public SharedLocation ToModel()
@@ -42,7 +36,7 @@ public class DbSharedLocation : IHasId<string>, IRequirementTarget
             new GeoPoint(Latitude, Longitude, Accuracy, Bearing),
             CreatedAt.ToMoment(),
             ModifiedAt.ToMoment(),
-            LiveUntil.ToMoment());
+            Duration);
 
     // TODO: UpdateFrom???
 }

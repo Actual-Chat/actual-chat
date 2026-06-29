@@ -30,7 +30,7 @@ namespace ActualChat.Chat.Migrations
                     bearing = table.Column<float>(type: "real", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    live_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    duration = table.Column<TimeSpan>(type: "interval", nullable: false)
                 },
                 constraints: table =>
                 {
