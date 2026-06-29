@@ -103,10 +103,10 @@ public class SharedLocationsBackend(IServiceProvider services)
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    // TODO: why do we need stop at all???
     // [CommandHandler]
     public virtual async Task OnStop(SharedLocationsBackend_Stop command, CancellationToken cancellationToken)
     {
+        // Stop ends a share early — freeze it now so it leaves the live list, last point kept as a pin.
         var (chatId, id) = command;
         if (Invalidation.IsActive) {
             _ = Get(chatId, id, default);
@@ -123,7 +123,6 @@ public class SharedLocationsBackend(IServiceProvider services)
         if (dbSharedLocation == null)
             return;
 
-        // Freeze immediately: the last position stays as a static pin in history.
         var now = Clocks.SystemClock.Now;
         var sharedLocation = dbSharedLocation.ToModel();
         if (sharedLocation.IsLive(now)) {
