@@ -28,6 +28,15 @@
     max-height: calc(20rem - 20rem * var(--rp-collapse));
     opacity: clamp(0, calc((0.5 - var(--rp-collapse)) * 2), 1);
 }
+.right-panel > .c-panel-content > .c-chat-info > .c-card {
+    @apply flex-y gap-y-0.5;
+    @apply p-0.5;
+    @apply rounded-xl border border-separator;
+    @apply overflow-hidden;
+}
+.right-panel > .c-panel-content > .c-chat-info > .c-card > .divider {
+    @apply mx-2;
+}
 .right-panel-chat-info-item {
     @apply flex-none flex-x;
     @apply overflow-hidden;
@@ -315,9 +324,13 @@ body.hoverable .right-panel-chat-info-item.hovered:hover {
     line-height: 2.5rem;
     opacity: clamp(0, calc((var(--rp-collapse) - 0.5) * 2), 1);
 }
-/* While dragging or during the frame-driven snap the dependent properties must follow
-   the variable instantly — their own transitions would lag and stall the motion. Outside
-   these the transitions still drive the expanded/collapsed-header avatar feature. */
+/* While scrolling, dragging or during the frame-driven snap the dependent properties must
+   follow the variable instantly — their own transitions would lag and stall the motion.
+   Outside these the transitions still drive the expanded/collapsed-header avatar feature. */
+.right-panel.collapsing > .c-header,
+.right-panel.collapsing > .c-header *,
+.right-panel.collapsing > .c-panel-content,
+.right-panel.collapsing > .c-panel-content *,
 .right-panel.dragging > .c-header,
 .right-panel.dragging > .c-header *,
 .right-panel.dragging > .c-panel-content,
