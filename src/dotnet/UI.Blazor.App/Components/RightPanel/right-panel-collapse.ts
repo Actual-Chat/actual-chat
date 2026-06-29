@@ -4,12 +4,15 @@ import { Gesture, Gestures } from 'gestures';
 import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
-const EXPAND_AT_PX = 4;          // at/above the list top (offset <= this) => always expanded
-const DIR_TRIGGER_PX = 24;       // directional scroll distance that flips the collapse state
-const MIN_OVERFLOW_REM = 7.5;    // don't collapse a list too short to fill the freed header space
-const DRAG_RANGE_REM = 7.5;      // finger travel that maps to a full collapse/expand
+const COLLAPSE_RANGE_REM = 7.5;  // list scroll distance mapped to a full collapse (header tracks scroll 1:1)
+const EXPAND_AT_PX = 8;          // within this of the list top => pinned fully expanded (exact 0)
+// Require this much scroll overflow before collapsing — comfortably above the freed range so the
+// list still overflows once collapsed (otherwise collapsing makes it fit, scrollTop snaps to 0,
+// and the header oscillates against the list every frame).
+const MIN_OVERFLOW_REM = 10;
 const DRAG_START_PX = 6;
 const SNAP_DURATION_MS = 250;
+const ACTIVE_LINGER_MS = 150;    // keep dependent transitions suppressed this long after the last scroll write
 const Deceleration = 0.1;
 
 interface ScrollLimitsSource {
@@ -24,23 +27,29 @@ function easeOutCubic(t: number): number {
     return 1 - Math.pow(1 - t, 3);
 }
 
-// Binary collapse of the right-panel header: it is only ever expanded (--rp-collapse 0)
-// or collapsed (--rp-collapse 1), with a frame-driven snap between them. Scrolling the
-// active tab past a threshold collapses; scrolling back to the top expands; dragging the
-// header follows the finger and snaps on release. Touch-only (skipped on wide screens).
+function clamp01(v: number): number {
+    return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+// Collapse of the right-panel header, driven by the active tab's scroll position.
+// --rp-collapse = (offset - anchor) / range, so scrolling the list down collapses the header
+// proportionally (1:1, smoothly tracked). It is a one-way ratchet: scrolling up mid-list holds
+// the state instead of expanding — the header only re-opens by reaching the list top (an
+// animated snap, not scroll-tracked) or by a header drag. The one-way scroll response is
+// deliberate: the header collapse resizes the list viewport, and a two-way (symmetric) response
+// would feed that relayout back into an oscillation. Touch-only: disabled on wide screens.
 export class RightPanelCollapse {
     private readonly rightPanel: HTMLElement;
     private readonly content: HTMLElement | null;
     private readonly disposed$: Subject<void> = new Subject<void>();
+    private readonly rangePx = remToPx(COLLAPSE_RANGE_REM);
     private readonly minOverflowPx = remToPx(MIN_OVERFLOW_REM);
-    private readonly dragRangePx = remToPx(DRAG_RANGE_REM);
 
-    private progress = 0;       // current animated value: 0 = expanded, 1 = collapsed
-    private collapsed = false;  // logical target state
-    private snapRaf = 0;
+    private progress = 0;       // current value: 0 = expanded, 1 = collapsed (mirrored to --rp-collapse)
+    private anchorOffset = 0;   // list offset at which the header is fully expanded
     private lastScroller: HTMLElement | null = null;
-    private lastOffset: number | null = null;  // last seen top-offset (null = top out of window)
-    private scrollAccum = 0;                    // directional scroll accumulator (px)
+    private snapRaf = 0;
+    private lingerTimer = 0;
     private headerClassObserver: MutationObserver | null = null;
     private wasAvatarExpanded = false;
 
@@ -60,15 +69,14 @@ export class RightPanelCollapse {
             takeUntil(this.disposed$),
         ).subscribe(e => this.onScroll(e));
 
-        // Drag the header itself to collapse/expand, following the finger (touch only).
+        // Drag the header itself to expand/collapse, following the finger (touch only).
         DocumentEvents.capturedPassive.touchStart$.pipe(
             filter(() => !ScreenSize.isWide() && !this.isDragging && !this.isSnapping && !this.isAvatarExpanded),
             filter(e => this.header?.contains(e.target as Node) ?? false),
             takeUntil(this.disposed$),
         ).subscribe(e => Gestures.addActive(new CollapseDragGesture(this, e)));
 
-        // Watch the full-screen-avatar class so closing it (by tap) re-baselines us: the
-        // next scroll starts from expanded, then collapses smoothly.
+        // Watch the full-screen-avatar class so closing it re-baselines us on the next scroll.
         const header = this.header;
         if (header) {
             this.wasAvatarExpanded = header.classList.contains('expanded-header');
@@ -94,7 +102,7 @@ export class RightPanelCollapse {
     }
 
     public get dragRange(): number {
-        return this.dragRangePx;
+        return this.rangePx;
     }
 
     public getProgress(): number {
@@ -106,11 +114,64 @@ export class RightPanelCollapse {
             return;
 
         cancelAnimationFrame(this.snapRaf);
+        clearTimeout(this.lingerTimer);
         this.headerClassObserver?.disconnect();
-        this.rightPanel.classList.remove('snapping', 'dragging', 'collapsed');
+        this.rightPanel.classList.remove('snapping', 'dragging', 'collapsing', 'collapsed');
         this.rightPanel.style.removeProperty('--rp-collapse');
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    private onScroll(e: Event) {
+        // Ignore scroll while a drag/snap (and the layout shift it triggers) plays out.
+        if (this.isDragging || this.isSnapping || this.isAvatarExpanded)
+            return;
+
+        const scroller = e.target;
+        if (!(scroller instanceof HTMLElement))
+            return;
+        if (ScreenSize.isWide()) {
+            this.setProgress(0); // desktop: never collapse
+            return;
+        }
+
+        // Fresh scroller (tab switch / after full-screen close): baseline at the current
+        // position so the header starts expanded and never collapses on its own.
+        if (scroller !== this.lastScroller) {
+            this.lastScroller = scroller;
+            this.anchorOffset = this.topOffset(scroller) ?? 0;
+            this.markActive();
+            this.setProgress(0);
+            return;
+        }
+
+        const offset = this.topOffset(scroller);
+        if (offset === null)
+            return; // list top not in the rendered window — keep the current state
+
+        // Reaching the top (or a list too short to collapse) is the only scroll-driven way to
+        // expand, and it ANIMATES rather than tracks the scroll: tracking the expand would grow
+        // the header mid-scroll, resize the list viewport, and feed back into a collapse/expand
+        // jitter loop. A freshly settled list also lands a few px from the top, so the EXPAND_AT_PX
+        // band doubles as the sub-pixel-stable "fully expanded" zone.
+        if (offset <= EXPAND_AT_PX || !this.canCollapse(scroller)) {
+            this.anchorOffset = 0;
+            if (this.progress !== 0)
+                this.snapTo(0);
+            return;
+        }
+
+        // Ratchet: scrolling down collapses, proportionally and smoothly tracking the list.
+        // Scrolling up mid-list does NOT expand here — it holds the current state (re-pegging
+        // the anchor) so the header only re-opens at the top or via a header drag. This one-way
+        // scroll response is what keeps the layout-feedback loop from oscillating: the viewport
+        // growth a collapse causes can only drop the measured offset, which the ratchet ignores
+        // instead of bouncing the header back open.
+        const raw = clamp01((offset - this.anchorOffset) / this.rangePx);
+        if (raw >= this.progress)
+            this.setProgress(raw);
+        else
+            this.anchorOffset = offset - this.progress * this.rangePx;
     }
 
     // Drag lifecycle (driven by CollapseDragGesture)
@@ -118,25 +179,24 @@ export class RightPanelCollapse {
     public beginDrag() {
         cancelAnimationFrame(this.snapRaf);
         this.snapRaf = 0;
-        this.rightPanel.classList.remove('snapping');
+        clearTimeout(this.lingerTimer);
+        this.rightPanel.classList.remove('snapping', 'collapsing');
         this.rightPanel.classList.add('dragging');
     }
 
-    public setProgress(progress: number) {
-        this.progress = progress;
-        this.rightPanel.style.setProperty('--rp-collapse', progress.toFixed(4));
-        this.rightPanel.classList.toggle('collapsed', progress > 0.5);
+    public setDragProgress(progress: number) {
+        this.setProgress(progress);
     }
 
     public endDrag(terminalProgress: number) {
-        const collapsed = terminalProgress > 0.5;
-        this.collapsed = collapsed;
+        const target = terminalProgress > 0.5 ? 1 : 0;
         this.rightPanel.classList.remove('dragging');
-        // Re-baseline direction tracking so the next scroll continues from this state
-        // instead of fighting it (a later scroll only flips on a fresh directional move).
-        this.lastOffset = null;
-        this.scrollAccum = 0;
-        this.snapTo(collapsed ? 1 : 0);
+        // Re-anchor to the current list position so the swipe sticks: a later scroll continues
+        // from this state instead of snapping back to the position-derived value.
+        const offset = this.lastScroller ? this.topOffset(this.lastScroller) : null;
+        if (offset !== null)
+            this.anchorOffset = Math.max(0, offset - target * this.rangePx);
+        this.snapTo(target);
     }
 
     private onHeaderClassChange() {
@@ -146,91 +206,34 @@ export class RightPanelCollapse {
         this.wasAvatarExpanded = isExpanded;
     }
 
-    private onScroll(e: Event) {
-        // Ignore scroll while a drag/snap (and the layout shift it triggers) plays out.
-        if (this.isSnapping || this.isDragging)
-            return;
-        // The full-screen avatar does not react to scroll at all — close it by tapping.
-        if (this.isAvatarExpanded)
+    private setProgress(progress: number) {
+        if (progress === this.progress)
             return;
 
-        const scroller = e.target;
-        if (!(scroller instanceof HTMLElement))
-            return;
-        if (ScreenSize.isWide()) {
-            this.setState(false, false);
-            return;
-        }
-
-        // Fresh scroller (tab switch / after full-screen close): start expanded, never
-        // collapse on its own.
-        if (scroller !== this.lastScroller) {
-            this.lastScroller = scroller;
-            this.lastOffset = this.topOffset(scroller);
-            this.scrollAccum = 0;
-            this.setState(false, false);
-            return;
-        }
-
-        // Direction-based: scrolling down collapses, scrolling up expands. This composes
-        // with the drag (same axis) without the position-based fighting that flipped the
-        // state back and forth.
-        const offset = this.topOffset(scroller);
-        if (offset === null) {
-            this.lastOffset = null; // top out of the rendered window — re-baseline on return
-            return;
-        }
-        if (offset <= EXPAND_AT_PX) {
-            this.lastOffset = offset;
-            this.scrollAccum = 0;
-            this.setState(false, true); // always expanded at the very top
-            return;
-        }
-        if (this.lastOffset === null) {
-            this.lastOffset = offset; // re-baseline after a drag or an unknown stretch
-            return;
-        }
-
-        const delta = offset - this.lastOffset;
-        this.lastOffset = offset;
-        if (delta * this.scrollAccum < 0)
-            this.scrollAccum = 0; // direction reversal
-        this.scrollAccum += delta;
-
-        if (this.scrollAccum >= DIR_TRIGGER_PX && this.canCollapse(scroller)) {
-            this.scrollAccum = 0;
-            this.setState(true, true);
-        }
-        else if (this.scrollAccum <= -DIR_TRIGGER_PX) {
-            this.scrollAccum = 0;
-            this.setState(false, true);
-        }
+        this.progress = progress;
+        this.rightPanel.style.setProperty('--rp-collapse', progress.toFixed(4));
+        this.rightPanel.classList.toggle('collapsed', progress > 0.5);
+        this.markActive();
     }
 
-    // Set the binary state. Animate the transition unless `animate` is false (instant jump,
-    // used for tab switches and wide screens).
-    private setState(collapsed: boolean, animate: boolean) {
-        const target = collapsed ? 1 : 0;
-        if (this.collapsed === collapsed && this.progress === target)
+    // Suppress the dependent properties' own CSS transitions while the scroll drives the var,
+    // so the header tracks the list instantly; restore them shortly after scrolling stops
+    // (then the expanded/collapsed-header avatar feature animates as before).
+    private markActive() {
+        if (this.isDragging || this.isSnapping)
             return;
 
-        this.collapsed = collapsed;
-        if (animate) {
-            this.snapTo(target);
-        }
-        else {
-            cancelAnimationFrame(this.snapRaf);
-            this.snapRaf = 0;
-            this.rightPanel.classList.remove('snapping');
-            this.setProgress(target);
-        }
+        this.rightPanel.classList.add('collapsing');
+        clearTimeout(this.lingerTimer);
+        this.lingerTimer = window.setTimeout(() => this.rightPanel.classList.remove('collapsing'), ACTIVE_LINGER_MS);
     }
 
-    // Frame-driven snap to 0/1. `snapping` kills the dependent properties' own transitions
-    // so the avatar and header move in lockstep, and makes onScroll bail so the layout
-    // shift the collapse causes can't restart the animation.
+    // Frame-driven snap to 0/1 on drag release. `snapping` kills the dependent properties'
+    // own transitions so the avatar and header move in lockstep, and makes onScroll bail so
+    // the layout shift the collapse causes can't restart it.
     private snapTo(target: number) {
         cancelAnimationFrame(this.snapRaf);
+        this.rightPanel.classList.remove('collapsing');
         this.rightPanel.classList.add('snapping');
         const start = this.progress;
         const startedAt = Date.now();
@@ -264,15 +267,27 @@ export class RightPanelCollapse {
     }
 
     // Don't collapse a list that can't scroll enough to fill the space the collapse frees.
+    // The overflow is measured as if the header were fully expanded (the space the current
+    // collapse already freed is added back), so the decision is invariant to the current
+    // progress and can't flip as the header collapses; requiring a margin above the freed
+    // range guarantees the list still overflows once collapsed, which breaks the layout
+    // feedback loop (collapse -> list fits -> scrollTop clamped to 0 -> expand -> repeat).
     private canCollapse(scroller: HTMLElement): boolean {
+        const overflow = this.scrollOverflow(scroller);
+        if (overflow === null)
+            return true; // unbounded (infinite) list — always plenty to scroll
+        return overflow + this.progress * this.rangePx > this.minOverflowPx;
+    }
+
+    private scrollOverflow(scroller: HTMLElement): number | null {
         const scrollController = (scroller as unknown as ScrollLimitsSource).scrollController;
-        if (scrollController) {
-            const { min, max } = scrollController.getEffectiveScrollLimits();
-            if (!Number.isFinite(min) || !Number.isFinite(max))
-                return true;
-            return (max - min) > this.minOverflowPx;
-        }
-        return scroller.scrollHeight - scroller.clientHeight > this.minOverflowPx;
+        if (!scrollController)
+            return scroller.scrollHeight - scroller.clientHeight;
+
+        const { min, max } = scrollController.getEffectiveScrollLimits();
+        if (!Number.isFinite(min) || !Number.isFinite(max))
+            return null;
+        return max - min;
     }
 }
 
@@ -326,7 +341,7 @@ class CollapseDragGesture extends Gesture {
                     this.lastProgress = this.progress;
                     this.lastTime = now;
                 }
-                this.panel.setProgress(this.progress);
+                this.panel.setDragProgress(this.progress);
             }),
         );
     }
