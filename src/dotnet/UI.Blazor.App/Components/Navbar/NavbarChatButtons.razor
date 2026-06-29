@@ -23,6 +23,7 @@
         <NavbarGroupSelectionButton
             @key="@chatInfo.Id"
             CanMove="@(!Hub.BrowserInfo.IsTouchCapable)"
+            IsRound="true"
             Title="@chatInfo.Chat.Title"
             AdditionalAttributes="@attributes"
             Id="@chatInfo.Id.GetNavbarGroupId()">

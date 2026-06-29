@@ -264,6 +264,9 @@ body.hoverable .btn.btn-modal:hover::after {
     @apply bg-round;
     @apply text-round-title;
 }
+.btn.btn-round::after {
+    @apply rounded-full;
+}
 
 /* Button Square and Round Hover */
 body.hoverable .btn.btn-square:hover::after,
