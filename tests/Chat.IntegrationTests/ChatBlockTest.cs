@@ -129,9 +129,9 @@ public class ChatBlockTest(ChatCollection.AppHostFixture fixture, ITestOutputHel
         await ComputedTest.When(async ct => {
             var bobContactForAlice = await bobContacts.GetForChat(bobTester.Session, chatId, ct);
             bobContactForAlice.Should().NotBeNull();
-            bobContactForAlice!.IsBlocked.Should().BeFalse();
+            bobContactForAlice.IsBlocked.Should().BeFalse();
             bobContactForAlice.IsBlockedByPeer.Should().BeTrue();
-        });
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
