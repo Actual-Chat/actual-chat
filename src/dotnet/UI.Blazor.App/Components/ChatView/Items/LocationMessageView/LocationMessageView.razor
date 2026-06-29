@@ -3,8 +3,10 @@
 @{
     var m = State.Value;
 }
-@if (m is not null) {
-    <div class="location-message" @onclick="@OnOpenMap">
+@* Fixed-height container reserved on first render (before ComputeState resolves) so the
+   virtual list's total height stays stable and doesn't scroll-jump when the map fills in. *@
+<div class="location-message" @onclick="@OnOpenMap">
+    @if (m is not null) {
         <MapView
             Class="c-map"
             Zoom="15"
@@ -12,8 +14,8 @@
             CenterLatitude="@m.Latitude"
             CenterLongitude="@m.Longitude"
             Markers="@m.Markers"/>
-    </div>
-}
+    }
+</div>
 
 @code {
     private ISharedLocations SharedLocations => Hub.SharedLocations;

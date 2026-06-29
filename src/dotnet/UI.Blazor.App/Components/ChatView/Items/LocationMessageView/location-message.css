@@ -1,13 +1,6 @@
-/* TODO: fixed height */
-/* TODO: flex? */
 .location-message {
-    margin-top: .25rem;
-    max-width: 20rem;
-    cursor: pointer;
+    @apply mt-1 flex w-80 max-w-full h-44 cursor-pointer;
 }
 .location-message .c-map {
-    width: 100%;
-    height: 11rem;
-    border-radius: .75rem;
-    overflow: hidden;
+    @apply flex-1 rounded-xl overflow-hidden;
 }
