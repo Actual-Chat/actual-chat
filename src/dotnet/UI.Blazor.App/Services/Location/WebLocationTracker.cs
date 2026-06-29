@@ -42,17 +42,8 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
     public void OnLocation(double latitude, double longitude, double? accuracy, double? heading)
         => SetLocation(new GeoPoint(latitude, longitude, (float?)accuracy, (float?)heading));
 
-    public override async Task<GeoPoint?> Get(CancellationToken cancellationToken)
-    {
-        var fix = await _hub.JS
-            .InvokeAsync<GeoFix?>(JSGetCurrentMethod, cancellationToken, Constants.Location.GetTimeout.TotalMilliseconds)
-            .ConfigureAwait(false);
-        return fix is null
-            ? null
-            : new GeoPoint(fix.Latitude, fix.Longitude, (float?)fix.Accuracy, (float?)fix.Heading);
-    }
-
-    // Nested types
-
-    private sealed record GeoFix(double Latitude, double Longitude, double? Accuracy, double? Heading);
+    public override Task<GeoPoint?> Get(CancellationToken cancellationToken)
+        => _hub.JS
+            .InvokeAsync<GeoPoint?>(JSGetCurrentMethod, cancellationToken, Constants.Location.GetTimeout.TotalMilliseconds)
+            .AsTask();
 }

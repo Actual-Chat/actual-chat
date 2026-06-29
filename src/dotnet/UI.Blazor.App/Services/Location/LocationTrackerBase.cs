@@ -19,7 +19,6 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
     protected Task<GeoTrackingAccuracy> GetAccuracy(CancellationToken cancellationToken)
         => Hub.LocalSettings.LocalAppSettings().Get(x => x.LocationAccuracyOrDefault, cancellationToken);
 
-    // TODO: is it worth having a separate method?
     protected void SetLocation(GeoPoint? point)
         => _lastKnown.Value = point;
 }
