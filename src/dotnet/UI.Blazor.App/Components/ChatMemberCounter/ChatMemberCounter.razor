@@ -32,9 +32,6 @@
 @if (m.MemberCount > 0) {
     <div class="chat-member-counter">
         @RenderMemberCount()
-        @if (!ScreenSize.IsNarrow()) {
-            <DotSeparator/>
-        }
     </div>
 }
 
