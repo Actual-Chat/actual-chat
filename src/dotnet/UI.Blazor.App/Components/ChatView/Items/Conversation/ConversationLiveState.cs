@@ -11,4 +11,4 @@ public sealed record ConversationLiveState(
     bool IsLive,
     bool IsJoined,
     bool IsVoiceOnly,
-    string ChatTitle = "");
+    string ParticipantsText = "");

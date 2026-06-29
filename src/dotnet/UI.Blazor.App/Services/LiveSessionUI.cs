@@ -36,6 +36,13 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public virtual Task<LiveSession?> GetLiveSession(ChatId chatId, CancellationToken cancellationToken)
         => LiveSessions.GetLiveSession(Session, chatId, cancellationToken);
 
+    [ComputeMethod]
+    public virtual async Task<bool> IsTranscriptionOn(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var state = await LiveSessions.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return state?.TranscriptionOn ?? false;
+    }
+
     public Task SetMicMuted(ChatId chatId, bool micMuted, CancellationToken cancellationToken)
         => LiveSessions.SetMicMuted(Session, chatId, micMuted, cancellationToken);
 

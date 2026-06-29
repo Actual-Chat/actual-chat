@@ -6,22 +6,75 @@
     @apply mb-2;
     background: linear-gradient(5deg, var(--conversation-gradient-01) -96.64%, var(--conversation-gradient-02) 39.02%, var(--conversation-gradient-01) 182.11%)
 }
+.conversation-message.live {
+    @apply rounded-2xl;
+}
 .conversation-message.live:not(.joined) {
     @apply border-none;
     background: linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%);
 }
 .conversation-message.live.joined {
-    @apply border border-primary;
-    background: none;
+    @apply border border-solid;
+    border-color: var(--violet-60);
+    background: linear-gradient(249deg, rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%);
 }
-.conversation-message.live .c-title .c-tldr i {
-    @apply text-primary;
+.c-live-card {
+    @apply flex-y gap-y-2 w-full;
+    @apply p-4;
+}
+.c-live-card .c-lc-title {
+    @apply flex-x items-center gap-x-3;
+}
+.c-live-card .c-lc-title chat-activity-panel-icon-svg {
+    @apply flex-none flex items-center;
+}
+.c-live-card .c-lc-name {
+    @apply flex-1 min-w-0;
+    @apply text-01 text-base font-medium leading-5;
+}
+.c-live-card .c-lc-expand {
+    @apply flex-none;
+    @apply text-02 text-xl;
+}
+.c-live-card .c-lc-oncall {
+    @apply text-caption-1 font-medium;
+    color: var(--violet-60);
+}
+.c-live-card .c-lc-summary {
+    @apply text-01 text-caption-4 leading-4;
+}
+.c-live-card .c-lc-summary ul {
+    @apply ml-4;
+    list-style-type: disc;
+}
+.c-live-card .c-lc-meta-row {
+    @apply flex-x items-center gap-x-2 w-full;
+}
+.c-live-card .c-lc-authors {
+    @apply flex-x items-center gap-x-1 flex-none;
+}
+.c-live-card .c-lc-meta {
+    @apply flex-y flex-1 min-w-0 gap-y-0.5;
+}
+.c-live-card .c-lc-started {
+    @apply text-03 font-semibold;
+    font-size: 10px;
+    line-height: 10px;
+}
+.c-live-card .c-lc-second {
+    @apply text-03 font-medium;
+    font-size: 10px;
+    line-height: 10px;
+}
+.c-live-card .c-lc-copy {
+    @apply flex-none;
+    @apply text-02 text-xl;
 }
 .conversation-message .c-join-row {
     @apply block w-full;
     @apply px-4 py-1;
     @apply text-center text-caption-1 font-semibold uppercase;
-    @apply text-primary;
+    color: var(--violet-60);
     letter-spacing: 0.42px;
 }
 body.hoverable .conversation-message .c-join-row:hover {

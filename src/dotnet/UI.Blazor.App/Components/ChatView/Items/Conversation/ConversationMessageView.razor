@@ -14,65 +14,106 @@
     var cls = $"conversation-message message-wrapper {openClass} {liveClass}";
     var attachments = conversation.Attachments;
     var canExpand = !state.IsLive || state.IsJoined;
-    var headerIcon = state is { IsLive: true, IsJoined: false } ? "icon-voice-01" : "icon-tldr";
-    var headerTitle = state.IsVoiceOnly ? TranslatedText.From(state.ChatTitle) : m.Title;
+    var liveTitle = m.Title.Text.IsNullOrEmpty() ? state.ParticipantsText : m.Title.Text;
 }
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
-    <CascadingValue Value="@_fakeEntry" IsFixed="true">
-    <div class="c-details">
-        <div class="c-summary">
-            <ConversationMessageHeader
-                Conversation="@conversation"
-                Title="@headerTitle"
-                Icon="@headerIcon"
-                ShowToggle="@(!state.IsVoiceOnly)"
-                MessageCount="@messageCount"
-                StartsAt="@startsAt"
-                ConversationToggleClick="@OnHeaderClick"/>
-            @if (!state.IsVoiceOnly) {
+    @if (state.IsLive) {
+        var secondLine = state.IsVoiceOnly ? "Voice only" : messageCount + " message".Pluralize(messageCount);
+        var startedAt = $"Started at {startsAt:HH:mm}";
+        var firstAuthors = conversation.AuthorIds.Take(3).ToList();
+        var extraAuthorCount = Math.Clamp(conversation.AuthorIds.Count - 3, 0, 99);
+        var hasSummary = !state.IsVoiceOnly;
+        <div class="c-live-card">
+            <div class="c-lc-title">
+                <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
+                <span class="c-lc-name">@liveTitle</span>
+                @if (hasSummary) {
+                    <HeaderButton Class="c-lc-expand" Click="@ToggleShowMessage">
+                        <i class="@(_isOpen ? "icon-collapse" : "icon-expand")"></i>
+                    </HeaderButton>
+                }
+            </div>
+            @if (state.IsJoined) {
+                <div class="c-lc-oncall">You on the call</div>
+            }
+            @if (hasSummary) {
+                <div class="c-lc-summary">
+                    <MarkupView Markup="@m.Description.Markup"/>
+                </div>
+            }
+            <div class="c-lc-meta-row">
+                <div class="c-lc-authors">
+                    @foreach (var authorId in firstAuthors) {
+                        <AuthorCircle AuthorId="@authorId" Size="@SquareSize.Size5"/>
+                    }
+                    @if (extraAuthorCount > 0) {
+                        <div class="author-incut ai-extra">+@extraAuthorCount</div>
+                    }
+                </div>
+                <div class="c-lc-meta">
+                    <div class="c-lc-started">@startedAt</div>
+                    <div class="c-lc-second">@secondLine</div>
+                </div>
+                <HeaderButton Class="c-lc-copy" Click="@OnCopyToClipboardRequested">
+                    <i class="icon-copy"></i>
+                </HeaderButton>
+            </div>
+            @if (!state.IsJoined) {
+                <div class="c-join-row" @onclick="@OnJoin">Tap to join</div>
+            }
+        </div>
+    } else {
+        <CascadingValue Value="@_fakeEntry" IsFixed="true">
+        <div class="c-details">
+            <div class="c-summary">
+                <ConversationMessageHeader
+                    Conversation="@conversation"
+                    Title="@m.Title"
+                    MessageCount="@messageCount"
+                    StartsAt="@startsAt"
+                    ConversationToggleClick="@OnHeaderClick"/>
                 <div class="c-short">
                     <MarkupView Markup="@m.Description.Markup"/>
                     @if (!_isOpen && canExpand) {
                         <span class="show-more-btn" @onclick="@ToggleDetails"> Show items</span>
                     }
                 </div>
+            </div>
+            @if (_isOpen) {
+                <div class="c-long">
+                    <div class="c-long-content @detailsCls">
+                        <MarkupView Markup="@m.Summary.Markup"/>
+                        <span class="show-more-btn" @onclick="@ToggleDetails"> Hide items</span>
+                    </div>
+                </div>
+            }
+            @if (attachments.Length > 0) {
+                var (mediaList, fileList) = GetOrderedAttachmentList(attachments);
+                <div class="message-attachments">
+                    <VisualMediaAttachmentList
+                        MediaList="@mediaList"
+                        IsConversation="true"
+                        IsNarrow="@ScreenSize.IsNarrow()"/>
+                    <div class="message-file-attachments">
+                        @foreach (var attachment in fileList) {
+                            if (attachment.IsAudio()) {
+                                <AudioFileAttachment Attachment="@attachment"/>
+                            } else {
+                                <FileAttachment Attachment="@attachment"/>
+                            }
+                        }
+                    </div>
+                </div>
             }
         </div>
-        @if (_isOpen) {
-            <div class="c-long">
-                <div class="c-long-content @detailsCls">
-                    <MarkupView Markup="@m.Summary.Markup"/>
-                    <span class="show-more-btn" @onclick="@ToggleDetails"> Hide items</span>
-                </div>
-            </div>
-        }
-        @if (attachments.Length > 0) {
-            var (mediaList, fileList) = GetOrderedAttachmentList(attachments);
-            <div class="message-attachments">
-                <VisualMediaAttachmentList MediaList="@mediaList" IsConversation="true" IsNarrow="@ScreenSize.IsNarrow()"/>
-                <div class="message-file-attachments">
-                    @foreach (var attachment in fileList) {
-                        if (attachment.IsAudio()) {
-                            <AudioFileAttachment Attachment="@attachment"/>
-                        } else {
-                            <FileAttachment Attachment="@attachment"/>
-                        }
-                    }
-                </div>
-            </div>
-        }
-    </div>
-    </CascadingValue>
-    <ConversationMessageFooter
-        CopyToClipboardRequested="@OnCopyToClipboardRequested"
-        Authors="@conversation.AuthorIds"
-        MessageCount="@messageCount"
-        SecondLine="@(state.IsVoiceOnly ? "Voice only" : null)"
-        StartsAt="@startsAt"
-        EndsAt="@endsAt"/>
-    @if (state is { IsLive: true, IsJoined: false }) {
-        <div class="c-join-row" @onclick="@OnJoin">Tap to join</div>
+        </CascadingValue>
+        <ConversationMessageFooter
+            CopyToClipboardRequested="@OnCopyToClipboardRequested"
+            Authors="@conversation.AuthorIds"
+            MessageCount="@messageCount"
+            StartsAt="@startsAt"
+            EndsAt="@endsAt"/>
     }
 </div>
 
@@ -82,7 +123,7 @@
     private ChatEntry _fakeEntry = null!;
 
     private ChatUI ChatUI => Hub.ChatUI;
-    private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
@@ -128,13 +169,40 @@
         var live = await LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(true);
         var isLive = live != null && live.Id == conversation.Id;
         var isJoined = isLive && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(true);
-        var isVoiceOnly = isLive && live!.Title.IsNullOrEmpty() && live.Summary.IsNullOrEmpty();
-        var chatTitle = "";
-        if (isVoiceOnly) {
-            var chat = await Chats.Get(Hub.Session, chatId, cancellationToken).ConfigureAwait(true);
-            chatTitle = chat?.Title ?? "";
+        var isVoiceOnly = isLive
+            && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(true);
+        var participantsText = isLive
+            ? await GetParticipantsText(chatId, conversation.AuthorIds, cancellationToken).ConfigureAwait(true)
+            : "";
+        return new ConversationLiveState(translated, isLive, isJoined, isVoiceOnly, participantsText);
+    }
+
+    private async Task<string> GetParticipantsText(
+        ChatId chatId,
+        IReadOnlyList<AuthorId> authorIds,
+        CancellationToken cancellationToken) {
+        var names = new List<string>();
+        foreach (var authorId in authorIds.Take(3)) {
+            var author = await Authors.Get(Hub.Session, chatId, authorId, cancellationToken).ConfigureAwait(true);
+            if (author?.Avatar.Name is { } name && !name.IsNullOrEmpty())
+                names.Add(Abbreviate(name));
         }
-        return new ConversationLiveState(translated, isLive, isJoined, isVoiceOnly, chatTitle);
+        if (names.Count == 0)
+            return "";
+        if (names.Count == 1)
+            return names[0];
+
+        var total = authorIds.Count;
+        if (total > 3)
+            return $"{names[0]}, {names[1]} and {total - 2} {"other".Pluralize(total - 2)}";
+        if (names.Count == 2)
+            return $"{names[0]} and {names[1]}";
+        return $"{names[0]}, {names[1]} and {names[2]}";
+    }
+
+    private static string Abbreviate(string name) {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length < 2 ? name : $"{parts[0]} {parts[1][0]}.";
     }
 
     private void OnHeaderClick() {
