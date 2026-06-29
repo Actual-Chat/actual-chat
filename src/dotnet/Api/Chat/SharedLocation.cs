@@ -8,14 +8,17 @@ namespace ActualChat.Chat;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record SharedLocation(
     [property: DataMember, MemoryPackOrder(0), Key(0)] SharedLocationId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] AuthorId AuthorId,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] GeoPoint Point,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] Moment CreatedAt,
-    [property: DataMember, MemoryPackOrder(5), Key(5)] Moment ModifiedAt,
-    [property: DataMember, MemoryPackOrder(6), Key(6)] TimeSpan Duration
+    [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId AuthorId,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] GeoPoint Point,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] Moment CreatedAt,
+    [property: DataMember, MemoryPackOrder(4), Key(4)] Moment ModifiedAt,
+    [property: DataMember, MemoryPackOrder(5), Key(5)] TimeSpan Duration
 )
 {
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ChatId ChatId => AuthorId.ChatId;
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Moment LiveUntil => CreatedAt + Duration;

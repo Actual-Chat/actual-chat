@@ -32,7 +32,6 @@ public class DbSharedLocation : IHasId<string>, IRequirementTarget
     public SharedLocation ToModel()
         => new(
             ActualChat.SharedLocationId.Parse(Id),
-            ActualChat.ChatId.Parse(ChatId),
             ActualChat.AuthorId.Parse(AuthorId),
             new GeoPoint(Latitude, Longitude, Accuracy, Bearing),
             CreatedAt.ToMoment(),

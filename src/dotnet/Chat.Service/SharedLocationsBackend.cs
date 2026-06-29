@@ -68,7 +68,7 @@ public class SharedLocationsBackend(IServiceProvider services)
 
         var now = Clocks.SystemClock.Now;
         var duration = liveDuration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration);
-        var sharedLocation = new SharedLocation(id, chatId, authorId, point, now, now, duration);
+        var sharedLocation = new SharedLocation(id, authorId, point, now, now, duration);
         dbContext.Add(new DbSharedLocation(sharedLocation));
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return sharedLocation;
