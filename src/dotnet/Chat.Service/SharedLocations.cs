@@ -42,7 +42,7 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
         chatRules.Require(ChatPermissions.Write);
 
         return await Commander
-            .Call(new SharedLocationsBackend_Create(id, chatId, author.Id, point, liveDuration), true, cancellationToken)
+            .Call(new SharedLocationsBackend_Create(id, author.Id, point, liveDuration), true, cancellationToken)
             .ConfigureAwait(false);
     }
 

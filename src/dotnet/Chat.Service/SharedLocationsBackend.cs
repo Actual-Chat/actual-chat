@@ -55,7 +55,8 @@ public class SharedLocationsBackend(IServiceProvider services)
     // [CommandHandler]
     public virtual async Task<SharedLocation> OnCreate(SharedLocationsBackend_Create command, CancellationToken cancellationToken)
     {
-        var (id, chatId, authorId, point, liveDuration) = command;
+        var (id, authorId, point, liveDuration) = command;
+        var chatId = authorId.ChatId;
         if (Invalidation.IsActive) {
             _ = Get(chatId, id, default);
             _ = List(chatId, default);
