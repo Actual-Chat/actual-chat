@@ -8,24 +8,15 @@ namespace ActualChat.App.Maui.Services;
 /// Foreground-only (no background-service integration), so it's used on platforms that
 /// don't need background sharing (Windows); Android/iOS use native background-capable trackers.
 /// </summary>
-public sealed class MauiGeolocationTracker : ILocationTracker
+public sealed class MauiLocationTracker : MauiLocationTrackerBase
 {
     private readonly IGeolocation _geolocation = Geolocation.Default;
-    private readonly MutableState<GeoPoint?> _lastKnown;
     private ILogger Log { get; }
 
-    public IState<GeoPoint?> LastKnown => _lastKnown;
-    private bool IsTracking { get; set; }
+    public MauiLocationTracker(AppUIHub hub) : base(hub)
+        => Log = hub.Services.LogFor(GetType());
 
-    public MauiGeolocationTracker(AppUIHub hub)
-    {
-        _lastKnown = hub.StateFactory.NewMutable(
-            (GeoPoint?)null,
-            StateCategories.Get(GetType(), nameof(LastKnown)));
-        Log = hub.Services.LogFor(GetType());
-    }
-
-    public async Task Start(CancellationToken cancellationToken)
+    public override async Task Start(CancellationToken cancellationToken)
     {
         if (IsTracking)
             return;
@@ -45,23 +36,18 @@ public sealed class MauiGeolocationTracker : ILocationTracker
         }
     }
 
-    public Task Stop(CancellationToken cancellationToken)
+    public override Task Stop(CancellationToken cancellationToken)
     {
         if (!IsTracking)
             return Task.CompletedTask;
 
         IsTracking = false;
-        _lastKnown.Value = null;
+        SetLocation(null);
         _geolocation.LocationChanged -= OnLocationChanged;
         _geolocation.StopListeningForeground();
         return Task.CompletedTask;
     }
 
     private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
-    {
-        var location = e.Location;
-        var accuracy = location.Accuracy is { } a ? (float)a : (float?)null;
-        var bearing = location.Course is { } c ? (float)c : (float?)null;
-        _lastKnown.Value = new GeoPoint(location.Latitude, location.Longitude, accuracy, bearing);
-    }
+        => SetLocation(e.Location.ToGeoPoint());
 }

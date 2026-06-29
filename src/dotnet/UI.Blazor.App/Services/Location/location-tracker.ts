@@ -2,11 +2,30 @@ import { getLogs } from 'logging';
 
 const { warnLog } = getLogs('LocationTracker');
 
+interface GeoFix {
+    latitude: number;
+    longitude: number;
+    accuracy: number | null;
+    heading: number | null;
+}
+
 export class LocationTracker {
     private readonly watchId: number;
 
     public static start(blazorRef: DotNet.DotNetObject): LocationTracker {
         return new LocationTracker(blazorRef);
+    }
+
+    public static getCurrent(timeoutMs: number): Promise<GeoFix | null> {
+        return new Promise(resolve => {
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    const c = position.coords;
+                    resolve({ latitude: c.latitude, longitude: c.longitude, accuracy: c.accuracy, heading: c.heading });
+                },
+                error => { warnLog?.log('getCurrent error', error); resolve(null); },
+                { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs });
+        });
     }
 
     constructor(blazorRef: DotNet.DotNetObject) {

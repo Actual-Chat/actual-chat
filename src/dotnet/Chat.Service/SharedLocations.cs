@@ -40,6 +40,7 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Write);
+        // TODO: limit i.e. by 100 per chat?
 
         return await Commander
             .Call(new SharedLocationsBackend_Create(id, author.Id, point, liveDuration), true, cancellationToken)

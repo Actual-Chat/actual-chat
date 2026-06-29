@@ -1,26 +1,18 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using CoreLocation;
 
 namespace ActualChat.App.Maui.Location;
 
-public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
+public sealed class AppleLocationTracker : MauiLocationTrackerBase, IAsyncDisposable
 {
     private readonly AppUIHub _hub;
-    private readonly MutableState<GeoPoint?> _lastKnown;
     private CLLocationManager? _manager;
 
-    public IState<GeoPoint?> LastKnown => _lastKnown;
-    private bool IsTracking { get; set; }
+    public AppleLocationTracker(AppUIHub hub) : base(hub)
+        => _hub = hub;
 
-    public AppleLocationTracker(AppUIHub hub)
-    {
-        _hub = hub;
-        _lastKnown = hub.StateFactory.NewMutable(
-            (GeoPoint?)null,
-            StateCategories.Get(GetType(), nameof(LastKnown)));
-    }
-
-    public async Task Start(CancellationToken cancellationToken)
+    public override async Task Start(CancellationToken cancellationToken)
     {
         if (IsTracking)
             return;
@@ -36,13 +28,13 @@ public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
         });
     }
 
-    public Task Stop(CancellationToken cancellationToken)
+    public override Task Stop(CancellationToken cancellationToken)
     {
         if (!IsTracking)
             return Task.CompletedTask;
 
         IsTracking = false;
-        _lastKnown.Value = null;
+        SetLocation(null);
         MainThread.BeginInvokeOnMainThread(() => _manager?.StopUpdatingLocation());
         return Task.CompletedTask;
     }
@@ -77,13 +69,15 @@ public sealed class AppleLocationTracker : ILocationTracker, IAsyncDisposable
 
     private void OnLocationsUpdated(object? sender, CLLocationsUpdatedEventArgs e)
     {
-        var location = e.Locations.LastOrDefault();
-        if (location is null)
-            return;
+        if (e.Locations.LastOrDefault() is { } location)
+            SetLocation(ToGeoPoint(location));
+    }
 
+    private static GeoPoint ToGeoPoint(CLLocation location)
+    {
         var accuracy = location.HorizontalAccuracy >= 0 ? (float)location.HorizontalAccuracy : (float?)null;
         var bearing = location.Course >= 0 ? (float)location.Course : (float?)null;
         var coordinate = location.Coordinate;
-        _lastKnown.Value = new GeoPoint(coordinate.Latitude, coordinate.Longitude, accuracy, bearing);
+        return new GeoPoint(coordinate.Latitude, coordinate.Longitude, accuracy, bearing);
     }
 }

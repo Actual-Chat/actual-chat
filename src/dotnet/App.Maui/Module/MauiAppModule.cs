@@ -81,7 +81,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
             }
         });
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
-        services.AddScoped<ILocationTracker>(c => new MauiGeolocationTracker(c.AppUIHub()));
+        services.AddScoped<ILocationTracker>(c => new MauiLocationTracker(c.AppUIHub()));
 #elif ANDROID
         services.AddScoped<AudioFocusUI>(c => new AndroidAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new MauiTuneUI(c.UIHub()));

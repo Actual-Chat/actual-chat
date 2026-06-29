@@ -8,6 +8,7 @@ public interface ILocationTracker
 {
     IState<GeoPoint?> LastKnown { get; }
 
+    Task<GeoPoint?> Get(CancellationToken cancellationToken);
     Task Start(CancellationToken cancellationToken);
     Task Stop(CancellationToken cancellationToken);
 }

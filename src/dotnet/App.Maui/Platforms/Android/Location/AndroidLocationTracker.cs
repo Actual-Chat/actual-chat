@@ -1,31 +1,24 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
 using Android.Content;
 
 namespace ActualChat.App.Maui.Location;
-
-public sealed class AndroidLocationTracker : ILocationTracker, IDisposable
+public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposable
 {
     private static volatile AndroidLocationTracker? _instance;
 
     private static Context Context => Platform.AppContext;
 
     private readonly AppUIHub _hub;
-    private readonly MutableState<GeoPoint?> _lastKnown;
 
-    public IState<GeoPoint?> LastKnown => _lastKnown;
-    private bool IsTracking { get; set; }
-
-    public AndroidLocationTracker(AppUIHub hub)
+    public AndroidLocationTracker(AppUIHub hub) : base(hub)
     {
         _hub = hub;
-        _lastKnown = hub.StateFactory.NewMutable(
-            (GeoPoint?)null,
-            StateCategories.Get(GetType(), nameof(LastKnown)));
         Interlocked.Exchange(ref _instance, this);
     }
 
-    public async Task Start(CancellationToken cancellationToken)
+    public override async Task Start(CancellationToken cancellationToken)
     {
         if (IsTracking)
             return;
@@ -38,13 +31,13 @@ public sealed class AndroidLocationTracker : ILocationTracker, IDisposable
         Context.StartForegroundService(intent);
     }
 
-    public Task Stop(CancellationToken cancellationToken)
+    public override Task Stop(CancellationToken cancellationToken)
     {
         if (!IsTracking)
             return Task.CompletedTask;
 
         IsTracking = false;
-        _lastKnown.Value = null;
+        SetLocation(null);
         var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
         Context.StopService(intent);
         return Task.CompletedTask;
@@ -64,8 +57,5 @@ public sealed class AndroidLocationTracker : ILocationTracker, IDisposable
     // Internal methods
 
     internal static void ReportLocation(GeoPoint point)
-    {
-        if (_instance is { } instance)
-            instance._lastKnown.Value = point;
-    }
+        => _instance?.SetLocation(point);
 }

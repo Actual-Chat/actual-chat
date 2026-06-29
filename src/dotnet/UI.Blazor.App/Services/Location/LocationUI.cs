@@ -34,25 +34,16 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
 
     public async Task SendCurrentLocation(ChatId chatId, CancellationToken cancellationToken)
     {
-        // TODO: Tracker.Get() without Start/Stop???
-        await Tracker.Start(cancellationToken).ConfigureAwait(false);
-        try {
-            var cPoint = await Tracker.LastKnown.Computed
-                .When(x => x is not null, cancellationToken)
-                .ConfigureAwait(false);
-            var locationId = SharedLocationId.New();
-            await Commander.Call(
-                    new SharedLocations_Create(Session, chatId, locationId, cPoint.Value!, TimeSpan.Zero),
-                    cancellationToken)
-                .ConfigureAwait(false);
-            var command = new Chats_UpsertEntry(Session, chatId, null) { LocationId = locationId };
-            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-        }
-        finally {
-            // Leave the tracker running only if a live share still needs it.
-            if (_shares.Value.Length == 0)
-                await Tracker.Stop(cancellationToken).ConfigureAwait(false);
-        }
+        if (await Tracker.Get(cancellationToken).ConfigureAwait(false) is not { } point)
+            return;
+
+        var locationId = SharedLocationId.New();
+        await Commander.Call(
+                new SharedLocations_Create(Session, chatId, locationId, point, TimeSpan.Zero),
+                cancellationToken)
+            .ConfigureAwait(false);
+        var command = new Chats_UpsertEntry(Session, chatId, null) { LocationId = locationId };
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task StopSharing(ChatId chatId, CancellationToken cancellationToken)
