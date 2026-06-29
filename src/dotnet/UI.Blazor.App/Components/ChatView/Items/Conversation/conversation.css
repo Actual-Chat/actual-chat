@@ -31,6 +31,10 @@
 .c-live-card .c-lc-name {
     @apply flex-1 min-w-0;
     @apply text-01 text-base font-medium leading-5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 .c-live-card .c-lc-expand {
     @apply flex-none;
@@ -51,7 +55,7 @@
     @apply flex-x items-center gap-x-2 w-full;
 }
 .c-live-card .c-lc-authors {
-    @apply flex-x items-center gap-x-1 flex-none;
+    @apply flex-none;
 }
 .c-live-card .c-lc-meta {
     @apply flex-y flex-1 min-w-0 gap-y-0.5;

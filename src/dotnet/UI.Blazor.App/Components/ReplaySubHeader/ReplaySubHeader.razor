@@ -5,7 +5,7 @@
 @{
     var m = State.Value;
     var isNarrow = ScreenSize.IsNarrow();
-    var size = isNarrow ? SquareSize.Size8 : SquareSize.Size6;
+    var size = SquareSize.Size9;
     var maxAvatars = isNarrow ? 3 : 4;
     var participantCount = m?.ParticipantCount ?? 0;
     var slotCount = participantCount switch {
