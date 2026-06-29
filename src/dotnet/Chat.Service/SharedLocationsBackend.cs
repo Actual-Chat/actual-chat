@@ -53,13 +53,13 @@ public class SharedLocationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnCreate(SharedLocationsBackend_Create command, CancellationToken cancellationToken)
+    public virtual async Task<SharedLocation> OnCreate(SharedLocationsBackend_Create command, CancellationToken cancellationToken)
     {
         var (id, chatId, authorId, point, liveDuration) = command;
         if (Invalidation.IsActive) {
             _ = Get(chatId, id, default);
             _ = List(chatId, default);
-            return;
+            return null!;
         }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -80,6 +80,7 @@ public class SharedLocationsBackend(IServiceProvider services)
         };
         dbContext.Add(dbSharedLocation);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return dbSharedLocation.ToModel();
     }
 
     // [CommandHandler]

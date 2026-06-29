@@ -13,7 +13,7 @@ public interface ISharedLocationsBackend : IComputeService, IBackendService
     Task<ApiArray<SharedLocation>> List(ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task OnCreate(SharedLocationsBackend_Create command, CancellationToken cancellationToken);
+    Task<SharedLocation> OnCreate(SharedLocationsBackend_Create command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnReport(SharedLocationsBackend_Report command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -29,7 +29,7 @@ public sealed partial record SharedLocationsBackend_Create(
     [property: DataMember, MemoryPackOrder(2), Key(2)] AuthorId AuthorId,
     [property: DataMember, MemoryPackOrder(3), Key(3)] GeoPoint Point,
     [property: DataMember, MemoryPackOrder(4), Key(4)] TimeSpan LiveDuration
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<SharedLocation>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ShardKey => ChatId;

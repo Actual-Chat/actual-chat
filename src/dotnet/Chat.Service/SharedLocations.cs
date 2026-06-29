@@ -41,11 +41,9 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Write);
 
-        // TODO: command must return created SharedLocation
-        await Commander
+        return await Commander
             .Call(new SharedLocationsBackend_Create(id, chatId, author.Id, point, liveDuration), true, cancellationToken)
             .ConfigureAwait(false);
-        return await Backend.Get(chatId, id, cancellationToken).Require().ConfigureAwait(false);
     }
 
     // [CommandHandler]
