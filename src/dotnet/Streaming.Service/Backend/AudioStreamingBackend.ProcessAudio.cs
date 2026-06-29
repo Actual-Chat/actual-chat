@@ -88,11 +88,6 @@ public partial class AudioStreamingBackend
             .EnsureJoined(session, chatId, cancellationToken)
             .ConfigureAwait(false);
 
-        // A controller force-muted this peer — reject their audio entirely (no fan-out, no transcript),
-        // so a misbehaving client can't keep streaming voice to the others.
-        if (await LiveSessionsBackend.IsForcedMuted(chatId, author.Id, cancellationToken).ConfigureAwait(false))
-            return;
-
         var userSettingsUI = Services.UserSettingsUI(session);
         var chatVoiceMode = await userSettingsUI
             .GetChatVoiceMode(chatId, cancellationToken)

@@ -121,7 +121,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 IsMicOpen = m.IsMicOpen || isRecorder,
                 IsListening = m.IsListening || isListener,
                 MicMuted = info.MicMuted,
-                ForcedMuted = info.ForcedMuted,
                 JoinedAt = info.RegisteredAt,
             };
         }
@@ -172,21 +171,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
         var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
         return info.RegisteredAt >= cutoff;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<bool> IsForcedMuted(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
-    {
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-
-        var author = await AuthorsBackend
-            .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
-            .ConfigureAwait(false);
-        if (author is null || author.UserId.Value.IsNullOrEmpty())
-            return false;
-
-        var info = await SafeGetParticipant(chatId, author.UserId).ConfigureAwait(false);
-        return info?.ForcedMuted ?? false;
     }
 
     // [ComputeMethod]
@@ -293,7 +277,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             // Preserve mute flags across heartbeats / kind changes.
             var existing = await SafeGetParticipant(chatId, userId).ConfigureAwait(false);
             var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
-                existing?.MicMuted ?? false, existing?.ForcedMuted ?? false);
+                existing?.MicMuted ?? false);
             await _participants.Set(chatId.Value, userId.Value, info).ConfigureAwait(false);
         }
         else
@@ -343,14 +327,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var existing = await SafeGetParticipant(chatId, author.UserId).ConfigureAwait(false);
         if (existing is null)
             return;
-        await _participants.Set(chatId.Value, author.UserId.Value, existing with { ForcedMuted = muted }).ConfigureAwait(false);
+        await _participants.Set(chatId.Value, author.UserId.Value, existing with { MicMuted = muted }).ConfigureAwait(false);
         InvalidateGetLiveSession(chatId);
     }
 
     public virtual async Task MuteAll(ChatId chatId, AuthorId exceptAuthorId, bool muted, CancellationToken cancellationToken)
     {
         // Soft "mute all except the actor": sets MicMuted on every other participant.
-        // Unlike ForcedMuted this is peer-revocable — a muted peer can unmute themselves.
+        // This is peer-revocable — a muted peer can re-record to unmute themselves.
         var exceptUserId = (await AuthorsBackend
             .Get(chatId, exceptAuthorId, RequestedAuthorKind.Default, cancellationToken)
             .ConfigureAwait(false))?.UserId;
@@ -427,7 +411,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // Preserve the client's real kind — a trailing utterance must not flip a now-listening user back to Record.
         var kind = existing?.Kind ?? ParticipationKind.Record;
         var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
-            existing?.MicMuted ?? false, existing?.ForcedMuted ?? false);
+            existing?.MicMuted ?? false);
         await _participants.Set(chatId.Value, author.UserId.Value, info).ConfigureAwait(false);
         InvalidateIsParticipant(chatId, author.UserId);
         InvalidateHasRecorder(chatId);
@@ -562,6 +546,5 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     public sealed partial record ParticipationInfo(
         [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] ParticipationKind Kind,
         [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] Moment RegisteredAt,
-        [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] bool MicMuted = false,
-        [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] bool ForcedMuted = false);
+        [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] bool MicMuted = false);
 }
