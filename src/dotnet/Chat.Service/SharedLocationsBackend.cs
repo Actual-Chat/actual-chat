@@ -67,21 +67,11 @@ public class SharedLocationsBackend(IServiceProvider services)
         await using var __ = dbContext.ConfigureAwait(false);
 
         var now = Clocks.SystemClock.Now;
-        var dbSharedLocation = new DbSharedLocation {
-            Id = id.Value,
-            ChatId = chatId.Value,
-            AuthorId = authorId.Value,
-            Latitude = point.Latitude,
-            Longitude = point.Longitude,
-            Accuracy = point.Accuracy,
-            Bearing = point.Bearing,
-            CreatedAt = now,
-            ModifiedAt = now,
-            Duration = liveDuration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration),
-        };
-        dbContext.Add(dbSharedLocation);
+        var duration = liveDuration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration);
+        var sharedLocation = new SharedLocation(id, chatId, authorId, point, now, now, duration);
+        dbContext.Add(new DbSharedLocation(sharedLocation));
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbSharedLocation.ToModel();
+        return sharedLocation;
     }
 
     // [CommandHandler]
@@ -100,20 +90,16 @@ public class SharedLocationsBackend(IServiceProvider services)
         var dbSharedLocation = await dbContext.SharedLocations.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
-        // TODO: tomodel and use model below. probably use UpdateFrom?
         if (dbSharedLocation == null)
             return;
 
         // A report past LiveUntil is ignored so a frozen share keeps its last position.
         var now = Clocks.SystemClock.Now;
-        if (now >= dbSharedLocation.CreatedAt.ToMoment() + dbSharedLocation.Duration)
+        var sharedLocation = dbSharedLocation.ToModel();
+        if (!sharedLocation.IsLive(now))
             return;
 
-        dbSharedLocation.Latitude = point.Latitude;
-        dbSharedLocation.Longitude = point.Longitude;
-        dbSharedLocation.Accuracy = point.Accuracy;
-        dbSharedLocation.Bearing = point.Bearing;
-        dbSharedLocation.ModifiedAt = now;
+        dbSharedLocation.UpdateFrom(sharedLocation with { Point = point, ModifiedAt = now });
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -139,9 +125,9 @@ public class SharedLocationsBackend(IServiceProvider services)
 
         // Freeze immediately: the last position stays as a static pin in history.
         var now = Clocks.SystemClock.Now;
-        var createdAt = dbSharedLocation.CreatedAt.ToMoment();
-        if (createdAt + dbSharedLocation.Duration > now) {
-            dbSharedLocation.Duration = now - createdAt;
+        var sharedLocation = dbSharedLocation.ToModel();
+        if (sharedLocation.IsLive(now)) {
+            dbSharedLocation.UpdateFrom(sharedLocation with { Duration = now - sharedLocation.CreatedAt });
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
     }

@@ -27,6 +27,7 @@ public class DbSharedLocation : IHasId<string>, IRequirementTarget
     }
     public TimeSpan Duration { get; set; }
     public DbSharedLocation() { }
+    public DbSharedLocation(SharedLocation model) => UpdateFrom(model);
 
     public SharedLocation ToModel()
         => new(
@@ -38,5 +39,17 @@ public class DbSharedLocation : IHasId<string>, IRequirementTarget
             ModifiedAt.ToMoment(),
             Duration);
 
-    // TODO: UpdateFrom???
+    public void UpdateFrom(SharedLocation model)
+    {
+        Id = model.Id.Value;
+        ChatId = model.ChatId.Value;
+        AuthorId = model.AuthorId.Value;
+        Latitude = model.Point.Latitude;
+        Longitude = model.Point.Longitude;
+        Accuracy = model.Point.Accuracy;
+        Bearing = model.Point.Bearing;
+        CreatedAt = model.CreatedAt;
+        ModifiedAt = model.ModifiedAt;
+        Duration = model.Duration;
+    }
 }
