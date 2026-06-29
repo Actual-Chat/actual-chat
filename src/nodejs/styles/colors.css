@@ -404,7 +404,7 @@
     --status-away: var(--sienna-40);
     --status-away-badge: var(--sienna-40-10);
     --status-offline: var(--magenta-50);
-    --status-offline-badge: var(--magenta-40-20);
+    --status-offline-badge: var(--magenta-70-20);
 
     /* Utils */
     --transparent: rgba(0, 0, 0, 0);
@@ -732,8 +732,8 @@
     --status-online-badge: var(--green-30-10);
     --status-away: var(--sienna-40);
     --status-away-badge: var(--sienna-40-20);
-    --status-offline: var(--magenta-40);
-    --status-offline-badge: var(--magenta-40-10);
+    --status-offline: var(--magenta-70);
+    --status-offline-badge: var(--magenta-50-20);
 
     /* Utils */
     --online: var(--green-40);
@@ -1060,7 +1060,7 @@
     --status-away: var(--sienna-40);
     --status-away-badge: var(--sienna-40-10);
     --status-offline: var(--magenta-50);
-    --status-offline-badge: var(--magenta-40-20);
+    --status-offline-badge: var(--magenta-70-20);
 
     /* Utils */
     --transparent: rgba(0, 0, 0, 0);
