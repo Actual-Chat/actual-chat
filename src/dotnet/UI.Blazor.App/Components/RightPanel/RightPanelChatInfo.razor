@@ -7,46 +7,59 @@
 }
 
 <div class="c-chat-info">
-    @if (!m.HideNotificationsToggle) {
-        var iconCls = m.NotificationMode != ChatNotificationMode.Muted ? "text-primary" : "text-03";
-        <RightPanelChatInfoItem
-            Click="@(_ => OnNotificationToggleChanged(m.NotificationMode != ChatNotificationMode.Muted))"
-            Content="Notifications"
-            Hint="@(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")">
-            <Icon>
-                <i class="text-2xl icon-bell @iconCls"></i>
-            </Icon>
-            <Right>
-                <Toggle Class="mr-2" IsChecked="@(m.NotificationMode != ChatNotificationMode.Muted)"/>
-            </Right>
-        </RightPanelChatInfoItem>
+    @{
+        var showNotifications = !m.HideNotificationsToggle;
     }
-    @if (m.ShowSummarizationToggle) {
-        var iconCls = m.IsSummarized ? "text-primary" : "text-03";
-        <RightPanelChatInfoItem
-            Click="@(_ => OnSummarizeToggleChanged(!m.IsSummarized))"
-            Content="Summarize"
-            Hint="@(m.IsSummarized ? "On" : "Off")">
-            <Icon>
-                <i class="text-2xl icon-ai-stars @iconCls"></i>
-            </Icon>
-            <Right>
-                <Toggle Class="mr-2" IsChecked="@m.IsSummarized"/>
-            </Right>
-        </RightPanelChatInfoItem>
-    }
-    @if (m.ShowBlockToggle) {
-        <RightPanelChatInfoItem
-            Click="@(_ => OnBlockToggleChanged(!m.IsBlocked))"
-            Content="Block user"
-            Hint="@(m.IsBlocked ? "Blocked" : "Not blocked")">
-            <Icon>
-                <i class="text-2xl icon-slash-circle @(m.IsBlocked ? "text-danger" : "text-03")"></i>
-            </Icon>
-            <Right>
-                <Toggle Class="mr-2" IsChecked="@m.IsBlocked"/>
-            </Right>
-        </RightPanelChatInfoItem>
+    @if (showNotifications || m.ShowSummarizationToggle || m.ShowBlockToggle) {
+        <div class="c-card">
+            @if (showNotifications) {
+                var iconCls = m.NotificationMode != ChatNotificationMode.Muted ? "text-primary" : "text-03";
+                <RightPanelChatInfoItem
+                    Click="@(_ => OnNotificationToggleChanged(m.NotificationMode != ChatNotificationMode.Muted))"
+                    Content="Notifications"
+                    Hint="@(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")">
+                    <Icon>
+                        <i class="text-2xl icon-bell @iconCls"></i>
+                    </Icon>
+                    <Right>
+                        <Toggle Class="mr-2" IsChecked="@(m.NotificationMode != ChatNotificationMode.Muted)"/>
+                    </Right>
+                </RightPanelChatInfoItem>
+            }
+            @if (m.ShowSummarizationToggle) {
+                if (showNotifications) {
+                    <Divider/>
+                }
+                var iconCls = m.IsSummarized ? "text-primary" : "text-03";
+                <RightPanelChatInfoItem
+                    Click="@(_ => OnSummarizeToggleChanged(!m.IsSummarized))"
+                    Content="Summarize"
+                    Hint="@(m.IsSummarized ? "On" : "Off")">
+                    <Icon>
+                        <i class="text-2xl icon-ai-stars @iconCls"></i>
+                    </Icon>
+                    <Right>
+                        <Toggle Class="mr-2" IsChecked="@m.IsSummarized"/>
+                    </Right>
+                </RightPanelChatInfoItem>
+            }
+            @if (m.ShowBlockToggle) {
+                if (showNotifications || m.ShowSummarizationToggle) {
+                    <Divider/>
+                }
+                <RightPanelChatInfoItem
+                    Click="@(_ => OnBlockToggleChanged(!m.IsBlocked))"
+                    Content="Block user"
+                    Hint="@(m.IsBlocked ? "Blocked" : "Not blocked")">
+                    <Icon>
+                        <i class="text-2xl icon-slash-circle @(m.IsBlocked ? "text-danger" : "text-03")"></i>
+                    </Icon>
+                    <Right>
+                        <Toggle Class="mr-2" IsChecked="@m.IsBlocked"/>
+                    </Right>
+                </RightPanelChatInfoItem>
+            }
+        </div>
     }
 </div>
 
