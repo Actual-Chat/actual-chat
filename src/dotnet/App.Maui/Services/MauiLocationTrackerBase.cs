@@ -1,13 +1,11 @@
 using ActualChat.UI.Blazor.App.Services;
-using Microsoft.Maui.Devices.Sensors;
 
 namespace ActualChat.App.Maui.Services;
 public abstract class MauiLocationTrackerBase(AppUIHub hub) : LocationTrackerBase(hub)
 {
     public override async Task<GeoPoint?> Get(CancellationToken cancellationToken)
     {
-        var settings = await hub.LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
-        var accuracy = settings.LocationAccuracyOrDefault switch {
+        var accuracy = await GetAccuracy(cancellationToken).ConfigureAwait(false) switch {
             GeoTrackingAccuracy.High => GeolocationAccuracy.Best,
             GeoTrackingAccuracy.Low => GeolocationAccuracy.Low,
             _ => GeolocationAccuracy.Medium,

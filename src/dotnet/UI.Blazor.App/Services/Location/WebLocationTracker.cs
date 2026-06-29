@@ -2,17 +2,14 @@ using ActualChat.UI.Blazor.App.Module;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class WebLocationTracker : LocationTrackerBase
+public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
 {
     private static readonly string JSStartMethod = $"{BlazorUIAppModule.ImportName}.LocationTracker.start";
     private static readonly string JSGetCurrentMethod = $"{BlazorUIAppModule.ImportName}.LocationTracker.getCurrent";
 
-    private readonly AppUIHub _hub;
+    private readonly AppUIHub _hub = hub;
     private DotNetObjectReference<WebLocationTracker>? _blazorRef;
     private IJSObjectReference? _jsRef;
-
-    public WebLocationTracker(AppUIHub hub) : base(hub)
-        => _hub = hub;
 
     public override async Task Start(CancellationToken cancellationToken)
     {

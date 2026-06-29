@@ -4,13 +4,9 @@ using CoreLocation;
 
 namespace ActualChat.App.Maui.Location;
 
-public sealed class AppleLocationTracker : MauiLocationTrackerBase, IAsyncDisposable
+public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(hub), IAsyncDisposable
 {
-    private readonly AppUIHub _hub;
     private CLLocationManager? _manager;
-
-    public AppleLocationTracker(AppUIHub hub) : base(hub)
-        => _hub = hub;
 
     public override async Task Start(CancellationToken cancellationToken)
     {
@@ -18,8 +14,7 @@ public sealed class AppleLocationTracker : MauiLocationTrackerBase, IAsyncDispos
             return;
 
         IsTracking = true;
-        var settings = await _hub.LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
-        var accuracy = settings.LocationAccuracyOrDefault;
+        var accuracy = await GetAccuracy(cancellationToken).ConfigureAwait(false);
         MainThread.BeginInvokeOnMainThread(() => {
             _manager ??= CreateManager();
             _manager.SetAccuracy(accuracy);
@@ -46,7 +41,6 @@ public sealed class AppleLocationTracker : MauiLocationTrackerBase, IAsyncDispos
         if (manager is null)
             return;
 
-        // TODO: check if mainthread is really required
         await MainThread.InvokeOnMainThreadAsync(() => {
                 manager.LocationsUpdated -= OnLocationsUpdated;
                 manager.StopUpdatingLocation();
