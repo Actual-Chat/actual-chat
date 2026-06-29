@@ -16,8 +16,6 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<bool> IsParticipant(ChatId chatId, UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<bool> IsForcedMuted(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
-    [ComputeMethod]
     Task<bool> HasRecorder(ChatId chatId, CancellationToken cancellationToken);
 
     Task OnStreamRegistered(

@@ -64,12 +64,6 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover {
     background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
     transition-property: filter;
 }
-.chat-audio-panel .record-muted-btn.btn,
-body.hoverable .chat-audio-panel .record-muted-btn.btn:hover {
-    @apply text-06;
-    background: linear-gradient(180deg, #A0A0A0 -116.66%, #777777 66.08%);
-    transition-property: filter;
-}
 .chat-audio-panel .language-button,
 .chat-audio-panel .playback-wrapper,
 .chat-audio-panel .video-wrapper,

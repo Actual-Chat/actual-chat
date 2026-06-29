@@ -24,8 +24,6 @@ public sealed partial record LiveSessionMember
     public bool IsListening { get; init; }
     [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
     public bool MicMuted { get; init; }
-    [DataMember(Order = 7), MemoryPackOrder(7), Key(7)]
-    public bool ForcedMuted { get; init; }
     [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
     public Moment JoinedAt { get; init; }
 }

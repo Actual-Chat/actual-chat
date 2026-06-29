@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using ActualChat.Chat;
 using ActualChat.Live;
 using ActualChat.Streaming;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -48,21 +49,6 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         => LiveSessions.MuteAll(Session, chatId, muted, cancellationToken);
 
     [ComputeMethod]
-    public virtual async Task<bool> AmIForcedMuted(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var live = await GetLiveSession(chatId, cancellationToken).ConfigureAwait(false);
-        if (live is null)
-            return false;
-
-        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (ownAuthor is null)
-            return false;
-
-        var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
-        return me is { ForcedMuted: true };
-    }
-
-    [ComputeMethod]
     public virtual async Task<bool> AmIInLiveConversation(ChatId chatId, CancellationToken cancellationToken)
     {
         var audio = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
@@ -78,7 +64,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     protected override async Task OnRun(CancellationToken cancellationToken)
         => await Task.WhenAll(
             RunParticipationSync(cancellationToken),
-            RunForcedMuteEnforcement(cancellationToken)).ConfigureAwait(false);
+            RunMuteEnforcement(cancellationToken)).ConfigureAwait(false);
 
     private async Task RunParticipationSync(CancellationToken cancellationToken)
     {
@@ -113,16 +99,19 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
     }
 
-    // Soft mute enforcement: when a controller force-mutes me, or mutes everyone
-    // (MicMuted), my own recorder stops. MicMuted is peer-revocable — see RecorderToggle.
-    private async Task RunForcedMuteEnforcement(CancellationToken cancellationToken)
+    // Soft mute enforcement: when the host turns off my recording (MicMuted) — either
+    // per-peer or via mute-all — my own recorder stops and I'm told why. MicMuted is
+    // peer-revocable: tapping record clears it (see RecorderToggle).
+    private async Task RunMuteEnforcement(CancellationToken cancellationToken)
     {
         var cMuted = await Computed
             .Capture(() => GetMutedRecordingChat(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
-            if (cMuted.Value is { } chatId && !chatId.Value.IsNullOrEmpty())
+            if (cMuted.Value is { } chatId && !chatId.Value.IsNullOrEmpty()) {
                 await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+                Hub.ToastUI.Show("Recording turned off by the host", "icon-mic-off", ToastDismissDelay.Short);
+            }
 
             await cMuted.WhenInvalidated(cancellationToken).ConfigureAwait(false);
             cMuted = await cMuted.Update(cancellationToken).ConfigureAwait(false);
@@ -134,7 +123,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     {
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var recording = activeChats.FirstOrDefault(c => c.IsRecording);
-        if (recording.ChatId is not { } chatId || chatId.Value.IsNullOrEmpty())
+        if (recording?.ChatId is not { } chatId || chatId.Value.IsNullOrEmpty())
             return null;
 
         var live = await GetLiveSession(chatId, cancellationToken).ConfigureAwait(false);
@@ -144,7 +133,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         if (ownAuthor is null)
             return null;
         var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
-        return me is { ForcedMuted: true } or { MicMuted: true } ? chatId : null;
+        return me is { MicMuted: true } ? chatId : null;
     }
 
     [ComputeMethod]

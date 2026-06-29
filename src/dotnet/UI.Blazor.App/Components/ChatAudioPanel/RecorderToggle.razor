@@ -27,9 +27,7 @@
     _oldRecordingLanguage = language;
     var recordingIconSize = ScreenSize.IsNarrow() ? 10 : 8;
     var recBtnCls = "rec-btn ";
-    if (m.IsForcedMuted) {
-        recBtnCls += "record-muted-btn";
-    } else if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
+    if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
         recBtnCls += "take-phone-btn";
         animatorClass += " take-phone";
     } else if (IsListening && !m.IsRecordingHere) {
@@ -39,7 +37,7 @@
         recBtnCls += "record-on-btn";
     } else
         recBtnCls += "record-off-btn";
-    var tooltip = m.IsForcedMuted ? "Muted" : m.IsRecordingHere ? "Stop recording" : "Start recording";
+    var tooltip = m.IsRecordingHere ? "Stop recording" : "Start recording";
     var mustKeepAwake = !m.IsRecordingHere;
     if (!hasMicrophonePermission) {
         recBtnCls = "mic-disabled";
@@ -75,9 +73,7 @@
         @oncontextmenu="@OnContextMenu"
         data-context-menu-delay="200">
 
-        @if (m.IsForcedMuted) {
-            <i class="icon-mic-off"></i>
-        } else if (hasMicrophonePermission) {
+        @if (hasMicrophonePermission) {
             if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
                 <take-phone-svg/>
             } else {
@@ -189,7 +185,6 @@
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
-        var isForcedMuted = await LiveSessionUI.AmIForcedMuted(chatId, cancellationToken).ConfigureAwait(false);
 
         return new (
             chat,
@@ -200,8 +195,7 @@
             hasMicrophonePermission,
             isTransitioning,
             isAnyoneTalking,
-            audioState,
-            isForcedMuted);
+            audioState);
     }
 
     private void OnClick()
@@ -223,10 +217,6 @@
     }
 
     private void StartRecording(bool isPushToTalk = false) {
-        // A controller force-muted us in this chat's live session — don't let recording start.
-        if (State.Value.IsForcedMuted)
-            return;
-
         SearchUI.Clear();
         isPushToTalk = IsPushToTalk |= isPushToTalk;
         if (!IsValidAction())
@@ -279,8 +269,7 @@
         bool? HasMicrophonePermission = null,
         bool IsTransitioning = false,
         bool IsAnyoneTalking = false,
-        ChatAudioState? AudioState = null,
-        bool IsForcedMuted = false
+        ChatAudioState? AudioState = null
     ) {
         public static readonly Model Loading = new(null, null, default, false, true, false, false, false);
     }

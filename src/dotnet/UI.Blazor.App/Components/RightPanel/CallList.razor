@@ -69,21 +69,20 @@
                             <i class="icon-video" title="Camera on"></i>
                         }
                         @{
-                            var isMuted = member.ForcedMuted || member.MicMuted;
-                            var hasMic = member.IsMicOpen || member.ForcedMuted;
-                            var micClass = isMuted ? "icon-mic-off muted" : "icon-mic-2 recording";
-                            var canMute = m.IsController && member.Group != MemberGroup.Exited;
+                            var isRecording = member.IsMicOpen && !member.MicMuted;
+                            var isListening = member.MicMuted || member.IsListening;
+                            var canStop = m.IsController && member.Group != MemberGroup.Exited;
                         }
-                        @if (hasMic && canMute) {
-                            <button class="c-mic-btn" title="@(member.ForcedMuted ? "Unmute" : "Mute")"
-                                    @onclick="@(() => OnMute(live.ChatId, member))">
-                                <i class="@micClass"></i>
+                        @if (isRecording && canStop) {
+                            <button class="c-mic-btn" title="Turn off recording"
+                                    @onclick="@(() => OnStopRecording(live.ChatId, member))">
+                                <i class="icon-mic-2 recording"></i>
                             </button>
                         }
-                        else if (hasMic) {
-                            <i class="@micClass" title="@(isMuted ? "Muted" : "Recording")"></i>
+                        else if (isRecording) {
+                            <i class="icon-mic-2 recording" title="Recording"></i>
                         }
-                        else if (member.IsListening) {
+                        else if (isListening) {
                             <i class="icon-listen listening" title="Listening"></i>
                         }
                     </div>
@@ -129,8 +128,8 @@
         return new Model { Session = live, OwnAuthorId = ownAuthor?.Id, IsController = isController };
     }
 
-    private Task OnMute(ChatId chatId, LiveSessionMember member)
-        => LiveSessionUI.MutePeer(chatId, member.AuthorId, !member.ForcedMuted, CancellationToken.None);
+    private Task OnStopRecording(ChatId chatId, LiveSessionMember member)
+        => LiveSessionUI.MutePeer(chatId, member.AuthorId, true, CancellationToken.None);
 
     private Task ToggleTranscript(LiveSession live)
         => SetVoiceMode(live, !TranscriptOn(live.Rules), VoiceOn(live.Rules));
