@@ -40,7 +40,17 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Write);
-        // TODO: limit i.e. by 100 per chat?
+
+        if (liveDuration > TimeSpan.Zero) {
+            // One-shot sends (zero duration) aren't live shares, so they don't count toward the cap.
+            var liveShares = await Backend.List(chatId, cancellationToken).ConfigureAwait(false);
+            var authorIds = liveShares.Select(x => x.AuthorId).ToHashSet();
+            authorIds.Add(author.Id);
+            if (authorIds.Count > Constants.Location.MaxSharingAuthorsPerChat)
+                throw StandardError.Constraint(
+                    $"This chat already has the maximum of {Constants.Location.MaxSharingAuthorsPerChat} "
+                    + "people sharing their live location.");
+        }
 
         return await Commander
             .Call(new SharedLocationsBackend_Create(id, author.Id, point, liveDuration), true, cancellationToken)

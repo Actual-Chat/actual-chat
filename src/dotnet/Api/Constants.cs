@@ -195,6 +195,7 @@ public static partial class Constants
         };
         public static readonly TimeSpan MinDuration = Durations.Keys.Min();
         public static readonly TimeSpan MaxDuration = Durations.Keys.Max();
+        public const int MaxSharingAuthorsPerChat = 100;
     }
 
     public static class Messages
