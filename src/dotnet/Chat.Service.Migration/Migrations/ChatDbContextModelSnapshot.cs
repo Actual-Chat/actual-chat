@@ -1181,13 +1181,13 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<double>("Latitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("latitude");
-
                     b.Property<TimeSpan>("Duration")
                         .HasColumnType("interval")
                         .HasColumnName("duration");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
 
                     b.Property<double>("Longitude")
                         .HasColumnType("double precision")
@@ -1196,6 +1196,10 @@ namespace ActualChat.Chat.Migrations
                     b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
+
+                    b.Property<DateTime?>("StoppedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("stopped_at");
 
                     b.HasKey("Id")
                         .HasName("pk_shared_locations");

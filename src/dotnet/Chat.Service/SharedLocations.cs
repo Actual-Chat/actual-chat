@@ -50,10 +50,8 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
             if (liveDuration > TimeSpan.Zero) {
                 // One-shot sends (zero duration) aren't live shares, so they don't count toward the cap.
                 var liveShares = await Backend.ListLive(chatId, cancellationToken).ConfigureAwait(false);
-                // TODO: live shares count must be sufficient cause only one live location sharing per author possible
-                var authorIds = liveShares.Select(x => x.AuthorId).ToHashSet();
-                authorIds.Add(author.Id);
-                if (authorIds.Count > Constants.Location.MaxSharingAuthorsPerChat)
+                var alreadySharing = liveShares.Any(x => x.AuthorId == author.Id);
+                if (!alreadySharing && liveShares.Count >= Constants.Location.MaxSharingAuthorsPerChat)
                     throw StandardError.Constraint(
                         $"This chat already has the maximum of {Constants.Location.MaxSharingAuthorsPerChat} "
                         + "people sharing their live location.");

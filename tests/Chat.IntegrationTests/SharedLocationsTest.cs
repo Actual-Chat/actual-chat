@@ -109,6 +109,40 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task NewLiveShareSupersedesPreviousBySameAuthor()
+    {
+        // arrange
+        var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
+        var session = Alice.Session;
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Supersede" });
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+
+        var cList = await Computed.Capture(() => sharedLocations.ListLive(session, chatId, ct), ct);
+        var hour = TimeSpan.FromHours(1);
+        var firstPoint = new GeoPoint(10, 20);
+
+        // act - start a first live share
+        var firstId = SharedLocationId.New();
+        await Alice.Commander.Call(
+            new SharedLocations_Report(session, chatId, firstId, firstPoint, hour), ct);
+        await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+
+        // act - the same author starts a second live share
+        var secondId = SharedLocationId.New();
+        await Alice.Commander.Call(
+            new SharedLocations_Report(session, chatId, secondId, new GeoPoint(30, 40), hour), ct);
+
+        // assert - one live share per author: the new one supersedes, the previous is frozen with its last point
+        await cList.When(x => x.Count == 1 && x.Single().Id == secondId, ct)
+            .WaitAsync(TimeSpan.FromSeconds(5), ct);
+        var first = await sharedLocations.Get(session, chatId, firstId, ct);
+        first.Should().NotBeNull();
+        first!.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
+        first.Point.Should().Be(firstPoint);
+    }
+
+    [Fact]
     public async Task LiveShareAutoExpires()
     {
         // arrange

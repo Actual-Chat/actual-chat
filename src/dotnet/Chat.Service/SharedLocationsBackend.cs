@@ -1,6 +1,7 @@
 using ActualChat.Chat.Db;
-using Microsoft.EntityFrameworkCore;
+using ActualChat.Db;
 using ActualLab.Fusion.EntityFramework;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
 
@@ -66,15 +67,19 @@ public class SharedLocationsBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        // Serialize all of this author's reports so a new live share can't race an in-flight one
+        // (create vs create, or a point report resurrecting a just-superseded share).
+        await dbContext.SharedLocations.Lock(authorId, cancellationToken).ConfigureAwait(false);
+
         var now = Clocks.SystemClock.Now;
-        // TODO: locks on dbset?
-        var dbSharedLocation = await dbContext.SharedLocations.ForUpdate()
+        var dbSharedLocation = await dbContext.SharedLocations
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
 
-        // TODO: existing = dbSharedLocation.ToModel()?
         if (dbSharedLocation is null) {
             var duration = liveDuration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration);
+            if (duration > TimeSpan.Zero)
+                await SupersedeLiveShares(dbContext, authorId, now, cancellationToken).ConfigureAwait(false);
             var created = new SharedLocation(id, authorId, point, now, now, duration);
             dbContext.Add(new DbSharedLocation(created));
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -82,11 +87,11 @@ public class SharedLocationsBackend(IServiceProvider services)
         }
 
         // A report past LiveUntil is ignored so a frozen share keeps its last position.
-        var sharedLocation = dbSharedLocation.ToModel();
-        if (!sharedLocation.IsLive(now))
+        var existing = dbSharedLocation.ToModel();
+        if (!existing.IsLive(now))
             return;
 
-        dbSharedLocation.UpdateFrom(sharedLocation with { Point = point, ModifiedAt = now });
+        dbSharedLocation.UpdateFrom(existing with { Point = point, ModifiedAt = now });
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -113,8 +118,30 @@ public class SharedLocationsBackend(IServiceProvider services)
         var now = Clocks.SystemClock.Now;
         var sharedLocation = dbSharedLocation.ToModel();
         if (sharedLocation.IsLive(now)) {
-            dbSharedLocation.UpdateFrom(sharedLocation with { Duration = now - sharedLocation.CreatedAt });
+            dbSharedLocation.UpdateFrom(sharedLocation with { StoppedAt = now });
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // Private methods
+
+    private static async Task SupersedeLiveShares(
+        ChatDbContext dbContext,
+        AuthorId authorId,
+        Moment now,
+        CancellationToken cancellationToken)
+    {
+        // One live location per author per chat: a new one supersedes the previous.
+        // The caller holds the per-author lock, so a plain read is enough here.
+        var dbShares = await dbContext.SharedLocations
+            .Where(x => x.AuthorId == authorId.Value)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        // TODO: why multiple live shares are possible?
+        foreach (var dbShare in dbShares) {
+            var share = dbShare.ToModel();
+            if (share.IsLive(now))
+                dbShare.UpdateFrom(share with { StoppedAt = now });
         }
     }
 }

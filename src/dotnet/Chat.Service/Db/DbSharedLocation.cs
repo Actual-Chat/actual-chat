@@ -26,6 +26,10 @@ public class DbSharedLocation : IHasId<string>, IRequirementTarget
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
     public TimeSpan Duration { get; set; }
+    public DateTime? StoppedAt {
+        get => field?.DefaultKind(DateTimeKind.Utc);
+        set => field = value?.DefaultKind(DateTimeKind.Utc);
+    }
     public DbSharedLocation() { }
     public DbSharedLocation(SharedLocation model) => UpdateFrom(model);
 
@@ -36,7 +40,8 @@ public class DbSharedLocation : IHasId<string>, IRequirementTarget
             new GeoPoint(Latitude, Longitude, Accuracy, Bearing),
             CreatedAt.ToMoment(),
             ModifiedAt.ToMoment(),
-            Duration);
+            Duration,
+            StoppedAt?.ToMoment());
 
     public void UpdateFrom(SharedLocation model)
     {
@@ -50,5 +55,6 @@ public class DbSharedLocation : IHasId<string>, IRequirementTarget
         CreatedAt = model.CreatedAt;
         ModifiedAt = model.ModifiedAt;
         Duration = model.Duration;
+        StoppedAt = model.StoppedAt?.ToDateTime();
     }
 }

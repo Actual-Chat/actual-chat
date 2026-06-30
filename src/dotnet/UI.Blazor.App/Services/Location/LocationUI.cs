@@ -37,6 +37,7 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
         if (await Tracker.Get(cancellationToken).ConfigureAwait(false) is not { } point)
             return;
 
+        // TODO: on backend side?
         var locationId = SharedLocationId.New();
         await Commander.Call(
                 new SharedLocations_Report(Session, chatId, locationId, point, TimeSpan.Zero),
