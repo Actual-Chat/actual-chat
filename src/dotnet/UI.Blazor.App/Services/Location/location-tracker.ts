@@ -2,6 +2,9 @@ import { getLogs } from 'logging';
 
 const { warnLog } = getLogs('LocationTracker');
 
+// Duplicated by intent from .NET Constants.Location.GetTimeout (kept in sync manually).
+const getTimeoutMs = 15_000;
+
 interface GeoPoint {
     latitude: number;
     longitude: number;
@@ -16,8 +19,7 @@ export class LocationTracker {
         return new LocationTracker(blazorRef);
     }
 
-    // TODO: maybe app-constants.ts instead of param?
-    public static getCurrent(timeoutMs: number): Promise<GeoPoint | null> {
+    public static getCurrent(): Promise<GeoPoint | null> {
         return new Promise(resolve => {
             navigator.geolocation.getCurrentPosition(
                 position => {
@@ -27,7 +29,7 @@ export class LocationTracker {
                     });
                 },
                 error => { warnLog?.log('getCurrent error', error); resolve(null); },
-                { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs });
+                { enableHighAccuracy: true, maximumAge: 0, timeout: getTimeoutMs });
         });
     }
 

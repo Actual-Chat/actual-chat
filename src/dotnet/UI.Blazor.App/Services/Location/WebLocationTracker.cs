@@ -44,6 +44,6 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
 
     public override Task<GeoPoint?> Get(CancellationToken cancellationToken)
         => _hub.JS
-            .InvokeAsync<GeoPoint?>(JSGetCurrentMethod, cancellationToken, Constants.Location.GetTimeout.TotalMilliseconds)
+            .InvokeAsync<GeoPoint?>(JSGetCurrentMethod, cancellationToken)
             .AsTask();
 }
