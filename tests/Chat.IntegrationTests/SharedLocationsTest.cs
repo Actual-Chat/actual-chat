@@ -88,8 +88,8 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         await Alice.ReportLocation(chatId, point2, TimeSpan.FromHours(1), locationId, ct);
 
         // assert - position reflects the update
-        // TODO: fix floating point comparison
-        await cList.When(x => x.Single().Point.Latitude == 48.8566, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+        await cList.When(x => Math.Abs(x.Single().Point.Latitude - point2.Latitude) < 1e-9, ct)
+            .WaitAsync(TimeSpan.FromSeconds(5), ct);
 
         // act - stop sharing
         await Alice.StopSharingLocation(locationId, ct);
