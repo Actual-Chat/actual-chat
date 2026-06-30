@@ -36,8 +36,7 @@ public static class SharedLocationOperations
         SharedLocationId id,
         CancellationToken cancellationToken = default)
     {
-        var change = Change.Update(new SharedLocationDiff { Stop = true });
-        var cmd = new SharedLocations_Change(tester.Session, chatId, id, change);
+        var cmd = new SharedLocations_Change(tester.Session, chatId, id, Change.Remove<SharedLocationDiff>());
         return tester.Commander.Call(cmd, cancellationToken);
     }
 }

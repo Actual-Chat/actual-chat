@@ -32,13 +32,12 @@ public sealed partial record SharedLocation(
 }
 
 /// <summary>
-/// Change to a <see cref="SharedLocation"/>: a create/update carries a new <see cref="Point"/>
-/// (and <see cref="LiveDuration"/> on create); <see cref="Stop"/> freezes a live share.
+/// Change to a <see cref="SharedLocation"/>: create/update carries a new <see cref="Point"/>
+/// (and <see cref="LiveDuration"/> on create); a Remove change stops it (freezes the last point).
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record SharedLocationDiff : RecordDiff
 {
     [DataMember, MemoryPackOrder(0)] public GeoPoint? Point { get; init; }
     [DataMember, MemoryPackOrder(1)] public TimeSpan? LiveDuration { get; init; }
-    [DataMember, MemoryPackOrder(2)] public bool Stop { get; init; }
 }

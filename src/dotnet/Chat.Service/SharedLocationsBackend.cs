@@ -96,24 +96,23 @@ public class SharedLocationsBackend(IServiceProvider services)
             return created;
         }
 
-        if (!change.IsUpdate(out var updateDiff))
-            throw StandardError.NotSupported("Removing a shared location is not supported.");
-
-        // A change past LiveUntil is ignored so a frozen share keeps its last position.
+        // Update moves the point; Remove stops the share. A change past LiveUntil is ignored
+        // so a frozen share keeps its last position.
         if (dbSharedLocation is null)
             return null;
         var existing = dbSharedLocation.ToModel();
         if (!existing.IsLive(now))
             return existing;
 
-        var updated = updateDiff.Stop
+        var updated = change.IsUpdate(out var updateDiff)
             ? existing with {
-                StoppedAt = now,
-                Version = VersionGenerator.NextVersion(existing.Version),
-            }
-            : existing with {
                 Point = updateDiff.Point ?? existing.Point,
                 ModifiedAt = now,
+                Version = VersionGenerator.NextVersion(existing.Version),
+            }
+            // Remove = stop: freeze, last point kept as a pin.
+            : existing with {
+                StoppedAt = now,
                 Version = VersionGenerator.NextVersion(existing.Version),
             };
         dbSharedLocation.UpdateFrom(updated);

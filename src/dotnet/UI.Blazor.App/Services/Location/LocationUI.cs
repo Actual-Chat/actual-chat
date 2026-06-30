@@ -62,7 +62,7 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
             if (share.LocationId is not { } locationId)
                 continue;
 
-            var change = Change.Update(new SharedLocationDiff { Stop = true });
+            var change = Change.Remove<SharedLocationDiff>();
             var stop = new SharedLocations_Change(Session, chatId, locationId, change);
             await Commander.Call(stop, cancellationToken).ConfigureAwait(false);
         }
