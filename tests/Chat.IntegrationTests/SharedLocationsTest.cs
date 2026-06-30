@@ -169,7 +169,8 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         // act & assert - Bob is not a member, so creating a shared location is rejected
         await FluentActions
             .Awaiting(() => Bob.ReportLocation(chatId, new GeoPoint(1, 2)))
-            .Should().ThrowAsync<Exception>();
+            .Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*join the chat*");
     }
 
     [Fact]
@@ -181,6 +182,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         // act & assert - sharing a location must not auto-join: Bob is rejected until he joins
         await FluentActions
             .Awaiting(() => Bob.ReportLocation(chatId, new GeoPoint(1, 2)))
-            .Should().ThrowAsync<Exception>();
+            .Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*join the chat*");
     }
 }
