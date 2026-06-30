@@ -55,6 +55,7 @@ public sealed partial record LiveSessionState
             Summary = Summary,
             EndEntryLid = EndEntryLid,
             StartsAt = StartedAt,
+            EndsAt = LastSummaryAt == default ? StartedAt : LastSummaryAt,
             MessageCount = MessageCount,
             AuthorIds = AuthorIds,
         };

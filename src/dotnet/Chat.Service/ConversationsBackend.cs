@@ -312,8 +312,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var startEntryLid = entryIdRanges[0].Start;
         var endEntryLid = entryIdRanges[^1].End - 1;
         var conversationId = ConversationId.New(chatId, startEntryLid);
-        var existingConversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
-        var expectedVersion = existingConversation?.Version;
         var entriesInfo = await GetTextEntries(chatId, entryIdRanges, cancellationToken).ConfigureAwait(false);
         var entries = entriesInfo.TextEntries;
         if (entries.Count == 0)
@@ -355,11 +353,30 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             AttachmentCount = entriesInfo.AttachmentCount,
             AttachmentIds = entriesInfo.Attachments.Select(c => c.Id).ToArray(),
         };
-        var change = existingConversation != null
-            ? Change.Update(DiffEngine.Diff<Conversation, ConversationDiff>(existingConversation, conversation))
+        return await Persist(conversation, command.IsLiveMaterialization, cancellationToken).ConfigureAwait(false);
+    }
+
+    [CommandHandler]
+    public virtual async Task<Conversation> OnMaterialize(
+        ConversationBackend_Materialize command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return null!; // Persist runs nested commands; nothing to invalidate here.
+
+        // Persist the live session's already-computed summary as-is — no summarizer call.
+        return await Persist(command.Conversation, isLiveMaterialization: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Conversation> Persist(
+        Conversation conversation, bool isLiveMaterialization, CancellationToken cancellationToken)
+    {
+        var existing = await Get(conversation.Id, cancellationToken).ConfigureAwait(false);
+        var change = existing != null
+            ? Change.Update(DiffEngine.Diff<Conversation, ConversationDiff>(existing, conversation))
             : Change.Create(new ConversationDiff(conversation));
-        var changeCommand = new ConversationBackend_Change(conversationId, expectedVersion, change) {
-            IsLiveMaterialization = command.IsLiveMaterialization,
+        var changeCommand = new ConversationBackend_Change(conversation.Id, existing?.Version, change) {
+            IsLiveMaterialization = isLiveMaterialization,
         };
         return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
     }

@@ -216,6 +216,24 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
             }, Out);
     }
 
+    [Fact]
+    public void ConversationBackend_Materialize_Basic()
+    {
+        // arrange
+        var convId = ConversationId.New(TestChatId, 0);
+        var conversation = new Conversation(convId) { Title = "Voice chat", Summary = "Summary" };
+
+        // act
+        var cmd = new ConversationBackend_Materialize(conversation);
+
+        // assert
+        cmd.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Conversation.Id.Should().Be(original.Conversation.Id);
+                deserialized.Conversation.Title.Should().Be("Voice chat");
+            }, Out);
+    }
+
     // PlacesBackend
 
     [Fact]
