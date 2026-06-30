@@ -36,6 +36,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private ILiveAudioBackend LiveAudioBackend { get; }
     private ILiveVideoBackend LiveVideoBackend { get; }
     private VersionGenerator<long> VersionGenerator { get; }
+    private ICommander Commander => field ??= Services.Commander();
 
     public LiveSessionsBackend(IServiceProvider services)
         : base(services, ShardScheme.LiveBackend)
@@ -256,23 +257,30 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         bool isActive,
         CancellationToken cancellationToken)
     {
-        using var _ = Computed.BeginIsolation();
-        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
-
-        if (isActive) {
-            // Preserve mute flags across heartbeats / kind changes.
-            var existing = await SafeGetParticipant(chatId, userId).ConfigureAwait(false);
-            var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
-                existing?.MicMuted ?? false);
-            await _participants.Set(chatId.Value, userId.Value, info).ConfigureAwait(false);
+        bool emptiedByLeave;
+        using (Computed.BeginIsolation())
+        using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
+            if (isActive) {
+                // Preserve mute flags across heartbeats / kind changes.
+                var existing = await SafeGetParticipant(chatId, userId).ConfigureAwait(false);
+                var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
+                    existing?.MicMuted ?? false);
+                await _participants.Set(chatId.Value, userId.Value, info).ConfigureAwait(false);
+            }
+            else
+                await _participants.Remove(chatId.Value, userId.Value).ConfigureAwait(false);
+            InvalidateListParticipants(chatId);
+            InvalidateHasRecorder(chatId);
+            InvalidateGet(chatId);
+            emptiedByLeave = !isActive && !await HasParticipant(chatId).ConfigureAwait(false);
+            // A join/heartbeat or a leave with others still present just re-evaluates liveness; the
+            // grace there is the safety net for crashed/stale clients. An explicit leave that empties
+            // the call closes it outright below - no waiting on the grace or on a UI observer.
+            if (!emptiedByLeave)
+                await EvaluateLiveness(chatId).ConfigureAwait(false);
         }
-        else
-            await _participants.Remove(chatId.Value, userId.Value).ConfigureAwait(false);
-        InvalidateListParticipants(chatId);
-        InvalidateHasRecorder(chatId);
-        InvalidateGet(chatId);
-        // Recording turned on/off flips liveness (a vanished last recorder starts the grace).
-        await EvaluateLiveness(chatId).ConfigureAwait(false);
+        if (emptiedByLeave)
+            await CloseNow(chatId).ConfigureAwait(false);
     }
 
     public virtual async Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
@@ -452,8 +460,25 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
     }
 
-    // Backstop close: the grace elapsed without the materializer finalizing (phone-mode, or the flow
-    // wasn't scheduled / threw). Vanishes the session and sends FINAL itself.
+    // Immediate close: the last participant left explicitly, so wind the call down now rather than
+    // marking it closing and waiting out the grace. Re-checks under no lock that nobody rejoined first.
+    private async Task CloseNow(ChatId chatId)
+    {
+        try {
+            var state = await SafeGet(chatId).ConfigureAwait(false);
+            if (state is null)
+                return;
+            if (await HasParticipant(chatId).ConfigureAwait(false))
+                return; // someone (re)joined before we got here
+            await CloseWithFinal(state, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "CloseNow failed for chat #{ChatId}", chatId);
+        }
+    }
+
+    // Backstop close: the grace elapsed without an explicit leave (a crashed/stale client). Vanishes
+    // the session and sends FINAL itself.
     private async Task SelfClose(ChatId chatId)
     {
         try {
@@ -472,6 +497,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // A session that never latched (solo) leaves its ordinary split-flow conversations behind;
         // only a latched session sends FINAL and is covered by its own materialization.
         if (state.SessionStartedAt is not null) {
+            // Persist the already-computed summary as a real conversation *before* the live state drops,
+            // so the in-chat block doesn't flicker; an empty title (phone-mode, or below the summary
+            // threshold) has nothing to keep and just vanishes.
+            if (!state.Title.IsNullOrEmpty())
+                await Commander
+                    .Call(new ConversationBackend_Materialize(state.ToConversation()), true, cancellationToken)
+                    .ConfigureAwait(false);
             var content = state.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {state.Title}";
             await EnqueueLiveNotification(state, ConversationNotificationPhase.Final, content, cancellationToken)
                 .ConfigureAwait(false);

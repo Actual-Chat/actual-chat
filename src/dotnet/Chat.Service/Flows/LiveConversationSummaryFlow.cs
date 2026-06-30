@@ -2,15 +2,14 @@ using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
 using ActualChat.Live;
-using ActualChat.Queues;
 using ActualChat.Streaming;
 
 namespace ActualChat.Chat.Flows;
 
 /// <summary>
-/// Throttled resummarization of an in-progress live conversation (at the split-flow cadence), and its
-/// finalization on close: materialize into a persisted <see cref="Conversation"/> when it meets the
-/// split threshold, else vanish.
+/// Throttled resummarization of an in-progress live conversation (at the split-flow cadence). Close-time
+/// finalization (materialize into a persisted <see cref="Conversation"/> or vanish) is owned by
+/// <c>LiveSessionsBackend</c>; this flow only summarizes while the call is live.
 /// </summary>
 [Flow(ResumeTimeout = 60)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
@@ -34,13 +33,8 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         var live = await LiveSessionsBackend.GetState(ChatId, cancellationToken).ConfigureAwait(false);
-        if (live is null)
-            return; // Already closed elsewhere
-
-        if (live.IsClosing) {
-            await Materialize(live, cancellationToken).ConfigureAwait(false);
-            return;
-        }
+        if (live is null || live.IsClosing)
+            return; // closed, or closing - the backend owns finalize + materialization now
 
         // Pre-latch (solo): the normal ConversationSplitFlow owns summarization, so don't double-summarize.
         if (live.SessionStartedAt is null) {
@@ -74,21 +68,6 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
     }
 
     // Private methods
-
-    // The flow's only close-time job is to persist the conversation; the backend owns the close itself
-    // (SelfClose sends FINAL and drops the state). Reuse the summary already computed during the call —
-    // no extra LLM call, and the row lands before the live state is dropped, so the block doesn't flicker.
-    private async Task Materialize(LiveSessionState live, CancellationToken cancellationToken)
-    {
-        // Solo sessions never became a call; a non-empty Title means Resume crossed the threshold and summarized.
-        // Otherwise there is nothing worth persisting — its entries fall to the normal ConversationSplitFlow.
-        if (live.SessionStartedAt is null || live.Title.IsNullOrEmpty())
-            return;
-
-        await Services.Queues()
-            .Enqueue(new ConversationBackend_Materialize(live.ToConversation()), cancellationToken)
-            .ConfigureAwait(false);
-    }
 
     private async Task<IReadOnlyList<ChatEntrySlim>> GetEntries(
         long startEntryLid, bool matureOnly, CancellationToken cancellationToken)
