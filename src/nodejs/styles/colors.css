@@ -755,7 +755,7 @@
     --avatar: var(--ash-70);
     --toggle: var(--ash-18);
     --toggle-circle: var(--ash-40);
-    --toggle-on: var(--blue-60);
+    --toggle-on: var(--primary);
     --message-hover: var(--ash-99-08);
     --mention-other: var(--blue-50-20);
     --mention-other-text: var(--blue-80);

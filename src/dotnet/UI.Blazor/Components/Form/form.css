@@ -260,6 +260,7 @@ form .form-section {
     @apply bg-radio;
     @apply outline-none;
     @apply transition-all duration-500;
+    border-width: 1.5px;
     box-shadow: 0 0 4px 0 var(--radio-shadow);
 }
 .form-radio-hidden.form-radio-disabled .radio {
