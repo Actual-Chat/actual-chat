@@ -78,6 +78,7 @@
     @apply block w-full;
     @apply px-4 py-1;
     @apply text-center text-caption-1 font-semibold uppercase;
+    @apply border-0 bg-transparent;
     color: var(--violet-60);
     letter-spacing: 0.42px;
 }

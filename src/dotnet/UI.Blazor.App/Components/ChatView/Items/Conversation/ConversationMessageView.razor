@@ -55,7 +55,7 @@
                 </HeaderButton>
             </div>
             @if (!state.IsJoined) {
-                <div class="c-join-row" @onclick="@OnJoin">Tap to join</div>
+                <button type="button" class="c-join-row" @onclick="@OnJoin">Tap to join</button>
             }
         </div>
     } else {
