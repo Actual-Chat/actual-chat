@@ -80,7 +80,13 @@ public class SharedLocationsBackend(IServiceProvider services)
             var duration = liveDuration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration);
             if (duration > TimeSpan.Zero)
                 await SupersedeLiveShares(dbContext, authorId, now, cancellationToken).ConfigureAwait(false);
-            var created = new SharedLocation(id, authorId, point, now, now, duration);
+            var created = new SharedLocation(id, VersionGenerator.NextVersion()) {
+                AuthorId = authorId,
+                Point = point,
+                CreatedAt = now,
+                ModifiedAt = now,
+                Duration = duration,
+            };
             dbContext.Add(new DbSharedLocation(created));
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return created;
@@ -91,7 +97,11 @@ public class SharedLocationsBackend(IServiceProvider services)
         if (!existing.IsLive(now))
             return existing;
 
-        var updated = existing with { Point = point, ModifiedAt = now };
+        var updated = existing with {
+            Point = point,
+            ModifiedAt = now,
+            Version = VersionGenerator.NextVersion(existing.Version),
+        };
         dbSharedLocation.UpdateFrom(updated);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return updated;
@@ -120,14 +130,17 @@ public class SharedLocationsBackend(IServiceProvider services)
         var now = Clocks.SystemClock.Now;
         var sharedLocation = dbSharedLocation.ToModel();
         if (sharedLocation.IsLive(now)) {
-            dbSharedLocation.UpdateFrom(sharedLocation with { StoppedAt = now });
+            dbSharedLocation.UpdateFrom(sharedLocation with {
+                StoppedAt = now,
+                Version = VersionGenerator.NextVersion(sharedLocation.Version),
+            });
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 
     // Private methods
 
-    private static async Task SupersedeLiveShares(
+    private async Task SupersedeLiveShares(
         ChatDbContext dbContext,
         AuthorId authorId,
         Moment now,
@@ -143,7 +156,10 @@ public class SharedLocationsBackend(IServiceProvider services)
         foreach (var dbShare in dbShares) {
             var share = dbShare.ToModel();
             if (share.IsLive(now))
-                dbShare.UpdateFrom(share with { StoppedAt = now });
+                dbShare.UpdateFrom(share with {
+                    StoppedAt = now,
+                    Version = VersionGenerator.NextVersion(share.Version),
+                });
         }
     }
 }

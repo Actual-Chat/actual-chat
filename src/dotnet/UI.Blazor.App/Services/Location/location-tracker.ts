@@ -16,6 +16,7 @@ export class LocationTracker {
         return new LocationTracker(blazorRef);
     }
 
+    // TODO: maybe app-constants.ts instead of param?
     public static getCurrent(timeoutMs: number): Promise<GeoPoint | null> {
         return new Promise(resolve => {
             navigator.geolocation.getCurrentPosition(

@@ -10,6 +10,7 @@ public interface ISharedLocations : IComputeService
     [ComputeMethod]
     Task<ApiArray<SharedLocation>> ListLive(Session session, ChatId chatId, CancellationToken cancellationToken);
 
+    // TODO: merge into OnChange
     [CommandHandler]
     Task<SharedLocation> OnReport(SharedLocations_Report command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -30,6 +31,7 @@ public sealed partial record SharedLocations_Report(
 // ReSharper disable once InconsistentNaming
 public sealed partial record SharedLocations_Stop(
     [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    // TODO: why do we need ChatId here?
     [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] SharedLocationId Id
 ) : ISessionCommand<Unit>, IApiCommand;

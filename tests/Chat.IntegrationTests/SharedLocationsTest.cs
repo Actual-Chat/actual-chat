@@ -79,6 +79,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         shared.Id.Should().Be(locationId);
         shared.AuthorId.Should().Be(author.Id);
         shared.Point.Should().Be(point);
+        shared.Version.Should().BeGreaterThan(0);
         (await sharedLocations.IsSharing(session, chatId, ct)).Should().BeTrue();
 
         // act - update position
@@ -98,6 +99,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         frozen.Should().NotBeNull();
         frozen!.Point.Should().Be(point2);
         frozen.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
+        frozen.Version.Should().BeGreaterThan(shared.Version);
     }
 
     [Fact]
