@@ -9,7 +9,6 @@ public interface ISharedLocations : IComputeService
     Task<SharedLocation?> Get(Session session, ChatId chatId, SharedLocationId id, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<SharedLocation>> ListLive(Session session, ChatId chatId, CancellationToken cancellationToken);
-    // TODO: two methods to check if use has own live sharing and anybody in chat is live sharing
 
     // TODO: merge into OnChange
     [CommandHandler]

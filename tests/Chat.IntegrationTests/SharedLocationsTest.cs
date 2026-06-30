@@ -47,7 +47,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // assert - a frozen one-shot is not listed among active live shares
         (await sharedLocations.ListLive(session, chatId, ct)).Count.Should().Be(0);
-        (await sharedLocations.IsSharing(session, chatId, ct)).Should().BeFalse();
+        (await sharedLocations.IsOwnSharing(session, chatId, ct)).Should().BeFalse();
 
         // assert - the LocationId round-trips through the entry read path
         var reread = await chats.GetEntry(session, entry.Id, ct);
@@ -80,7 +80,8 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         shared.AuthorId.Should().Be(author.Id);
         shared.Point.Should().Be(point);
         shared.Version.Should().BeGreaterThan(0);
-        (await sharedLocations.IsSharing(session, chatId, ct)).Should().BeTrue();
+        (await sharedLocations.IsOwnSharing(session, chatId, ct)).Should().BeTrue();
+        (await sharedLocations.IsAnyoneSharing(session, chatId, ct)).Should().BeTrue();
 
         // act - update position
         var point2 = new GeoPoint(48.8566, 2.3522);
@@ -95,7 +96,8 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // assert - no longer live, but the last position is frozen and kept (not scrubbed)
         await cList.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
-        (await sharedLocations.IsSharing(session, chatId, ct)).Should().BeFalse();
+        (await sharedLocations.IsOwnSharing(session, chatId, ct)).Should().BeFalse();
+        (await sharedLocations.IsAnyoneSharing(session, chatId, ct)).Should().BeFalse();
         var frozen = await sharedLocations.Get(session, chatId, locationId, ct);
         frozen.Should().NotBeNull();
         frozen!.Point.Should().Be(point2);
