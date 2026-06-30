@@ -30,6 +30,9 @@ public interface IConversationsBackend : IComputeService, IBackendService
     Task<Conversation> OnSummarize(ConversationBackend_Summarize command, CancellationToken cancellationToken);
 
     [CommandHandler]
+    Task<Conversation> OnMaterialize(ConversationBackend_Materialize command, CancellationToken cancellationToken);
+
+    [CommandHandler]
     Task<Conversation?> OnAppendReply(ConversationBackend_AppendReply command, CancellationToken cancellationToken);
 }
 
@@ -71,6 +74,19 @@ public sealed partial record ConversationBackend_Summarize(
 
     public override string ToString()
         => $"ConversationBackend_Summarize {{ ChatId={ChatId}, EntryLidRanges=[{string.Join(", ", EntryLidRanges.Select(r => r.Format()))}], DelayUntil={DelayUntil} }}";
+}
+
+/// <summary>
+/// Command to persist a pre-computed (live-session) conversation as-is, without re-running the summarizer.
+/// </summary>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ConversationBackend_Materialize(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Conversation Conversation
+) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ChatId ShardKey => Conversation.Id.ChatId;
 }
 
 /// <summary>

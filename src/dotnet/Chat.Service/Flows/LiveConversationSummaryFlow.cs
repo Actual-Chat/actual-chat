@@ -52,10 +52,15 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         // lags behind the newest message — participants keep reading the recent tail uncollapsed.
         var entries = await GetEntries(live.StartEntryLid, matureOnly: true, cancellationToken)
             .ConfigureAwait(false);
-        var hasEnoughNew = entries.Count > 0 && entries[^1].LocalId > LastSummaryEndLid;
+        // Like ConversationSplitFlow: wait for enough data before the first LLM call (so the block isn't
+        // titled off 2 messages), then throttle re-summaries by ResummarizationDelay.
+        var enoughData = entries.Count >= Settings.Summarization.MinConversationEntries
+            && entries.Sum(WordCount) >= Settings.Summarization.MinConversationWords;
+        var hasNew = entries.Count > 0 && entries[^1].LocalId > LastSummaryEndLid;
+        var neverSummarized = LastSummaryEndLid == 0;
         var dueForResummary =
             ResumedAt - live.LastSummaryAt >= Settings.Summarization.ResummarizationDelay;
-        if (hasEnoughNew && dueForResummary) {
+        if (enoughData && hasNew && (neverSummarized || dueForResummary)) {
             var result = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
             if (result.Summary is { } summary) {
                 await LiveSessionsBackend
@@ -70,28 +75,18 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
     // Private methods
 
-    // The flow's only close-time job is to materialize the persisted conversation; the backend owns the
-    // close itself (SelfClose sends FINAL and drops the state). The flow completes after this.
+    // The flow's only close-time job is to persist the conversation; the backend owns the close itself
+    // (SelfClose sends FINAL and drops the state). Reuse the summary already computed during the call —
+    // no extra LLM call, and the row lands before the live state is dropped, so the block doesn't flicker.
     private async Task Materialize(LiveSessionState live, CancellationToken cancellationToken)
     {
-        // Solo sessions never became a call: their entries are owned by ConversationSplitFlow — nothing to materialize.
-        if (live.SessionStartedAt is null)
+        // Solo sessions never became a call; a non-empty Title means Resume crossed the threshold and summarized.
+        // Otherwise there is nothing worth persisting — its entries fall to the normal ConversationSplitFlow.
+        if (live.SessionStartedAt is null || live.Title.IsNullOrEmpty())
             return;
 
-        // A closed session materializes its full range — nothing is "immature" once the call ended.
-        var entries = await GetEntries(live.StartEntryLid, matureOnly: false, cancellationToken)
-            .ConfigureAwait(false);
-        var wordCount = entries.Sum(WordCount);
-        var meetsThreshold = entries.Count >= Settings.Summarization.MinConversationEntries
-            && wordCount >= Settings.Summarization.MinConversationWords;
-        if (!meetsThreshold)
-            return;
-
-        var range = new Range<long>(live.StartEntryLid, entries[^1].LocalId + 1);
         await Services.Queues()
-            .Enqueue(
-                new ConversationBackend_Summarize(ChatId, [range]) { IsLiveMaterialization = true },
-                cancellationToken)
+            .Enqueue(new ConversationBackend_Materialize(live.ToConversation()), cancellationToken)
             .ConfigureAwait(false);
     }
 
