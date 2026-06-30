@@ -1,5 +1,4 @@
 @using ActualChat.UI.App.Services
-@using ActualChat.Hosting
 @inherits ComputedStateComponent<AppUIHub, DeveloperTools.Model>
 @{
     var m = State.Value;
@@ -54,15 +53,13 @@
             <Toggle IsChecked="@m.IsVideoDiagnosticsEnabled"/>
         </Right>
     </TileItem>
-    @if (Hub.HostInfo.AppKind.IsMobile()) {
-        <TileItem Click="@OnLocationAccuracyClick">
-            <Content>Location accuracy</Content>
-            <Caption>Tap to cycle: higher accuracy uses more battery</Caption>
-            <Right>
-                <span>@m.LocationAccuracy</span>
-            </Right>
-        </TileItem>
-    }
+    <TileItem Click="@OnLocationAccuracyClick">
+        <Content>Location accuracy</Content>
+        <Caption>Tap to cycle: higher accuracy uses more battery</Caption>
+        <Right>
+            <span>@m.LocationAccuracy</span>
+        </Right>
+    </TileItem>
     @if (MauiLogAccessor?.GetLogFile != null) {
         <TileItem Click="@OnGetLogFileClick">
             <Content>
