@@ -161,16 +161,21 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> IsParticipant(ChatId chatId, UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<UserId>> ListParticipants(
+        ChatId chatId, CancellationToken cancellationToken)
     {
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
-        var info = await SafeGetParticipant(chatId, userId).ConfigureAwait(false);
-        if (info is null)
-            return false;
-
         var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
-        return info.RegisteredAt >= cutoff;
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        var userIds = participants
+            .Where(kv => IsFreshParticipant(kv.Value, cutoff))
+            .Select(kv => UserId.Parse(kv.Key))
+            .ToApiArray();
+        if (userIds.Count > 0)
+            // Re-check so a stale (left) participant drops without an explicit off signal.
+            Computed.GetCurrent().Invalidate(SelfHealDelay);
+        return userIds;
     }
 
     // [ComputeMethod]
@@ -234,9 +239,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 SessionStartedAt = now,
                 Version = VersionGenerator.NextVersion(state.Version),
             };
-            if (!state.TranscriptionOn)
-                // Phone-mode START fires at the 2+ latch; transcription's first notification is the Titled summary (in the flow).
-                await EnqueueLiveNotification(state, ConversationNotificationPhase.Started, "Voice chat started", cancellationToken).ConfigureAwait(false);
+            // START fires at the 2+ latch for both modes; transcription's later Titled updates the same banner.
+            await EnqueueLiveNotification(
+                state, ConversationNotificationPhase.Started, "Voice chat started", cancellationToken)
+                .ConfigureAwait(false);
         }
 
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
@@ -282,7 +288,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
         else
             await _participants.Remove(chatId.Value, userId.Value).ConfigureAwait(false);
-        InvalidateIsParticipant(chatId, userId);
+        InvalidateListParticipants(chatId);
         InvalidateHasRecorder(chatId);
         InvalidateGetLiveSession(chatId);
         // Recording turned on/off flips liveness (a vanished last recorder starts the grace).
@@ -413,7 +419,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
             existing?.MicMuted ?? false);
         await _participants.Set(chatId.Value, author.UserId.Value, info).ConfigureAwait(false);
-        InvalidateIsParticipant(chatId, author.UserId);
+        InvalidateListParticipants(chatId);
         InvalidateHasRecorder(chatId);
     }
 
@@ -534,10 +540,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             _ = HasRecorder(chatId, default);
     }
 
-    private void InvalidateIsParticipant(ChatId chatId, UserId userId)
+    private void InvalidateListParticipants(ChatId chatId)
     {
         using (Invalidation.Begin())
-            _ = IsParticipant(chatId, userId, default);
+            _ = ListParticipants(chatId, default);
     }
 
     // Nested types

@@ -390,12 +390,15 @@ public class NotificationsBackend(IServiceProvider services)
 
         // Started/Titled/Final are live phases; their joined participants already see the call live.
         var isLive = phase != ConversationNotificationPhase.Created;
+        var activeUserIds = isLive
+            ? await LiveSessionsBackend.ListParticipants(chatId, cancellationToken).ConfigureAwait(false)
+            : ApiArray<UserId>.Empty;
         var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
         var now = Clocks.CoarseSystemClock.Now;
         foreach (var userId in userIds) {
             if (authorUserIds.Contains(userId))
                 continue;
-            if (isLive && await LiveSessionsBackend.IsParticipant(chatId, userId, cancellationToken).ConfigureAwait(false))
+            if (activeUserIds.Contains(userId))
                 continue;
 
             var notification = ConversationNotification.New(userId, conversationId, endEntryLid) with {
@@ -584,6 +587,15 @@ public class NotificationsBackend(IServiceProvider services)
             .GetText(freshEntry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
             .ConfigureAwait(false);
         var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        // Don't interrupt users who are actively in this chat's live call — they're present.
+        var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is { SessionStartedAt: not null }) {
+            var active = await LiveSessionsBackend
+                .ListParticipants(chatId, cancellationToken)
+                .ConfigureAwait(false);
+            if (active.Count != 0)
+                userIds = userIds.Where(x => !active.Contains(x)).ToList();
+        }
         await EnqueueMessageRelatedNotifications(
             chatId, entryId, author, text, NotificationKind.Message,
             chatId.Value, userIds, cancellationToken)
