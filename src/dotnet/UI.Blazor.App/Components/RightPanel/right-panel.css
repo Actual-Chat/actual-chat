@@ -484,6 +484,16 @@ body.hoverable .content-list-grid .image-attachment:hover image-skeleton {
     @apply flex items-center justify-center;
     @apply text-3xl text-white;
 }
+.content-list-grid .c-video .c-duration {
+    @apply absolute bottom-1 left-1;
+    @apply px-1.5 py-0.5;
+    @apply rounded-md border border-[var(--white-20)];
+    @apply bg-[var(--black-90)] text-white;
+    @apply text-xxs font-medium leading-none whitespace-nowrap;
+}
+.content-list-grid .c-video .c-duration:empty {
+    @apply hidden;
+}
 .content-list-rows .c-file-row {
     @apply flex items-center gap-2;
     @apply w-full px-3 py-1;

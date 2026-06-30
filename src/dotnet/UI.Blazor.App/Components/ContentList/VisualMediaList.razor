@@ -1,15 +1,19 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
 @implements IVirtualListDataSource<ContentListItem>
+@implements IAsyncDisposable
 @using ActualChat.Media
+@using ActualChat.Time
+@using ActualChat.UI.Blazor.App.Module
 
-<div class="content-list-with-visor">
+<div class="content-list-with-visor" @ref="Ref">
 <ContentListDateVisor/>
 <VirtualList
     @key="@Identity"
     Class="content-list-tab content-list-grid"
     Identity="@Identity"
     DataSource="@this"
+    ItemVisibilityChanged="@OnItemVisibilityChanged"
     SkeletonCount="8">
     <Item>
         @{ var item = context; }
@@ -33,6 +37,12 @@
                                 <image-skeleton class="show-image-skeleton" src="@thumb"/>
                             }
                             <i class="icon-play-fill c-play-icon"></i>
+                            @if (media.DurationMs > 0) {
+                                <div class="c-duration">@TimeSpan.FromMilliseconds(media.DurationMs).Format(TimeSpanFormat.Clock)</div>
+                            }
+                            else {
+                                <div class="c-duration" data-duration-url="@url" data-media-id="@media.MediaId.Value"></div>
+                            }
                         </a>
                     }
                     else {
@@ -54,15 +64,44 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VisualMediaDuration.create";
+
     private const int GridColumns = 3;
     private const int GalleryRadius = 12;
 
     private IChats Chats => Hub.Chats;
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
+    private IJSObjectReference? JSRef { get; set; }
+    private ElementReference Ref { get; set; }
+    private string[] _lastVisibleKeys = [];
+
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
 
     private string Identity => $"visualMedia:{ChatId}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        JSRef = await Hub.JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+        // Visibility may have been reported before JSRef existed (those events are
+        // dropped below); flush the last known set so a static first paint resolves
+        // without waiting for a scroll to fire the next ItemVisibilityChanged.
+        if (_lastVisibleKeys.Length > 0)
+            await JSRef.InvokeVoidAsync("setVisibleKeys", (object)_lastVisibleKeys);
+    }
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null;
+    }
+
+    private void OnItemVisibilityChanged(VirtualListItemVisibility visibility) {
+        _lastVisibleKeys = visibility.VisibleKeys.ToArray();
+        if (JSRef is {} jsRef)
+            _ = jsRef.InvokeVoidAsync("setVisibleKeys", (object)_lastVisibleKeys);
+    }
 
     public Task<VirtualListData<ContentListItem>> GetData(
         VirtualListDataQuery query,

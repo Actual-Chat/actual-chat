@@ -21,4 +21,5 @@ public sealed partial record VisualMediaItem : IChatContentItem
     [DataMember, MemoryPackOrder(9), Key(9)] public string ContentType { get; init; } = "";
     [DataMember, MemoryPackOrder(10), Key(10)] public string FileName { get; init; } = "";
     [DataMember, MemoryPackOrder(11), Key(11)] public long Size { get; init; }
+    [DataMember, MemoryPackOrder(12), Key(12)] public long DurationMs { get; init; }
 }

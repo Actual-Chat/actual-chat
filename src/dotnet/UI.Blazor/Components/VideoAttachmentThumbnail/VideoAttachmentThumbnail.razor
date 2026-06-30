@@ -1,4 +1,5 @@
 @using ActualChat.Chat
+@using ActualChat.Time
 @namespace ActualChat.UI.Blazor.Components
 @{
     var urls = GetUrls();
@@ -23,7 +24,7 @@
         <i class="c-play icon-play-fill"></i>
     </div>
     @if (Attachment.Media.DurationMs > 0) {
-        <div class="c-duration">@FormatDuration(Attachment.Media.DurationMs)</div>
+        <div class="c-duration">@TimeSpan.FromMilliseconds(Attachment.Media.DurationMs).Format(TimeSpanFormat.Clock)</div>
     }
 </div>
 @code {
@@ -31,15 +32,6 @@
 
     [Parameter] public ChatEntryAttachment Attachment { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
-
-    private static string FormatDuration(long durationMs)
-    {
-        var t = TimeSpan.FromMilliseconds(durationMs);
-        var hours = (int)t.TotalHours;
-        return hours > 0
-            ? $"{hours}:{t.Minutes:D2}:{t.Seconds:D2}"
-            : $"{t.Minutes}:{t.Seconds:D2}";
-    }
 
     private (string OriginalUrl, string ThumbnailUrl) GetUrls()
     {

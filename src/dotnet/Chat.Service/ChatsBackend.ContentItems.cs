@@ -48,7 +48,12 @@ public partial class ChatsBackend
         var dbItems = await QueryPeriodPage(
                 dbContext.ChatVisualMediaItems, chatId.Value, periodKey, pageIndex, cancellationToken)
             .ConfigureAwait(false);
-        return dbItems.Select(x => x.ToModel()).ToArray();
+        if (dbItems.Count == 0)
+            return [];
+        return await dbItems
+            .Select(x => ResolveVisualMediaItem(x.ToModel(), cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -211,6 +216,19 @@ public partial class ChatsBackend
     }
 
     // Private members
+
+    // DurationMs lives only on the Media record (its metadata bag), not on the
+    // denormalized visual-media projection — so the badge value is resolved here
+    // at read time. Only videos carry a duration; older uploads predate it and
+    // resolve to 0, which the client treats as "unknown" and recovers client-side.
+    private async Task<VisualMediaItem> ResolveVisualMediaItem(VisualMediaItem item, CancellationToken cancellationToken)
+    {
+        if (!MediaTypeExt.IsSupportedVideo(item.ContentType))
+            return item;
+
+        var media = await MediaBackend.Get(item.MediaId, cancellationToken).ConfigureAwait(false);
+        return media is { DurationMs: > 0 } ? item with { DurationMs = media.DurationMs } : item;
+    }
 
     private async Task<LinkItem> ResolveLinkItem(LinkItem item, CancellationToken cancellationToken)
     {
