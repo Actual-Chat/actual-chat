@@ -31,7 +31,7 @@ public class IncomingShareUI(AppUIHub hub)
                 }
             }
 
-            await  ShowShareModal(new IncomingShareModal.Model(plainText)).ConfigureAwait(true);
+            await ShowShareModal(new IncomingShareModal.Model(plainText)).ConfigureAwait(true);
         }
     }
 
@@ -86,21 +86,30 @@ public class IncomingShareUI(AppUIHub hub)
 
         try {
             var postTasks = new List<(Task, ChatId, int)>();
+            var uploadHandles = new List<FilesUploadHandle>();
             var commentToSend = comment;
             var mediaScope = chatIds.Count == 1 ? chatIds.First().Value : "";
             foreach (var filesChunk in files.Chunk(Constants.Attachments.FileCountLimit)) {
                 var attachments = await CreateAttachmentList(filesChunk).ConfigureAwait(true);
                 var uploads = (await SendingMessages.Upload(attachments, mediaScope).ConfigureAwait(true))!;
+                uploadHandles.Add(uploads);
                 foreach (var chatId in chatIds) {
 #pragma warning disable CA2025
                     var postTask = PostMessage(chatId, commentToSend, uploads, attachments.Length);
 #pragma warning restore CA2025
                     postTasks.Add((postTask, chatId, filesChunk.Length));
                 }
-                uploads.Dispose();
                 commentToSend = "";
             }
-            await Task.WhenAll(postTasks.Select(c => c.Item1)).ConfigureAwait(true);
+            try {
+                await Task.WhenAll(postTasks.Select(c => c.Item1)).ConfigureAwait(true);
+            }
+            finally {
+                // Dispose only after the posts have run: an earlier release deletes the upload sessions
+                // out from under the in-flight posts, which then arrive empty and are rejected.
+                foreach (var uploads in uploadHandles)
+                    uploads.Dispose();
+            }
             var failedTasks = postTasks
                 .Where(c => !c.Item1.IsCompletedSuccessfully)
                 .ToArray();

@@ -34,6 +34,7 @@ public class AndroidFileProviderImpl : IMauiFileProviderImpl
     public Task ClearBeforeRemoving()
     {
         AndroidFilePermissionsKeeper.ReleaseReadPermission(Uri, this);
+        AndroidContentDownloader.DeleteCachedShareFile(Uri);
         return Task.CompletedTask;
     }
 
