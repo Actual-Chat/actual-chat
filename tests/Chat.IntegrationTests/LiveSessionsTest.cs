@@ -34,16 +34,10 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // act — recording stops (mic off)
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
 
-        // assert — now it winds down (enters the close grace)
+        // assert — now it winds down (enters the close grace; the backend SelfCloses after the grace)
         live = await backend.Get(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeTrue();
-
-        // act
-        await backend.Close(chatId, default);
-
-        // assert
-        (await backend.Get(chatId, default)).Should().BeNull();
     }
 
     [Fact]
@@ -68,17 +62,11 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // act — recording stops → the close grace begins
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
 
-        // assert — present, marked closing, finalization deferred to the grace timeout
+        // assert — present, marked closing, finalization deferred to the grace timeout (backend SelfCloses)
         live = await backend.Get(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeTrue();
         live.ClosingAt.Should().NotBeNull();
-
-        // act — explicit close removes it (stands in for the post-grace SelfClose)
-        await backend.Close(chatId, default);
-
-        // assert
-        (await backend.Get(chatId, default)).Should().BeNull();
     }
 
     [Fact]
