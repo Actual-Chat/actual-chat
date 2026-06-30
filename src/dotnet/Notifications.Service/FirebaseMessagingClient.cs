@@ -41,6 +41,9 @@ public class FirebaseMessagingClient(
         case ChatEntryNotification entry:
             entryId = entry.EntryId;
             break;
+        case ConversationNotification conversation:
+            entryId = ChatEntryId.New(conversation.ChatId, conversation.StartEntryLid);
+            break;
         }
 
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
