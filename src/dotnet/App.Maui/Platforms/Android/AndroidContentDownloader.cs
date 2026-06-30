@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.IO;
 using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
@@ -7,7 +8,7 @@ namespace ActualChat.App.Maui;
 public sealed class AndroidContentDownloader(IServiceProvider services)
 {
     private const string Prefix = "/in/content/";
-
+    private static readonly FilePath IncomingShareCacheDir = new FilePath(FileSystem.CacheDirectory) | "incoming-share";
     private ILogger Log => field ??= services.LogFor(GetType());
 
     public static bool CanHandleWebRequestUri(string? relativeUrl)
@@ -28,9 +29,15 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
             mimeType ??= "";
             if (!TryExtractFileName(sUri, out var fileName))
                 fileName = "unknown";
-            var fileLength = stream.Length;
+
+            // Copy now while the transient share grant is alive — the source URI dies with this process,
+            // so later uploads and post-restart retries must read our local copy instead.
+            var fileRef = CopyToCache(stream, fileName, out var fileLength);
+            if (fileRef.IsNullOrEmpty())
+                continue;
+
             var fileProvider = new MauiFileProvider {
-                FileRef = sUri,
+                FileRef = fileRef,
                 Metadata = new() {
                     FileName = fileName,
                     FileType = mimeType,
@@ -43,7 +50,41 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
         return fileInfos.ToArray();
     }
 
-    public bool TryExtractFileName(string url, out string fileName)
+    public static void DeleteCachedShareFile(string uri)
+    {
+        if (!uri.StartsWith(System.Uri.UriSchemeFile))
+            return;
+        try {
+            var path = (FilePath)new System.Uri(uri).LocalPath;
+            if (path.IsSubPathOf(IncomingShareCacheDir) && File.Exists(path))
+                File.Delete(path);
+        }
+        catch {
+            // Best-effort cleanup; the OS evicts the cache directory under storage pressure anyway.
+        }
+    }
+
+    private string CopyToCache(Stream source, FilePath fileName, out long length)
+    {
+        length = 0;
+        try {
+            Directory.CreateDirectory(IncomingShareCacheDir);
+            var localName = fileName.ToUnique();
+            var localPath = IncomingShareCacheDir | localName;
+            using (source)
+            using (var target = File.Create(localPath)) {
+                source.CopyTo(target);
+                length = target.Length;
+            }
+            return Uri.FromFile(new Java.IO.File(localPath.Value))!.ToString()!;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to copy shared file '{FileName}' to app-private storage", fileName);
+            return "";
+        }
+    }
+
+    public bool TryExtractFileName(string url, out FilePath fileName)
     {
         fileName = "";
         try {

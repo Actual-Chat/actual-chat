@@ -31,8 +31,9 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         var now = _uploadOperations.Now();
         var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, now, mediaScope);
         var session = new UploadSession(snapshot, _uploadOperations, _storage);
-        await _repo.Save(snapshot).ConfigureAwait(false);
+        // Register in memory before persisting, so cleanup never reclaims it before the caller references it.
         _sessions[session.SessionId] = new SessionRef(session);
+        await _repo.Save(snapshot).ConfigureAwait(false);
         return session.SessionId;
     }
 
@@ -176,7 +177,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         => UploadSessionsState.SetProgress(sessionId, progress);
 
     private bool CheckIfActive(string sessionId)
-        => _sessions.TryGetValue(sessionId, out var sessionRef) && sessionRef.ReferenceCount > 0;
+        => _sessions.ContainsKey(sessionId);
 
     private async Task DeleteSessionResources(string sessionId, IFileProvider fileProvider, string? transcodedFilePath, UploadId? uploadId)
     {

@@ -23,6 +23,7 @@ partial class UploadSessions
                     continue;
                 }
 
+                // Stale = persisted but with no in-memory session, i.e. an orphan left by a prior run.
                 if (!CheckIfActive(uploadSession.SessionId))
                     staleItems.Add(item);
             }
