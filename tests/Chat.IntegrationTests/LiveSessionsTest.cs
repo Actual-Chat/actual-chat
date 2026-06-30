@@ -31,13 +31,11 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // the recording participant keeps the session live through a speech gap (no stream needed)
         live.IsClosing.Should().BeFalse();
 
-        // act — recording stops (mic off)
+        // act — recording stops (mic off): the last participant leaves
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
 
-        // assert — now it winds down (enters the close grace; the backend SelfCloses after the grace)
-        live = await backend.GetState(chatId, default);
-        live.Should().NotBeNull();
-        live!.IsClosing.Should().BeTrue();
+        // assert — an explicit leave that empties the call closes it outright (no lingering grace)
+        (await backend.GetState(chatId, default)).Should().BeNull();
     }
 
     [Fact]
@@ -59,14 +57,11 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeFalse();
 
-        // act — recording stops → the close grace begins
+        // act — recording stops: the last participant leaves
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
 
-        // assert — present, marked closing, finalization deferred to the grace timeout (backend SelfCloses)
-        live = await backend.GetState(chatId, default);
-        live.Should().NotBeNull();
-        live!.IsClosing.Should().BeTrue();
-        live.ClosingAt.Should().NotBeNull();
+        // assert — phone-mode has nothing to persist, so the empty call closes outright
+        (await backend.GetState(chatId, default)).Should().BeNull();
     }
 
     [Fact]
@@ -95,7 +90,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task ClosingTransitionStampsClosingAt()
+    public async Task ExplicitLeaveClosesImmediately()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -106,18 +101,16 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
-        // act — recording stops with no streams → transitions to closing and stamps ClosingAt
+        // act — the only participant explicitly leaves
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
 
-        // assert — ClosingAt drives the self-heal timeout that vanishes a flow-less conversation
-        var live = await backend.GetState(chatId, default);
-        live.Should().NotBeNull();
-        live!.IsClosing.Should().BeTrue();
-        live.ClosingAt.Should().NotBeNull();
+        // assert — the session is gone at once and the registry is cleared (the grace is only for stale clients)
+        (await backend.GetState(chatId, default)).Should().BeNull();
+        (await backend.ListParticipants(chatId, default)).Should().BeEmpty();
     }
 
     [Fact]
-    public async Task RejoinClearsClosingState()
+    public async Task RejoinAfterCloseStartsFreshSession()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -128,16 +121,46 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
-        (await backend.GetState(chatId, default))!.IsClosing.Should().BeTrue();
+        (await backend.GetState(chatId, default)).Should().BeNull();
 
-        // act — recording resumes before finalization
+        // act — recording resumes after the close
         await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
 
-        // assert — re-open clears both the closing flag and the timeout stamp
+        // assert — a brand-new live session is started
         var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeFalse();
-        live.ClosingAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LeaveWithOthersPresentKeepsSessionLive()
+    {
+        // arrange — two real accounts both join as participants
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        var bobAccount = await bob.SignInAsUniqueBob();
+        var aliceAccount = await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(true);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, bobAuthor!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, aliceAuthor!.Id, null, true, default);
+
+        // act — one of two participants leaves
+        await backend.SetParticipation(chatId, aliceAccount.Id, ParticipationKind.Record, false, default);
+
+        // assert — the other keeps the call alive (not closing, not closed)
+        var live = await backend.GetState(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeFalse();
+
+        // act — the last participant leaves too
+        await backend.SetParticipation(chatId, bobAccount.Id, ParticipationKind.Record, false, default);
+
+        // assert — now the empty call closes
+        (await backend.GetState(chatId, default)).Should().BeNull();
     }
 
     [Fact]
@@ -423,10 +446,8 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // act — the listener leaves entirely: nobody is even listening now
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, false, default);
 
-        // assert — the session winds down
-        var live = await backend.GetState(chatId, default);
-        live.Should().NotBeNull();
-        live!.IsClosing.Should().BeTrue();
+        // assert — the now-empty call closes outright
+        (await backend.GetState(chatId, default)).Should().BeNull();
     }
 
     [Fact]
