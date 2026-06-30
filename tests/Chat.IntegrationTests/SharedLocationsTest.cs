@@ -36,13 +36,10 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         var point = new GeoPoint(51.5074, -0.1278, 12f, 90f);
 
         // act - create a frozen one-shot location, then post a message referencing it
-        var shared = await Alice.Commander.Call(
-            new SharedLocations_Report(session, chatId, null, point, TimeSpan.Zero), ct);
-        var entry = await Alice.Commander.Call(
-            new Chats_UpsertEntry(session, chatId, null) { LocationId = shared.Id }, ct);
+        var entry = await Alice.CreateLocationEntry(chatId, point, cancellationToken: ct);
 
         // assert - the entry references a shared location that is frozen (not live)
-        entry.LocationId.Should().Be(shared.Id);
+        entry.LocationId.Should().NotBeNull();
         var location = await sharedLocations.Get(session, chatId, entry.LocationId!, ct);
         location.Should().NotBeNull();
         location!.Point.Should().Be(point);
@@ -73,11 +70,8 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // act - start a live share: create the live location, then post a message referencing it
         var point = new GeoPoint(51.5074, -0.1278, 12f, 90f);
-        var reported = await Alice.Commander.Call(
-            new SharedLocations_Report(session, chatId, null, point, TimeSpan.FromHours(1)), ct);
-        var locationId = reported.Id;
-        await Alice.Commander.Call(
-            new Chats_UpsertEntry(session, chatId, null) { LocationId = locationId }, ct);
+        var entry = await Alice.CreateLocationEntry(chatId, point, TimeSpan.FromHours(1), ct);
+        var locationId = entry.LocationId!;
 
         // assert - visible via ListLive/Get/IsSharing
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
@@ -89,14 +83,13 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // act - update position
         var point2 = new GeoPoint(48.8566, 2.3522);
-        await Alice.Commander.Call(
-            new SharedLocations_Report(session, chatId, locationId, point2, TimeSpan.FromHours(1)), ct);
+        await Alice.ReportLocation(chatId, point2, TimeSpan.FromHours(1), locationId, ct);
 
         // assert - position reflects the update
         await cList.When(x => x.Single().Point.Latitude == 48.8566, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
 
         // act - stop sharing
-        await Alice.Commander.Call(new SharedLocations_Stop(session, chatId, locationId), ct);
+        await Alice.StopSharingLocation(chatId, locationId, ct);
 
         // assert - no longer live, but the last position is frozen and kept (not scrubbed)
         await cList.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
@@ -122,13 +115,11 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         var firstPoint = new GeoPoint(10, 20);
 
         // act - start a first live share
-        var firstId = (await Alice.Commander.Call(
-            new SharedLocations_Report(session, chatId, null, firstPoint, hour), ct)).Id;
+        var firstId = (await Alice.ReportLocation(chatId, firstPoint, hour, cancellationToken: ct)).Id;
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
 
         // act - the same author starts a second live share
-        var secondId = (await Alice.Commander.Call(
-            new SharedLocations_Report(session, chatId, null, new GeoPoint(30, 40), hour), ct)).Id;
+        var secondId = (await Alice.ReportLocation(chatId, new GeoPoint(30, 40), hour, cancellationToken: ct)).Id;
 
         // assert - one live share per author: the new one supersedes, the previous is frozen with its last point
         await cList.When(x => x.Count == 1 && x.Single().Id == secondId, ct)
@@ -152,12 +143,8 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         var cList = await Computed.Capture(() => sharedLocations.ListLive(session, chatId, ct), ct);
 
         // act - share for a short window
-        // TODO: SharedLocationOperations like xxxOperations
-        var reported = await Alice.Commander.Call(
-            new SharedLocations_Report(session, chatId, null, new GeoPoint(10, 20), TimeSpan.FromSeconds(2)), ct);
-        var locationId = reported.Id;
-        await Alice.Commander.Call(
-            new Chats_UpsertEntry(session, chatId, null) { LocationId = locationId }, ct);
+        var entry = await Alice.CreateLocationEntry(chatId, new GeoPoint(10, 20), TimeSpan.FromSeconds(2), ct);
+        var locationId = entry.LocationId!;
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
 
         // assert - it drops out of the live list on its own once expired (no stop command)
@@ -176,8 +163,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // act & assert - Bob is not a member, so creating a shared location is rejected
         await FluentActions
-            .Awaiting(() => Bob.Commander.Call(
-                new SharedLocations_Report(Bob.Session, chatId, null, new GeoPoint(1, 2), TimeSpan.Zero)))
+            .Awaiting(() => Bob.ReportLocation(chatId, new GeoPoint(1, 2)))
             .Should().ThrowAsync<Exception>();
     }
 
@@ -189,8 +175,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // act & assert - sharing a location must not auto-join: Bob is rejected until he joins
         await FluentActions
-            .Awaiting(() => Bob.Commander.Call(
-                new SharedLocations_Report(Bob.Session, chatId, null, new GeoPoint(1, 2), TimeSpan.Zero)))
+            .Awaiting(() => Bob.ReportLocation(chatId, new GeoPoint(1, 2)))
             .Should().ThrowAsync<Exception>();
     }
 }
