@@ -134,10 +134,10 @@ public class SharedLocationsBackend(IServiceProvider services)
         // One live location per author per chat: a new one supersedes the previous.
         // The caller holds the per-author lock, so a plain read is enough here.
         var dbShares = await dbContext.SharedLocations
-            .Where(x => x.AuthorId == authorId.Value)
+            .Where(x => x.AuthorId == authorId.Value && x.StoppedAt == null)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        // TODO: why multiple live shares are possible?
+        // StoppedAt == null still includes expired shares, so the IsLive check stays.
         foreach (var dbShare in dbShares) {
             var share = dbShare.ToModel();
             if (share.IsLive(now))
