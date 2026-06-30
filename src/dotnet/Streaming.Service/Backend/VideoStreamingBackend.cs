@@ -318,13 +318,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // Unregister stream when it ends — cross-service RPC call
             await LiveVideoBackend.Unregister(record.ChatId, record.StreamId, CancellationToken.None)
                 .ConfigureAwait(false);
-            try {
-                await LiveSessionsBackend.OnStreamsChanged(record.ChatId, CancellationToken.None)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogWarning(e, "OnStreamsChanged failed on video stream #{StreamId} teardown", record.StreamId);
-            }
             // Latency state cleanup deferred to OnVideoStreamExpire — peers may still read buffered frames
         }
     }
