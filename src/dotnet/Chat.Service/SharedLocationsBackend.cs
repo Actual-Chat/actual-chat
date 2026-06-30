@@ -54,9 +54,9 @@ public class SharedLocationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task<SharedLocation> OnReport(SharedLocationsBackend_Report command, CancellationToken cancellationToken)
+    public virtual async Task<SharedLocation?> OnChange(SharedLocationsBackend_Change command, CancellationToken cancellationToken)
     {
-        var (id, authorId, point, liveDuration) = command;
+        var (id, authorId, change) = command;
         var chatId = authorId.ChatId;
         if (Invalidation.IsActive) {
             _ = Get(id, default);
@@ -64,10 +64,11 @@ public class SharedLocationsBackend(IServiceProvider services)
             return null!;
         }
 
+        change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        // Serialize all of this author's reports so a new live share can't race an in-flight one
+        // Serialize all of this author's changes so a new live share can't race an in-flight one
         // (create vs create, or a point report resurrecting a just-superseded share).
         await dbContext.SharedLocations.Lock(authorId, cancellationToken).ConfigureAwait(false);
 
@@ -76,8 +77,11 @@ public class SharedLocationsBackend(IServiceProvider services)
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
 
-        if (dbSharedLocation is null) {
-            var duration = liveDuration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration);
+        if (change.IsCreate(out var createDiff)) {
+            var point = createDiff.Point
+                ?? throw StandardError.Constraint("A new shared location requires a point.");
+            var duration = (createDiff.LiveDuration ?? TimeSpan.Zero)
+                .Clamp(TimeSpan.Zero, Constants.Location.MaxDuration);
             if (duration > TimeSpan.Zero)
                 await SupersedeLiveShares(dbContext, authorId, now, cancellationToken).ConfigureAwait(false);
             var created = new SharedLocation(id, VersionGenerator.NextVersion()) {
@@ -92,50 +96,29 @@ public class SharedLocationsBackend(IServiceProvider services)
             return created;
         }
 
-        // A report past LiveUntil is ignored so a frozen share keeps its last position.
+        if (!change.IsUpdate(out var updateDiff))
+            throw StandardError.NotSupported("Removing a shared location is not supported.");
+
+        // A change past LiveUntil is ignored so a frozen share keeps its last position.
+        if (dbSharedLocation is null)
+            return null;
         var existing = dbSharedLocation.ToModel();
         if (!existing.IsLive(now))
             return existing;
 
-        var updated = existing with {
-            Point = point,
-            ModifiedAt = now,
-            Version = VersionGenerator.NextVersion(existing.Version),
-        };
+        var updated = updateDiff.Stop
+            ? existing with {
+                StoppedAt = now,
+                Version = VersionGenerator.NextVersion(existing.Version),
+            }
+            : existing with {
+                Point = updateDiff.Point ?? existing.Point,
+                ModifiedAt = now,
+                Version = VersionGenerator.NextVersion(existing.Version),
+            };
         dbSharedLocation.UpdateFrom(updated);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return updated;
-    }
-
-    // [CommandHandler]
-    public virtual async Task OnStop(SharedLocationsBackend_Stop command, CancellationToken cancellationToken)
-    {
-        // Stop ends a share early — freeze it now so it leaves the live list, last point kept as a pin.
-        var (chatId, id) = command;
-        if (Invalidation.IsActive) {
-            _ = Get(id, default);
-            _ = ListLive(chatId, default);
-            return;
-        }
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbSharedLocation = await dbContext.SharedLocations.ForUpdate()
-            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-            .ConfigureAwait(false);
-        if (dbSharedLocation is null)
-            return;
-
-        var now = Clocks.SystemClock.Now;
-        var sharedLocation = dbSharedLocation.ToModel();
-        if (sharedLocation.IsLive(now)) {
-            dbSharedLocation.UpdateFrom(sharedLocation with {
-                StoppedAt = now,
-                Version = VersionGenerator.NextVersion(sharedLocation.Version),
-            });
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
     }
 
     // Private methods

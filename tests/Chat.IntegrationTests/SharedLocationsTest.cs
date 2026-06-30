@@ -92,7 +92,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
             .WaitAsync(TimeSpan.FromSeconds(5), ct);
 
         // act - stop sharing
-        await Alice.StopSharingLocation(locationId, ct);
+        await Alice.StopSharingLocation(chatId, locationId, ct);
 
         // assert - no longer live, but the last position is frozen and kept (not scrubbed)
         await cList.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);

@@ -13,31 +13,17 @@ public interface ISharedLocationsBackend : IComputeService, IBackendService
     Task<ApiArray<SharedLocation>> ListLive(ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<SharedLocation> OnReport(SharedLocationsBackend_Report command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnStop(SharedLocationsBackend_Stop command, CancellationToken cancellationToken);
+    Task<SharedLocation?> OnChange(SharedLocationsBackend_Change command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record SharedLocationsBackend_Report(
+public sealed partial record SharedLocationsBackend_Change(
     [property: DataMember, MemoryPackOrder(0), Key(0)] SharedLocationId Id,
     [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId AuthorId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] GeoPoint Point,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] TimeSpan LiveDuration
-) : ICommand<SharedLocation>, IBackendCommand, IHasShardKey<ChatId>
+    [property: DataMember, MemoryPackOrder(2), Key(2)] Change<SharedLocationDiff> Change
+) : ICommand<SharedLocation?>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ShardKey => AuthorId.ChatId;
-}
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record SharedLocationsBackend_Stop(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] SharedLocationId Id
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
-{
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public ChatId ShardKey => ChatId;
 }

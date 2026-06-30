@@ -1,10 +1,8 @@
-using ActualChat.Chat;
-
 namespace ActualChat.Testing.Host;
 
 public static class SharedLocationOperations
 {
-    public static Task<SharedLocation> ReportLocation(
+    public static async Task<SharedLocation> ReportLocation(
         this IWebTester tester,
         ChatId chatId,
         GeoPoint point,
@@ -12,8 +10,12 @@ public static class SharedLocationOperations
         SharedLocationId? id = null,
         CancellationToken cancellationToken = default)
     {
-        var cmd = new SharedLocations_Report(tester.Session, chatId, id, point, liveDuration);
-        return tester.Commander.Call(cmd, cancellationToken);
+        var change = id is null
+            ? Change.Create(new SharedLocationDiff { Point = point, LiveDuration = liveDuration })
+            : Change.Update(new SharedLocationDiff { Point = point });
+        var cmd = new SharedLocations_Change(tester.Session, chatId, id, change);
+        var result = await tester.Commander.Call(cmd, cancellationToken);
+        return result!;
     }
 
     public static async Task<ChatEntry> CreateLocationEntry(
@@ -30,7 +32,12 @@ public static class SharedLocationOperations
 
     public static Task StopSharingLocation(
         this IWebTester tester,
+        ChatId chatId,
         SharedLocationId id,
         CancellationToken cancellationToken = default)
-        => tester.Commander.Call(new SharedLocations_Stop(tester.Session, id), cancellationToken);
+    {
+        var change = Change.Update(new SharedLocationDiff { Stop = true });
+        var cmd = new SharedLocations_Change(tester.Session, chatId, id, change);
+        return tester.Commander.Call(cmd, cancellationToken);
+    }
 }

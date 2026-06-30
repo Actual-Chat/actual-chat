@@ -37,10 +37,14 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
         if (await Tracker.Get(cancellationToken).ConfigureAwait(false) is not { } point)
             return;
 
+        var change = Change.Create(new SharedLocationDiff { Point = point, LiveDuration = TimeSpan.Zero });
         var shared = await Commander.Call(
-                new SharedLocations_Report(Session, chatId, null, point, TimeSpan.Zero),
+                new SharedLocations_Change(Session, chatId, null, change),
                 cancellationToken)
             .ConfigureAwait(false);
+        if (shared is null)
+            return;
+
         var command = new Chats_UpsertEntry(Session, chatId, null) { LocationId = shared.Id };
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
@@ -58,8 +62,9 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
             if (share.LocationId is not { } locationId)
                 continue;
 
-            await Commander.Call(new SharedLocations_Stop(Session, locationId), cancellationToken)
-                .ConfigureAwait(false);
+            var change = Change.Update(new SharedLocationDiff { Stop = true });
+            var stop = new SharedLocations_Change(Session, chatId, locationId, change);
+            await Commander.Call(stop, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -110,18 +115,22 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
                 return;
             }
 
-            var liveDuration = share.ExpiresAt - ServerNow;
-            var cmd = new SharedLocations_Report(Session, share.ChatId, locationId, point, liveDuration);
+            var change = Change.Update(new SharedLocationDiff { Point = point });
+            var cmd = new SharedLocations_Change(Session, share.ChatId, locationId, change);
             await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
 
         async Task PostEntry(ActiveShare share, GeoPoint point)
         {
             var liveDuration = share.ExpiresAt - ServerNow;
+            var change = Change.Create(new SharedLocationDiff { Point = point, LiveDuration = liveDuration });
             var shared = await Commander.Call(
-                    new SharedLocations_Report(Session, share.ChatId, null, point, liveDuration),
+                    new SharedLocations_Change(Session, share.ChatId, null, change),
                     cancellationToken)
                 .ConfigureAwait(false);
+            if (shared is null)
+                return;
+
             var command = new Chats_UpsertEntry(Session, share.ChatId, null) { LocationId = shared.Id };
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
 

@@ -31,20 +31,25 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
     }
 
     // [CommandHandler]
-    public virtual async Task<SharedLocation> OnReport(SharedLocations_Report command, CancellationToken cancellationToken)
+    public virtual async Task<SharedLocation?> OnChange(SharedLocations_Change command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
+            return null; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, id, point, liveDuration) = command;
+        var (session, chatId, id, change) = command;
+        change.RequireValid();
+
         if (id is null) {
+            if (!change.IsCreate(out var diff))
+                throw StandardError.Constraint("A new shared location requires a Create change.");
+
             var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
             var author = chatRules.Author;
             if (author is not { HasLeft: false })
                 throw StandardError.Constraint("Please join the chat before sharing your location.");
             chatRules.Require(ChatPermissions.Write);
 
-            if (liveDuration > TimeSpan.Zero) {
+            if ((diff.LiveDuration ?? TimeSpan.Zero) > TimeSpan.Zero) {
                 // One-shot sends (zero duration) aren't live shares, so they don't count toward the cap.
                 var liveShares = await Backend.ListLive(chatId, cancellationToken).ConfigureAwait(false);
                 var alreadySharing = liveShares.Any(x => x.AuthorId == author.Id);
@@ -54,50 +59,19 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
                         + "people sharing their live location.");
             }
 
-            var newId = SharedLocationId.New();
-            var createReport = new SharedLocationsBackend_Report(newId, author.Id, point, liveDuration);
-            return await Commander.Call(createReport, true, cancellationToken).ConfigureAwait(false);
+            var createCommand = new SharedLocationsBackend_Change(SharedLocationId.New(), author.Id, change);
+            return await Commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
         }
 
         var existing = await Backend.Get(id, cancellationToken).ConfigureAwait(false);
         if (existing is null)
-            return null!;
+            return null;
 
-        var own = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        var own = await Authors.GetOwn(session, existing.ChatId, cancellationToken).ConfigureAwait(false);
         if (own is null || own.Id != existing.AuthorId)
             return existing;
 
-        var updateReport = new SharedLocationsBackend_Report(id, existing.AuthorId, point, liveDuration);
-        return await Commander.Call(updateReport, true, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
-    public virtual async Task OnStop(SharedLocations_Stop command, CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return;
-
-        var (session, id) = command;
-        var author = await ResolveOwner(session, id, cancellationToken).ConfigureAwait(false);
-        if (author == null)
-            return;
-
-        var stop = new SharedLocationsBackend_Stop(author.Id.ChatId, id);
-        await Commander.Call(stop, true, cancellationToken).ConfigureAwait(false);
-    }
-
-    // Private methods
-
-    private async Task<AuthorFull?> ResolveOwner(
-        Session session,
-        SharedLocationId id,
-        CancellationToken cancellationToken)
-    {
-        var sharedLocation = await Backend.Get(id, cancellationToken).ConfigureAwait(false);
-        if (sharedLocation == null)
-            return null;
-
-        var author = await Authors.GetOwn(session, sharedLocation.ChatId, cancellationToken).ConfigureAwait(false);
-        return author != null && author.Id == sharedLocation.AuthorId ? author : null;
+        var changeCommand = new SharedLocationsBackend_Change(id, existing.AuthorId, change);
+        return await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }
