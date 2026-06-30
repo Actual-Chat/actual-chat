@@ -576,6 +576,31 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply bg-transparent;
 }
 
+/* Branded placeholder shown until the first decoded frame paints — covers the
+   empty <video>/canvas (otherwise a bare gray box with the native play glyph).
+   JS toggles `.has-frame` on the tile when the first frame arrives. */
+.video-track-player .video-placeholder {
+    @apply absolute inset-0;
+    @apply flex items-center justify-center;
+    @apply bg-black pointer-events-none;
+    z-index: 2;
+    color: var(--white-70);
+    transition: opacity 200ms ease-out;
+}
+.video-track-player .video-placeholder > i {
+    font-size: clamp(3rem, 45cqmin, 10rem);
+    line-height: 1;
+}
+.video-track-player.has-frame .video-placeholder {
+    @apply opacity-0;
+}
+/* Freeze the pulse once the frame arrives — the placeholder stays in the DOM
+   (only fades to opacity:0), so an infinite animation would otherwise tick
+   forever on every tile. */
+.video-track-player.has-frame .video-placeholder > i {
+    animation-play-state: paused;
+}
+
 /* Blurred backdrop (§13): fills the letterbox/pillarbox bars. JS paints a
    blurred, saturated, low-res bitmap into this canvas; CSS only upscales it via
    object-fit: cover. Hidden by default; the focused tile rule below brings it

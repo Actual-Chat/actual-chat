@@ -1168,8 +1168,10 @@ export class VideoPlayer {
         // pegged at -1, and the allocator capped every stream at L0.
         this.receivedBytes = sample.bytesReceived;
         const nowMsForSample = performance.now();
-        if (this.firstFrameReceivedTime === 0)
+        if (this.firstFrameReceivedTime === 0) {
             this.firstFrameReceivedTime = nowMsForSample;
+            this.canvas.parentElement?.classList.add('has-frame');
+        }
         this.bytesSamples.push({ atMs: nowMsForSample, bytes: this.receivedBytes });
         const cutoff = nowMsForSample - VideoPlayer.bytesWindowMs;
         while (this.bytesSamples.length > 1 && this.bytesSamples[0].atMs < cutoff)
@@ -1292,6 +1294,7 @@ export class VideoPlayer {
         this.receivedKeyframeCount = 0;
         this.receivedBytes = 0;
         this.firstFrameReceivedTime = 0;
+        this.canvas.parentElement?.classList.remove('has-frame');
         this.bytesSamples.length = 0;
         this.pipelineLatencyMs = 0;
 
