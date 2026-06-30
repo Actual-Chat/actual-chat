@@ -24,7 +24,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
         // assert
-        var live = await backend.Get(chatId, default);
+        var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         live!.TranscriptionOn.Should().BeTrue();
         live.AuthorIds.Should().Contain(author.Id);
@@ -35,7 +35,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
 
         // assert — now it winds down (enters the close grace; the backend SelfCloses after the grace)
-        live = await backend.Get(chatId, default);
+        live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeTrue();
     }
@@ -55,7 +55,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.OnStreamRegistered(chatId, author!.Id, null, false, default);
 
         // assert — present, and the recording participant keeps the call live (not closing) across a silence gap
-        var live = await backend.Get(chatId, default);
+        var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeFalse();
 
@@ -63,7 +63,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
 
         // assert — present, marked closing, finalization deferred to the grace timeout (backend SelfCloses)
-        live = await backend.Get(chatId, default);
+        live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeTrue();
         live.ClosingAt.Should().NotBeNull();
@@ -110,7 +110,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
 
         // assert — ClosingAt drives the self-heal timeout that vanishes a flow-less conversation
-        var live = await backend.Get(chatId, default);
+        var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeTrue();
         live.ClosingAt.Should().NotBeNull();
@@ -128,13 +128,13 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
-        (await backend.Get(chatId, default))!.IsClosing.Should().BeTrue();
+        (await backend.GetState(chatId, default))!.IsClosing.Should().BeTrue();
 
         // act — recording resumes before finalization
         await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
 
         // assert — re-open clears both the closing flag and the timeout stamp
-        var live = await backend.Get(chatId, default);
+        var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeFalse();
         live.ClosingAt.Should().BeNull();
@@ -151,12 +151,12 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
 
-        // act — need 2 peers for GetLiveSession to return non-null
+        // act — need 2 peers for Get to return non-null
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_011), null, true, default);
 
         // assert — the session projects the host + the auto-registered streamer as a member
-        var liveSession = await backend.GetLiveSession(chatId, default);
+        var liveSession = await backend.Get(chatId, default);
         liveSession.Should().NotBeNull();
         liveSession!.Host.Should().Be(author.Id);
         liveSession.Conversation.Should().NotBeNull();
@@ -182,7 +182,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.SetRules(chatId, new SessionRules { VoiceModeOverride = Users.VoiceMode.JustText }, default);
 
         // assert
-        var liveSession = await backend.GetLiveSession(chatId, default);
+        var liveSession = await backend.Get(chatId, default);
         liveSession!.Rules.VoiceModeOverride.Should().Be(Users.VoiceMode.JustText);
     }
 
@@ -203,7 +203,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.MutePeer(chatId, author.Id, true, default);
 
         // assert
-        var liveSession = await backend.GetLiveSession(chatId, default);
+        var liveSession = await backend.Get(chatId, default);
         var member = liveSession!.Members.Single(m => m.AuthorId == author.Id);
         member.MicMuted.Should().BeTrue();
     }
@@ -246,7 +246,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
         // assert
-        var live = await backend.Get(chatId, default);
+        var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         live!.SessionStartedAt.Should().BeNull();
 
@@ -255,13 +255,13 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.OnStreamRegistered(chatId, peer2, null, true, default);
 
         // assert — the session latches
-        live = await backend.Get(chatId, default);
+        live = await backend.GetState(chatId, default);
         live!.AuthorIds.Should().HaveCount(2);
         live.SessionStartedAt.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task GetLiveSessionNullUntilSecondStreamer()
+    public async Task GetNullUntilSecondStreamer()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -275,15 +275,15 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
         // assert
-        (await backend.Get(chatId, default)).Should().NotBeNull();
-        (await backend.GetLiveSession(chatId, default)).Should().BeNull();
+        (await backend.GetState(chatId, default)).Should().NotBeNull();
+        (await backend.Get(chatId, default)).Should().BeNull();
 
         // act — 2nd peer streams
         var peer2 = AuthorId.New(chatId, 777_002);
         await backend.OnStreamRegistered(chatId, peer2, null, true, default);
 
         // assert — the session is now exposed, started at the latch moment
-        var liveSession = await backend.GetLiveSession(chatId, default);
+        var liveSession = await backend.Get(chatId, default);
         liveSession.Should().NotBeNull();
         liveSession!.StartedAt.Should().NotBe(default);
     }
@@ -304,20 +304,20 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_020), null, true, default);
 
         // assert — latched, and the recording participants keep it fully live (no closing) through a gap
-        var live = await backend.Get(chatId, default);
+        var live = await backend.GetState(chatId, default);
         var latchedAt = live!.SessionStartedAt;
         latchedAt.Should().NotBeNull();
         live.IsClosing.Should().BeFalse();
-        (await backend.GetLiveSession(chatId, default)).Should().NotBeNull();
+        (await backend.Get(chatId, default)).Should().NotBeNull();
 
         // act — a fresh utterance after the gap
         await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
 
         // assert — still the same live session, latch unchanged
-        live = await backend.Get(chatId, default);
+        live = await backend.GetState(chatId, default);
         live!.IsClosing.Should().BeFalse();
         live.SessionStartedAt.Should().Be(latchedAt);
-        (await backend.GetLiveSession(chatId, default)).Should().NotBeNull();
+        (await backend.Get(chatId, default)).Should().NotBeNull();
     }
 
     [Fact]
@@ -334,7 +334,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
 
         // act — a single streamer: the conversation state exists but is not yet a session
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
-        var live = await backend.Get(chatId, default);
+        var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         var tileStart = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(live!.StartEntryLid).Range.Start;
 
@@ -364,7 +364,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
 
         // act — a single streamer
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
-        var live = await backend.Get(chatId, default);
+        var live = await backend.GetState(chatId, default);
         var tileRange = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(live!.StartEntryLid).Range;
 
         // assert — the synthetic live block is not injected before the latch
@@ -395,7 +395,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_040), null, true, default);
 
         // assert — with the recording participation present, the silent recorder is still mic-on and not Exited
-        var liveSession = await backend.GetLiveSession(chatId, default);
+        var liveSession = await backend.Get(chatId, default);
         liveSession.Should().NotBeNull();
         var me = liveSession!.Members.Single(m => m.AuthorId == author.Id);
         me.IsMicOpen.Should().BeTrue();
@@ -418,13 +418,13 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, true, default);
 
         // assert — a listener keeps the session alive
-        (await backend.Get(chatId, default))!.IsClosing.Should().BeFalse();
+        (await backend.GetState(chatId, default))!.IsClosing.Should().BeFalse();
 
         // act — the listener leaves entirely: nobody is even listening now
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, false, default);
 
         // assert — the session winds down
-        var live = await backend.Get(chatId, default);
+        var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeTrue();
     }

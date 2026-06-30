@@ -94,7 +94,7 @@ public partial class AudioStreamingBackend
             .ConfigureAwait(false);
         // A live-session VoiceMode override (set by a controller via Manage) merges
         // most-restrictive-wins with the user's per-chat VoiceMode.
-        var liveState = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var liveState = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         var effectiveVoiceMode = (liveState?.Rules ?? SessionRules.Default).Merge(chatVoiceMode.VoiceMode);
         var mustStreamVoice = effectiveVoiceMode.HasVoice();
         var mustTranscribe = effectiveVoiceMode.HasText();

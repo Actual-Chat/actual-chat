@@ -10,9 +10,9 @@ namespace ActualChat.Streaming;
 public interface ILiveSessionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<LiveSessionState?> Get(ChatId chatId, CancellationToken cancellationToken);
+    Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<LiveSession?> GetLiveSession(ChatId chatId, CancellationToken cancellationToken);
+    Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(ConsolidationDelay = 0.5)]
     Task<ApiArray<UserId>> ListParticipants(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(ConsolidationDelay = 0.5)]

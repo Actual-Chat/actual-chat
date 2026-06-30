@@ -83,7 +83,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // A latched live session owns its range: replace any solo-era conversations it overlaps with
         // the single live range (the UI swaps the regular block for the live one).
-        var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (live is { SessionStartedAt: not null } lc
             && lc.StartEntryLid < idTileRange.End && lc.EndEntryLid >= idTileRange.Start) {
             var liveRange = new Range<long>(lc.StartEntryLid, lc.EndEntryLid + 1);
@@ -126,7 +126,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // A latched live session owns its range: drop any solo-era conversations it overlaps and inject
         // its synthetic block instead (the UI swaps the regular block for the live one).
-        var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (live is { SessionStartedAt: not null } lc) {
             var liveConversation = lc.ToConversation();
             if (!liveConversation.EntryLidRange.IntersectWith(lidTileRange).IsEmpty) {

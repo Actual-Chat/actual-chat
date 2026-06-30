@@ -14,7 +14,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     private ILiveSessionsBackend Backend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
 
     // [ComputeMethod]
-    public virtual async Task<LiveSessionState?> Get(
+    public virtual async Task<LiveSessionState?> GetState(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -22,18 +22,18 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         if (!chat.Rules.CanRead())
             return null;
 
-        return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<LiveSession?> GetLiveSession(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<LiveSession?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         if (!chat.Rules.CanRead())
             return null;
 
-        return await Backend.GetLiveSession(chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -97,7 +97,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         chat.Require();
         if (chat.Rules.IsOwner())
             return;
-        var live = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var live = await Backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (live?.Host is { } host && chat.Rules.Author?.Id is { } actingAuthorId && host == actingAuthorId)
             return;
         throw StandardError.Constraint("Only the call host or a chat admin can manage the live session.");

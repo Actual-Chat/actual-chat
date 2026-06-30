@@ -56,7 +56,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // [ComputeMethod]
-    public virtual async Task<LiveSessionState?> Get(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken)
     {
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
@@ -82,9 +82,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // [ComputeMethod]
-    public virtual async Task<LiveSession?> GetLiveSession(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken)
     {
-        var state = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        var state = await GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (state is null)
             return null;
         if (state.SessionStartedAt is null)
@@ -246,7 +246,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // Register the streamer as a participant so per-peer mute flags have a home
         // (grouping uses live-stream state, so a stale entry never misgroups an active streamer).
         await EnsureParticipant(chatId, authorId, cancellationToken).ConfigureAwait(false);
-        InvalidateGet(chatId);
+        InvalidateState(chatId);
     }
 
     public virtual async Task SetParticipation(
@@ -270,7 +270,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await _participants.Remove(chatId.Value, userId.Value).ConfigureAwait(false);
         InvalidateListParticipants(chatId);
         InvalidateHasRecorder(chatId);
-        InvalidateGetLiveSession(chatId);
+        InvalidateGet(chatId);
         // Recording turned on/off flips liveness (a vanished last recorder starts the grace).
         await EvaluateLiveness(chatId).ConfigureAwait(false);
     }
@@ -286,7 +286,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
         state = state with { Rules = rules, Version = VersionGenerator.NextVersion(state.Version) };
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
-        InvalidateGet(chatId);
+        InvalidateState(chatId);
     }
 
     public virtual async Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken)
@@ -301,7 +301,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (existing is null)
             return;
         await _participants.Set(chatId.Value, author.UserId.Value, existing with { MicMuted = muted }).ConfigureAwait(false);
-        InvalidateGetLiveSession(chatId);
+        InvalidateGet(chatId);
     }
 
     public virtual async Task MuteAll(ChatId chatId, AuthorId exceptAuthorId, bool muted, CancellationToken cancellationToken)
@@ -320,7 +320,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
             await _participants.Set(chatId.Value, userIdValue, info with { MicMuted = muted }).ConfigureAwait(false);
         }
-        InvalidateGetLiveSession(chatId);
+        InvalidateGet(chatId);
     }
 
     public virtual async Task UpdateSummary(
@@ -352,7 +352,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await EnqueueLiveNotification(
                 state, ConversationNotificationPhase.Titled, $"Voice chat: {summary.Title}", cancellationToken)
                 .ConfigureAwait(false);
-        InvalidateGet(chatId);
+        InvalidateState(chatId);
     }
 
     // Private methods
@@ -437,7 +437,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             ? state with { IsClosing = false, ClosingAt = null, Version = VersionGenerator.NextVersion(state.Version) }
             : state with { IsClosing = true, ClosingAt = Clocks.SystemClock.Now, Version = VersionGenerator.NextVersion(state.Version) };
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
-        InvalidateGet(chatId);
+        InvalidateState(chatId);
     }
 
     private async Task StartClosingGrace(ChatId chatId)
@@ -486,7 +486,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
         await _redisScope.Remove(chatId.Value).ConfigureAwait(false);
         await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
-        InvalidateGet(chatId);
+        InvalidateState(chatId);
     }
 
     private Task EnqueueLiveNotification(
@@ -499,18 +499,18 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 new NotificationsBackend_NotifyConversation(state.ConversationId, phase, content, state.EndEntryLid, state.AuthorIds),
                 cancellationToken);
 
-    private void InvalidateGet(ChatId chatId)
+    private void InvalidateState(ChatId chatId)
     {
         using (Invalidation.Begin()) {
+            _ = GetState(chatId, default);
             _ = Get(chatId, default);
-            _ = GetLiveSession(chatId, default);
         }
     }
 
-    private void InvalidateGetLiveSession(ChatId chatId)
+    private void InvalidateGet(ChatId chatId)
     {
         using (Invalidation.Begin())
-            _ = GetLiveSession(chatId, default);
+            _ = Get(chatId, default);
     }
 
     private void InvalidateHasRecorder(ChatId chatId)

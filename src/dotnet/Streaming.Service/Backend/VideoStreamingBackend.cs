@@ -143,7 +143,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
         // A controller disabled video for the session — reject all camera/screen pushes
         // (mirrors the audio force-mute reject), so no one's video reaches the others.
-        var liveState = await LiveSessionsBackend.Get(record.ChatId, cancellationToken).ConfigureAwait(false);
+        var liveState = await LiveSessionsBackend.GetState(record.ChatId, cancellationToken).ConfigureAwait(false);
         if (liveState?.Rules is { VideoAllowed: false })
             return;
 

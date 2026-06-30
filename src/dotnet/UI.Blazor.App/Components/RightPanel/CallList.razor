@@ -118,7 +118,7 @@
         if (ChatId is null || ChatId.Value.IsNullOrEmpty())
             return Model.None;
 
-        var live = await LiveSessionUI.GetLiveSession(ChatId, cancellationToken).ConfigureAwait(true);
+        var live = await LiveSessionUI.Get(ChatId, cancellationToken).ConfigureAwait(true);
         if (live is null)
             return Model.None;
 
