@@ -53,6 +53,12 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
         init => this.SetMetadataValue(value);
     }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public long DurationMs {
+        get => this.GetMetadataValue(0L);
+        init => this.SetMetadataValue(value);
+    }
+
     // Used when Kind = ChatEntryXxx
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

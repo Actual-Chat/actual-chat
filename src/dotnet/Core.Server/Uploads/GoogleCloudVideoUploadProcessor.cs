@@ -88,12 +88,12 @@ public sealed class GoogleCloudVideoUploadProcessor(
         Log.LogDebug("Snapshot extraction completed in {Elapsed:N0}ms for '{FileName}'",
             stepSw.ElapsedMilliseconds, upload.FileName);
         if (snapshot is null)
-            return new ProcessedFile(upload.AsBinaryFile(), size);
+            return new ProcessedFile(upload.AsBinaryFile(), size) { Duration = duration };
 
         progress?.Report(15);
 
         if (!mustConvert)
-            return new ProcessedFile(UploadProcessorHelper.EnsureMp4Extension(upload), size, snapshot);
+            return new ProcessedFile(UploadProcessorHelper.EnsureMp4Extension(upload), size, snapshot) { Duration = duration };
 
         // 3. Create or resume a transcoder job + poll
         try {
@@ -134,7 +134,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
 
             if (job.State == Job.Types.ProcessingState.Failed) {
                 Log.LogError("Transcoder job '{JobName}' failed: {Error}", job.Name, job.Error);
-                return new ProcessedFile(upload.AsBinaryFile(), size, snapshot);
+                return new ProcessedFile(upload.AsBinaryFile(), size, snapshot) { Duration = duration };
             }
 
             // 5. Build result
@@ -153,6 +153,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
                     () => OpenGcsObject(outputObjectName)),
                 size,
                 snapshot) {
+                Duration = duration,
                 OnDispose = () => {
                     _ = CleanupGcsOutputAsync(outputPrefix);
                     _ = DeleteState(stateObjectName);

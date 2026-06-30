@@ -6,6 +6,7 @@ namespace ActualChat.Uploads;
 public sealed record ProcessedFile(UploadedFile File, Size2D? Size, UploadedFile? Thumbnail = null) : IDisposable
 {
     public Action? OnDispose { get; init; }
+    public TimeSpan? Duration { get; init; }
 
     public void Dispose()
     {

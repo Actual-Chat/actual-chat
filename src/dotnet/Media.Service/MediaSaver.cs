@@ -49,6 +49,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
                 processedFile.Thumbnail,
                 processedFile.Size,
                 null,
+                null,
                 false,
                 kind,
                 cancellationToken)
@@ -61,6 +62,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
             mediaRef.BlobId,
             processedFile.File,
             processedFile.Size,
+            processedFile.Duration,
             mediaRef.ThumbnailMediaId,
             isUpdate,
             kind,
@@ -92,6 +94,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         string blobId,
         UploadedFile file,
         Size2D? size,
+        TimeSpan? duration,
         MediaId? thumbnailMediaId,
         bool isUpdate,
         MediaKind kind,
@@ -111,6 +114,8 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
             Height = size?.Height ?? 0,
             ThumbnailId = thumbnailMediaId,
         };
+        if (duration is { } d)
+            media = media with { DurationMs = (long)d.TotalMilliseconds };
         var change = isUpdate
             ? new Change<MediaFull> { Update = media }
             : new Change<MediaFull> { Create = media };

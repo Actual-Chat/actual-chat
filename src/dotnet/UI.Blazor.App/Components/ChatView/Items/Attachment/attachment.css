@@ -23,6 +23,12 @@ body.hoverable .image-line .image-item:hover {
 .image-line .image-item video {
     @apply object-cover;
 }
+/* Keep video tiles wide enough for the duration badge (.c-duration) to fit,
+   even when a vertical video shares a row with wider tiles. Scoped to video
+   so plain images keep their justified proportions. */
+.image-line .image-item:has(.video-thumbnail) {
+    @apply min-w-12;
+}
 /* Single image: respect aspect ratio, no cropping.
    `w-full` (inherited from .image-line) + inline `max-width` give a definite
    container width so the inline `aspect-ratio` can compute height. Without

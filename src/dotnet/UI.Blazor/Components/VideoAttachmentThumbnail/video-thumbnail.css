@@ -16,3 +16,16 @@ body.narrow .video-thumbnail .c-overlay {
 .video-thumbnail .c-play {
     @apply text-white text-text-1 md:text-xl;
 }
+.video-thumbnail .c-duration {
+    @apply absolute bottom-1 left-1;
+    @apply px-1.5 py-0.5;
+    @apply rounded-md;
+    @apply bg-[var(--black-90)] text-white;
+    @apply text-xs font-medium leading-none whitespace-nowrap;
+}
+body.narrow .video-thumbnail .c-duration {
+    @apply bottom-0.5 left-0.5;
+    @apply h-4;
+    @apply px-1;
+    @apply text-xxs;
+}

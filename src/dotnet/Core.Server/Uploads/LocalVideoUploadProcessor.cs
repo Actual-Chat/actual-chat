@@ -62,11 +62,11 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
         Log.LogDebug("Snapshot extraction completed in {Elapsed:N0}ms for '{FileName}'",
             stepSw.ElapsedMilliseconds, upload.FileName);
         if (snapshot is null)
-            return new ProcessedFile(upload.AsBinaryFile(), size);
+            return new ProcessedFile(upload.AsBinaryFile(), size) { Duration = duration };
 
         progress?.Report(20);
         if (!mustConvert)
-            return new ProcessedFile(UploadProcessorHelper.EnsureMp4Extension(upload), size, snapshot);
+            return new ProcessedFile(UploadProcessorHelper.EnsureMp4Extension(upload), size, snapshot) { Duration = duration };
 
         try {
             stepSw.Restart();
@@ -107,7 +107,7 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
                     "video/mp4",
                     convertedFilePath),
                 size,
-                snapshot);
+                snapshot) { Duration = duration };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             snapshot.Delete();
@@ -116,7 +116,7 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
         catch (Exception e) {
             Log.LogError(e, "Could not convert uploaded video '{File}' after {Elapsed:N0}ms",
                 upload.FileName, totalSw.ElapsedMilliseconds);
-            return new ProcessedFile(upload, size, snapshot);
+            return new ProcessedFile(upload, size, snapshot) { Duration = duration };
         }
     }
 }
