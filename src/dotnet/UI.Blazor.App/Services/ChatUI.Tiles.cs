@@ -174,6 +174,11 @@ public partial class ChatUI
         var hasVeryFirstItem = idTiles.Count > 0 && idTiles[0].Start <= chatLidRange.Start;
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
+        // The single tail tile merging optimistic "sending"/new/audio-recording messages - picked once so a
+        // live session's beyond-end conversation tiles can't become a second tail (duplicate @key crash).
+        var tailTileIndex = idTiles.FindIndex(t => t.Contains(chatLidRange.End - 1));
+        if (tailTileIndex < 0 && !hasMoreAfter)
+            tailTileIndex = idTiles.Count - 1;
         for (var tileIndex = 0; tileIndex < idTiles.Count; tileIndex++) {
             var idTile = idTiles[tileIndex];
             var lastReadEntryLid = shownReadyEntryLid;
@@ -181,11 +186,7 @@ public partial class ChatUI
                 lastReadEntryLid = 0;
             else if (shownReadyEntryLid >= idTile.End - 1)
                 lastReadEntryLid = long.MaxValue;
-            // When we're at the chat's newest end, the last loaded tile is the tail even if a trailing
-            // run of removed entries leaves chatLidRange.End-1 outside it - and it's where the optimistic
-            // "sending"/new messages must be merged.
-            var isLastTile = idTile.Contains(chatLidRange.End - 1)
-                || (!hasMoreAfter && tileIndex == idTiles.Count - 1);
+            var isLastTile = tileIndex == tailTileIndex;
             var tile = await GetTile(
                     chatId,
                     chat.Rules.Author?.Id,
