@@ -32,11 +32,6 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         ParticipationKind kind,
         bool isActive,
         CancellationToken cancellationToken);
-    Task SetMicMuted(
-        ChatId chatId,
-        UserId userId,
-        bool micMuted,
-        CancellationToken cancellationToken);
     Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken);
     Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken);
     Task MuteAll(ChatId chatId, AuthorId exceptAuthorId, bool muted, CancellationToken cancellationToken);

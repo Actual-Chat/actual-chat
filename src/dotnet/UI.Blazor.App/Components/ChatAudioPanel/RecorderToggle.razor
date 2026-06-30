@@ -233,7 +233,9 @@
 
             cancellationToken.ThrowIfCancellationRequested();
             // Tapping the mic to record lifts a soft "mute all" applied by the host.
-            await LiveSessionUI.SetMicMuted(chatId, false, cancellationToken).ConfigureAwait(false);
+            var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (chat?.Rules.Author?.Id is { } ownAuthorId)
+                await LiveSessionUI.MutePeer(chatId, ownAuthorId, false, cancellationToken).ConfigureAwait(false);
             await ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk).ConfigureAwait(false);
         });
     }

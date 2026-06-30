@@ -230,6 +230,29 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
+    public async Task MutePeerAllowsSelfButRequiresManageForPeers()
+    {
+        // arrange — Bob owns the chat (host/owner), Alice is a regular member
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var liveSessions = alice.AppServices.GetRequiredService<ILiveSessions>();
+
+        // act + assert — a non-host participant may (un)mute themselves
+        Func<Task> selfMute = () => liveSessions.MutePeer(alice.Session, chatId, aliceAuthor!.Id, true, default);
+        await selfMute.Should().NotThrowAsync();
+
+        // but may not mute another peer
+        Func<Task> mutePeer = () => liveSessions.MutePeer(alice.Session, chatId, bobAuthor!.Id, true, default);
+        await mutePeer.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task SessionLatchesOnSecondStreamer()
     {
         // arrange

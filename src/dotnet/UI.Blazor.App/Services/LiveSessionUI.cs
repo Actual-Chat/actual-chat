@@ -43,9 +43,6 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         return state?.TranscriptionOn ?? false;
     }
 
-    public Task SetMicMuted(ChatId chatId, bool micMuted, CancellationToken cancellationToken)
-        => LiveSessions.SetMicMuted(Session, chatId, micMuted, cancellationToken);
-
     public Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
         => LiveSessions.SetRules(Session, chatId, rules, cancellationToken);
 
