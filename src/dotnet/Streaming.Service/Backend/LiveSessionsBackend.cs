@@ -73,6 +73,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             return null;
         }
 
+        // Liveness is participant-driven: once nobody is even listening, begin the close grace.
+        if (!state.IsClosing && !await HasParticipant(chatId).ConfigureAwait(false))
+            _ = StartClosingGrace(chatId);
+
         Computed.GetCurrent().Invalidate(SelfHealDelay);
         return state;
     }
@@ -124,13 +128,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 JoinedAt = info.RegisteredAt,
             };
         }
-
-        // Crash backstop: if the session is alive only on (now-vanished) signals, start the grace.
-        // Reuses the already-read streams/participants — no extra Redis round-trips.
-        if (!state.IsClosing && audio.Count == 0 && video.Count == 0
-            && !participants.Values.Any(p => IsFreshParticipant(p, cutoff)))
-            _ = StartClosingGrace(chatId);
-
         // Owners are grouped with the host (they can manage the call too).
         var ownerRole = (await RolesBackend.ListSystem(chatId, cancellationToken).ConfigureAwait(false))
             .FirstOrDefault(r => r.SystemRole == SystemRole.Owner);
@@ -252,13 +249,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         InvalidateGet(chatId);
     }
 
-    public virtual async Task OnStreamsChanged(ChatId chatId, CancellationToken cancellationToken)
-    {
-        using var _ = Computed.BeginIsolation();
-        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
-        await EvaluateLiveness(chatId, cancellationToken).ConfigureAwait(false);
-    }
-
     public virtual async Task Close(ChatId chatId, CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
@@ -292,7 +282,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         InvalidateHasRecorder(chatId);
         InvalidateGetLiveSession(chatId);
         // Recording turned on/off flips liveness (a vanished last recorder starts the grace).
-        await EvaluateLiveness(chatId, cancellationToken).ConfigureAwait(false);
+        await EvaluateLiveness(chatId).ConfigureAwait(false);
     }
 
     public virtual async Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
@@ -434,27 +424,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return participants.Values.Any(p => IsFreshParticipant(p, cutoff));
     }
 
-    private async Task<bool> HasLiveSignal(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var audio = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
-        if (audio.Count > 0)
-            return true;
-        var video = await LiveVideoBackend.List(chatId, cancellationToken).ConfigureAwait(false);
-        if (video.Count > 0)
-            return true;
-        // Any present participant (recording, listening, or watching) keeps the session alive;
-        // it closes only once nobody is even listening.
-        return await HasParticipant(chatId).ConfigureAwait(false);
-    }
-
     // Caller must hold the change lock + Computed.BeginIsolation().
-    private async Task EvaluateLiveness(ChatId chatId, CancellationToken cancellationToken)
+    private async Task EvaluateLiveness(ChatId chatId)
     {
         var state = await SafeGet(chatId).ConfigureAwait(false);
         if (state is null)
             return;
 
-        var isActive = await HasLiveSignal(chatId, cancellationToken).ConfigureAwait(false);
+        // Any present participant (recording, listening, or watching) keeps the session alive;
+        // it closes only once nobody is even listening.
+        var isActive = await HasParticipant(chatId).ConfigureAwait(false);
         if (isActive == !state.IsClosing)
             return; // already active+open or inactive+closing
 
@@ -470,7 +449,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         try {
             using var _ = Computed.BeginIsolation();
             using var lockHolder = await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false);
-            await EvaluateLiveness(chatId, CancellationToken.None).ConfigureAwait(false);
+            await EvaluateLiveness(chatId).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "StartClosingGrace failed for chat #{ChatId}", chatId);

@@ -28,13 +28,8 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         live.Should().NotBeNull();
         live!.TranscriptionOn.Should().BeTrue();
         live.AuthorIds.Should().Contain(author.Id);
+        // the recording participant keeps the session live through a speech gap (no stream needed)
         live.IsClosing.Should().BeFalse();
-
-        // act — the voice stream ends (VAD silence) but the mic stays on (still recording)
-        await backend.OnStreamsChanged(chatId, default);
-
-        // assert — recording keeps the session live through the speech gap
-        (await backend.Get(chatId, default))!.IsClosing.Should().BeFalse();
 
         // act — recording stops (mic off)
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
@@ -65,20 +60,16 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // act
         await backend.OnStreamRegistered(chatId, author!.Id, null, false, default);
 
-        // assert
-        (await backend.Get(chatId, default)).Should().NotBeNull();
-
-        // act — VAD gap: the voice stream ends, mic still on → recording keeps the call live
-        await backend.OnStreamsChanged(chatId, default);
-
-        // assert — not closing (a silence between utterances doesn't flap the call)
-        (await backend.Get(chatId, default))!.IsClosing.Should().BeFalse();
+        // assert — present, and the recording participant keeps the call live (not closing) across a silence gap
+        var live = await backend.Get(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeFalse();
 
         // act — recording stops → the close grace begins
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
 
         // assert — present, marked closing, finalization deferred to the grace timeout
-        var live = await backend.Get(chatId, default);
+        live = await backend.Get(chatId, default);
         live.Should().NotBeNull();
         live!.IsClosing.Should().BeTrue();
         live.ClosingAt.Should().NotBeNull();
@@ -312,30 +303,30 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     [Fact]
     public async Task SessionPersistsAcrossVadGap()
     {
-        // arrange — two peers stream, so a session latches
+        // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act — two peers stream, latching a session
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_020), null, true, default);
-        var latchedAt = (await backend.Get(chatId, default))!.SessionStartedAt;
-        latchedAt.Should().NotBeNull();
 
-        // act — VAD silence: all voice streams end, but the peers keep their mics on (recording)
-        await backend.OnStreamsChanged(chatId, default);
-
-        // assert — recording keeps the session fully live (no closing) through the gap
-        var afterGap = await backend.Get(chatId, default);
-        afterGap!.IsClosing.Should().BeFalse();           // recording holds it open
-        afterGap.SessionStartedAt.Should().Be(latchedAt); // latch unchanged during the gap
-        (await backend.GetLiveSession(chatId, default)).Should().NotBeNull(); // session still exposed
-
-        // a fresh utterance changes nothing — still the same live session
-        await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
+        // assert — latched, and the recording participants keep it fully live (no closing) through a gap
         var live = await backend.Get(chatId, default);
+        var latchedAt = live!.SessionStartedAt;
+        latchedAt.Should().NotBeNull();
+        live.IsClosing.Should().BeFalse();
+        (await backend.GetLiveSession(chatId, default)).Should().NotBeNull();
+
+        // act — a fresh utterance after the gap
+        await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
+
+        // assert — still the same live session, latch unchanged
+        live = await backend.Get(chatId, default);
         live!.IsClosing.Should().BeFalse();
         live.SessionStartedAt.Should().Be(latchedAt);
         (await backend.GetLiveSession(chatId, default)).Should().NotBeNull();
@@ -403,20 +394,19 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     [Fact]
     public async Task SilentRecorderStaysPresentMember()
     {
-        // arrange — two peers latch a session
+        // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act — two peers latch a session (the recorder has participation but no live stream)
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_040), null, true, default);
 
-        // act — voice streams end (silence) but the recording participation stays
-        await backend.OnStreamsChanged(chatId, default);
-
-        // assert — the silent recorder is still mic-on and not Exited
+        // assert — with the recording participation present, the silent recorder is still mic-on and not Exited
         var liveSession = await backend.GetLiveSession(chatId, default);
         liveSession.Should().NotBeNull();
         var me = liveSession!.Members.Single(m => m.AuthorId == author.Id);
