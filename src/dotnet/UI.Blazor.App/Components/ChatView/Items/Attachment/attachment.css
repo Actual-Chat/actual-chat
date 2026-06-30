@@ -27,7 +27,7 @@ body.hoverable .image-line .image-item:hover {
    even when a vertical video shares a row with wider tiles. Scoped to video
    so plain images keep their justified proportions. */
 .image-line .image-item:has(.video-thumbnail) {
-    @apply min-w-12;
+    @apply min-w-12 md:min-w-14;
 }
 /* Single image: respect aspect ratio, no cropping.
    `w-full` (inherited from .image-line) + inline `max-width` give a definite
