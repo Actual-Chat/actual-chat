@@ -12,7 +12,7 @@ public class SharedLocationsBackend(IServiceProvider services)
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbSharedLocation>>();
 
     // [ComputeMethod]
-    public virtual async Task<SharedLocation?> Get(ChatId chatId, SharedLocationId id, CancellationToken cancellationToken)
+    public virtual async Task<SharedLocation?> Get(SharedLocationId id, CancellationToken cancellationToken)
     {
         var dbSharedLocation = await DbSharedLocationResolver.Get(id.Value, cancellationToken).ConfigureAwait(false);
         var sharedLocation = dbSharedLocation?.ToModel();
@@ -59,7 +59,7 @@ public class SharedLocationsBackend(IServiceProvider services)
         var (id, authorId, point, liveDuration) = command;
         var chatId = authorId.ChatId;
         if (Invalidation.IsActive) {
-            _ = Get(chatId, id, default);
+            _ = Get(id, default);
             _ = ListLive(chatId, default);
             return null!;
         }
@@ -113,7 +113,7 @@ public class SharedLocationsBackend(IServiceProvider services)
         // Stop ends a share early — freeze it now so it leaves the live list, last point kept as a pin.
         var (chatId, id) = command;
         if (Invalidation.IsActive) {
-            _ = Get(chatId, id, default);
+            _ = Get(id, default);
             _ = ListLive(chatId, default);
             return;
         }

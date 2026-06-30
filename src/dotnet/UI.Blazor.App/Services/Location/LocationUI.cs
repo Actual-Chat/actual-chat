@@ -58,7 +58,7 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
             if (share.LocationId is not { } locationId)
                 continue;
 
-            await Commander.Call(new SharedLocations_Stop(Session, chatId, locationId), cancellationToken)
+            await Commander.Call(new SharedLocations_Stop(Session, locationId), cancellationToken)
                 .ConfigureAwait(false);
         }
     }

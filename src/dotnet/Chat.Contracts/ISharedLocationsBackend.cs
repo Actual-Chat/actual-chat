@@ -8,7 +8,7 @@ namespace ActualChat.Chat;
 public interface ISharedLocationsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<SharedLocation?> Get(ChatId chatId, SharedLocationId id, CancellationToken cancellationToken);
+    Task<SharedLocation?> Get(SharedLocationId id, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<SharedLocation>> ListLive(ChatId chatId, CancellationToken cancellationToken);
 

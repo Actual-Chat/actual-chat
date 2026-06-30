@@ -30,8 +30,7 @@ public static class SharedLocationOperations
 
     public static Task StopSharingLocation(
         this IWebTester tester,
-        ChatId chatId,
         SharedLocationId id,
         CancellationToken cancellationToken = default)
-        => tester.Commander.Call(new SharedLocations_Stop(tester.Session, chatId, id), cancellationToken);
+        => tester.Commander.Call(new SharedLocations_Stop(tester.Session, id), cancellationToken);
 }

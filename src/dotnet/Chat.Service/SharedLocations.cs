@@ -16,7 +16,7 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        return await Backend.Get(chatId, id, cancellationToken).ConfigureAwait(false);
+        return await Backend.Get(id, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -59,7 +59,7 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
             return await Commander.Call(createReport, true, cancellationToken).ConfigureAwait(false);
         }
 
-        var existing = await Backend.Get(chatId, id, cancellationToken).ConfigureAwait(false);
+        var existing = await Backend.Get(id, cancellationToken).ConfigureAwait(false);
         if (existing is null)
             return null!;
 
@@ -77,28 +77,27 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
         if (Invalidation.IsActive)
             return;
 
-        var (session, chatId, id) = command;
-        var author = await ResolveOwner(session, chatId, id, cancellationToken).ConfigureAwait(false);
+        var (session, id) = command;
+        var author = await ResolveOwner(session, id, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return;
 
-        await Commander.Call(new SharedLocationsBackend_Stop(chatId, id), true, cancellationToken)
-            .ConfigureAwait(false);
+        var stop = new SharedLocationsBackend_Stop(author.Id.ChatId, id);
+        await Commander.Call(stop, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
 
     private async Task<AuthorFull?> ResolveOwner(
         Session session,
-        ChatId chatId,
         SharedLocationId id,
         CancellationToken cancellationToken)
     {
-        var sharedLocation = await Backend.Get(chatId, id, cancellationToken).ConfigureAwait(false);
+        var sharedLocation = await Backend.Get(id, cancellationToken).ConfigureAwait(false);
         if (sharedLocation == null)
             return null;
 
-        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await Authors.GetOwn(session, sharedLocation.ChatId, cancellationToken).ConfigureAwait(false);
         return author != null && author.Id == sharedLocation.AuthorId ? author : null;
     }
 }
