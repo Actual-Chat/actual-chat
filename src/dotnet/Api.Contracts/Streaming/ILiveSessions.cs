@@ -10,10 +10,10 @@ public interface ILiveSessions : IComputeService
 {
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    Task<LiveSessionState?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<LiveSessionState?> GetState(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    Task<LiveSession?> GetLiveSession(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<LiveSession?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<bool> HasRecorder(Session session, ChatId chatId, CancellationToken cancellationToken);

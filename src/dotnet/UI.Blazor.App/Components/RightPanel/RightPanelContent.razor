@@ -133,7 +133,7 @@
         // Disable 'members' tab for the announcements chat
         var showMemberTab = chat.Id != Constants.Chat.AnnouncementsChatId && rules.CanSeeMembers();
         var enableIncompleteUI = !Hub.UrlMapper.IsVoxt;
-        var liveSession = await Hub.LiveSessionUI.GetLiveSession(chatId, cancellationToken).ConfigureAwait(false);
+        var liveSession = await Hub.LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
 
         return new () {
             Chat = chat,

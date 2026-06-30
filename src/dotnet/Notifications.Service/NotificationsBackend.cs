@@ -429,7 +429,7 @@ public class NotificationsBackend(IServiceProvider services)
         // Suppress per-message notifications for a session participant's own entries inside a
         // latched live session — the call's own transcript. Solo (pre-latch) transcription and
         // non-participants' messages typed during the call still notify normally.
-        var live = await LiveSessionsBackend.Get(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.GetState(entry.ChatId, cancellationToken).ConfigureAwait(false);
         if (live is { SessionStartedAt: not null } lc
             && entry.LocalId >= lc.StartEntryLid && lc.AuthorIds.Contains(entry.AuthorId))
             return;
@@ -588,7 +588,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
         var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
         // Don't interrupt users who are actively in this chat's live call — they're present.
-        var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (live is { SessionStartedAt: not null }) {
             var active = await LiveSessionsBackend
                 .ListParticipants(chatId, cancellationToken)

@@ -28,18 +28,18 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     [ComputeMethod]
     public virtual async Task<Conversation?> GetConversation(ChatId chatId, CancellationToken cancellationToken)
     {
-        var state = await LiveSessions.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
         return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
     }
 
     [ComputeMethod]
-    public virtual Task<LiveSession?> GetLiveSession(ChatId chatId, CancellationToken cancellationToken)
-        => LiveSessions.GetLiveSession(Session, chatId, cancellationToken);
+    public virtual Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.Get(Session, chatId, cancellationToken);
 
     [ComputeMethod]
     public virtual async Task<bool> IsTranscriptionOn(ChatId chatId, CancellationToken cancellationToken)
     {
-        var state = await LiveSessions.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
         return state?.TranscriptionOn ?? false;
     }
 
@@ -130,7 +130,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         if (recording?.ChatId is not { } chatId || chatId.Value.IsNullOrEmpty())
             return null;
 
-        var live = await GetLiveSession(chatId, cancellationToken).ConfigureAwait(false);
+        var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (live is null)
             return null;
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);

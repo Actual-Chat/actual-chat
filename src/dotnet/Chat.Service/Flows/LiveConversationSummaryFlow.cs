@@ -33,7 +33,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        var live = await LiveSessionsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.GetState(ChatId, cancellationToken).ConfigureAwait(false);
         if (live is null)
             return; // Already closed elsewhere
 

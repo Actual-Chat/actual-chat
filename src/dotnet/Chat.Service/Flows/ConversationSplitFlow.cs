@@ -70,7 +70,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         Console.Log($"Process: LastLid={LastLid}");
 
         // Never (re)summarize a range a latched live session owns — the live flow materializes it.
-        var live = await LiveSessionsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.GetState(ChatId, cancellationToken).ConfigureAwait(false);
         var liveSessionRange = live is { SessionStartedAt: not null } lc
             ? new Range<long>(lc.StartEntryLid, long.MaxValue)
             : (Range<long>?)null;
@@ -232,7 +232,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         var immatureMoment = now - Settings.Summarization.ChatEntrySummarizationDelay;
 
         // A latched live session owns its tail [StartEntryLid, ...); pre-latch (solo) the split flow summarizes normally.
-        var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         var liveStartLid = live is { SessionStartedAt: not null } ? live.StartEntryLid : long.MaxValue;
 
         // Fetch up to (BatchSize + 1) items
