@@ -101,17 +101,18 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, false, default);
+        var userId = account.Id;
 
         // act + assert — a streamer is auto-registered as a participant (recorders join the registry)
-        (await backend.IsParticipant(chatId, account.Id, default)).Should().BeTrue();
+        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(userId).Should().BeTrue());
 
         // an explicit leave removes them
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, false, default);
-        (await backend.IsParticipant(chatId, account.Id, default)).Should().BeFalse();
+        await backend.SetParticipation(chatId, userId, ParticipationKind.AudioListen, false, default);
+        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(userId).Should().BeFalse());
 
         // and they can re-join
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, true, default);
-        (await backend.IsParticipant(chatId, account.Id, default)).Should().BeTrue();
+        await backend.SetParticipation(chatId, userId, ParticipationKind.AudioListen, true, default);
+        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(userId).Should().BeTrue());
     }
 
     [Fact]
@@ -207,7 +208,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task MutePeerSetsForcedMuted()
+    public async Task MutePeerSetsMicMuted()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -225,7 +226,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // assert
         var liveSession = await backend.GetLiveSession(chatId, default);
         var member = liveSession!.Members.Single(m => m.AuthorId == author.Id);
-        member.ForcedMuted.Should().BeTrue();
+        member.MicMuted.Should().BeTrue();
     }
 
     [Fact]
@@ -440,11 +441,11 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
 
         // act + assert — a streamer is a recorder
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
-        (await backend.HasRecorder(chatId, default)).Should().BeTrue();
+        await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeTrue());
 
         // recording stops → no recorder
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
-        (await backend.HasRecorder(chatId, default)).Should().BeFalse();
+        await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
     }
 
     [Fact]
@@ -460,16 +461,16 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
 
         // recording starts (auto-registers as a recorder)
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
-        (await backend.HasRecorder(chatId, default)).Should().BeTrue();
+        await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeTrue());
 
         // the user stops recording but keeps listening
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, true, default);
-        (await backend.HasRecorder(chatId, default)).Should().BeFalse();
+        await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
 
         // act — a trailing utterance arrives after the switch; it must NOT flip the listener back to a recorder
         await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
 
         // assert
-        (await backend.HasRecorder(chatId, default)).Should().BeFalse();
+        await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
     }
 }
