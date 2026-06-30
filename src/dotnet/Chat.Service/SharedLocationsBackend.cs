@@ -54,14 +54,14 @@ public class SharedLocationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnReport(SharedLocationsBackend_Report command, CancellationToken cancellationToken)
+    public virtual async Task<SharedLocation> OnReport(SharedLocationsBackend_Report command, CancellationToken cancellationToken)
     {
         var (id, authorId, point, liveDuration) = command;
         var chatId = authorId.ChatId;
         if (Invalidation.IsActive) {
             _ = Get(chatId, id, default);
             _ = ListLive(chatId, default);
-            return;
+            return null!;
         }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -83,16 +83,18 @@ public class SharedLocationsBackend(IServiceProvider services)
             var created = new SharedLocation(id, authorId, point, now, now, duration);
             dbContext.Add(new DbSharedLocation(created));
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return;
+            return created;
         }
 
         // A report past LiveUntil is ignored so a frozen share keeps its last position.
         var existing = dbSharedLocation.ToModel();
         if (!existing.IsLive(now))
-            return;
+            return existing;
 
-        dbSharedLocation.UpdateFrom(existing with { Point = point, ModifiedAt = now });
+        var updated = existing with { Point = point, ModifiedAt = now };
+        dbSharedLocation.UpdateFrom(updated);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return updated;
     }
 
     // [CommandHandler]

@@ -37,13 +37,11 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
         if (await Tracker.Get(cancellationToken).ConfigureAwait(false) is not { } point)
             return;
 
-        // TODO: on backend side?
-        var locationId = SharedLocationId.New();
-        await Commander.Call(
-                new SharedLocations_Report(Session, chatId, locationId, point, TimeSpan.Zero),
+        var shared = await Commander.Call(
+                new SharedLocations_Report(Session, chatId, null, point, TimeSpan.Zero),
                 cancellationToken)
             .ConfigureAwait(false);
-        var command = new Chats_UpsertEntry(Session, chatId, null) { LocationId = locationId };
+        var command = new Chats_UpsertEntry(Session, chatId, null) { LocationId = shared.Id };
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
@@ -120,18 +118,17 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
         async Task PostEntry(ActiveShare share, GeoPoint point)
         {
             var liveDuration = share.ExpiresAt - ServerNow;
-            var locationId = SharedLocationId.New();
-            await Commander.Call(
-                    new SharedLocations_Report(Session, share.ChatId, locationId, point, liveDuration),
+            var shared = await Commander.Call(
+                    new SharedLocations_Report(Session, share.ChatId, null, point, liveDuration),
                     cancellationToken)
                 .ConfigureAwait(false);
-            var command = new Chats_UpsertEntry(Session, share.ChatId, null) { LocationId = locationId };
+            var command = new Chats_UpsertEntry(Session, share.ChatId, null) { LocationId = shared.Id };
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
 
             lock (Lock)
                 _shares.Value = _shares.Value
                     .Select(x => x.ChatId == share.ChatId && x.LocationId is null
-                        ? x with { LocationId = locationId }
+                        ? x with { LocationId = shared.Id }
                         : x)
                     .ToArray();
         }

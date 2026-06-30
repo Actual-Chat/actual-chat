@@ -31,16 +31,13 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
     }
 
     // [CommandHandler]
-    public virtual async Task OnReport(SharedLocations_Report command, CancellationToken cancellationToken)
+    public virtual async Task<SharedLocation> OnReport(SharedLocations_Report command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
+            return null!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, id, point, liveDuration) = command;
-        var existing = await Backend.Get(chatId, id, cancellationToken).ConfigureAwait(false);
-        if (existing is null) {
-            // First report mints the share. Unlike posting a message, sharing a location must not
-            // auto-join: you can only share into a chat you've already joined.
+        if (id is null) {
             var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
             var author = chatRules.Author;
             if (author is not { HasLeft: false })
@@ -57,19 +54,21 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
                         + "people sharing their live location.");
             }
 
-            await Commander
-                .Call(new SharedLocationsBackend_Report(id, author.Id, point, liveDuration), true, cancellationToken)
-                .ConfigureAwait(false);
-            return;
+            var newId = SharedLocationId.New();
+            var createReport = new SharedLocationsBackend_Report(newId, author.Id, point, liveDuration);
+            return await Commander.Call(createReport, true, cancellationToken).ConfigureAwait(false);
         }
+
+        var existing = await Backend.Get(chatId, id, cancellationToken).ConfigureAwait(false);
+        if (existing is null)
+            return null!;
 
         var own = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (own is null || own.Id != existing.AuthorId)
-            return;
+            return existing;
 
-        await Commander
-            .Call(new SharedLocationsBackend_Report(id, existing.AuthorId, point, liveDuration), true, cancellationToken)
-            .ConfigureAwait(false);
+        var updateReport = new SharedLocationsBackend_Report(id, existing.AuthorId, point, liveDuration);
+        return await Commander.Call(updateReport, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

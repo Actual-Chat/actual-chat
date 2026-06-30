@@ -6,6 +6,7 @@ namespace ActualChat.Chat;
 /// updating); once it passes, the last point is frozen as a static pin.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// TODO: init-only properties instead of ctor params
 public sealed partial record SharedLocation(
     [property: DataMember, MemoryPackOrder(0), Key(0)] SharedLocationId Id,
     [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId AuthorId,
