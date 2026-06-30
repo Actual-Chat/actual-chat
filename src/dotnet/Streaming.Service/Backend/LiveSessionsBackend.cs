@@ -249,16 +249,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         InvalidateGet(chatId);
     }
 
-    public virtual async Task Close(ChatId chatId, CancellationToken cancellationToken)
-    {
-        using var _ = Computed.BeginIsolation();
-        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
-
-        await _redisScope.Remove(chatId.Value).ConfigureAwait(false);
-        await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
-        InvalidateGet(chatId);
-    }
-
     public virtual async Task SetParticipation(
         ChatId chatId,
         UserId userId,
@@ -345,6 +335,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (state is null)
             return;
 
+        // The first non-empty title promotes the live banner to "Voice chat: {title}" (TITLED fires once).
+        var isFirstTitle = state.Title.IsNullOrEmpty() && !summary.Title.IsNullOrEmpty();
         state = state with {
             Title = summary.Title,
             Description = summary.Description,
@@ -356,6 +348,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             Version = VersionGenerator.NextVersion(state.Version),
         };
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
+        if (isFirstTitle)
+            await EnqueueLiveNotification(
+                state, ConversationNotificationPhase.Titled, $"Voice chat: {summary.Title}", cancellationToken)
+                .ConfigureAwait(false);
         InvalidateGet(chatId);
     }
 
@@ -456,24 +452,41 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
     }
 
+    // Backstop close: the grace elapsed without the materializer finalizing (phone-mode, or the flow
+    // wasn't scheduled / threw). Vanishes the session and sends FINAL itself.
     private async Task SelfClose(ChatId chatId)
     {
         try {
             var state = await SafeGet(chatId).ConfigureAwait(false);
             if (state is not { IsClosing: true })
                 return;
-
-            // A session that never latched (solo) leaves its ordinary split-flow conversations behind;
-            // only a latched session sends FINAL and is covered by its own materialization.
-            if (state.SessionStartedAt is not null) {
-                var content = state.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {state.Title}";
-                await EnqueueLiveNotification(state, ConversationNotificationPhase.Final, content, CancellationToken.None).ConfigureAwait(false);
-            }
-            await Close(chatId, CancellationToken.None).ConfigureAwait(false);
+            await CloseWithFinal(state, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "SelfClose failed for chat #{ChatId}", chatId);
         }
+    }
+
+    private async Task CloseWithFinal(LiveSessionState state, CancellationToken cancellationToken)
+    {
+        // A session that never latched (solo) leaves its ordinary split-flow conversations behind;
+        // only a latched session sends FINAL and is covered by its own materialization.
+        if (state.SessionStartedAt is not null) {
+            var content = state.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {state.Title}";
+            await EnqueueLiveNotification(state, ConversationNotificationPhase.Final, content, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task Close(ChatId chatId, CancellationToken cancellationToken)
+    {
+        using var _ = Computed.BeginIsolation();
+        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+
+        await _redisScope.Remove(chatId.Value).ConfigureAwait(false);
+        await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
+        InvalidateGet(chatId);
     }
 
     private Task EnqueueLiveNotification(

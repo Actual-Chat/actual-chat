@@ -24,7 +24,6 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         long? entryLid,
         bool transcriptionOn,
         CancellationToken cancellationToken);
-    Task Close(ChatId chatId, CancellationToken cancellationToken);
     Task SetParticipation(
         ChatId chatId,
         UserId userId,

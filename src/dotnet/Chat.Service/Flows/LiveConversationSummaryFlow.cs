@@ -2,7 +2,6 @@ using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
 using ActualChat.Live;
-using ActualChat.Notifications;
 using ActualChat.Queues;
 using ActualChat.Streaming;
 
@@ -18,7 +17,7 @@ namespace ActualChat.Chat.Flows;
 public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 {
     private const int MaxEntries = 1000;
-    // Resume throttle: kept short so a closing session is finalized before the 90s self-close; the actual
+    // Resume throttle: kept short so a closing session is materialized and finalized promptly; the actual
     // resummary is additionally gated on Settings.Summarization.ResummarizationDelay.
     private static readonly TimeSpan Throttle = TimeSpan.FromSeconds(20);
 
@@ -31,8 +30,6 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public long LastSummaryEndLid { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
-    public bool TitledNotificationSent { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
@@ -41,7 +38,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
             return; // Already closed elsewhere
 
         if (live.IsClosing) {
-            await Finalize(live, cancellationToken).ConfigureAwait(false);
+            await Materialize(live, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -65,10 +62,6 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
                     .UpdateSummary(ChatId, ToLiveSummary(summary, entries), cancellationToken)
                     .ConfigureAwait(false);
                 LastSummaryEndLid = entries[^1].LocalId;
-                if (!TitledNotificationSent && !summary.Title.IsNullOrEmpty()) {
-                    await Notify(live, ConversationNotificationPhase.Titled, $"Voice chat: {summary.Title}", cancellationToken).ConfigureAwait(false);
-                    TitledNotificationSent = true;
-                }
             }
         }
 
@@ -77,13 +70,13 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
     // Private methods
 
-    private async Task Finalize(LiveSessionState live, CancellationToken cancellationToken)
+    // The flow's only close-time job is to materialize the persisted conversation; the backend owns the
+    // close itself (SelfClose sends FINAL and drops the state). The flow completes after this.
+    private async Task Materialize(LiveSessionState live, CancellationToken cancellationToken)
     {
-        if (live.SessionStartedAt is null) {
-            // Never became a call: the solo entries are owned by ConversationSplitFlow — just vanish.
-            await LiveSessionsBackend.Close(ChatId, cancellationToken).ConfigureAwait(false);
+        // Solo sessions never became a call: their entries are owned by ConversationSplitFlow — nothing to materialize.
+        if (live.SessionStartedAt is null)
             return;
-        }
 
         // A closed session materializes its full range — nothing is "immature" once the call ended.
         var entries = await GetEntries(live.StartEntryLid, matureOnly: false, cancellationToken)
@@ -91,23 +84,16 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         var wordCount = entries.Sum(WordCount);
         var meetsThreshold = entries.Count >= Settings.Summarization.MinConversationEntries
             && wordCount >= Settings.Summarization.MinConversationWords;
-        if (meetsThreshold) {
-            var range = new Range<long>(live.StartEntryLid, entries[^1].LocalId + 1);
-            await Services.Queues()
-                .Enqueue(new ConversationBackend_Summarize(ChatId, [range]) { IsLiveMaterialization = true }, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        var finalContent = live.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {live.Title}";
-        await Notify(live, ConversationNotificationPhase.Final, finalContent, cancellationToken).ConfigureAwait(false);
-        await LiveSessionsBackend.Close(ChatId, cancellationToken).ConfigureAwait(false);
-    }
+        if (!meetsThreshold)
+            return;
 
-    private Task Notify(
-        LiveSessionState live, ConversationNotificationPhase phase, string text, CancellationToken cancellationToken)
-        => Services.Queues()
+        var range = new Range<long>(live.StartEntryLid, entries[^1].LocalId + 1);
+        await Services.Queues()
             .Enqueue(
-                new NotificationsBackend_NotifyConversation(live.ConversationId, phase, text, live.EndEntryLid, live.AuthorIds),
-                cancellationToken);
+                new ConversationBackend_Summarize(ChatId, [range]) { IsLiveMaterialization = true },
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     private async Task<IReadOnlyList<ChatEntrySlim>> GetEntries(
         long startEntryLid, bool matureOnly, CancellationToken cancellationToken)
