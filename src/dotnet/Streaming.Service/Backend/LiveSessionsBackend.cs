@@ -295,19 +295,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         await EvaluateLiveness(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task SetMicMuted(
-        ChatId chatId,
-        UserId userId,
-        bool micMuted,
-        CancellationToken cancellationToken)
-    {
-        var existing = await SafeGetParticipant(chatId, userId).ConfigureAwait(false);
-        if (existing is null)
-            return;
-        await _participants.Set(chatId.Value, userId.Value, existing with { MicMuted = micMuted }).ConfigureAwait(false);
-        InvalidateGetLiveSession(chatId);
-    }
-
     public virtual async Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();

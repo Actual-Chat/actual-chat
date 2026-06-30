@@ -59,21 +59,23 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         await Backend.SetParticipation(chatId, account.Id, kind, isActive, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task SetMicMuted(Session session, ChatId chatId, bool micMuted, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        await Backend.SetMicMuted(chatId, account.Id, micMuted, cancellationToken).ConfigureAwait(false);
-    }
-
     public async Task SetRules(Session session, ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
     {
         await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
         await Backend.SetRules(chatId, rules, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task MutePeer(Session session, ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken)
+    public async Task MutePeer(
+        Session session,
+        ChatId chatId,
+        AuthorId targetAuthorId,
+        bool muted,
+        CancellationToken cancellationToken)
     {
-        await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        if (chat.Rules.Author?.Id != targetAuthorId)
+            await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
         await Backend.MutePeer(chatId, targetAuthorId, muted, cancellationToken).ConfigureAwait(false);
     }
 
