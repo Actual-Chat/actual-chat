@@ -49,6 +49,8 @@ public class DbSharedLocation : IHasId<string>, IHasVersion<long>, IRequirementT
 
     public void UpdateFrom(SharedLocation model)
     {
+        this.RequireSameOrEmptyId(model.Id.Value);
+        model.RequireVersion();
         Id = model.Id.Value;
         Version = model.Version;
         ChatId = model.ChatId.Value;
