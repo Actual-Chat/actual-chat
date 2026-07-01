@@ -136,6 +136,12 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             await Backend.CancelCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
+            await Backend.LeaveCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<AuthorId?> RequireOwnAuthorId(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {

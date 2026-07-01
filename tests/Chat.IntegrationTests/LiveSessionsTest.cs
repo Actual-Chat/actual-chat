@@ -597,4 +597,28 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // assert — the unanswered call is torn down
         (await backend.GetState(chatId, default)).Should().BeNull();
     }
+
+    [Fact]
+    public async Task LeaveCallEndsCallBelowTwo()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // act — one of the two participants hangs up
+        await backend.LeaveCall(chatId, aliceAuthor.Id, default);
+
+        // assert — a call needs two, so dropping below that closes it
+        (await backend.GetState(chatId, default)).Should().BeNull();
+    }
 }

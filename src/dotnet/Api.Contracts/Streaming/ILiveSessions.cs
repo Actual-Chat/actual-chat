@@ -38,4 +38,5 @@ public interface ILiveSessions : IComputeService
     Task AcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken);
     Task DeclineCall(Session session, ChatId chatId, CancellationToken cancellationToken);
     Task CancelCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken);
 }

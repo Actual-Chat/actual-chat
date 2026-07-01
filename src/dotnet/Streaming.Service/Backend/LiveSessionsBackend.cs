@@ -491,6 +491,29 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         await CloseNow(chatId).ConfigureAwait(false);
     }
 
+    public virtual async Task LeaveCall(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    {
+        // A participant hangs up. A call needs at least two people, so once fewer than two remain it is
+        // over - close it (which also stops any lingering rings) rather than leaving someone on alone.
+        bool close;
+        using (Computed.BeginIsolation())
+        using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
+            var state = await SafeGet(chatId).ConfigureAwait(false);
+            if (state is null)
+                return;
+
+            await _participants.Remove(chatId.Value, authorId.Value).ConfigureAwait(false);
+            InvalidateListParticipants(chatId);
+            InvalidateHasRecorder(chatId);
+            InvalidateGet(chatId);
+            close = await ParticipantCount(chatId).ConfigureAwait(false) < 2;
+            if (!close)
+                await EvaluateLiveness(chatId).ConfigureAwait(false);
+        }
+        if (close)
+            await CloseCall(chatId).ConfigureAwait(false);
+    }
+
     // Private methods
 
     private async Task<LiveSessionState?> SafeGet(ChatId chatId)
@@ -620,6 +643,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return participants.Values.Any(p => IsFreshParticipant(p, cutoff));
     }
 
+    private async Task<int> ParticipantCount(ChatId chatId)
+    {
+        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        return participants.Values.Count(p => IsFreshParticipant(p, cutoff));
+    }
+
     // Caller must hold the change lock + Computed.BeginIsolation().
     private async Task EvaluateLiveness(ChatId chatId)
     {
@@ -666,6 +696,21 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "CloseNow failed for chat #{ChatId}", chatId);
+        }
+    }
+
+    // Unconditional call teardown: unlike CloseNow it doesn't require the session to be empty first -
+    // a call left with a single participant is already over, so it winds down with them still present.
+    private async Task CloseCall(ChatId chatId)
+    {
+        try {
+            var state = await SafeGet(chatId).ConfigureAwait(false);
+            if (state is null)
+                return;
+            await CloseWithFinal(state, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "CloseCall failed for chat #{ChatId}", chatId);
         }
     }
 
