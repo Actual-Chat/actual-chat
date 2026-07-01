@@ -19,9 +19,6 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        if (!chat.Rules.CanRead())
-            return null;
-
         return await Backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -30,9 +27,6 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        if (!chat.Rules.CanRead())
-            return null;
-
         return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -42,9 +36,6 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        if (!chat.Rules.CanRead())
-            return false;
-
         return await Backend.HasRecorder(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -57,9 +48,10 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        if (chat.Rules.Author?.Id is not { } authorId)
+        if (!chat.IsMember())
             return;
 
+        var authorId = chat.Rules.Author!.Id;
         await Backend.SetParticipation(chatId, authorId, kind, isActive, cancellationToken).ConfigureAwait(false);
     }
 
@@ -103,9 +95,10 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        if (chat.Rules.Author?.Id is not { } callerAuthorId)
+        if (!chat.IsMember())
             return;
 
+        var callerAuthorId = chat.Rules.Author!.Id;
         if (invitees.Count == 0) {
             // Empty = ring every other chat member.
             var allAuthorIds = await Authors
@@ -147,7 +140,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        return chat.Rules.CanRead() ? chat.Rules.Author?.Id : null;
+        return chat.Rules.Author?.Id;
     }
 
     // Host or chat admin may manage the live session.

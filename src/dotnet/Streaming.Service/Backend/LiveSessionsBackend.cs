@@ -27,6 +27,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private static readonly TimeSpan RecordingCloseGrace = TimeSpan.FromSeconds(30);
     // How long a call rings an unanswered invitee before it's marked Missed and the ring stops.
     private static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(40);
+    // Redis field TTL on a ringing invite: the no-observer backstop that expires a stale ring even
+    // if the caller disconnects and nobody polls GetState. Longer than RingTimeout so the observed
+    // path marks it Missed first; a status change rewrites the field without this short TTL.
+    private static readonly TimeSpan RingTtl = TimeSpan.FromSeconds(60);
 
     private readonly RedisScope<LiveSessionState> _redisScope;
     private readonly RedisMultiHashMap<ParticipationInfo> _participants;
@@ -82,7 +86,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (!state.IsClosing && !await HasParticipant(chatId).ConfigureAwait(false))
             _ = StartClosingGrace(chatId);
 
-        // A call's unanswered rings time out independently of any observer.
+        // Prompt ring timeout while this session is observed (the self-heal below re-runs GetState);
+        // the RingTtl field expiry in Redis is the backstop when no one observes.
         if (state.Kind == LiveSessionKind.Call && await HasStaleRinging(chatId).ConfigureAwait(false))
             _ = ExpireRings(chatId);
 
@@ -122,7 +127,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         foreach (var (authorIdValue, info) in participants) {
             if (info is null)
                 continue;
-            var authorId = AuthorId.Parse(authorIdValue);
+            if (!AuthorId.TryParse(authorIdValue, out var authorId))
+                continue;
             var m = For(authorId);
             var isRecorder = IsFreshRecorder(info, cutoff);
             var isListener = info.Kind == ParticipationKind.AudioListen && info.RegisteredAt >= cutoff;
@@ -181,7 +187,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
         var authorIds = participants
             .Where(kv => IsFreshParticipant(kv.Value, cutoff))
-            .Select(kv => AuthorId.Parse(kv.Key))
+            .Select(kv => (Ok: AuthorId.TryParse(kv.Key, out var id), Id: id))
+            .Where(x => x.Ok)
+            .Select(x => x.Id)
             .ToApiArray();
         if (authorIds.Count > 0)
             // Re-check so a stale (left) participant drops without an explicit off signal.
@@ -377,38 +385,35 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         bool hasVideo,
         CancellationToken cancellationToken)
     {
+        // Ring each distinct invitee except the caller - once, and never the caller themselves.
+        invitees = invitees.Where(id => id != callerAuthorId).Distinct().ToApiArray();
         ConversationId conversationId;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var now = Clocks.SystemClock.Now;
             var state = await SafeGet(chatId).ConfigureAwait(false);
-            if (state is null) {
-                // A call latches immediately: it is "live" the moment it rings, with the caller alone.
-                var startEntryLid =
-                    (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
-                state = new LiveSessionState {
-                    ChatId = chatId,
-                    StartEntryLid = startEntryLid,
-                    EndEntryLid = startEntryLid,
-                    StartedAt = now,
-                    SessionStartedAt = now,
-                    AuthorIds = [callerAuthorId],
-                    Host = callerAuthorId,
-                    Kind = LiveSessionKind.Call,
-                    Version = VersionGenerator.NextVersion(),
-                };
-                await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
-            }
+            var startEntryLid = state?.StartEntryLid
+                ?? (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
+            // A call latches immediately: it is "live" the moment it rings, with the caller alone.
+            // Promote an already-live (ambient) session to a call too, so ring dismissal/close - gated
+            // on Kind == Call - runs for it.
+            state = (state ?? new LiveSessionState { ChatId = chatId, StartEntryLid = startEntryLid }) with {
+                EndEntryLid = state?.EndEntryLid ?? startEntryLid,
+                StartedAt = state?.StartedAt ?? now,
+                SessionStartedAt = state?.SessionStartedAt ?? now,
+                AuthorIds = state?.AuthorIds is { Count: > 0 } ids ? ids : [callerAuthorId],
+                Host = callerAuthorId,
+                Kind = LiveSessionKind.Call,
+                Version = VersionGenerator.NextVersion(state?.Version ?? 0),
+            };
+            await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
             conversationId = state.ConversationId;
             await EnsureParticipant(chatId, callerAuthorId).ConfigureAwait(false);
-            foreach (var invitee in invitees) {
-                if (invitee == callerAuthorId)
-                    continue;
-
+            foreach (var invitee in invitees)
                 await _invites.Set(chatId.Value, invitee.Value,
-                        new CallInvite { InviteeId = invitee, Status = CallInviteStatus.Ringing, RingingAt = now })
+                        new CallInvite { InviteeId = invitee, Status = CallInviteStatus.Ringing, RingingAt = now },
+                        RingTtl)
                     .ConfigureAwait(false);
-            }
             InvalidateState(chatId);
         }
         if (invitees.Count > 0)

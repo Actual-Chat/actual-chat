@@ -621,4 +621,29 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // assert — a call needs two, so dropping below that closes it
         (await backend.GetState(chatId, default)).Should().BeNull();
     }
+
+    [Fact]
+    public async Task StartCallPromotesExistingSession()
+    {
+        // arrange — an ambient live session is already running when a call starts
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, bobAuthor!.Id, null, true, default);
+        (await backend.GetState(chatId, default))!.Kind.Should().Be(LiveSessionKind.Ambient);
+
+        // act — Bob rings Alice while that session is live
+        await backend.StartCall(chatId, bobAuthor.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // assert — the existing session is promoted to a call so ring/close paths apply
+        var state = await backend.GetState(chatId, default);
+        state!.Kind.Should().Be(LiveSessionKind.Call);
+        state.Host.Should().Be(bobAuthor.Id);
+    }
 }

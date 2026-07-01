@@ -411,11 +411,11 @@ public class NotificationsBackend(IServiceProvider services)
         }
     }
 
-    // The live-session backend tracks participants by AuthorId; notifications target users, so resolve
-    // the chat-scoped authors to their user ids here (anonymous, user-less authors simply drop out).
     private async Task<HashSet<UserId>> GetActiveParticipantUserIds(
         ChatId chatId, CancellationToken cancellationToken)
     {
+        // The live-session backend tracks participants by AuthorId; notifications target users, so resolve
+        // the chat-scoped authors to their user ids here (anonymous, user-less authors simply drop out).
         var authorIds = await LiveSessionsBackend
             .ListParticipants(chatId, cancellationToken)
             .ConfigureAwait(false);
