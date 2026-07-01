@@ -13,7 +13,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var account = await tester.SignInAsUniqueBob();
+        await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
@@ -32,7 +32,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         live.IsClosing.Should().BeFalse();
 
         // act — recording stops (mic off): the last participant leaves
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
+        await backend.SetParticipation(chatId, author!.Id, ParticipationKind.Record, false, default);
 
         // assert — an explicit leave that empties the call closes it outright (no lingering grace)
         (await backend.GetState(chatId, default)).Should().BeNull();
@@ -43,7 +43,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var account = await tester.SignInAsUniqueBob();
+        await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
@@ -58,7 +58,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         live!.IsClosing.Should().BeFalse();
 
         // act — recording stops: the last participant leaves
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
+        await backend.SetParticipation(chatId, author!.Id, ParticipationKind.Record, false, default);
 
         // assert — phone-mode has nothing to persist, so the empty call closes outright
         (await backend.GetState(chatId, default)).Should().BeNull();
@@ -69,24 +69,24 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var account = await tester.SignInAsUniqueBob();
+        await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, false, default);
-        var userId = account.Id;
+        var authorId = author.Id;
 
         // act + assert — a streamer is auto-registered as a participant (recorders join the registry)
-        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(userId).Should().BeTrue());
+        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeTrue());
 
         // an explicit leave removes them
-        await backend.SetParticipation(chatId, userId, ParticipationKind.AudioListen, false, default);
-        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(userId).Should().BeFalse());
+        await backend.SetParticipation(chatId, authorId, ParticipationKind.AudioListen, false, default);
+        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeFalse());
 
         // and they can re-join
-        await backend.SetParticipation(chatId, userId, ParticipationKind.AudioListen, true, default);
-        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(userId).Should().BeTrue());
+        await backend.SetParticipation(chatId, authorId, ParticipationKind.AudioListen, true, default);
+        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeTrue());
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var account = await tester.SignInAsUniqueBob();
+        await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
@@ -102,7 +102,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
         // act — the only participant explicitly leaves
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
+        await backend.SetParticipation(chatId, author!.Id, ParticipationKind.Record, false, default);
 
         // assert — the session is gone at once and the registry is cleared (the grace is only for stale clients)
         (await backend.GetState(chatId, default)).Should().BeNull();
@@ -114,13 +114,13 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var account = await tester.SignInAsUniqueBob();
+        await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
+        await backend.SetParticipation(chatId, author!.Id, ParticipationKind.Record, false, default);
         (await backend.GetState(chatId, default)).Should().BeNull();
 
         // act — recording resumes after the close
@@ -138,8 +138,8 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // arrange — two real accounts both join as participants
         await using var bob = AppHost.NewBlazorTester(Out);
         await using var alice = AppHost.NewBlazorTester(Out);
-        var bobAccount = await bob.SignInAsUniqueBob();
-        var aliceAccount = await alice.SignInAsUniqueAlice();
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
         var (chatId, inviteId) = await bob.CreateChat(true);
         await alice.JoinChat(chatId, inviteId);
         var bobAuthor = await bob.GetOwnAuthor(chatId);
@@ -149,7 +149,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.OnStreamRegistered(chatId, aliceAuthor!.Id, null, true, default);
 
         // act — one of two participants leaves
-        await backend.SetParticipation(chatId, aliceAccount.Id, ParticipationKind.Record, false, default);
+        await backend.SetParticipation(chatId, aliceAuthor!.Id, ParticipationKind.Record, false, default);
 
         // assert — the other keeps the call alive (not closing, not closed)
         var live = await backend.GetState(chatId, default);
@@ -157,7 +157,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         live!.IsClosing.Should().BeFalse();
 
         // act — the last participant leaves too
-        await backend.SetParticipation(chatId, bobAccount.Id, ParticipationKind.Record, false, default);
+        await backend.SetParticipation(chatId, bobAuthor!.Id, ParticipationKind.Record, false, default);
 
         // assert — now the empty call closes
         (await backend.GetState(chatId, default)).Should().BeNull();
@@ -430,7 +430,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var account = await tester.SignInAsUniqueBob();
+        await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
@@ -438,13 +438,13 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
         // act — the participant stops recording but keeps listening: still present, stays alive
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, true, default);
+        await backend.SetParticipation(chatId, author!.Id, ParticipationKind.AudioListen, true, default);
 
         // assert — a listener keeps the session alive
         (await backend.GetState(chatId, default))!.IsClosing.Should().BeFalse();
 
         // act — the listener leaves entirely: nobody is even listening now
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, false, default);
+        await backend.SetParticipation(chatId, author!.Id, ParticipationKind.AudioListen, false, default);
 
         // assert — the now-empty call closes outright
         (await backend.GetState(chatId, default)).Should().BeNull();
@@ -455,7 +455,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var account = await tester.SignInAsUniqueBob();
+        await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
@@ -466,7 +466,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeTrue());
 
         // recording stops → no recorder
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.Record, false, default);
+        await backend.SetParticipation(chatId, author!.Id, ParticipationKind.Record, false, default);
         await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
     }
 
@@ -475,7 +475,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var account = await tester.SignInAsUniqueBob();
+        await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
@@ -486,7 +486,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeTrue());
 
         // the user stops recording but keeps listening
-        await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, true, default);
+        await backend.SetParticipation(chatId, author!.Id, ParticipationKind.AudioListen, true, default);
         await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
 
         // act — a trailing utterance arrives after the switch; it must NOT flip the listener back to a recorder

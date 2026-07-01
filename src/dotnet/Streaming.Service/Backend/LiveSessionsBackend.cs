@@ -111,18 +111,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 HasScreenShare = m.HasScreenShare || v.SourceKind == VideoSourceKind.ScreenCast,
             };
         }
-        foreach (var (userIdValue, info) in participants) {
+        foreach (var (authorIdValue, info) in participants) {
             if (info is null)
                 continue;
-            var author = await AuthorsBackend
-                .GetByUserId(chatId, UserId.Parse(userIdValue), RequestedAuthorKind.Default, cancellationToken)
-                .ConfigureAwait(false);
-            if (author is null)
-                continue;
-            var m = For(author.Id);
+            var authorId = AuthorId.Parse(authorIdValue);
+            var m = For(authorId);
             var isRecorder = IsFreshRecorder(info, cutoff);
             var isListener = info.Kind == ParticipationKind.AudioListen && info.RegisteredAt >= cutoff;
-            byAuthor[author.Id] = m with {
+            byAuthor[authorId] = m with {
                 IsMicOpen = m.IsMicOpen || isRecorder,
                 IsListening = m.IsListening || isListener,
                 MicMuted = info.MicMuted,
@@ -159,21 +155,21 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<UserId>> ListParticipants(
+    public virtual async Task<ApiArray<AuthorId>> ListParticipants(
         ChatId chatId, CancellationToken cancellationToken)
     {
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
         var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
         var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
-        var userIds = participants
+        var authorIds = participants
             .Where(kv => IsFreshParticipant(kv.Value, cutoff))
-            .Select(kv => UserId.Parse(kv.Key))
+            .Select(kv => AuthorId.Parse(kv.Key))
             .ToApiArray();
-        if (userIds.Count > 0)
+        if (authorIds.Count > 0)
             // Re-check so a stale (left) participant drops without an explicit off signal.
             Computed.GetCurrent().Invalidate(SelfHealDelay);
-        return userIds;
+        return authorIds;
     }
 
     // [ComputeMethod]
@@ -246,13 +242,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
         // Register the streamer as a participant so per-peer mute flags have a home
         // (grouping uses live-stream state, so a stale entry never misgroups an active streamer).
-        await EnsureParticipant(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        await EnsureParticipant(chatId, authorId).ConfigureAwait(false);
         InvalidateState(chatId);
     }
 
     public virtual async Task SetParticipation(
         ChatId chatId,
-        UserId userId,
+        AuthorId authorId,
         ParticipationKind kind,
         bool isActive,
         CancellationToken cancellationToken)
@@ -262,13 +258,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             if (isActive) {
                 // Preserve mute flags across heartbeats / kind changes.
-                var existing = await SafeGetParticipant(chatId, userId).ConfigureAwait(false);
+                var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
                 var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
                     existing?.MicMuted ?? false);
-                await _participants.Set(chatId.Value, userId.Value, info).ConfigureAwait(false);
+                await _participants.Set(chatId.Value, authorId.Value, info).ConfigureAwait(false);
             }
             else
-                await _participants.Remove(chatId.Value, userId.Value).ConfigureAwait(false);
+                await _participants.Remove(chatId.Value, authorId.Value).ConfigureAwait(false);
             InvalidateListParticipants(chatId);
             InvalidateHasRecorder(chatId);
             InvalidateGet(chatId);
@@ -299,16 +295,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     public virtual async Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken)
     {
-        var author = await AuthorsBackend
-            .Get(chatId, targetAuthorId, RequestedAuthorKind.Default, cancellationToken)
-            .ConfigureAwait(false);
-        if (author is null)
-            return;
-        await EnsureParticipant(chatId, targetAuthorId, cancellationToken).ConfigureAwait(false);
-        var existing = await SafeGetParticipant(chatId, author.UserId).ConfigureAwait(false);
+        await EnsureParticipant(chatId, targetAuthorId).ConfigureAwait(false);
+        var existing = await SafeGetParticipant(chatId, targetAuthorId).ConfigureAwait(false);
         if (existing is null)
             return;
-        await _participants.Set(chatId.Value, author.UserId.Value, existing with { MicMuted = muted }).ConfigureAwait(false);
+        await _participants.Set(chatId.Value, targetAuthorId.Value, existing with { MicMuted = muted }).ConfigureAwait(false);
         InvalidateGet(chatId);
     }
 
@@ -316,17 +307,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     {
         // Soft "mute all except the actor": sets MicMuted on every other participant.
         // This is peer-revocable — a muted peer can re-record to unmute themselves.
-        var exceptUserId = (await AuthorsBackend
-            .Get(chatId, exceptAuthorId, RequestedAuthorKind.Default, cancellationToken)
-            .ConfigureAwait(false))?.UserId;
         var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
-        foreach (var (userIdValue, info) in participants) {
+        foreach (var (authorIdValue, info) in participants) {
             if (info is null || info.MicMuted == muted)
                 continue;
-            if (exceptUserId is { } id && userIdValue == id.Value)
+            if (authorIdValue == exceptAuthorId.Value)
                 continue;
 
-            await _participants.Set(chatId.Value, userIdValue, info with { MicMuted = muted }).ConfigureAwait(false);
+            await _participants.Set(chatId.Value, authorIdValue, info with { MicMuted = muted }).ConfigureAwait(false);
         }
         InvalidateGet(chatId);
     }
@@ -376,10 +364,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
     }
 
-    private async Task<ParticipationInfo?> SafeGetParticipant(ChatId chatId, UserId userId)
+    private async Task<ParticipationInfo?> SafeGetParticipant(ChatId chatId, AuthorId authorId)
     {
         try {
-            return await _participants.Get(chatId.Value, userId.Value).ConfigureAwait(false);
+            return await _participants.Get(chatId.Value, authorId.Value).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to read participants from Redis for chat #{ChatId}", chatId);
@@ -387,19 +375,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
     }
 
-    private async Task EnsureParticipant(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    private async Task EnsureParticipant(ChatId chatId, AuthorId authorId)
     {
-        var author = await AuthorsBackend
-            .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
-            .ConfigureAwait(false);
-        if (author is null || author.UserId.Value.IsNullOrEmpty())
-            return;
-        var existing = await SafeGetParticipant(chatId, author.UserId).ConfigureAwait(false);
-        // Preserve the client's real kind — a trailing utterance must not flip a now-listening user back to Record.
+        var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
+        // Preserve the client's real kind — a trailing utterance must not flip a now-listening author back to Record.
         var kind = existing?.Kind ?? ParticipationKind.Record;
-        var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
-            existing?.MicMuted ?? false);
-        await _participants.Set(chatId.Value, author.UserId.Value, info).ConfigureAwait(false);
+        var info = new ParticipationInfo(kind, Clocks.SystemClock.Now, existing?.MicMuted ?? false);
+        await _participants.Set(chatId.Value, authorId.Value, info).ConfigureAwait(false);
         InvalidateListParticipants(chatId);
         InvalidateHasRecorder(chatId);
     }
