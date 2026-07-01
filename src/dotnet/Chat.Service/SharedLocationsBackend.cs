@@ -165,7 +165,6 @@ public class SharedLocationsBackend(IServiceProvider services)
         var nowUtc = now.ToDateTime();
         return dbContext.SharedLocations
             .CountAsync(
-                // TODO: ensure required db index declared
                 x => x.ChatId == chatId.Value && x.StoppedAt == null && x.CreatedAt + x.Duration > nowUtc,
                 cancellationToken);
     }

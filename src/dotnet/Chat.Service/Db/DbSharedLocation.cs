@@ -7,6 +7,7 @@ namespace ActualChat.Chat.Db;
 
 [Table("SharedLocations")]
 [Index(nameof(ChatId))]
+[Index(nameof(AuthorId))]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbSharedLocation : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
