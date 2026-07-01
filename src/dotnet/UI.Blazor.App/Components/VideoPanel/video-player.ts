@@ -138,6 +138,7 @@ export class VideoPlayer {
     private canvasOffscreenTransferred = false;
     private videoEl: HTMLVideoElement;
     private bgCanvasEl: HTMLCanvasElement;
+    private placeholderEl: HTMLElement | null = null;
     private renderBackend: RenderBackend;
 
     // Bg-blur lifecycle. The bg canvas is ALWAYS transferred to the
@@ -308,6 +309,10 @@ export class VideoPlayer {
         this.canvas = canvas;
         this.videoEl = videoEl;
         this.bgCanvasEl = bgCanvasEl;
+        // Resolve off videoEl (never swapped, unlike canvas). The placeholder
+        // carries its own state class so a Blazor re-render that rewrites the
+        // tile root's class attribute can't strip the frame signal.
+        this.placeholderEl = videoEl.parentElement?.querySelector('.video-placeholder') ?? null;
         // Bg canvas always transfers to the worker; the worker constructs
         // the renderer per the mode hint. Default 'auto' resolves to WebGL2
         // dual-Kawase in the worker (matches the WebGPU look, runs everywhere).
@@ -1170,7 +1175,7 @@ export class VideoPlayer {
         const nowMsForSample = performance.now();
         if (this.firstFrameReceivedTime === 0) {
             this.firstFrameReceivedTime = nowMsForSample;
-            this.canvas.parentElement?.classList.add('has-frame');
+            this.placeholderEl?.classList.add('has-frame');
         }
         this.bytesSamples.push({ atMs: nowMsForSample, bytes: this.receivedBytes });
         const cutoff = nowMsForSample - VideoPlayer.bytesWindowMs;
@@ -1294,7 +1299,7 @@ export class VideoPlayer {
         this.receivedKeyframeCount = 0;
         this.receivedBytes = 0;
         this.firstFrameReceivedTime = 0;
-        this.canvas.parentElement?.classList.remove('has-frame');
+        this.placeholderEl?.classList.remove('has-frame');
         this.bytesSamples.length = 0;
         this.pipelineLatencyMs = 0;
 

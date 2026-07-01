@@ -578,7 +578,9 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 
 /* Branded placeholder shown until the first decoded frame paints — covers the
    empty <video>/canvas (otherwise a bare gray box with the native play glyph).
-   JS toggles `.has-frame` on the tile when the first frame arrives. */
+   JS adds `.has-frame` to this element (not the Blazor-owned tile root, whose
+   class attribute a re-render would rewrite and strip the signal) once the
+   first frame arrives. */
 .video-track-player .video-placeholder {
     @apply absolute inset-0;
     @apply flex items-center justify-center;
@@ -591,13 +593,13 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     font-size: clamp(3rem, 45cqmin, 10rem);
     line-height: 1;
 }
-.video-track-player.has-frame .video-placeholder {
+.video-track-player .video-placeholder.has-frame {
     @apply opacity-0;
 }
 /* Freeze the pulse once the frame arrives — the placeholder stays in the DOM
    (only fades to opacity:0), so an infinite animation would otherwise tick
    forever on every tile. */
-.video-track-player.has-frame .video-placeholder > i {
+.video-track-player .video-placeholder.has-frame > i {
     animation-play-state: paused;
 }
 
