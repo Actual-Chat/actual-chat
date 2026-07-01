@@ -53,10 +53,17 @@ public partial class AudioStreamingBackend
         CancellationToken cancellationToken)
     {
         using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var requestToken = cancellationToken; // real request/processing token, before the watchdog overlays it
         cancellationToken = watchdogCts.Token;
         // Cadence first so it observes raw inbound timing, before the silence watchdog can short-circuit it.
         frames = WithIngressCadenceLog(record.StreamId.Value, frames, Log, cancellationToken);
-        frames = WithFrameSilenceWatchdog(record.StreamId.Value, Constants.Audio.FrameSilenceTimeout, frames, watchdogCts, cancellationToken);
+        frames = WithFrameSilenceWatchdog(
+            record.StreamId.Value,
+            Constants.Audio.FrameSilenceTimeout,
+            frames,
+            watchdogCts,
+            requestToken,
+            cancellationToken);
 
         var session = record.Session;
         var chatId = record.ChatId;
@@ -188,48 +195,56 @@ public partial class AudioStreamingBackend
             await publishAudioTask.ConfigureAwait(false);
 
         // Close an open audio segment when the duration becomes available.
-        // WhenDurationAvailable throws "Duration wasn't parsed" when the producer's
-        // RPC stream disconnects mid-recording — we treat that as end-of-audio (not
-        // an error) and let FinalizeTextEntry close the entry with whatever transcript
-        // we have. The finally must run: it unregisters the live stream and unblocks
-        // audioMediaIdTcs — without that, FinalizeTextEntry hangs forever and the
-        // entry is stuck in the streaming state.
+        // WhenDurationAvailable ends two ways: "Duration wasn't parsed" when the producer's
+        // RPC stream disconnects cleanly mid-recording (non-OCE, caught below), or OCE when
+        // the frame-silence watchdog fires because the client lost the network and stopped
+        // sending without closing the stream. Both are end-of-audio, not errors: we let
+        // FinalizeTextEntry close the entry with whatever transcript we have.
         MediaId? audioMediaId = null;
         ClosedAudioSegment? closedSegment = null;
         try {
-            await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
-            Log.LogInformation(
-                "ProcessAudio: stream #{StreamId} ended normally, duration={Duration:F1}s",
-                openSegment.StreamId, openSegment.Source.Duration.TotalSeconds);
-            openSegment.Close(openSegment.Source.Duration);
-            closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
-
-            if (mustStreamVoice && mustTranscribe) {
-                // Save audio blob and create Media record - use CancellationToken.None to ensure cleanup
-                audioMediaId = await AudioSegmentSaver
-                    .SaveAndCreateMedia(closedSegment, chatId, beginsAt, recordedAt, CancellationToken.None)
-                    .ConfigureAwait(false);
-            }
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e,
-                "ProcessAudio: stream #{StreamId} ended unexpectedly; finalizing with available transcript",
-                openSegment.StreamId);
-        }
-        finally {
             try {
-                if (mustStreamVoice)
-                    await LiveAudioBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
+                await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
+                Log.LogInformation(
+                    "ProcessAudio: stream #{StreamId} ended normally, duration={Duration:F1}s",
+                    openSegment.StreamId, openSegment.Source.Duration.TotalSeconds);
+                openSegment.Close(openSegment.Source.Duration);
+                closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
+
+                if (mustStreamVoice && mustTranscribe) {
+                    // Save audio blob and create Media record - use CancellationToken.None to ensure cleanup
+                    audioMediaId = await AudioSegmentSaver
+                        .SaveAndCreateMedia(closedSegment, chatId, beginsAt, recordedAt, CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e,
+                    "ProcessAudio: stream #{StreamId} ended unexpectedly; finalizing with available transcript",
+                    openSegment.StreamId);
             }
             finally {
-                audioMediaIdTcs.TrySetResult(audioMediaId);
+                try {
+                    if (mustStreamVoice)
+                        await LiveAudioBackend
+                            .Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None)
+                            .ConfigureAwait(false);
+                }
+                finally {
+                    audioMediaIdTcs.TrySetResult(audioMediaId);
+                }
             }
         }
-
-        if (mustTranscribe) {
-            DispatchRefineTranscription(
-                openSegment, closedSegment, mustStreamVoice, refineTranscriptLanguageTcs.Task, refinedTranscriptTcs);
-            await transcribeTask!.ConfigureAwait(false);
+        finally {
+            // Must run even when WhenDurationAvailable threw OCE (watchdog): DispatchRefineTranscription
+            // is the only place refinedTranscriptTcs is completed, and FinalizeTextEntry awaits it —
+            // skipping it hangs finalization and strands the entry in the streaming state. Awaiting
+            // transcribeTask also keeps `audio` alive until transcription and finalization finish.
+            if (mustTranscribe) {
+                DispatchRefineTranscription(
+                    openSegment, closedSegment, mustStreamVoice, refineTranscriptLanguageTcs.Task, refinedTranscriptTcs);
+                await transcribeTask!.ConfigureAwait(false);
+            }
         }
     }
 
@@ -271,17 +286,37 @@ public partial class AudioStreamingBackend
         TimeSpan silenceTimeout,
         IAsyncEnumerable<AudioFrame> source,
         CancellationTokenSource watchdogCts,
+        CancellationToken requestToken,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         _ = streamId; // reserved for diagnostics
         // Frame-silence watchdog: cancels watchdogCts if no frame arrives within silenceTimeout.
         // Each frame resets the deadline; CancellationTokenSource reuses a single internal timer.
+        // On a pure silence timeout (watchdog fired but the request itself wasn't cancelled — i.e. the
+        // client dropped the network without closing the stream) we end the stream gracefully instead of
+        // surfacing OCE, so the audio that did arrive is saved and the entry finalizes like a short recording.
         watchdogCts.CancelAfter(silenceTimeout);
-        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            watchdogCts.CancelAfter(silenceTimeout);
-            yield return frame;
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        try {
+            while (true) {
+                try {
+                    if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+                        yield break;
+                }
+                catch (OperationCanceledException) when (IsSilenceTimeout(watchdogCts, requestToken)) {
+                    yield break;
+                }
+                watchdogCts.CancelAfter(silenceTimeout);
+                yield return enumerator.Current;
+            }
+        }
+        finally {
+            await enumerator.DisposeAsync().ConfigureAwait(false);
         }
     }
+
+    private static bool IsSilenceTimeout(CancellationTokenSource watchdogCts, CancellationToken requestToken)
+        => watchdogCts.IsCancellationRequested && !requestToken.IsCancellationRequested;
 
     private static async IAsyncEnumerable<AudioFrame> WithIngressCadenceLog(
         string streamId,
