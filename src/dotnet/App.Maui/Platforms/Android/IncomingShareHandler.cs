@@ -35,10 +35,11 @@ public static class IncomingShareHandler
         }
 
         var mimeType = intent.Type ?? "";
+        var canPersistGrant = intent.Flags.HasFlag(ActivityFlags.GrantPersistableUriPermission);
         var hasExtraStream = intent.Extras?.ContainsKey(Intent.ExtraStream) ?? false;
         if (action == Intent.ActionSend) {
             if (hasExtraStream)
-                HandleFilesSend(mimeType, GetStreams(intent, false), targetChatId);
+                HandleFilesSend(mimeType, GetStreams(intent, false), targetChatId, canPersistGrant);
             else if (mimeType == System.Net.Mime.MediaTypeNames.Text.Plain)
                 HandlePlainTextSend(intent.GetStringExtra(Intent.ExtraText), targetChatId);
             else
@@ -46,7 +47,7 @@ public static class IncomingShareHandler
         }
         else {
             if (hasExtraStream)
-                HandleFilesSend(mimeType, GetStreams(intent, true), targetChatId);
+                HandleFilesSend(mimeType, GetStreams(intent, true), targetChatId, canPersistGrant);
             else
                 Log.LogWarning("No extra streams for SendMultiple action. Mime type: '{MimiType}'", mimeType);
         }
@@ -72,7 +73,7 @@ public static class IncomingShareHandler
             .SuppressExceptions();
     }
 
-    private static void HandleFilesSend(string mimeType, IList? streams, ChatId? targetChatId)
+    private static void HandleFilesSend(string mimeType, IList? streams, ChatId? targetChatId, bool canPersistGrant)
     {
         if (streams == null || streams.Count == 0) {
             Log.LogWarning("No file streams provided");
@@ -84,15 +85,15 @@ public static class IncomingShareHandler
                 streams[0]?.GetType().FullName ?? "<null>");
             return;
         }
-        BeginInvokeOnMainThreadAsync(() => HandleFilesSendInternal(mimeType, uris, targetChatId));
+        BeginInvokeOnMainThreadAsync(() => HandleFilesSendInternal(mimeType, uris, targetChatId, canPersistGrant));
     }
 
-    private static void HandleFilesSendInternal(string mimeType, Uri[] uris, ChatId? targetChatId)
+    private static void HandleFilesSendInternal(string mimeType, Uri[] uris, ChatId? targetChatId, bool canPersistGrant)
     {
         Log.LogInformation("About to send {Count} files of type '{MimeType}'", uris.Length, mimeType);
         _ = DispatchToBlazor(scopedServices => {
                     var downloader = scopedServices.GetRequiredService<AndroidContentDownloader>();
-                    var fileInfos = downloader.ConvertToAttachFileInfos(uris);
+                    var fileInfos = downloader.ConvertToAttachFileInfos(uris, canPersistGrant);
                     var incomingShareUI = scopedServices.GetRequiredService<IncomingShareUI>();
                     incomingShareUI.ShareFiles(fileInfos, targetChatId);
                 },
