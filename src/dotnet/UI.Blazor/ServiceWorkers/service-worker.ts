@@ -54,7 +54,11 @@ sw.addEventListener('message', (event: ExtendableEvent & { data?: any }) => {
 // visible (a visible tab's in-app UI already shows them).
 const reconcileNotifications = async function(active: any[], createTags: string[]): Promise<void> {
     const activeTags = new Set<string>(active.map(x => x.tag));
-    const shown = await sw.registration.getNotifications();
+    // getNotifications isn't available in every environment (some webviews/desktop) — skip the
+    // close-stale pass rather than throwing.
+    const shown = typeof sw.registration.getNotifications === 'function'
+        ? await sw.registration.getNotifications()
+        : [];
     const shownTags = new Set<string>();
     for (const notification of shown) {
         if (!notification.tag)
@@ -129,10 +133,14 @@ onBackgroundMessage(messaging, async payload => {
         return;
     const dismissedTags = data.dismissedTags as string | undefined;
     if (dismissedTags) {
-        for (const dismissedTag of dismissedTags.split(',')) {
-            const toDismiss = await sw.registration.getNotifications({ tag: dismissedTag });
-            for (const notification of toDismiss)
-                notification.close();
+        // getNotifications isn't available in every environment (some webviews/desktop); still
+        // return so a dismissal payload never falls through to showing a banner.
+        if (typeof sw.registration.getNotifications === 'function') {
+            for (const dismissedTag of dismissedTags.split(',')) {
+                const toDismiss = await sw.registration.getNotifications({ tag: dismissedTag });
+                for (const notification of toDismiss)
+                    notification.close();
+            }
         }
         return;
     }
@@ -163,9 +171,11 @@ onBackgroundMessage(messaging, async payload => {
         },
     };
     // silly hack because notifications get lost or suppressed
-    const notificationsToClose = await sw.registration.getNotifications({ tag: tag });
-    for (const toClose of notificationsToClose) {
-        toClose.close();
+    if (typeof sw.registration.getNotifications === 'function') {
+        const notificationsToClose = await sw.registration.getNotifications({ tag: tag });
+        for (const toClose of notificationsToClose) {
+            toClose.close();
+        }
     }
     // @ts-expect-error TODO: fix errors
     await sw.registration.showNotification(payload.notification.title, options);
