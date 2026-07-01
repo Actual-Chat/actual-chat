@@ -64,6 +64,17 @@ public class NotificationsService(IServiceProvider services) : INotifications
     }
 
     // [CommandHandler]
+    public virtual async Task OnHandleAll(
+        Notifications_HandleAll command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        await Commander.Run(new NotificationsBackend_HandleAll(account.Id), cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
     public virtual async Task OnRegisterDevice(
         Notifications_RegisterDevice command, CancellationToken cancellationToken)
     {

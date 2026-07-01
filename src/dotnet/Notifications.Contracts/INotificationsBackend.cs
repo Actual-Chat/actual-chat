@@ -25,6 +25,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnHandle(NotificationsBackend_Handle command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnHandleAll(NotificationsBackend_HandleAll command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnPush(NotificationsBackend_Push command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnPushDismissal(NotificationsBackend_PushDismissal command, CancellationToken cancellationToken);
@@ -98,6 +100,18 @@ public sealed partial record NotificationsBackend_Handle(
 {
     [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => NotificationId.UserId;
+}
+
+// Dismisses every active notification for a user (bulk "mark all read") and pushes a silent
+// dismissal.
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_HandleAll(
+    [property: DataMember, Key(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, IgnoreMember]
+    public UserId ShardKey => UserId;
 }
 
 // Delivers a notification to the user's devices. Enqueued (not called in-process) so NATS

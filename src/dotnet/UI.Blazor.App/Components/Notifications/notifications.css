@@ -1,3 +1,4 @@
+/* Toast stack (NotificationEntry / NotificationStack) */
 .notification {
     @apply border border-bg-03 rounded-2xl;
 }
@@ -14,72 +15,93 @@
 .notification-filler {
     @apply flex flex-1;
 }
-.notifications-modal .modal-frame-content {
-    @apply flex flex-col;
+
+/* Notifications feed (center screen) */
+.notifications-header {
+    @apply flex items-center gap-3 w-full;
 }
-.notifications-feed {
-    @apply flex flex-col h-full w-full;
+.notifications-header .c-title {
+    @apply text-lg font-semibold;
 }
-.notifications-feed-header {
-    @apply flex items-center gap-2;
-    @apply px-4 py-3 border-b border-bg-03;
+.notifications-header .c-tabs {
+    @apply flex items-center gap-1;
 }
-.notifications-feed-title {
-    @apply text-xl font-semibold;
+.notifications-header .c-tab {
+    @apply px-3 py-1 rounded-full text-sm text-03;
 }
-.notifications-feed-filler {
+.notifications-header .c-tab.active {
+    @apply bg-02 text-01 font-medium;
+}
+.notifications-header .c-filler {
     @apply flex flex-1;
 }
-.notifications-feed-body {
-    @apply flex flex-col flex-1 overflow-y-auto;
+.notifications-feed {
+    @apply flex flex-col h-full w-full overflow-y-auto;
 }
-.notifications-feed-empty {
-    @apply flex flex-col flex-1 items-center justify-center gap-2;
-    @apply text-03;
+.notifications-group-title {
+    @apply px-4 pt-4 pb-1 text-sm font-medium text-03;
 }
-.notifications-feed-empty i {
-    @apply text-4xl;
+.notifications-empty {
+    @apply flex flex-col flex-1 items-center justify-center gap-y-4 py-8 text-03;
+}
+.notifications-empty i {
+    @apply text-5xl;
 }
 .notification-item {
-    @apply flex items-center gap-1;
+    @apply flex items-center gap-3 px-4 py-3 cursor-pointer;
     @apply border-b border-bg-03;
-}
-.notification-item-main {
-    @apply flex flex-1 items-center gap-3 min-w-0;
-    @apply px-4 py-3 cursor-pointer;
 }
 .notification-item:hover {
     @apply bg-02;
 }
-.notification-item-icon {
-    @apply flex items-center justify-center shrink-0;
+.notification-item .c-avatar {
+    @apply shrink-0;
+}
+.notification-item .c-system-avatar {
+    @apply flex items-center justify-center rounded-full bg-02 text-03;
     width: 2.5rem;
     height: 2.5rem;
 }
-.notification-item-avatar {
-    @apply rounded-full;
-    width: 2.5rem;
-    height: 2.5rem;
-    object-fit: cover;
+.notification-item .c-description {
+    @apply flex flex-col flex-1 min-w-0 gap-0.5;
 }
-.notification-item-content {
-    @apply flex flex-col flex-1 min-w-0;
+.notification-item .c-top {
+    @apply flex items-center gap-2;
 }
-.notification-item-title {
-    @apply font-medium truncate;
+.notification-item .c-title {
+    @apply truncate text-03;
 }
-.notification-item-text {
-    @apply text-sm text-03 line-clamp-2;
+.notification-item.unread .c-title {
+    @apply text-01 font-semibold;
 }
-.notification-item-time {
+.notification-item .c-incut {
+    @apply flex flex-1;
+}
+.notification-item .c-unread-dot {
+    @apply rounded-full bg-primary shrink-0;
+    width: 0.5rem;
+    height: 0.5rem;
+}
+.notification-item .c-time {
     @apply text-xs text-03 shrink-0;
 }
-.notification-item-close {
-    @apply mr-2 shrink-0;
+.notification-item .c-bottom {
+    @apply flex min-w-0;
 }
-.notification-item-actions {
+.notification-item .c-text {
+    @apply text-sm text-03 line-clamp-2;
+    white-space: pre-line;
+}
+.notification-item .c-actions {
     @apply flex gap-2 mt-2;
 }
+.notification-item .c-ending {
+    @apply shrink-0 opacity-0;
+}
+body.hoverable .notification-item:hover .c-ending {
+    @apply opacity-100;
+}
+
 @keyframes fadein {
     from {
         opacity: 0;
