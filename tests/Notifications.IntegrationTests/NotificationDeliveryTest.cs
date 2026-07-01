@@ -233,6 +233,50 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task PartialReadReAnchorsNotification()
+    {
+        var alice = await Tester.SignInAsAlice();
+        var (chatId, _) = await Tester.CreateChat(false, "Reanchor chat");
+        var deviceId = await RegisterDevice(alice.Id);
+        var authorId = AuthorId.New(chatId, 1);
+
+        // A coalesced notification spanning entries 5..10.
+        var notification = MessageNotification.New(alice.Id, chatId, 10, authorId) with {
+            Title = "Bob @ Reanchor chat",
+            Text = "early message",
+            StartEntryLid = 5,
+            UnreadCount = 6,
+            AuthorIds = new[] { authorId }.ToApiArray(),
+            LeadText = "early message",
+            SentAt = Clocks.SystemClock.Now,
+        };
+        await Commander.Call(new NotificationsBackend_Notify(notification));
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            var n = info.Displayed.Should().ContainSingle().Subject.Should().BeOfType<MessageNotification>().Subject;
+            n.StartEntryLid.Should().Be(5);
+        }, TimeSpan.FromSeconds(10));
+
+        Sink.Clear();
+        // Alice reads through entry 7 (partial: 5 <= 7 < 10) -> the anchor re-points to entry 8.
+        await Commander.Call(new ChatPositionsBackend_Set(
+            alice.Id, chatId, ChatPositionKind.Read, new ChatPosition(7)));
+
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            var n = info.Displayed.Should().ContainSingle().Subject.Should().BeOfType<MessageNotification>().Subject;
+            n.StartEntryLid.Should().Be(8);
+            n.UnreadCount.Should().Be(3);
+        }, Constants.Notification.ReadReconcileWindow + TimeSpan.FromSeconds(10));
+
+        // The re-anchor refreshes the banner silently (a reduction, not a new alert).
+        await TestExt.When(() => {
+            Sink.Messages.Should().Contain(m => !m.IsDismissal && m.IsSilent && m.Notification!.Id == notification.Id);
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+    }
+
     private async Task<Symbol> RegisterDevice(UserId userId)
     {
         var deviceId = new Symbol("test-device-" + userId.Value);
