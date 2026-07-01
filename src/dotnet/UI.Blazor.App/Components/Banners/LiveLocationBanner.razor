@@ -19,8 +19,7 @@
                 }
             </div>
             <div class="c-text">
-                @* TODO: put into span or div *@
-                @m.GetDescription()
+                <span class="c-description">@m.GetDescription()</span>
                 @if (!sRemaining.IsNullOrEmpty()) {
                     <span class="c-countdown">· @sRemaining left</span>
                 }
