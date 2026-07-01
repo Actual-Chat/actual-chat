@@ -1,4 +1,5 @@
 ﻿using ActualChat.Db.Module;
+using ActualChat.Flows;
 using ActualChat.Hosting;
 using ActualChat.Notifications.Db;
 using ActualChat.Redis.Module;
@@ -37,6 +38,9 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<NotificationDbContext>(services);
+
+        // Flows
+        services.AddFlows().Add<Flows.MentionReminderFlow>();
 
         // DB
         var dbModule = Host.GetModule<DbModule>();
