@@ -91,6 +91,13 @@ const VAD_FPS_HOLD_MS = 2000;
 // attempts span ~9s — long enough to absorb a transient blip, short enough
 // that the user is not left staring at a stalled call.
 const MAX_RECOVERY_ATTEMPTS = 5;
+// Foreground capture-stall window before we force a recovery restart. Chrome
+// reclaims an idle WebCodecs encoder once the tab has been backgrounded
+// ("Codec reclaimed due to inactivity"); the frame-driven recovery path only
+// fires once a frame reaches the dead encoder, so a source that doesn't resume
+// on foreground leaves the pipeline silently dead. 3s comfortably clears the
+// ~1s health tick and brief capture gaps without churning a healthy stream.
+const CAPTURE_STALL_RECOVERY_MS = 3000;
 // User-facing message shown when the HW encoder cannot be initialised at all
 // (every codec probe fails) or when recovery has exhausted MAX_RECOVERY_ATTEMPTS.
 // Kept free of codec/encoder/internals — actionable only.
@@ -501,6 +508,8 @@ export class VideoRecorder {
 
     private recoveryAttempts = 0;
     private recoveryScheduled = false;
+    // Wallclock when foreground capture first flatlined; 0 when capture is live.
+    private captureStallSinceMs = 0;
 
     static create(blazorRef: DotNet.DotNetObject, kind: number): VideoRecorder {
         return new VideoRecorder(blazorRef, kind);
@@ -1949,6 +1958,34 @@ export class VideoRecorder {
         }
     }
 
+    // Recovers a reclaimed encoder / wedged source the frame-driven path can't
+    // see: a foreground capture flatline means no frame reaches the dead
+    // encoder to throw, so force a restart. Foreground-gated to avoid churning
+    // a legitimately backgrounded idle encoder into a restart loop.
+    private detectCaptureStall(
+        stats: RecorderStats,
+        previous: RecorderStats | null,
+        nowMs: number,
+    ): void {
+        const track = this.inputTrack;
+        const sourceShouldRun = this._recordingState === 'recording'
+            && !stats.isTabBackgrounded
+            && track !== null && track.readyState === 'live' && !track.muted;
+        if (!sourceShouldRun || previous === null || this.recoveryScheduled
+            || stats.framesCaptured > previous.framesCaptured) {
+            this.captureStallSinceMs = 0;
+            return;
+        }
+        if (this.captureStallSinceMs === 0) {
+            this.captureStallSinceMs = nowMs;
+            return;
+        }
+        if (nowMs - this.captureStallSinceMs >= CAPTURE_STALL_RECOVERY_MS) {
+            this.captureStallSinceMs = 0;
+            this.scheduleRecovery('foreground capture stalled (encoder likely reclaimed)');
+        }
+    }
+
     private scheduleRecovery(reason: string): void {
         if (this.recoveryScheduled || !this.isRecording || this.disposed)
             return;
@@ -2271,6 +2308,7 @@ export class VideoRecorder {
         this.windowDownscaleTimeMsMax = -1;
         this.dropPerSec.clear();
         this.lastReportTickMs = 0;
+        this.captureStallSinceMs = 0;
         this.recorderHealthTimer = window.setInterval(() => {
             void this.reportRecorderStats();
         }, RECORDER_HEALTH_INTERVAL_MS);
@@ -2340,6 +2378,8 @@ export class VideoRecorder {
                 }
             }
             this.lastReportTickMs = nowMs;
+
+            this.detectCaptureStall(stats, previous, nowMs);
 
             // Drop trace deltas → senderFrameDropRatio. Sum only sender
             // stages (1..30). Denominator = bundles attempted = bundles
