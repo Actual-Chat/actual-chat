@@ -21,7 +21,7 @@ public class UploadSession
     public event EventHandler<double>? UploadProgressChanged;
     public event EventHandler<double>? ServerProcessingProgressChanged;
 
-    private readonly Func<UploadSessionSnapshot, CancellationToken, Task>? _storage;
+    private readonly Func<UploadSessionSnapshot, bool, CancellationToken, Task>? _storage;
     private readonly SemaphoreSlim _stateLock = new(1, 1);
     private readonly TaskCompletionSource<MediaId> _whenMediaIdReserved = TaskCompletionSourceExt.New<MediaId>();
     private volatile CancellationTokenSource? _cts;
@@ -48,7 +48,7 @@ public class UploadSession
 
     public UploadSession(UploadSessionSnapshot snapshot,
         UploadOperations uploadOperations,
-        Func<UploadSessionSnapshot, CancellationToken, Task>? storage = null)
+        Func<UploadSessionSnapshot, bool, CancellationToken, Task>? storage = null)
     {
         _uploadOperations = uploadOperations;
         _storage = storage;
@@ -142,7 +142,7 @@ public class UploadSession
         var mediaId = await _uploadOperations.ReserveMediaId(_snapshot, cancellationToken).ConfigureAwait(false);
         await UpdateState(s => s with {
             ReservedMediaId = mediaId
-        }, save:false, cancellationToken).ConfigureAwait(false);
+        }, save: false, cancellationToken: cancellationToken).ConfigureAwait(false);
         _whenMediaIdReserved.TrySetResult(mediaId);
         await TransitionTo(UploadSessionState.ClientProcessing).ConfigureAwait(false);
     }, cancellationToken);
@@ -177,14 +177,14 @@ public class UploadSession
 
     private Task UploadData(CancellationToken cancellationToken) => ExecuteStep(async () =>
     {
-        var progress = new Progress<double>(p => {
+        using var progress = new ThrottledProgress<double>(p => {
             _ = UpdateState(s => {
                 if (s.CurrentState != UploadSessionState.Uploading)
                     return s;
                 return s with { StageProgress = p };
-            }, cancellationToken: cancellationToken);
+            }, save: false, cancellationToken: cancellationToken);
             UploadProgressChanged?.Invoke(this, p);
-        });
+        }, TimeSpan.FromMilliseconds(250));
         var snapshotAccessor = new UploadSessionSnapshotAccessor(
             () => _snapshot,
             (update, ct) => UpdateState(update, cancellationToken: ct));
@@ -215,7 +215,8 @@ public class UploadSession
         });
         var result = await _uploadOperations.WaitForProcessingCompletion(_snapshot, progress, cancellationToken).ConfigureAwait(false);
 
-        await UpdateState(s => s with { MediaRef = result }, save:false, cancellationToken).ConfigureAwait(false);
+        await UpdateState(s => s with { MediaRef = result },
+            save: false, cancellationToken: cancellationToken).ConfigureAwait(false);
         await TransitionTo(UploadSessionState.Completed).ConfigureAwait(false);
     }, cancellationToken);
 
@@ -243,7 +244,10 @@ public class UploadSession
         await UpdateState(s => s with { IsFailed = true }, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task UpdateState(Func<UploadSessionSnapshot, UploadSessionSnapshot> update, bool save = true, CancellationToken cancellationToken = default)
+    private async Task UpdateState(
+        Func<UploadSessionSnapshot, UploadSessionSnapshot> update,
+        bool save = true,
+        CancellationToken cancellationToken = default)
     {
         await _stateLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
@@ -253,8 +257,8 @@ public class UploadSession
                 return;
 
             _snapshot = _snapshot with { LastUpdatedAt = _uploadOperations.Now() };
-            if (save && _storage != null)
-                await _storage.Invoke(_snapshot, cancellationToken).ConfigureAwait(false);
+            if (_storage != null)
+                await _storage.Invoke(_snapshot, save, cancellationToken).ConfigureAwait(false);
         }
         finally {
             _stateLock.Release();

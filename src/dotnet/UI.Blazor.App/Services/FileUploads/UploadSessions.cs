@@ -8,7 +8,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     private readonly IUploadSessionRepo _repo;
     private readonly UploadOperations _uploadOperations;
     private readonly ConcurrentDictionary<string, SessionRef> _sessions = new ();
-    private readonly Func<UploadSessionSnapshot, CancellationToken, Task> _storage;
+    private readonly Func<UploadSessionSnapshot, bool, CancellationToken, Task> _storage;
 
     private UploadSessionsState UploadSessionsState => Hub.UploadSessionsState;
 
@@ -138,10 +138,11 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         Log.LogDebug("Deleted session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
     }
 
-    private Func<UploadSessionSnapshot, CancellationToken, Task> CreateStorage()
+    private Func<UploadSessionSnapshot, bool, CancellationToken, Task> CreateStorage()
     {
-        Func<UploadSessionSnapshot, CancellationToken, Task> storage = async (s, _) => {
-            await _repo.Save(s).ConfigureAwait(false);
+        Func<UploadSessionSnapshot, bool, CancellationToken, Task> storage = async (s, save, _) => {
+            if (save)
+                await _repo.Save(s).ConfigureAwait(false);
             if (s.CurrentState != UploadSessionState.Cancelled)
                 SetProgress(s.SessionId, GetProgressFromSnapshot(s));
         };
