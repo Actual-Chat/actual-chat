@@ -18,10 +18,8 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
 
         IsTracking = true;
         _geolocation.LocationChanged += OnLocationChanged;
-        // TODO: use accuracy from appsettings
-        var request = new GeolocationListeningRequest(
-            GeolocationAccuracy.Best,
-            Constants.Location.UpdatePeriod);
+        var accuracy = await GetGeolocationAccuracy(cancellationToken).ConfigureAwait(false);
+        var request = new GeolocationListeningRequest(accuracy, Constants.Location.UpdatePeriod);
         try {
             // TODO: use bool result to ensure that listening started
             await _geolocation.StartListeningForegroundAsync(request).ConfigureAwait(false);
