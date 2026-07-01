@@ -38,6 +38,13 @@
                             <div class="notification-item-content">
                                 <div class="notification-item-title">@n.Title</div>
                                 <div class="notification-item-text">@n.Text</div>
+                                @if (n.Actions.Count > 0) {
+                                    <div class="notification-item-actions" @onclick:stopPropagation="true">
+                                        @foreach (var action in n.Actions) {
+                                            <Button Class="btn-sm btn-primary" Click="@(() => OnAction(n, action))">@action.Title</Button>
+                                        }
+                                    </div>
+                                }
                             </div>
                             <div class="notification-item-time">@FormatTime(n.SentAt)</div>
                         </div>
@@ -76,6 +83,19 @@
 
     private Task OnDismiss(Notification notification)
         => UICommander.Run(new Notifications_Handle(Session, notification.Id));
+
+    private async Task OnAction(Notification notification, NotificationAction action) {
+        switch (action.Kind) {
+        case NotificationActionKind.Open:
+            LocalUrl url = action.Target.IsNullOrEmpty() ? notification.GetChatLink() : action.Target;
+            Modal.Close();
+            _ = History.NavigateTo(url);
+            break;
+        case NotificationActionKind.Dismiss:
+            await UICommander.Run(new Notifications_Handle(Session, notification.Id));
+            break;
+        }
+    }
 
     private void OnCloseClick()
         => Modal.Close();

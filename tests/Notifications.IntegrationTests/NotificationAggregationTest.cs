@@ -148,6 +148,27 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         result.Should().Be(n with { AuthorIds = result.AuthorIds });
     }
 
+    [Fact]
+    public void NotificationWithActionsRoundtrips()
+    {
+        var n = MessageNotification.New(TestUserId, TestChatId, 5) with {
+            Version = 1,
+            Title = "Title",
+            Text = "Body",
+            Actions = new[] {
+                new NotificationAction(NotificationActionKind.Open, "Open"),
+                new NotificationAction(NotificationActionKind.Dismiss, "Dismiss", "/chat/x"),
+            }.ToApiArray(),
+        };
+
+        var result = n.PassThroughMessagePackByteSerializer(Out);
+        result.Actions.Should().HaveCount(2);
+        result.Actions[0].Kind.Should().Be(NotificationActionKind.Open);
+        result.Actions[0].Title.Should().Be("Open");
+        result.Actions[1].Kind.Should().Be(NotificationActionKind.Dismiss);
+        result.Actions[1].Target.Should().Be("/chat/x");
+    }
+
     private static MessageNotification NewMessage(long entryLid, AuthorId authorId, string text)
         => MessageNotification.New(TestUserId, TestChatId, entryLid, authorId) with {
             Text = text,

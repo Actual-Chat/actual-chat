@@ -37,6 +37,10 @@ public abstract partial record Notification(
     public Moment SentAt { get; init; }
     [DataMember(Order = 7), Key(7)]
     public Moment? HandledAt { get; init; }
+    // Optional call-to-action buttons (empty for ordinary chat notifications). Key 16 avoids the
+    // 8..15 range that subtypes use, so it's collision-free across the whole union.
+    [DataMember(Order = 16), Key(16)]
+    public ApiArray<NotificationAction> Actions { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
