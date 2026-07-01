@@ -391,8 +391,8 @@ public class NotificationsBackend(IServiceProvider services)
         // Started/Titled/Final are live phases; their joined participants already see the call live.
         var isLive = phase != ConversationNotificationPhase.Created;
         var activeUserIds = isLive
-            ? await LiveSessionsBackend.ListParticipants(chatId, cancellationToken).ConfigureAwait(false)
-            : ApiArray<UserId>.Empty;
+            ? await GetActiveParticipantUserIds(chatId, cancellationToken).ConfigureAwait(false)
+            : new HashSet<UserId>();
         var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
         var now = Clocks.CoarseSystemClock.Now;
         foreach (var userId in userIds) {
@@ -409,6 +409,25 @@ public class NotificationsBackend(IServiceProvider services)
             };
             await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    // The live-session backend tracks participants by AuthorId; notifications target users, so resolve
+    // the chat-scoped authors to their user ids here (anonymous, user-less authors simply drop out).
+    private async Task<HashSet<UserId>> GetActiveParticipantUserIds(
+        ChatId chatId, CancellationToken cancellationToken)
+    {
+        var authorIds = await LiveSessionsBackend
+            .ListParticipants(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        var userIds = new HashSet<UserId>();
+        foreach (var authorId in authorIds) {
+            var author = await AuthorsBackend
+                .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
+                .ConfigureAwait(false);
+            if (author is { } a && !a.UserId.Value.IsNullOrEmpty())
+                userIds.Add(a.UserId);
+        }
+        return userIds;
     }
 
     // Event handlers
@@ -590,9 +609,7 @@ public class NotificationsBackend(IServiceProvider services)
         // Don't interrupt users who are actively in this chat's live call — they're present.
         var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (live is { SessionStartedAt: not null }) {
-            var active = await LiveSessionsBackend
-                .ListParticipants(chatId, cancellationToken)
-                .ConfigureAwait(false);
+            var active = await GetActiveParticipantUserIds(chatId, cancellationToken).ConfigureAwait(false);
             if (active.Count != 0)
                 userIds = userIds.Where(x => !active.Contains(x)).ToList();
         }

@@ -55,8 +55,12 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         bool isActive,
         CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        await Backend.SetParticipation(chatId, account.Id, kind, isActive, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        if (chat.Rules.Author?.Id is not { } authorId)
+            return;
+
+        await Backend.SetParticipation(chatId, authorId, kind, isActive, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task SetRules(Session session, ChatId chatId, SessionRules rules, CancellationToken cancellationToken)

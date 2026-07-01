@@ -14,7 +14,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(ConsolidationDelay = 0.5)]
-    Task<ApiArray<UserId>> ListParticipants(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> ListParticipants(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(ConsolidationDelay = 0.5)]
     Task<bool> HasRecorder(ChatId chatId, CancellationToken cancellationToken);
 
@@ -26,7 +26,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
     Task SetParticipation(
         ChatId chatId,
-        UserId userId,
+        AuthorId authorId,
         ParticipationKind kind,
         bool isActive,
         CancellationToken cancellationToken);
