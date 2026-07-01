@@ -1,0 +1,22 @@
+@page "/notifications"
+@inherits ComponentBase<AppUIHub>
+
+<div class="flex-x h-full">
+    <ChatPanelSkeleton/>
+    <RightPanelSkeleton/>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        var modalRef = await ModalUI.Show(NotificationsModal.Model.Instance, ModalOptions.FullScreen);
+        _ = NavigateToChatsWhen(modalRef.WhenClosed);
+    }
+
+    private async Task NavigateToChatsWhen(Task when) {
+        await when;
+        _ = History.NavigateTo(Links.Chats, false, false, true);
+    }
+}
