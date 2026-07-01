@@ -1052,9 +1052,9 @@ public class NotificationsBackend(IServiceProvider services)
             .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
 
-        var (info, dismissed, silentById) = await Reconcile(
+        var (info, dismissed, silentById, reAnchored) = await Reconcile(
             dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId)).ConfigureAwait(false);
-        if (notifications.Count == 0 && dismissed.Count == 0)
+        if (notifications.Count == 0 && dismissed.Count == 0 && reAnchored.Count == 0)
             return; // Nothing changed (e.g. OnHandle for an already-dismissed notification)
 
         if (dbUserNotifications != null)
@@ -1075,7 +1075,7 @@ public class NotificationsBackend(IServiceProvider services)
             dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
                 .FirstAsync(x => x.Id == userId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            (info, dismissed, silentById) = await Reconcile(dbUserNotifications.ToModel()).ConfigureAwait(false);
+            (info, dismissed, silentById, reAnchored) = await Reconcile(dbUserNotifications.ToModel()).ConfigureAwait(false);
             dbUserNotifications.UpdateFrom(info);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -1102,6 +1102,10 @@ public class NotificationsBackend(IServiceProvider services)
         foreach (var notification in toPush)
             context.Operation.AddEvent(new NotificationsBackend_Push(notification, silentById.GetValueOrDefault(notification.Id)));
 
+        // Partial-read re-anchors update the banner content silently (a reduction, never an alert).
+        foreach (var notification in reAnchored)
+            context.Operation.AddEvent(new NotificationsBackend_Push(notification, IsSilent: true));
+
         // A newly displayed mention (re)starts the per-user reminder flow, which re-alerts unread
         // mentions until they're read. It's keyed by user, so repeated starts just resume it.
         var hasNewMention = notifications.Any(n => n.Kind == NotificationKind.Mention && info.Displayed.Any(d => d.Id == n.Id));
@@ -1117,7 +1121,7 @@ public class NotificationsBackend(IServiceProvider services)
         }
         return;
 
-        async Task<(UserNotificationInfo Info, IReadOnlyList<Notification> Dismissed, Dictionary<NotificationId, bool> SilentById)> Reconcile(UserNotificationInfo committed)
+        async Task<(UserNotificationInfo Info, IReadOnlyList<Notification> Dismissed, Dictionary<NotificationId, bool> SilentById, List<Notification> ReAnchored)> Reconcile(UserNotificationInfo committed)
         {
             var now = Clocks.SystemClock.Now;
             var readPositions = await GetReadPositions(userId, committed.Displayed.Concat(notifications), cancellationToken)
@@ -1153,13 +1157,57 @@ public class NotificationsBackend(IServiceProvider services)
                 silentById[id] = !shouldBeep;
             }
 
+            // Partial read: the user read into (but not past) a coalesced notification's window.
+            // Re-anchor it to the new first-unread entry and refresh its lead/count so the quote
+            // tracks where they stopped instead of citing already-read messages.
+            var reAnchored = new List<Notification>();
+            foreach (var existing in current.Displayed) {
+                if (existing is not ChatEntryRelatedNotification related)
+                    continue;
+                if (!readPositions.TryGetValue(related.ChatId, out var read) || read is <= 0 or long.MaxValue)
+                    continue;
+                var start = related.StartEntryLid > 0 ? related.StartEntryLid : related.EntryLid;
+                if (read < start || read >= related.EntryLid)
+                    continue; // nothing newly read here (fully-read ones were already dropped above)
+
+                var reanchored = await ReAnchor(related, read + 1, cancellationToken).ConfigureAwait(false);
+                current = current with { Displayed = current.Displayed.WithUpdate(n => n.Id == related.Id, _ => reanchored) };
+                reAnchored.Add(reanchored);
+            }
+
             current = current with {
                 Version = VersionGenerator.NextVersion(current.Version),
                 LastPushAt = notifications.Count > 0 ? now : current.LastPushAt,
                 IsDormant = current.Displayed.Count >= Constants.Notification.DormancyThreshold,
             };
-            return (current, dismissed, silentById);
+            return (current, dismissed, silentById, reAnchored);
         }
+    }
+
+    // Moves a coalesced notification's first-unread anchor to newStart, refreshing its lead text
+    // from that entry and approximating the remaining unread count from the entry-id span.
+    private async Task<ChatEntryRelatedNotification> ReAnchor(
+        ChatEntryRelatedNotification related, long newStart, CancellationToken cancellationToken)
+    {
+        var unreadCount = (int)Math.Max(1, related.EntryLid - newStart + 1);
+        var leadText = related.LeadText ?? "";
+        var entry = await ChatsBackend
+            .GetEntry(ChatEntryId.New(related.ChatId, newStart), TimeSpan.Zero, cancellationToken)
+            .ConfigureAwait(false);
+        if (entry is { IsSystemEntry: false }) {
+            var (text, _) = await NotificationHelper
+                .GetText(entry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
+                .ConfigureAwait(false);
+            leadText = text;
+        }
+        var updated = related with {
+            StartEntryLid = newStart,
+            UnreadCount = unreadCount,
+            LeadText = leadText,
+        };
+        return (ChatEntryRelatedNotification)(updated with {
+            Text = await ComposeAggregatedText(updated, cancellationToken).ConfigureAwait(false),
+        });
     }
 
     private async Task<string> ComposeAggregatedText(ChatEntryRelatedNotification notification, CancellationToken cancellationToken)
