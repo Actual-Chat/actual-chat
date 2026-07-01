@@ -1,22 +1,156 @@
 @page "/notifications"
-@inherits ComponentBase<AppUIHub>
+@layout ListViewLayout
+@using ActualChat.Kvas
+@using ActualChat.Notifications
+@using Notification = ActualChat.Notifications.Notification
+@inherits ComputedStateComponent<AppUIHub, NotificationsPage.Model>
+@{
+    var m = State.Value;
+    var groups = GroupItems(FilterItems(m.Items));
+}
 
-<div class="flex-x h-full">
-    <ChatPanelSkeleton/>
-    <RightPanelSkeleton/>
+<RenderIntoSlot Name="@LayoutSlots.MainHeader">
+    <div class="c-content notifications-header">
+        <NavbarPullerButton/>
+        <div class="c-title">Notifications</div>
+        <div class="c-tabs">
+            <button class="@TabClass(NotificationFilter.All)" @onclick="@(() => SetFilter(NotificationFilter.All))">All</button>
+            <button class="@TabClass(NotificationFilter.Mentions)" @onclick="@(() => SetFilter(NotificationFilter.Mentions))">Mentions</button>
+        </div>
+        <div class="c-filler"></div>
+        <ButtonRound Class="btn-sm" Click="OnMarkAllRead" Tooltip="Mark all read" IsDisabled="@(m.Items.Count == 0)">
+            <i class="icon-check-circle text-xl"></i>
+        </ButtonRound>
+    </div>
+</RenderIntoSlot>
+
+<div class="notifications-feed custom-scrollbar">
+    @if (groups.Count == 0) {
+        <div class="notifications-empty">
+            <i class="icon-bell"></i>
+            <span>You're all caught up</span>
+        </div>
+    }
+    else {
+        @foreach (var group in groups) {
+            <div class="notifications-group-title">@group.Title</div>
+            @foreach (var item in group.Items) {
+                <NotificationFeedItem
+                    @key="@item.Notification.Id.Value"
+                    Notification="@item.Notification"
+                    Chat="@item.Chat"
+                    IsUnread="@(item.Notification.SentAt > m.LastSeenAt)"
+                    Dismissed="@(() => OnDismiss(item.Notification))"/>
+            }
+        }
+    }
 </div>
 
 @code {
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender)
-            return;
+    private const string LastSeenKey = "LastSeenAt";
 
-        var modalRef = await ModalUI.Show(NotificationsModal.Model.Instance, ModalOptions.FullScreen);
-        _ = NavigateToChatsWhen(modalRef.WhenClosed);
+    private IKvas _localSettings = null!;
+    private Moment? _seenThreshold;
+    private NotificationFilter _filter = NotificationFilter.All;
+
+    private INotifications Notifications => Hub.Notifications;
+    private IChats Chats => Hub.Chats;
+
+    protected override void OnInitialized()
+        => _localSettings = Hub.Services.LocalSettings().WithPrefix<NotificationsPage>();
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(GetType()),
+            UpdateDelayer = FixedDelayer.NextTick,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        // Loaded once and kept stable for the visit, so unread dots don't vanish mid-view when a
+        // new notification arrives; OnAfterRender persists "now" for the next visit.
+        if (_seenThreshold is null) {
+            var seen = await _localSettings.Get<SeenState>(LastSeenKey, cancellationToken).ConfigureAwait(false);
+            _seenThreshold = seen?.LastSeenAt ?? default;
+        }
+
+        var notifications = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
+        var ordered = notifications.OrderByDescending(n => n.SentAt).ToList();
+        var items = new List<Item>(ordered.Count);
+        foreach (var n in ordered) {
+            var chat = n is ChatNotification cn
+                ? await Chats.Get(Session, cn.ChatId, cancellationToken).ConfigureAwait(false)
+                : null;
+            items.Add(new Item(n, chat));
+        }
+        return new Model { Items = items, LastSeenAt = _seenThreshold.Value };
     }
 
-    private async Task NavigateToChatsWhen(Task when) {
-        await when;
-        _ = History.NavigateTo(Links.Chats, false, false, true);
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender)
+            await _localSettings.Set(LastSeenKey, new SeenState { LastSeenAt = Moment.Now }, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private void SetFilter(NotificationFilter filter) {
+        if (_filter == filter)
+            return;
+
+        _filter = filter;
+        StateHasChanged();
+    }
+
+    private string TabClass(NotificationFilter filter)
+        => filter == _filter ? "c-tab active" : "c-tab";
+
+    private IReadOnlyList<Item> FilterItems(IReadOnlyList<Item> items)
+        => _filter == NotificationFilter.Mentions
+            ? items.Where(i => i.Notification.Kind == ActualChat.NotificationKind.Mention).ToList()
+            : items;
+
+    private static IReadOnlyList<Group> GroupItems(IReadOnlyList<Item> items) {
+        if (items.Count == 0)
+            return [];
+
+        var today = Moment.Now.ToDateTime().Date;
+        var groups = new List<Group>();
+        AddGroup("Today", d => d == today);
+        AddGroup("Yesterday", d => d == today.AddDays(-1));
+        AddGroup("Earlier", d => d < today.AddDays(-1));
+        return groups;
+
+        void AddGroup(string title, Func<DateTime, bool> predicate) {
+            var groupItems = items.Where(i => predicate(i.Notification.SentAt.ToDateTime().Date)).ToList();
+            if (groupItems.Count > 0)
+                groups.Add(new Group(title, groupItems));
+        }
+    }
+
+    private Task OnDismiss(Notification notification)
+        => UICommander.Run(new Notifications_Handle(Session, notification.Id));
+
+    private Task OnMarkAllRead()
+        => UICommander.Run(new Notifications_HandleAll(Session));
+
+    // Nested types
+
+    public enum NotificationFilter { All, Mentions }
+
+    public sealed record SeenState {
+        public Moment LastSeenAt { get; init; }
+    }
+
+    public sealed record Item(Notification Notification, Chat? Chat);
+
+    public sealed record Group(string Title, IReadOnlyList<Item> Items);
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public IReadOnlyList<Item> Items { get; init; } = [];
+        public Moment LastSeenAt { get; init; }
+
+        // This record relies on referential equality (holds a mutable collection).
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

@@ -277,6 +277,51 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task HandleAllDismissesEveryNotification()
+    {
+        var alice = await Tester.SignInAsAlice();
+        var (chat1, _) = await Tester.CreateChat(false, "HandleAll 1");
+        var (chat2, _) = await Tester.CreateChat(false, "HandleAll 2");
+        var deviceId = await RegisterDevice(alice.Id);
+
+        var n1 = NewFeedNotification(alice.Id, chat1, 3, "hi 1");
+        var n2 = NewFeedNotification(alice.Id, chat2, 4, "hi 2");
+        await Commander.Call(new NotificationsBackend_Notify(n1));
+        await Commander.Call(new NotificationsBackend_Notify(n2));
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            info.Displayed.Count.Should().Be(2);
+        }, TimeSpan.FromSeconds(10));
+
+        Sink.Clear();
+        // "Mark all read" clears the whole feed in one round-trip.
+        await Commander.Call(new Notifications_HandleAll(Tester.Session));
+
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            info.Displayed.Should().BeEmpty();
+        }, TimeSpan.FromSeconds(10));
+        await TestExt.When(() => {
+            Sink.Messages.Should().Contain(m => m.IsDismissal && m.DeviceIds.Contains(deviceId));
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    private static MessageNotification NewFeedNotification(UserId userId, ChatId chatId, long entryLid, string text)
+    {
+        var authorId = AuthorId.New(chatId, 1);
+        return MessageNotification.New(userId, chatId, entryLid, authorId) with {
+            Title = $"Bob @ {chatId.Value}",
+            Text = text,
+            StartEntryLid = entryLid,
+            UnreadCount = 1,
+            AuthorIds = new[] { authorId }.ToApiArray(),
+            LeadText = text,
+            SentAt = Moment.Now,
+        };
+    }
+
     private async Task<Symbol> RegisterDevice(UserId userId)
     {
         var deviceId = new Symbol("test-device-" + userId.Value);

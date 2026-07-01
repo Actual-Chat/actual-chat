@@ -158,6 +158,22 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
+    public virtual async Task OnHandleAll(NotificationsBackend_HandleAll command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
+
+        var userId = command.UserId;
+        var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
+        var handledIds = info.Displayed.Select(n => n.Id).ToArray();
+        if (handledIds.Length == 0)
+            return;
+
+        DebugLog?.LogInformation("-> OnHandleAll. UserId={UserId}, Count={Count}", userId, handledIds.Length);
+        await ApplyHardUpdate(userId, [], handledIds, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
     public virtual async Task<bool> OnUpsertExplicitNotification(
         NotificationsBackend_UpsertExplicitNotification command,
         CancellationToken cancellationToken)
