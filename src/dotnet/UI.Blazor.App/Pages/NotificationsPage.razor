@@ -25,25 +25,27 @@
 </RenderIntoSlot>
 
 <div class="notifications-feed custom-scrollbar">
-    @if (groups.Count == 0) {
-        <div class="notifications-empty">
-            <i class="icon-bell"></i>
-            <span>You're all caught up</span>
-        </div>
-    }
-    else {
-        @foreach (var group in groups) {
-            <div class="notifications-group-title">@group.Title</div>
-            @foreach (var item in group.Items) {
-                <NotificationFeedItem
-                    @key="@item.Notification.Id.Value"
-                    Notification="@item.Notification"
-                    Chat="@item.Chat"
-                    IsUnread="@(item.Notification.SentAt > m.LastSeenAt)"
-                    Dismissed="@(() => OnDismiss(item.Notification))"/>
+    <div class="notifications-feed-content">
+        @if (groups.Count == 0) {
+            <div class="notifications-empty">
+                <i class="icon-bell"></i>
+                <span>You're all caught up</span>
+            </div>
+        }
+        else {
+            @foreach (var group in groups) {
+                <div class="notifications-group-title">@group.Title</div>
+                @foreach (var item in group.Items) {
+                    <NotificationFeedItem
+                        @key="@item.Notification.Id.Value"
+                        Notification="@item.Notification"
+                        Chat="@item.Chat"
+                        IsUnread="@(item.Notification.SentAt > m.LastSeenAt)"
+                        Dismissed="@(() => OnDismiss(item.Notification))"/>
+                }
             }
         }
-    }
+    </div>
 </div>
 
 @code {

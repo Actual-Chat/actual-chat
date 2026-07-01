@@ -38,6 +38,9 @@
 .notifications-feed {
     @apply flex flex-col h-full w-full overflow-y-auto;
 }
+.notifications-feed-content {
+    @apply flex flex-col flex-1 w-full max-w-160 mx-auto;
+}
 .notifications-group-title {
     @apply px-4 pt-4 pb-1 text-sm font-medium text-03;
 }
