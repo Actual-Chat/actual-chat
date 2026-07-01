@@ -78,6 +78,7 @@
     private Task OnStop()
         => Hub.LocationUI.StopSharing(Chat.Id, CancellationToken.None);
 
+    // TODO: use LiveTime, probably extend it
     private string FormatRemaining(Moment? expiresAt) {
         if (expiresAt is not { } moment)
             return "";

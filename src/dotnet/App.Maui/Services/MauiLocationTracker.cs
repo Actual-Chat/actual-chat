@@ -1,5 +1,4 @@
 using ActualChat.UI.Blazor.App.Services;
-using Microsoft.Maui.Devices.Sensors;
 
 namespace ActualChat.App.Maui.Services;
 
@@ -8,13 +7,9 @@ namespace ActualChat.App.Maui.Services;
 /// Foreground-only (no background-service integration), so it's used on platforms that
 /// don't need background sharing (Windows); Android/iOS use native background-capable trackers.
 /// </summary>
-public sealed class MauiLocationTracker : MauiLocationTrackerBase
+public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(hub)
 {
     private readonly IGeolocation _geolocation = Geolocation.Default;
-    private ILogger Log { get; }
-
-    public MauiLocationTracker(AppUIHub hub) : base(hub)
-        => Log = hub.Services.LogFor(GetType());
 
     public override async Task Start(CancellationToken cancellationToken)
     {
@@ -23,10 +18,12 @@ public sealed class MauiLocationTracker : MauiLocationTrackerBase
 
         IsTracking = true;
         _geolocation.LocationChanged += OnLocationChanged;
+        // TODO: use accuracy from appsettings
         var request = new GeolocationListeningRequest(
             GeolocationAccuracy.Best,
             Constants.Location.UpdatePeriod);
         try {
+            // TODO: use bool result to ensure that listening started
             await _geolocation.StartListeningForegroundAsync(request).ConfigureAwait(false);
         }
         catch (Exception e) {

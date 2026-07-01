@@ -106,12 +106,12 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
-    public async Task NewLiveShareSupersedesPreviousBySameAuthor()
+    public async Task NewLiveShareReturnsExistingWhenAlreadySharing()
     {
         // arrange
         var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
         var session = Alice.Session;
-        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Supersede" });
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Idempotent" });
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var ct = cts.Token;
 
@@ -120,19 +120,18 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         var firstPoint = new GeoPoint(10, 20);
 
         // act - start a first live share
-        var firstId = (await Alice.ReportLocation(chatId, firstPoint, hour, cancellationToken: ct)).Id;
+        var first = await Alice.ReportLocation(chatId, firstPoint, hour, cancellationToken: ct);
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
 
-        // act - the same author starts a second live share
-        var secondId = (await Alice.ReportLocation(chatId, new GeoPoint(30, 40), hour, cancellationToken: ct)).Id;
+        // act - the same author starts a second live share while the first is still live
+        var second = await Alice.ReportLocation(chatId, new GeoPoint(30, 40), hour, cancellationToken: ct);
 
-        // assert - one live share per author: the new one supersedes, the previous is frozen with its last point
-        await cList.When(x => x.Count == 1 && x.Single().Id == secondId, ct)
-            .WaitAsync(TimeSpan.FromSeconds(5), ct);
-        var first = await sharedLocations.Get(session, chatId, firstId, ct);
-        first.Should().NotBeNull();
-        first!.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
-        first.Point.Should().Be(firstPoint);
+        // assert - one live share per author: the running one is returned, no second is created
+        second.Id.Should().Be(first.Id);
+        second.Point.Should().Be(firstPoint);
+        var live = await sharedLocations.ListLive(session, chatId, ct);
+        live.Count.Should().Be(1);
+        live.Single().Id.Should().Be(first.Id);
     }
 
     [Fact]

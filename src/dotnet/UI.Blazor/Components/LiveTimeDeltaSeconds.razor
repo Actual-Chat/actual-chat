@@ -26,6 +26,6 @@
         var delta = Moment - now;
         return delta <= TimeSpan.Zero
             ? "now"
-            : $"in {delta.TotalSeconds.ToString("F0")} seconds";
+            : $"in {delta.TotalSeconds:F0} seconds";
     }
 }

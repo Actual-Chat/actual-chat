@@ -40,6 +40,7 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
         if ((intent?.Action ?? "") != ActionStart)
             return StartCommandResult.NotSticky;
 
+        // TODO: ensure accuracy from appsettings is used
         var accuracy = (GeoTrackingAccuracy)intent!.GetIntExtra(ExtraAccuracy, (int)GeoTrackingAccuracy.Balanced);
         StartForeground1(BuildNotification());
         StartLocationUpdates(accuracy);

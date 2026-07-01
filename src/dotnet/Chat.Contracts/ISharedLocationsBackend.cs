@@ -19,7 +19,7 @@ public interface ISharedLocationsBackend : IComputeService, IBackendService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SharedLocationsBackend_Change(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] SharedLocationId Id,
+    [property: DataMember, MemoryPackOrder(0), Key(0)] SharedLocationId? Id,
     [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId AuthorId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] Change<SharedLocationDiff> Change
 ) : ICommand<SharedLocation?>, IBackendCommand, IHasShardKey<ChatId>
