@@ -3,6 +3,7 @@ using Android.Content;
 using Android.Graphics;
 using Android.Media;
 using AndroidX.Core.App;
+using AndroidX.Core.Graphics.Drawable;
 using Application = Android.App.Application;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using AtomicInteger = Java.Util.Concurrent.Atomic.AtomicInteger;
@@ -38,6 +39,7 @@ public static class NotificationHelper
         var contentPendingIntent = PendingIntent.GetActivity(context, 0,
             contentIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
+        var largeImage = imageUrl.IsNullOrEmpty() ? null : GetImage(imageUrl!);
         var builder = new NotificationCompat.Builder(context, Constants.DefaultChannelId)
             .SetContentTitle(title)!
             .SetSmallIcon(Resource.Drawable.notification_app_icon)!
@@ -48,12 +50,47 @@ public static class NotificationHelper
             // A silent update re-posts under the same tag without alerting again.
             .SetSilent(silent)!
             .SetPriority((int)NotificationPriority.High)!;
-        if (!imageUrl.IsNullOrEmpty()) {
-            var largeImage = GetImage(imageUrl);
-            if (largeImage != null)
-                builder.SetLargeIcon(largeImage);
-        }
+        builder.SetStyle(CreateStyle(title, body, largeImage));
+        if (largeImage != null)
+            builder.SetLargeIcon(largeImage);
         NotificationManagerCompat.From(context)!.Notify(tag, 0, builder.Build());
+    }
+
+    // Telegram-style rendering: show the sender + the (possibly multi-line, coalesced) body as a
+    // conversation card that expands to the full text; falls back to a plain expandable block.
+    private static NotificationCompat.Style CreateStyle(string title, string body, Bitmap? largeImage)
+    {
+        var bigText = new NotificationCompat.BigTextStyle().BigText(body)!;
+        var (senderName, conversationTitle) = SplitTitle(title);
+        if (senderName.IsNullOrEmpty())
+            return bigText;
+
+        try {
+            var senderBuilder = new Person.Builder().SetName(senderName)!;
+            if (largeImage != null)
+                senderBuilder.SetIcon(IconCompat.CreateWithBitmap(largeImage));
+            var sender = senderBuilder.Build();
+            var self = new Person.Builder().SetName("You")!.Build();
+            var style = new NotificationCompat.MessagingStyle(self);
+            if (!conversationTitle.IsNullOrEmpty()) {
+                style.SetGroupConversation(true);
+                style.SetConversationTitle(conversationTitle);
+            }
+            style.AddMessage(body, Java.Lang.JavaSystem.CurrentTimeMillis(), sender);
+            return style;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to build MessagingStyle; falling back to BigTextStyle");
+            return bigText;
+        }
+    }
+
+    private static (string SenderName, string? ConversationTitle) SplitTitle(string title)
+    {
+        var index = title.IndexOf(" @ ");
+        return index >= 0
+            ? (title[..index].Trim(), title[(index + 3)..].Trim())
+            : (title, null);
     }
 
     public static Bitmap? GetImage(string imageUrl)
