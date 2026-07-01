@@ -2,6 +2,7 @@
 @inherits ComputedStateComponent<AppUIHub, LiveLocationBanner.Model>
 @{
     var m = State.Value;
+    var sRemaining = FormatRemaining(m.OwnExpiresAt);
 }
 
 <Banner
@@ -18,9 +19,10 @@
                 }
             </div>
             <div class="c-text">
-                @Describe(m)
-                @if (FormatRemaining(m.OwnExpiresAt) is { Length: > 0 } remaining) {
-                    <span class="c-countdown">· @remaining left</span>
+                @* TODO: put into span or div *@
+                @m.GetDescription()
+                @if (!sRemaining.IsNullOrEmpty()) {
+                    <span class="c-countdown">· @sRemaining left</span>
                 }
             </div>
         </div>
@@ -93,23 +95,23 @@
         return $"{Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes))}m";
     }
 
-    private static string Describe(Model m) {
-        if (m.IsOwnSharing) {
-            var others = m.Count - 1;
-            return others switch {
-                0 => "You are sharing your location",
-                1 => "You and 1 other are sharing location",
-                _ => $"You and {others} others are sharing location",
-            };
-        }
-        return m.Count == 1
-            ? "1 person is sharing location"
-            : $"{m.Count} people are sharing location";
-    }
-
     // Nested types
 
     public sealed record Model(ApiArray<Avatar> Avatars, int Count, bool IsOwnSharing, Moment? OwnExpiresAt = null) {
         public static readonly Model None = new([], 0, false);
+
+        public string GetDescription() {
+            if (IsOwnSharing) {
+                var others = Count - 1;
+                return others switch {
+                    0 => "You are sharing your location",
+                    1 => "You and 1 other are sharing location",
+                    _ => $"You and {others} others are sharing location",
+                };
+            }
+            return Count == 1
+                ? "1 person is sharing location"
+                : $"{Count} people are sharing location";
+        }
     }
 }
