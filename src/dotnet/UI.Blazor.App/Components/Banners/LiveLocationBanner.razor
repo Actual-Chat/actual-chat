@@ -69,7 +69,7 @@
                 avatars.Add(author.Avatar);
         }
         if (ownLocation != null)
-            Computed.GetCurrent().Invalidate(CountdownTickPeriod);
+            await Hub.FusionTime.Now(CountdownTickPeriod).ConfigureAwait(false);
 
         return new Model(avatars.ToApiArray(), locations.Count, ownLocation != null, ownLocation?.LiveUntil);
     }
@@ -80,7 +80,7 @@
     private Task OnStop()
         => Hub.LocationUI.StopSharing(Chat.Id, CancellationToken.None);
 
-    // TODO: use LiveTime, probably extend it
+    // TODO: Move to Model
     private string FormatRemaining(Moment? expiresAt) {
         if (expiresAt is not { } moment)
             return "";
