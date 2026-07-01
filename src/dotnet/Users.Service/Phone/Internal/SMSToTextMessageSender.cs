@@ -19,7 +19,7 @@ public sealed class SMSToTextMessageSender(IServiceProvider services) : ITextMes
         var apiKey = UsersSettings.SMSToApiKey;
         var sender = UsersSettings.SMSToFrom;
 
-        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(sender)) {
+        if (apiKey.IsNullOrWhiteSpace() || sender.IsNullOrWhiteSpace()) {
             Log.LogError("SMS.to is not configured properly. SMSToApiKey or SMSToFrom is missing");
             throw StandardError.External("We couldn't deliver the message to the specified phone number.");
         }

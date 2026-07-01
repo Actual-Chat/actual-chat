@@ -17,7 +17,7 @@ public sealed partial class Vocabulary
     {
         _tokens = [];
         foreach (var line in File.ReadLines(vocabPath, Encoding.UTF8)) {
-            if (string.IsNullOrWhiteSpace(line))
+            if (line.IsNullOrWhiteSpace())
                 continue;
 
             var lastSpace = line.LastIndexOf(' ');
