@@ -39,14 +39,17 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     // Voice-call ring lifecycle (StartCall invitees empty = every other chat member).
+    // Caller methods
     Task StartCall(
         ChatId chatId,
         AuthorId callerAuthorId,
         ApiArray<AuthorId> invitees,
         bool hasVideo,
         CancellationToken cancellationToken);
+    Task CancelCall(ChatId chatId, AuthorId callerAuthorId, CancellationToken cancellationToken);
+    // Callee methods
     Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
     Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
-    Task CancelCall(ChatId chatId, AuthorId callerAuthorId, CancellationToken cancellationToken);
+    // Either party hangs up an answered call
     Task LeaveCall(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 }

@@ -181,8 +181,15 @@ else {
     }
 
     private void ApplyChatIfSet() {
-        if (!_chatIdInput.IsNullOrEmpty())
-            OpenChat(ChatId.Parse(_chatIdInput));
+        if (_chatIdInput.IsNullOrEmpty())
+            return;
+
+        if (ChatId.TryParse(_chatIdInput, out var chatId))
+            OpenChat(chatId);
+        else {
+            _error = "Invalid chat id";
+            StateHasChanged();
+        }
     }
 
     private void OpenChat(ChatId chatId) {
