@@ -46,6 +46,8 @@ public sealed partial record LiveSessionState
     public SessionRules Rules { get; init; } = SessionRules.Default;
     [DataMember(Order = 17), MemoryPackOrder(17), Key(17)]
     public Moment? SessionStartedAt { get; init; }
+    [DataMember(Order = 18), MemoryPackOrder(18), Key(18)]
+    public LiveSessionKind Kind { get; init; } = LiveSessionKind.Ambient;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ConversationId ConversationId => ConversationId.New(ChatId, StartEntryLid);
     public Conversation ToConversation()

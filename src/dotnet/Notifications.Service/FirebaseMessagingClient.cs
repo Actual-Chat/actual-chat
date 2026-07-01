@@ -48,6 +48,8 @@ public class FirebaseMessagingClient(
 
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
         var isDev = UrlMapper.IsDevVoxt;
+        // Attention pings and incoming calls ring with elevated priority + a ringtone.
+        var isRinger = kind is NotificationKind.Attention or NotificationKind.IncomingCall;
 
         var isChatRelated = chatId is not null;
         var isEntryRelated = entryId is not null;
@@ -88,7 +90,7 @@ public class FirebaseMessagingClient(
             Apns = new ApnsConfig {
                 Headers = new Dictionary<string, string>() {
                     ["apns-push-type"] = "alert",
-                    ["apns-priority"] = kind == NotificationKind.Attention ? "10" : "5",
+                    ["apns-priority"] = isRinger ? "10" : "5",
                 },
                 Aps = new Aps {
                     Alert = new ApsAlert {
@@ -97,7 +99,7 @@ public class FirebaseMessagingClient(
                     },
                     // iOS only updates a backgrounded app's icon badge from aps.badge -> always send it.
                     Badge = badgeCount,
-                    Sound = kind == NotificationKind.Attention ? "attention_ringtone.caf" : "default",
+                    Sound = isRinger ? "attention_ringtone.caf" : "default",
                     MutableContent = true,
                     ThreadId = tag,
                 },
