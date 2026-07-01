@@ -21,13 +21,15 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
         var accuracy = await GetGeolocationAccuracy(cancellationToken).ConfigureAwait(false);
         var request = new GeolocationListeningRequest(accuracy, Constants.Location.UpdatePeriod);
         try {
-            // TODO: use bool result to ensure that listening started
-            await _geolocation.StartListeningForegroundAsync(request).ConfigureAwait(false);
+            if (!await _geolocation.StartListeningForegroundAsync(request).ConfigureAwait(false))
+                throw StandardError.External("Geolocation listening didn't start.");
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Start: failed to start geolocation listening");
+            Log.LogError(e, "Start: failed to start geolocation listening");
+            // Roll back so a later Start can retry from a clean state.
             IsTracking = false;
             _geolocation.LocationChanged -= OnLocationChanged;
+            throw;
         }
     }
 
