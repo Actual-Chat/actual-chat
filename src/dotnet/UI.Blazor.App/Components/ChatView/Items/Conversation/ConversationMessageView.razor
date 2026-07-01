@@ -36,9 +36,11 @@
                 <div class="c-lc-oncall">You on the call</div>
             }
             @if (hasSummary) {
-                <div class="c-lc-summary">
-                    <MarkupView Markup="@m.Description.Markup"/>
-                </div>
+                <CascadingValue Value="@_fakeEntry" IsFixed="true">
+                    <div class="c-lc-summary">
+                        <MarkupView Markup="@m.Description.Markup"/>
+                    </div>
+                </CascadingValue>
             }
             <div class="c-lc-meta-row">
                 <AuthorCircleGroup
