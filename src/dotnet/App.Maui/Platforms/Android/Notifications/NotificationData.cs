@@ -53,6 +53,10 @@ public class NotificationData(string messageId, Dictionary<string, string> data)
     public string? Tag
         => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Tag, "").NullIfEmpty();
 
+    // A silent update refreshes the banner content without alerting (sound/vibration).
+    public bool Silent
+        => bool.TryParse(data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Silent), out var silent) && silent;
+
     // The local id of the entry this notification points at (for the read-position skip).
     public long EntryLocalId {
         get {

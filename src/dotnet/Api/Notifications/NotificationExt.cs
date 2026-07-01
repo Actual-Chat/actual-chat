@@ -21,7 +21,7 @@ public static class NotificationExt
     {
         var entryId = notification switch {
             ConversationNotification n => (ChatEntryId?)ChatEntryId.New(n.ChatId, n.StartEntryLid),
-            ChatEntryRelatedNotification n when n.EntryLid > 0 => (ChatEntryId?)n.EntryId,
+            ChatEntryRelatedNotification n when n.EntryLid > 0 => (ChatEntryId?)n.StartEntryId,
             ChatEntryNotification n => n.EntryId,
             _ => null,
         };

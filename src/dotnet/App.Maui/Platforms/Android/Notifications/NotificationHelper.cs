@@ -31,7 +31,7 @@ public static class NotificationHelper
 
     // Builds and shows a chat notification under the given tag. Shared by the FCM receive path
     // and the client reconciler's create-missing path so they stay identical.
-    public static void ShowChatNotification(string tag, string title, string body, string? imageUrl, string? link)
+    public static void ShowChatNotification(string tag, string title, string body, string? imageUrl, string? link, bool silent = false)
     {
         var context = Application.Context;
         var contentIntent = CreateViewIntent(context, link);
@@ -45,6 +45,8 @@ public static class NotificationHelper
             .SetContentText(body)!
             .SetContentIntent(contentPendingIntent)!
             .SetAutoCancel(true)!
+            // A silent update re-posts under the same tag without alerting again.
+            .SetSilent(silent)!
             .SetPriority((int)NotificationPriority.High)!;
         if (!imageUrl.IsNullOrEmpty()) {
             var largeImage = GetImage(imageUrl);

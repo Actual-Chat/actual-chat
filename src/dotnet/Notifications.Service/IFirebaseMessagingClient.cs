@@ -7,6 +7,7 @@ public interface IFirebaseMessagingClient
         IReadOnlyCollection<Symbol> deviceIds,
         bool? enableDataCollection,
         int badgeCount,
+        bool isSilent,
         CancellationToken cancellationToken);
 
     Task SendDismissal(

@@ -106,7 +106,8 @@ public sealed partial record NotificationsBackend_Handle(
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Push(
-    [property: DataMember, Key(0)] Notification Notification
+    [property: DataMember, Key(0)] Notification Notification,
+    [property: DataMember, Key(1)] bool IsSilent = false
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, IgnoreMember]
