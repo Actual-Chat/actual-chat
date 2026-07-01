@@ -10,7 +10,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
 {
     private IServiceProvider Services { get; } = services;
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
-    private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
+    private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private ILiveSessionsBackend Backend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
 
     // [ComputeMethod]
@@ -92,6 +92,56 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             return;
 
         await Backend.MuteAll(chatId, ownAuthorId, muted, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task StartCall(
+        Session session,
+        ChatId chatId,
+        ApiArray<AuthorId> invitees,
+        bool hasVideo,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        if (chat.Rules.Author?.Id is not { } callerAuthorId)
+            return;
+
+        if (invitees.Count == 0) {
+            // Empty = ring every other chat member.
+            var allAuthorIds = await Authors
+                .ListAuthorIds(session, chatId, cancellationToken)
+                .ConfigureAwait(false);
+            invitees = allAuthorIds.Where(id => id != callerAuthorId).ToApiArray();
+        }
+        await Backend
+            .StartCall(chatId, callerAuthorId, invitees, hasVideo, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
+            await Backend.AcceptCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task DeclineCall(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
+            await Backend.DeclineCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task CancelCall(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
+            await Backend.CancelCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<AuthorId?> RequireOwnAuthorId(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        return chat.Rules.CanRead() ? chat.Rules.Author?.Id : null;
     }
 
     // Host or chat admin may manage the live session.

@@ -25,6 +25,10 @@ public sealed partial record LiveSession
     public long Version { get; init; }
     [DataMember(Order = 7), MemoryPackOrder(7), Key(7)]
     public bool TranscriptionOn { get; init; }
+    [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
+    public LiveSessionKind Kind { get; init; } = LiveSessionKind.Ambient;
+    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
+    public IReadOnlyList<CallInvite> Invites { get; init; } = [];
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ConversationId? ConversationId => Conversation?.Id;
 }

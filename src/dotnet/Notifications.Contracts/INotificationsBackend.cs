@@ -44,6 +44,10 @@ public interface INotificationsBackend : IComputeService, IBackendService
     Task OnNotifyMentionedMembers(NotificationsBackend_NotifyMentionedMembers command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnNotifyConversation(NotificationsBackend_NotifyConversation command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnNotifyCall(NotificationsBackend_NotifyCall command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnCancelCall(NotificationsBackend_CancelCall command, CancellationToken cancellationToken);
 
     // Events
 
@@ -216,6 +220,36 @@ public sealed partial record NotificationsBackend_NotifyConversation(
     [property: DataMember, MemoryPackOrder(2), Key(2)] string Text,
     [property: DataMember, MemoryPackOrder(3), Key(3)] long EndEntryLid,
     [property: DataMember, MemoryPackOrder(4), Key(4)] IReadOnlyList<AuthorId> AuthorIds
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ChatId ShardKey => ConversationId.ChatId;
+}
+
+/// <summary>
+/// Command to ring the invitees of a voice/video call with an incoming-call notification.
+/// </summary>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_NotifyCall(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ConversationId ConversationId,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId Caller,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] IReadOnlyList<AuthorId> Invitees,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] bool HasVideo
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ChatId ShardKey => ConversationId.ChatId;
+}
+
+/// <summary>
+/// Command to dismiss a call's ring on the invitees' devices (cancel/decline/answer/timeout).
+/// </summary>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_CancelCall(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ConversationId ConversationId,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] IReadOnlyList<AuthorId> Invitees
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

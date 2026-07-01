@@ -37,4 +37,15 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         ChatId chatId,
         LiveSessionSummary summary,
         CancellationToken cancellationToken);
+
+    // Voice-call ring lifecycle (StartCall invitees empty = every other chat member).
+    Task StartCall(
+        ChatId chatId,
+        AuthorId callerAuthorId,
+        ApiArray<AuthorId> invitees,
+        bool hasVideo,
+        CancellationToken cancellationToken);
+    Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
+    Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
+    Task CancelCall(ChatId chatId, AuthorId callerAuthorId, CancellationToken cancellationToken);
 }

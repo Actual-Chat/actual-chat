@@ -495,4 +495,106 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // assert
         await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
     }
+
+    [Fact]
+    public async Task StartCallRingsInvitee()
+    {
+        // arrange — Bob (caller) and Alice (callee) share a chat
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act — Bob rings Alice
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // assert — the call is live at once with the caller alone, and Alice is ringing
+        var state = await backend.GetState(chatId, default);
+        state.Should().NotBeNull();
+        state!.Kind.Should().Be(LiveSessionKind.Call);
+        state.SessionStartedAt.Should().NotBeNull();
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Should().ContainSingle(i =>
+            i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Ringing);
+    }
+
+    [Fact]
+    public async Task AcceptCallJoinsCall()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — Alice answers
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert — the invite is accepted and Alice is now a participant
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Should().ContainSingle(i =>
+            i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Accepted);
+        (await backend.ListParticipants(chatId, default)).Should().Contain(aliceAuthor.Id);
+    }
+
+    [Fact]
+    public async Task DeclineCallMarksDeclined()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — Alice declines
+        await backend.DeclineCall(chatId, aliceAuthor.Id, default);
+
+        // assert — the invite is declined; the caller is still present so the call lives on
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Should().ContainSingle(i =>
+            i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Declined);
+    }
+
+    [Fact]
+    public async Task CancelCallEndsTheCall()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — Bob cancels before Alice answers
+        await backend.CancelCall(chatId, bobAuthor.Id, default);
+
+        // assert — the unanswered call is torn down
+        (await backend.GetState(chatId, default)).Should().BeNull();
+    }
 }

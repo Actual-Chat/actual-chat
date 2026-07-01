@@ -27,4 +27,15 @@ public interface ILiveSessions : IComputeService
     Task SetRules(Session session, ChatId chatId, SessionRules rules, CancellationToken cancellationToken);
     Task MutePeer(Session session, ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken);
     Task MuteAll(Session session, ChatId chatId, bool muted, CancellationToken cancellationToken);
+
+    // Voice-call ring lifecycle (StartCall invitees empty = every other chat member).
+    Task StartCall(
+        Session session,
+        ChatId chatId,
+        ApiArray<AuthorId> invitees,
+        bool hasVideo,
+        CancellationToken cancellationToken);
+    Task AcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task DeclineCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task CancelCall(Session session, ChatId chatId, CancellationToken cancellationToken);
 }

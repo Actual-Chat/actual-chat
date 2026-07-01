@@ -430,6 +430,67 @@ public class NotificationsBackend(IServiceProvider services)
         return userIds;
     }
 
+    [CommandHandler]
+    public virtual async Task OnNotifyCall(NotificationsBackend_NotifyCall command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (conversationId, caller, invitees, hasVideo) = command;
+        var chatId = conversationId.ChatId;
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return;
+
+        var callerAuthor = await AuthorsBackend
+            .Get(chatId, caller, RequestedAuthorKind.Full, cancellationToken)
+            .ConfigureAwait(false);
+        var iconUrl = callerAuthor is null ? "" : NotificationHelper.GetIconUrl(chat, callerAuthor, UrlMapper);
+        var text = hasVideo ? "Incoming video call" : "Incoming call";
+        var now = Clocks.CoarseSystemClock.Now;
+        // Unlike a conversation notification, the ring targets the invitees themselves.
+        foreach (var inviteeAuthorId in invitees) {
+            var invitee = await AuthorsBackend
+                .Get(chatId, inviteeAuthorId, RequestedAuthorKind.Default, cancellationToken)
+                .ConfigureAwait(false);
+            if (invitee is not { } a || a.UserId.Value.IsNullOrEmpty())
+                continue;
+
+            var notification = CallNotification.New(a.UserId, conversationId, caller, hasVideo) with {
+                Title = chat.Title,
+                Text = text,
+                IconUrl = iconUrl,
+                SentAt = now,
+            };
+            await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    [CommandHandler]
+    public virtual async Task OnCancelCall(NotificationsBackend_CancelCall command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (conversationId, invitees) = command;
+        var chatId = conversationId.ChatId;
+        foreach (var inviteeAuthorId in invitees) {
+            var invitee = await AuthorsBackend
+                .Get(chatId, inviteeAuthorId, RequestedAuthorKind.Default, cancellationToken)
+                .ConfigureAwait(false);
+            if (invitee is not { } a || a.UserId.Value.IsNullOrEmpty())
+                continue;
+
+            // Same id as the ring (keyed by the call's ConversationId), so the device closes that banner.
+            var notification = new CallNotification(
+                NotificationId.New(a.UserId, NotificationKind.IncomingCall, conversationId.Value));
+            var dismissal = new[] { (Notification)notification }.ToApiArray();
+            await Queues
+                .Enqueue(new NotificationsBackend_PushDismissal(a.UserId, dismissal), cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
     // Event handlers
 
     // [EventHandler]
