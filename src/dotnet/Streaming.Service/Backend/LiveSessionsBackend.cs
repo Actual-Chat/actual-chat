@@ -448,6 +448,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     public virtual async Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken)
     {
         ConversationId? conversationId = null;
+        var abandoned = false;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
@@ -459,9 +460,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 .ConfigureAwait(false);
             conversationId = (await SafeGet(chatId).ConfigureAwait(false))?.ConversationId;
             InvalidateState(chatId);
+            abandoned = await IsCallAbandoned(chatId).ConfigureAwait(false);
         }
         if (conversationId is { } cid)
             await DismissRing(cid, [inviteeAuthorId], cancellationToken).ConfigureAwait(false);
+        if (abandoned)
+            await CloseCall(chatId).ConfigureAwait(false);
     }
 
     public virtual async Task CancelCall(ChatId chatId, AuthorId callerAuthorId, CancellationToken cancellationToken)
@@ -629,6 +633,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             }
             if (expired.Count > 0 && conversationId is { } cid)
                 await DismissRing(cid, expired, CancellationToken.None).ConfigureAwait(false);
+            if (expired.Count > 0 && await IsCallAbandoned(chatId).ConfigureAwait(false))
+                await CloseCall(chatId).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "ExpireRings failed for chat #{ChatId}", chatId);
@@ -653,6 +659,17 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
         var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
         return participants.Values.Count(p => IsFreshParticipant(p, cutoff));
+    }
+
+    private async Task<bool> IsCallAbandoned(ChatId chatId)
+    {
+        // No invite is still ringing and nobody joined (only the caller, if that): the call can't become
+        // two-party, so it's abandoned - the whole thing should close.
+        var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
+        if (invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing }))
+            return false;
+
+        return await ParticipantCount(chatId).ConfigureAwait(false) < 2;
     }
 
     // Caller must hold the change lock + Computed.BeginIsolation().

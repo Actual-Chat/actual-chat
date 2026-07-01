@@ -551,28 +551,60 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task DeclineCallMarksDeclined()
+    public async Task DeclineKeepsCallWhileAnotherRings()
     {
-        // arrange
+        // arrange — Bob rings two people
         await using var bob = AppHost.NewBlazorTester(Out);
         await using var alice = AppHost.NewBlazorTester(Out);
+        await using var carol = AppHost.NewBlazorTester(Out);
         await bob.SignInAsUniqueBob();
         await alice.SignInAsUniqueAlice();
+        await carol.SignInAsNew("Carol");
         var (chatId, inviteId) = await bob.CreateChat(false);
         await alice.JoinChat(chatId, inviteId);
+        await carol.JoinChat(chatId, inviteId);
         var bobAuthor = await bob.GetOwnAuthor(chatId);
         var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var carolAuthor = await carol.GetOwnAuthor(chatId);
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.StartCall(
-            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id, carolAuthor!.Id }.ToApiArray(), false, default);
 
-        // act — Alice declines
+        // act — Alice declines while Carol is still ringing
         await backend.DeclineCall(chatId, aliceAuthor.Id, default);
 
-        // assert — the invite is declined; the caller is still present so the call lives on
+        // assert — Alice's invite is declined but the call lives on for Carol
         var live = await backend.Get(chatId, default);
-        live!.Invites.Should().ContainSingle(i =>
-            i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Declined);
+        live!.Invites.Should().Contain(i => i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Declined);
+        live.Invites.Should().Contain(i => i.InviteeId == carolAuthor.Id && i.Status == CallInviteStatus.Ringing);
+    }
+
+    [Fact]
+    public async Task AllDeclinedEndsCall()
+    {
+        // arrange — Bob rings two people, nobody joins
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await using var carol = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        await carol.SignInAsNew("Carol");
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        await carol.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var carolAuthor = await carol.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id, carolAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — both invitees decline
+        await backend.DeclineCall(chatId, aliceAuthor.Id, default);
+        await backend.DeclineCall(chatId, carolAuthor.Id, default);
+
+        // assert — no ring left and nobody joined, so the call is torn down
+        (await backend.GetState(chatId, default)).Should().BeNull();
     }
 
     [Fact]
