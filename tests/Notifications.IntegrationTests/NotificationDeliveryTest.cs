@@ -163,41 +163,72 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
     }
 
     [Fact]
-    public async Task CoalescedMessagesAggregateAndAnchorAtFirstUnread()
+    public async Task NotificationAnchorsAtFirstUnreadEntryAndAlertsAudibly()
     {
         var alice = await Tester.SignInAsAlice();
         var bob = await Tester.SignInAsBob();
-        var (chatId, _) = await Tester.CreateChat(false, "Aggregate chat");
+        var (chatId, _) = await Tester.CreateChat(false, "Anchor chat");
         await Tester.InviteToChat(chatId, alice);
         var deviceId = await RegisterDevice(alice.Id);
         Sink.Clear();
 
         await Tester.SignIn(bob);
-        var first = await Tester.CreateTextEntry(chatId, "First");
-        await Tester.CreateTextEntry(chatId, "Second");
-        await Tester.CreateTextEntry(chatId, "Third");
+        var first = await Tester.CreateTextEntry(chatId, "First unread");
 
-        // The messages coalesce into one notification anchored at the first unread entry. Delivery
-        // is at-least-once and can reorder, so wait on the anchor reaching First (the min anchor
-        // only ever decreases to it, then stays) plus at least one coalesced follow-up.
-        ChatEntryRelatedNotification notification = null!;
+        // The notification is anchored at (and deep-links to) the first unread entry.
+        // Multi-message coalescing/aggregation is covered deterministically by the unit tests;
+        // here a single message keeps the anchor + link assertions free of coalescing timing.
+        MessageNotification notification = null!;
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             notification = info.Displayed.Should().ContainSingle().Subject
                 .Should().BeOfType<MessageNotification>().Subject;
-            notification.StartEntryLid.Should().Be(first.LocalId);
-            notification.UnreadCount.Should().BeGreaterThanOrEqualTo(2);
-        }, TimeSpan.FromSeconds(30));
+        }, TimeSpan.FromSeconds(10));
 
-        notification.Text.Should().Contain("more message");
+        notification.StartEntryLid.Should().Be(first.LocalId);
         notification.GetChatLink().Value.Should().Contain($"n={first.LocalId}");
 
         // The first message alerts audibly (later coalesced updates back off to silent).
         await TestExt.When(() => {
-            var chatPushes = Sink.Messages
-                .Where(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId))
-                .ToList();
-            chatPushes.Should().Contain(m => !m.IsSilent);
+            Sink.Messages.Should().Contain(m => !m.IsDismissal && !m.IsSilent && m.DeviceIds.Contains(deviceId));
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task MentionIsDeliveredAudiblyAndCanBeReAlerted()
+    {
+        var alice = await Tester.SignInAsAlice();
+        var (chatId, _) = await Tester.CreateChat(false, "Mention chat");
+        var deviceId = await RegisterDevice(alice.Id);
+        Sink.Clear();
+
+        var entryId = ChatEntryId.New(chatId, 7);
+        var authorId = AuthorId.New(chatId, 1);
+        var mention = MentionNotification.New(alice.Id, entryId, authorId) with {
+            Title = "Bob @ Mention chat",
+            Text = "@alice ping",
+            SentAt = Clocks.SystemClock.Now,
+        };
+
+        // The mention is displayed and delivered audibly (mentions never coalesce into silence).
+        await Commander.Call(new NotificationsBackend_Notify(mention));
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            info.Displayed.Should().ContainSingle(n => n.Id == mention.Id);
+        }, TimeSpan.FromSeconds(10));
+        await TestExt.When(() => {
+            Sink.Messages.Should().Contain(m =>
+                !m.IsDismissal && !m.IsSilent && m.Notification!.Id == mention.Id && m.DeviceIds.Contains(deviceId));
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+
+        // The reminder flow re-alerts by re-pushing the still-unread mention audibly.
+        Sink.Clear();
+        await Commander.Call(new NotificationsBackend_Push(mention));
+        await TestExt.When(() => {
+            Sink.Messages.Should().Contain(m =>
+                !m.IsDismissal && !m.IsSilent && m.Notification!.Id == mention.Id && m.DeviceIds.Contains(deviceId));
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(10));
     }

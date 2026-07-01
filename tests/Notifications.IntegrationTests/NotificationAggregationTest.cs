@@ -1,3 +1,5 @@
+using ActualChat.Notifications.Flows;
+
 namespace ActualChat.Notifications.IntegrationTests;
 
 public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out)
@@ -52,6 +54,18 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         var t0 = Moment.Now;
         NotificationBeepPolicy.ShouldBeep(NotificationKind.Mention, 1, t0, t0 + TimeSpan.FromMinutes(5)).Should().BeFalse();
         NotificationBeepPolicy.ShouldBeep(NotificationKind.Mention, 1, t0, t0 + TimeSpan.FromMinutes(10)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void MentionIsDueAfterInterval()
+    {
+        var entryId = ChatEntryId.New(TestChatId, 7);
+        var authorId = AuthorId.New(TestChatId, 1);
+        var t0 = Moment.Now;
+        var mention = MentionNotification.New(TestUserId, entryId, authorId) with { SentAt = t0 };
+
+        MentionReminderFlow.IsDue(mention, t0 + TimeSpan.FromMinutes(5)).Should().BeFalse();
+        MentionReminderFlow.IsDue(mention, t0 + Constants.Notification.MentionReAlertInterval).Should().BeTrue();
     }
 
     [Fact]

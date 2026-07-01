@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using ActualChat.Contacts;
 using ActualChat.Db;
+using ActualChat.Flows;
 using ActualChat.Notifications.Db;
 using ActualChat.Queues;
 using ActualChat.Sharding;
@@ -37,6 +38,7 @@ public class NotificationsBackend(IServiceProvider services)
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IFirebaseMessagingClient FirebaseMessagingClient { get; }
         = services.GetRequiredService<IFirebaseMessagingClient>();
+    private FlowHub FlowHub { get; } = services.FlowHub();
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private CancellationToken StopToken { get; } = services.GetService<IHostApplicationLifetime>().StopToken();
@@ -1099,6 +1101,12 @@ public class NotificationsBackend(IServiceProvider services)
             .ToList();
         foreach (var notification in toPush)
             context.Operation.AddEvent(new NotificationsBackend_Push(notification, silentById.GetValueOrDefault(notification.Id)));
+
+        // A newly displayed mention (re)starts the per-user reminder flow, which re-alerts unread
+        // mentions until they're read. It's keyed by user, so repeated starts just resume it.
+        var hasNewMention = notifications.Any(n => n.Kind == NotificationKind.Mention && info.Displayed.Any(d => d.Id == n.Id));
+        if (hasNewMention)
+            context.Operation.AddEvent(FlowHub.NewResumeEvent<Flows.MentionReminderFlow>(userId.Value));
         if (dismissed.Count > 0) {
             // Only close banners whose tag is now fully gone — a chat may still have another
             // active notification under the same tag (e.g. a message remains after a mention is
