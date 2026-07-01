@@ -1,0 +1,258 @@
+@page "/test/voice-call"
+@namespace ActualChat.UI.Blazor.App.Pages
+@using ActualChat.Live
+@inherits ComputedStateComponent<AppUIHub, VoiceCallTestPage.Model>
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Voice Call Test</MainHeader>
+
+<div class="test-page-wrapper">
+@{
+    var m = State.Value;
+    var incoming = m.Incoming;
+    var live = m.Live;
+    var isCall = live is { Kind: LiveSessionKind.Call };
+    var isHost = isCall && m.OwnAuthorId is { } ownId && live!.Host == ownId;
+    var joinedCall = isCall && live!.Members.Count >= 2;
+}
+
+@if (incoming is not null) {
+    <div class="flex flex-col gap-2 mb-4 p-3 bg-green-100 rounded">
+        <div class="font-bold">Incoming @(incoming.HasVideo ? "video " : "")call</div>
+        <AuthorBadge AuthorId="@incoming.Caller" ShowPresence="true"/>
+        <div class="flex gap-2">
+            <Button Click="Accept">Accept</Button>
+            <Button Click="Decline">Decline</Button>
+        </div>
+    </div>
+}
+
+<div class="flex flex-col gap-1 mb-4">
+    <label class="font-bold">Chat id</label>
+    <div class="flex gap-2 items-center">
+        <input type="text" @bind="_chatIdInput" @bind:after="ApplyChatIfSet"
+               class="border rounded p-1 flex-1" placeholder="chatId"/>
+        <Button Click="PickChat">Pick chat</Button>
+    </div>
+</div>
+
+@if (_chatId is null) {
+    <div class="text-gray-500">Enter or pick a chat to start a call.</div>
+}
+else if (!isCall) {
+    <div class="flex flex-col gap-2">
+        <div class="font-bold">Start a call</div>
+        @if (m.InvitableAuthorIds.Count == 0) {
+            <div class="text-gray-500">No other members in this chat.</div>
+        }
+        else {
+            @foreach (var authorId in m.InvitableAuthorIds) {
+                <label class="flex gap-2 items-center" @key="@authorId.Value">
+                    <input type="checkbox"
+                           checked="@m.SelectedInvitees.Contains(authorId)"
+                           @onchange="@(e => ToggleInvitee(authorId, (bool)e.Value!))"/>
+                    <AuthorBadge AuthorId="@authorId" ShowPresence="true"/>
+                </label>
+            }
+            <label class="flex gap-2 items-center mt-1">
+                <input type="checkbox" @bind="_hasVideo"/>
+                <span>Video call</span>
+            </label>
+            <div>
+                <Button Click="StartCall" IsDisabled="@(m.SelectedInvitees.Count == 0)">Start Call</Button>
+            </div>
+        }
+    </div>
+}
+else {
+    <div class="flex flex-col gap-2">
+        <div class="font-bold">@(isHost ? "Your call" : "In call")</div>
+        <div class="flex gap-1 items-center">
+            <span>Host:</span>
+            <AuthorBadge AuthorId="@live!.Host" ShowPresence="true"/>
+        </div>
+        @if (joinedCall) {
+            <div>
+                <Button Click="Stop">Stop</Button>
+            </div>
+        }
+        else if (isHost) {
+            <div>
+                <Button Click="Cancel">Cancel call</Button>
+            </div>
+        }
+    </div>
+}
+
+@if (isCall) {
+    <div class="mt-4 flex flex-col gap-1">
+        <div class="font-bold">Invites</div>
+        @if (live!.Invites.Count == 0) {
+            <div class="text-gray-500">No invites.</div>
+        }
+        else {
+            @foreach (var invite in live.Invites) {
+                <div class="flex gap-2 items-center" @key="@($"invite-{invite.InviteeId.Value}")">
+                    <AuthorBadge AuthorId="@invite.InviteeId" ShowPresence="true"/>
+                    <span class="text-gray-600">@invite.Status</span>
+                </div>
+            }
+        }
+        <div class="font-bold mt-2">Members</div>
+        @if (live.Members.Count == 0) {
+            <div class="text-gray-500">No members yet.</div>
+        }
+        else {
+            @foreach (var member in live.Members) {
+                <div class="flex gap-2 items-center" @key="@($"member-{member.AuthorId.Value}")">
+                    <AuthorBadge AuthorId="@member.AuthorId" ShowPresence="true"/>
+                    <span class="text-gray-600">@member.Group</span>
+                </div>
+            }
+        }
+    </div>
+}
+
+@if (_error is not null) {
+    <div class="mt-4 p-3 bg-red-100 text-red-800 rounded">@_error</div>
+}
+</div>
+
+@code {
+    private string _chatIdInput = "";
+    private ChatId? _chatId;
+    private bool _hasVideo;
+    private MutableState<ImmutableHashSet<AuthorId>> _selectedInvitees = null!;
+    private string? _error;
+
+    private IAuthors Authors => Hub.Authors;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+
+    protected override void OnInitialized()
+        => _selectedInvitees = StateFactory.NewMutable(ImmutableHashSet<AuthorId>.Empty);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var incoming = await FindIncomingCall(cancellationToken).ConfigureAwait(true);
+        if (_chatId is not { } chatId || chatId.Value.IsNullOrEmpty())
+            return Model.None with { Incoming = incoming };
+
+        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(true);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(true);
+        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(true);
+        var invitable = allAuthorIds.Where(id => ownAuthor is null || id != ownAuthor.Id).ToList();
+        var selected = await _selectedInvitees.Use(cancellationToken).ConfigureAwait(true);
+        return new Model {
+            Live = live,
+            OwnAuthorId = ownAuthor?.Id,
+            InvitableAuthorIds = invitable,
+            SelectedInvitees = selected,
+            Incoming = incoming,
+        };
+    }
+
+    // Scans the user's chats for a call that is currently ringing them, so the callee can
+    // answer without knowing the caller's chat id.
+    private async Task<IncomingCall?> FindIncomingCall(CancellationToken cancellationToken) {
+        var chats = await ChatListUI.ListAllUnordered(cancellationToken).ConfigureAwait(true);
+        foreach (var chatInfo in chats.Values) {
+            var chatId = chatInfo.Id;
+            var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(true);
+            if (live is not { Kind: LiveSessionKind.Call })
+                continue;
+
+            var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(true);
+            if (ownAuthor is null)
+                continue;
+
+            var invite = live.Invites.FirstOrDefault(i => i.InviteeId == ownAuthor.Id);
+            if (invite is { Status: CallInviteStatus.Ringing })
+                return new IncomingCall(chatId, live.Host, live.Rules.VideoAllowed);
+        }
+        return null;
+    }
+
+    private void ApplyChatIfSet() {
+        if (!_chatIdInput.IsNullOrEmpty())
+            OpenChat(ChatId.Parse(_chatIdInput));
+    }
+
+    private void OpenChat(ChatId chatId) {
+        _chatId = chatId;
+        _chatIdInput = chatId.Value;
+        _selectedInvitees.Value = ImmutableHashSet<AuthorId>.Empty;
+        _error = null;
+        _ = State.Recompute();
+    }
+
+    private async Task PickChat() {
+        var modalModel = new ForwardMessageModal.Model(ImmutableHashSet<ChatId>.Empty) {
+            Title = "Select a chat to call",
+            SubmitTitle = "Select",
+            SearchPlaceholder = "Search chats",
+        };
+        var modalRef = await Hub.ModalUI.Show(modalModel);
+        await modalRef.WhenClosed;
+        if (modalModel.SelectedChatIds.Count == 0)
+            return;
+
+        OpenChat(modalModel.SelectedChatIds.First());
+    }
+
+    private void ToggleInvitee(AuthorId authorId, bool selected)
+        => _selectedInvitees.Value = selected
+            ? _selectedInvitees.Value.Add(authorId)
+            : _selectedInvitees.Value.Remove(authorId);
+
+    private Task StartCall()
+        => Run(_chatId, id => LiveSessionUI.StartCall(id, _selectedInvitees.Value.ToApiArray(), _hasVideo, default));
+    private async Task Accept() {
+        if (State.Value.Incoming is not { } incoming)
+            return;
+
+        await Run(incoming.ChatId, id => LiveSessionUI.AcceptCall(id, default));
+        OpenChat(incoming.ChatId);
+    }
+    private Task Decline()
+        => Run(State.Value.Incoming?.ChatId, id => LiveSessionUI.DeclineCall(id, default));
+    private Task Cancel()
+        => Run(_chatId, id => LiveSessionUI.CancelCall(id, default));
+    private Task Stop()
+        => Run(_chatId, id => LiveSessionUI.LeaveCall(id, default));
+
+    private async Task Run(ChatId? chatId, Func<ChatId, Task> action) {
+        if (chatId is not { } id)
+            return;
+
+        _error = null;
+        try {
+            await action(id).ConfigureAwait(true);
+        }
+        catch (Exception e) {
+            _error = e.Message;
+            StateHasChanged();
+        }
+    }
+
+    // Nested types
+
+    public sealed record IncomingCall(ChatId ChatId, AuthorId Caller, bool HasVideo);
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public LiveSession? Live { get; init; }
+        public AuthorId? OwnAuthorId { get; init; }
+        public IReadOnlyList<AuthorId> InvitableAuthorIds { get; init; } = [];
+        public ImmutableHashSet<AuthorId> SelectedInvitees { get; init; } = ImmutableHashSet<AuthorId>.Empty;
+        public IncomingCall? Incoming { get; init; }
+    }
+}

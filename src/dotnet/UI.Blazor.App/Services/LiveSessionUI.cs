@@ -52,6 +52,21 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task MuteAll(ChatId chatId, bool muted, CancellationToken cancellationToken)
         => LiveSessions.MuteAll(Session, chatId, muted, cancellationToken);
 
+    public Task StartCall(ChatId chatId, ApiArray<AuthorId> invitees, bool hasVideo, CancellationToken cancellationToken)
+        => LiveSessions.StartCall(Session, chatId, invitees, hasVideo, cancellationToken);
+
+    public Task AcceptCall(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.AcceptCall(Session, chatId, cancellationToken);
+
+    public Task DeclineCall(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.DeclineCall(Session, chatId, cancellationToken);
+
+    public Task CancelCall(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.CancelCall(Session, chatId, cancellationToken);
+
+    public Task LeaveCall(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.LeaveCall(Session, chatId, cancellationToken);
+
     [ComputeMethod]
     public virtual async Task<bool> AmIInLiveConversation(ChatId chatId, CancellationToken cancellationToken)
     {

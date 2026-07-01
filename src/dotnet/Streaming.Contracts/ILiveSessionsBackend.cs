@@ -48,4 +48,5 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
     Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
     Task CancelCall(ChatId chatId, AuthorId callerAuthorId, CancellationToken cancellationToken);
+    Task LeaveCall(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 }
