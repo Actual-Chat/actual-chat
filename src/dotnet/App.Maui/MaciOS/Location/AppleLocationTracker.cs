@@ -64,14 +64,6 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
     private void OnLocationsUpdated(object? sender, CLLocationsUpdatedEventArgs e)
     {
         if (e.Locations.LastOrDefault() is { } location)
-            SetLocation(ToGeoPoint(location));
-    }
-
-    private static GeoPoint ToGeoPoint(CLLocation location)
-    {
-        var accuracy = location.HorizontalAccuracy >= 0 ? (float)location.HorizontalAccuracy : (float?)null;
-        var bearing = location.Course >= 0 ? (float)location.Course : (float?)null;
-        var coordinate = location.Coordinate;
-        return new GeoPoint(coordinate.Latitude, coordinate.Longitude, accuracy, bearing);
+            SetLocation(location.ToGeoPoint());
     }
 }
