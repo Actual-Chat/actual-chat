@@ -59,6 +59,12 @@ export class Theme {
             const newClass = `theme-${this.currentTheme}`;
             classList.remove(oldClass);
             classList.add(newClass);
+            // The root canvas (<html>) shows through the iOS keyboard's rounded-corner notches, where the
+            // body background would otherwise propagate. Paint it with --post-panel so those corners match
+            // the input bar and keyboard. --post-panel is defined on body, so it's read and set here.
+            // TODO(AndreyY): check if it's possible to do this declaratively
+            const postPanel = getComputedStyle(document.body).getPropertyValue('--post-panel');
+            document.documentElement.style.backgroundColor = normalizeColor(postPanel);
         }
 
         this.info = createThemeInfo();
