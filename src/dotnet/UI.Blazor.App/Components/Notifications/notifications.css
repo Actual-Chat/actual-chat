@@ -77,6 +77,9 @@
 .notification-item-close {
     @apply mr-2 shrink-0;
 }
+.notification-item-actions {
+    @apply flex gap-2 mt-2;
+}
 @keyframes fadein {
     from {
         opacity: 0;
