@@ -17,7 +17,7 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
     public static string CreateWebRequestUri(string url)
         => Prefix + System.Uri.EscapeDataString(url);
 
-    public AttachFileInfo[] ConvertToAttachFileInfos(IEnumerable<Uri> uris)
+    public AttachFileInfo[] ConvertToAttachFileInfos(IEnumerable<Uri> uris, bool canPersistGrant = false)
     {
         var fileInfos = new List<AttachFileInfo>();
         foreach (var uri in uris) {
@@ -30,11 +30,22 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
             if (!TryExtractFileName(sUri, out var fileName))
                 fileName = "unknown";
 
-            // Copy now while the transient share grant is alive — the source URI dies with this process,
-            // so later uploads and post-restart retries must read our local copy instead.
-            var fileRef = CopyToCache(stream, fileName, out var fileLength);
-            if (fileRef.IsNullOrEmpty())
-                continue;
+            string fileRef;
+            long fileLength;
+            if (canPersistGrant) {
+                // The grant is persistable, so the content:// URI survives process death once
+                // AndroidFileProviderImpl takes a persistable read permission — no local copy needed.
+                using (stream)
+                    fileLength = TryGetStreamLength(stream);
+                fileRef = sUri;
+            }
+            else {
+                // Copy now while the transient share grant is alive — the source URI dies with this process,
+                // so later uploads and post-restart retries must read our local copy instead.
+                fileRef = CopyToCache(stream, fileName, out fileLength);
+                if (fileRef.IsNullOrEmpty())
+                    continue;
+            }
 
             var fileProvider = new MauiFileProvider {
                 FileRef = fileRef,
@@ -61,6 +72,16 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
         }
         catch {
             // Best-effort cleanup; the OS evicts the cache directory under storage pressure anyway.
+        }
+    }
+
+    private static long TryGetStreamLength(Stream stream)
+    {
+        try {
+            return stream.Length;
+        }
+        catch {
+            return 0;
         }
     }
 
