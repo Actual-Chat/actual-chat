@@ -1,0 +1,110 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<NotificationsModal.Model>
+@inherits ComputedStateComponent<AppUIHub, NotificationsModal.ComputedModel>
+@using ActualChat.Notifications
+@using Notification = ActualChat.Notifications.Notification
+@{
+    var notifications = State.Value.Notifications;
+}
+
+<ModalFrame Class="notifications-modal">
+    <div class="notifications-feed">
+        <div class="notifications-feed-header">
+            <h2 class="notifications-feed-title">Notifications</h2>
+            <div class="notifications-feed-filler"></div>
+            <ButtonRound Class="notifications-feed-close" Click="OnCloseClick">
+                <i class="icon-close text-xl"></i>
+            </ButtonRound>
+        </div>
+        <div class="notifications-feed-body">
+            @if (notifications.Count == 0) {
+                <div class="notifications-feed-empty">
+                    <i class="icon-bell"></i>
+                    <span>You're all caught up</span>
+                </div>
+            }
+            else {
+                @foreach (var n in notifications) {
+                    <div class="notification-item" @key="@n.Id.Value">
+                        <div class="notification-item-main" @onclick="@(() => OnOpen(n))">
+                            <div class="notification-item-icon">
+                                @if (!n.IconUrl.IsNullOrEmpty()) {
+                                    <img class="notification-item-avatar" src="@n.IconUrl" alt=""/>
+                                }
+                                else {
+                                    <i class="icon-bell"></i>
+                                }
+                            </div>
+                            <div class="notification-item-content">
+                                <div class="notification-item-title">@n.Title</div>
+                                <div class="notification-item-text">@n.Text</div>
+                            </div>
+                            <div class="notification-item-time">@FormatTime(n.SentAt)</div>
+                        </div>
+                        <ButtonSquare Class="notification-item-close" Click="@(() => OnDismiss(n))" tabindex="-1" aria-label="dismiss">
+                            <i class="icon-close"></i>
+                        </ButtonSquare>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</ModalFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private INotifications Notifications => Hub.Notifications;
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.None,
+            Category = GetStateCategory(GetType()),
+            UpdateDelayer = FixedDelayer.NextTick,
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var notifications = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
+        return new ComputedModel { Notifications = notifications.OrderByDescending(n => n.SentAt).ToList() };
+    }
+
+    private void OnOpen(Notification notification) {
+        Modal.Close();
+        _ = History.NavigateTo(notification.GetChatLink());
+    }
+
+    private Task OnDismiss(Notification notification)
+        => UICommander.Run(new Notifications_Handle(Session, notification.Id));
+
+    private void OnCloseClick()
+        => Modal.Close();
+
+    private static string FormatTime(Moment sentAt) {
+        var delta = Moment.Now - sentAt;
+        if (delta < TimeSpan.FromMinutes(1))
+            return "now";
+        if (delta < TimeSpan.FromHours(1))
+            return $"{(int)delta.TotalMinutes}m";
+        if (delta < TimeSpan.FromDays(1))
+            return $"{(int)delta.TotalHours}h";
+
+        return $"{(int)delta.TotalDays}d";
+    }
+
+    // Nested types
+
+    public sealed record ComputedModel {
+        public static readonly ComputedModel None = new();
+
+        public IReadOnlyList<Notification> Notifications { get; init; } = [];
+
+        // This record relies on referential equality (holds a mutable collection).
+        public bool Equals(ComputedModel? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    }
+
+    public sealed record Model {
+        public static readonly Model Instance = new();
+    }
+}

@@ -16,6 +16,7 @@ public static class Links
     public static readonly LocalUrl Privacy = "/docs/privacy";
     public static readonly LocalUrl NotFound = "/404";
     public static readonly LocalUrl Chats = "/chat";
+    public static readonly LocalUrl Notifications = "/notifications";
     public static readonly LocalUrl TestPageHome = "/test/blazor";
 
 

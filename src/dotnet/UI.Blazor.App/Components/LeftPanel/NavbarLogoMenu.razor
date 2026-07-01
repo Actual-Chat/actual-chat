@@ -13,6 +13,11 @@
     </MenuEntry>
 }
 <MenuEntry
+    Icon="icon-bell"
+    Text="Notifications"
+    Click="@OnNotificationsClick">
+</MenuEntry>
+<MenuEntry
     Icon="icon-settings"
     Text="Settings"
     Click="@OnSettingsClick">
@@ -64,6 +69,11 @@
         await WhenClosed;
         if (State.Value.NotesChat is { } notes)
             _ = History.NavigateTo(Links.Chat(notes.Id));
+    }
+
+    private async Task OnNotificationsClick() {
+        await WhenClosed;
+        _ = History.NavigateTo(Links.Notifications);
     }
 
     private async Task OnSettingsClick() {
