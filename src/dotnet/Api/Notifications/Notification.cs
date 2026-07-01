@@ -59,4 +59,9 @@ public abstract partial record Notification(
             HandledAt = null,
         };
     }
+
+    // Merges this incoming notification with the one it replaces (null = first for its key). The
+    // base keeps only the identity carry-over; subtypes that coalesce accumulate their state here.
+    public virtual Notification MergeWith(Notification? existing)
+        => existing is null ? this : WithSimilar(existing);
 }

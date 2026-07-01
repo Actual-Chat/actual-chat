@@ -148,9 +148,13 @@ onBackgroundMessage(messaging, async payload => {
             return;
     }
     const tag = data.tag;
+    const silent = (data.silent ?? '').toLowerCase() === 'true';
     const options: NotificationOptions = {
         tag: tag.toString(),
         icon: data.icon,
+        silent: silent,
+        // @ts-expect-error renotify is valid per the Notifications spec but missing from lib DOM types
+        renotify: !silent,
         // @ts-expect-error TODO: fix errors
         body: payload.notification.body,
         data: {

@@ -21,15 +21,16 @@ public sealed partial record UserNotificationInfo(
     [DataMember(Order = 5), Key(5)]
     public bool IsDormant { get; init; }
 
-    // Upserts notification into Displayed: a notification with the same Id replaces the
-    // existing one (keeping its Version/CreatedAt), otherwise it's appended.
+    // Upserts notification into Displayed: a notification with the same Id is merged into the
+    // existing one (coalescing subtypes accumulate their state), otherwise it's appended.
     public UserNotificationInfo WithNotification(Notification notification)
     {
         var id = notification.Id;
         var existing = Displayed.FirstOrDefault(n => n.Id == id);
+        var merged = notification.MergeWith(existing);
         var displayed = existing != null
-            ? Displayed.WithUpdate(n => n.Id == id, _ => notification.WithSimilar(existing))
-            : Displayed.With(notification);
+            ? Displayed.WithUpdate(n => n.Id == id, _ => merged)
+            : Displayed.With(merged);
         return this with { Displayed = displayed };
     }
 }

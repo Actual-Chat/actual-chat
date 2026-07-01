@@ -162,6 +162,46 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         info2.Displayed.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task CoalescedMessagesAggregateAndAnchorAtFirstUnread()
+    {
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Aggregate chat");
+        await Tester.InviteToChat(chatId, alice);
+        var deviceId = await RegisterDevice(alice.Id);
+        Sink.Clear();
+
+        await Tester.SignIn(bob);
+        var first = await Tester.CreateTextEntry(chatId, "First");
+        await Tester.CreateTextEntry(chatId, "Second");
+        await Tester.CreateTextEntry(chatId, "Third");
+
+        // The messages coalesce into one notification anchored at the first unread entry. Delivery
+        // is at-least-once and can reorder, so wait on the anchor reaching First (the min anchor
+        // only ever decreases to it, then stays) plus at least one coalesced follow-up.
+        ChatEntryRelatedNotification notification = null!;
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            notification = info.Displayed.Should().ContainSingle().Subject
+                .Should().BeOfType<MessageNotification>().Subject;
+            notification.StartEntryLid.Should().Be(first.LocalId);
+            notification.UnreadCount.Should().BeGreaterThanOrEqualTo(2);
+        }, TimeSpan.FromSeconds(30));
+
+        notification.Text.Should().Contain("more message");
+        notification.GetChatLink().Value.Should().Contain($"n={first.LocalId}");
+
+        // The first message alerts audibly (later coalesced updates back off to silent).
+        await TestExt.When(() => {
+            var chatPushes = Sink.Messages
+                .Where(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId))
+                .ToList();
+            chatPushes.Should().Contain(m => !m.IsSilent);
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+    }
+
     private async Task<Symbol> RegisterDevice(UserId userId)
     {
         var deviceId = new Symbol("test-device-" + userId.Value);

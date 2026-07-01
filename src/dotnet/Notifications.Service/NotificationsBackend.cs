@@ -695,9 +695,13 @@ public class NotificationsBackend(IServiceProvider services)
         // handled, or muted since it was enqueued), and take the badge from the current active
         // set — so a redelivered/out-of-order queue message can't resurrect it or stamp a stale badge.
         var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
-        if (!info.Displayed.Any(n => n.Id == notification.Id))
+        // Send the converged displayed notification (not the enqueued one), so aggregated content,
+        // the first-unread anchor and the beep state all reflect the committed state.
+        var displayed = info.Displayed.FirstOrDefault(n => n.Id == notification.Id);
+        if (displayed is null)
             return;
 
+        notification = displayed;
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0) {
@@ -709,9 +713,9 @@ public class NotificationsBackend(IServiceProvider services)
         var isAdmin = account is { IsAdmin: true };
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
         var entryId = GetEntryId(notification);
-        DebugLog?.LogInformation("-> OnPush. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}, DeviceIds#={DeviceIdCount}",
-            entryId, userId, notification.Id, deviceIds.Count);
-        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, info.Displayed.Count, cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogInformation("-> OnPush. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}, IsSilent={IsSilent}, DeviceIds#={DeviceIdCount}",
+            entryId, userId, notification.Id, command.IsSilent, deviceIds.Count);
+        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, info.Displayed.Count, command.IsSilent, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -862,6 +866,13 @@ public class NotificationsBackend(IServiceProvider services)
                 IconUrl = iconUrl,
                 SentAt = now,
             };
+            if (notification is ChatEntryRelatedNotification related)
+                notification = related with {
+                    StartEntryLid = entryLid,
+                    UnreadCount = 1,
+                    AuthorIds = new[] { changeAuthor.Id }.ToApiArray(),
+                    LeadText = content,
+                };
             await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
         }
     }
@@ -951,7 +962,7 @@ public class NotificationsBackend(IServiceProvider services)
     private static ChatEntryId? GetEntryId(Notification notification)
         => notification switch {
             ConversationNotification n => ChatEntryId.New(n.ChatId, n.StartEntryLid),
-            ChatEntryRelatedNotification n => n.EntryId,
+            ChatEntryRelatedNotification n => n.StartEntryId,
             ChatEntryNotification n => n.EntryId,
             _ => null,
         };
@@ -1039,7 +1050,7 @@ public class NotificationsBackend(IServiceProvider services)
             .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
 
-        var (info, dismissed) = await Reconcile(
+        var (info, dismissed, silentById) = await Reconcile(
             dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId)).ConfigureAwait(false);
         if (notifications.Count == 0 && dismissed.Count == 0)
             return; // Nothing changed (e.g. OnHandle for an already-dismissed notification)
@@ -1062,7 +1073,7 @@ public class NotificationsBackend(IServiceProvider services)
             dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
                 .FirstAsync(x => x.Id == userId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            (info, dismissed) = await Reconcile(dbUserNotifications.ToModel()).ConfigureAwait(false);
+            (info, dismissed, silentById) = await Reconcile(dbUserNotifications.ToModel()).ConfigureAwait(false);
             dbUserNotifications.UpdateFrom(info);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -1087,7 +1098,7 @@ public class NotificationsBackend(IServiceProvider services)
             .Select(g => g.MaxBy(n => n.SentAt)!)
             .ToList();
         foreach (var notification in toPush)
-            context.Operation.AddEvent(new NotificationsBackend_Push(notification));
+            context.Operation.AddEvent(new NotificationsBackend_Push(notification, silentById.GetValueOrDefault(notification.Id)));
         if (dismissed.Count > 0) {
             // Only close banners whose tag is now fully gone — a chat may still have another
             // active notification under the same tag (e.g. a message remains after a mention is
@@ -1098,8 +1109,9 @@ public class NotificationsBackend(IServiceProvider services)
         }
         return;
 
-        async Task<(UserNotificationInfo Info, IReadOnlyList<Notification> Dismissed)> Reconcile(UserNotificationInfo committed)
+        async Task<(UserNotificationInfo Info, IReadOnlyList<Notification> Dismissed, Dictionary<NotificationId, bool> SilentById)> Reconcile(UserNotificationInfo committed)
         {
+            var now = Clocks.SystemClock.Now;
             var readPositions = await GetReadPositions(userId, committed.Displayed.Concat(notifications), cancellationToken)
                 .ConfigureAwait(false);
             var current = committed;
@@ -1114,13 +1126,49 @@ public class NotificationsBackend(IServiceProvider services)
             foreach (var notification in notifications)
                 if (!IsRead(notification, readPositions))
                     current = current.WithNotification(notification);
+
+            // For each coalesced chat notification just added/updated, compose its summary text and
+            // decide whether this push audibly alerts (bumping the beep state) or updates silently.
+            var silentById = new Dictionary<NotificationId, bool>();
+            foreach (var id in notifications.Select(n => n.Id).Distinct()) {
+                if (current.Displayed.FirstOrDefault(n => n.Id == id) is not ChatEntryRelatedNotification related)
+                    continue;
+
+                var shouldBeep = NotificationBeepPolicy.ShouldBeep(related.Kind, related.BeepCount, related.LastBeepAt, now);
+                var text = await ComposeAggregatedText(related, cancellationToken).ConfigureAwait(false);
+                var updated = related with {
+                    Text = text,
+                    BeepCount = shouldBeep ? related.BeepCount + 1 : related.BeepCount,
+                    LastBeepAt = shouldBeep ? now : related.LastBeepAt,
+                };
+                current = current with { Displayed = current.Displayed.WithUpdate(n => n.Id == id, _ => updated) };
+                silentById[id] = !shouldBeep;
+            }
+
             current = current with {
                 Version = VersionGenerator.NextVersion(current.Version),
-                LastPushAt = notifications.Count > 0 ? Clocks.SystemClock.Now : current.LastPushAt,
+                LastPushAt = notifications.Count > 0 ? now : current.LastPushAt,
                 IsDormant = current.Displayed.Count >= Constants.Notification.DormancyThreshold,
             };
-            return (current, dismissed);
+            return (current, dismissed, silentById);
         }
+    }
+
+    private async Task<string> ComposeAggregatedText(ChatEntryRelatedNotification notification, CancellationToken cancellationToken)
+    {
+        var leadText = notification.LeadText.IsNullOrEmpty() ? notification.Text : notification.LeadText;
+        if (notification.UnreadCount <= 1)
+            return leadText;
+
+        var names = new List<string>();
+        foreach (var authorId in notification.AuthorIds.Take(Constants.Notification.MaxSummaryAuthors)) {
+            var author = await AuthorsBackend
+                .Get(notification.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+                .ConfigureAwait(false);
+            if (author is { } a)
+                names.Add(a.Avatar.Name);
+        }
+        return NotificationHelper.GetAggregatedText(leadText, names, notification.UnreadCount);
     }
 
     // Banner grouping key = the client push tag. Uses the shared NotificationExt.GetChatTag so

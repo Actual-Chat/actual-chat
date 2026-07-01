@@ -278,9 +278,10 @@ public static partial class Constants
             public const string Timestamp = "timestamp";
             public const string DismissedIds = "dismissedIds";
             public const string DismissedTags = "dismissedTags";
+            public const string Silent = "silent";
 
             public static readonly string[] ValidKeys = {
-                Body, ChatId, ChatEntryId, DismissedIds, DismissedTags, LastEntryLocalId, Icon, ImageUrl, Kind, Link, NotificationId, Tag, Title, Timestamp
+                Body, ChatId, ChatEntryId, DismissedIds, DismissedTags, LastEntryLocalId, Icon, ImageUrl, Kind, Link, NotificationId, Silent, Tag, Title, Timestamp
             };
 
             public static bool IsValidKey(string key)
@@ -291,6 +292,29 @@ public static partial class Constants
         {
             public static readonly TimeSpan Message = TimeSpan.FromSeconds(30);
         }
+
+        // Audible-alert back-off for a coalesced chat notification, indexed by the number of alerts
+        // already emitted (index 0 is unused — the first alert always fires). Later values clamp to
+        // the last entry: alert immediately, then ~10s a few times, then every 5min, then every 30min.
+        public static readonly TimeSpan[] BeepBackoff = {
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromMinutes(5),
+            TimeSpan.FromMinutes(30),
+        };
+        // After this much silence the beep back-off resets, so the next message alerts immediately
+        // (a fresh burst should be reactable ASAP rather than inheriting the previous burst's back-off).
+        public static readonly TimeSpan BeepResetPeriod = TimeSpan.FromMinutes(5);
+        // Unread mentions re-alert on this fixed interval (they never coalesce with chat messages).
+        public static readonly TimeSpan MentionReAlertInterval = TimeSpan.FromMinutes(10);
+        // A first unread message shorter than this rolls the next message into the notification lead.
+        public const int LeadRollInThreshold = 24;
+        // Distinct author names shown in a coalesced notification's summary before "+N more".
+        public const int MaxSummaryAuthors = 3;
+        // Distinct authors tracked on a coalesced notification (bounds the stored set).
+        public const int MaxTrackedAuthors = 8;
 
         public static readonly TimeSpan PermissionRequestDismissPeriod = TimeSpan.FromDays(7);
         public static readonly TimeSpan EntryWaitTimeout = TimeSpan.FromSeconds(0.5);

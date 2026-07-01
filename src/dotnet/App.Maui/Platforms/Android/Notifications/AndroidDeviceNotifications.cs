@@ -37,7 +37,8 @@ public class AndroidDeviceNotifications : IDeviceNotifications
                 continue;
             var info = active.FirstOrDefault(x => x.Tag == tag);
             if (info != null)
-                NotificationHelper.ShowChatNotification(info.Tag, info.Title, info.Text, info.IconUrl, info.Url);
+                // Healing a dropped banner must not alert — it's a reconcile, not a new event.
+                NotificationHelper.ShowChatNotification(info.Tag, info.Title, info.Text, info.IconUrl, info.Url, silent: true);
         }
         return Task.CompletedTask;
     }

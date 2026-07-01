@@ -20,6 +20,7 @@ public class FirebaseMessagingClient(
         IReadOnlyCollection<Symbol> deviceIds,
         bool? enableDataCollection,
         int badgeCount,
+        bool isSilent,
         CancellationToken cancellationToken)
     {
         var notificationId = notification.Id;
@@ -29,7 +30,9 @@ public class FirebaseMessagingClient(
         var iconUrl = notification.IconUrl;
         var chatNotification = notification as ChatNotification;
         var chatId = (ChatId?)chatNotification?.ChatId;
+        // entryId carries the latest entry (client read-skip), linkEntryId the first-unread tap target.
         var entryId = (ChatEntryId?)null;
+        var linkEntryId = (ChatEntryId?)null;
         long lastEntryLocalId = 0;
         switch (notification) {
         case AttentionNotification attention:
@@ -37,12 +40,15 @@ public class FirebaseMessagingClient(
             break;
         case ChatEntryRelatedNotification related when related.EntryLid != 0:
             entryId = related.EntryId;
+            linkEntryId = related.StartEntryId;
             break;
         case ChatEntryNotification entry:
             entryId = entry.EntryId;
+            linkEntryId = entry.EntryId;
             break;
         case ConversationNotification conversation:
             entryId = ChatEntryId.New(conversation.ChatId, conversation.StartEntryLid);
+            linkEntryId = entryId;
             break;
         }
 
@@ -52,9 +58,9 @@ public class FirebaseMessagingClient(
         var isRinger = kind is NotificationKind.Attention or NotificationKind.IncomingCall;
 
         var isChatRelated = chatId is not null;
-        var isEntryRelated = entryId is not null;
+        var isEntryRelated = linkEntryId is not null;
         var tag = notification.GetChatTag() ?? "topic";
-        var link = isEntryRelated ? UrlMapper.ToAbsolute(Links.Chat(entryId))
+        var link = isEntryRelated ? UrlMapper.ToAbsolute(Links.Chat(linkEntryId))
             : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId!))
             : "";
 
@@ -66,6 +72,7 @@ public class FirebaseMessagingClient(
             { Constants.Notification.MessageDataKeys.Icon, absoluteIconUrl },
             { Constants.Notification.MessageDataKeys.Kind, kind.ToString() },
             { Constants.Notification.MessageDataKeys.Link, link },
+            { Constants.Notification.MessageDataKeys.Silent, isSilent.ToString() },
             { Constants.Notification.MessageDataKeys.Timestamp, ((long)notification.CreatedAt.EpochOffset.TotalMilliseconds).ToString() },
         };
         if (lastEntryLocalId > 0)
@@ -91,6 +98,8 @@ public class FirebaseMessagingClient(
                 Headers = new Dictionary<string, string>() {
                     ["apns-push-type"] = "alert",
                     ["apns-priority"] = isRinger ? "10" : "5",
+                    // Coalesce updates for the same chat into a single banner instead of stacking.
+                    ["apns-collapse-id"] = tag,
                 },
                 Aps = new Aps {
                     Alert = new ApsAlert {
@@ -99,7 +108,8 @@ public class FirebaseMessagingClient(
                     },
                     // iOS only updates a backgrounded app's icon badge from aps.badge -> always send it.
                     Badge = badgeCount,
-                    Sound = isRinger ? "attention_ringtone.caf" : "default",
+                    // A silent update refreshes the banner content without playing a sound.
+                    Sound = isSilent ? null : isRinger ? "attention_ringtone.caf" : "default",
                     MutableContent = true,
                     ThreadId = tag,
                 },
@@ -109,7 +119,7 @@ public class FirebaseMessagingClient(
             },
             Webpush = new WebpushConfig {
                 Notification = new WebpushNotification {
-                    Renotify = false,
+                    Renotify = !isSilent,
                     Title = title,
                     Body = content,
                     Tag = tag,
