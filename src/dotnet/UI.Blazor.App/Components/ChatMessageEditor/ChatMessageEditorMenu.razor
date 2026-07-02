@@ -17,29 +17,29 @@
             Click="@(() => OnAttachClick("video/*"))"/>
     }
     <MenuEntry
-        Icon="icon-map-point"
-        Text="Share location"
-        Click="@OnShareLocationClick"/>
-    <MenuEntry
         Icon="icon-status"
         Text="Add Emoji"
-        Click="@OnEmojiClick">
-    </MenuEntry>
+        Click="@OnEmojiClick"/>
+
     <MenuEntry
         Icon="icon-gif"
         Text="Add GIF"
-        Click="@OnGifClick">
-    </MenuEntry>
+        Click="@OnGifClick"/>
+
     <MenuEntry
         Icon="icon-file"
         Text="Attach File"
-        Click="@(() => OnAttachClick())">
-    </MenuEntry>
+        Click="@(() => OnAttachClick())"/>
+
     <MenuEntry
         Icon="icon-at"
         Text="Mention"
-        Click="@OnMentionClick">
-    </MenuEntry>
+        Click="@OnMentionClick"/>
+
+    <MenuEntry
+        Icon="icon-map-point"
+        Text="Share location"
+        Click="@OnShareLocationClick"/>
 </div>
 
 @code {
