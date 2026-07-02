@@ -1,13 +1,13 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// Public API for the local user's location sharing: forwards start/stop to <see cref="LocationReporter"/>
+/// Public API for the local user's location sharing: forwards start/stop to <see cref="LiveLocationReporter"/>
 /// (which owns the shares state) and posts one-shot current-location messages.
 /// </summary>
 public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
-    private LocationReporter Reporter => field ??= Hub.Services.GetRequiredService<LocationReporter>();
+    private LiveLocationReporter Reporter => field ??= Hub.Services.GetRequiredService<LiveLocationReporter>();
 
     public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
         => Reporter.StartSharing(chatId, duration, cancellationToken);

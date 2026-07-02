@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <see cref="ILocationTracker"/> and reports each share's position once per
 /// <see cref="Constants.Location.UpdatePeriod"/>. The first fix mints the share id and posts a chat entry.
 /// </summary>
-public class LocationReporter : UIWorkerBase<AppUIHub>, IComputeService
+public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 {
     private readonly Lock _lock = new();
     private readonly StoredState<ActiveShare[]> _shares;
@@ -16,7 +16,7 @@ public class LocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
     private Moment ServerNow => Clocks.ServerClock.Now;
 
-    public LocationReporter(AppUIHub hub) : base(hub)
+    public LiveLocationReporter(AppUIHub hub) : base(hub)
         => _shares = StateFactory.NewKvasStored<ActiveShare[]>(
             new (LocalSettings, nameof(ActiveShare)) {
                 InitialValue = [],
