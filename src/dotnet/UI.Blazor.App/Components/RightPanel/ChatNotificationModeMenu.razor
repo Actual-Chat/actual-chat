@@ -1,0 +1,44 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Menu<AppUIHub>
+@{
+    RenderFragment RenderEntry(ChatNotificationMode mode, string icon, string text) =>
+        @<MenuEntry
+            Class="@(mode == _mode ? "selected" : "")"
+            Icon="@icon"
+            Text="@text"
+            Click="@(() => OnClick(mode))">
+        </MenuEntry>;
+}
+
+<div class="chat-notification-mode-menu">
+    <div class="c-title">
+        Notifications:
+    </div>
+    <Divider/>
+    @RenderEntry(ChatNotificationMode.Default, "icon-bell", "All messages")
+    @RenderEntry(ChatNotificationMode.ImportantOnly, "icon-bell-check", "Important only")
+    @RenderEntry(ChatNotificationMode.Muted, "icon-bell-off-fill", "Muted")
+</div>
+
+@code {
+    private ChatId? _chatId;
+    private ChatNotificationMode _mode;
+
+    protected override async Task OnParametersSetAsync() {
+        _chatId = ChatId.TryParse(Arguments.ElementAtOrDefault(0));
+        if (_chatId is not { } chatId)
+            return;
+
+        var settings = await UserSettingsUI.ChatUserSettings(chatId).Get(default).ConfigureAwait(true);
+        _mode = settings.NotificationMode;
+    }
+
+    private Task OnClick(ChatNotificationMode mode) {
+        if (_chatId is not { } chatId)
+            return Task.CompletedTask;
+
+        return UICommander.RunLocal(ct
+            => UserSettingsUI.ChatUserSettings(chatId)
+                .Update(x => x with { NotificationMode = mode }, ct));
+    }
+}
