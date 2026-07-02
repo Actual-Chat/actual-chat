@@ -95,4 +95,7 @@ public static class Change
 
     public static Change<T> Upsert<T>(T item) where T : IHasVersion<long>
         => item.HasVersion() ? Update(item) : Create(item);
+
+    public static Change<T> Upsert<T>(T item, IStringIdentifier? id)
+        => id is not null ? Update(item) : Create(item);
 }

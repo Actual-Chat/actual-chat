@@ -59,25 +59,12 @@ public class LocationReporter(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComp
             if (point is null)
                 return;
 
-            if (share.LocationId is not { } locationId) {
-                await PostEntry(share, point).ConfigureAwait(false);
-                return;
-            }
-
-            var change = Change.Update(new SharedLocationDiff { Point = point });
-            var cmd = new SharedLocations_Change(Session, share.ChatId, locationId, change);
-            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
-        }
-
-        async Task PostEntry(ActiveShare share, GeoPoint point)
-        {
-            var liveDuration = share.ExpiresAt - ServerNow;
-            var change = Change.Create(new SharedLocationDiff { Point = point, LiveDuration = liveDuration });
+            var diff = new SharedLocationDiff { Point = point, LiveDuration = share.ExpiresAt - ServerNow };
             var shared = await Commander.Call(
-                    new SharedLocations_Change(Session, share.ChatId, null, change),
+                    new SharedLocations_Change(Session, share.ChatId, share.LocationId, Change.Upsert(diff, share.LocationId)),
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (shared is null)
+            if (shared is null || share.LocationId is not null)
                 return;
 
             var command = new Chats_UpsertEntry(Session, share.ChatId, null) { LocationId = shared.Id };

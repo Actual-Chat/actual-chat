@@ -10,6 +10,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LocationUI : UIServiceBase<AppUIHub>, IComputeService
 {
     private readonly Lock _lock = new();
+    // TODO: try moving to LocationReporter
     private readonly StoredState<ActiveShare[]> _shares;
 
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
