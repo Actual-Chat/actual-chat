@@ -105,7 +105,8 @@
 body.hoverable .notification-item .c-ending {
     @apply opacity-0;
 }
-body.hoverable .notification-item:hover .c-ending {
+body.hoverable .notification-item:hover .c-ending,
+body.hoverable .notification-item:focus-within .c-ending {
     @apply opacity-100;
 }
 

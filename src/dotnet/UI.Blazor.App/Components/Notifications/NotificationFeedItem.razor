@@ -3,7 +3,8 @@
 @using Notification = ActualChat.Notifications.Notification
 @inherits ComponentBase<AppUIHub>
 
-<div class="notification-item @(IsUnread ? "unread" : "")" role="option" tabindex="0" @onclick="OnOpen">
+<div class="notification-item @(IsUnread ? "unread" : "")" role="option" tabindex="0"
+    @onclick="OnOpen" @onkeydown="OnKeyDown">
     <div class="c-avatar">
         @if (Chat is not null) {
             <ChatIcon Chat="@Chat" Size="SquareSize.Size10"/>
@@ -33,7 +34,7 @@
         }
     </div>
     <div class="c-ending" @onclick:stopPropagation="true">
-        <ButtonSquare Class="c-dismiss" Click="OnDismissClick" tabindex="-1" aria-label="dismiss">
+        <ButtonSquare Class="c-dismiss" Click="OnDismissClick" aria-label="dismiss">
             <i class="icon-close"></i>
         </ButtonSquare>
     </div>
@@ -47,6 +48,11 @@
 
     private void OnOpen()
         => _ = Hub.History.NavigateTo(Notification.GetChatLink());
+
+    private void OnKeyDown(KeyboardEventArgs e) {
+        if (e.Key is "Enter" or "NumpadEnter" or " " or "Spacebar")
+            OnOpen();
+    }
 
     private Task OnDismissClick()
         => Dismissed.InvokeAsync();

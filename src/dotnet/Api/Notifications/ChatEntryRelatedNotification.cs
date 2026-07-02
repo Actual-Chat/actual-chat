@@ -59,16 +59,24 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
         var startEntryLid = MinPositive(existingStart, incomingStart);
         var entryLid = Math.Max(e.EntryLid, EntryLid);
 
+        // Pre-coalescing blobs deserialize UnreadCount as 0 though they represent one unread entry.
+        var existingUnread = Math.Max(1, e.UnreadCount);
         string leadText;
         int leadCount;
         if (incomingStart > 0 && incomingStart < existingStart) {
             leadText = Text; // this message is now the earliest unread -> it becomes the lead
             leadCount = 1;
         }
+        else if (e.LeadText.IsNullOrEmpty()) {
+            // A legacy existing without a lead falls back to its own text (its latest message).
+            leadText = e.Text.IsNullOrEmpty() ? Text : e.Text;
+            leadCount = 1;
+        }
         else {
-            leadText = e.LeadText ?? "";
+            leadText = e.LeadText;
             leadCount = Math.Max(1, e.LeadCount);
-            if (e.UnreadCount == 1 && leadText.Length < Constants.Notification.LeadRollInThreshold && !Text.IsNullOrEmpty()) {
+            var canRollIn = leadText.Length < Constants.Notification.LeadRollInThreshold && !Text.IsNullOrEmpty();
+            if (existingUnread == 1 && canRollIn) {
                 leadText = $"{leadText}\n{Text}";
                 leadCount++;
             }
@@ -85,7 +93,7 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
             SentAt = Moment.Max(e.SentAt, SentAt),
             EntryLid = entryLid,
             StartEntryLid = startEntryLid,
-            UnreadCount = e.UnreadCount + 1,
+            UnreadCount = existingUnread + 1,
             AuthorIds = authorIds,
             LeadText = leadText,
             LeadCount = leadCount,
