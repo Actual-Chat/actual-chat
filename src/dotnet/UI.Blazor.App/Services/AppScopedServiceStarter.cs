@@ -137,7 +137,7 @@ public sealed class AppScopedServiceStarter
             await Task.Delay(baseDelay * 2, cancellationToken).ConfigureAwait(false);
             Hub.AudioInitializer.StartInitialization();
             Hub.Services.GetRequiredService<AppPresenceReporter>().Start();
-            Hub.LocationUI.Start();
+            Hub.Services.GetRequiredService<LocationReporter>().Start();
             Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Hub.Services.GetRequiredService<NotificationReconciler>().Start();
             if (hostKind.IsApp())
