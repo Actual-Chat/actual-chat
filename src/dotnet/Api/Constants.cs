@@ -293,8 +293,10 @@ public static partial class Constants
         // After this much silence the beep back-off resets, so the next message alerts immediately
         // (a fresh burst should be reactable ASAP rather than inheriting the previous burst's back-off).
         public static readonly TimeSpan BeepResetPeriod = TimeSpan.FromMinutes(5);
-        // Unread mentions re-alert on this fixed interval (they never coalesce with chat messages).
+        // Unread mentions re-alert on this fixed interval (they never coalesce with chat messages),
+        // at most MaxMentionReAlerts times per mention.
         public static readonly TimeSpan MentionReAlertInterval = TimeSpan.FromMinutes(10);
+        public const int MaxMentionReAlerts = 2;
         // A first unread message shorter than this rolls the next message into the notification lead.
         public const int LeadRollInThreshold = 24;
         // Distinct author names shown in a coalesced notification's summary before "+N more".

@@ -69,6 +69,19 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void MentionReAlertsAreCapped()
+    {
+        var entryId = ChatEntryId.New(TestChatId, 7);
+        var t0 = Moment.Now;
+        var mention = MentionNotification.New(TestUserId, entryId, AuthorId.New(TestChatId, 1)) with { SentAt = t0 };
+        var due = t0 + Constants.Notification.MentionReAlertInterval;
+
+        for (var count = 0; count < Constants.Notification.MaxMentionReAlerts; count++)
+            MentionReminderFlow.ShouldReAlert(mention, due, count).Should().BeTrue();
+        MentionReminderFlow.ShouldReAlert(mention, due, Constants.Notification.MaxMentionReAlerts).Should().BeFalse();
+    }
+
+    [Fact]
     public void MergeAccumulatesUnreadAndAuthors()
     {
         var author1 = AuthorId.New(TestChatId, 1);
