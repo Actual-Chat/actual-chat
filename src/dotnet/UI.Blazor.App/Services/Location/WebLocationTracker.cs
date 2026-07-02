@@ -26,7 +26,7 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
         catch {
             // Roll back so a later Start can retry from a clean state.
             IsTracking = false;
-            _blazorRef?.Dispose();
+            _blazorRef.DisposeSilently();
             _blazorRef = null;
             throw;
         }
@@ -43,7 +43,7 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
             _jsRef = null;
             await jsRef.DisposeSilentlyAsync("stop").ConfigureAwait(false);
         }
-        _blazorRef?.Dispose();
+        _blazorRef.DisposeSilently();
         _blazorRef = null;
     }
 
