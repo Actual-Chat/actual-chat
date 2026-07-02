@@ -56,13 +56,11 @@
         if (locations.Count == 0)
             return Model.None;
 
-        // TODO: use AuthorUI
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var ownLocation = ownAuthor != null
-            ? locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id)
-            : null;
+        var ownAuthor = await Hub.AuthorUI.GetOwn(chatId, cancellationToken).ConfigureAwait(false);
+        var ownLocation = locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id);
         var avatars = new List<Avatar>(locations.Count);
         foreach (var location in locations) {
+            // TODO: move listing avatars or authors to LocationUI
             var author = await Authors.Get(Session, chatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
             if (author != null)
                 avatars.Add(author.Avatar);

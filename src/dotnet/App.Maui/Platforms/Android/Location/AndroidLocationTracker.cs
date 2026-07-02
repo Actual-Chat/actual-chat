@@ -26,7 +26,8 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
             intent.PutExtra(IntentExtras.Accuracy, (int)accuracy);
             Context.StartForegroundService(intent);
         }
-        catch {
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogError(e, "Failed to start Android location foreground service");
             IsTracking = false;
             throw;
         }
