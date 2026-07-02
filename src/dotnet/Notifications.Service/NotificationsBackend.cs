@@ -164,13 +164,11 @@ public class NotificationsBackend(IServiceProvider services)
             return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
 
         var userId = command.UserId;
-        var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
-        var handledIds = info.Displayed.Select(n => n.Id).ToArray();
-        if (handledIds.Length == 0)
-            return;
-
-        DebugLog?.LogInformation("-> OnHandleAll. UserId={UserId}, Count={Count}", userId, handledIds.Length);
-        await ApplyHardUpdate(userId, [], handledIds, cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogInformation("-> OnHandleAll. UserId={UserId}", userId);
+        // handleAll dismisses the raw committed set (not the compute-filtered view), so
+        // notifications hidden by a currently muted chat are dismissed too and can't resurface
+        // as unread when the chat is unmuted.
+        await ApplyHardUpdate(userId, [], [], handleAll: true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -890,11 +888,11 @@ public class NotificationsBackend(IServiceProvider services)
                     UnreadCount = 1,
                     AuthorIds = new[] { changeAuthor.Id }.ToApiArray(),
                     LeadText = content,
+                    LeadCount = 1,
                 };
             await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
         }
     }
-
 
     private async Task<IReadOnlyList<Device>> ListDevices(
         UserId userId, Symbol sessionHash, Moment? minActiveAt, CancellationToken cancellationToken)
@@ -1058,6 +1056,15 @@ public class NotificationsBackend(IServiceProvider services)
         IReadOnlyList<Notification> notifications,
         IReadOnlyCollection<NotificationId> handledIds,
         CancellationToken cancellationToken)
+        => await ApplyHardUpdate(userId, notifications, handledIds, handleAll: false, cancellationToken)
+            .ConfigureAwait(false);
+
+    private async Task ApplyHardUpdate(
+        UserId userId,
+        IReadOnlyList<Notification> notifications,
+        IReadOnlyCollection<NotificationId> handledIds,
+        bool handleAll,
+        CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -1070,8 +1077,8 @@ public class NotificationsBackend(IServiceProvider services)
 
         var (info, dismissed, silentById, reAnchored) = await Reconcile(
             dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId)).ConfigureAwait(false);
-        if (notifications.Count == 0 && dismissed.Count == 0 && reAnchored.Count == 0)
-            return; // Nothing changed (e.g. OnHandle for an already-dismissed notification)
+        if (silentById.Count == 0 && dismissed.Count == 0 && reAnchored.Count == 0)
+            return; // Nothing changed (e.g. an already-dismissed OnHandle, or a redelivered batch)
 
         if (dbUserNotifications != null)
             dbUserNotifications.UpdateFrom(info);
@@ -1111,7 +1118,7 @@ public class NotificationsBackend(IServiceProvider services)
         // OnPush/OnPushDismissal recompute it from current state at delivery, so out-of-order or
         // redelivered queue messages can't stamp a stale count.
         var toPush = notifications
-            .Where(n => info.Displayed.Any(d => d.Id == n.Id))
+            .Where(n => silentById.ContainsKey(n.Id))
             .GroupBy(GetPushGroupKey)
             .Select(g => g.MaxBy(n => n.SentAt)!)
             .ToList();
@@ -1119,7 +1126,10 @@ public class NotificationsBackend(IServiceProvider services)
             context.Operation.AddEvent(new NotificationsBackend_Push(notification, silentById.GetValueOrDefault(notification.Id)));
 
         // Partial-read re-anchors update the banner content silently (a reduction, never an alert).
-        foreach (var notification in reAnchored)
+        // Tags already pushed above are skipped — OnPush sends the converged (re-anchored) state,
+        // so a second push for the same banner would only make it re-post twice.
+        var pushedTags = toPush.Select(GetPushGroupKey).ToHashSet();
+        foreach (var notification in reAnchored.Where(n => !pushedTags.Contains(GetPushGroupKey(n))))
             context.Operation.AddEvent(new NotificationsBackend_Push(notification, IsSilent: true));
 
         // A newly displayed mention (re)starts the per-user reminder flow, which re-alerts unread
@@ -1145,22 +1155,41 @@ public class NotificationsBackend(IServiceProvider services)
             var current = committed;
             var dismissed = new List<Notification>();
             foreach (var existing in committed.Displayed) {
-                var isGone = handledIds.Contains(existing.Id) || IsRead(existing, readPositions);
+                var isGone = handleAll || handledIds.Contains(existing.Id) || IsRead(existing, readPositions);
                 if (isGone) {
                     current = current with { Displayed = current.Displayed.Without(x => x.Id == existing.Id) };
                     dismissed.Add(existing);
                 }
             }
-            foreach (var notification in notifications)
-                if (!IsRead(notification, readPositions))
-                    current = current.WithNotification(notification);
 
-            // For each coalesced chat notification just added/updated, compose its summary text and
-            // decide whether this push audibly alerts (bumping the beep state) or updates silently.
-            var silentById = new Dictionary<NotificationId, bool>();
-            foreach (var id in notifications.Select(n => n.Id).Distinct()) {
-                if (current.Displayed.FirstOrDefault(n => n.Id == id) is not ChatEntryRelatedNotification related)
+            // Track which incoming notifications actually changed the displayed set: a no-op merge
+            // (a redelivered duplicate, or a stale out-of-order event for an already-read entry)
+            // must neither beep nor push. MergeWith returns the existing instance for no-op merges,
+            // so reference equality detects them.
+            var changedIds = new List<NotificationId>();
+            foreach (var notification in notifications) {
+                if (IsRead(notification, readPositions))
                     continue;
+
+                var before = current.Displayed.FirstOrDefault(n => n.Id == notification.Id);
+                current = current.WithNotification(notification);
+                var after = current.Displayed.First(n => n.Id == notification.Id);
+                if (!ReferenceEquals(before, after) && !changedIds.Contains(notification.Id))
+                    changedIds.Add(notification.Id);
+            }
+
+            // For each notification the batch changed, decide whether its push audibly alerts or
+            // updates silently. Coalescing chat notifications follow the beep back-off (composing
+            // their summary text along the way); other kinds alert when first shown and update
+            // silently on same-tag replacement — except ringers, which always alert.
+            var silentById = new Dictionary<NotificationId, bool>();
+            foreach (var id in changedIds) {
+                var displayed = current.Displayed.First(n => n.Id == id);
+                if (displayed is not ChatEntryRelatedNotification related) {
+                    var isRinger = displayed.Kind is NotificationKind.Attention or NotificationKind.IncomingCall;
+                    silentById[id] = !isRinger && committed.Displayed.Any(n => n.Id == id);
+                    continue;
+                }
 
                 var shouldBeep = NotificationBeepPolicy.ShouldBeep(related.Kind, related.BeepCount, related.LastBeepAt, now);
                 var text = await ComposeAggregatedText(related, cancellationToken).ConfigureAwait(false);
@@ -1193,7 +1222,7 @@ public class NotificationsBackend(IServiceProvider services)
 
             current = current with {
                 Version = VersionGenerator.NextVersion(current.Version),
-                LastPushAt = notifications.Count > 0 ? now : current.LastPushAt,
+                LastPushAt = silentById.Count > 0 ? now : current.LastPushAt,
                 IsDormant = current.Displayed.Count >= Constants.Notification.DormancyThreshold,
             };
             return (current, dismissed, silentById, reAnchored);
@@ -1220,6 +1249,7 @@ public class NotificationsBackend(IServiceProvider services)
             StartEntryLid = newStart,
             UnreadCount = unreadCount,
             LeadText = leadText,
+            LeadCount = 1,
         };
         return (ChatEntryRelatedNotification)(updated with {
             Text = await ComposeAggregatedText(updated, cancellationToken).ConfigureAwait(false),
@@ -1229,7 +1259,8 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task<string> ComposeAggregatedText(ChatEntryRelatedNotification notification, CancellationToken cancellationToken)
     {
         var leadText = notification.LeadText.IsNullOrEmpty() ? notification.Text : notification.LeadText;
-        if (notification.UnreadCount <= 1)
+        var moreCount = notification.UnreadCount - Math.Max(1, notification.LeadCount);
+        if (moreCount <= 0)
             return leadText;
 
         var names = new List<string>();
@@ -1240,7 +1271,7 @@ public class NotificationsBackend(IServiceProvider services)
             if (author is { } a)
                 names.Add(a.Avatar.Name);
         }
-        return NotificationHelper.GetAggregatedText(leadText, names, notification.UnreadCount);
+        return NotificationHelper.GetAggregatedText(leadText, names, moreCount);
     }
 
     // Banner grouping key = the client push tag. Uses the shared NotificationExt.GetChatTag so

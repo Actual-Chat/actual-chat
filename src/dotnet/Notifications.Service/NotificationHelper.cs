@@ -12,13 +12,14 @@ public static class NotificationHelper
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
         => urlMapper.IconUrl(chat.GetIconQuery(author));
 
-    public static string GetAggregatedText(string leadText, IReadOnlyList<string> authorNames, int unreadCount)
+    public static string GetAggregatedText(string leadText, IReadOnlyList<string> authorNames, int moreCount)
     {
-        if (unreadCount <= 1)
+        // moreCount counts messages beyond those LeadText already shows, so a rolled-in lead
+        // never produces a "+1 more" for a message the user is looking at.
+        if (moreCount <= 0)
             return leadText;
 
         var namePart = string.Join(", ", authorNames.Take(Constants.Notification.MaxSummaryAuthors));
-        var moreCount = unreadCount - 1;
         var moreText = moreCount == 1 ? "+1 more message" : $"+{moreCount} more messages";
         var tail = namePart.IsNullOrEmpty() ? moreText : $"{namePart} · {moreText}";
         return $"{leadText}\n{tail}";

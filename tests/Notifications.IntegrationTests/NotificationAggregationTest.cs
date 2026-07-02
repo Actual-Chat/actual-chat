@@ -102,8 +102,58 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
 
         var merged = (MessageNotification)info.Displayed.Single();
         merged.LeadText.Should().Be("Hi\nare you there?");
+        merged.LeadCount.Should().Be(2);
         merged.AuthorIds.Should().ContainSingle().Which.Should().Be(author1);
         merged.UnreadCount.Should().Be(2);
+    }
+
+    [Fact]
+    public void MergeIsIdempotentOnRedelivery()
+    {
+        var author1 = AuthorId.New(TestChatId, 1);
+        var first = NewMessage(100, author1, "Hi");
+        var second = NewMessage(101, author1, "are you there?");
+
+        // A redelivered duplicate of an already-merged event must not change anything.
+        var info = new UserNotificationInfo(TestUserId)
+            .WithNotification(first)
+            .WithNotification(second)
+            .WithNotification(second)
+            .WithNotification(first);
+
+        var merged = (MessageNotification)info.Displayed.Single();
+        merged.UnreadCount.Should().Be(2);
+        merged.LeadText.Should().Be("Hi\nare you there?");
+        merged.LeadCount.Should().Be(2);
+        merged.StartEntryLid.Should().Be(100);
+        merged.EntryLid.Should().Be(101);
+    }
+
+    [Fact]
+    public void MergeKeepsNewestSentAtOnOutOfOrderMerge()
+    {
+        var author1 = AuthorId.New(TestChatId, 1);
+        var t0 = Moment.Now;
+        var t1 = t0 + TimeSpan.FromSeconds(30);
+        var existing = NewMessage(101, author1, "second") with { SentAt = t1 };
+        var late = NewMessage(100, author1, "first") with { SentAt = t0 };
+
+        // The delayed earlier message becomes the lead, but must not regress the timestamp
+        // (a regressed SentAt would fake a lull and reset the beep back-off mid-burst).
+        var merged = (MessageNotification)late.MergeWith(existing);
+        merged.SentAt.Should().Be(t1);
+        merged.StartEntryLid.Should().Be(100);
+        merged.LeadText.Should().Be("first");
+        merged.LeadCount.Should().Be(1);
+        merged.UnreadCount.Should().Be(2);
+    }
+
+    [Fact]
+    public void AggregatedTextCountsOnlyMessagesBeyondLead()
+    {
+        NotificationHelper.GetAggregatedText("Hi", ["Alice"], 0).Should().Be("Hi");
+        NotificationHelper.GetAggregatedText("Hi", ["Alice"], 1).Should().Be("Hi\nAlice · +1 more message");
+        NotificationHelper.GetAggregatedText("Hi", [], 2).Should().Be("Hi\n+2 more messages");
     }
 
     [Fact]
@@ -133,6 +183,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
             UnreadCount = 5,
             AuthorIds = new[] { author1, author2 }.ToApiArray(),
             LeadText = "Lead",
+            LeadCount = 2,
             BeepCount = 3,
             LastBeepAt = Moment.Now,
         };
@@ -142,6 +193,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         result.StartEntryLid.Should().Be(100);
         result.UnreadCount.Should().Be(5);
         result.LeadText.Should().Be("Lead");
+        result.LeadCount.Should().Be(2);
         result.BeepCount.Should().Be(3);
         result.LastBeepAt.Should().Be(n.LastBeepAt);
         // ApiArray equality is by reference, so normalize it before the whole-record value compare.
@@ -176,5 +228,6 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
             UnreadCount = 1,
             AuthorIds = new[] { authorId }.ToApiArray(),
             LeadText = text,
+            LeadCount = 1,
         };
 }
