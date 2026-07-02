@@ -1,4 +1,3 @@
-@using ActualChat.Contacts
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, RightPanelChatInfo.Model>
 @{
@@ -10,7 +9,7 @@
     @{
         var showNotifications = !m.HideNotificationsToggle;
     }
-    @if (showNotifications || m.ShowSummarizationToggle || m.ShowBlockToggle) {
+    @if (showNotifications || m.ShowSummarizationToggle) {
         <div class="c-card">
             @if (showNotifications) {
                 var iconCls = m.NotificationMode != ChatNotificationMode.Muted ? "text-primary" : "text-03";
@@ -43,22 +42,6 @@
                     </Right>
                 </RightPanelChatInfoItem>
             }
-            @if (m.ShowBlockToggle) {
-                if (showNotifications || m.ShowSummarizationToggle) {
-                    <Divider/>
-                }
-                <RightPanelChatInfoItem
-                    Click="@(_ => OnBlockToggleChanged(!m.IsBlocked))"
-                    Content="Block user"
-                    Hint="@(m.IsBlocked ? "Blocked" : "Not blocked")">
-                    <Icon>
-                        <i class="text-2xl icon-slash-circle @(m.IsBlocked ? "text-danger" : "text-03")"></i>
-                    </Icon>
-                    <Right>
-                        <Toggle Class="mr-2" IsChecked="@m.IsBlocked"/>
-                    </Right>
-                </RightPanelChatInfoItem>
-            }
         </div>
     }
 </div>
@@ -78,14 +61,10 @@
 
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
         var chatUserSettings = await UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
-        var blockState = await Hub.PeerBlockUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             NotificationMode = chatUserSettings.NotificationMode,
             ShowSummarizationToggle = isOwner,
             IsSummarized = Chat.IsSummarized ?? false,
-            ShowBlockToggle = blockState.CanBlock,
-            IsBlocked = blockState.IsBlocked,
-            PeerContactId = blockState.ContactId,
         };
     }
 
@@ -93,14 +72,6 @@
         => UICommander.RunLocal(ct
             => UserSettingsUI.ChatUserSettings(Chat.Id)
                 .Update(x => x with { NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default, }, ct));
-
-    private Task OnBlockToggleChanged(bool isBlocked) {
-        var m = State.Value;
-        if (m.PeerContactId is not { } contactId)
-            return Task.CompletedTask;
-
-        return Hub.PeerBlockUI.SetBlocked(contactId, isBlocked);
-    }
 
     private Task OnSummarizeToggleChanged(bool isSummarized) {
         if (State.Value.IsSummarized == isSummarized)
@@ -117,8 +88,5 @@
         public bool IsSummarized { get; init; }
         public bool HideNotificationsToggle { get; init; }
         public bool ShowSummarizationToggle { get; init; }
-        public bool ShowBlockToggle { get; init; }
-        public bool IsBlocked { get; init; }
-        public ContactId? PeerContactId { get; init; }
     }
 }

@@ -13,9 +13,11 @@
 
 <div @ref="Ref" class="right-panel">
     <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
-        <RightPanelHeader />
-        <div class="c-panel-content">
+        <div class="c-top-region">
+            <RightPanelHeader />
             <RightPanelChatInfo/>
+        </div>
+        <div class="c-panel-content">
             <div class="c-panel-tabs">
                 @if (m.ShowTabs) {
                     <TabPanel
