@@ -156,7 +156,7 @@ onBackgroundMessage(messaging, async payload => {
             return;
     }
     const tag = data.tag;
-    const silent = (data.silent ?? '').toLowerCase() === 'true';
+    const silent = String(data.silent ?? '').toLowerCase() === 'true';
     const options: NotificationOptions = {
         tag: tag.toString(),
         icon: data.icon,

@@ -170,6 +170,21 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void MergeUpgradesLegacyNotification()
+    {
+        var author1 = AuthorId.New(TestChatId, 1);
+        // A pre-coalescing blob deserializes with UnreadCount=0 and no lead/anchor state.
+        var legacy = MessageNotification.New(TestUserId, TestChatId, 100, author1) with { Text = "old text" };
+        var incoming = NewMessage(101, author1, "new text");
+
+        var merged = (MessageNotification)incoming.MergeWith(legacy);
+        merged.UnreadCount.Should().Be(2);
+        merged.StartEntryLid.Should().Be(100);
+        merged.LeadText.Should().Be("old text");
+        merged.LeadCount.Should().Be(1);
+    }
+
+    [Fact]
     public void MergePreservesBeepStateAndStartAnchor()
     {
         var author1 = AuthorId.New(TestChatId, 1);
