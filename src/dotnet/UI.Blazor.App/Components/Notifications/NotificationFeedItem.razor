@@ -32,8 +32,8 @@
             </div>
         }
     </div>
-    <div class="c-ending">
-        <ButtonSquare Class="c-dismiss" Click="OnDismissClick" StopPropagation="true" tabindex="-1" aria-label="dismiss">
+    <div class="c-ending" @onclick:stopPropagation="true">
+        <ButtonSquare Class="c-dismiss" Click="OnDismissClick" tabindex="-1" aria-label="dismiss">
             <i class="icon-close"></i>
         </ButtonSquare>
     </div>
