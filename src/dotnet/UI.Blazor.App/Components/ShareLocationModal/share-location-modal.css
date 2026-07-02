@@ -10,5 +10,6 @@
     @apply w-full;
 }
 .share-location-modal .c-stop {
-    @apply w-full mt-2;
+    @apply w-full;
+    @apply mt-2;
 }

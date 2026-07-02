@@ -4,7 +4,8 @@
     @apply overflow-hidden;
 }
 .map-view .map-marker {
-    @apply relative flex items-center justify-center;
+    @apply relative;
+    @apply flex items-center justify-center;
 }
 .map-view .map-marker .c-pin-dot {
     @apply w-4 h-4;
@@ -13,13 +14,16 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 .map-view .map-marker .c-pin-avatar {
-    @apply relative flex items-center justify-center;
+    @apply relative;
+    @apply flex items-center justify-center;
     @apply w-9 h-9;
     @apply rounded-full border-2 border-white;
     @apply bg-01;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 .map-view .map-marker .c-avatar {
-    @apply w-full h-full rounded-full;
-    @apply block object-cover;
+    @apply block;
+    @apply w-full h-full;
+    @apply rounded-full;
+    @apply object-cover;
 }

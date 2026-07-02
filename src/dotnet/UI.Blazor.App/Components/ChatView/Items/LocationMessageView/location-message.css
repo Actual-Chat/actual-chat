@@ -1,8 +1,11 @@
 .location-message {
-    @apply flex-x w-80 max-w-full h-44;
+    @apply flex-x;
+    @apply w-80 max-w-full h-44;
     @apply mt-1;
     @apply cursor-pointer;
 }
 .location-message .c-map {
-    @apply flex-1 rounded-xl overflow-hidden;
+    @apply flex-1;
+    @apply rounded-xl;
+    @apply overflow-hidden;
 }

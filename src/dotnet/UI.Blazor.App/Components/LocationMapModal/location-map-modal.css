@@ -3,8 +3,7 @@
 }
 .location-map-modal .c-map-host {
     @apply relative;
-    @apply w-full;
-    @apply h-128 max-h-[70vh];
+    @apply w-full h-128 max-h-[70vh];
     @apply overflow-hidden;
 }
 .location-map-modal .c-map {
