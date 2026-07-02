@@ -56,17 +56,21 @@ public class NotificationsBackend(IServiceProvider services)
         => ListDevices(userId, Symbol.Empty, null, cancellationToken);
 
     // [ComputeMethod]
-    public virtual async Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<IReadOnlyList<UserId>> ListSubscribedUserIds(
+        ChatId chatId, NotificationImportance importance, CancellationToken cancellationToken)
     {
         if (chatId.IsThread(out var threadChatId)) {
-            var subscriberIds = await ListSubscribedUserIds(threadChatId.ParentChatId, cancellationToken).ConfigureAwait(false);
+            var subscriberIds = await ListSubscribedUserIds(threadChatId.ParentChatId, importance, cancellationToken)
+                .ConfigureAwait(false);
             subscriberIds = await FilterByFollowThreadStatus(subscriberIds, chatId, cancellationToken).ConfigureAwait(false);
-            subscriberIds = await FilterByNotificationMode(subscriberIds, chatId, cancellationToken).ConfigureAwait(false);
+            subscriberIds = await FilterByNotificationMode(subscriberIds, chatId, importance, cancellationToken)
+                .ConfigureAwait(false);
             return subscriberIds;
         }
         else {
             var subscriberIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
-            subscriberIds = await FilterByNotificationMode(subscriberIds, chatId, cancellationToken).ConfigureAwait(false);
+            subscriberIds = await FilterByNotificationMode(subscriberIds, chatId, importance, cancellationToken)
+                .ConfigureAwait(false);
             return subscriberIds;
         }
     }
@@ -82,15 +86,17 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
         var info = dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId);
 
-        // Population re-check: hide notifications the user has since read, or whose chat the user
-        // has muted (mute may happen after the notification was shown). This is the single source
-        // of truth for the "active" set — so the in-app list, the badge count, and the client
-        // reconciler all agree, and it matches the unmuted count the push path sends.
-        // Reads IChatPositionsBackend.Get + mute mode (once per distinct chat), so Fusion
-        // re-invalidates this method whenever a read position or mute setting changes.
+        // Population re-check: hide notifications the user has since read, or that the chat's
+        // notification mode suppresses (the mode may change after the notification was shown;
+        // ringer kinds stay visible even when muted). This is the single source of truth for the
+        // "active" set — the in-app list, the badge count, and the client reconciler all agree,
+        // and OnPush drops sends for anything hidden here, so fan-out and this filter must use
+        // the same NotificationHelper predicates.
+        // Reads IChatPositionsBackend.Get + notification mode (once per distinct chat), so Fusion
+        // re-invalidates this method whenever a read position or mode setting changes.
         var readPositions = await GetReadPositions(userId, info.Displayed, cancellationToken).ConfigureAwait(false);
-        var mutedChatIds = await GetMutedChatIds(userId, info.Displayed, cancellationToken).ConfigureAwait(false);
-        var displayed = info.Displayed.Without(n => IsRead(n, readPositions) || IsMutedChat(n, mutedChatIds));
+        var modes = await GetChatNotificationModes(userId, info.Displayed, cancellationToken).ConfigureAwait(false);
+        var displayed = info.Displayed.Without(n => IsRead(n, readPositions) || IsSuppressedByMode(n, modes));
         if (displayed.Count == info.Displayed.Count)
             return info;
 
@@ -357,7 +363,9 @@ public class NotificationsBackend(IServiceProvider services)
             return; // It just spawns other commands, so nothing to do here
 
         var (userId, chatId, lastEntryLocalId) = command;
-        var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        // An explicit author action ("notify all") is a ringer: it breaks through chat mute.
+        var userIds = await ListSubscribedUserIds(chatId, NotificationImportance.Ringer, cancellationToken)
+            .ConfigureAwait(false);
         await NotifyMembersInternal(userId, chatId, lastEntryLocalId, userIds, cancellationToken).ConfigureAwait(false);
     }
 
@@ -370,7 +378,10 @@ public class NotificationsBackend(IServiceProvider services)
         var (userId, ChatEntryId, mentionedUserIds) = command;
         var chatId = ChatEntryId.ChatId;
 
-        var subscribedUserIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        // An explicit author action ("urgently notify mentioned members") is a ringer: it breaks
+        // through chat mute — unlike plain in-text mentions, which ride the Message fan-out.
+        var subscribedUserIds = await ListSubscribedUserIds(chatId, NotificationImportance.Ringer, cancellationToken)
+            .ConfigureAwait(false);
         var userIds = subscribedUserIds.Intersect(mentionedUserIds).ToArray();
         if (userIds.Length == 0)
             return;
@@ -409,7 +420,8 @@ public class NotificationsBackend(IServiceProvider services)
         var activeUserIds = isLive
             ? await GetActiveParticipantUserIds(chatId, cancellationToken).ConfigureAwait(false)
             : new HashSet<UserId>();
-        var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        var userIds = await ListSubscribedUserIds(chatId, NotificationImportance.Ordinary, cancellationToken)
+            .ConfigureAwait(false);
         var now = Clocks.CoarseSystemClock.Now;
         foreach (var userId in userIds) {
             if (authorUserIds.Contains(userId))
@@ -559,6 +571,12 @@ public class NotificationsBackend(IServiceProvider services)
         if (author.Id == reactionAuthor.Id) // No notifs on your own reactions to your own messages
             return;
 
+        // Reactions bypass the subscriber fan-out (they target the message author directly), so the
+        // notification mode is checked here; they're Ordinary — delivered only in Default mode.
+        var mode = await GetNotificationMode(author.UserId, entry.ChatId, cancellationToken).ConfigureAwait(false);
+        if (!NotificationHelper.IsDeliverable(NotificationImportance.Ordinary, mode))
+            return;
+
         var (text, _) = await NotificationHelper.GetText(entry, MarkupConsumer.ReactionNotification, ChatMarkupHubFactory, cancellationToken).ConfigureAwait(false);
         if (!entry.Content.IsNullOrEmpty())
             text = $"\"{text}\"";
@@ -585,7 +603,8 @@ public class NotificationsBackend(IServiceProvider services)
 
         // New thread has been created.
         var parentChatId = threadChatId.ParentChatId;
-        var userIds = await ListSubscribedUserIds(parentChatId, cancellationToken).ConfigureAwait(false);
+        var userIds = await ListSubscribedUserIds(parentChatId, NotificationImportance.Ordinary, cancellationToken)
+            .ConfigureAwait(false);
         var similarityKey = parentChatId.Value;
         var creator = await ChatThreadsBackend.GetThreadCreator(chat.Id, cancellationToken).ConfigureAwait(false);
         if (creator is null)
@@ -679,10 +698,12 @@ public class NotificationsBackend(IServiceProvider services)
 
         var entryId = freshEntry.Id;
         var chatId = entryId.ChatId;
-        var (text, _) = await NotificationHelper
+        var (text, mentionIds) = await NotificationHelper
             .GetText(freshEntry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
             .ConfigureAwait(false);
-        var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        // The mode != Muted superset; ImportantOnly users must survive until the split below.
+        var userIds = await ListSubscribedUserIds(chatId, NotificationImportance.Important, cancellationToken)
+            .ConfigureAwait(false);
         // Don't interrupt users who are actively in this chat's live call — they're present.
         var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (live is { SessionStartedAt: not null }) {
@@ -690,10 +711,49 @@ public class NotificationsBackend(IServiceProvider services)
             if (active.Count != 0)
                 userIds = userIds.Where(x => !active.Contains(x)).ToList();
         }
+
+        // Users personally @mentioned in the text get a Mention notification (delivered under
+        // ImportantOnly, individually per entry); everyone else gets the plain coalescing Message
+        // notification (Default mode only).
+        var mentionedUserIds = await GetMentionedUserIds(chatId, mentionIds, cancellationToken).ConfigureAwait(false);
+        var mentioned = userIds.Where(mentionedUserIds.Contains).ToList();
+        if (mentioned.Count > 0)
+            await EnqueueMessageRelatedNotifications(
+                chatId, entryId, author, text, NotificationKind.Mention,
+                entryId.Value, mentioned, cancellationToken)
+                .ConfigureAwait(false);
+
+        var others = userIds.Where(x => !mentionedUserIds.Contains(x)).ToList();
+        var ordinaryUserIds = await FilterByNotificationMode(
+            others, chatId, NotificationImportance.Ordinary, cancellationToken)
+            .ConfigureAwait(false);
         await EnqueueMessageRelatedNotifications(
             chatId, entryId, author, text, NotificationKind.Message,
-            chatId.Value, userIds, cancellationToken)
+            chatId.Value, ordinaryUserIds, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    // Resolves personal (author/user) mentions to user ids; chat/place/emoji mention kinds carry
+    // no @all semantics here yet, so they're ignored.
+    private async Task<HashSet<UserId>> GetMentionedUserIds(
+        ChatId chatId, IReadOnlyCollection<MentionRef> mentionIds, CancellationToken cancellationToken)
+    {
+        var userIds = new HashSet<UserId>();
+        foreach (var mention in mentionIds)
+            switch (mention.Target) {
+            case UserId userId:
+                userIds.Add(userId);
+                break;
+            case AuthorId authorId: {
+                var mentionedAuthor = await AuthorsBackend
+                    .Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+                    .ConfigureAwait(false);
+                if (mentionedAuthor is { } a && !a.UserId.Value.IsNullOrEmpty())
+                    userIds.Add(a.UserId);
+                break;
+            }
+            }
+        return userIds;
     }
 
     // [CommandHandler]
@@ -796,9 +856,9 @@ public class NotificationsBackend(IServiceProvider services)
         return readEntryLid >= entryLid;
     }
 
-    // Returns the muted chats among the notifications' chats, reading mute mode once per distinct
-    // chat (in parallel).
-    private async Task<HashSet<ChatId>> GetMutedChatIds(
+    // Returns the notification mode of the notifications' chats, read once per distinct chat
+    // (in parallel).
+    private async Task<Dictionary<ChatId, ChatNotificationMode>> GetChatNotificationModes(
         UserId userId, IEnumerable<Notification> notifications, CancellationToken cancellationToken)
     {
         var chatIds = notifications
@@ -809,28 +869,32 @@ public class NotificationsBackend(IServiceProvider services)
         if (chatIds.Count == 0)
             return [];
 
-        var muteByChat = await chatIds
+        var modeByChat = await chatIds
             .Select(async chatId => (
                 ChatId: chatId!,
-                IsMuted: await IsMuted(userId, chatId!, cancellationToken).ConfigureAwait(false)))
+                Mode: await GetNotificationMode(userId, chatId!, cancellationToken).ConfigureAwait(false)))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
-        return muteByChat.Where(x => x.IsMuted).Select(x => x.ChatId).ToHashSet();
+        return modeByChat.ToDictionary(x => x.ChatId, x => x.Mode);
     }
 
-    private static bool IsMutedChat(Notification notification, HashSet<ChatId> mutedChatIds)
+    // Mentions and explicit pings share NotificationKind.Attention, so a mention displayed before
+    // the user muted the chat stays visible (treated as Ringer); new ones are dropped at fan-out.
+    private static bool IsSuppressedByMode(Notification notification, Dictionary<ChatId, ChatNotificationMode> modes)
     {
         var chatId = GetReadAnchor(notification).ChatId;
-        return chatId is not null && mutedChatIds.Contains(chatId);
+        if (chatId is null || !modes.TryGetValue(chatId, out var mode))
+            return false;
+
+        return !NotificationHelper.IsDeliverable(NotificationHelper.GetImportance(notification.Kind), mode);
     }
 
-    private async Task<bool> IsMuted(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+    private async Task<ChatNotificationMode> GetNotificationMode(UserId userId, ChatId chatId, CancellationToken cancellationToken)
     {
         var kvas = ServerKvasBackend.ForUser(userId);
-        var notificationMode = await kvas.ChatUserSettings(chatId)
+        return await kvas.ChatUserSettings(chatId)
             .Get(x => x.NotificationMode, cancellationToken)
             .ConfigureAwait(false);
-        return notificationMode == ChatNotificationMode.Muted;
     }
 
     private static (ChatId? ChatId, long EntryLid) GetReadAnchor(Notification notification)
@@ -931,22 +995,30 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    private async Task<UserId[]> FilterByNotificationMode(IReadOnlyList<UserId> userIds, ChatId chatId, CancellationToken cancellationToken)
+    private async Task<UserId[]> FilterByNotificationMode(
+        IReadOnlyList<UserId> userIds,
+        ChatId chatId,
+        NotificationImportance importance,
+        CancellationToken cancellationToken)
     {
         if (userIds.Count == 0)
             return [];
+        if (importance == NotificationImportance.Ringer)
+            return userIds.ToArray();
 
         var notificationModes = await userIds
             .Select(async userId => {
                 var kvas = ServerKvasBackend.ForUser(userId);
-                var notificationMode = await kvas.ChatUserSettings(chatId).Get(x => x.NotificationMode, cancellationToken).ConfigureAwait(false);
+                var notificationMode = await kvas.ChatUserSettings(chatId)
+                    .Get(x => x.NotificationMode, cancellationToken)
+                    .ConfigureAwait(false);
                 return (UserId: userId, NotificationMode: notificationMode);
             })
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
         var subscriberIds = notificationModes
-            .Where(kv => kv.NotificationMode != ChatNotificationMode.Muted)
+            .Where(kv => NotificationHelper.IsDeliverable(importance, kv.NotificationMode))
             .Select(kv => kv.UserId)
             .ToArray();
         return subscriberIds;

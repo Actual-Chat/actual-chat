@@ -12,7 +12,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<UserId>> ListSubscribedUserIds(
+        ChatId chatId, NotificationImportance importance, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserNotificationInfo> GetUserNotificationInfo(UserId userId, CancellationToken cancellationToken);
 
