@@ -5,6 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class LiveTime : SafeAsyncDisposableBase, IComputeService
 {
+    private static readonly TimeSpan RemainingRoundingTolerance = TimeSpan.FromSeconds(2);
     private readonly TimeSpan _maxInvalidationDelay;
 
     private HostInfo HostInfo { get; }
@@ -48,9 +49,10 @@ public class LiveTime : SafeAsyncDisposableBase, IComputeService
 
         // Re-evaluate periodically so the countdown ticks down.
         Computed.GetCurrent().Invalidate(updatePeriod, false);
+        var minutes = (int)Math.Ceiling((remaining - RemainingRoundingTolerance).TotalMinutes);
         var text = remaining.TotalHours >= 1
             ? $"{(int)remaining.TotalHours}h {remaining.Minutes}m"
-            : $"{Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes))}m";
+            : $"{Math.Max(1, minutes)}m";
         return Task.FromResult(text);
     }
 

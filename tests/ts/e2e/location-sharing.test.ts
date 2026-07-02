@@ -215,6 +215,11 @@ describe('location sharing', () => {
             const banner = page.locator('.live-location-banner').first();
             await banner.waitFor({ state: 'visible', timeout: 8_000 });
 
+            // A freshly picked 15-minute share must read "15m left", not "16m" — the countdown
+            // rounds the minute up, so sub-minute clock skew has to be absorbed first.
+            if (label === '15 minutes')
+                expect((await banner.innerText()).toLowerCase()).toContain('15m left');
+
             // cleanup — stop the share so the next duration starts clean
             await banner.locator('button:has-text("Stop")').first().click();
             await banner.waitFor({ state: 'hidden', timeout: 20_000 });
