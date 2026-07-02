@@ -12,8 +12,12 @@ namespace ActualChat.App.Maui.Location;
 [Service(ForegroundServiceType = ForegroundService.TypeLocation)]
 public sealed class AndroidLocationForegroundService : Service, ILocationListener
 {
+    public static class IntentExtras
+    {
+        public const string Accuracy = nameof(Accuracy);
+    }
+
     public const string ActionStart = "ACTION_START";
-    public const string ExtraAccuracy = "EXTRA_ACCURACY";
     private const string ChannelId = "location_sharing";
     private const int NotificationId = 3002;
     private LocationManager? _locationManager;
@@ -40,7 +44,8 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
         if ((intent?.Action ?? "") != ActionStart)
             return StartCommandResult.NotSticky;
 
-        var accuracy = (GeoTrackingAccuracy)intent!.GetIntExtra(ExtraAccuracy, (int)GeoTrackingAccuracy.Balanced);
+        var accuracy = (GeoTrackingAccuracy)intent!.Extras!
+            .GetInt(IntentExtras.Accuracy, (int)GeoTrackingAccuracy.Balanced);
         StartForeground1(BuildNotification());
         StartLocationUpdates(accuracy);
         return StartCommandResult.Sticky;

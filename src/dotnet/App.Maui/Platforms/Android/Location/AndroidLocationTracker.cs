@@ -1,6 +1,7 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using Android.Content;
+using IntentExtras = ActualChat.App.Maui.Location.AndroidLocationForegroundService.IntentExtras;
 
 namespace ActualChat.App.Maui.Location;
 public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposable
@@ -21,7 +22,7 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
         var accuracy = await GetAccuracy(cancellationToken).ConfigureAwait(false);
         var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
         intent.SetAction(AndroidLocationForegroundService.ActionStart);
-        intent.PutExtra(AndroidLocationForegroundService.ExtraAccuracy, (int)accuracy);
+        intent.PutExtra(IntentExtras.Accuracy, (int)accuracy);
         Context.StartForegroundService(intent);
     }
 
