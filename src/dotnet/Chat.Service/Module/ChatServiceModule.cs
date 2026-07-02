@@ -56,6 +56,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IReactions, Reactions>();
         rpcHost.AddBackend<IReactionsBackend, ReactionsBackend>();
 
+        // Shared locations
+        rpcHost.AddApi<ISharedLocations, SharedLocations>();
+        rpcHost.AddBackend<ISharedLocationsBackend, SharedLocationsBackend>();
+
         // Aliases
         rpcHost.AddLocalApi<IAliases, Aliases>();
         rpcHost.AddBackend<IAliasBackend, AliasBackend>();
@@ -232,6 +236,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // DbConversation
             db.AddEntityResolver<string, DbConversation>();
+
+            // DbSharedLocation
+            db.AddEntityResolver<string, DbSharedLocation>();
         });
     }
 

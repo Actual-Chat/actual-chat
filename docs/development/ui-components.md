@@ -266,7 +266,16 @@ Properties are grouped by category, top to bottom. Use `@apply` for Tailwind uti
 }
 ```
 
-Not all categories are present in every rule — include only what's needed. When a category has only one or two utilities, they can share a line. Separate comments are optional.
+Not all categories are present in every rule — include only what's needed. Separate comments are optional.
+
+Each category gets its own `@apply` line. Utilities from the same category share that line (`@apply w-full min-h-48`), but utilities from **different** categories must **not** be combined, even when each is short — e.g. write
+
+```css
+@apply relative;
+@apply flex items-center justify-center;
+```
+
+not `@apply relative flex items-center justify-center;`. The category order above still applies whether or not comments are present.
 
 ## Animation Performance
 

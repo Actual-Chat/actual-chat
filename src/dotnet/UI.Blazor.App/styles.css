@@ -61,6 +61,8 @@
 @import './Components/LeftPanel/LeftSearchPanel/recently-viewed-groups.css';
 @import './Components/LeftPanel/LeftSearchPanel/recently-contacted-people.css';
 @import './Components/LeftPanel/LeftSearchPanel/recently-contacted-user.css';
+@import './Components/LocationMapModal/location-map-modal.css';
+@import './Components/ChatView/Items/LocationMessageView/location-message.css';
 @import './Components/LogView/log-view.css';
 @import './Components/LogView/report-modal.css';
 @import './Components/ChatQuickNavModal/chat-quick-nav-modal.css';
@@ -80,6 +82,7 @@
 @import './Components/Settings/time-zone-editor-modal.css';
 @import './Components/Selection/selection-header.css';
 @import './Components/Share/share-modal.css';
+@import './Components/ShareLocationModal/share-location-modal.css';
 @import './Components/StatusBadge/status-badge.css';
 @import './Components/SubHeader/sub-header.css';
 @import './Components/TranslationSubHeader/translation-sub-header.css';

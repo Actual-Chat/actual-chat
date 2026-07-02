@@ -24,6 +24,7 @@
 <OnUIEvent TEvent="@AttachButtonClickEvent" Handler="OnAttachButtonClickEvent" />
 <OnUIEvent TEvent="@MentionButtonClickEvent" Handler="OnMentionButtonClickEvent" />
 <OnUIEvent TEvent="@EmojiButtonClickEvent" Handler="OnEmojiButtonClickEvent" />
+<OnUIEvent TEvent="@ShareLocationButtonClickEvent" Handler="OnShareLocationButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor has-safe-area-bottom">
     <Hotkey Keys="ctrl+e" AriaLabel="Focus message editor" OnTrigger="OnFocusEditorRequested"/>
     <input class="attachment-web-file-picker" type="file" multiple tabindex="-1"/>
@@ -117,6 +118,9 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private SendingMessages SendingMessages => Hub.SendingMessages;
+    private LocationUI LocationUI => Hub.LocationUI;
+    private LocationPermissionHandler LocationPermission
+        => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
     private RecentMentionsUI RecentMentionsUI => Hub.Services.GetRequiredService<RecentMentionsUI>();
     private FileAttachments FileAttachments { get; set; } = null!;
     private IAttachmentFilePicker? AttachmentFilePicker { get; set; }
@@ -389,6 +393,39 @@
         => @event.EditorId == _editorId
             ? OnEmojiButtonClick(@event.TabId)
             : Task.CompletedTask;
+
+    private Task OnShareLocationButtonClickEvent(ShareLocationButtonClickEvent @event, CancellationToken cancellationToken)
+        => @event.EditorId == _editorId
+            ? OnShareLocationClick()
+            : Task.CompletedTask;
+
+    private async Task OnShareLocationClick() {
+        var chatId = Chat.Id;
+        var isSharing = await Hub.SharedLocations
+            .IsOwnSharing(Session, chatId, CancellationToken.None)
+            .ConfigureAwait(true);
+        var model = new ShareLocationModal.Model { IsSharing = isSharing };
+        await (await ModalUI.Show(model).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
+
+        if (model.StopRequested) {
+            await LocationUI.StopSharing(chatId, CancellationToken.None).ConfigureAwait(true);
+            return;
+        }
+        if (model.SendCurrentRequested) {
+            if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
+                return;
+
+            await LocationUI.SendCurrentLocation(chatId, CancellationToken.None).ConfigureAwait(true);
+            return;
+        }
+        if (model.SelectedDuration is not { } duration)
+            return;
+
+        if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
+            return;
+
+        await LocationUI.StartSharing(chatId, duration, CancellationToken.None).ConfigureAwait(true);
+    }
 
     private async Task OnEmojiButtonClick(string tabId = "emoji") {
         var model = new EmojiModal.Model { InitialTabId = tabId };

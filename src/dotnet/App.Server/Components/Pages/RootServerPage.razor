@@ -55,6 +55,7 @@
             https://i.ytimg.com
             https://www.googletagmanager.com
             https://static.klipy.com
+            https://tiles.openfreemap.org
             blob: data:;
         media-src 'self'
             https://*.@Constants.Hosts.Voxt
@@ -69,6 +70,7 @@
         frame-src https://www.youtube.com/
             https://www.google.com/recaptcha/;
         object-src 'none';
+        worker-src 'self' blob:;
         script-src 'self'
             @unsafeEval
             'nonce-@startupNonce'
@@ -94,6 +96,7 @@
             wss://*.@Constants.Hosts.Voxt
             https://*.dicebear.com
             https://*.ingest.sentry.io
+            https://tiles.openfreemap.org
             https://firebaseinstallations.googleapis.com
             https://fcmregistrations.googleapis.com
             https://firebase.googleapis.com

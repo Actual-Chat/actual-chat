@@ -64,6 +64,9 @@ public abstract partial record ChatEntry(
     [DataMember(Order = 13), Key(13)] public Symbol[] LinkPreviewIds { get; init; } = [];
     [DataMember(Order = 14), Key(14)] public LinkPreview[] LinkPreviews { get; init; } = [];
 
+    // Location
+    [DataMember(Order = 17), Key(17)] public SharedLocationId? LocationId { get; init; }
+
     // Client
     [DataMember(Order = 15), Key(15)] public string ClientId { get; init; } = ""; // Soon obsolete
 
@@ -117,6 +120,8 @@ public abstract partial record ChatEntry(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool HasAudio => Audio != null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool HasLocation => LocationId != null;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool HasMarkup => this is not SystemEntry && !HasAudio;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsSending => SendingTag is not null;
@@ -147,6 +152,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember] public Option<ChatEntryForwarded?> Forwarded { get; init; }
     [DataMember] public Option<long?> RepliedEntryLid { get; init; }
     [DataMember] public ChatEntryAttachment[]? Attachments { get; init; }
+    [DataMember] public SharedLocationId? LocationId { get; init; }
     [DataMember] public LinkPreviewMode? LinkPreviewMode { get; init; }
     [DataMember] public bool? HasReactions { get; init; }
     [DataMember] public bool? IsThreadStart { get; init; }
@@ -174,6 +180,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
         RepliedEntryLid = entry.RepliedEntryLid;
         Forwarded = entry.Forwarded;
         Attachments = entry.Attachments;
+        LocationId = entry.LocationId;
         LinkPreviewMode = entry.LinkPreviewMode;
         IsRemoved = entry.IsRemoved;
         IsThreadStart = entry.IsThreadStart;

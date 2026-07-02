@@ -35,5 +35,5 @@ public sealed class OpenSearchSettings
 public sealed class UriAttribute(): ValidationAttribute("Value for {0} must be a valid URI.")
 {
     public override bool IsValid(object? value) => value is string valueAsString
-        && !string.IsNullOrWhiteSpace(valueAsString) && Uri.IsWellFormedUriString(valueAsString, UriKind.Absolute);
+        && !valueAsString.IsNullOrWhiteSpace() && Uri.IsWellFormedUriString(valueAsString, UriKind.Absolute);
 }

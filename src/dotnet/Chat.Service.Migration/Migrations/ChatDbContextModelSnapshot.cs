@@ -429,6 +429,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("local_id");
 
+                    b.Property<string>("LocationId")
+                        .HasColumnType("text")
+                        .HasColumnName("location_id");
+
                     b.Property<long?>("RepliedChatEntryId")
                         .HasColumnType("bigint")
                         .HasColumnName("replied_chat_entry_id");
@@ -1144,6 +1148,74 @@ namespace ActualChat.Chat.Migrations
                         .HasDatabaseName("ix_roles_chat_id_name");
 
                     b.ToTable("roles");
+                });
+
+            modelBuilder.Entity("ActualChat.Chat.Db.DbSharedLocation", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<float?>("Accuracy")
+                        .HasColumnType("real")
+                        .HasColumnName("accuracy");
+
+                    b.Property<string>("AuthorId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("author_id")
+                        .UseCollation("C");
+
+                    b.Property<float?>("Bearing")
+                        .HasColumnType("real")
+                        .HasColumnName("bearing");
+
+                    b.Property<string>("ChatId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id")
+                        .UseCollation("C");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<TimeSpan>("Duration")
+                        .HasColumnType("interval")
+                        .HasColumnName("duration");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<DateTime>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<DateTime?>("StoppedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("stopped_at");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shared_locations");
+
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("ix_shared_locations_author_id");
+
+                    b.HasIndex("ChatId")
+                        .HasDatabaseName("ix_shared_locations_chat_id");
+
+                    b.ToTable("shared_locations");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbTranslation", b =>

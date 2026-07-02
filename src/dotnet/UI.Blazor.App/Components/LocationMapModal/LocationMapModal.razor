@@ -1,0 +1,95 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, LocationMapModal.ComputedModel>
+@implements IModalView<LocationMapModal.Model>
+@{
+    var m = State.Value;
+}
+
+<DialogFrame
+    Class="location-map-modal"
+    Title="Location"
+    HasCloseButton="true">
+    <Body>
+        <div class="c-map-host">
+            @if (m.Markers.Count == 0) {
+                <div class="c-empty">No one is sharing their location right now.</div>
+            } else {
+                <MapView
+                    Class="c-map"
+                    Markers="@m.Markers"
+                    CenterLatitude="@m.CenterLatitude"
+                    CenterLongitude="@m.CenterLongitude"/>
+            }
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    private IAuthors Authors => Hub.Authors;
+    private ISharedLocations SharedLocations => Hub.SharedLocations;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ModalModel.ChatId;
+        var locations = await GetLocations(chatId, cancellationToken).ConfigureAwait(false);
+        if (locations.Count == 0)
+            return ComputedModel.None;
+
+        var markers = new List<MapMarker>(locations.Count);
+        foreach (var location in locations) {
+            var author = await Authors.Get(Session, location.ChatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
+            if (author is null)
+                continue;
+
+            markers.Add(ToAvatarMarker(location, author.Avatar));
+        }
+        var center = locations[0].Point;
+        return new ComputedModel(markers, center.Latitude, center.Longitude);
+    }
+
+    private MapMarker ToAvatarMarker(
+        SharedLocation location,
+        Avatar? avatar)
+    {
+        var pictureUrl = avatar?.Picture is { } picture ? UrlMapper.PicturePreview128Url(picture) : "";
+        var avatarKey = pictureUrl.IsNullOrEmpty()
+            ? (avatar?.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(location.AuthorId.Value)
+            : "";
+        return new MapMarker(
+            location.Id.Value,
+            location.Point.Latitude,
+            location.Point.Longitude,
+            avatar?.Name,
+            pictureUrl.NullIfEmpty(),
+            avatarKey.NullIfEmpty());
+    }
+
+    private async Task<IReadOnlyList<SharedLocation>> GetLocations(ChatId chatId, CancellationToken cancellationToken) {
+        if (ModalModel.LocationId is not { } locationId)
+            return await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+
+        var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken).ConfigureAwait(false);
+        return location is null ? [] : [location];
+    }
+
+    // Nested types
+
+    public sealed record ComputedModel(
+        IReadOnlyList<MapMarker> Markers,
+        double CenterLatitude,
+        double CenterLongitude) {
+        public static readonly ComputedModel None = new([], 0, 0);
+    }
+
+    public sealed record Model(ChatId ChatId, SharedLocationId? LocationId = null);
+}

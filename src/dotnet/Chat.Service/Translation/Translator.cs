@@ -223,9 +223,9 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             }
         }
         foreach (var (text, translated) in context) {
-            if (string.IsNullOrWhiteSpace(text))
+            if (text.IsNullOrWhiteSpace())
                 continue;
-            if (string.IsNullOrWhiteSpace(translated))
+            if (translated.IsNullOrWhiteSpace())
                 continue;
 
             chatHistory.AddUserMessage(text);

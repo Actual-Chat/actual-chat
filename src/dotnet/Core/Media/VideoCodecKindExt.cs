@@ -4,7 +4,7 @@ public static class VideoCodecKindExt
 {
     public static VideoCodecKind Parse(string codec)
     {
-        if (string.IsNullOrWhiteSpace(codec))
+        if (codec.IsNullOrWhiteSpace())
             return VideoCodecKind.Unknown;
 
         var c = codec.Trim().ToLowerInvariant();

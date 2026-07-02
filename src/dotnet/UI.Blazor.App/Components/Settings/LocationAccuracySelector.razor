@@ -1,0 +1,124 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are expected to be untrimmed.")]
+
+<TileTopic Topic="Location Accuracy"/>
+<Tile Class="render-mode-tile">
+    <Form Model="@_formModel">
+        <DataAnnotationsValidator/>
+
+        <FormBlock>
+            <InputRadioGroup
+                TValue="@GeoTrackingAccuracy"
+                Name="location-accuracy"
+                DisplayName="Location Accuracy"
+                @bind-Value="_formModel.Accuracy">
+
+                <TileItem
+                    Class="@GetTileItemClass(GeoTrackingAccuracy.High)"
+                    Click="@NoStateHasChanged.EventCallback(() => ChangeAccuracy(GeoTrackingAccuracy.High))">
+                    <Icon>
+                        <FormRadio TValue="@GeoTrackingAccuracy" Id="@_formModel.HighFormId" Value="@GeoTrackingAccuracy.High"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_formModel.HighFormId" Text="High" IsRequired="true"></Label>
+                    </Content>
+                    <Caption>
+                        Highest precision; uses more battery.
+                    </Caption>
+                </TileItem>
+
+                <TileItem
+                    Class="@GetTileItemClass(GeoTrackingAccuracy.Balanced)"
+                    Click="@NoStateHasChanged.EventCallback(() => ChangeAccuracy(GeoTrackingAccuracy.Balanced))">
+                    <Icon>
+                        <FormRadio TValue="@GeoTrackingAccuracy" Id="@_formModel.BalancedFormId" Value="@GeoTrackingAccuracy.Balanced"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_formModel.BalancedFormId" Text="Balanced" IsRequired="true"></Label>
+                    </Content>
+                    <Caption>
+                        Good precision with moderate battery use.
+                    </Caption>
+                </TileItem>
+
+                <TileItem
+                    Class="@GetTileItemClass(GeoTrackingAccuracy.Low)"
+                    Click="@NoStateHasChanged.EventCallback(() => ChangeAccuracy(GeoTrackingAccuracy.Low))">
+                    <Icon>
+                        <FormRadio TValue="@GeoTrackingAccuracy" Id="@_formModel.LowFormId" Value="@GeoTrackingAccuracy.Low"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_formModel.LowFormId" Text="Low" IsRequired="true"></Label>
+                    </Content>
+                    <Caption>
+                        Lowest precision; saves the most battery.
+                    </Caption>
+                </TileItem>
+
+            </InputRadioGroup>
+        </FormBlock>
+    </Form>
+</Tile>
+
+@code {
+    private GeoTrackingAccuracy _accuracy = GeoTrackingAccuracy.Balanced;
+    private FormModel _formModel = null!;
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+
+    protected override void OnInitialized() {
+        _formModel = new(ComponentIdGenerator) {
+            Accuracy = _accuracy,
+        };
+        _formModel.AccuracyChanged += ChangeAccuracy;
+    }
+
+    protected override async Task OnInitializedAsync() {
+        var accuracy = await Hub.LocalSettings.LocalAppSettings().Get(x => x.LocationAccuracyOrDefault);
+        if (accuracy == _accuracy)
+            return;
+
+        _accuracy = accuracy;
+        _formModel.Accuracy = accuracy;
+    }
+
+    private void ChangeAccuracy(GeoTrackingAccuracy accuracy) {
+        if (_accuracy == accuracy)
+            return;
+
+        _accuracy = accuracy;
+        _ = Hub.LocalSettings.LocalAppSettings().Update(x => x with {
+            LocationAccuracy = accuracy,
+        });
+    }
+
+    private string GetTileItemClass(GeoTrackingAccuracy expectedAccuracy)
+        => _accuracy == expectedAccuracy ? "selected transparent" : "transparent";
+
+    // Nested types
+
+    public sealed class FormModel {
+        private string FormId { get; }
+        public string HighFormId { get; }
+        public string BalancedFormId { get; }
+        public string LowFormId { get; }
+
+        public GeoTrackingAccuracy Accuracy {
+            get;
+            set {
+                field = value;
+                AccuracyChanged?.Invoke(value);
+            }
+        }
+
+        public event Action<GeoTrackingAccuracy>? AccuracyChanged;
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("location-accuracy-form");
+            HighFormId = $"{FormId}-high";
+            BalancedFormId = $"{FormId}-balanced";
+            LowFormId = $"{FormId}-low";
+        }
+    }
+}

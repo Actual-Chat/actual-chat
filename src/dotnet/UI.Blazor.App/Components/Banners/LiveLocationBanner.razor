@@ -1,0 +1,93 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, LiveLocationBanner.Model>
+@{
+    var m = State.Value;
+}
+
+<Banner
+    IsVisible="@(m.Count > 0)"
+    Class="live-location-banner">
+    <Icon>
+        <i class="icon-map-point text-2xl"></i>
+    </Icon>
+    <Body>
+        <div class="c-body" @onclick="@OnOpenMap">
+            <div class="c-avatars">
+                @foreach (var avatar in m.Avatars.Take(MaxAvatars)) {
+                    <AvatarCircle Avatar="@avatar" Size="@SquareSize.Size7"/>
+                }
+            </div>
+            <div class="c-text">
+                <span class="c-description">@m.GetDescription()</span>
+                @if (!m.RemainingText.IsNullOrEmpty()) {
+                    <span class="c-countdown">· @m.RemainingText left</span>
+                }
+            </div>
+        </div>
+    </Body>
+    <Buttons>
+        @if (m.IsOwnSharing) {
+            <Button Class="btn-transparent unhovered" Click="@OnStop">Stop</Button>
+        }
+    </Buttons>
+</Banner>
+
+@code {
+    private const int MaxAvatars = Constants.Location.MaxSharingAuthorsPerChat;
+    private static readonly TimeSpan CountdownTickPeriod = TimeSpan.FromSeconds(30);
+
+    private Chat Chat => ChatContext.Chat;
+    private ISharedLocations SharedLocations => Hub.SharedLocations;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        var locations = await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (locations.Count == 0)
+            return Model.None;
+
+        var ownAuthor = await Hub.AuthorUI.GetOwn(chatId, cancellationToken).ConfigureAwait(false);
+        var ownLocation = locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id);
+        var avatars = await Hub.LocationUI.ListAvatars(chatId, cancellationToken).ConfigureAwait(false);
+        var remaining = ownLocation != null
+            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
+            : "";
+
+        return new Model(avatars, locations.Count, ownLocation != null, remaining);
+    }
+
+    private Task OnOpenMap()
+        => ModalUI.Show(new LocationMapModal.Model(Chat.Id));
+
+    private Task OnStop()
+        => Hub.LocationUI.StopSharing(Chat.Id, CancellationToken.None);
+
+    // Nested types
+
+    public sealed record Model(IReadOnlyList<Avatar> Avatars, int Count, bool IsOwnSharing, string RemainingText = "") {
+        public static readonly Model None = new([], 0, false);
+
+        public string GetDescription() {
+            if (IsOwnSharing) {
+                var others = Count - 1;
+                return others switch {
+                    0 => "You are sharing your location",
+                    1 => "You and 1 other are sharing location",
+                    _ => $"You and {others} others are sharing location",
+                };
+            }
+            return Count == 1
+                ? "1 person is sharing location"
+                : $"{Count} people are sharing location";
+        }
+    }
+}

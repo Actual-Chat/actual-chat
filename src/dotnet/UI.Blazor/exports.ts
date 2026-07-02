@@ -34,6 +34,7 @@ export * from './Components/Clipboard/copy-trigger';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/ErrorBarrier/error-cat-svg.lit';
 export * from './Components/VisualMediaViewerModal/visual-media-viewer';
+export * from './Components/MapView/map-view';
 export * from './Components/Menu/menu-host';
 export * from './Components/Modal/modal-host';
 export * from './Components/Overlays/loading-cat-svg.lit';

@@ -74,6 +74,7 @@
     // attachment-only messages render ~1 text line taller, then collapse — re-anchoring the list (a jump).
     var isEmptyMarkup = !m.IsStreaming
         && trimmedContent.IsNullOrEmpty()
+        && !entry.HasLocation
         && m.Translation == TranslationState.None
         && status == ChatMessageSendingStatus.MessageStatus.Default
         && !message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign);
@@ -130,6 +131,9 @@
                 </CascadingValue>
             </CascadingValue>
         </CascadingValue>
+        @if (entry.HasLocation) {
+            <LocationMessageView Entry="@entry"/>
+        }
     }
 </div>
 

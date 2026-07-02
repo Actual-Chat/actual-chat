@@ -184,6 +184,20 @@ public static partial class Constants
         public static readonly TimeSpan OfflineTimeout = TimeSpan.FromMinutes(10);
     }
 
+    public static class Location
+    {
+        public static readonly TimeSpan UpdatePeriod = TimeSpan.FromSeconds(10);
+        public static readonly TimeSpan GetTimeout = TimeSpan.FromSeconds(15);
+        public static readonly IReadOnlyDictionary<TimeSpan, string> Durations = new Dictionary<TimeSpan, string> {
+            [TimeSpan.FromMinutes(15)] = "15 minutes",
+            [TimeSpan.FromHours(1)] = "1 hour",
+            [TimeSpan.FromHours(8)] = "8 hours",
+        };
+        public static readonly TimeSpan MinDuration = Durations.Keys.Min();
+        public static readonly TimeSpan MaxDuration = Durations.Keys.Max();
+        public const int MaxSharingAuthorsPerChat = 100;
+    }
+
     public static class Messages
     {
         public static readonly string RecordingSkeleton = "🎙…";

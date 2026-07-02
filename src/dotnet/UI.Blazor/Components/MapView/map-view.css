@@ -1,0 +1,29 @@
+.map-view {
+    @apply relative;
+    @apply w-full h-full;
+    @apply overflow-hidden;
+}
+.map-view .map-marker {
+    @apply relative;
+    @apply flex items-center justify-center;
+}
+.map-view .map-marker .c-pin-dot {
+    @apply w-4 h-4;
+    @apply rounded-full border-[3px] border-white;
+    @apply bg-primary;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.map-view .map-marker .c-pin-avatar {
+    @apply relative;
+    @apply flex items-center justify-center;
+    @apply w-9 h-9;
+    @apply rounded-full border-2 border-white;
+    @apply bg-01;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.map-view .map-marker .c-avatar {
+    @apply block;
+    @apply w-full h-full;
+    @apply rounded-full;
+    @apply object-cover;
+}

@@ -22,6 +22,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IAliases Aliases => field ??= Services.GetRequiredService<IAliases>();
     public IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     public IReactions Reactions => field ??= Services.GetRequiredService<IReactions>();
+    public ISharedLocations SharedLocations => field ??= Services.GetRequiredService<ISharedLocations>();
     public IRoles Roles => field ??= Services.GetRequiredService<IRoles>();
     public IInvites Invites => field ??= Services.GetRequiredService<IInvites>();
     public IContacts Contacts => field ??= Services.GetRequiredService<IContacts>();
@@ -51,6 +52,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public ChatAudioUI ChatAudioUI => field ??= Services.GetRequiredService<ChatAudioUI>();
     public ChatVideoUI ChatVideoUI => field ??= Services.GetRequiredService<ChatVideoUI>();
     public CameraUI CameraUI => field ??= Services.GetRequiredService<CameraUI>();
+    public LocationUI LocationUI => field ??= Services.GetRequiredService<LocationUI>();
     public VideoQualityUI VideoQualityUI => field ??= Services.GetRequiredService<VideoQualityUI>();
     public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
     public LiveSessionUI LiveSessionUI => field ??= Services.GetRequiredService<LiveSessionUI>();

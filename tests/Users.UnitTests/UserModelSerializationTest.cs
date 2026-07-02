@@ -195,6 +195,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var settings = new LocalAppSettings {
             IsLogViewerEnabled = true,
             IsVideoDiagnosticsEnabled = true,
+            LocationAccuracy = GeoTrackingAccuracy.Low,
         };
         settings.AssertPassesThroughAllSerializers(AssertLocalAppSettingsEqual);
     }
@@ -204,6 +205,18 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var settings = new LocalAppSettings();
         settings.AssertPassesThroughAllSerializers(AssertLocalAppSettingsEqual);
+    }
+
+    [Fact]
+    public void LocalAppSettings_LocationAccuracyCanBeChanged()
+    {
+        var settings = new LocalAppSettings();
+        settings.LocationAccuracy.Should().BeNull();
+        settings.LocationAccuracyOrDefault.Should().Be(GeoTrackingAccuracy.Balanced);
+
+        var updated = settings with { LocationAccuracy = GeoTrackingAccuracy.High };
+        updated.LocationAccuracy.Should().Be(GeoTrackingAccuracy.High);
+        updated.LocationAccuracyOrDefault.Should().Be(GeoTrackingAccuracy.High);
     }
 
     [Fact]
@@ -223,6 +236,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         actual.SelectedCameraDeviceId.Should().Be(expected.SelectedCameraDeviceId);
         actual.IsBackgroundBlurEnabled.Should().Be(expected.IsBackgroundBlurEnabled);
         actual.IsVideoDiagnosticsEnabled.Should().Be(expected.IsVideoDiagnosticsEnabled);
+        actual.LocationAccuracy.Should().Be(expected.LocationAccuracy);
         actual.CameraMirrorOverrides.Should().BeEquivalentTo(expected.CameraMirrorOverrides);
     }
 }

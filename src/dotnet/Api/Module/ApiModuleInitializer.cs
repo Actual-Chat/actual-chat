@@ -55,6 +55,7 @@ public static partial class ApiModuleInitializer
         MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ThreadChatId>());
         // Chat entry identifiers
         MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ChatEntryId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<SharedLocationId>());
         // Other chat-related identifiers
         MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<MentionRef>());
         MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<EmojiRef>());

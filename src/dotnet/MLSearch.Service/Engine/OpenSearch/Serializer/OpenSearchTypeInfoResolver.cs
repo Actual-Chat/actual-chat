@@ -45,7 +45,7 @@ public class OpenSearchTypeInfoResolver : DefaultJsonTypeInfoResolver
             var serializerMapping = member is null ? null : ConnectionSettings.PropertyMappingProvider?.CreatePropertyMapping(member);
 
             var nameOverride = propertyMapping?.Name ?? serializerMapping?.Name;
-            if (!string.IsNullOrWhiteSpace(nameOverride))
+            if (!nameOverride.IsNullOrWhiteSpace())
                 property.Name = nameOverride;
 
             var overrideIgnore = propertyMapping?.Ignore ?? serializerMapping?.Ignore;

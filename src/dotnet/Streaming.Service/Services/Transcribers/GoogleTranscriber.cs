@@ -310,7 +310,7 @@ public partial class GoogleTranscriber : ITranscriber
 
         // Google transcriber sometimes returns empty final transcript -
         // we assume that the last unstable one becomes stable in this case.
-        if (isFinal && string.IsNullOrWhiteSpace(suffix)) {
+        if (isFinal && suffix.IsNullOrWhiteSpace()) {
             state.MakeStable();
             return;
         }

@@ -411,7 +411,9 @@ public partial class Chats(IServiceProvider services) : IChats
         var attachments = command.Attachments;
         if (attachments.Length > 0 || command.HasUploadingAttachments)
             chat.Rules.Permissions.Require(ChatPermissions.Upload);
-        if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0 && !command.HasUploadingAttachments)
+        if (text.IsNullOrWhiteSpace()
+            && attachments.Length == 0
+            && command is { HasUploadingAttachments: false, LocationId: null })
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
         ChatEntry textEntry;
@@ -503,6 +505,7 @@ public partial class Chats(IServiceProvider services) : IChats
                     RepliedEntryLid = repliedEntryLid,
                     Forwarded = command.Forwarded,
                     Attachments = attachments.Length == 0 ? null : attachments,
+                    LocationId = command.LocationId,
                     ClientId = command.ClientId,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);

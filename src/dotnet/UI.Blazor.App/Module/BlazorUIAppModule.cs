@@ -49,6 +49,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
         services.AddAlias<IDebugAudioSync, ChatAudioUI>(ServiceLifetime.Transient);
         fusion.AddService<ChatVideoUI>(ServiceLifetime.Scoped);
+        fusion.AddService<LocationUI>(ServiceLifetime.Scoped);
+        fusion.AddService<LiveLocationReporter>(ServiceLifetime.Scoped);
         fusion.AddService<CameraUI>(ServiceLifetime.Scoped);
         services.AddScoped(c => new VideoQualityUI(c.AppUIHub()));
         fusion.AddService<VideoPanelLayoutCalculator>(ServiceLifetime.Transient);
@@ -145,6 +147,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<ApiKeyCreateModal.Model, ApiKeyCreateModal>()
             .Add<EmojiModal.Model, EmojiModal>()
             .Add<ReportModal.Model, ReportModal>()
+            .Add<LocationMapModal.Model, LocationMapModal>()
+            .Add<ShareLocationModal.Model, ShareLocationModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map
@@ -219,6 +223,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             services.AddScoped<IAudioPlaybackEngineFactory>(c => new WebAudioPlaybackEngineFactory(c));
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
             services.AddScoped<CameraPermissionHandler>(c => new WebCameraPermissionHandler(c.UIHub()));
+            services.AddScoped<ILocationTracker>(c => new WebLocationTracker(c.AppUIHub()));
+            services.AddScoped<LocationPermissionHandler>(c => new WebLocationPermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
         }

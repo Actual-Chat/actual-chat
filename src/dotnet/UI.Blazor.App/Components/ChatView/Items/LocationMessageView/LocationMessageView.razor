@@ -1,0 +1,51 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, LocationMessageView.Model?>
+@{
+    var m = State.Value;
+}
+@* Fixed-height container reserved on first render (before ComputeState resolves) so the
+   virtual list's total height stays stable and doesn't scroll-jump when the map fills in. *@
+<div class="location-message" @onclick="@OnOpenMap">
+    @if (m is not null) {
+        <MapView
+            Class="c-map"
+            Zoom="15"
+            Interactive="false"
+            CenterLatitude="@m.Latitude"
+            CenterLongitude="@m.Longitude"
+            Markers="@m.Markers"/>
+    }
+</div>
+
+@code {
+    private ISharedLocations SharedLocations => Hub.SharedLocations;
+
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+
+    protected override ComputedState<Model?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model?>.Options() {
+                InitialValue = null,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        if (Entry.LocationId is not { } locationId)
+            return null;
+
+        var location = await SharedLocations.Get(Session, Entry.ChatId, locationId, cancellationToken).ConfigureAwait(false);
+        if (location is null)
+            return null;
+
+        var marker = new MapMarker(location.Id.Value, location.Point.Latitude, location.Point.Longitude);
+        return new Model(location.Point.Latitude, location.Point.Longitude, [marker]);
+    }
+
+    private Task OnOpenMap()
+        => ModalUI.Show(new LocationMapModal.Model(Entry.ChatId, Entry.LocationId));
+
+    // Nested types
+
+    public sealed record Model(double Latitude, double Longitude, IReadOnlyList<MapMarker> Markers);
+}
