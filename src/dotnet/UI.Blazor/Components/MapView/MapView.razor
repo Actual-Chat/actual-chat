@@ -5,7 +5,7 @@
 <div @ref="Ref" class="map-view @Class"></div>
 
 @code {
-    public const string DefaultStyleUrl = "https://tiles.openfreemap.org/styles/liberty";
+    private const string DefaultStyleUrl = "https://tiles.openfreemap.org/styles/liberty";
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.MapView.create";
 
     private IJSObjectReference? _jsRef;
@@ -15,7 +15,6 @@
     private ElementReference Ref { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string StyleUrl { get; set; } = DefaultStyleUrl;
     [Parameter] public double CenterLatitude { get; set; }
     [Parameter] public double CenterLongitude { get; set; }
     [Parameter] public double Zoom { get; set; } = 12;
@@ -27,7 +26,7 @@
             return;
 
         var options = new {
-            styleUrl = StyleUrl,
+            styleUrl = DefaultStyleUrl,
             centerLatitude = CenterLatitude,
             centerLongitude = CenterLongitude,
             zoom = Zoom,
@@ -37,16 +36,14 @@
         await _jsRef.InvokeVoidAsync("setMarkers", Markers).ConfigureAwait(true);
     }
 
-    protected override async Task OnParametersSetAsync() {
-        if (_jsRef is { } jsRef)
-            await jsRef.InvokeVoidAsync("setMarkers", Markers).ConfigureAwait(true);
-    }
+    protected override Task OnParametersSetAsync()
+        => _jsRef?.InvokeVoidAsync("setMarkers", Markers).AsTask() ?? Task.CompletedTask;
 
-    public async ValueTask DisposeAsync() {
+    public ValueTask DisposeAsync() {
         if (_jsRef is not { } jsRef)
-            return;
+            return ValueTask.CompletedTask;
 
         _jsRef = null;
-        await jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
+        return jsRef.DisposeSilentlyAsync("dispose");
     }
 }
