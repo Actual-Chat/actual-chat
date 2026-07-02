@@ -12,11 +12,13 @@
         Click="@OnNotesClick">
     </MenuEntry>
 }
-<MenuEntry
-    Icon="icon-bell"
-    Text="Notifications"
-    Click="@OnNotificationsClick">
-</MenuEntry>
+@if (m.Account.IsAdmin) {
+    <MenuEntry
+        Icon="icon-bell"
+        Text="Notifications"
+        Click="@OnNotificationsClick">
+    </MenuEntry>
+}
 <MenuEntry
     Icon="icon-settings"
     Text="Settings"

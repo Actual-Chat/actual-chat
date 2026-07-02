@@ -9,6 +9,7 @@
     var groups = GroupItems(FilterItems(m.Items));
 }
 
+<RequireAccount MustBeAdmin="true"/>
 <RenderIntoSlot Name="@LayoutSlots.MainHeader">
     <div class="c-content notifications-header">
         <NavbarPullerButton/>
