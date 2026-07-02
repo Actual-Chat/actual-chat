@@ -70,7 +70,7 @@
             ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
             : "";
 
-        return new Model(avatars.ToApiArray(), locations.Count, ownLocation != null, remaining);
+        return new Model(avatars, locations.Count, ownLocation != null, remaining);
     }
 
     private Task OnOpenMap()
@@ -81,7 +81,7 @@
 
     // Nested types
 
-    public sealed record Model(ApiArray<Avatar> Avatars, int Count, bool IsOwnSharing, string RemainingText = "") {
+    public sealed record Model(IReadOnlyList<Avatar> Avatars, int Count, bool IsOwnSharing, string RemainingText = "") {
         public static readonly Model None = new([], 0, false);
 
         public string GetDescription() {

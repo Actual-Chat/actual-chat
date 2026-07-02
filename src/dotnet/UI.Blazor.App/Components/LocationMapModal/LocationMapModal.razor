@@ -53,7 +53,7 @@
             markers.Add(marker);
         }
         var center = locations[0].Point;
-        return new ComputedModel(markers.ToApiArray(), center.Latitude, center.Longitude);
+        return new ComputedModel(markers, center.Latitude, center.Longitude);
     }
 
     private async Task<IReadOnlyList<SharedLocation>> GetLocations(ChatId chatId, CancellationToken cancellationToken) {
@@ -66,7 +66,10 @@
 
     // Nested types
 
-    public sealed record ComputedModel(ApiArray<MapMarker> Markers, double CenterLatitude, double CenterLongitude) {
+    public sealed record ComputedModel(
+        IReadOnlyList<MapMarker> Markers,
+        double CenterLatitude,
+        double CenterLongitude) {
         public static readonly ComputedModel None = new([], 0, 0);
     }
 

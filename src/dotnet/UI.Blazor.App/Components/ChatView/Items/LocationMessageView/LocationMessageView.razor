@@ -39,7 +39,7 @@
             return null;
 
         var marker = new MapMarker(location.Id.Value, location.Point.Latitude, location.Point.Longitude);
-        return new Model(location.Point.Latitude, location.Point.Longitude, new[] { marker }.ToApiArray());
+        return new Model(location.Point.Latitude, location.Point.Longitude, [marker]);
     }
 
     private Task OnOpenMap()
@@ -47,5 +47,5 @@
 
     // Nested types
 
-    public sealed record Model(double Latitude, double Longitude, ApiArray<MapMarker> Markers);
+    public sealed record Model(double Latitude, double Longitude, IReadOnlyList<MapMarker> Markers);
 }

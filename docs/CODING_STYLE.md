@@ -573,6 +573,11 @@ public override async Task Require(CancellationToken cancellationToken)
    reflection-only members (e.g. Mono AOT marker methods) — those
    messages describe the constraint, not a deprecation timeline.
 
+13. **Prefer standard .NET collections over `ApiArray`/`ApiList`/`ApiSet`/`ApiMap`
+    for client-local data.** Use `ToApiXxx` only for data crossing the
+    serialization/RPC boundary (compute-method results, command results, API
+    contracts); for client-only collections use `List<T>`, arrays, `Dictionary<,>`, etc.
+
 ### Test Conventions
 
 #### Test Method Naming
