@@ -2,6 +2,23 @@ namespace ActualChat.Notifications;
 
 public static class NotificationHelper
 {
+    // The single source of truth for mode filtering: fan-out and display-side suppression must
+    // agree, or OnPush drops exempted pushes when it re-reads GetUserNotificationInfo.
+    public static NotificationImportance GetImportance(NotificationKind kind)
+        => kind switch {
+            NotificationKind.Attention or NotificationKind.IncomingCall => NotificationImportance.Ringer,
+            NotificationKind.Mention or NotificationKind.Reply or NotificationKind.Invitation
+                => NotificationImportance.Important,
+            _ => NotificationImportance.Ordinary,
+        };
+
+    public static bool IsDeliverable(NotificationImportance importance, ChatNotificationMode mode)
+        => importance switch {
+            NotificationImportance.Ringer => true,
+            NotificationImportance.Important => mode != ChatNotificationMode.Muted,
+            _ => mode == ChatNotificationMode.Default,
+        };
+
     public static string GetTitle(Chat.Chat chat, AuthorFull author)
         => chat.Id.GetThreadOutermostParentOrSelf().Kind switch {
             ChatKind.Group or ChatKind.Place => $"{author.Avatar.Name} @ {chat.Title}",
