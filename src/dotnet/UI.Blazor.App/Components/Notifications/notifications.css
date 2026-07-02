@@ -98,8 +98,12 @@
 .notification-item .c-actions {
     @apply flex gap-2 mt-2;
 }
+/* Hidden-until-hover only on devices that can hover; touch devices keep it visible. */
 .notification-item .c-ending {
-    @apply shrink-0 opacity-0;
+    @apply shrink-0;
+}
+body.hoverable .notification-item .c-ending {
+    @apply opacity-0;
 }
 body.hoverable .notification-item:hover .c-ending {
     @apply opacity-100;
