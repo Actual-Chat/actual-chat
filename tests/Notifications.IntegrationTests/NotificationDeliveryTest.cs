@@ -318,6 +318,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
             UnreadCount = 1,
             AuthorIds = new[] { authorId }.ToApiArray(),
             LeadText = text,
+            LeadCount = 1,
             SentAt = Moment.Now,
         };
     }

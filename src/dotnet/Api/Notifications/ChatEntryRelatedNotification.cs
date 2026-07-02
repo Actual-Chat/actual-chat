@@ -27,6 +27,10 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
     public int BeepCount { get; init; }
     [DataMember(Order = 15), Key(15)]
     public Moment LastBeepAt { get; init; }
+    // Messages included in LeadText (roll-in makes it 2), so the "+N more" tail never counts a
+    // message the lead already shows. Old blobs deserialize this as 0 == 1.
+    [DataMember(Order = 17), Key(17)]
+    public int LeadCount { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
@@ -39,24 +43,35 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
         if (existing is not ChatEntryRelatedNotification e)
             return base.MergeWith(existing);
 
-        var authorIds = e.AuthorIds;
-        if (AuthorId is { } authorId && !authorIds.Contains(authorId) && authorIds.Count < Constants.Notification.MaxTrackedAuthors)
-            authorIds = authorIds.With(authorId);
-
         // Notification events can be processed out of order, so anchor at the min (earliest) unread
         // entry and track the max (latest) — don't assume the existing one arrived first.
         var existingStart = e.StartEntryLid > 0 ? e.StartEntryLid : e.EntryLid;
         var incomingStart = StartEntryLid > 0 ? StartEntryLid : EntryLid;
+        // An entry already inside the merged window is a redelivery (the queue is at-least-once),
+        // so the merge must be idempotent: return the existing instance unchanged — the caller
+        // relies on reference equality to skip the beep/push for no-op merges.
+        if (EntryLid > 0 && EntryLid <= e.EntryLid && incomingStart >= existingStart)
+            return e;
+
+        var authorIds = e.AuthorIds;
+        if (AuthorId is { } authorId && !authorIds.Contains(authorId) && authorIds.Count < Constants.Notification.MaxTrackedAuthors)
+            authorIds = authorIds.With(authorId);
         var startEntryLid = MinPositive(existingStart, incomingStart);
         var entryLid = Math.Max(e.EntryLid, EntryLid);
 
         string leadText;
-        if (incomingStart > 0 && incomingStart < existingStart)
+        int leadCount;
+        if (incomingStart > 0 && incomingStart < existingStart) {
             leadText = Text; // this message is now the earliest unread -> it becomes the lead
+            leadCount = 1;
+        }
         else {
             leadText = e.LeadText ?? "";
-            if (e.UnreadCount == 1 && leadText.Length < Constants.Notification.LeadRollInThreshold && !Text.IsNullOrEmpty())
+            leadCount = Math.Max(1, e.LeadCount);
+            if (e.UnreadCount == 1 && leadText.Length < Constants.Notification.LeadRollInThreshold && !Text.IsNullOrEmpty()) {
                 leadText = $"{leadText}\n{Text}";
+                leadCount++;
+            }
         }
 
         // A gap between messages long enough to count as a conversation lull resets the beep
@@ -66,11 +81,14 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
             Version = e.Version,
             CreatedAt = e.CreatedAt,
             HandledAt = null,
+            // An out-of-order earlier message must not regress the newest-activity timestamp.
+            SentAt = Moment.Max(e.SentAt, SentAt),
             EntryLid = entryLid,
             StartEntryLid = startEntryLid,
             UnreadCount = e.UnreadCount + 1,
             AuthorIds = authorIds,
             LeadText = leadText,
+            LeadCount = leadCount,
             BeepCount = isLull ? 0 : e.BeepCount,
             LastBeepAt = isLull ? default : e.LastBeepAt,
         };
