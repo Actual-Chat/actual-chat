@@ -71,12 +71,14 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         // Loaded once and kept stable for the visit, so unread dots don't vanish mid-view when a
-        // new notification arrives; OnAfterRender persists "now" for the next visit.
+        // new notification arrives. "Now" is persisted right after the read (not on first render,
+        // which would race this read via the kvas cache) and becomes the next visit's threshold.
         if (_seenThreshold is null) {
             var seen = await _localSettings.Get<string>(LastSeenKey, cancellationToken).ConfigureAwait(false);
-            _seenThreshold = long.TryParse(seen, out var ticks)
-                ? new Moment(new DateTime(ticks, DateTimeKind.Utc))
-                : default;
+            _seenThreshold = long.TryParse(seen, out var ticks) ? new Moment(ticks) : default(Moment);
+            await _localSettings
+                .Set(LastSeenKey, Moment.Now.EpochOffset.Ticks.ToString(), CancellationToken.None)
+                .ConfigureAwait(false);
         }
 
         var notifications = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
@@ -89,13 +91,6 @@
             items.Add(new Item(n, chat));
         }
         return new Model { Items = items, LastSeenAt = _seenThreshold.Value };
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            var ticks = Moment.Now.ToDateTime().Ticks.ToString();
-            await _localSettings.Set(LastSeenKey, ticks, CancellationToken.None).ConfigureAwait(false);
-        }
     }
 
     private void SetFilter(NotificationFilter filter) {
@@ -114,11 +109,12 @@
             ? items.Where(i => i.Notification.Kind == ActualChat.NotificationKind.Mention).ToList()
             : items;
 
-    private static IReadOnlyList<Group> GroupItems(IReadOnlyList<Item> items) {
+    private IReadOnlyList<Group> GroupItems(IReadOnlyList<Item> items) {
         if (items.Count == 0)
             return [];
 
-        var today = Moment.Now.ToDateTime().Date;
+        // Group by the user's local calendar date, not the UTC one.
+        var today = DateTimeConverter.ToLocalTime(Moment.Now).Date;
         var groups = new List<Group>();
         AddGroup("Today", d => d == today);
         AddGroup("Yesterday", d => d == today.AddDays(-1));
@@ -126,7 +122,9 @@
         return groups;
 
         void AddGroup(string title, Func<DateTime, bool> predicate) {
-            var groupItems = items.Where(i => predicate(i.Notification.SentAt.ToDateTime().Date)).ToList();
+            var groupItems = items
+                .Where(i => predicate(DateTimeConverter.ToLocalTime(i.Notification.SentAt).Date))
+                .ToList();
             if (groupItems.Count > 0)
                 groups.Add(new Group(title, groupItems));
         }
