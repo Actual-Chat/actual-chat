@@ -6,14 +6,20 @@ import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
 const COLLAPSE_RANGE_REM = 7.5;  // list scroll distance mapped to a full collapse (header tracks scroll 1:1)
 const EXPAND_AT_PX = 8;          // within this of the list top => pinned fully expanded (exact 0)
-// Require this much scroll overflow before collapsing — comfortably above the freed range so the
-// list still overflows once collapsed (otherwise collapsing makes it fit, scrollTop snaps to 0,
-// and the header oscillates against the list every frame).
-const MIN_OVERFLOW_REM = 10;
+// Only collapse when the real content can scroll this much BEYOND the full range. Below it the
+// scroll runs out mid-collapse and the header sticks partway; requiring a margin keeps the
+// decision binary (fully collapses, or stays fully expanded) and comfortable at the boundary.
+const COLLAPSE_MARGIN_REM = 2;
 const DRAG_START_PX = 6;
 const SNAP_DURATION_MS = 250;
 const ACTIVE_LINGER_MS = 150;    // keep dependent transitions suppressed this long after the last scroll write
 const Deceleration = 0.1;
+// Per-frame easing of the scroll-linked collapse toward the scroll-derived target. A momentum fling
+// from rest reports one large offset jump in its first event; easing toward it over a few frames
+// (instead of snapping the header there) removes the abrupt first-frame collapse. The rAF loop is
+// self-driven, so it keeps converging even after the scroll events stop (unlike a per-event clamp).
+const FOLLOW_FACTOR = 0.25;
+const CHATINFO_PADDING_REM = 1.5; // expanded .c-chat-info vertical padding (1rem top + 0.5rem bottom)
 
 interface ScrollLimitsSource {
     scrollController?: { getEffectiveScrollLimits(): { min: number; max: number } };
@@ -42,16 +48,26 @@ export class RightPanelCollapse {
     private readonly rightPanel: HTMLElement;
     private readonly content: HTMLElement | null;
     private readonly disposed$: Subject<void> = new Subject<void>();
-    private readonly rangePx = remToPx(COLLAPSE_RANGE_REM);
-    private readonly minOverflowPx = remToPx(MIN_OVERFLOW_REM);
+    private readonly collapseMarginPx = remToPx(COLLAPSE_MARGIN_REM);
 
-    private progress = 0;       // current value: 0 = expanded, 1 = collapsed (mirrored to --rp-collapse)
-    private anchorOffset = 0;   // list offset at which the header is fully expanded
+    private progress = 0;         // current value: 0 = expanded, 1 = collapsed (mirrored to --rp-collapse)
+    private targetProgress = 0;   // scroll-derived target the follow loop eases toward
+    private anchorOffset = 0;     // list offset at which the header is fully expanded
+    private chatInfoHeightPx = 0; // measured expanded chat-info height (drives --rp-chatinfo-h and the range)
+    private headerBasePx = 0;     // measured expanded header height (drives --rp-header-base, incl. bio)
     private lastScroller: HTMLElement | null = null;
     private snapRaf = 0;
+    private followRaf = 0;
     private lingerTimer = 0;
     private headerClassObserver: MutationObserver | null = null;
+    private chatInfoObserver: MutationObserver | null = null;
     private wasAvatarExpanded = false;
+
+    // The collapse range = the header shrink (base - bar, a constant) plus the chat-info that also
+    // folds away; both are freed above the list, and the header tracks the list scroll 1:1 over it.
+    private get rangePx(): number {
+        return remToPx(COLLAPSE_RANGE_REM) + this.chatInfoHeightPx;
+    }
 
     static create(rightPanel: HTMLElement): RightPanelCollapse {
         return new RightPanelCollapse(rightPanel);
@@ -76,6 +92,19 @@ export class RightPanelCollapse {
             takeUntil(this.disposed$),
         ).subscribe(e => Gestures.addActive(new CollapseDragGesture(this, e)));
 
+        // Switching tabs re-expands the header: the freshly shown list (often shorter) shouldn't stay
+        // collapsed under a header the user can no longer scroll back open.
+        fromEvent(this.content, 'click', { capture: true }).pipe(
+            filter(e => (e.target instanceof Element) && e.target.closest('.tab-btn') != null),
+            takeUntil(this.disposed$),
+        ).subscribe(() => this.expandForTabSwitch());
+
+        // The header re-baselines and re-measures when the chat changes (a new chat's bio can make the
+        // header a different height — otherwise the previous chat's taller header would carry over).
+        fromEvent(this.rightPanel, 'right-panel:chat-changed').pipe(
+            takeUntil(this.disposed$),
+        ).subscribe(() => this.onChatChanged());
+
         // Watch the full-screen-avatar class so closing it re-baselines us on the next scroll.
         const header = this.header;
         if (header) {
@@ -83,6 +112,67 @@ export class RightPanelCollapse {
             this.headerClassObserver = new MutationObserver(() => this.onHeaderClassChange());
             this.headerClassObserver.observe(header, { attributes: true, attributeFilter: ['class'] });
         }
+
+        // Measure the chat-info card (rendered lazily, and only when there are any toggles) so the
+        // top region's expanded height — and thus the range and the scroll-region translate — stays
+        // exact. A MutationObserver (not a ResizeObserver) catches the card's DOM insertion; the card
+        // has no collapse-dependent styles, so reading its offsetHeight never feeds back on the var.
+        const topRegion = rightPanel.querySelector('.c-top-region');
+        if (topRegion) {
+            this.chatInfoObserver = new MutationObserver(() => this.measureGeometry());
+            this.chatInfoObserver.observe(topRegion, { childList: true, subtree: true });
+        }
+        this.measureGeometry();
+    }
+
+    private measureGeometry() {
+        this.measureHeaderBase();
+        this.measureChatInfo();
+    }
+
+    // Measure the real expanded header height (which includes a variable-length bio and the safe area)
+    // instead of assuming a fixed 11rem, so the top-region cap doesn't clip the description. Only valid
+    // while fully expanded — the header shrinks with progress, and the full-screen avatar is a special
+    // case — so skip otherwise and keep the last value.
+    private measureHeaderBase() {
+        if (this.progress !== 0 || this.isAvatarExpanded)
+            return;
+
+        const header = this.header;
+        const cBottom = header?.querySelector<HTMLElement>('.c-bottom');
+        if (!header || !cBottom)
+            return;
+
+        // Measure the content extent (header top -> bottom of .c-bottom), NOT offsetHeight: offsetHeight
+        // is floored by min-height (= the current base), so it could only ever grow — a taller previous
+        // chat's header height would stick when switching to a chat with a shorter or absent bio.
+        const height = cBottom.getBoundingClientRect().bottom - header.getBoundingClientRect().top;
+        if (height <= 0 || Math.abs(height - this.headerBasePx) < 0.5)
+            return;
+
+        this.headerBasePx = height;
+        this.rightPanel.style.setProperty('--rp-header-base', `${height}px`);
+    }
+
+    private onChatChanged() {
+        this.lastScroller = null;
+        this.anchorOffset = 0;
+        this.stopFollow();
+        cancelAnimationFrame(this.snapRaf);
+        this.snapRaf = 0;
+        this.targetProgress = 0;
+        this.headerBasePx = 0; // force a re-measure for the new chat's header (its bio may differ)
+        this.setProgress(0);
+    }
+
+    private measureChatInfo() {
+        const card = this.rightPanel.querySelector<HTMLElement>('.c-chat-info > .c-card');
+        const height = card ? card.offsetHeight + remToPx(CHATINFO_PADDING_REM) : 0;
+        if (Math.abs(height - this.chatInfoHeightPx) < 0.5)
+            return;
+
+        this.chatInfoHeightPx = height;
+        this.rightPanel.style.setProperty('--rp-chatinfo-h', `${height}px`);
     }
 
     public get header(): HTMLElement | null {
@@ -114,16 +204,21 @@ export class RightPanelCollapse {
             return;
 
         cancelAnimationFrame(this.snapRaf);
+        cancelAnimationFrame(this.followRaf);
         clearTimeout(this.lingerTimer);
         this.headerClassObserver?.disconnect();
+        this.chatInfoObserver?.disconnect();
         this.rightPanel.classList.remove('snapping', 'dragging', 'collapsing', 'collapsed');
         this.rightPanel.style.removeProperty('--rp-collapse');
+        this.rightPanel.style.removeProperty('--rp-chatinfo-h');
+        this.rightPanel.style.removeProperty('--rp-header-base');
         this.disposed$.next();
         this.disposed$.complete();
     }
 
     private onScroll(e: Event) {
-        // Ignore scroll while a drag/snap (and the layout shift it triggers) plays out.
+        // Ignore scroll while a drag/snap (and the layout shift it triggers) plays out, or while the
+        // avatar is full-screen — that's a separate flow-layout mode, closed by tapping the avatar.
         if (this.isDragging || this.isSnapping || this.isAvatarExpanded)
             return;
 
@@ -131,6 +226,8 @@ export class RightPanelCollapse {
         if (!(scroller instanceof HTMLElement))
             return;
         if (ScreenSize.isWide()) {
+            this.stopFollow();
+            this.targetProgress = 0;
             this.setProgress(0); // desktop: never collapse
             return;
         }
@@ -140,6 +237,8 @@ export class RightPanelCollapse {
         if (scroller !== this.lastScroller) {
             this.lastScroller = scroller;
             this.anchorOffset = this.topOffset(scroller) ?? 0;
+            this.stopFollow();
+            this.targetProgress = 0;
             this.markActive();
             this.setProgress(0);
             return;
@@ -168,10 +267,50 @@ export class RightPanelCollapse {
         // growth a collapse causes can only drop the measured offset, which the ratchet ignores
         // instead of bouncing the header back open.
         const raw = clamp01((offset - this.anchorOffset) / this.rangePx);
-        if (raw >= this.progress)
-            this.setProgress(raw);
-        else
+        if (raw >= this.progress) {
+            this.setTarget(raw);
+        }
+        else {
             this.anchorOffset = offset - this.progress * this.rangePx;
+            this.targetProgress = this.progress;
+        }
+    }
+
+    // Scroll-linked collapse eased over frames toward the scroll-derived target (see FOLLOW_FACTOR).
+    private setTarget(target: number) {
+        this.targetProgress = target;
+        cancelAnimationFrame(this.snapRaf);
+        this.snapRaf = 0;
+        if (this.followRaf === 0)
+            this.followRaf = requestAnimationFrame(() => this.followStep());
+    }
+
+    private followStep() {
+        this.followRaf = 0;
+        if (this.isDragging || this.isSnapping)
+            return;
+
+        const diff = this.targetProgress - this.progress;
+        if (Math.abs(diff) < 0.001) {
+            this.setProgress(this.targetProgress);
+            return;
+        }
+        this.setProgress(this.progress + diff * FOLLOW_FACTOR);
+        this.followRaf = requestAnimationFrame(() => this.followStep());
+    }
+
+    private stopFollow() {
+        cancelAnimationFrame(this.followRaf);
+        this.followRaf = 0;
+    }
+
+    private expandForTabSwitch() {
+        this.lastScroller = null; // the incoming tab's scroller re-baselines on its first scroll
+        this.anchorOffset = 0;
+        this.stopFollow();
+        this.targetProgress = 0;
+        if (this.progress !== 0)
+            this.snapTo(0);
     }
 
     // Drag lifecycle (driven by CollapseDragGesture)
@@ -179,6 +318,8 @@ export class RightPanelCollapse {
     public beginDrag() {
         cancelAnimationFrame(this.snapRaf);
         this.snapRaf = 0;
+        this.stopFollow();
+        this.targetProgress = this.progress;
         clearTimeout(this.lingerTimer);
         this.rightPanel.classList.remove('snapping', 'collapsing');
         this.rightPanel.classList.add('dragging');
@@ -233,6 +374,8 @@ export class RightPanelCollapse {
     // the layout shift the collapse causes can't restart it.
     private snapTo(target: number) {
         cancelAnimationFrame(this.snapRaf);
+        this.stopFollow();
+        this.targetProgress = target;
         this.rightPanel.classList.remove('collapsing');
         this.rightPanel.classList.add('snapping');
         const start = this.progress;
@@ -266,23 +409,25 @@ export class RightPanelCollapse {
         return banded - min;
     }
 
-    // Don't collapse a list that can't scroll enough to fill the space the collapse frees.
-    // The overflow is measured as if the header were fully expanded (the space the current
-    // collapse already freed is added back), so the decision is invariant to the current
-    // progress and can't flip as the header collapses; requiring a margin above the freed
-    // range guarantees the list still overflows once collapsed, which breaks the layout
-    // feedback loop (collapse -> list fits -> scrollTop clamped to 0 -> expand -> repeat).
+    // Collapse only if the list's REAL content can scroll the full range (plus a margin). A shorter
+    // list can't drive the header all the way down, so it would stick partway — better to keep it
+    // fully expanded (its clipped tail stays reachable via the bottom padding, which is at its full
+    // range while progress is 0).
     private canCollapse(scroller: HTMLElement): boolean {
-        const overflow = this.scrollOverflow(scroller);
+        const overflow = this.contentOverflow(scroller);
         if (overflow === null)
             return true; // unbounded (infinite) list — always plenty to scroll
-        return overflow + this.progress * this.rangePx > this.minOverflowPx;
+        return overflow >= this.rangePx + this.collapseMarginPx;
     }
 
-    private scrollOverflow(scroller: HTMLElement): number | null {
+    // Real content overflow, invariant to the current progress and excluding the collapse-linked
+    // bottom padding a native scroller carries (range * (1 - progress)); null for infinite lists.
+    private contentOverflow(scroller: HTMLElement): number | null {
         const scrollController = (scroller as unknown as ScrollLimitsSource).scrollController;
-        if (!scrollController)
-            return scroller.scrollHeight - scroller.clientHeight;
+        if (!scrollController) {
+            const padding = this.rangePx * (1 - this.progress);
+            return scroller.scrollHeight - scroller.clientHeight - padding;
+        }
 
         const { min, max } = scrollController.getEffectiveScrollLimits();
         if (!Number.isFinite(min) || !Number.isFinite(max))

@@ -12,6 +12,7 @@ import { fastRaf } from 'fast-raf';
 export class RightPanelHeader {
     private blazorRef: DotNet.DotNetObject;
     private readonly header: HTMLElement;
+    private readonly varTarget: HTMLElement;
     private avatarDiv: HTMLElement;
     private headerWidth: number;
     private centerDiv: HTMLElement;
@@ -23,6 +24,7 @@ export class RightPanelHeader {
     private readonly disposed$: Subject<void> = new Subject<void>();
 
     private resizeRaf = 0;
+    private closeFallbackTimer = 0;
 
     static create(header: HTMLDivElement, blazorRef: DotNet.DotNetObject): RightPanelHeader {
         return new RightPanelHeader(header, blazorRef);
@@ -31,6 +33,9 @@ export class RightPanelHeader {
     constructor(header: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this.header = header;
         this.blazorRef = blazorRef;
+        // Expose --expanded-header-height on the right panel (not just the header) so the sibling
+        // scroll region (.c-panel-content) can read it and slide below the full-screen avatar square.
+        this.varTarget = header.closest<HTMLElement>('.right-panel') ?? header;
         this.rightSideNav = document.querySelector('.side-nav-right')!;
         if (!this.rightSideNav)
             return;
@@ -59,7 +64,7 @@ export class RightPanelHeader {
         this.centerDiv = this.header.querySelector('.c-center')!;
 
         this.headerWidth = this.header.offsetWidth;
-        this.header.style.setProperty('--expanded-header-height', `${this.headerWidth}px`);
+        this.varTarget.style.setProperty('--expanded-header-height', `${this.headerWidth}px`);
 
         this.mutationObserver = new MutationObserver(this.stateHandler);
         this.mutationObserver.observe(this.header, {
@@ -76,6 +81,30 @@ export class RightPanelHeader {
             .subscribe(() => this.onAvatarClickHandler());
 
         this.centerDiv.addEventListener('transitionend', this.onTransitionEndBound);
+
+        // While the avatar is full-screen, swiping it up or down (as well as a plain tap) closes the
+        // full-screen view; a following list scroll then resumes the normal collapse.
+        let swipeStartY = 0;
+        let swipeTracking = false;
+        fromEvent<TouchEvent>(this.avatarDiv, 'touchstart')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(e => {
+                swipeTracking = this.header.classList.contains('expanded-header');
+                swipeStartY = e.touches[0]?.clientY ?? 0;
+            });
+        fromEvent<TouchEvent>(this.avatarDiv, 'touchmove')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(e => {
+                if (!swipeTracking)
+                    return;
+                if (Math.abs((e.touches[0]?.clientY ?? 0) - swipeStartY) > 40) {
+                    swipeTracking = false;
+                    this.closeFullScreenAvatar();
+                }
+            });
+        fromEvent<TouchEvent>(this.avatarDiv, 'touchend')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => swipeTracking = false);
     }
 
     public dispose() {
@@ -85,6 +114,7 @@ export class RightPanelHeader {
         this.disposed$.next();
         this.disposed$.complete();
         this.header.removeEventListener('transitionend', this.onTransitionEndBound);
+        clearTimeout(this.closeFallbackTimer);
         this.resizeObserver?.disconnect();
         this.mutationObserver?.disconnect();
     }
@@ -115,7 +145,7 @@ export class RightPanelHeader {
         cancelAnimationFrame(this.resizeRaf);
         this.resizeRaf = requestAnimationFrame(() => {
             fastRaf(() => {
-                this.header.style.setProperty('--expanded-header-height', `${width}px`);
+                this.varTarget.style.setProperty('--expanded-header-height', `${width}px`);
             });
         });
     };
@@ -148,7 +178,7 @@ export class RightPanelHeader {
     private changeHeader(openFullScreenAvatar = false) {
         if (openFullScreenAvatar) {
             this.headerWidth = this.header.offsetWidth;
-            this.header.style.setProperty('--expanded-header-height', `${this.headerWidth}px`);
+            this.varTarget.style.setProperty('--expanded-header-height', `${this.headerWidth}px`);
         }
     }
 
@@ -180,6 +210,11 @@ export class RightPanelHeader {
         this.header.addEventListener('transitionend', this.onTransitionEndBound);
         this.header.classList.add('collapsed-header');
         this.header.classList.remove('expanded-header');
+        // Fallback: if the .c-center height transition never completes — e.g. it's killed when the list
+        // is scrolled right after closing (the scroll-collapse suppresses transitions) — collapsed-header
+        // would stick and freeze the avatar at full size with the buttons shown. Finish on a timer too.
+        clearTimeout(this.closeFallbackTimer);
+        this.closeFallbackTimer = window.setTimeout(() => this.finishClose(), 400);
     };
 
     private onTransitionEndBound = (e: TransitionEvent) => this.onTransitionEnd(e);
@@ -190,6 +225,11 @@ export class RightPanelHeader {
         if (e.propertyName !== 'height')
             return;
 
+        this.finishClose();
+    }
+
+    private finishClose() {
+        clearTimeout(this.closeFallbackTimer);
         this.header.removeEventListener('transitionend', this.onTransitionEndBound);
 
         if (this.header.classList.contains('collapsed-header')) {
@@ -200,5 +240,7 @@ export class RightPanelHeader {
 
     private async clearHeader() : Promise<void> {
         this.header.classList.remove('expanded-header', 'collapsed-header');
+        // Chat switched: let the collapse component re-baseline and re-measure the header for the new chat.
+        this.varTarget.dispatchEvent(new CustomEvent('right-panel:chat-changed'));
     }
 }
