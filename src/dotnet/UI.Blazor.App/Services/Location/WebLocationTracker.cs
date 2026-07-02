@@ -18,9 +18,18 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
 
         IsTracking = true;
         _blazorRef = DotNetObjectReference.Create(this);
-        _jsRef = await _hub.JS
-            .InvokeAsync<IJSObjectReference>(JSStartMethod, cancellationToken, _blazorRef)
-            .ConfigureAwait(false);
+        try {
+            _jsRef = await _hub.JS
+                .InvokeAsync<IJSObjectReference>(JSStartMethod, cancellationToken, _blazorRef)
+                .ConfigureAwait(false);
+        }
+        catch {
+            // Roll back so a later Start can retry from a clean state.
+            IsTracking = false;
+            _blazorRef?.Dispose();
+            _blazorRef = null;
+            throw;
+        }
     }
 
     public override async Task Stop(CancellationToken cancellationToken)

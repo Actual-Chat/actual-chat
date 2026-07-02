@@ -19,11 +19,17 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
             return;
 
         IsTracking = true;
-        var accuracy = await GetAccuracy(cancellationToken).ConfigureAwait(false);
-        var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
-        intent.SetAction(AndroidLocationForegroundService.ActionStart);
-        intent.PutExtra(IntentExtras.Accuracy, (int)accuracy);
-        Context.StartForegroundService(intent);
+        try {
+            var accuracy = await GetAccuracy(cancellationToken).ConfigureAwait(false);
+            var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
+            intent.SetAction(AndroidLocationForegroundService.ActionStart);
+            intent.PutExtra(IntentExtras.Accuracy, (int)accuracy);
+            Context.StartForegroundService(intent);
+        }
+        catch {
+            IsTracking = false;
+            throw;
+        }
     }
 
     public override Task Stop(CancellationToken cancellationToken)

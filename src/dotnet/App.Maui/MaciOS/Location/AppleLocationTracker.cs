@@ -14,13 +14,20 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
             return;
 
         IsTracking = true;
-        var accuracy = await GetAccuracy(cancellationToken).ConfigureAwait(false);
-        MainThread.BeginInvokeOnMainThread(() => {
-            _manager ??= CreateManager();
-            _manager.SetAccuracy(accuracy);
-            _manager.RequestWhenInUseAuthorization();
-            _manager.StartUpdatingLocation();
-        });
+        try {
+            var accuracy = await GetAccuracy(cancellationToken).ConfigureAwait(false);
+            MainThread.BeginInvokeOnMainThread(() => {
+                _manager ??= CreateManager();
+                _manager.SetAccuracy(accuracy);
+                _manager.RequestWhenInUseAuthorization();
+                _manager.StartUpdatingLocation();
+            });
+        }
+        catch {
+            // Roll back so a later Start can retry from a clean state.
+            IsTracking = false;
+            throw;
+        }
     }
 
     public override Task Stop(CancellationToken cancellationToken)
