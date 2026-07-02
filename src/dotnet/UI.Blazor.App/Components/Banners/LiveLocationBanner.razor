@@ -2,7 +2,6 @@
 @inherits ComputedStateComponent<AppUIHub, LiveLocationBanner.Model>
 @{
     var m = State.Value;
-    var sRemaining = FormatRemaining(m.OwnExpiresAt);
 }
 
 <Banner
@@ -20,8 +19,8 @@
             </div>
             <div class="c-text">
                 <span class="c-description">@m.GetDescription()</span>
-                @if (!sRemaining.IsNullOrEmpty()) {
-                    <span class="c-countdown">· @sRemaining left</span>
+                @if (!m.RemainingText.IsNullOrEmpty()) {
+                    <span class="c-countdown">· @m.RemainingText left</span>
                 }
             </div>
         </div>
@@ -34,7 +33,7 @@
 </Banner>
 
 @code {
-    private const int MaxAvatars = 3;
+    private const int MaxAvatars = Constants.Location.MaxSharingAuthorsPerChat;
     private static readonly TimeSpan CountdownTickPeriod = TimeSpan.FromSeconds(30);
 
     private Chat Chat => ChatContext.Chat;
@@ -67,10 +66,11 @@
             if (author != null)
                 avatars.Add(author.Avatar);
         }
-        if (ownLocation != null)
-            await Hub.FusionTime.Now(CountdownTickPeriod).ConfigureAwait(false);
+        var remaining = ownLocation != null
+            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
+            : "";
 
-        return new Model(avatars.ToApiArray(), locations.Count, ownLocation != null, ownLocation?.LiveUntil);
+        return new Model(avatars.ToApiArray(), locations.Count, ownLocation != null, remaining);
     }
 
     private Task OnOpenMap()
@@ -79,24 +79,9 @@
     private Task OnStop()
         => Hub.LocationUI.StopSharing(Chat.Id, CancellationToken.None);
 
-    // TODO: Move to Model
-    private string FormatRemaining(Moment? expiresAt) {
-        if (expiresAt is not { } moment)
-            return "";
-
-        var remaining = moment - Clocks.ServerClock.Now;
-        if (remaining <= TimeSpan.Zero)
-            return "";
-
-        if (remaining.TotalHours >= 1)
-            return $"{(int)remaining.TotalHours}h {remaining.Minutes}m";
-
-        return $"{Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes))}m";
-    }
-
     // Nested types
 
-    public sealed record Model(ApiArray<Avatar> Avatars, int Count, bool IsOwnSharing, Moment? OwnExpiresAt = null) {
+    public sealed record Model(ApiArray<Avatar> Avatars, int Count, bool IsOwnSharing, string RemainingText = "") {
         public static readonly Model None = new([], 0, false);
 
         public string GetDescription() {

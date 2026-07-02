@@ -39,6 +39,21 @@ public class LiveTime : SafeAsyncDisposableBase, IComputeService
     public string GetDeltaText(Moment time)
         => GetDeltaTextInternal(time).Text;
 
+    [ComputeMethod]
+    public virtual Task<string> GetRemainingText(Moment time, TimeSpan updatePeriod, CancellationToken cancellationToken)
+    {
+        var remaining = time - Clocks.ServerClock.Now;
+        if (remaining <= TimeSpan.Zero)
+            return Task.FromResult("");
+
+        // Re-evaluate periodically so the countdown ticks down.
+        Computed.GetCurrent().Invalidate(updatePeriod, false);
+        var text = remaining.TotalHours >= 1
+            ? $"{(int)remaining.TotalHours}h {remaining.Minutes}m"
+            : $"{Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes))}m";
+        return Task.FromResult(text);
+    }
+
     // Private methods
 
     private (string Text, TimeSpan Delay) GetDeltaTextInternal(DateTime time)
