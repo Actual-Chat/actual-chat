@@ -8,14 +8,13 @@
 }
 .map-view .map-marker .c-pin-dot {
     @apply w-4 h-4 rounded-full;
-    background-color: #2563eb;
-    border: 3px solid white;
+    @apply bg-blue-600 border-[3px] border-white;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 .map-view .map-marker .c-pin-avatar {
     @apply relative flex items-center justify-center;
     @apply w-9 h-9 rounded-full bg-01;
-    border: 2px solid white;
+    @apply border-2 border-white;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 .map-view .map-marker .c-avatar {
