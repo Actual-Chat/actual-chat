@@ -1,20 +1,60 @@
+using ActualChat.Kvas;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// While at least one chat is being shared, runs the platform <see cref="ILocationTracker"/> and, once
-/// per <see cref="Constants.Location.UpdatePeriod"/>, reports the current position to each share's
-/// <see cref="SharedLocationId"/>. The first fix of a new share posts a chat entry (minting the id);
-/// later fixes update only the shared-location record.
+/// Owns the local user's live-location shares — the device-local list of chats being shared, persisted
+/// and resumed on restart — and reports positions: while any chat is shared it runs the platform
+/// <see cref="ILocationTracker"/> and reports each share's position once per
+/// <see cref="Constants.Location.UpdatePeriod"/>. The first fix mints the share id and posts a chat entry.
 /// </summary>
-public class LocationReporter(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeService
+public class LocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 {
+    private readonly Lock _lock = new();
+    private readonly StoredState<ActiveShare[]> _shares;
+
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
-    private LocationUI LocationUI => Hub.LocationUI;
     private Moment ServerNow => Clocks.ServerClock.Now;
+
+    public LocationReporter(AppUIHub hub) : base(hub)
+        => _shares = StateFactory.NewKvasStored<ActiveShare[]>(
+            new (LocalSettings, nameof(ActiveShare)) {
+                InitialValue = [],
+                Corrector = DropExpired,
+                Category = StateCategories.Get(GetType(), nameof(_shares)),
+            });
+
+    public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
+    {
+        var share = new ActiveShare(chatId, null, ServerNow + duration);
+        lock (_lock)
+            _shares.Value = _shares.Value.Where(x => x.ChatId != chatId).Append(share).ToArray();
+        return Task.CompletedTask;
+    }
+
+    public async Task StopSharing(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Start/stop is device-local: only the device that started a share can stop it,
+        // using the SharedLocationId it persisted in _shares.
+        ActiveShare[] stopped;
+        lock (_lock) {
+            stopped = _shares.Value.Where(x => x.ChatId == chatId).ToArray();
+            _shares.Value = _shares.Value.Where(x => x.ChatId != chatId).ToArray();
+        }
+        foreach (var share in stopped) {
+            if (share.LocationId is not { } locationId)
+                continue;
+
+            var change = Change.Remove<SharedLocationDiff>();
+            var stop = new SharedLocations_Change(Session, chatId, locationId, change);
+            await Commander.Call(stop, cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var changes = LocationUI.Shares.Computed.Changes(cancellationToken);
+        // ReSharper disable once InconsistentlySynchronizedField
+        var changes = _shares.Computed.Changes(cancellationToken);
         FuncWorker? worker = null;
         await foreach (var cShares in changes.ConfigureAwait(false)) {
             await worker.DisposeSilentlyAsync().ConfigureAwait(false);
@@ -29,14 +69,24 @@ public class LocationReporter(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComp
 
     // Private methods
 
+    private void SetSharedLocationId(ChatId chatId, SharedLocationId locationId)
+    {
+        lock (_lock)
+            _shares.Value = _shares.Value
+                .Select(x => x.ChatId == chatId && x.LocationId is null
+                    ? x with { LocationId = locationId }
+                    : x)
+                .ToArray();
+    }
+
+    private ValueTask<ActiveShare[]> DropExpired(ActiveShare[] shares, CancellationToken cancellationToken)
+        => new (shares.Where(x => x.ExpiresAt > ServerNow).ToArray());
+
     private async Task ReportLoop(ActiveShare[] activeShares, CancellationToken cancellationToken)
     {
         await Tracker.Start(cancellationToken).ConfigureAwait(false);
         using var cts = cancellationToken.CreateLinkedTokenSource(
             activeShares.Max(x => x.ExpiresAt) - ServerNow);
-        // Wait for the first fix before the first cycle: otherwise it runs with an empty LastKnown,
-        // reports nothing, and the share only starts a full UpdatePeriod later (the "doesn't start on
-        // the first try" bug).
         await Tracker.LastKnown.Computed.When(x => x is not null, cts.Token).ConfigureAwait(false);
         await AsyncChain.From(ReportForChats)
             .Log(LogLevel.Debug, Log)
@@ -60,8 +110,9 @@ public class LocationReporter(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComp
                 return;
 
             var diff = new SharedLocationDiff { Point = point, LiveDuration = share.ExpiresAt - ServerNow };
+            var change = Change.Upsert(diff, share.LocationId);
             var shared = await Commander.Call(
-                    new SharedLocations_Change(Session, share.ChatId, share.LocationId, Change.Upsert(diff, share.LocationId)),
+                    new SharedLocations_Change(Session, share.ChatId, share.LocationId, change),
                     cancellationToken)
                 .ConfigureAwait(false);
             if (shared is null || share.LocationId is not null)
@@ -69,7 +120,7 @@ public class LocationReporter(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComp
 
             var command = new Chats_UpsertEntry(Session, share.ChatId, null) { LocationId = shared.Id };
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-            LocationUI.SetSharedLocationId(share.ChatId, shared.Id);
+            SetSharedLocationId(share.ChatId, shared.Id);
         }
     }
 }
