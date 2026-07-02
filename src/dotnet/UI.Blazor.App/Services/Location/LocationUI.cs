@@ -8,6 +8,21 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 {
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
     private LiveLocationReporter Reporter => field ??= Hub.Services.GetRequiredService<LiveLocationReporter>();
+    [ComputeMethod]
+    public virtual async Task<IReadOnlyList<Avatar>> ListAvatars(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var locations = await Hub.SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (locations.Count == 0)
+            return [];
+
+        var avatars = new List<Avatar>(locations.Count);
+        foreach (var location in locations) {
+            var author = await Hub.Authors.Get(Session, chatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
+            if (author != null)
+                avatars.Add(author.Avatar);
+        }
+        return avatars;
+    }
 
     public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
         => Reporter.StartSharing(chatId, duration, cancellationToken);

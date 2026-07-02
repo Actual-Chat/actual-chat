@@ -37,7 +37,6 @@
     private static readonly TimeSpan CountdownTickPeriod = TimeSpan.FromSeconds(30);
 
     private Chat Chat => ChatContext.Chat;
-    private IAuthors Authors => Hub.Authors;
     private ISharedLocations SharedLocations => Hub.SharedLocations;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
@@ -58,13 +57,7 @@
 
         var ownAuthor = await Hub.AuthorUI.GetOwn(chatId, cancellationToken).ConfigureAwait(false);
         var ownLocation = locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id);
-        var avatars = new List<Avatar>(locations.Count);
-        foreach (var location in locations) {
-            // TODO: move listing avatars or authors to LocationUI
-            var author = await Authors.Get(Session, chatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
-            if (author != null)
-                avatars.Add(author.Avatar);
-        }
+        var avatars = await Hub.LocationUI.ListAvatars(chatId, cancellationToken).ConfigureAwait(false);
         var remaining = ownLocation != null
             ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
             : "";
