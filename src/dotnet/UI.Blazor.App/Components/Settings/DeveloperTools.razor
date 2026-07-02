@@ -53,13 +53,6 @@
             <Toggle IsChecked="@m.IsVideoDiagnosticsEnabled"/>
         </Right>
     </TileItem>
-    <TileItem Click="@OnLocationAccuracyClick">
-        <Content>Location accuracy</Content>
-        <Caption>Tap to cycle: higher accuracy uses more battery</Caption>
-        <Right>
-            <span>@m.LocationAccuracy</span>
-        </Right>
-    </TileItem>
     @if (MauiLogAccessor?.GetLogFile != null) {
         <TileItem Click="@OnGetLogFileClick">
             <Content>
@@ -68,6 +61,8 @@
         </TileItem>
     }
 </Tile>
+
+<LocationAccuracySelector/>
 
 @code {
     private AppServerInstanceSelector? ServerInstanceSelector { get; set; }
@@ -92,8 +87,7 @@
             settings.IsIncompleteUIEnabled ?? false,
             account.IsAdmin,
             appSettings.IsLogViewerEnabledOrDefault,
-            appSettings.IsVideoDiagnosticsEnabledOrDefault,
-            appSettings.LocationAccuracyOrDefault);
+            appSettings.IsVideoDiagnosticsEnabledOrDefault);
     }
 
     private Task OnExperimentalFeatureEnabledClick()
@@ -118,13 +112,6 @@
             IsVideoDiagnosticsEnabled = !x.IsVideoDiagnosticsEnabledOrDefault,
         });
 
-    private async Task OnLocationAccuracyClick() {
-        await LocalSettings.LocalAppSettings().Update(x => x with {
-            LocationAccuracy = x.LocationAccuracyOrDefault.Next(),
-        });
-        _ = State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
-    }
-
     private Task OnGetLogFileClick()
         => MauiLogAccessor!.GetLogFile!.Invoke();
 
@@ -135,9 +122,8 @@
         bool IsIncompleteUIEnabled,
         bool IsAdmin,
         bool IsLogUIEnabled,
-        bool IsVideoDiagnosticsEnabled,
-        GeoTrackingAccuracy LocationAccuracy)
+        bool IsVideoDiagnosticsEnabled)
     {
-        public static readonly Model None = new(false, false, false, false, false, GeoTrackingAccuracy.Balanced);
+        public static readonly Model None = new(false, false, false, false, false);
     }
 }

@@ -46,21 +46,21 @@
             return ComputedModel.None;
 
         var markers = new List<MapMarker>(locations.Count);
-        // TODO: move to LocationUI, reuse LocationUI methods if possible
         foreach (var location in locations) {
-            var marker = await ToAvatarMarker(location, cancellationToken).ConfigureAwait(false);
-            markers.Add(marker);
+            var author = await Authors.Get(Session, location.ChatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
+            if (author is null)
+                continue;
+
+            markers.Add(ToAvatarMarker(location, author.Avatar));
         }
         var center = locations[0].Point;
         return new ComputedModel(markers, center.Latitude, center.Longitude);
     }
 
-    private async Task<MapMarker> ToAvatarMarker(
+    private MapMarker ToAvatarMarker(
         SharedLocation location,
-        CancellationToken cancellationToken)
+        Avatar? avatar)
     {
-        var author = await Authors.Get(Session, location.ChatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
-        var avatar = author?.Avatar;
         var pictureUrl = avatar?.Picture is { } picture ? UrlMapper.PicturePreview128Url(picture) : "";
         var avatarKey = pictureUrl.IsNullOrEmpty()
             ? (avatar?.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(location.AuthorId.Value)
