@@ -208,9 +208,12 @@ describe('location sharing', () => {
             await modal.waitFor({ state: 'visible', timeout: 10_000 });
             await modal.locator(`button:has-text("${label}")`).first().click();
 
-            // assert — the banner reflects the active share for this duration
+            // assert — the banner reflects the active share for this duration, and appears promptly.
+            // The report loop must wait for the tracker's first fix before its first cycle; if it runs
+            // once with an empty LastKnown it posts nothing and the share only starts a full UpdatePeriod
+            // (10s) later — the "doesn't start on the first try" bug. Keep the timeout under UpdatePeriod.
             const banner = page.locator('.live-location-banner').first();
-            await banner.waitFor({ state: 'visible', timeout: 20_000 });
+            await banner.waitFor({ state: 'visible', timeout: 8_000 });
 
             // cleanup — stop the share so the next duration starts clean
             await banner.locator('button:has-text("Stop")').first().click();

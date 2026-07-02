@@ -56,6 +56,7 @@
         if (locations.Count == 0)
             return Model.None;
 
+        // TODO: use AuthorUI
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownLocation = ownAuthor != null
             ? locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id)

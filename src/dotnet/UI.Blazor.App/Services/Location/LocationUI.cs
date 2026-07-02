@@ -70,6 +70,7 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        // TODO: extract LocationReporter
         var changes = _shares.Computed.Changes(cancellationToken);
         FuncWorker? worker = null;
         await foreach (var cShares in changes.ConfigureAwait(false)) {
@@ -89,6 +90,10 @@ public class LocationUI : UIWorkerBase<AppUIHub>, IComputeService
     {
         await Tracker.Start(cancellationToken).ConfigureAwait(false);
         using var cts = cancellationToken.CreateLinkedTokenSource(activeShares.Max(x => x.ExpiresAt) - ServerNow);
+        // Wait for the first fix before the first cycle: otherwise it runs with an empty LastKnown,
+        // reports nothing, and the share only starts a full UpdatePeriod later (the "doesn't start on
+        // the first try" bug).
+        await Tracker.LastKnown.Computed.When(x => x is not null, cts.Token).ConfigureAwait(false);
         await AsyncChain.From(ReportForChats)
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
