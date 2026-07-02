@@ -1,0 +1,53 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ChatNotificationMode>
+@{
+    var mode = State.Value;
+    var iconCls = mode switch {
+        ChatNotificationMode.Muted => "icon-bell-off-fill text-03",
+        ChatNotificationMode.ImportantOnly => "icon-bell-check text-primary",
+        _ => "icon-bell text-primary",
+    };
+}
+
+@if (Chat.Kind == ChatKind.Peer) {
+    <ButtonRound Class="btn-sm" Click="@OnPeerToggleClick" Tooltip="Notifications">
+        <i class="@iconCls text-2xl"></i>
+    </ButtonRound>
+}
+else {
+    <ButtonRound
+        Class="btn-sm"
+        Tooltip="Notifications"
+        data-menu="@(MenuRef.New<ChatNotificationModeMenu>(Chat.Id.Value))"
+        data-menu-trigger="@MenuTrigger.Primary"
+        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+        <i class="@iconCls text-2xl"></i>
+    </ButtonRound>
+}
+
+@code {
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<ChatNotificationMode>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ChatNotificationMode>.Options() {
+                InitialValue = ChatNotificationMode.Default,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<ChatNotificationMode> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.ChatUserSettings(Chat.Id).Get(cancellationToken).ConfigureAwait(false);
+        return settings.NotificationMode;
+    }
+
+    private Task OnPeerToggleClick() {
+        // Peer chats are two-state (every message is personal, ringers break through Muted
+        // anyway); a legacy ImportantOnly value collapses to Muted on the first click.
+        var mode = State.Value == ChatNotificationMode.Muted
+            ? ChatNotificationMode.Default
+            : ChatNotificationMode.Muted;
+        return UICommander.RunLocal(ct
+            => UserSettingsUI.ChatUserSettings(Chat.Id)
+                .Update(x => x with { NotificationMode = mode }, ct));
+    }
+}

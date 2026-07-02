@@ -35,6 +35,9 @@
             </div>
         </div>
         <div class="c-buttons">
+            @if (!Chat.HasSingleAuthor && Chat.IsMember()) {
+                <ChatNotificationBell Chat="@Chat"/>
+            }
             @if (m.PeerContact is not null) {
                 <ButtonRound Class="btn-sm" Click="@(() => OnEditPeerContactClick(m.PeerContact))">
                     <i class="icon-edit text-2xl"></i>

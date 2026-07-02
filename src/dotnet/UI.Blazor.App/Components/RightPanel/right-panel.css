@@ -689,3 +689,23 @@ body.hoverable .content-list-rows .c-file-row:hover,
 .content-list-links .link-preview:not(.local-link) .c-description {
     @apply hidden;
 }
+
+/* Notification mode menu (ChatNotificationModeMenu) */
+.chat-notification-mode-menu > .c-title {
+    @apply p-2;
+    @apply text-02 font-semibold;
+}
+.chat-notification-mode-menu > .divider {
+    @apply mb-1;
+}
+.chat-notification-mode-menu .ac-menu-text {
+    @apply text-headline-1 text-02;
+}
+.chat-notification-mode-menu .ac-menu-item:hover .ac-menu-text,
+.chat-notification-mode-menu .ac-menu-item:hover .ac-menu-icon > i {
+    @apply text-primary;
+}
+.chat-notification-mode-menu .ac-menu-item.selected .ac-menu-text,
+.chat-notification-mode-menu .ac-menu-item.selected .ac-menu-icon > i {
+    @apply text-primary;
+}

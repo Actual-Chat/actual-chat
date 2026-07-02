@@ -35,6 +35,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioAttachmentSubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioFileAttachment>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioFileAttachmentMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioFileRow>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioSubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AuthorBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AuthorBadgeTemplate>();
@@ -54,6 +55,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AvatarStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BackendStatusTest>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Banners>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CameraMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivities>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivityPanel>();
@@ -89,6 +91,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMemberCounter>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuAddMember>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuBlock>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuLeave>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuListen>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuNavbarPin>();
@@ -102,9 +105,11 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMessageEditorMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMessageQuote>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMessageSendingStatus>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMuteToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatNotFound>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatNotificationBell>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatNotificationModeMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPropertiesMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatQuickNavModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSearchTab>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSettingsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSettingsStartModalPage>();
@@ -119,6 +124,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactSelectorPlacePicker>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactsPermissionBanner>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContentListDateVisor>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationFooterView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationHeaderView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationMenu>();
@@ -260,6 +266,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NewThreadModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NoChatSelected>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NoResults>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationFeedItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationEntry>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationStack>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner>();
@@ -340,6 +347,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.EmailSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.LanguageShortcut>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.NativeAppSettingsView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.PrivacySettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ServerInstanceSelector>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.SessionSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.SettingsModal>();
@@ -398,11 +406,13 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ChatInvitePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ChatPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.DigestTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.EmojisTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ExternalContactsTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.FlowsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.HomePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.Checkmark>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.CookieSettings>();
@@ -448,6 +458,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModalCard>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.MeshTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.MicPermissionTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.NotificationsPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.SettingsPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestNode>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestPage>();
@@ -458,6 +469,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.TranscodingTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.UserPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.VideoInputTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.VoiceCallTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Testing.TestListItemBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Testing.VirtualListTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsCookiesContent>();
@@ -702,6 +714,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioAttachmentSubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioFileAttachment), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioFileAttachmentMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.AudioFileRow), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioSubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AuthorBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AuthorBadgeTemplate), AotTypeKind.Component),
@@ -721,6 +734,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AvatarStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.BackendStatusTest), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Banners), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CallList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CameraMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivities), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivityPanel), AotTypeKind.Component),
@@ -756,6 +770,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMemberCounter), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuAddMember), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuBlock), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuLeave), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuListen), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuNavbarPin), AotTypeKind.Component),
@@ -769,9 +784,11 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMessageEditorMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMessageQuote), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMessageSendingStatus), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMuteToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatNotFound), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatNotificationBell), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatNotificationModeMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPropertiesMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatQuickNavModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSearchTab), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSettingsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSettingsStartModalPage), AotTypeKind.Component),
@@ -786,6 +803,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactSelectorPlacePicker), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactsPermissionBanner), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ContentListDateVisor), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationFooterView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationHeaderView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationMenu), AotTypeKind.Component),
@@ -927,6 +945,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NewThreadModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NoChatSelected), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NoResults), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationFeedItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationEntry), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationStack), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner), AotTypeKind.Component),
@@ -1007,6 +1026,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.EmailSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.LanguageShortcut), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.NativeAppSettingsView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.PrivacySettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ServerInstanceSelector), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.SessionSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.SettingsModal), AotTypeKind.Component),
@@ -1065,11 +1085,13 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ChatInvitePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ChatPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.DigestTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.EmojisTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ExternalContactsTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Pages.FlowsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.HomePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.Checkmark), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.CookieSettings), AotTypeKind.Component),
@@ -1115,6 +1137,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModalCard), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.MeshTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.MicPermissionTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Pages.NotificationsPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.SettingsPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestNode), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestPage), AotTypeKind.Component),
@@ -1125,6 +1148,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.TranscodingTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.UserPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.VideoInputTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Pages.VoiceCallTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Testing.TestListItemBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Testing.VirtualListTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DocsCookiesContent), AotTypeKind.Component),

@@ -1,3 +1,4 @@
+@using ActualChat.Contacts
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, RightPanelChatInfo.Model>
 @{
@@ -6,29 +7,9 @@
 }
 
 <div class="c-chat-info">
-    @{
-        var showNotifications = !m.HideNotificationsToggle;
-    }
-    @if (showNotifications || m.ShowSummarizationToggle) {
+    @if (m.ShowSummarizationToggle || m.ShowBlockToggle) {
         <div class="c-card">
-            @if (showNotifications) {
-                var iconCls = m.NotificationMode != ChatNotificationMode.Muted ? "text-primary" : "text-03";
-                <RightPanelChatInfoItem
-                    Click="@(_ => OnNotificationToggleChanged(m.NotificationMode != ChatNotificationMode.Muted))"
-                    Content="Notifications"
-                    Hint="@(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")">
-                    <Icon>
-                        <i class="text-2xl icon-bell @iconCls"></i>
-                    </Icon>
-                    <Right>
-                        <Toggle Class="mr-2" IsChecked="@(m.NotificationMode != ChatNotificationMode.Muted)"/>
-                    </Right>
-                </RightPanelChatInfoItem>
-            }
             @if (m.ShowSummarizationToggle) {
-                if (showNotifications) {
-                    <Divider/>
-                }
                 var iconCls = m.IsSummarized ? "text-primary" : "text-03";
                 <RightPanelChatInfoItem
                     Click="@(_ => OnSummarizeToggleChanged(!m.IsSummarized))"
@@ -39,6 +20,22 @@
                     </Icon>
                     <Right>
                         <Toggle Class="mr-2" IsChecked="@m.IsSummarized"/>
+                    </Right>
+                </RightPanelChatInfoItem>
+            }
+            @if (m.ShowBlockToggle) {
+                if (m.ShowSummarizationToggle) {
+                    <Divider/>
+                }
+                <RightPanelChatInfoItem
+                    Click="@(_ => OnBlockToggleChanged(!m.IsBlocked))"
+                    Content="Block user"
+                    Hint="@(m.IsBlocked ? "Blocked" : "Not blocked")">
+                    <Icon>
+                        <i class="text-2xl icon-slash-circle @(m.IsBlocked ? "text-danger" : "text-03")"></i>
+                    </Icon>
+                    <Right>
+                        <Toggle Class="mr-2" IsChecked="@m.IsBlocked"/>
                     </Right>
                 </RightPanelChatInfoItem>
             }
@@ -57,21 +54,26 @@
         var chatId = chat.Id;
 
         if (chat.HasSingleAuthor || !chat.IsMember())
-            return new() { HideNotificationsToggle = true };
+            return new();
 
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
-        var chatUserSettings = await UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
+        var blockState = await Hub.PeerBlockUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
-            NotificationMode = chatUserSettings.NotificationMode,
             ShowSummarizationToggle = isOwner,
             IsSummarized = Chat.IsSummarized ?? false,
+            ShowBlockToggle = blockState.CanBlock,
+            IsBlocked = blockState.IsBlocked,
+            PeerContactId = blockState.ContactId,
         };
     }
 
-    private Task OnNotificationToggleChanged(bool isMuted)
-        => UICommander.RunLocal(ct
-            => UserSettingsUI.ChatUserSettings(Chat.Id)
-                .Update(x => x with { NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default, }, ct));
+    private Task OnBlockToggleChanged(bool isBlocked) {
+        var m = State.Value;
+        if (m.PeerContactId is not { } contactId)
+            return Task.CompletedTask;
+
+        return Hub.PeerBlockUI.SetBlocked(contactId, isBlocked);
+    }
 
     private Task OnSummarizeToggleChanged(bool isSummarized) {
         if (State.Value.IsSummarized == isSummarized)
@@ -84,9 +86,10 @@
     // Nested types
 
     public sealed record Model {
-        public ChatNotificationMode NotificationMode { get; init; }
         public bool IsSummarized { get; init; }
-        public bool HideNotificationsToggle { get; init; }
         public bool ShowSummarizationToggle { get; init; }
+        public bool ShowBlockToggle { get; init; }
+        public bool IsBlocked { get; init; }
+        public ContactId? PeerContactId { get; init; }
     }
 }
