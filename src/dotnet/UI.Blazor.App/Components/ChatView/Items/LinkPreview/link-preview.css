@@ -6,16 +6,16 @@
     @apply overflow-hidden;
     @apply bg-01;
 }
-body.narrow .link-preview {
+body.narrow .link-preview:not(.local-link) {
     @apply flex-y items-start;
-    @apply h-60;
+    @apply h-auto min-h-60;
 }
 body.narrow .link-preview.local-link {
     @apply flex-x;
     @apply h-full;
 }
 .link-preview.no-thumbnail {
-    @apply h-20 md:h-20;
+    @apply h-auto;
 }
 .link-preview.compact {
     @apply flex-x items-center;
@@ -30,13 +30,13 @@ body.narrow .link-preview.compact {
 }
 .link-preview .c-info {
     @apply flex-1 flex-y justify-between;
-    @apply h-full max-w-full;
-    @apply p-2 md:py-4;
+    @apply min-w-0 h-full max-w-full;
+    @apply md:py-4;
     @apply overflow-hidden;
 }
 .link-preview.compact .c-info {
     @apply gap-y-1;
-    @apply py-0 pr-20;
+    @apply py-0;
 }
 body.narrow .link-preview.compact .c-info {
     @apply p-0;
@@ -45,7 +45,7 @@ body.narrow .link-preview.compact .c-info {
 /* thumbnail */
 .link-preview .c-thumbnail {
     @apply flex-none;
-    @apply w-auto md:max-w-60;
+    @apply w-full md:max-w-[min(15rem,50%)];
     @apply h-40 md:h-32;
 }
 .link-preview .c-thumbnail.c-video {
@@ -86,8 +86,8 @@ body.narrow .link-preview.compact .c-icon > i {
 }
 /* text */
 .link-preview .c-title {
-    @apply text-caption-1 md:text-headline-1 leading-4 text-primary;
-    @apply line-clamp-1;
+    @apply text-caption-1 md:text-headline-1 leading-tight text-primary;
+    @apply line-clamp-2;
 }
 .link-preview .c-name {
     @apply text-caption-6 md:text-caption-1 text-primary;
@@ -101,12 +101,12 @@ body.narrow .link-preview.compact .c-description {
     @apply text-xs font-normal leading-3;
 }
 .link-preview .c-domain {
-    @apply w-fit;
-    @apply text-caption-6 text-04;
+    @apply w-fit max-w-full;
+    @apply text-caption-3 text-04;
     @apply line-clamp-1;
 }
 .link-preview.local-link-chat .c-domain {
-    @apply text-caption-2;
+    @apply text-base;
     @apply line-clamp-1;
     @apply font-semibold;
 }
@@ -122,44 +122,53 @@ body.narrow .link-preview.compact .c-description {
     @apply backdrop-brightness-50;
 }
 
-/* Link Buttons */
+/* Link action buttons (Copy / Forward) — desktop only, revealed on card hover,
+   overlaying the bottom-right corner (z-20 keeps them above local-link .c-info z-10).
+   On touch/mobile they're replaced by the "more" button (.link-more-btn). */
 .message-link-preview .link-buttons {
-    @apply absolute bottom-2 right-2;
-    @apply flex-x items-center;
+    @apply absolute bottom-2 right-2 z-20;
+    @apply flex-x items-center gap-2;
     @apply h-fit;
+    @apply py-1 px-2;
+    @apply rounded-full border border-separator;
+    @apply opacity-0 pointer-events-none;
+    @apply bg-03;
+    @apply transition-opacity duration-150;
 }
-.message-link-preview:has(.local-link) .link-buttons {
-    @apply bottom-1 right-1;
+body.hoverable .message-link-preview:hover .link-buttons {
+    @apply opacity-100;
+    @apply pointer-events-auto;
 }
-body.narrow .message-link-preview:not(:has(.compact)) .link-buttons {
-    @apply bottom-0 right-0;
-}
-body.narrow .message-link-preview:has(.compact) .link-buttons {
-    @apply gap-x-0;
+body.narrow .message-link-preview .link-buttons {
+    @apply hidden;
 }
 .message-link-preview:has(.compact) .link-buttons {
     @apply right-2 inset-y-1/2;
     transform: translateY(-50%);
 }
-.message-link-preview .link-buttons .btn.btn-round {
-    @apply bg-transparent;
+.message-link-preview .link-buttons .btn-h {
+    @apply px-2 min-h-8;
 }
-body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover,
-body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover .btn-content {
-    @apply bg-transparent;
+
+/* "More" button — touch/mobile only, top-right, opens the link menu. */
+.message-link-preview .link-more-btn {
+    @apply absolute top-2 right-2 z-20;
+    @apply hidden;
 }
-.message-link-preview .link-buttons .btn.btn-round i {
-    @apply text-xl;
-}
-body.narrow .link-preview.compact .incut {
-    @apply flex-none;
-    @apply w-15 h-12;
+body.narrow .message-link-preview .link-more-btn {
+    @apply flex;
+    @apply bg-[var(--black-20)];
+    @apply text-white;
 }
 
 /* Our Link Preview */
 .link-preview.local-link {
     @apply items-start;
     @apply h-full;
+}
+/* Name-only local links (chat / place / user, no message body) center vertically. */
+.link-preview.local-link:not(:has(.c-top)) {
+    @apply items-center;
 }
 /* Blurred chat icon background */
 .link-preview.local-link > .c-bg {
@@ -191,16 +200,37 @@ body.device-ios .link-preview.local-link > .c-bg {
 .link-preview.local-link .c-info:not(:has(.c-top)) .c-domain {
     @apply mt-0;
 }
+.link-preview.local-link .c-author-header {
+    @apply flex-y items-start;
+    @apply min-w-0 max-w-full;
+}
+.link-preview.local-link .c-author-header .chat-message-author-name {
+    @apply max-w-full;
+    @apply truncate;
+}
 .link-preview.local-link .c-description {
     @apply line-clamp-2 md:line-clamp-2;
-    @apply wrap-anywhere;
+    @apply wrap-anywhere whitespace-normal;
 }
 .link-preview.local-link .c-domain {
+    @apply flex items-baseline gap-x-1;
+    @apply min-w-0 w-full;
     @apply py-0 mt-1;
+}
+.link-preview.local-link .c-domain .domain-link {
+    @apply min-w-0;
+    @apply truncate;
+    @apply text-primary;
+}
+.link-preview.local-link-user .c-domain .domain-link {
+    @apply text-base;
 }
 .link-preview.local-link .c-chat-meta {
     @apply text-caption-6 text-03;
     @apply line-clamp-1;
+}
+body.narrow .link-preview.local-link .c-info {
+    @apply pr-10;
 }
 .local-link .image-wrapper {
     @apply h-32;

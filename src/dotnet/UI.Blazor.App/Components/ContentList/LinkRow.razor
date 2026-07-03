@@ -1,7 +1,7 @@
-﻿@namespace ActualChat.UI.Blazor.App.Components
+@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
 @using LinkPreview = ActualChat.Media.LinkPreview;
-@inherits ComputedStateComponent<AppUIHub, LinkPreviewView.Model?>
+@inherits ComputedStateComponent<AppUIHub, LinkRow.Model?>
 @{
     if (State.IsInitial(out var m) || m is null)
         return;
@@ -59,16 +59,6 @@
 @{
     RenderFragment RenderMedia() {
         if (preview.PreviewMedia != null) {
-            if (preview.IsYouTubeVideo) {
-                return @<div class="c-thumbnail c-video">
-                           <image-skeleton
-                               class="c-skeleton"
-                               src="@imageUrl"/>
-                           <div class="c-overlay">
-                               <i class="c-play icon-play-fill"></i>
-                           </div>
-                       </div>;
-            }
             return @<image-skeleton
                         class="c-thumbnail"
                         src="@imageUrl"/>;

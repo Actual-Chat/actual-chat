@@ -13,6 +13,7 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
 {
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
+    private UrlMapper UrlMapper => field ??= Services.GetRequiredService<UrlMapper>();
     private ICommander Commander => field ??= Services.Commander();
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -76,15 +77,15 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
 
     // Re-extracts URLs from the current markup and stores the URL directly on the
     // LinkItem so the UI can always render at least a plain <a>, even if the
-    // LinkPreview never resolved. Trusted-GIF URLs are filtered out — they render
-    // inline as <img> (UrlMarkupView) and have no business in the Links tab.
+    // LinkPreview never resolved. GIF-host and own content/media URLs are filtered
+    // out — they render inline as <img> or belong to the Media/Files tabs.
     // Capped at LinkPreviewsPerMessageLimit to match the preview pipeline and
     // keep a spam message from blowing up the index.
     private IEnumerable<LinkItem> ExtractItems(ChatEntry entry)
     {
         var localIndex = 0;
         foreach (var url in MarkupParser.ExtractLinks(entry.Content)) {
-            if (UrlMapper.IsTrustedGifUrl(url))
+            if (UrlMapper.IsExcludedFromLinkIndex(url))
                 continue;
             if (localIndex >= Constants.Media.LinkPreviewsPerMessageLimit)
                 yield break;

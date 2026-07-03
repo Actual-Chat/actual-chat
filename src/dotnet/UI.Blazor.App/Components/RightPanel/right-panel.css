@@ -664,7 +664,10 @@ body.hoverable .content-list-rows .c-file-row:hover,
     @apply py-0;
 }
 .content-list-links .message-link-preview {
-    @apply w-full;
+    @apply relative;
+    @apply w-full min-h-12;
+    @apply rounded-2xl border border-separator;
+    @apply bg-03;
     @apply truncate;
 }
 .content-list-links .link-preview:not(.local-link) {
@@ -673,17 +676,24 @@ body.hoverable .content-list-rows .c-file-row:hover,
     @apply p-2;
     @apply rounded-2xl;
 }
-.content-list-links .link-preview:not(.local-link) > .c-thumbnail,
+/* Narrow: keep the desktop row layout (icon left, info right) instead of the tall stacked
+   card the general body.narrow rule forces — overrides its flex-y / items-start / min-h-60. */
+body.narrow .content-list-links .link-preview:not(.local-link) {
+    @apply flex-x items-center;
+    @apply min-h-0;
+}
 .content-list-links .link-preview:not(.local-link) > .c-icon {
     @apply flex-none;
-    @apply w-12 h-12 max-w-none max-h-none;
+    @apply w-10 h-10 max-w-none max-h-none;
 }
 .content-list-links .link-preview:not(.local-link) > .c-thumbnail {
+    @apply flex-none;
+    @apply w-24 h-16 max-w-none max-h-none;
     @apply rounded-lg overflow-hidden;
 }
 .content-list-links .link-preview:not(.local-link) .c-info {
     @apply justify-center gap-y-0.5;
-    @apply py-0 pr-8;
+    @apply py-0;
     @apply whitespace-break-spaces;
 }
 .content-list-links .link-preview:not(.local-link) .c-description {
@@ -708,4 +718,15 @@ body.hoverable .content-list-rows .c-file-row:hover,
 .chat-notification-mode-menu .ac-menu-item.selected .ac-menu-text,
 .chat-notification-mode-menu .ac-menu-item.selected .ac-menu-icon > i {
     @apply text-primary;
+}
+/* Plain URL fallback: middle-truncate via start (ellipsis) + pinned end (keeps the .ext visible). */
+.content-list-links .c-link-plain .c-normal-title {
+    @apply flex-x min-w-0;
+    @apply text-caption-1 md:text-headline-1 leading-tight text-primary;
+}
+.content-list-links .c-link-plain .c-normal-title .c-start {
+    @apply truncate;
+}
+.content-list-links .c-link-plain .c-normal-title .c-end {
+    @apply flex-none;
 }

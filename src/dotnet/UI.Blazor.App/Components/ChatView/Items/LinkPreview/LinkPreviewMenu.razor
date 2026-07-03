@@ -1,0 +1,75 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, LinkPreviewMenu.Model>
+
+<div class="message-menu">
+    <MenuEntry
+        Icon="icon-external-link"
+        Text="Open link"
+        Click="@OnOpen">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-copy"
+        Text="Copy link URL"
+        Click="@OnCopy">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-share"
+        Text="Forward message"
+        Click="@OnForward">
+    </MenuEntry>
+</div>
+
+@code {
+    private ChatEntryId _entryId = null!;
+    private string _url = "";
+    private string _localUrl = "";
+
+    private SelectionUI SelectionUI => Hub.SelectionUI;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+
+    protected override void OnParametersSet() {
+        switch (Arguments) {
+        case [var sEntryId, var sUrl, var sLocalUrl]:
+            _entryId = ChatEntryId.Parse(sEntryId);
+            _url = sUrl;
+            _localUrl = sLocalUrl;
+            break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+        }
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override Task<Model> ComputeState(CancellationToken cancellationToken)
+        => Task.FromResult(Model.None);
+
+    private async Task OnOpen() {
+        if (!_localUrl.IsNullOrEmpty()) {
+            await NavigateTo(_localUrl);
+            return;
+        }
+        await WhenClosed;
+        await JS.InvokeVoidAsync("window.open", _url, "_blank", "noopener");
+    }
+
+    private async Task OnCopy() {
+        await WhenClosed;
+        await ClipboardUI.WriteText(_url);
+    }
+
+    private async Task OnForward() {
+        await WhenClosed;
+        await SelectionUI.Forward(_entryId);
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+    }
+}

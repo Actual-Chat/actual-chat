@@ -25,7 +25,11 @@
     } else if (data is PlaceLocalLinkInfo placeLocalLinkInfo) {
         place = placeLocalLinkInfo.Place;
     }
-    var cls = entry is not null ? " local-link-chat-entry" : " local-link-chat";
+    var cls = entry is not null
+        ? " local-link-chat-entry"
+        : user is not null
+            ? " local-link-chat local-link-user"
+            : " local-link-chat";
     var showBg = chat is not null;
 }
 
@@ -39,12 +43,12 @@
         @if (entry is not null) {
             <AuthorCircle
                 AuthorId="@entry.AuthorId"
-                Size="SquareSize.Size9"/>
+                Size="SquareSize.Size10"/>
 
         } else if (user is not null) {
             <AccountCircle
                 UserId="@user.Id"
-                Size="@SquareSize.Size8" />
+                Size="@SquareSize.Size10" />
         }
         else if (chat is not null) {
             <ChatIcon Chat="@chat" Size="SquareSize.Size10"/>
@@ -92,10 +96,10 @@
 
         <span class="c-domain">
             @if (entry is not null) {
-                <span>in </span>
+                <span>in</span>
             }
             @if (user is not null) {
-                <a class="text-primary" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@user.Avatar.Name</a>
+                <a class="domain-link" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@user.Avatar.Name</a>
             }
             else if (chat is not null) {
                 var linkText = chat.Title;
@@ -104,10 +108,10 @@
 
                 var useDirectChatLink = entry is not null;
                 var chatLink = useDirectChatLink ? Links.Chat(chat.Id) : Data.LocalUrl;
-                <a class="text-primary" href="@chatLink" @onclick:preventDefault="true" @onclick="@(() => NavigateTo(chatLink))">@linkText</a>
+                <a class="domain-link" href="@chatLink" @onclick:preventDefault="true" @onclick="@(() => NavigateTo(chatLink))">@linkText</a>
             }
             else if (place is not null) {
-                <a class="text-primary" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@place.Title</a>
+                <a class="domain-link" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@place.Title</a>
             }
         </span>
         @if (chat is not null && chat.Kind is not ChatKind.Peer && entry is null && m.MemberCount > 0) {
