@@ -33,8 +33,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     }
 
     [ComputeMethod]
-    public virtual Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken)
-        => LiveSessions.Get(Session, chatId, cancellationToken);
+    public virtual async Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken)
+        => await LiveSessions.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
     public virtual async Task<bool> IsTranscriptionOn(ChatId chatId, CancellationToken cancellationToken)
