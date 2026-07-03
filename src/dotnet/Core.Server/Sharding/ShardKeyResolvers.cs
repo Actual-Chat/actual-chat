@@ -46,6 +46,7 @@ public static class ShardKeyResolvers
     {
         // Value types
         Register<Unit>(static _ => 0);
+        Register<int>(static x => x); // Used for IDiagnosticsBackend.GetShardHostId
         Register<Symbol>(static x => ForString(x.Value));
         Register<ChatId>(static x => ForString(x.Value));
         Register<PeerChatId>(static x => ForString(x.Value));
