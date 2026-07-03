@@ -25,7 +25,7 @@
     @apply relative z-10;
     @apply flex-1;
 }
-.replay-subheader .author-circle .avatar-circle {
+.replay-subheader .author-circle .avatar-circle::after {
     border-color: var(--border-replay);
 }
 .replay-subheader .c-skeletons {

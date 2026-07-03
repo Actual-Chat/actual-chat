@@ -26,7 +26,11 @@
     @apply w-full h-full;
     @apply rounded-full;
     @apply object-cover;
-    border-width: 2px;
-    border-style: solid;
-    border-color: var(--background-01);
+}
+/* Separator ring drawn on top of the avatar (a 2px border would shrink the
+   border-box and clip the fixed-size Pic on the right). */
+.author-circle .avatar-circle::after {
+    @apply content-empty absolute inset-0 z-10;
+    @apply rounded-full pointer-events-none;
+    border: 2px solid var(--background-01);
 }
