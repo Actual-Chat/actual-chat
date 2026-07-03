@@ -1181,9 +1181,10 @@ public class NotificationsBackend(IServiceProvider services)
             return Task.CompletedTask;
         });
 
-        // Push one banner per distinct chat (= client tag): a coalesced batch can add
-        // notifications for several chats, and a single push would silently drop the others'
-        // banners while the badge still counts them.
+        // Push one banner per distinct client tag (per chat for coalescing kinds, per entry for
+        // mentions/attention/reactions): a coalesced batch can add notifications for several
+        // banners, and a single push would silently drop the others' while the badge still
+        // counts them.
         // Pushes go out as operation events (the transactional outbox): they're persisted to
         // _events in this same commit and DbEventForwarder hands them to the queue, so a push
         // is never lost if this node dies after the commit. The badge is NOT snapshotted here —
@@ -1210,9 +1211,9 @@ public class NotificationsBackend(IServiceProvider services)
         if (hasNewMention)
             context.Operation.AddEvent(FlowHub.NewResumeEvent<Flows.MentionReminderFlow>(userId.Value));
         if (dismissed.Count > 0) {
-            // Only close banners whose tag is now fully gone — a chat may still have another
-            // active notification under the same tag (e.g. a message remains after a mention is
-            // read). The badge is still refreshed by the dismissal push regardless.
+            // Only close banners whose tag is now fully gone — the chat banner may still be
+            // backed by another active notification under the same tag. The badge is still
+            // refreshed by the dismissal push regardless.
             var survivingTags = info.Displayed.Select(GetPushGroupKey).ToHashSet(StringComparer.Ordinal);
             var bannersToClose = dismissed.Where(d => !survivingTags.Contains(GetPushGroupKey(d))).ToApiArray();
             context.Operation.AddEvent(new NotificationsBackend_PushDismissal(userId, bannersToClose));
@@ -1346,11 +1347,11 @@ public class NotificationsBackend(IServiceProvider services)
         return NotificationHelper.GetAggregatedText(leadText, names, moreCount);
     }
 
-    // Banner grouping key = the client push tag. Uses the shared NotificationExt.GetChatTag so
+    // Banner grouping key = the client push tag. Uses the shared NotificationExt.GetPushTag so
     // the server's grouping and the client reconciler's matching can't drift; non-chat
     // notifications fall back to the dedup key.
     private static string GetPushGroupKey(Notification notification)
-        => notification.GetChatTag() ?? notification.SimilarityKey;
+        => notification.GetPushTag() ?? notification.SimilarityKey;
 
     private sealed class SoftBuffer
     {

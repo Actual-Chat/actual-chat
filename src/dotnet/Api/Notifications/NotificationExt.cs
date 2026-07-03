@@ -2,9 +2,19 @@ namespace ActualChat.Notifications;
 
 public static class NotificationExt
 {
-    // The device push tag groups a chat's notifications under one entry (one banner per chat).
-    // Returns null for non-chat notifications. Shared by the FCM send path and the client-side
-    // reconciler so both derive the same tag.
+    // The device push tag: the OS replaces a shown banner by tag, so the tag must map 1:1 to the
+    // server-side notification identity or dismissal-by-tag closes the wrong banners.
+    // Individually-seen kinds (mention, attention, reaction) tag by their entry — each keeps its
+    // own banner; chat-coalescing kinds share one banner per chat. Shared by the FCM send path,
+    // the dismissal path and the client-side reconciler so all derive the same tag.
+    public static string? GetPushTag(this Notification notification)
+        => notification switch {
+            ChatEntryNotification n => n.EntryId.Value,
+            _ => notification.GetChatTag(),
+        };
+
+    // The chat a notification belongs to, as a tag (one value per chat). Returns null for
+    // non-chat notifications.
     public static string? GetChatTag(this Notification notification)
         => notification switch {
             ConversationNotification n => n.ChatId.Value,

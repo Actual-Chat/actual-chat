@@ -85,7 +85,7 @@ public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 
     private List<ActiveNotificationInfo> ToInfos(ApiArray<Notification> active)
         => active
-            .Select(n => (Tag: n.GetChatTag(), Notification: n))
+            .Select(n => (Tag: n.GetPushTag(), Notification: n))
             .Where(x => x.Tag is not null)
             .Select(x => new ActiveNotificationInfo(
                 x.Tag!,

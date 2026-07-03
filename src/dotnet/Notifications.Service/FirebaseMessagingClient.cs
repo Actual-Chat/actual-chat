@@ -59,7 +59,10 @@ public class FirebaseMessagingClient(
 
         var isChatRelated = chatId is not null;
         var isEntryRelated = linkEntryId is not null;
-        var tag = notification.GetChatTag() ?? "topic";
+        var tag = notification.GetPushTag() ?? "topic";
+        // iOS stacks same-thread banners under one group; mentions keep their own banner (tag)
+        // but still stack with the rest of their chat.
+        var threadTag = notification.GetChatTag() ?? tag;
         var link = isEntryRelated ? UrlMapper.ToAbsolute(Links.Chat(linkEntryId))
             : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId!))
             : "";
@@ -98,7 +101,7 @@ public class FirebaseMessagingClient(
                 Headers = new Dictionary<string, string>() {
                     ["apns-push-type"] = "alert",
                     ["apns-priority"] = isRinger ? "10" : "5",
-                    // Coalesce updates for the same chat into a single banner instead of stacking.
+                    // Coalesce updates for the same banner instead of stacking.
                     ["apns-collapse-id"] = tag,
                 },
                 Aps = new Aps {
@@ -111,7 +114,7 @@ public class FirebaseMessagingClient(
                     // A silent update refreshes the banner content without playing a sound.
                     Sound = isSilent ? null : isRinger ? "attention_ringtone.caf" : "default",
                     MutableContent = true,
-                    ThreadId = tag,
+                    ThreadId = threadTag,
                 },
                 FcmOptions = new ApnsFcmOptions {
                     ImageUrl = absoluteIconUrl,
@@ -153,10 +156,10 @@ public class FirebaseMessagingClient(
             return;
 
         var dismissedIds = dismissedNotifications.Select(n => n.Id.Value);
-        // Only chat-derived tags are emitted: a client closes every notification sharing a tag,
-        // so the non-chat "topic" fallback must never be a dismissal tag.
+        // Only chat/entry-derived tags are emitted: a client closes every notification sharing
+        // a tag, so the non-chat "topic" fallback must never be a dismissal tag.
         var dismissedTags = dismissedNotifications
-            .Select(NotificationExt.GetChatTag)
+            .Select(NotificationExt.GetPushTag)
             .Where(tag => tag is not null)
             .Distinct();
         var data = new Dictionary<string, string>() {

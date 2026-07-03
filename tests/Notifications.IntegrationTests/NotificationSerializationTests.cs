@@ -98,6 +98,33 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
+    public void PushTag_PerEntryForIndividuallySeenKinds()
+    {
+        var entryId = ChatEntryId.New(TestChatId, 2067);
+
+        // Individually-seen kinds keep their own banner: the tag is the entry, so a later
+        // message (or a second mention) must not replace an unread mention's banner.
+        MentionNotification.New(TestUserId, entryId).GetPushTag().Should().Be(entryId.Value);
+        AttentionNotification.New(TestUserId, entryId).GetPushTag().Should().Be(entryId.Value);
+        ReactionNotification.New(TestUserId, entryId).GetPushTag().Should().Be(entryId.Value);
+
+        var otherEntryId = ChatEntryId.New(TestChatId, 2100);
+        MentionNotification.New(TestUserId, otherEntryId).GetPushTag()
+            .Should().NotBe(MentionNotification.New(TestUserId, entryId).GetPushTag());
+    }
+
+    [Fact]
+    public void PushTag_PerChatForCoalescingKinds()
+    {
+        MessageNotification.New(TestUserId, TestChatId, 2067).GetPushTag().Should().Be(TestChatId.Value);
+        ReplyNotification.New(TestUserId, TestChatId, 2067).GetPushTag().Should().Be(TestChatId.Value);
+        ThreadNotification.New(TestUserId, TestChatId, 2067).GetPushTag().Should().Be(TestChatId.Value);
+
+        var conversationId = ConversationId.New(TestChatId, 2067);
+        ConversationNotification.New(TestUserId, conversationId, 2100).GetPushTag().Should().Be(TestChatId.Value);
+    }
+
+    [Fact]
     public void ExplicitNotification_Basic()
     {
         var id = ExplicitNotificationId.New(
