@@ -34,6 +34,10 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
 
     private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    private BackgroundStateTracker BackgroundStateTracker
+        => field ??= Services.GetRequiredService<BackgroundStateTracker>();
+    private ThermalTracker ThermalTracker
+        => field ??= Services.GetRequiredService<ThermalTracker>();
     private MomentClock SystemClock => Hub.Clocks.SystemClock;
     private ILiveVideoStreams LiveVideoStreams
         => field ??= Services.GetRequiredService<ILiveVideoStreams>();
@@ -62,6 +66,7 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
             new BandwidthEstimatorConfig(Constants.Video.InitialOutboundCeilingBps));
         _inboundBwEstimator = new BandwidthEstimator(
             new BandwidthEstimatorConfig(Constants.Video.InitialInboundCeilingBps));
+        _thermalCap = new ThermalCap(deviceCameraCap, screencastCap, ThermalCapConfig.Default);
         this.Start();
     }
 
@@ -73,6 +78,8 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
         var chains = new[] {
             AsyncChain.From(WatchConnectivity),
             AsyncChain.From(WatchVideoPanelMode),
+            AsyncChain.From(WatchBackgroundState),
+            AsyncChain.From(WatchThermal),
             AsyncChain.From(RunPlaybackQualityKeepAlive),
             AsyncChain.From(LoadDebugSettings),
         };
@@ -110,6 +117,41 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
 
     private static bool IsPlaybackPaused(VideoPanelMode mode)
         => mode is VideoPanelMode.Hidden or VideoPanelMode.Collapsed;
+
+    private async Task WatchThermal(CancellationToken cancellationToken)
+    {
+        // Thermal escalation must bite within a tick — waiting for the steady
+        // 5 s QC interval lets the device heat further before we back off.
+        var cState = ThermalTracker.Level.Computed;
+        await foreach (var (level, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (!_thermalCap.Tick(SystemClock.Now, level))
+                continue;
+
+            Log.LogInformation("WatchThermal: thermal cap level -> {Level}", _thermalCap.Level);
+            await RecomputePlaybackQuality(
+                PlaybackQualityReason.Backoff,
+                cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task WatchBackgroundState(CancellationToken cancellationToken)
+    {
+        // Hidden tab / backgrounded app must pause inbound video within a tick —
+        // frames otherwise keep arriving and decoding invisibly, which is the
+        // single largest pointless battery drain on mobile.
+        var cState = BackgroundStateTracker.IsBackground.Computed;
+        await foreach (var (isBackground, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            lock (_playbackLock) {
+                var isResumingPlayback = _isBackground && !isBackground;
+                _isBackground = isBackground;
+                if (isResumingPlayback)
+                    RefreshPlaybackEntriesLastSeenLocked();
+            }
+            await RecomputePlaybackQuality(
+                PlaybackQualityReason.ActiveSetChanged,
+                cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     private async Task WatchConnectivity(CancellationToken cancellationToken)
     {

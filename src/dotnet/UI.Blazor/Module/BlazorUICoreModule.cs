@@ -98,6 +98,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             services.AddScoped<ConnectivityUI>(c => new WebConnectivityUI(c.UIHub()));
         if (!isMauiApp) {
             services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
+            services.AddScoped<ThermalTracker>(c => new WebThermalTracker(c));
             services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
             services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));
         }

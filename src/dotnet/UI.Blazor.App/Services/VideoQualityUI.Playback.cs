@@ -46,6 +46,9 @@ public sealed partial class VideoQualityUI
     // intentionally paused inbound frames (Hidden/Collapsed) — without that,
     // OnPlaybackStats dries up, entries age out, and resume can't dispatch.
     private VideoPanelMode _currentPanelMode = VideoPanelMode.Inline;
+    // Snapshot of BackgroundStateTracker.IsBackground observed by WatchBackgroundState.
+    // Hidden tab / backgrounded app pauses every stream just like VideoPanelMode.Hidden.
+    private volatile bool _isBackground;
     private readonly BandwidthEstimator _inboundBwEstimator;
     private PlaybackQualitySnapshot _playbackSnapshot = PlaybackQualitySnapshot.Empty;
     // Per-stream classifier instances — each owns its own streak counters for
@@ -285,7 +288,10 @@ public sealed partial class VideoQualityUI
         var downlinkSignal = VerdictToSignal(aggregateDownlinkVerdict);
         var connection = ConnectivityUI.ConnectionInfo.Value;
         _inboundBwEstimator.Tick(connection, SystemClock.Now, sumIncomingBytesPerSec, downlinkSignal);
-        var estimatedCapacity = (long)(_inboundBwEstimator.CeilingBps * _debugBandwidthMultiplier);
+        _thermalCap.Tick(SystemClock.Now, ThermalTracker.Level.Value);
+        var estimatedCapacity = (long)(_inboundBwEstimator.CeilingBps
+            * _debugBandwidthMultiplier
+            * _thermalCap.InboundBudgetMultiplier);
         var aggregateHealth = 2 * downlinkSignal - 1;
         var verdicts = entries.ToDictionary(x => x.Key.Value, x => x.Value.Verdict);
 
@@ -315,10 +321,11 @@ public sealed partial class VideoQualityUI
         foreach (var (streamId, _) in entries)
             requestedMap[streamId.Value] = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
         // Float (Collapsed) shows only the primary tile — pause every secondary
-        // stream. Hide pauses every stream. The server filter drops every frame
-        // while Paused is in effect, so this also throttles inbound bandwidth.
+        // stream. Hide (or a hidden tab / backgrounded app) pauses every stream.
+        // The server filter drops every frame while Paused is in effect, so this
+        // also throttles inbound bandwidth.
         var panelMode = await Hub.ChatVideoUI.GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
-        if (panelMode == VideoPanelMode.Hidden) {
+        if (panelMode == VideoPanelMode.Hidden || _isBackground) {
             foreach (var (streamId, _) in entries)
                 requestedMap[streamId.Value] = ReceiveQuality.Paused;
         }
@@ -455,7 +462,9 @@ public sealed partial class VideoQualityUI
         StreamAllocationRequest ToAllocationRequest(KeyValuePair<StreamId, PlaybackStatsState> entry)
         {
             var debugCap = _debugMaxPlaybackLayerCount;
-            var layerCountCap = Math.Min(entry.Value.RequestedLayerCount, debugCap ?? int.MaxValue);
+            var layerCountCap = Math.Min(
+                Math.Min(entry.Value.RequestedLayerCount, _thermalCap.MaxPlaybackLayerCount),
+                debugCap ?? int.MaxValue);
             var rates = EstimateLayerRates(entry.Value, layerCountCap);
             var area = Math.Max(1,
                 entry.Value.Snapshot.RenderCssLongSide
@@ -697,7 +706,8 @@ public sealed partial class VideoQualityUI
     private List<KeyValuePair<StreamId, PlaybackStatsState>> GetFreshPlaybackEntries()
     {
         lock (_playbackLock) {
-            var isPaused = _currentPanelMode is VideoPanelMode.Hidden or VideoPanelMode.Collapsed;
+            var isPaused = _isBackground
+                || _currentPanelMode is VideoPanelMode.Hidden or VideoPanelMode.Collapsed;
             if (!isPaused) {
                 var staleStreamIds = _playbackByStream
                     .Where(x => x.Value.LastSeen.Elapsed > PlaybackHealthTtl)

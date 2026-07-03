@@ -6,6 +6,11 @@ public static partial class Constants
     {
         // Frame rate / cadence — derived everywhere downstream.
         public const int FrameRate = 30;
+        // Camera capture rate on mobile devices; capture→convert→encode power is
+        // roughly linear in fps, and 24 fps is visually equivalent in a chat.
+        // Buffer/pacing math stays derived from FrameRate (30) — the receiver
+        // present-pacer tolerates below-constant source fps.
+        public const int MobileFrameRate = 24;
         public static readonly TimeSpan FrameDuration = TimeSpan.FromSeconds(1d / FrameRate); // 33.333 ms
 
         // Target playback buffer (the only intentional live-video buffer).

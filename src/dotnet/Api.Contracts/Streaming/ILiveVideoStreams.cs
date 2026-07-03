@@ -23,13 +23,15 @@ public interface ILiveVideoStreams : IComputeService
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<Moment> LastKeyframeRequestAt(Session session, StreamId streamId, CancellationToken cancellationToken);
 
-    // Publisher-facing aggregate of max ReceiveQuality.LayerId across all
-    // subscribers of this stream. Returns -1 when nobody is subscribed
-    // (or every consumer is paused). The recorder caps its encoder ladder
-    // at min(EncodingCap.Layers, MaxRequestedLayerId + 1), so a call with
-    // a single L0-pinned viewer collapses the sender to L0.
+    // Max ReceiveQuality.LayerId across all subscribers; -1 = none subscribed.
+    // Superseded by RequestedLayersMask; kept for older clients.
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<int> MaxRequestedLayerId(Session session, StreamId streamId, CancellationToken cancellationToken);
+
+    // Demanded-layer bitmask across all subscribers (bit i = canonical ladder
+    // index i is wanted; 0 = none subscribed) — the recorder skips undemanded tiers.
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<int> RequestedLayersMask(Session session, StreamId streamId, CancellationToken cancellationToken);
 
     Task RegisterMember(
         Session session, ChatId chatId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken);

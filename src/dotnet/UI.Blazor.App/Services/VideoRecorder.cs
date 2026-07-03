@@ -204,6 +204,10 @@ public sealed class VideoRecorder : IAsyncDisposable
         return SetLayers(layers, cancellationToken);
     }
 
+    // Thermal fps ceiling; 0 = no ceiling.
+    public Task SetFpsCeiling(int maxFps, CancellationToken cancellationToken)
+        => _jsRef.InvokeVoidAsync("setFpsCeiling", cancellationToken, maxFps).AsTask();
+
     // Private methods
 
     private async Task RunMaintenance(Task startTrigger, CancellationToken cancellationToken)
@@ -214,7 +218,7 @@ public sealed class VideoRecorder : IAsyncDisposable
         var t1 = SubscribeToKeyFrameRequests(chatId, cancellationToken);
         var t2 = SubscribeToSupportedDecoderCodecs(chatId, cancellationToken);
         var t3 = ForwardRemoteStreamCount(chatId, cancellationToken);
-        var t4 = SubscribeToMaxLayerId(chatId, cancellationToken);
+        var t4 = SubscribeToLayerDemand(chatId, cancellationToken);
         var t5 = SubscribeToVoiceActivity(chatId, cancellationToken);
         await Task.WhenAll(t1, t2, t3, t4, t5).ConfigureAwait(false);
     }
@@ -294,9 +298,9 @@ public sealed class VideoRecorder : IAsyncDisposable
         }
     }
 
-    private async Task SubscribeToMaxLayerId(ChatId chatId, CancellationToken cancellationToken) {
+    private async Task SubscribeToLayerDemand(ChatId chatId, CancellationToken cancellationToken) {
         try {
-            Log.LogInformation("SubscribeToMaxLayerId: starting for ChatId={ChatId}", chatId);
+            Log.LogInformation("SubscribeToLayerDemand: starting for ChatId={ChatId}", chatId);
 
             StreamId? ownStreamId = null;
             var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -314,28 +318,28 @@ public sealed class VideoRecorder : IAsyncDisposable
             }
 
             if (ownStreamId == null) {
-                Log.LogWarning("SubscribeToMaxLayerId: own stream not found after polling for ChatId={ChatId}", chatId);
+                Log.LogWarning("SubscribeToLayerDemand: own stream not found after polling for ChatId={ChatId}", chatId);
                 return;
             }
 
-            Log.LogInformation("SubscribeToMaxLayerId: found own stream #{StreamId}, subscribing", ownStreamId);
+            Log.LogInformation("SubscribeToLayerDemand: found own stream #{StreamId}, subscribing", ownStreamId);
             var cState = await Computed.Capture(
-                () => LiveVideoStreams.MaxRequestedLayerId(Session, ownStreamId, cancellationToken),
+                () => LiveVideoStreams.RequestedLayersMask(Session, ownStreamId, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
-            var lastMax = int.MinValue;
-            await foreach (var (maxLayerId, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                if (maxLayerId == lastMax)
+            var lastMask = int.MinValue;
+            await foreach (var (mask, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+                if (mask == lastMask)
                     continue;
 
-                lastMax = maxLayerId;
+                lastMask = mask;
                 Log.LogInformation(
-                    "MaxRequestedLayerId: stream {StreamId} → {MaxLayerId}", ownStreamId, maxLayerId);
-                await _jsRef.InvokeVoidAsync("setMaxLayerId", cancellationToken, maxLayerId).ConfigureAwait(false);
+                    "RequestedLayersMask: stream {StreamId} → {Mask:b}", ownStreamId, mask);
+                await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception e) {
-            Log.LogWarning(e, "SubscribeToMaxLayerId failed");
+            Log.LogWarning(e, "SubscribeToLayerDemand failed");
         }
     }
 
@@ -486,7 +490,8 @@ public sealed class VideoRecorder : IAsyncDisposable
             double encodeTimeMsMean = -1,
             double downscaleTimeMsMean = -1,
             double downscaleTimeMsMax = -1,
-            int keepAliveFramesInjected = 0)
+            int keepAliveFramesInjected = 0,
+            bool isHardwareAccelerated = false)
         {
             var dropTrace = new Dictionary<FrameDropStage, int>(dropStages.Length);
             for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
@@ -511,7 +516,8 @@ public sealed class VideoRecorder : IAsyncDisposable
                 EncodeTimeMsMean: encodeTimeMsMean,
                 DownscaleTimeMsMean: downscaleTimeMsMean,
                 DownscaleTimeMsMax: downscaleTimeMsMax,
-                KeepAliveFramesInjected: keepAliveFramesInjected));
+                KeepAliveFramesInjected: keepAliveFramesInjected,
+                IsHardwareAccelerated: isHardwareAccelerated));
         }
     }
 }

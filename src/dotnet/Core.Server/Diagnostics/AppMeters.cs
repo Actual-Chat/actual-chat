@@ -15,6 +15,8 @@ public static class AppMeters
     public static readonly Histogram<double> VideoSendDropRatio;
     public static readonly Histogram<double> VideoSendAckAgeMs;
     public static readonly Histogram<int> VideoSendLayerCount;
+    public static readonly Histogram<int> VideoSendThermalLevel;
+    public static readonly Counter<long> VideoSendSoftwareEncode;
 
     // Receive side — sourced from PlaybackQualityInfo + PlaybackStreamInfo
     // pushed via ILiveVideoStreams.ChangePlaybackQuality (per decision + 5 s heartbeat).
@@ -49,6 +51,10 @@ public static class AppMeters
             "app.video.send.ack_age", "ms", "Wall-clock age of the most recent sender ACK");
         VideoSendLayerCount = m.CreateHistogram<int>(
             "app.video.send.layer_count", "layers", "Effective layer count on the recording client");
+        VideoSendThermalLevel = m.CreateHistogram<int>(
+            "app.video.send.thermal_level", "level", "Recording client's thermal level (0 = nominal … 3 = critical)");
+        VideoSendSoftwareEncode = m.CreateCounter<long>(
+            "app.video.send.software_encode", null, "Recording quality reports from clients encoding in software");
 
         VideoReceiveCapacityBps = m.CreateHistogram<long>(
             "app.video.receive.capacity", "By/s", "Estimated client-wide incoming video capacity");

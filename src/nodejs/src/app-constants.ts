@@ -23,6 +23,7 @@ export interface AppConstants {
 export interface VideoConstants {
     // From .NET
     readonly frameRate: number;
+    readonly mobileFrameRate: number;
     readonly targetBufferSize: number;
     readonly keyFramePeriodMs: number;
     readonly serverReplayTailDurationMs: number;

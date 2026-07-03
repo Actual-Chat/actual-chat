@@ -69,6 +69,7 @@ export class BrowserInfo {
 
         ScreenSize.change$.subscribe(() => void this.onScreenSizeChanged(ScreenSize.size, ScreenSize.isHoverable));
         DocumentEvents.passive.visibilityChange$.subscribe(() => void this.onVisibilityChanged());
+        this.startThermalWatcher();
         if (isWasmReady === false)
             void this.startWasmReadyWatcher();
     }
@@ -109,6 +110,12 @@ export class BrowserInfo {
         void this.backendRef.invokeMethodAsync('OnWasmReady');
     }
 
+    private static async onThermalStateChanged(state: string): Promise<void> {
+        infoLog?.log(`onThermalStateChanged:`, state);
+        await this.whenReady;
+        void this.backendRef.invokeMethodAsync('OnThermalStateChanged', state);
+    }
+
     // Other methods
 
     private static initBodyClasses() {
@@ -126,6 +133,25 @@ export class BrowserInfo {
         default:
             classList.add('app-unknown');
             break;
+        }
+    }
+
+    // Compute Pressure API (Chromium 125+): CPU pressure is the closest web
+    // proxy for device thermal state. Absent API → backend stays at Nominal.
+    private static startThermalWatcher(): void {
+        const ctor = (globalThis as unknown as { PressureObserver?: PressureObserverCtor }).PressureObserver;
+        if (!ctor)
+            return;
+
+        try {
+            const observer = new ctor(records => {
+                if (records.length > 0)
+                    void this.onThermalStateChanged(records[records.length - 1].state);
+            });
+            void observer.observe('cpu', { sampleInterval: 2000 });
+        }
+        catch {
+            // Unsupported source / older signature — stay at Nominal.
         }
     }
 
@@ -150,6 +176,18 @@ export class BrowserInfo {
         }
     }
 }
+
+// Minimal Compute Pressure API shims — no lib.dom types for it yet.
+
+interface PressureRecordLike {
+    state: 'nominal' | 'fair' | 'serious' | 'critical';
+}
+
+interface PressureObserverLike {
+    observe(source: string, options?: { sampleInterval?: number }): Promise<void>;
+}
+
+type PressureObserverCtor = new (callback: (records: PressureRecordLike[]) => void) => PressureObserverLike;
 
 export interface InitResult {
     screenSizeText: string;

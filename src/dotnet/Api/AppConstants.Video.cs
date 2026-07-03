@@ -14,6 +14,7 @@ partial record AppConstants
     {
         // Frame rate / cadence
         public int FrameRate { get; init; } = Constants.Video.FrameRate;
+        public int MobileFrameRate { get; init; } = Constants.Video.MobileFrameRate;
         // Target playback buffer
         public int TargetBufferSize { get; init; } = Constants.Video.TargetBufferSize;
         // Keyframe cadence

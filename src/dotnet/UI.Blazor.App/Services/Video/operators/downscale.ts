@@ -7,6 +7,7 @@ import { drawFrameCover, resizeCanvas } from '../canvas/resize';
 import { CanvasDownscaler } from '../canvas/downscaler';
 import { MetadataDownscaler } from '../metadata/downscaler';
 import { WebGlDownscaler, probeWebGl2 } from '../webgl/downscaler';
+import { WebGpuDownscaler } from '../webgpu/downscaler';
 import { parallelMap } from './parallel-map';
 import type { PreviewSink } from './preview-forwarder';
 import type { LayerLadderController } from '../sender/layer-ladder-controller';
@@ -23,8 +24,9 @@ export interface LayerSpec {
 // encoder rescales) — keeps the downscale off the GPU. `webgl` is the GPU cascade
 // (Canvas2D fallback if WebGL2 is unavailable) and `canvas` forces the Canvas2D
 // cascade; both are the fallback for HW that top-left-crops instead of scaling
-// (notably Edge HEVC). See docs/live-video/02-sender.md.
-export type DownscalerMode = 'webgl' | 'canvas' | 'metadata';
+// (notably Edge HEVC). `webgpu` is the EXPERIMENTAL CPU-readback NV12 backend
+// (Chromium only — see webgpu/downscaler.ts). See docs/live-video/02-sender.md.
+export type DownscalerMode = 'webgl' | 'canvas' | 'metadata' | 'webgpu';
 
 // Contract: one frame per spec in order (bottom-first). A spec matching the
 // input's display dims returns the input frame as that tier (shared reference);
@@ -118,6 +120,13 @@ export function createDownscalerForMode(mode: DownscalerMode): DownscalerLike {
         return new CanvasDownscaler();
     case 'metadata':
         return new MetadataDownscaler();
+    case 'webgpu':
+        try {
+            return new WebGpuDownscaler();
+        } catch (e) {
+            warnLog?.log('createDownscalerForMode: WebGPU unavailable, using metadata:', e);
+            return new MetadataDownscaler();
+        }
     case 'webgl':
     default:
         return createDefaultDownscaler();

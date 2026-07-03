@@ -582,8 +582,11 @@
                             ladder. <b>WebGL</b> = GPU cascade (Canvas2D fallback);
                             <b>Canvas2D</b> = 2D cascade; <b>Metadata</b> = cheap
                             display-size wrap (HW encoder rescales — reproduces the
-                            Edge HEVC lower-tier crop, comparison only). Applies on
-                            the next pipeline restart — switch, then re-join the call.
+                            Edge HEVC lower-tier crop, comparison only);
+                            <b>WebGPU</b> = experimental per-tier NV12 readback to
+                            CPU frames (Chromium only — skips the encoder's internal
+                            full-res readback). Applies on the next pipeline
+                            restart — switch, then re-join the call.
                         </Caption>
                         <Right>
                             <select class="diag-select"
@@ -592,6 +595,7 @@
                                 <option value="webgl">WebGL</option>
                                 <option value="canvas">Canvas2D</option>
                                 <option value="metadata">Metadata</option>
+                                <option value="webgpu">WebGPU (CPU NV12)</option>
                             </select>
                         </Right>
                     </TileItem>

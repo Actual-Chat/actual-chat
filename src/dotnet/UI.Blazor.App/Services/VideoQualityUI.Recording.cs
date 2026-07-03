@@ -18,6 +18,7 @@ public sealed partial class VideoQualityUI
     // the link can't drain instantly, so the acked-bytes rate equals capacity.
     private const double WireBacklogBundles = 2.0;
     private readonly Dictionary<VideoSourceKind, int> _lastAppliedTargetByKind = new();
+    private readonly Dictionary<VideoSourceKind, int> _lastAppliedFpsCeilingByKind = new();
     // Worker-restart cooldown: a worker.stop()/start() cycle resets the
     // RecorderStats counters to 0, producing a transient bytes/sec=0
     // tick that would otherwise feed BWE a fake bad signal and trigger
@@ -28,6 +29,7 @@ public sealed partial class VideoQualityUI
     private readonly LayerCap _outboundLayers;
     private readonly EncodingCap _outboundEncodingCap;
     private readonly BandwidthCap _outboundBandwidthCap;
+    private readonly ThermalCap _thermalCap;
     private readonly SpeculativeProbe _outboundProbe = new();
     private readonly BandwidthEstimator _outboundBwEstimator;
     // One classifier per recording run. The Encoder/Uplink streak counters
@@ -45,6 +47,7 @@ public sealed partial class VideoQualityUI
     public BandwidthEstimator OutboundBandwidthEstimator => _outboundBwEstimator;
     public LayerCap OutboundEncodingLayers => _outboundEncodingCap.Layers;
     public LayerCap OutboundBandwidthLayers => _outboundBandwidthCap.Layers;
+    public ThermalCap ThermalCap => _thermalCap;
     public int OutboundDeviceCameraCap => _outboundLayers.DeviceCameraCap;
     public int OutboundDeviceScreencastCap => _outboundLayers.ScreencastCap;
     // Current effective outbound camera cap (soft-started, ramped by QC). openGate
@@ -290,6 +293,9 @@ public sealed partial class VideoQualityUI
             bwLayers.DeviceCameraCap,
             Math.Min(encLayers.CameraLayers, bwLayers.CameraLayers) + cameraProbeExtra);
         var effScreencast = Math.Min(encLayers.ScreencastLayers, bwLayers.ScreencastLayers);
+        _thermalCap.Tick(SystemClock.Now, ThermalTracker.Level.Value);
+        effCamera = Math.Min(effCamera, _thermalCap.CameraLayers);
+        effScreencast = Math.Min(effScreencast, _thermalCap.ScreencastLayers);
         if (_debugMaxRecordingLayerCount is { } debugCap) {
             effCamera = Math.Min(effCamera, debugCap);
             effScreencast = Math.Min(effScreencast, debugCap);
@@ -299,6 +305,7 @@ public sealed partial class VideoQualityUI
             var target = k == VideoSourceKind.Camera ? effCamera : effScreencast;
             target = Math.Max(1, target);
             await ApplyOutboundTarget(k, recorder, target, cancellationToken).ConfigureAwait(false);
+            await ApplyFpsCeiling(k, recorder, _thermalCap.MaxFps, cancellationToken).ConfigureAwait(false);
         }
 
         var capChange = "";
@@ -359,13 +366,28 @@ public sealed partial class VideoQualityUI
             var info = new RecordingQualityInfo(
                 reason,
                 stats.SenderFrameDropRatioEma,
-                stats.LastAckAgeMs);
+                stats.LastAckAgeMs,
+                _thermalCap.Level,
+                stats.IsHardwareAccelerated);
             _ = LiveVideoStreams.ChangeRecordingQuality(
                 Session,
                 state,
                 info,
                 cancellationToken).SuppressExceptions();
         }
+    }
+
+    private async Task ApplyFpsCeiling(
+        VideoSourceKind kind,
+        VideoRecorder recorder,
+        int maxFps,
+        CancellationToken cancellationToken)
+    {
+        if (_lastAppliedFpsCeilingByKind.GetValueOrDefault(kind) == maxFps)
+            return;
+
+        _lastAppliedFpsCeilingByKind[kind] = maxFps;
+        await recorder.SetFpsCeiling(maxFps, cancellationToken).ConfigureAwait(false);
     }
 
     private static long ComputeAndUpdateBytesPerSec(
