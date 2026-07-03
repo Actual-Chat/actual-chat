@@ -33,7 +33,7 @@ const ALICE_MOVED = { latitude: 48.8566, longitude: 2.3522, accuracy: 12 };  // 
 const BOB_START = { latitude: 52.5200, longitude: 13.4050, accuracy: 12 };   // Berlin
 
 const tileLoaded = (page: Page) => page.waitForResponse(
-    r => /tiles\.openfreemap\.org\/(planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url()) && r.ok(),
+    r => /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url()) && r.ok(),
     { timeout: 20_000 });
 
 async function openChat(page: Page) {

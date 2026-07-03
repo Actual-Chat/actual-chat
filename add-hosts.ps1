@@ -139,8 +139,8 @@ function Configure-LocalEnvHosts {
     #    when the file actually needs changes.
     Write-Host "Updating hosts file and .env LOCAL_IP..."
     $baseHostnames = @(
-        'local.voxt.ai', 'media.local.voxt.ai', 'cdn.local.voxt.ai',
-        'local.actual.chat', 'media.local.actual.chat', 'cdn.local.actual.chat'
+        'local.voxt.ai', 'media.local.voxt.ai', 'cdn.local.voxt.ai', 'maps.local.voxt.ai',
+        'local.actual.chat', 'media.local.actual.chat', 'cdn.local.actual.chat', 'maps.local.actual.chat'
     )
     # Also refresh any dynamically-created subdomains already in the hosts file
     # (e.g. per-worktree domains) — they all resolve to this same machine.
