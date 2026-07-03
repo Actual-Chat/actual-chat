@@ -53,6 +53,8 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
     {
         var meshState = await MeshWatcher.State.Use(cancellationToken).ConfigureAwait(false);
         var meshRpcPeerRefs = MeshRpcPeerRefs.RpcPeerRefs
+            .OrderBy(c => c.ShardRef.Scheme.Name)
+            .ThenBy(c => c.ShardRef.Key)
             .Select(c => new MeshRpcPeerRefDiagInfo(
                 c.MeshRef.ToString(),
                 c.ToString(),
@@ -62,6 +64,16 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
                 ""))
             .ToArray();
         var rpcPeers = RpcHub.InternalServices.Peers.Values
+            .Select(c => new  { Ref = c.Ref as MeshRpcPeerRef, Peer = c })
+            .Select(c => new {
+                SchemeName = c.Ref?.ShardRef.Scheme.Name ?? "",
+                ShardKey = c.Ref?.ShardRef.Key ?? 0,
+                c.Peer
+            })
+            .OrderBy(c => c.SchemeName)
+            .ThenBy(c => c.ShardKey)
+            .ThenBy(c => c.Peer.Ref.HostInfo)
+            .Select(c => c.Peer)
             .Select(c => new RpcPeerDiagInfo(
                 c.Id.ToString(),
                 c.ToString(),
