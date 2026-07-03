@@ -35,13 +35,16 @@ namespace ActualChat.Video;
 /// element to this formatter, so <see cref="VideoFrame"/>[] batches hit the cache too.
 /// </para>
 /// <para>
-/// Wire format: a 19-entry MessagePack map with PascalCase string keys — Data (bin),
+/// Wire format: a 20-entry MessagePack map with PascalCase string keys — Data (bin),
 /// Offset (int64 ticks), Duration (int64 ticks), OffsetEpoch (int32),
 /// Index (int32), KeyFrameIndex (int32), Width (int32), Height (int32),
 /// Rotation (uint8, 0..3 CW),
-/// LayerId (uint8), LayerCount (uint8), MaxLayerWidth (int32), MaxLayerHeight (int32),
+/// LayerId (uint8), LayerCount (uint8), LayerMask (uint8, 0 = legacy sender),
+/// MaxLayerWidth (int32), MaxLayerHeight (int32),
 /// TemporalLayerId (uint8), TemporalLayerCount (uint8), Codec (str or nil),
-/// Description (bin or nil), DropTrace (bin), ServerArrivedAtTicks (int64).
+/// Description (bin or nil), DropTrace (bin), ServerArrivedAtTicks (int64, LAST —
+/// StampServerArrived overwrites it in place). Unknown keys are skipped on parse,
+/// so old consumers ignore LayerMask.
 /// IsKeyFrame is NOT on the wire — derived as <c>KeyFrameIndex == Index</c>.
 /// </para>
 /// </remarks>
@@ -104,6 +107,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         byte temporalLayerCount = 1;
         byte layerId = 0;
         byte layerCount = 1;
+        byte layerMask = 0;
         byte rotation = 0;
         long serverArrivedAtTicks = 0;
         var dataSlice = default(ReadOnlyMemory<byte>);
@@ -150,6 +154,9 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                 case "LayerCount":
                     layerCount = reader.ReadByte();
                     break;
+                case "LayerMask":
+                    layerMask = reader.ReadByte();
+                    break;
                 case "TemporalLayerId":
                     temporalLayerId = reader.ReadByte();
                     break;
@@ -192,6 +199,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
             Codec = codec,
             LayerId = layerId,
             LayerCount = layerCount,
+            LayerMask = layerMask,
             TemporalLayerId = temporalLayerId,
             TemporalLayerCount = temporalLayerCount,
             MaxLayerWidth = maxLayerWidth,
@@ -235,7 +243,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
     private static void WriteFrame(ref MessagePackWriter writer, VideoFrame v)
     {
-        writer.WriteMapHeader(19);
+        writer.WriteMapHeader(20);
 
         writer.Write("Data");
         writer.Write(v.Data.Span);
@@ -266,6 +274,9 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
         writer.Write("LayerCount");
         writer.Write(v.LayerCount);
+
+        writer.Write("LayerMask");
+        writer.Write(v.LayerMask);
 
         writer.Write("MaxLayerWidth");
         writer.Write(v.MaxLayerWidth);

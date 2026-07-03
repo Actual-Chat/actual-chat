@@ -323,17 +323,43 @@ public sealed class VideoRecorder : IAsyncDisposable
             }
 
             Log.LogInformation("SubscribeToLayerDemand: found own stream #{StreamId}, subscribing", ownStreamId);
-            var cState = await Computed.Capture(
-                () => LiveVideoStreams.RequestedLayersMask(Session, ownStreamId, cancellationToken),
+            try {
+                var cState = await Computed.Capture(
+                    () => LiveVideoStreams.RequestedLayersMask(Session, ownStreamId, cancellationToken),
+                    cancellationToken).ConfigureAwait(false);
+                var lastMask = int.MinValue;
+                await foreach (var (mask, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+                    if (mask == lastMask)
+                        continue;
+
+                    lastMask = mask;
+                    Log.LogInformation(
+                        "RequestedLayersMask: stream {StreamId} → {Mask:b}", ownStreamId, mask);
+                    await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
+                }
+                return;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                throw;
+            }
+            catch (Exception e) {
+                // Old servers don't expose RequestedLayersMask — fall back to the
+                // max aggregate and synthesize a contiguous prefix mask.
+                Log.LogWarning(e,
+                    "SubscribeToLayerDemand: RequestedLayersMask unavailable, falling back to MaxRequestedLayerId");
+            }
+            var cMax = await Computed.Capture(
+                () => LiveVideoStreams.MaxRequestedLayerId(Session, ownStreamId, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
-            var lastMask = int.MinValue;
-            await foreach (var (mask, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                if (mask == lastMask)
+            var lastMax = int.MinValue;
+            await foreach (var (maxLayerId, _) in cMax.Changes(cancellationToken).ConfigureAwait(false)) {
+                if (maxLayerId == lastMax)
                     continue;
 
-                lastMask = mask;
+                lastMax = maxLayerId;
+                var mask = maxLayerId < 0 ? 0 : (1 << (maxLayerId + 1)) - 1;
                 Log.LogInformation(
-                    "RequestedLayersMask: stream {StreamId} → {Mask:b}", ownStreamId, mask);
+                    "MaxRequestedLayerId (fallback): stream {StreamId} → {MaxLayerId}", ownStreamId, maxLayerId);
                 await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
             }
         }
