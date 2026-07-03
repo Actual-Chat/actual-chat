@@ -10,6 +10,9 @@ export interface LayerConfig {
     height: number;
     baseBitrateKbps?: number;
     bitrateKbps: number;
+    // Canonical index in the full ladder (stable layer→resolution map on the
+    // wire). Defaults to the array index — set only on sparse demand subsets.
+    layerId?: number;
 }
 
 export const MIN_SIMULCAST_SMALL_AXIS = 150;

@@ -41,6 +41,9 @@ public sealed partial record VideoFrame : MediaFrame
     /// </summary>
     [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
     public byte LayerId { get; init; }
+    // Canonical ladder size (max canonical layer id + 1). Layer ids are STABLE:
+    // the layer→resolution map never changes mid-stream even when some tiers
+    // aren't currently encoded — see LayerMask.
     [DataMember(Order = 11), MemoryPackOrder(11), Key(11)]
     public byte LayerCount { get; init; } = 1;
     [DataMember(Order = 12), MemoryPackOrder(12), Key(12)]
@@ -85,10 +88,19 @@ public sealed partial record VideoFrame : MediaFrame
     [DataMember(Order = 19), MemoryPackOrder(19), Key(19)]
     public long ServerArrivedAtTicks { get; set; }
 
+    // Bitmask of canonical layer ids the producer currently encodes (bit i =
+    // layer i is live). 0 = legacy sender — every layer in [0, LayerCount) is
+    // live. Consumers should read EffectiveLayerMask instead.
+    [DataMember(Order = 20), MemoryPackOrder(20), Key(20)]
+    public byte LayerMask { get; init; }
+
     // NB: The properties below this line aren't serialized!
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsKeyFrame => KeyFrameIndex == Index;
+
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public int EffectiveLayerMask => LayerMask != 0 ? LayerMask : (1 << LayerCount) - 1;
 
     /// <summary>
     /// Cached serialized bytes for zero-copy forwarding and serialize-once fan-out.

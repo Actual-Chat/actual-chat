@@ -71,9 +71,12 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     if (frame.codec) dto.Codec = frame.codec;
     if (frame.layerId !== undefined && frame.layerId > 0)
         dto.LayerId = frame.layerId;
-    // Always emit producer's current ladder size — server's ReceiveQualityFilter
-    // clamps the consumer cap without observing layers over time.
+    // Always emit producer's canonical ladder size — server's
+    // ReceiveQualityFilter resolves the consumer cap without observing layers
+    // over time. LayerMask marks which canonical tiers are currently encoded.
     dto.LayerCount = frame.layerCount ?? 1;
+    if (frame.layerMask)
+        dto.LayerMask = frame.layerMask;
     if (frame.dropTrace && frame.dropTrace.byteLength > 0)
         dto.DropTrace = frame.dropTrace;
     if (frame.rotation !== undefined && frame.rotation !== 0)

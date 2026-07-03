@@ -48,6 +48,9 @@ export interface EncoderConfigPerLayer {
     bitrate: number;
     framerate: number;
     codec: string;
+    // Canonical ladder index (stable layer→resolution map; the wire LayerId).
+    // Defaults to the slot index — only sparse demand-driven ladders set it.
+    layerId?: number;
 }
 
 export interface EncodeInput {
@@ -336,7 +339,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                             // Shared by reference with the bundle; per-layer
                             // wire DTOs carry the same trace bytes.
                             dropTrace: p.bundle.dropTrace,
-                            layerId: layerId,
+                            layerId: cfg.layerId ?? layerId,
                             sourceWidth: top.sourceWidth,
                             sourceHeight: top.sourceHeight,
                             encodedWidth: cfg.width,
@@ -394,8 +397,16 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     // mutated between spatialize-emit and encode-receive, the
                     // bundle is at the OLD version while controller is at NEW.
                     // Using the bundle as the source of truth avoids that race.
+                    // Same-count set changes (e.g. sparse demand {L1}→{L2})
+                    // reshape too — compared by canonical id + dims/codec.
                     const layerCount = bundle.layers.length;
-                    if (encoders.length !== layerCount) {
+                    const curConfigs = opts.controller.current.configs;
+                    const needsReshape = encoders.length !== layerCount
+                        || (curConfigs.length === layerCount
+                            && curConfigs.some((c, i) => !encoderCfgs[i]
+                                || (encoderCfgs[i].layerId ?? i) !== (c.layerId ?? i)
+                                || !sameEncDims(encoderCfgs[i], c)));
+                    if (needsReshape) {
                         // Drain pending first so encoder reconfig doesn't race
                         // in-flight encodes against a different layer set. The
                         // await also lets a just-issued controller reshape land
@@ -403,25 +414,31 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         for await (const r of drainPending()) yield r;
                         const oldN = encoders.length;
                         const cur = opts.controller.current;
-                        // Reconcile per index: reuse encoders[i] only when its
-                        // config still matches configs[i]; recreate mismatches;
-                        // dispose slots beyond the new count. This is what makes
-                        // the warmup→openGate flip correct: the warmup ladder is a
-                        // single TOP-res tier at index 0, but the expanded ladder
-                        // is bottom-first, so index 0 becomes the BOTTOM layer and
-                        // its encoder must be recreated at the bottom res (else the
-                        // bottom layer encodes at the top res → oversized coded +
-                        // conformance window → Edge HEVC shows only the top-left).
+                        // Reconcile by CANONICAL layer id: a slot's encoder is
+                        // reused only when a config with the same canonical id
+                        // and dims/codec still exists, wherever it now sits in
+                        // the (possibly sparse) ladder — so dropping/re-adding a
+                        // tier never restarts the surviving tiers' encoders or
+                        // breaks their keyframe chains. Dim mismatches recreate
+                        // (this is what makes the warmup→openGate flip correct:
+                        // the warmup ladder is a single TOP-res tier at id 0,
+                        // and the expanded ladder's id 0 is the BOTTOM res).
                         const reused = new Array<AsyncVideoEncoder<EncodeInput, EncodedFrame> | undefined>(layerCount);
+                        const reusedOldSlots = new Set<number>();
                         try {
+                            const oldSlotByLayerId = new Map<number, number>();
+                            for (let i = 0; i < encoders.length; i++)
+                                if (encoderCfgs[i])
+                                    oldSlotByLayerId.set(encoderCfgs[i].layerId ?? i, i);
                             for (let i = 0; i < layerCount; i++) {
                                 const want = cur.configs[i];
-                                if (i < encoders.length && encoderCfgs[i] && sameEncDims(encoderCfgs[i], want)) {
-                                    reused[i] = encoders[i];
+                                const wantId = want.layerId ?? i;
+                                const oldSlot = oldSlotByLayerId.get(wantId);
+                                if (oldSlot !== undefined && sameEncDims(encoderCfgs[oldSlot], want)) {
+                                    reused[i] = encoders[oldSlot];
+                                    reusedOldSlots.add(oldSlot);
                                 } else {
-                                    if (i < encoders.length && encoders[i])
-                                        try { encoders[i].dispose(); } catch { /* ignore */ }
-                                    reused[i] = createEncoder(want, i);
+                                    reused[i] = createEncoder(want, wantId);
                                 }
                             }
                         } catch (e) {
@@ -439,9 +456,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                                 { cause: e },
                             );
                         }
-                        // Dispose old slots past the new count (shrink tail).
-                        for (let i = layerCount; i < oldN; i++)
-                            try { encoders[i].dispose(); } catch { /* ignore */ }
+                        // Dispose old encoders that no config reuses.
+                        for (let i = 0; i < oldN; i++)
+                            if (!reusedOldSlots.has(i))
+                                try { encoders[i].dispose(); } catch { /* ignore */ }
                         encoders.length = 0;
                         encoders.push(...(reused as AsyncVideoEncoder<EncodeInput, EncodedFrame>[]));
                         encoderCfgs = cur.configs.slice(0, layerCount).map(c => ({ ...c }));

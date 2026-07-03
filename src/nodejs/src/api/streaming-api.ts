@@ -77,9 +77,12 @@ export interface VideoFrameDto {
     // SVC layer ID (uint8 on wire). 0 = base (lowest-res) layer,
     // 1+ = higher-res layers. Always 0 on single-encoder (P2P) streams.
     LayerId?: number;
-    // Number of spatial layers in the producing ladder (uint8 on wire).
-    // Used by the server forwarder to clamp fan-out per consumer.
+    // Canonical ladder size = max canonical layer id + 1 (uint8 on wire).
+    // Layer ids are stable; used by the server forwarder to clamp fan-out.
     LayerCount?: number;
+    // Bitmask of canonical layer ids currently encoded (bit i = layer i live).
+    // Omitted/0 = legacy sender: every layer in [0, LayerCount) is live.
+    LayerMask?: number;
     MaxLayerWidth?: number;
     MaxLayerHeight?: number;
     // Wire-compat only: legacy SVC temporal fields. Ignored by current

@@ -31,7 +31,10 @@ export interface VideoStreamFrame {
     description?: Uint8Array;
     codec?: string;
     layerId?: number;
+    // Canonical ladder size (max canonical layer id + 1); ids are stable.
     layerCount?: number;
+    // Bitmask of canonical layer ids currently encoded.
+    layerMask?: number;
     // Quarter-turn CW (0|1|2|3) the receiver should apply to display upright.
     // Omitted when 0 — keeps the wire compact for the common case.
     rotation?: number;
@@ -173,7 +176,18 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             : undefined;
 
                         const cur = controller.current.configs;
-                        const layerCount = cur.length;
+                        // Stable canonical ids: layerCount is the ladder CEILING
+                        // (max id + 1), layerMask marks which tiers are live —
+                        // legacy receivers read only layerCount, which stays
+                        // consistent because ids never renumber.
+                        let layerCount = 0;
+                        let layerMask = 0;
+                        for (let i = 0; i < cur.length; i++) {
+                            const id = cur[i].layerId ?? i;
+                            layerMask |= 1 << id;
+                            if (id + 1 > layerCount)
+                                layerCount = id + 1;
+                        }
                         // One backing buffer for all layers' bytes: copy each chunk
                         // into its own slice. Saves N-1 ArrayBuffer allocations per
                         // bundle (the slices stay live together until serialized).
@@ -202,6 +216,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                                 data,
                                 layerId: encoded.layerId,
                                 layerCount,
+                                layerMask,
                             };
                             if (encoded.rotation !== 0) dto.rotation = encoded.rotation;
                             if (dropTraceBytes) dto.dropTrace = dropTraceBytes;

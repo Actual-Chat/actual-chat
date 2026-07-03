@@ -609,9 +609,10 @@ export class VideoRecorder {
     }
 
     // Apply the demanded tier subset of the full ladder, capped from the top by
-    // min(healthLayerCap, receiverLayerCap). Tiers are renumbered contiguously on
-    // the wire, so [full[2]] alone ships as a 1-layer stream. Before the first
-    // demand report the legacy prefix slice applies; single-L0 mode stays null.
+    // min(healthLayerCap, receiverLayerCap). Canonical layer ids stay STABLE —
+    // [full[2]] ships as LayerId 2 with LayerMask 0b100 — so viewers of
+    // surviving tiers never see an id change. Before the first demand report
+    // the legacy prefix slice applies; single-L0 mode stays null.
     private applyEffectiveLayers(): void {
         const full = this.fullLayerLadder;
         const cappedCount = full
@@ -622,7 +623,8 @@ export class VideoRecorder {
             : null;
         let active: LayerConfig[] | null = null;
         if (full && demandIndices && !(demandIndices.length === 1 && demandIndices[0] === 0))
-            active = this.withCodecBitrates(demandIndices.map(i => full[i]), this.currentCodecString);
+            active = this.withCodecBitrates(
+                demandIndices.map(i => ({ ...full[i], layerId: i })), this.currentCodecString);
         else if (full && !demandIndices && cappedCount >= 2)
             active = this.withCodecBitrates(full.slice(0, cappedCount), this.currentCodecString);
         const prevKey = VideoRecorder.ladderKey(this.layers);
@@ -705,7 +707,7 @@ export class VideoRecorder {
     }
 
     private static ladderKey(ladder: LayerConfig[] | null): string {
-        return ladder?.map(l => `${l.width}x${l.height}`).join('|') ?? '';
+        return ladder?.map((l, i) => `${l.layerId ?? i}:${l.width}x${l.height}`).join('|') ?? '';
     }
 
     /**
@@ -2256,12 +2258,13 @@ export class VideoRecorder {
                 framerate,
             }];
         }
-        return ladder.map(l => ({
+        return ladder.map((l, i) => ({
             codec: this.currentCodecString,
             width: l.width,
             height: l.height,
             bitrate: kbpsToBitsPerSecond(l.bitrateKbps),
             framerate,
+            layerId: l.layerId ?? i,
         }));
     }
 
