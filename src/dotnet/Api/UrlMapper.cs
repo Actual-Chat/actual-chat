@@ -39,6 +39,7 @@ public sealed partial class UrlMapper
     public string ApiBaseUrl { get; }
     public string ContentBaseUrl { get; }
     public string ImageProxyBaseUrl { get; }
+    public string MapTilesBaseUrl { get; }
     public string WebsocketBaseUrl { get; }
 
     public UrlMapper(HostInfo hostInfo) : this(hostInfo.BaseUrl) { }
@@ -60,6 +61,7 @@ public sealed partial class UrlMapper
         ApiBaseUrl = $"{BaseUrl}api/";
         ContentBaseUrl = $"{ApiBaseUrl}content/";
         ImageProxyBaseUrl = "";
+        MapTilesBaseUrl = "";
         HasImageProxy = false;
         if (IsVoxt || IsDevVoxt || IsLocalVoxt) {
             var cdnSubdomainSeparator =
@@ -68,6 +70,7 @@ public sealed partial class UrlMapper
                     : '.';
             ContentBaseUrl = $"{BaseUri.Scheme}://cdn{cdnSubdomainSeparator}{BaseUri.Host}/";
             ImageProxyBaseUrl = $"{BaseUri.Scheme}://media{cdnSubdomainSeparator}{BaseUri.Host}/";
+            MapTilesBaseUrl = $"{BaseUri.Scheme}://maps{cdnSubdomainSeparator}{BaseUri.Host}/";
             HasImageProxy = true;
         }
         WebsocketBaseUrl = GetWebSocketUrl(_baseUrlWithoutBackslash);

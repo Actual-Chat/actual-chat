@@ -87,7 +87,7 @@ describe('location sharing', () => {
         // real viewport and is painting — guards against the CSP block AND the 0-size-in-modal
         // bug where the style loads but no tiles are ever requested.
         const tileLoaded = page.waitForResponse(
-            r => /tiles\.openfreemap\.org\/(planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url())
+            r => /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url())
                 && r.ok(),
             { timeout: 20_000 });
         await banner.locator('.c-body').first().click();
@@ -101,8 +101,8 @@ describe('location sharing', () => {
         // assert — no attribution control (MapLibre | OpenFreeMap ... info bar) is drawn
         expect(await mapModal.locator('.maplibregl-ctrl-attrib').count()).toBe(0);
 
-        // assert — real OpenFreeMap tiles load (not blank: CSP allows the host AND the map
-        // got a non-zero viewport)
+        // assert — real tiles load from our maps.* proxy (not blank: CSP allows the host AND
+        // the map got a non-zero viewport)
         const tileResp = await tileLoaded;
         expect(tileResp.ok()).toBe(true);
         await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
@@ -148,7 +148,7 @@ describe('location sharing', () => {
 
         // arm the tile listener before posting so we don't miss the inline-map tile requests
         const tileLoaded = page.waitForResponse(
-            r => /tiles\.openfreemap\.org\/(planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url())
+            r => /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url())
                 && r.ok(),
             { timeout: 20_000 });
         await modal.locator('button:has-text("Send current location")').first().click();

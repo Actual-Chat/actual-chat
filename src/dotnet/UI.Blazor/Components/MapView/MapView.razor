@@ -5,12 +5,12 @@
 <div @ref="Ref" class="map-view @Class"></div>
 
 @code {
-    private const string DefaultStyleUrl = "https://tiles.openfreemap.org/styles/liberty";
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.MapView.create";
 
     private IJSObjectReference? _jsRef;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     private ElementReference Ref { get; set; }
 
@@ -26,7 +26,7 @@
             return;
 
         var options = new {
-            styleUrl = DefaultStyleUrl,
+            styleUrl = $"{UrlMapper.MapTilesBaseUrl}styles/liberty",
             centerLatitude = CenterLatitude,
             centerLongitude = CenterLongitude,
             zoom = Zoom,
