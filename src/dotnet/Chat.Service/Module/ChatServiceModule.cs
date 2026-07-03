@@ -89,6 +89,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<IDiagnostics, Diagnostics>();
         rpcHost.AddBackend<IDiagnosticsBackend, DiagnosticsBackend>();
         services.AddFusion().AddComputeService<DiagnosticsBackendLocal>();
+        if (HostInfo.HasRole(HostRole.Api)) {
+            services.AddSingleton(c => new ShardRoutingMonitor(c));
+            services.AddHostedService(c => c.GetRequiredService<ShardRoutingMonitor>());
+        }
 
         if (isBackendClient)
             return;
