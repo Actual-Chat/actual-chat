@@ -23,11 +23,21 @@
             var menuRef = MenuRef.New<ChatContentItemMenu>(link.EntryId.Value).ToString();
             <div class="message-link-preview" data-menu="@menuRef" data-visor-date="@item.VisorDate">
                 @if (link.LinkPreview is { IsEmpty: false }) {
-                    <LinkPreviewView Entry="@item.LinkEntry" LinkPreview="@link.LinkPreview"/>
+                    <LinkRow Entry="@item.LinkEntry" LinkPreview="@link.LinkPreview"/>
                 }
                 else {
                     var url = link.Url.NullIfEmpty() ?? link.LinkPreview?.Url ?? "";
-                    <a class="c-link-plain" href="@url" target="_blank" rel="noopener">@(url.Length > 0 ? url : "[link unavailable]")</a>
+                    <a class="link-preview no-thumbnail unfocusable c-link-plain" href="@url" target="_blank" rel="noopener">
+                        <div class="c-icon"><i class="icon-link-2"></i></div>
+                        <div class="c-info">
+                            @if (url.Length > 0) {
+                                <FileAttachmentTitle Title="@url"/>
+                            }
+                            else {
+                                <span class="c-title">[link unavailable]</span>
+                            }
+                        </div>
+                    </a>
                 }
             </div>
         }

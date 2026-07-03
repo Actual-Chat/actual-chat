@@ -76,13 +76,30 @@ public sealed partial class UrlMapper
     public static bool IsAbsolute(string url)
         => IsAbsoluteUrlRegex.IsMatch(url);
 
+    // True if `url` is a https URL on an allowlisted GIF host (klipy, ...).
+    public static bool IsTrustedGifHostUrl(string url)
+        => !url.IsNullOrEmpty()
+            && Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            && uri.Scheme == Uri.UriSchemeHttps
+            && TrustedGifHosts.Contains(uri.Host);
+
     // True if `url` is a https GIF on an allowlisted host (rendered as <img> via image proxy).
     public static bool IsTrustedGifUrl(string url)
         => !url.IsNullOrEmpty()
             && url.EndsWith(".gif", StringComparison.OrdinalIgnoreCase)
-            && Uri.TryCreate(url, UriKind.Absolute, out var uri)
-            && uri.Scheme == Uri.UriSchemeHttps
-            && TrustedGifHosts.Contains(uri.Host);
+            && IsTrustedGifHostUrl(url);
+
+    // True if `url` points to our own uploaded content (cdn.../...) or image-proxy
+    // media (media.../...) — these are surfaced via the Media/Files tabs.
+    public bool IsOwnContentUrl(string url)
+        => !url.IsNullOrEmpty()
+            && (url.StartsWith(ContentBaseUrl, StringComparison.OrdinalIgnoreCase)
+                || (HasImageProxy && url.StartsWith(ImageProxyBaseUrl, StringComparison.OrdinalIgnoreCase)));
+
+    // True for URLs that must stay out of the Links index: trusted-GIF hosts (rendered
+    // inline as <img>) and our own content/media (shown in the Media/Files tabs).
+    public bool IsExcludedFromLinkIndex(string url)
+        => IsTrustedGifHostUrl(url) || IsOwnContentUrl(url);
 
     public static string GetWebSocketUrl(string url)
     {
