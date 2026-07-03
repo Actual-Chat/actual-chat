@@ -217,9 +217,11 @@ describe('keepAlive operator', () => {
         await h.clock.advance(1000);
 
         expect(h.out).toHaveLength(2);
+        expect(h.out[0].isKeepAlive).toBeUndefined();
         const injected = h.out[1];
         expect(injected.index).toBe(1);
         expect(injected.forceKeyframe).toBe(false);
+        expect(injected.isKeepAlive).toBe(true);
         expect(injected.dropTrace).toEqual([]);
         expect(injected.capturedAt).toEqual({ timeMs: 0, epoch: 0 });
         expect(h.outFrame(1).id).toBe(1);

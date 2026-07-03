@@ -288,6 +288,13 @@ export interface CapturedFrame {
     // All layers in one source moment share the same value.
     rotation: RotationQuarter;
 
+    // True on frames re-emitted by the keepAlive operator during capture
+    // idle. applyKeyframePolicy skips the wallclock keyframe floor for them —
+    // re-encoding an unchanged frame as a periodic intra refresh is wasted
+    // bitrate; PLI covers on-demand keyframe needs and the frame counter
+    // still bounds the GOP.
+    isKeepAlive?: boolean;
+
     stats: RecorderStats;
 }
 

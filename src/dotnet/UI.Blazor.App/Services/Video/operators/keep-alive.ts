@@ -92,6 +92,7 @@ export function keepAlive(opts: KeepAliveOptions): PipeOperator<CapturedFrame, C
                             sourceHeight: 0,
                             forceKeyframe: false,
                             rotation: 0,
+                            isKeepAlive: true,
                             stats: retained.stats,
                         };
                         injectedCount++;

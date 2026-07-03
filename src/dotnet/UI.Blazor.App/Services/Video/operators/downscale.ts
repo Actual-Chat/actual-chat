@@ -468,6 +468,7 @@ function makeLayerEnvelope(source: NormalizedFrame, frame: VideoFrame): Captured
         sourceHeight: source.sourceHeight,
         forceKeyframe: source.forceKeyframe,
         rotation: source.rotation,
+        isKeepAlive: source.isKeepAlive,
         stats: source.stats,
     };
 }

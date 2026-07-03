@@ -31,7 +31,13 @@ export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<C
                     const upstreamForce = bundle.layers.some(f => f.forceKeyframe);
                     const requestedForce = opts.consumeForceKeyframe?.() ?? false;
                     const intervalTrigger = frameCount % keyframeIntervalFrames === 0;
-                    const wallClockTrigger = maxKeyframeIntervalMs !== undefined
+                    // Keepalive re-emissions carry unchanged pixels — a periodic
+                    // intra refresh of them is pure bitrate waste, so the wallclock
+                    // floor is suppressed; the frame counter still bounds the GOP
+                    // and PLI covers on-demand needs.
+                    const isKeepAliveBundle = bundle.layers.some(f => f.isKeepAlive);
+                    const wallClockTrigger = !isKeepAliveBundle
+                        && maxKeyframeIntervalMs !== undefined
                         && lastKeyframeAtMs !== Number.NEGATIVE_INFINITY
                         && (wallNow - lastKeyframeAtMs) >= maxKeyframeIntervalMs;
                     const forceKeyframe = upstreamForce || requestedForce || intervalTrigger || wallClockTrigger;

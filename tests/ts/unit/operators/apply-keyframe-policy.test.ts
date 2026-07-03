@@ -20,7 +20,9 @@ class MockVideoFrame {
 
 // ---- Helpers --------------------------------------------------------------
 
-function makeCaptured(stats: RecorderStats, idx: number, forceKeyframe = false): CapturedFrame {
+function makeCaptured(
+    stats: RecorderStats, idx: number, forceKeyframe = false, isKeepAlive = false,
+): CapturedFrame {
     return {
         frame: new MockVideoFrame(idx) as unknown as VideoFrame,
         capturedAt: { timeMs: 1_000 + idx, epoch: 0 },
@@ -30,14 +32,21 @@ function makeCaptured(stats: RecorderStats, idx: number, forceKeyframe = false):
         sourceHeight: 1080,
         forceKeyframe,
         rotation: 0,
+        isKeepAlive,
         stats,
     };
 }
 
-function makeBundle(stats: RecorderStats, idx: number, forceKeyframe = false, extraCount = 0): CapturedBundle {
+function makeBundle(
+    stats: RecorderStats,
+    idx: number,
+    forceKeyframe = false,
+    extraCount = 0,
+    isKeepAlive = false,
+): CapturedBundle {
     const layers: CapturedFrame[] = [];
     for (let i = 0; i < extraCount + 1; i++) {
-        layers.push(makeCaptured(stats, idx, forceKeyframe));
+        layers.push(makeCaptured(stats, idx, forceKeyframe, isKeepAlive));
     }
     return { layers, index: idx, dropTrace: [], rotation: 0, stats };
 }
@@ -193,6 +202,46 @@ describe('applyKeyframePolicy', () => {
         for (const f of out[1].layers) {
             expect(f.forceKeyframe).toBe(true);
         }
+    });
+
+    it('wallclock floor is suppressed for keepalive bundles, fires on the next real one', async () => {
+        const stats = createEmptyRecorderStats();
+        let t = 0;
+        const op = applyKeyframePolicy({
+            keyframeIntervalFrames: 9999,
+            maxKeyframeIntervalMs: 100,
+            now: () => t,
+        });
+        const ts = [0, 150, 300, 450];
+        const upstreamForce = [true, false, false, false];
+        const keepAlive = [false, true, true, false];
+
+        const seg: AsyncIterable<CapturedBundle> = (async function* () {
+            await Promise.resolve();
+            for (let i = 0; i < ts.length; i++) {
+                t = ts[i];
+                yield makeBundle(stats, i, upstreamForce[i], 0, keepAlive[i]);
+            }
+        })();
+
+        const out = await drain(op(seg));
+        // Bundle 0 (t=0): upstream-forced starter key. lastKeyframeAtMs=0.
+        // Bundles 1, 2 (t=150, 300): past the 100 ms floor, but keepalive → suppressed.
+        // Bundle 3 (t=450): real frame, 450−0 ≥ 100 → wallclock fires.
+        expect(out.map(bundleForceKey)).toEqual([true, false, false, true]);
+    });
+
+    it('frame-count interval still keys keepalive bundles', async () => {
+        const stats = createEmptyRecorderStats();
+        const op = applyKeyframePolicy({
+            keyframeIntervalFrames: 3,
+            now: () => 0,
+        });
+        const items = Array.from(
+            { length: 4 },
+            (_, i) => makeBundle(stats, i, false, 0, /* isKeepAlive */ true));
+        const out = await drain(op(source(items)));
+        expect(out.map(bundleForceKey)).toEqual([false, false, true, false]);
     });
 
     it('throws on invalid keyframeIntervalFrames', () => {
