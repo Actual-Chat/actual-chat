@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Video;
 
 namespace ActualChat.Streaming;
@@ -29,7 +30,9 @@ public sealed partial record RecordingQualityState(
 public sealed partial record RecordingQualityInfo(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] RecordingQualityReason Reason,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double SenderFrameDropRatioEma,
-    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double LastAckAgeMs);
+    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double LastAckAgeMs,
+    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] ThermalLevel ThermalLevel = default,
+    [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] bool IsHardwareAccelerated = false);
 
 /// <summary>
 /// Per-tick recorder stats — CLIENT-LOCAL only, never serialized to the
@@ -84,7 +87,10 @@ public sealed record RecorderStats(
     double DownscaleTimeMsMax = -1,
     // Cumulative synthetic frames re-emitted during capture idle (static
     // screencast content) — the keepAlive operator's activity counter.
-    int KeepAliveFramesInjected = 0)
+    int KeepAliveFramesInjected = 0,
+    // Whether the active encoder is hardware-accelerated (from CodecInfo).
+    // A software-encoding device throttles thermally far sooner.
+    bool IsHardwareAccelerated = false)
 {
     private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
         = new Dictionary<FrameDropStage, int>();

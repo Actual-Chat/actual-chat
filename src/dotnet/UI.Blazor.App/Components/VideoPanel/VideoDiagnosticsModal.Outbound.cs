@@ -24,6 +24,11 @@ public partial class VideoDiagnosticsModal
         AppendOutboundInputs(builder, 200, activeKinds, statsByKind);
         AppendCapReadout(builder, 300, "Encoding cap", encLayers, activeKinds);
         AppendCapReadout(builder, 400, "Bandwidth cap", bwLayers, activeKinds);
+        var thermal = qualityUi.ThermalCap;
+        AppendRow(builder, 450, "Thermal cap",
+            thermal.MaxFps == 0
+                ? $"{thermal.Level} (no cap)"
+                : $"{thermal.Level} → cam ≤{thermal.CameraLayers}, fps ≤{thermal.MaxFps}");
         AppendDecisionLog(builder, 500, qualityUi.OutboundDecisionLog, "Enc", "Up");
         builder.CloseElement();
     };

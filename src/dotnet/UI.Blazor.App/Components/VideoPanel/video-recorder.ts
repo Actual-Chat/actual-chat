@@ -86,6 +86,11 @@ const RECORDER_HEALTH_INTERVAL_MS = 1000;
 // Hold full fps this long after voice activity stops, so demand-driven pacing
 // doesn't flap the encoder rate through the natural gaps between words.
 const VAD_FPS_HOLD_MS = 2000;
+// Keep encoding a tier this long after its last viewer demand disappears.
+// Additions are immediate (a starving viewer must not wait); drops are lazy so
+// group-chat joins and focus flips don't churn the encoder set — every reshape
+// costs a fresh encoder + forced keyframe.
+const DEMAND_DROP_HYSTERESIS_MS = 4000;
 // Cap on consecutive failed recovery attempts before we surface a fatal error
 // to the user. With the existing backoff (200ms × 1.7^n, capped at 3s), 5
 // attempts span ~9s — long enough to absorb a transient blip, short enough
@@ -444,6 +449,11 @@ export class VideoRecorder {
     // demand can't pull in the top tier before the sender's health allows it.
     private healthLayerCap = Number.MAX_SAFE_INTEGER;
     private receiverLayerCap = Number.MAX_SAFE_INTEGER;
+    // Viewer demand bitmask over canonical ladder indices (bit i = tier i wanted);
+    // 0 = no report yet / nobody subscribed → keep the legacy prefix ladder.
+    private demandedLayersMask = 0;
+    private demandedAtByLayer = new Map<number, number>();
+    private demandExpiryTimer: ReturnType<typeof setTimeout> | null = null;
     // Demand-driven fps inputs: last aggregate requested layer, and whether the
     // local user is speaking (VAD). Speaking forces full rate so the active
     // speaker never goes choppy; a short hold rides through natural pauses.
@@ -452,6 +462,9 @@ export class VideoRecorder {
     private speakingHoldTimer: ReturnType<typeof setTimeout> | null = null;
     // Last fps target pushed to the worker (-1 = none pushed yet / no pacing).
     private lastTargetFps = -1;
+    // Thermal fps ceiling from C# QC (0 = no ceiling); caps even the
+    // speaking-forced full rate.
+    private fpsCeiling = 0;
     // Codec switch fallback bookkeeping (preserved from legacy).
     private lastCodecSwitchAt = 0;
     private readonly codecSwitchCooldownMs = 2000;
@@ -595,24 +608,31 @@ export class VideoRecorder {
         this.applyEffectiveLayers();
     }
 
-    // Apply min(healthLayerCap, receiverLayerCap, fullLayerLadder.length) tiers by
-    // slicing the full ladder. Single-encoder mode (count < 2) sets layers = null.
+    // Apply the demanded tier subset of the full ladder, capped from the top by
+    // min(healthLayerCap, receiverLayerCap). Tiers are renumbered contiguously on
+    // the wire, so [full[2]] alone ships as a 1-layer stream. Before the first
+    // demand report the legacy prefix slice applies; single-L0 mode stays null.
     private applyEffectiveLayers(): void {
         const full = this.fullLayerLadder;
-        const requestedCount = full
+        const cappedCount = full
             ? Math.min(full.length, this.healthLayerCap, this.receiverLayerCap)
             : 0;
-        const active: LayerConfig[] | null = (full && requestedCount >= 2)
-            ? this.withCodecBitrates(full.slice(0, requestedCount), this.currentCodecString)
+        const demandIndices = full && cappedCount >= 1
+            ? this.effectiveDemandIndices(cappedCount)
             : null;
-        const prevCount = this.layers?.length ?? 0;
-        const newCount = active?.length ?? 0;
+        let active: LayerConfig[] | null = null;
+        if (full && demandIndices && !(demandIndices.length === 1 && demandIndices[0] === 0))
+            active = this.withCodecBitrates(demandIndices.map(i => full[i]), this.currentCodecString);
+        else if (full && !demandIndices && cappedCount >= 2)
+            active = this.withCodecBitrates(full.slice(0, cappedCount), this.currentCodecString);
+        const prevKey = VideoRecorder.ladderKey(this.layers);
+        const newKey = VideoRecorder.ladderKey(active);
         this.layers = active;
-        if (prevCount !== newCount)
+        if (prevKey !== newKey)
             infoLog?.log(
                 `applyEffectiveLayers: health=${this.healthLayerCap} receiver=${this.receiverLayerCap} ` +
-                `→ ${prevCount} -> ${newCount} layer(s)`);
-        if (this.worker && prevCount !== newCount) {
+                `demand=${this.demandedLayersMask.toString(2)} → [${prevKey}] -> [${newKey}]`);
+        if (this.worker && prevKey !== newKey) {
             // Codec / source dims unchanged → hot-apply without tearing down the
             // wire stream. The worker mutates the running pipeline's
             // LayerLadderController; spatialize, encode and wireSend pick up the
@@ -631,6 +651,61 @@ export class VideoRecorder {
                     warnLog?.log('applyEffectiveLayers: restart failed:', e));
             }
         }
+    }
+
+    // Canonical demanded tier indices (sorted, deduped, clamped into the capped
+    // ladder) with drop hysteresis: additions apply immediately, a tier drops
+    // only after DEMAND_DROP_HYSTERESIS_MS undemanded. null before the first
+    // demand report — callers keep the legacy prefix ladder.
+    private effectiveDemandIndices(cappedCount: number): number[] | null {
+        if (this.demandedLayersMask === 0)
+            return null;
+
+        const now = Date.now();
+        const indices = new Set<number>();
+        for (const [layer, seenAt] of [...this.demandedAtByLayer]) {
+            const isDemanded = (this.demandedLayersMask & (1 << layer)) !== 0;
+            if (!isDemanded && now - seenAt >= DEMAND_DROP_HYSTERESIS_MS) {
+                this.demandedAtByLayer.delete(layer);
+                continue;
+            }
+            indices.add(Math.min(layer, cappedCount - 1));
+        }
+        return indices.size > 0 ? [...indices].sort((a, b) => a - b) : null;
+    }
+
+    // Re-applies the ladder once the oldest undemanded tier's hysteresis lapses.
+    private scheduleDemandExpiry(): void {
+        if (this.demandExpiryTimer !== null) {
+            clearTimeout(this.demandExpiryTimer);
+            this.demandExpiryTimer = null;
+        }
+        let nextAt = Infinity;
+        for (const [layer, seenAt] of this.demandedAtByLayer) {
+            if ((this.demandedLayersMask & (1 << layer)) === 0)
+                nextAt = Math.min(nextAt, seenAt + DEMAND_DROP_HYSTERESIS_MS);
+        }
+        if (!isFinite(nextAt))
+            return;
+
+        this.demandExpiryTimer = setTimeout(() => {
+            this.demandExpiryTimer = null;
+            this.applyEffectiveLayers();
+            this.scheduleDemandExpiry();
+        }, Math.max(0, nextAt - Date.now()) + 50);
+    }
+
+    private resetDemandState(): void {
+        this.demandedLayersMask = 0;
+        this.demandedAtByLayer.clear();
+        if (this.demandExpiryTimer !== null) {
+            clearTimeout(this.demandExpiryTimer);
+            this.demandExpiryTimer = null;
+        }
+    }
+
+    private static ladderKey(ladder: LayerConfig[] | null): string {
+        return ladder?.map(l => `${l.width}x${l.height}`).join('|') ?? '';
     }
 
     /**
@@ -733,7 +808,7 @@ export class VideoRecorder {
                 && !DeviceInfo.isIos
                 && ScreenOrientation.isObserved
                 && ScreenOrientation.isPortrait;
-            const targetFramerate = VIDEO.frameRate;
+            const targetFramerate = isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate;
             this.currentFramerate = targetFramerate;
 
             // Capability probe at a safe baseline; the actual capture top is
@@ -913,12 +988,13 @@ export class VideoRecorder {
         // Soft-start: open at the QC's current (soft) target, NOT the ceiling, so
         // the encoder isn't hammered with the top tier on start. The top tier is
         // added later by the bump-quality ramp (drain-rate / speculative probe /
-        // good bandwidth) once the lower tiers run smoothly. receiverLayerCap is
-        // reset so a viewer's demand re-applies via setMaxLayerId and is min()'d
-        // against the health cap — demand can't pull the top tier in early.
+        // good bandwidth) once the lower tiers run smoothly. Demand state is
+        // reset so viewers' demand re-applies via setDemandedLayers and is
+        // min()'d against the health cap — demand can't pull the top in early.
         const softCount = Math.max(1, Math.min(maxLayerCount, tierCeiling));
         this.healthLayerCap = softCount;
         this.receiverLayerCap = Number.MAX_SAFE_INTEGER;
+        this.resetDemandState();
         const activeLadder = (this.fullLayerLadder && softCount >= 2)
             ? this.fullLayerLadder.slice(0, softCount)
             : null;
@@ -1023,7 +1099,7 @@ export class VideoRecorder {
                 `screen.isPortrait=${ScreenOrientation.isPortrait}, ` +
                 `wantsPortrait=${wantsPortrait}, ` +
                 `requestTarget=${targetSize.width}x${targetSize.height}`);
-            const targetFramerate = VIDEO.frameRate;
+            const targetFramerate = DeviceInfo.isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate;
             this.currentFramerate = targetFramerate;
 
             const supportedCodecs = await detectSupportedCodecs(targetSize.width, targetSize.height);
@@ -1323,6 +1399,7 @@ export class VideoRecorder {
             this.fullLayerLadder = null;
             this.healthLayerCap = Number.MAX_SAFE_INTEGER;
             this.receiverLayerCap = Number.MAX_SAFE_INTEGER;
+            this.resetDemandState();
             this.warmupTopSize = null;
             this.lastCodecSwitchAt = 0;
             this.startedAtMs = 0;
@@ -1380,27 +1457,36 @@ export class VideoRecorder {
     }
 
     /**
-     * Server-driven cap on the encoder ladder: the recorder shouldn't waste
-     * encode time on layers that no subscriber is currently asking for.
+     * Server-driven demand set for the encoder ladder: the recorder shouldn't
+     * waste encode time on tiers no subscriber is currently asking for —
+     * including LOWER tiers (a focused 1:1 call collapses to the top only).
      *
-     * `maxLayerId` is the aggregate max of `ReceiveQuality.LayerId` across
-     * all subscribers, as reported by
-     * `LiveVideoStreams.MaxRequestedLayerId`. -1 == nobody is currently
-     * subscribed (or every viewer is paused) — we leave the ladder alone in
-     * that case so the next joiner doesn't pay a restart cost.
+     * `mask` is the aggregate of `ReceiveQuality.LayerId` bits across all
+     * subscribers, as reported by `LiveVideoStreams.RequestedLayersMask`.
+     * 0 == nobody is currently subscribed (or every viewer is paused) — we
+     * leave the ladder alone in that case so the next joiner doesn't pay a
+     * restart cost.
      */
-    public setMaxLayerId(maxLayerId: number): void {
-        this.lastMaxLayerId = maxLayerId;
+    public setDemandedLayers(mask: number): void {
+        mask |= 0;
+        this.lastMaxLayerId = mask === 0 ? -1 : 31 - Math.clz32(mask);
         this.applyTargetFps();
 
-        if (maxLayerId < 0)
+        if (mask === 0)
             return;
+        this.demandedLayersMask = mask;
+        const now = Date.now();
+        for (let i = 0; i < 31; i++) {
+            if (mask & (1 << i))
+                this.demandedAtByLayer.set(i, now);
+        }
         // Receiver demand sets a ceiling on the active tiers, but never pulls in a
         // tier the sender's health cap hasn't cleared — applyEffectiveLayers mins
         // the two. So the top (e.g. 1080) tier is added only when the health ramp
         // AND a viewer both want it.
-        this.receiverLayerCap = maxLayerId + 1;
+        this.receiverLayerCap = this.lastMaxLayerId + 1;
         this.applyEffectiveLayers();
+        this.scheduleDemandExpiry();
     }
 
     // Local voice-activity edge from the audio recorder's VAD. Speaking forces
@@ -1437,16 +1523,34 @@ export class VideoRecorder {
     private applyTargetFps(): void {
         if (this._recordingState !== 'recording')
             return;
+        let captureFps = this.currentFramerate ?? VIDEO.frameRate;
+        if (this.fpsCeiling > 0)
+            captureFps = Math.min(captureFps, this.fpsCeiling);
         if (this.isSpeaking) {
-            this.lastTargetFps = VIDEO.frameRate;
-            void this.worker?.setTargetFps(VIDEO.frameRate);
+            this.lastTargetFps = captureFps;
+            void this.worker?.setTargetFps(captureFps);
             return;
         }
         if (this.lastMaxLayerId >= 0) {
-            const fps = fpsForRequestedLayer(this.fullLayerLadder, this.lastMaxLayerId, VIDEO.frameRate);
+            const fps = fpsForRequestedLayer(this.fullLayerLadder, this.lastMaxLayerId, captureFps);
             this.lastTargetFps = fps;
             void this.worker?.setTargetFps(fps);
         }
+        else if (this.fpsCeiling > 0) {
+            // No demand info yet — still enforce the thermal ceiling.
+            this.lastTargetFps = captureFps;
+            void this.worker?.setTargetFps(captureFps);
+        }
+    }
+
+    public setFpsCeiling(maxFps: number): void {
+        const v = maxFps > 0 ? maxFps : 0;
+        if (this.fpsCeiling === v)
+            return;
+
+        this.fpsCeiling = v;
+        infoLog?.log(`setFpsCeiling: ${v > 0 ? v : '(none)'}`);
+        this.applyTargetFps();
     }
 
     public getDiagnostics(): OwnStreamDiagnostics {
@@ -2461,7 +2565,8 @@ export class VideoRecorder {
                 this.windowMeanEncodeTimeMs,
                 this.windowMeanDownscaleTimeMs,
                 this.windowDownscaleTimeMsMax,
-                stats.keepAliveFramesInjected);
+                stats.keepAliveFramesInjected,
+                this.currentCodecHardwareAccel);
         } catch (e) {
             warnLog?.log('reportRecorderStats failed:', e);
         } finally {

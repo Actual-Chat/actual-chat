@@ -1,3 +1,5 @@
+using ActualChat.Hosting;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
@@ -6,6 +8,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     private readonly MutableState<bool> _isHoverable;
     private readonly MutableState<bool> _isVisible;
     private readonly MutableState<ThemeInfo> _themeInfo;
+    private readonly MutableState<ThermalLevel> _thermalLevel;
 
     protected readonly AsyncTaskMethodBuilder WhenReadySource = AsyncTaskMethodBuilderExt.New();
     protected readonly AsyncTaskMethodBuilder WhenWasmReadySource = AsyncTaskMethodBuilderExt.New();
@@ -18,6 +21,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public IState<bool> IsHoverable => _isHoverable;
     public IState<bool> IsVisible => _isVisible;
     public IState<ThemeInfo> ThemeInfo => _themeInfo;
+    public IState<ThermalLevel> ThermalLevel => _thermalLevel;
     public TimeSpan UtcOffset { get; protected set; }
     public string TimeZone { get; protected set; } = "";
     public bool IsMobile { get; protected set; }
@@ -42,6 +46,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
         _isHoverable = stateFactory.NewMutable(false);
         _isVisible = stateFactory.NewMutable(true);
         _themeInfo = stateFactory.NewMutable(Blazor.Services.ThemeInfo.Default);
+        _thermalLevel = stateFactory.NewMutable(Hosting.ThermalLevel.Nominal);
         Hub.RegisterDisposable(BlazorRef);
     }
 
@@ -83,6 +88,12 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     [JSInvokable]
     public void OnThemeChanged(IBrowserInfoBackend.ThemeInfo themeInfo)
         => UpdateThemeInfo(themeInfo);
+
+    [JSInvokable]
+    public void OnThermalStateChanged(string state)
+        => _thermalLevel.Value = Enum.TryParse<ThermalLevel>(state, true, out var v)
+            ? v
+            : Hosting.ThermalLevel.Nominal;
 
     [JSInvokable]
     public virtual void OnWebSplashRemoved() { }

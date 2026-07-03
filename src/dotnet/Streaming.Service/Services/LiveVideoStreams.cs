@@ -212,6 +212,21 @@ public class LiveVideoStreams : ILiveVideoStreams
         return Task.FromResult(max);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<int> RequestedLayersMask(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+        // Same session-key caveat as MaxRequestedLayerId: the aggregate scans
+        // every session, so delegate to a session-less inner compute.
+        => await RequestedLayersMaskByStream(streamId, cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual Task<int> RequestedLayersMaskByStream(
+        StreamId streamId,
+        CancellationToken cancellationToken)
+        => Task.FromResult(ComputeLayersMask(streamId.Value));
+
     public async Task PushStream(
         Session session,
         string chatId,
@@ -260,6 +275,9 @@ public class LiveVideoStreams : ILiveVideoStreams
             // -1 marks "no ACK observed yet" — don't pollute the histogram with a sentinel.
             if (info.LastAckAgeMs >= 0)
                 AppMeters.VideoSendAckAgeMs.Record(info.LastAckAgeMs);
+            AppMeters.VideoSendThermalLevel.Record((int)info.ThermalLevel);
+            if (!info.IsHardwareAccelerated)
+                AppMeters.VideoSendSoftwareEncode.Add(1);
         }
         if (state is not null)
             AppMeters.VideoSendLayerCount.Record(state.EffectiveLayerCount);
@@ -275,17 +293,12 @@ public class LiveVideoStreams : ILiveVideoStreams
     {
         if (qualityByStream is null) {
             if (_qualityBySession.TryGetValue(session, out var removing)) {
-                var prevMaxOnClear = new Dictionary<string, int>(removing.QualityByStream.Count);
+                var prevMaskOnClear = new Dictionary<string, int>(removing.QualityByStream.Count);
                 foreach (var (sid, _) in removing.QualityByStream)
-                    prevMaxOnClear[sid] = ComputeMaxLayerId(sid);
+                    prevMaskOnClear[sid] = ComputeLayersMask(sid);
                 _qualityBySession.TryRemove(session, out _);
-                foreach (var (sid, prevMax) in prevMaxOnClear) {
-                    var newMax = ComputeMaxLayerId(sid);
-                    if (newMax != prevMax) {
-                        using (Invalidation.Begin())
-                            _ = MaxRequestedLayerIdByStream(StreamId.Parse(sid), default);
-                    }
-                }
+                foreach (var (sid, prevMask) in prevMaskOnClear)
+                    InvalidateLayerDemand(sid, prevMask);
             }
             DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, info={Info} (cleared)", session, info);
             return;
@@ -293,22 +306,17 @@ public class LiveVideoStreams : ILiveVideoStreams
 
         qualityByStream = ApplyStreamCountCap(qualityByStream, info);
         _qualityBySession.TryGetValue(session, out var prevState);
-        // Snapshot the per-stream max BEFORE we install the new state so we
-        // can invalidate `MaxRequestedLayerId` only for streams whose
+        // Snapshot the per-stream demand mask BEFORE we install the new state
+        // so we invalidate the demand computes only for streams whose
         // aggregate actually changed.
         var affectedStreamIds = CollectStreamIdsForInvalidation(
             prevState?.QualityByStream, qualityByStream);
-        var prevMaxByStream = new Dictionary<string, int>(affectedStreamIds.Count);
+        var prevMaskByStream = new Dictionary<string, int>(affectedStreamIds.Count);
         foreach (var sid in affectedStreamIds)
-            prevMaxByStream[sid] = ComputeMaxLayerId(sid);
+            prevMaskByStream[sid] = ComputeLayersMask(sid);
         _qualityBySession[session] = new ReceiveQualityState(qualityByStream, SystemClock.Now);
-        foreach (var sid in affectedStreamIds) {
-            var newMax = ComputeMaxLayerId(sid);
-            if (newMax != prevMaxByStream[sid]) {
-                using (Invalidation.Begin())
-                    _ = MaxRequestedLayerIdByStream(StreamId.Parse(sid), default);
-            }
-        }
+        foreach (var sid in affectedStreamIds)
+            InvalidateLayerDemand(sid, prevMaskByStream[sid]);
         DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
             session, qualityByStream.Count, info);
 
@@ -417,13 +425,32 @@ public class LiveVideoStreams : ILiveVideoStreams
             : ReceiveQuality.Default;
 
     private int ComputeMaxLayerId(string streamIdValue)
+        => MaxLayerIdFromMask(ComputeLayersMask(streamIdValue));
+
+    private int ComputeLayersMask(string streamIdValue)
     {
-        var max = -1;
+        var mask = 0;
         foreach (var (_, state) in _qualityBySession) {
-            if (state.QualityByStream.TryGetValue(streamIdValue, out var q) && q.LayerId > max)
-                max = q.LayerId;
+            if (state.QualityByStream.TryGetValue(streamIdValue, out var q) && q.LayerId is >= 0 and < 31)
+                mask |= 1 << q.LayerId;
         }
-        return max;
+        return mask;
+    }
+
+    private static int MaxLayerIdFromMask(int mask)
+        => mask == 0 ? -1 : System.Numerics.BitOperations.Log2((uint)mask);
+
+    private void InvalidateLayerDemand(string streamIdValue, int prevMask)
+    {
+        var newMask = ComputeLayersMask(streamIdValue);
+        if (newMask == prevMask)
+            return;
+
+        using (Invalidation.Begin()) {
+            _ = RequestedLayersMaskByStream(StreamId.Parse(streamIdValue), default);
+            if (MaxLayerIdFromMask(newMask) != MaxLayerIdFromMask(prevMask))
+                _ = MaxRequestedLayerIdByStream(StreamId.Parse(streamIdValue), default);
+        }
     }
 
     private static HashSet<string> CollectStreamIdsForInvalidation(

@@ -9,7 +9,7 @@ import type { DownscalerMode } from './operators/downscale';
 
 const KEY = 'video.debug.downscalerMode';
 const DEFAULT_MODE: DownscalerMode = 'metadata';
-const MODES: readonly DownscalerMode[] = ['webgl', 'canvas', 'metadata'];
+const MODES: readonly DownscalerMode[] = ['webgl', 'canvas', 'metadata', 'webgpu'];
 
 function isMode(value: string | null): value is DownscalerMode {
     return value !== null && (MODES as readonly string[]).includes(value);

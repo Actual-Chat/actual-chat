@@ -1,13 +1,16 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { RunningEMA } from 'math';
 import { delayAsync } from 'actuallab-core';
+import { DeviceInfo } from 'device-info';
 import { aggregateDropTrace, updatePlaybackRateEma, type DecodedFrame } from '../frame-envelopes';
 import { FrameDropStage } from '../frame-drop-trace';
 import { BufferSpanMeter, type BufferSpanMeterOptions } from './buffer-span-meter';
 
 const PRESENT_SKIP_RATIO_EMA_ALPHA = 0.1;
 
-const MAX_FPS = 120;
+// Mobile caps catch-up at 60 — 120 fps decode/present bursts burn power for
+// an invisible latency win on a phone display.
+const MAX_FPS = DeviceInfo.isMobile ? 60 : 120;
 const MIN_FPS = 10;
 const MIN_DURATION_MS = 1000 / MAX_FPS;
 const MAX_DURATION_MS = 1000 / MIN_FPS;
