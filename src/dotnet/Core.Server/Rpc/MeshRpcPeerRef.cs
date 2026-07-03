@@ -41,14 +41,11 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
             var shardOwner = Resolved.Owner.ShardOwners[ShardRef.Scheme];
             ShardState = shardOwner.States[shardIndex];
 
-            // Only treat this peer-ref as locally executing if mesh state already
-            // maps the shard to this node. ShardState.Value.MustOwn alone is not
-            // enough: ShardOwner.States start with the placeholder MustOwn=true
-            // until PushShardState settles them, so using it here would spuriously
-            // start MarkChangedWhenShardOwnershipEnds for remote peer refs and
-            // fire RouteState.MarkChanged() the moment the placeholder flips.
+            // Gating this on a MustOwn snapshot is racy: ShardOwner may lag behind the mesh map,
+            // and local calls made via an awaiter-less ref get no shard ownership dependency,
+            // so their computeds are never invalidated once the shard migrates away.
             var isLocal = Resolved.Node == Owner.ThisNode;
-            if (isLocal && ShardState.Value.MustOwn) {
+            if (isLocal) {
                 RouteState.LocalExecutionAwaiter = GetLocalExecutionAwaiter(RouteState);
                 _ = MarkChangedWhenShardOwnershipEnds();
             }
@@ -77,11 +74,12 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
         var routeState = RouteState!;
         var cancellationToken = routeState.ChangedToken;
         try {
+            // No "|| !x.MustOwn" here: this ref may be created before ShardOwner catches up
+            // with the mesh map; "the shard is mapped elsewhere" is MarkChangedWhenResolvedChanged's job
             var cShardState = await ShardState!
-                .WhenUnsafe(static x => x.Ownership is not null || !x.MustOwn, cancellationToken)
+                .WhenUnsafe(static x => x.Ownership is not null, cancellationToken)
                 .ConfigureAwait(false);
-            if (cShardState.Value.Ownership is not null) // Got ownership -> await when it ends
-                await cShardState.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            await cShardState.WhenInvalidated(cancellationToken).ConfigureAwait(false);
         }
         finally {
             if (!cancellationToken.IsCancellationRequested)
