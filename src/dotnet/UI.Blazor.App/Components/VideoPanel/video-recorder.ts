@@ -1854,6 +1854,7 @@ export class VideoRecorder {
             // Both camera and screencast use a 3s keyframe cadence.
             keyframeIntervalFrames: framerate * 3,
             maxKeyFrameIntervalMs: 3000,
+            keepAlivePeriodMs: this.currentMode === 'screen' ? VIDEO.screenCastKeepAlivePeriodMs : 0,
             hardwareAcceleration: this.currentHardwareAcceleration,
             initialGateOpen,
         };
@@ -2419,7 +2420,8 @@ export class VideoRecorder {
                 stats.wireAckedBytes,
                 this.windowMeanEncodeTimeMs,
                 this.windowMeanDownscaleTimeMs,
-                this.windowDownscaleTimeMsMax);
+                this.windowDownscaleTimeMsMax,
+                stats.keepAliveFramesInjected);
         } catch (e) {
             warnLog?.log('reportRecorderStats failed:', e);
         } finally {

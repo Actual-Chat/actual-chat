@@ -57,6 +57,7 @@ partial record AppConstants
         public int MaxCameraStreamsPerChat { get; init; } = Constants.Video.MaxCameraStreamsPerChat;
         public int PriorityActivationThreshold { get; init; } = Constants.Video.PriorityActivationThreshold;
         public double SilenceGracePeriodMs { get; init; } = Constants.Video.SilenceGracePeriod.TotalMilliseconds;
+        public double ScreenCastKeepAlivePeriodMs { get; init; } = Constants.Video.ScreenCastKeepAlivePeriod.TotalMilliseconds;
         public double[] CameraLayerBaseBitratesKbps { get; init; } = VideoLayerDef.CameraLayers.Select(x => x.BaseBitrateKbps).ToArray();
         public double[] ScreenCastLayerBaseBitratesKbps { get; init; } = VideoLayerDef.ScreenCastLayers.Select(x => x.BaseBitrateKbps).ToArray();
         public VideoCodecDef[] CodecDefs { get; init; } = VideoCodecDef.All;

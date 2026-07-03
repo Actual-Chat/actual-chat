@@ -485,7 +485,8 @@ public sealed class VideoRecorder : IAsyncDisposable
             long wireAckedBytes,
             double encodeTimeMsMean = -1,
             double downscaleTimeMsMean = -1,
-            double downscaleTimeMsMax = -1)
+            double downscaleTimeMsMax = -1,
+            int keepAliveFramesInjected = 0)
         {
             var dropTrace = new Dictionary<FrameDropStage, int>(dropStages.Length);
             for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
@@ -509,7 +510,8 @@ public sealed class VideoRecorder : IAsyncDisposable
                 WireAckedBytes: wireAckedBytes,
                 EncodeTimeMsMean: encodeTimeMsMean,
                 DownscaleTimeMsMean: downscaleTimeMsMean,
-                DownscaleTimeMsMax: downscaleTimeMsMax));
+                DownscaleTimeMsMax: downscaleTimeMsMax,
+                KeepAliveFramesInjected: keepAliveFramesInjected));
         }
     }
 }

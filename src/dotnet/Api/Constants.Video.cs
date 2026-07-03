@@ -91,6 +91,13 @@ public static partial class Constants
         public static readonly TimeSpan StreamSilenceCheckInterval = TimeSpan.FromSeconds(5);
         public static readonly int StreamSilenceMaxConsecutiveZeroIntervals = 2;
 
+        // Screencast idle keepalive: getDisplayMedia delivers frames only when
+        // the captured content changes, so a static screen would starve the
+        // silence watchdog above and tear the stream down mid-share. The sender
+        // re-emits the last captured frame at this cadence while idle; must stay
+        // well below StreamSilenceCheckInterval × StreamSilenceMaxConsecutiveZeroIntervals.
+        public static readonly TimeSpan ScreenCastKeepAlivePeriod = TimeSpan.FromSeconds(1);
+
         // RPC stream flow control for video. 5-frame ack cadence (~165ms @ 30fps).
         // The credit window must exceed the receiver's skip-to-live threshold
         // (TargetBufferSpanMs × 3 ≈ 600ms): a consumer that subscribed

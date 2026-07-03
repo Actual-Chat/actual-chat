@@ -57,6 +57,7 @@ export interface VideoConstants {
     readonly maxCameraStreamsPerChat: number;
     readonly priorityActivationThreshold: number;
     readonly silenceGracePeriodMs: number;
+    readonly screenCastKeepAlivePeriodMs: number;
     readonly cameraLayerBaseBitratesKbps: readonly number[];
     readonly screenCastLayerBaseBitratesKbps: readonly number[];
     readonly codecDefs: readonly VideoCodecDef[];

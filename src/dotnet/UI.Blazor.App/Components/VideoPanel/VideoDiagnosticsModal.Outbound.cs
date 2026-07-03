@@ -35,7 +35,7 @@ public partial class VideoDiagnosticsModal
     {
         double fusedDropRatio = 0, fusedAckAgeMs = -1;
         double fusedEncDeficit = 0, fusedEncQueueDepth = 0;
-        int fusedRestartStreak = 0;
+        int fusedRestartStreak = 0, fusedKeepAliveFrames = 0;
         double fusedDownscaleMs = -1, fusedDownscaleMaxMs = -1, fusedEncodeMs = -1;
         foreach (var k in activeKinds) {
             if (!statsByKind.TryGetValue(k, out var stats)) continue;
@@ -46,6 +46,7 @@ public partial class VideoDiagnosticsModal
             if (stats.EncodeQueueDepthEma >= 0)
                 fusedEncQueueDepth = Math.Max(fusedEncQueueDepth, stats.EncodeQueueDepthEma);
             fusedRestartStreak = Math.Max(fusedRestartStreak, stats.EncoderRestartStreakIn60s);
+            fusedKeepAliveFrames = Math.Max(fusedKeepAliveFrames, stats.KeepAliveFramesInjected);
             if (stats.DownscaleTimeMsMean >= 0)
                 fusedDownscaleMs = Math.Max(fusedDownscaleMs, stats.DownscaleTimeMsMean);
             if (stats.DownscaleTimeMsMax >= 0)
@@ -78,6 +79,8 @@ public partial class VideoDiagnosticsModal
                 : $"{fusedDownscaleMs:F1} ms (max {fusedDownscaleMaxMs:F0})");
         AppendRow(builder, seqBase + 6, "Encode time",
             fusedEncodeMs < 0 ? "n/a" : $"{fusedEncodeMs:F1} ms");
+        if (fusedKeepAliveFrames > 0)
+            AppendRow(builder, seqBase + 7, "Keepalive frames", fusedKeepAliveFrames.ToString());
     }
 
     private static void AppendCapReadout(

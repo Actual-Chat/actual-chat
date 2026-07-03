@@ -310,6 +310,7 @@ export const recorderWorkerImpl: RecorderWorker = {
             createEncoder: encoderFactory,
             keyframeIntervalFrames: config.keyframeIntervalFrames,
             maxKeyFrameIntervalMs: config.maxKeyFrameIntervalMs,
+            keepAlivePeriodMs: config.keepAlivePeriodMs,
             createSender: senderFactory,
             sourceKind: config.sourceKind ?? 0,
             isFrontCamera: config.isFrontCamera ?? false,

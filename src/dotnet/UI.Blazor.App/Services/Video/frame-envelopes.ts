@@ -82,6 +82,9 @@ export interface RecorderStats {
     // Count of in-place encoder hang resets (handleEncoderHang) in the last
     // 60 s window. Maintained by the encode operator.
     encoderRestartStreakIn60s: number;
+    // Cumulative synthetic frames re-emitted during capture idle (static
+    // screencast content). Maintained by the keepAlive operator.
+    keepAliveFramesInjected: number;
     // True when document.visibilityState === 'hidden' on the main thread at
     // the moment stats were last collected. Stamped by the main-thread stats
     // poller; the worker has no document access.
@@ -181,6 +184,7 @@ export function createEmptyRecorderStats(): RecorderStats {
         floodGateSkipPerSec: 0,
         peerReconnectStreak: 0,
         encoderRestartStreakIn60s: 0,
+        keepAliveFramesInjected: 0,
         isTabBackgrounded: false,
         dropTrace: new Map(),
     };

@@ -20,6 +20,7 @@ import { createPreviewSink } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
+import { keepAlive } from '../operators/keep-alive';
 import { PaceState, temporalPace } from '../operators/temporal-pace';
 import { stampEncoderDescription } from '../operators/stamp-encoder-description';
 import { MutableWireGate, wireGate } from '../operators/wire-gate';
@@ -54,6 +55,9 @@ export interface RecorderConfig {
     normalizeSize?: { width: number; height: number };
     // Downscaler backend (diagnostics toggle). Default 'webgl'.
     downscalerMode?: DownscalerMode;
+    // Idle keepalive cadence: re-emit the last captured frame when the source
+    // stalls for this long (static screencast content). <= 0/absent = disabled.
+    keepAlivePeriodMs?: number;
 
     // -- encode --
     // Bottom-first simulcast ladder; single-tier P2P passes one entry.
@@ -137,13 +141,20 @@ export class Recorder {
             reportPresentation: p => this.session.reportPreviewFramePresentation(p),
         });
 
-        // Two pipes only because pipe()'s typed overload tops out at 9 ops;
+        // Two pipes only because pipe()'s typed overload tops out at 10 ops;
         // runtime composition is identical.
         const captureToBundle = pipe(
             captureSource,
             traceDrops<CapturedFrame>(FrameDropStage.SenderSource),
             floodGate(gate),
             traceDrops<CapturedFrame>(FrameDropStage.SenderFloodGate),
+            // Before stampCaptureTime so injected frames get a fresh monotonic
+            // capturedAt; before temporalPace so fps=0 (no viewers) still
+            // drops them.
+            keepAlive({
+                periodMs: config.keepAlivePeriodMs ?? 0,
+                isGateOpen: () => gate.isOpen,
+            }),
             stampCaptureTime({ clock: this.session.captureClock }),
             attachSourceDims(),
             // Demand-driven fps before the fused stage: paced-out frames release

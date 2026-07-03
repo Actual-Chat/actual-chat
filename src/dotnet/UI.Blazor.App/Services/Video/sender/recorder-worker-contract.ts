@@ -29,6 +29,9 @@ export interface WireSafeRecorderConfig {
     downscalerMode?: DownscalerMode;
     keyframeIntervalFrames: number;
     maxKeyFrameIntervalMs?: number;
+    // Idle keepalive cadence: re-emit the last captured frame when the source
+    // stalls for this long (static screencast content). <= 0/absent = disabled.
+    keepAlivePeriodMs?: number;
     // Defaults to 'prefer-hardware'. Set to 'no-preference' as the 1-tier
     // last-resort fallback when 3-tier and 2-tier probes both fail — lets
     // the browser fall back to a SW encoder on machines where the HW

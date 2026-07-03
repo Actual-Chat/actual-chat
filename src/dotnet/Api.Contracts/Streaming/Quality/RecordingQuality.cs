@@ -81,7 +81,10 @@ public sealed record RecorderStats(
     // GPU resize stage; Encode is the HW encoder.
     double EncodeTimeMsMean = -1,
     double DownscaleTimeMsMean = -1,
-    double DownscaleTimeMsMax = -1)
+    double DownscaleTimeMsMax = -1,
+    // Cumulative synthetic frames re-emitted during capture idle (static
+    // screencast content) — the keepAlive operator's activity counter.
+    int KeepAliveFramesInjected = 0)
 {
     private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
         = new Dictionary<FrameDropStage, int>();
