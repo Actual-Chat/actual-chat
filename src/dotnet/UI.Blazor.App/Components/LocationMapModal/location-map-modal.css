@@ -6,6 +6,10 @@
     @apply w-full h-128 max-h-[70vh];
     @apply overflow-hidden;
 }
+body.narrow .location-map-modal .c-map-host {
+    @apply flex-1;
+    @apply h-auto max-h-none;
+}
 .location-map-modal .c-map {
     @apply w-full h-full;
 }
