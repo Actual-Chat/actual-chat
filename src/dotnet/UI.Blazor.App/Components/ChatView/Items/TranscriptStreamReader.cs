@@ -81,9 +81,8 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
                 if (isCompleted)
                     return;
 
-                // The stream isn't published yet (entry-creation race) or has already expired
-                // while the entry is still streaming. Retry: ProcessStreamingState cancels us
-                // once the entry leaves the streaming state.
+                // Not published yet (entry-creation race) or already expired; retry -
+                // ProcessStreamingState cancels us once the entry leaves the streaming state
                 await Clocks.SystemClock.Delay(RetryDelays[retryIndex++], cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {

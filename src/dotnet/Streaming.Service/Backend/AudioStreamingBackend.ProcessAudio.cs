@@ -430,12 +430,10 @@ public partial class AudioStreamingBackend
         else
             transcriptionEngine = await GetTranscriptionEngine(audioSegment.Record, cancellationToken).ConfigureAwait(false);
         var transcriber = TranscriberFactory.Get(transcriptionEngine);
-        // The deadline guarantees the realtime transcript stream ends even when the provider
-        // never completes it (e.g. a lost Deepgram finalize ack keeps the socket open forever),
-        // which would otherwise strand the entry in the streaming state until ChatEntryFixupFlow
-        // removes it. Whatever transcript exists when it fires is the final one. Anchored at the
-        // audio source end; the audio push lags it by at most a couple of seconds (2x pacing,
-        // arrival burstiness is capped by the frame-silence watchdog).
+        // Providers can fail to complete the transcript stream (e.g. a lost Deepgram finalize ack),
+        // which would strand the entry in the streaming state - so transcription gets a deadline,
+        // anchored at the audio source end. The paced (2x) audio push lags that end by at most
+        // a couple of seconds: arrival burstiness is capped by the frame-silence watchdog.
         using var deadlineCts = cancellationToken.CreateLinkedTokenSource();
         _ = audioSegment.Source.WhenDurationAvailable.ContinueWith(
             _ => {
@@ -528,7 +526,7 @@ public partial class AudioStreamingBackend
                     await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
                 }
             }
-            // No finalization -> no refine either; unblock its language wait so it can't hang
+            // No-op when finalization set the language above; otherwise refine must not stay blocked on it
             refineTranscriptLanguageTcs.TrySetResult(null);
             await transcriptDiffStream.DisposeSilentlyAsync().ConfigureAwait(false);
         }

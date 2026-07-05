@@ -224,8 +224,7 @@ public partial class GoogleTranscriber : ITranscriber
             throw;
         }
         finally {
-            // Must complete before PushAudio returns: Google closes the response stream
-            // (ending PullResponses) only after the write side is completed.
+            // Google ends the response stream (unblocking PullResponses) only after the write side completes
             await recognizeStream.TryWriteCompleteAsync().SilentAwait(false);
         }
     }
