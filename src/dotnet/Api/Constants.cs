@@ -194,6 +194,8 @@ public static partial class Constants
         public static readonly TimeSpan ThrottlePeriod = TimeSpan.FromSeconds(0.2);
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(3);
         public static readonly TimeSpan RetranscriptionTimeout = TimeSpan.FromSeconds(20);
+        // Max time the realtime transcriber gets to complete after its audio source ends
+        public static readonly TimeSpan CompletionTimeout = TimeSpan.FromSeconds(5);
         public static readonly bool StartWithEllipsis = false;
 
         public static class Google
