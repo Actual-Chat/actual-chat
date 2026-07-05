@@ -126,7 +126,9 @@ public partial class DeepgramTranscriber : ITranscriber
 
             await PushAudio(transcriptState, deepgramClient, tokenSource.Token).ConfigureAwait(false);
 
-            await whenCompleted.ConfigureAwait(false);
+            // Completes on the finalize ack, connection close, or error; with keepAlive on,
+            // a lost ack would otherwise hang this await forever - so it must observe the token.
+            await whenCompleted.WaitAsync(tokenSource.Token).ConfigureAwait(false);
 
             try {
                 // Ignore errors on stopping

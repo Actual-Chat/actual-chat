@@ -1,13 +1,12 @@
 using ActualChat.Streaming;
 using ActualChat.Transcription;
 using ActualChat.UI.Blazor.App.Services;
-using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
 public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
 {
-    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.25, 2);
+    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.25, 5);
 
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private ILiveAudioStreams LiveAudioStreams => hub.LiveAudioStreams;
@@ -71,13 +70,20 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
         }
     }
 
-    private async Task ProcessTranscriptWithRetry(TranscriptUI.StreamingState streamingState, CancellationToken cancellationToken)
+    private async Task ProcessTranscriptWithRetry(
+        TranscriptUI.StreamingState streamingState,
+        CancellationToken cancellationToken)
     {
         var retryIndex = 0;
         while (!cancellationToken.IsCancellationRequested)
             try {
-                await ProcessTranscript(streamingState, cancellationToken).ConfigureAwait(false);
-                return; // Completed normally
+                var isCompleted = await ProcessTranscript(streamingState, cancellationToken).ConfigureAwait(false);
+                if (isCompleted)
+                    return;
+
+                // Not published yet (entry-creation race) or already expired; retry -
+                // ProcessStreamingState cancels us once the entry leaves the streaming state
+                await Clocks.SystemClock.Delay(RetryDelays[retryIndex++], cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 var delay = RetryDelays[retryIndex++];
@@ -86,16 +92,19 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
             }
     }
 
-    private async Task ProcessTranscript(TranscriptUI.StreamingState streamingState, CancellationToken cancellationToken) {
+    private async Task<bool> ProcessTranscript(
+        TranscriptUI.StreamingState streamingState,
+        CancellationToken cancellationToken)
+    {
         var (streamId, content, isTranslation) = streamingState;
+        var rpcStream = await LiveAudioStreams.GetTranscriptStream(hub.Session, streamId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        if (rpcStream is null)
+            return false;
+
         var lastText = "";
         try {
-            var rpcStream = await LiveAudioStreams.GetTranscriptStream(hub.Session, streamId.Value, cancellationToken)
-                .ConfigureAwait(false);
-            var diffs = rpcStream is null
-                ? AsyncEnumerable.Empty<TranscriptDiff>()
-                : rpcStream.SuppressExceptions(e => e is RpcReconnectFailedException, cancellationToken);
-            var transcripts = diffs.ToTranscripts();
+            var transcripts = rpcStream.ToTranscripts();
 
             // Optimization state:
             // - stablePrefixLength: length of text that is known to be immutable (based on IsStable snapshots)
@@ -142,7 +151,8 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
         catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
             // Intended: suppress cancellation
         }
-        // Reached on normal completion or suppressed exception — mark streaming as done
+        // Reached on normal completion or cancellation — mark streaming as done.
+        // Any other error propagates to the retry loop with the state intact.
         _state.Value = new (
             RetainedText: lastText,
             ChangedText: "",
@@ -150,6 +160,7 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
             Tail: "",
             false,
             isTranslation);
+        return true;
     }
 
     // Uses knowledge of an immutable prefix (stablePrefixLength) to avoid re-comparing it.
