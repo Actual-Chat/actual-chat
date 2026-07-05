@@ -145,8 +145,14 @@ public partial class GoogleTranscriber : ITranscriber
         ChannelWriter<Transcript> output,
         CancellationToken cancellationToken)
     {
+        // We want to stop both tasks here on any failure, so...
+#pragma warning disable CA2000
+        var cts = cancellationToken.CreateLinkedTokenSource();
+#pragma warning restore CA2000
+        // The call itself must be bound to cts as well: PullResponses reads its response stream
+        // with no token of its own, so cancelling the call is the only way to unblock it.
         var recognizeStream = SpeechClient.StreamingRecognize(
-            CallSettings.FromCancellationToken(cancellationToken),
+            CallSettings.FromCancellationToken(cts.Token),
             new BidirectionalStreamingSettings(1));
         await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
             StreamingConfig = GetStreamingRecognitionConfig(options),
@@ -154,18 +160,17 @@ public partial class GoogleTranscriber : ITranscriber
         }).ConfigureAwait(false);
 
         var state = new GoogleTranscribeState(audioSource, options, recognizeStream, output);
-        // We want to stop both tasks here on any failure, so...
-#pragma warning disable CA2000
-        var cts = cancellationToken.CreateLinkedTokenSource();
-#pragma warning restore CA2000
+        Task? pullResponsesTask = null;
         try {
             var pushAudioTask = PushAudio(state, cts.Token);
-            var pullResponsesTask = PullResponses(state, options, cts.Token);
+            pullResponsesTask = PullResponses(state, options, cts.Token);
             await pushAudioTask.ConfigureAwait(false);
             await pullResponsesTask.ConfigureAwait(false);
         }
         finally {
             cts.CancelAndDisposeSilently();
+            if (pullResponsesTask is { IsCompleted: false })
+                await pullResponsesTask.SilentAwait(false);
         }
     }
 
@@ -219,7 +224,9 @@ public partial class GoogleTranscriber : ITranscriber
             throw;
         }
         finally {
-            _ = recognizeStream.TryWriteCompleteAsync();
+            // Must complete before PushAudio returns: Google closes the response stream
+            // (ending PullResponses) only after the write side is completed.
+            await recognizeStream.TryWriteCompleteAsync().SilentAwait(false);
         }
     }
 

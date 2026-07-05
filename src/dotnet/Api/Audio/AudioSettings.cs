@@ -12,5 +12,8 @@ public sealed class AudioSettings
     public TimeSpan IdleListeningNewMessageTrigger { get; init; } = TimeSpan.FromMinutes(5);
     public TimeSpan RecordingBeepInterval { get; init; } = TimeSpan.FromMinutes(1);
     public TimeSpan RecordingAggressiveBeepInterval { get; init; } = TimeSpan.FromSeconds(10);
-    public TimeSpan StreamExpirationDelay { get; init; } = TimeSpan.FromSeconds(10);
+    // Streams must outlive entry finalization, which runs after the stream ends:
+    // audio blob save + refine retranscription (Constants.Transcription.RetranscriptionTimeout)
+    // + invalidation propagation to clients.
+    public TimeSpan StreamExpirationDelay { get; init; } = TimeSpan.FromSeconds(60);
 }

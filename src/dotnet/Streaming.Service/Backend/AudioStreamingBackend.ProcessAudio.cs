@@ -430,11 +430,26 @@ public partial class AudioStreamingBackend
         else
             transcriptionEngine = await GetTranscriptionEngine(audioSegment.Record, cancellationToken).ConfigureAwait(false);
         var transcriber = TranscriberFactory.Get(transcriptionEngine);
+        // The deadline guarantees the realtime transcript stream ends even when the provider
+        // never completes it (e.g. a lost Deepgram finalize ack keeps the socket open forever),
+        // which would otherwise strand the entry in the streaming state until ChatEntryFixupFlow
+        // removes it. Whatever transcript exists when it fires is the final one. Anchored at the
+        // audio source end; the audio push lags it by at most a couple of seconds (2x pacing,
+        // arrival burstiness is capped by the frame-silence watchdog).
+        using var deadlineCts = cancellationToken.CreateLinkedTokenSource();
+        _ = audioSegment.Source.WhenDurationAvailable.ContinueWith(
+            _ => {
+                try {
+                    deadlineCts.CancelAfter(Constants.Transcription.CompletionTimeout);
+                }
+                catch (ObjectDisposedException) { }
+            },
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         using var transcripts = transcriber
-            .Transcribe(audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, cancellationToken)
+            .Transcribe(audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, deadlineCts.Token)
             .ThrottleTranscript(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken)
             .Memoize(CancellationToken.None);
-        cancellationToken = CancellationToken.None; // We already accounted for it in TrimOnCancellation
+        cancellationToken = CancellationToken.None; // Past this point only deadlineCts cancels the transcriber
 
         var transcriptStreamId = audioSegment.StreamId;
         var chatId = audioSegment.Record.ChatId;
@@ -489,6 +504,11 @@ public partial class AudioStreamingBackend
                 await publishTranscriptStreamTask.ConfigureAwait(false);
             }
         }
+        catch (Exception e) when (deadlineCts.IsCancellationRequested) {
+            Log.LogWarning(e,
+                "TranscribeAudio: realtime transcription of #{StreamId} hit the completion deadline, finalizing with what we have",
+                audioSegment.StreamId);
+        }
         finally {
             if (lastTranscript != null && textEntry != null) {
                 // The entry may have been removed by the user or already finalized by
@@ -508,6 +528,8 @@ public partial class AudioStreamingBackend
                     await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
                 }
             }
+            // No finalization -> no refine either; unblock its language wait so it can't hang
+            refineTranscriptLanguageTcs.TrySetResult(null);
             await transcriptDiffStream.DisposeSilentlyAsync().ConfigureAwait(false);
         }
         return textEntry?.Id;
