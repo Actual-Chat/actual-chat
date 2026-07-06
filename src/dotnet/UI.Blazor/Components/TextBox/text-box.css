@@ -4,7 +4,7 @@
 }
 
 .btn-h.text-box-btn {
-    @apply absolute right-1 bottom-1;
+    @apply absolute right-3 bottom-1;
     @apply w-5 h-5;
 }
 .text-box:focus-within + .btn.text-box-btn {
@@ -14,7 +14,7 @@
     @apply text-ellipsis;
 }
 .text-box.with-clear-btn input {
-    @apply !pr-3;
+    @apply !pr-4;
     @apply text-ellipsis;
 }
 

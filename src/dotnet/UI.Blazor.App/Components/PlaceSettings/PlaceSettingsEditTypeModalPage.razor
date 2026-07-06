@@ -81,7 +81,8 @@
                     </FormSection>
                     @if (!_aliasTextBoxRef.Id.IsNullOrEmpty()) {
                         <CopyToClipboard
-                            ButtonClass="btn-transparent"
+                            IsSquare="true"
+                            ButtonClass="btn-transparent btn-sm"
                             Text=""
                             CopyTextSourceRef="@_aliasTextBoxRef"
                             CopyTextFormatString="@_copyAliasFormatString" />
