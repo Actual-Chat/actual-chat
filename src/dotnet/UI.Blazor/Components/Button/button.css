@@ -112,20 +112,23 @@ body.hoverable .btn.unhovered:hover::after {
 /* Outline Button */
 .btn.btn-outline,
 .btn.btn-outline.btn-primary {
-    @apply bg-transparent;
     @apply border border-primary;
+    @apply bg-[var(--blue-50-05)];
     @apply text-primary;
 }
 .btn.btn-outline.btn-danger {
     @apply border-danger;
+    @apply bg-[var(--magenta-50-05)];
     @apply text-danger;
 }
 .btn.btn-outline.btn-danger-light {
     @apply border-[var(--danger-light)];
+    @apply bg-[var(--magenta-50-05)];
     @apply text-[var(--danger-light)];
 }
 .btn.btn-outline.btn-cancel {
     @apply border-cancel-text;
+    @apply bg-[var(--ash-50-05)];
     @apply text-cancel-text;
 }
 
@@ -266,6 +269,51 @@ body.hoverable .btn.btn-modal:hover::after {
 }
 .btn.btn-round::after {
     @apply rounded-full;
+}
+
+/* Button Tile — full-width row with left-aligned icon + content */
+.btn.btn-tile {
+    @apply h-12 w-full;
+    @apply cursor-pointer;
+}
+.btn.btn-tile > .btn-content {
+    @apply justify-start w-full gap-x-4;
+}
+.btn.btn-tile > .btn-content > .c-content {
+    @apply flex-1 flex-y items-start;
+}
+.btn.btn-tile > .btn-content > .c-content > .c-text {
+    @apply flex justify-start;
+    @apply text-headline-1 leading-4;
+}
+.btn.btn-tile > .btn-content > .c-content > .c-caption {
+    @apply text-start;
+    @apply text-03 text-xs font-normal leading-3;
+    @apply whitespace-normal;
+}
+
+/* Button Tile — flat: no fill, color variants only tint the hover/active ::after overlay */
+.btn.btn-tile.btn-primary,
+.btn.btn-tile.btn-danger,
+.btn.btn-tile.btn-cancel {
+    @apply bg-transparent;
+}
+body.hoverable .btn.btn-tile:hover::after,
+.touch-capable .btn.btn-tile:active::after,
+body.hoverable .btn.btn-tile.btn-primary:hover::after,
+.touch-capable .btn.btn-tile.btn-primary:active::after {
+    @apply hover-after;
+    @apply bg-hover-after-primary;
+}
+body.hoverable .btn.btn-tile.btn-danger:hover::after,
+.touch-capable .btn.btn-tile.btn-danger:active::after {
+    @apply hover-after;
+    @apply bg-hover-after-danger;
+}
+body.hoverable .btn.btn-tile.btn-cancel:hover::after,
+.touch-capable .btn.btn-tile.btn-cancel:active::after {
+    @apply hover-after;
+    @apply bg-hover-after-cancel;
 }
 
 /* Button Square and Round Hover */

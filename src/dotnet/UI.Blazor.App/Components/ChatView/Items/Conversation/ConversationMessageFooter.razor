@@ -1,7 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    var firstAuthors = Authors.Take(3).ToList();
-    var extraAuthorCount = Math.Clamp(Authors.Count - 3, 0, 99);
     var timeTotal = GetConversationTimeInfoString();
     var cls = IsSeparated ? "conversation-footer" : "conversation-footer-short";
 }
@@ -9,14 +7,11 @@
 <div class="@cls">
     <div class="bg-wrapper">
         <div class="c-content">
-            <div class="c-author-list">
-                @foreach (var authorId in firstAuthors) {
-                    <AuthorCircle AuthorId="@authorId" Size="@SquareSize.Size6"/>
-                }
-                @if (extraAuthorCount > 0) {
-                    <div class="author-incut ai-extra">+@extraAuthorCount</div>
-                }
-            </div>
+            <AuthorCircleGroup Class="c-author-list"
+                AuthorIds="@Authors"
+                Size="@SquareSize.Size6"
+                MaxCount="3"
+                IsListening="true"/>
             <div class="c-info">
                 <div class="c-time c-tool">
                     @timeTotal

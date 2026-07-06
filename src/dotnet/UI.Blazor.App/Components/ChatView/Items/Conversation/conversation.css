@@ -169,10 +169,6 @@ body.hoverable .conversation-message .c-join-row:hover {
 .conversation-footer .c-content {
     @apply flex-x items-center gap-x-4;
 }
-.conversation-footer-short .c-author-list,
-.conversation-footer .c-author-list {
-    @apply flex-x items-center gap-1 md:gap-2;
-}
 .conversation-footer-short .c-tool,
 .conversation-footer .c-tool {
     @apply flex items-center;
