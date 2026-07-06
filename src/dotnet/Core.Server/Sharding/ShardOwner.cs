@@ -89,10 +89,11 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         var cCurrent = addDependency ? Computed.Current : null;
         var ownershipStatus = shardState.OwnershipStatus;
         switch (ownershipStatus) {
-        case ShardOwnershipStatus.OwnedByThisNode:
+        case ShardOwnershipStatus.OwnedByThisNode when shardState.HasLiveOwnership:
             if (cCurrent is not null)
                 ComputedImpl.AddDependency(cCurrent, cShardState);
             return new(shardState.Ownership!);
+        case ShardOwnershipStatus.OwnedByThisNode: // The lock is lost, wait for it to be re-acquired
         case ShardOwnershipStatus.MappedToThisNode:
             return CompleteAsync();
         case ShardOwnershipStatus.MappedToOtherNode:
@@ -105,7 +106,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
 
         async ValueTask<ShardOwnership> CompleteAsync() {
             cShardState = await cShardState
-                .When(x => x.Ownership is not null || !x.MustOwn, FixedDelayer.YieldUnsafe, cancellationToken)
+                .When(x => x.HasLiveOwnership || !x.MustOwn, FixedDelayer.YieldUnsafe, cancellationToken)
                 .ConfigureAwait(false);
             if (cCurrent is not null)
                 ComputedImpl.AddDependency(cCurrent, cShardState);
@@ -228,7 +229,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         DebugLog?.LogDebug("Shard #{ShardIndex}: ++ {ThisNodeId}", shardIndex, ThisNode.Ref);
 
         bool isAdded = false;
-        ShardOwnership ownership = null!;
+        ShardOwnership? ownership = null;
         var linkedCts = lockToken.LinkWith(cancellationToken);
         var linkedToken = linkedCts.Token;
         try {
@@ -251,8 +252,13 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             linkedCts.CancelAndDisposeSilently();
         }
 
+        // The lock is lost or the shard is reassigned: stop claiming ownership right away,
+        // otherwise RequireShardOwnership keeps handing out an Ownership with a dead lock
+        if (ownership != null && ReferenceEquals(mutableState.Value.Ownership, ownership))
+            mutableState.Value = new ShardState(mutableState.Value, mustOwn: true);
+
         if (isAdded)
-            await Dispatcher.Remove(ownership).SilentAwait(false);
+            await Dispatcher.Remove(ownership!).SilentAwait(false);
         if (lockToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             Log.LogWarning("Shard #{ShardIndex}: -- {ThisNodeId} - lost the lock", shardIndex, ThisNode.Ref);
         else
@@ -269,6 +275,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         public bool IsFinal { get; }
         public bool MustOwn { get; }
         public ShardOwnership? Ownership { get; }
+        public bool HasLiveOwnership => Ownership is { } ownership && !ownership.LockToken.IsCancellationRequested;
         public ShardOwnershipStatus OwnershipStatus { get; }
         public int Version { get; }
 
