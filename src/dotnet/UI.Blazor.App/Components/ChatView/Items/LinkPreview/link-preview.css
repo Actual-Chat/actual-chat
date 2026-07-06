@@ -130,7 +130,7 @@ body.narrow .link-preview.compact .c-description {
     @apply flex-x items-center gap-2;
     @apply h-fit;
     @apply py-1 px-2;
-    @apply rounded-full border border-separator;
+    @apply rounded-xl border border-separator;
     @apply opacity-0 pointer-events-none;
     @apply bg-03;
     @apply transition-opacity duration-150;

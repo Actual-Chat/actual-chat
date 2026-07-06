@@ -17,19 +17,19 @@
     @apply border-b border-placeholder;
     @apply bg-transparent;
 }
-.copy-to-clipboard .btn.btn-round {
+.copy-to-clipboard .btn {
     @apply bg-transparent;
 }
-.copy-to-clipboard .btn.btn-round:hover {
+.copy-to-clipboard .btn:hover {
     @apply bg-04;
 }
-.copy-to-clipboard .btn.btn-round.btn-transparent:hover {
+.copy-to-clipboard .btn.btn-transparent:hover {
     @apply bg-transparent;
 }
-.copy-to-clipboard .btn.btn-round .btn-content {
+.copy-to-clipboard .btn .btn-content {
     @apply min-h-10 min-w-10 max-w-10 max-h-10;
 }
-.copy-to-clipboard .btn.btn-round .btn-content-inner {
+.copy-to-clipboard .btn .btn-content-inner {
     @apply flex-none flex-x gap-x-1;
 }
 .copy-to-clipboard input:focus {

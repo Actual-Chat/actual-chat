@@ -1,12 +1,18 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<ButtonRound
-    ContentClass="flex-x gap-x-1"
-    Class="@Class">
-    <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
-    <i class="copied-hint icon-checkmark-simple text-xl" aria-hidden="true"></i>
-</ButtonRound>
+@{
+    RenderFragment icons = @<text>
+        <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
+        <i class="copied-hint icon-checkmark-simple text-xl" aria-hidden="true"></i>
+    </text>;
+}
+@if (IsSquare) {
+    <ButtonSquare ContentClass="flex-x gap-x-1" Class="@Class">@icons</ButtonSquare>
+} else {
+    <ButtonRound ContentClass="flex-x gap-x-1" Class="@Class">@icons</ButtonRound>
+}
 
 @code {
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool IsSquare { get; set; }
 }

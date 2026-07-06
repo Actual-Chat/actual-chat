@@ -11,7 +11,7 @@
     }
 
     <CopyTrigger Tooltip="@Tooltip" CopyText="@Text" CopyTextSourceRef="@CopyTextSourceRef" CopyTextFormatString="@CopyTextFormatString">
-        <CopyButton Class="@ButtonClass" />
+        <CopyButton Class="@ButtonClass" IsSquare="@IsSquare" />
     </CopyTrigger>
 </div>
 
@@ -20,6 +20,7 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
+    [Parameter] public bool IsSquare { get; set; }
     [Parameter] public string InputClass { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "Copy";
     [Parameter] public bool ShowInput { get; set; }
