@@ -288,6 +288,10 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     const dispose = (): void => {
         if (isCompleted) return;
         isCompleted = true;
+        // Drop the backlog so $sys.End jumps the ack-window-gated queue — draining
+        // a congested uplink first delays End past the stop flush budget (a frozen
+        // remote tile until the disconnect watchdog fires). Trailing frames are moot.
+        bundles.clear();
         frameAdded.trigger();
         // Don't call RpcStream.disconnect() here: it sets _ended=true on the
         // sender without sending $sys.End, leaving the server's consumer
