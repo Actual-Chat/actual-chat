@@ -1521,13 +1521,15 @@ export class VideoRecorder {
         }
     }
 
-    // Temporal demand → encoder fps. Speaking → full rate. Otherwise the
-    // highest requested layer's tier drives it (focused top → full, lower
-    // tiers → fewer fps — the CPU win for non-focused streams). Only once live
-    // (warmup/preview must run full-rate so the encoder proves itself and the
-    // self-view stays smooth). maxLayerId < 0 is left running, NOT idle-stopped:
-    // it's ambiguous (no subscriber vs all-paused vs a join transient vs
-    // node-local conservative) and would starve an actively-watched stream.
+    // Encoder fps = min(camera, requested, thermal ceiling). Demand-driven
+    // low-tier pacing (thumbnail-only viewers → LOW_TIER_FPS) is a load-shedding
+    // measure, not a default: steady low fps looks bad (and paces the self-
+    // preview too), so it applies only while a thermal ceiling is active
+    // (fpsCeiling > 0 ⇔ ThermalCap at Serious/Critical). Speaking overrides it —
+    // the active speaker stays smooth up to the ceiling. maxLayerId < 0 is left
+    // running, NOT idle-stopped: it's ambiguous (no subscriber vs all-paused vs
+    // a join transient vs node-local conservative) and would starve an
+    // actively-watched stream.
     private applyTargetFps(): void {
         if (this._recordingState !== 'recording')
             return;
@@ -1536,21 +1538,12 @@ export class VideoRecorder {
             this.requestedFramerate ?? VIDEO.frameRate);
         if (this.fpsCeiling > 0)
             captureFps = Math.min(captureFps, this.fpsCeiling);
-        if (this.isSpeaking) {
-            this.lastTargetFps = captureFps;
-            void this.worker?.setTargetFps(captureFps);
-            return;
-        }
-        if (this.lastMaxLayerId >= 0) {
-            const fps = fpsForRequestedLayer(this.fullLayerLadder, this.lastMaxLayerId, captureFps);
-            this.lastTargetFps = fps;
-            void this.worker?.setTargetFps(fps);
-        }
-        else {
-            // No demand info yet — still enforce the requested-fps / thermal cap.
-            this.lastTargetFps = captureFps;
-            void this.worker?.setTargetFps(captureFps);
-        }
+        const shedForDemand = !this.isSpeaking && this.fpsCeiling > 0 && this.lastMaxLayerId >= 0;
+        const fps = shedForDemand
+            ? fpsForRequestedLayer(this.fullLayerLadder, this.lastMaxLayerId, captureFps)
+            : captureFps;
+        this.lastTargetFps = fps;
+        void this.worker?.setTargetFps(fps);
     }
 
     public setFpsCeiling(maxFps: number): void {
