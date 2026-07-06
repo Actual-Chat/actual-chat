@@ -66,7 +66,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
             // always for typed text entries
             return true;
 
-        return await IsForeignEntry(entry.Id, true, cancellationToken).ConfigureAwait(false) == true;
+        return await MayNeedTranslation(entry.Id, cancellationToken).ConfigureAwait(false) == true;
     }
 
     [ComputeMethod]
@@ -158,7 +158,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
 
         var foreignCount = 0;
         foreach (var entryId in visibleEntryIds) {
-            if (await IsForeignEntry(entryId, false, cancellationToken).ConfigureAwait(false) == true)
+            if (await MaySuggestTranslation(entryId, cancellationToken).ConfigureAwait(false) == true)
                 foreignCount++;
         }
 
@@ -175,21 +175,15 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
         => Task.FromResult(_mustSuggestTranslationCache.TryGetValue(chatId, out _));
 
     [ComputeMethod]
-    protected virtual async Task<bool?> IsForeignEntry(
-        ChatEntryId entryId,
-        bool expectTranslationLanguageOnly,
-        CancellationToken cancellationToken = default)
+    protected virtual async Task<bool?> MayNeedTranslation(
+        ChatEntryId entryId, CancellationToken cancellationToken = default)
     {
         var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
         if (entry is null)
             return null;
 
-        var mustTranslateOwnMessages = await MustTranslateOwnMessages(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (!mustTranslateOwnMessages) {
-            var ownAuthor = await AuthorUI.GetOwn(entry.ChatId, cancellationToken).ConfigureAwait(false);
-            if (ownAuthor.Id == entry.AuthorId)
-                return false;
-        }
+        if (await IsOwnEntryWithDisabledTranslation(entry, cancellationToken).ConfigureAwait(false))
+            return false;
 
         var entryLanguage = await Translations.GetLanguage(entryId, cancellationToken).ConfigureAwait(false);
         if (entryLanguage == null)
@@ -197,22 +191,51 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
 
         if (entryLanguage.Languages.Length == 0) {
             // Nothing detectable (e.g. numbers-only); a voice entry with unsaved languages counts as foreign
-            return expectTranslationLanguageOnly && entry.HasAudio;
+            return entry.HasAudio;
         }
 
         var translationLanguage = await GetTranslationLanguage(entryId.ChatId, cancellationToken).ConfigureAwait(false);
-        var isOnTranslationLanguage = entryLanguage.Languages.All(x => x != translationLanguage);
-        if (expectTranslationLanguageOnly)
-            return isOnTranslationLanguage;
+        return entryLanguage.Languages.All(x => x != translationLanguage);
+    }
 
-        if (!isOnTranslationLanguage)
+    [ComputeMethod]
+    protected virtual async Task<bool?> MaySuggestTranslation(
+        ChatEntryId entryId, CancellationToken cancellationToken = default)
+    {
+        var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        if (entry is null)
+            return null;
+
+        if (await IsOwnEntryWithDisabledTranslation(entry, cancellationToken).ConfigureAwait(false))
+            return false;
+
+        var entryLanguage = await Translations.GetLanguage(entryId, cancellationToken).ConfigureAwait(false);
+        if (entryLanguage == null)
+            return null;
+
+        if (entryLanguage.Languages.Length == 0)
+            return false; // Unknown language must not trigger the translation suggestion
+
+        var translationLanguage = await GetTranslationLanguage(entryId.ChatId, cancellationToken).ConfigureAwait(false);
+        if (entryLanguage.Languages.Any(x => x == translationLanguage))
             return false;
 
         var spokenLanguages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
-        return !entryLanguage.Languages.Any(x => x == translationLanguage || spokenLanguages.Contains(x));
+        return !entryLanguage.Languages.Any(x => spokenLanguages.Contains(x));
     }
 
     // Private methods
+
+    private async Task<bool> IsOwnEntryWithDisabledTranslation(ChatEntry entry, CancellationToken cancellationToken)
+    {
+        var mustTranslateOwnMessages = await MustTranslateOwnMessages(entry.ChatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (mustTranslateOwnMessages)
+            return false;
+
+        var ownAuthor = await AuthorUI.GetOwn(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        return ownAuthor.Id == entry.AuthorId;
+    }
 
     private Task<bool?> GetSubHeaderVisibility(ChatId chatId, CancellationToken cancellationToken)
         => UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
