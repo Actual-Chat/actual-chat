@@ -34,30 +34,32 @@
 
         @if (!_isAnonymous) {
             <FormBlock Class="avatar-buttons">
-                <button type="button" class="avatar-btn default-avatar-btn" @onclick="@ChangeDefaultAvatar">
-                    <div>
-                        <i class="icon-star text-xl @(_form.IsDefault ? "text-primary" : "text-03")"></i>
-                    </div>
-                    <div class="c-content">
-                        <div class="c-text">
-                            Make default
-                        </div>
-                        <div class="c-caption">
-                            This avatar will appear in P2P chats and any chats where you haven't selected a special avatar.
-                        </div>
-                    </div>
-                </button>
-
-                <button type="button" class="avatar-btn delete-avatar-btn" @onclick="@OnDeleteAvatarClick">
-                    <div>
-                        <i class="icon-trash03 text-xl text-danger"></i>
-                    </div>
-                    <div class="c-content">
-                        <div class="c-text">
-                            Delete avatar
-                        </div>
-                    </div>
-                </button>
+                <div class="c-card">
+                    <ButtonTile Click="@ChangeDefaultAvatar">
+                        <Icon>
+                            <i class="icon-star text-xl @(_form.IsDefault ? "text-primary" : "text-03")"></i>
+                        </Icon>
+                        <Content>
+                            <div class="c-text text-02">
+                                Make default
+                            </div>
+                            <div class="c-caption">
+                                This avatar will appear in P2P chats and any chats where you haven't selected a special avatar.
+                            </div>
+                        </Content>
+                    </ButtonTile>
+                    <Divider/>
+                    <ButtonTile Class="btn-danger" Click="@OnDeleteAvatarClick">
+                        <Icon>
+                            <i class="icon-trash03 text-xl text-danger"></i>
+                        </Icon>
+                        <Content>
+                            <div class="c-text text-danger">
+                                Delete avatar
+                            </div>
+                        </Content>
+                    </ButtonTile>
+                </div>
 
                 @if (ModalModel.ChatId is not null) {
                     <FormSection For="() => _form.IsActive" InputId="@_form.IsActiveFieldId">

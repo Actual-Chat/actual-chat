@@ -2,7 +2,7 @@
     @apply overflow-y-auto custom-scrollbar;
 }
 .own-account-editor-modal section.form-section-alias .copy-to-clipboard {
-    @apply -mr-4;
+    @apply -mr-3;
 }
 .is-default-avatar {
     @apply h-12 my-2;
@@ -18,44 +18,6 @@
 }
 .is-default-avatar label.checkbox {
     @apply m-0;
-}
-body.hoverable .default-avatar-btn:hover,
-.touch-capable .default-avatar-btn:active {
-    @apply bg-outline-hover;
-}
-.default-avatar-btn,
-.delete-avatar-btn {
-    @apply mb-1;
-}
-.default-avatar-btn,
-.delete-avatar-btn,
-.delete-avatar-btn *,
-.default-avatar-btn * {
-    @apply cursor-pointer;
-}
-.avatar-btn {
-    @apply flex-x items-center justify-between gap-x-4;
-    @apply h-12 w-full;
-    @apply px-3;
-    @apply rounded-lg;
-}
-.avatar-btn > .c-content {
-    @apply flex-1 flex-y items-start;
-}
-.avatar-btn > .c-content > .c-text {
-    @apply flex-1 flex justify-start;
-    @apply text-02 text-headline-1 leading-4;
-}
-.avatar-btn > .c-content > .c-caption {
-    @apply text-start;
-    @apply text-03 text-xs font-normal leading-3;
-}
-.avatar-btn.delete-avatar-btn > .c-content > .c-text {
-    @apply text-danger;
-}
-body.hoverable .delete-avatar-btn:hover,
-.touch-capable .delete-avatar-btn:active {
-    @apply bg-danger-outline-hover;
 }
 .edit-account-avatar {
     @apply w-30 h-30 self-center;

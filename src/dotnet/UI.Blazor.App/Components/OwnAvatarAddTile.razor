@@ -1,13 +1,15 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
-<Button Class="add-avatar-btn"
+<ButtonTile Class="btn-outline"
         Click="OnClick"
         data-bubble="@(BubbleRef.New<AddAvatarBubble>())"
         data-bubble-priority="302"
         data-bubble-placement="@(FloatingPosition.LeftStart.ToPositionString())">
     <Icon><i class="icon-plus text-xl"></i></Icon>
-    <Title>Add avatar</Title>
-</Button>
+    <Content>
+        <div class="c-text">Add avatar</div>
+    </Content>
+</ButtonTile>
 
 @code{
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }

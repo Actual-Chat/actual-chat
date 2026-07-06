@@ -58,7 +58,8 @@
                 <Right>
                     @if (!_copyAliasFormatString.IsNullOrEmpty() && !_aliasTextBoxRef.Id.IsNullOrEmpty()) {
                         <CopyToClipboard
-                            ButtonClass="btn-transparent"
+                            IsSquare="true"
+                            ButtonClass="btn-transparent btn-sm"
                             Text=""
                             CopyTextSourceRef="@_aliasTextBoxRef"
                             CopyTextFormatString="@_copyAliasFormatString"/>
@@ -114,16 +115,18 @@
             }
         </FormBlock>
         <FormBlock>
-            <button type="button" class="avatar-btn delete-avatar-btn" @onclick="@OnDeleteAccountClick">
-                <div>
-                    <i class="icon-trash03 text-xl text-danger"></i>
-                </div>
-                <div class="c-content">
-                    <div class="c-text">
-                        Delete account
-                    </div>
-                </div>
-            </button>
+            <div class="c-card">
+                <ButtonTile Class="btn-danger" Click="@OnDeleteAccountClick">
+                    <Icon>
+                        <i class="icon-trash03 text-xl text-danger"></i>
+                    </Icon>
+                    <Content>
+                        <div class="c-text text-danger">
+                            Delete account
+                        </div>
+                    </Content>
+                </ButtonTile>
+            </div>
         </FormBlock>
         </Body>
         <Buttons>
