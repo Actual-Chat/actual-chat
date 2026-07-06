@@ -54,8 +54,19 @@
 
             markers.Add(ToAvatarMarker(location, author.Avatar));
         }
-        var center = locations[0].Point;
+        var center = await GetCenter(chatId, locations, cancellationToken).ConfigureAwait(false);
         return new ComputedModel(markers, center.Latitude, center.Longitude);
+    }
+
+    private async Task<GeoPoint> GetCenter(
+        ChatId chatId,
+        IReadOnlyList<SharedLocation> locations,
+        CancellationToken cancellationToken)
+    {
+        // With several people sharing, center on the viewer's own share first.
+        var ownAuthor = await Hub.AuthorUI.GetOwn(chatId, cancellationToken).ConfigureAwait(false);
+        var ownLocation = locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id);
+        return (ownLocation ?? locations[0]).Point;
     }
 
     private MapMarker ToAvatarMarker(
