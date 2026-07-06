@@ -128,6 +128,10 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
                 continue;
 
             Log.LogInformation("WatchThermal: thermal cap level -> {Level}", _thermalCap.Level);
+            // Inbound reacts here; the encoder cap/fps ceiling is applied by the
+            // outbound tick, so force it to evaluate on the next stats callback
+            // instead of waiting out the steady 5 s QC interval.
+            _forceOutboundEval = true;
             await RecomputePlaybackQuality(
                 PlaybackQualityReason.Backoff,
                 cancellationToken).ConfigureAwait(false);
