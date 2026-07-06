@@ -547,9 +547,8 @@ public partial class AudioStreamingBackend
 
         Task FinalizeLanguages()
         {
-            if (entryLanguage is null)
-                return Task.CompletedTask;
-
+            // In detect language mode entryLanguage is created only here, on finalization
+            entryLanguage ??= new ChatEntryLanguage(textEntry.Id);
             entryLanguage = entryLanguage with {
                 Languages = lastTranscript.Languages,
                 EntryContentHash = textEntry.ContentHash,
