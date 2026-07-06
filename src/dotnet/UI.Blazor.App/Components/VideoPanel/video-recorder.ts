@@ -496,6 +496,10 @@ export class VideoRecorder {
     // Top-tier encoder framerate; undefined until a recording starts. Set from
     // `VIDEO.frameRate` (camera) or `track.getSettings().frameRate` (screencast).
     private currentFramerate: number | undefined;
+    // Pacing target (24 mobile / 30 desktop). The camera may deliver more —
+    // fps constraints carry no `max` (Android mode quantization) — so the
+    // worker's temporalPace enforces this instead.
+    private requestedFramerate: number | undefined;
 
     // Listeners.
     private previewFrameListeners = new Set<PreviewFrameListener>();
@@ -812,6 +816,7 @@ export class VideoRecorder {
                 && ScreenOrientation.isPortrait;
             const targetFramerate = isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate;
             this.currentFramerate = targetFramerate;
+            this.requestedFramerate = targetFramerate;
 
             // Capability probe at a safe baseline; the actual capture top is
             // resolved after the codec is known.
@@ -1103,6 +1108,7 @@ export class VideoRecorder {
                 `requestTarget=${targetSize.width}x${targetSize.height}`);
             const targetFramerate = DeviceInfo.isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate;
             this.currentFramerate = targetFramerate;
+            this.requestedFramerate = targetFramerate;
 
             const supportedCodecs = await detectSupportedCodecs(targetSize.width, targetSize.height);
             this.supportedCodecs = supportedCodecs;
@@ -1525,7 +1531,9 @@ export class VideoRecorder {
     private applyTargetFps(): void {
         if (this._recordingState !== 'recording')
             return;
-        let captureFps = this.currentFramerate ?? VIDEO.frameRate;
+        let captureFps = Math.min(
+            this.currentFramerate ?? VIDEO.frameRate,
+            this.requestedFramerate ?? VIDEO.frameRate);
         if (this.fpsCeiling > 0)
             captureFps = Math.min(captureFps, this.fpsCeiling);
         if (this.isSpeaking) {
@@ -1538,8 +1546,8 @@ export class VideoRecorder {
             this.lastTargetFps = fps;
             void this.worker?.setTargetFps(fps);
         }
-        else if (this.fpsCeiling > 0) {
-            // No demand info yet — still enforce the thermal ceiling.
+        else {
+            // No demand info yet — still enforce the requested-fps / thermal cap.
             this.lastTargetFps = captureFps;
             void this.worker?.setTargetFps(captureFps);
         }
@@ -1615,7 +1623,7 @@ export class VideoRecorder {
             droppedFrames: droppedAggregate,
             keyFrames: 0,
             layers: ladder.map((l, i) => ({
-                layerId: i,
+                layerId: l.layerId ?? i,
                 outputResolution: `${l.width}x${l.height}`,
                 configuredBitrate: kbpsToBitsPerSecond(l.bitrateKbps),
                 actualBitrateKbps: 0,
@@ -2817,6 +2825,11 @@ export class VideoRecorder {
     private setRecordingState(next: VideoRecordingState): void {
         if (this._recordingState === next) return;
         this._recordingState = next;
+        // Pace immediately on going live: the camera may deliver above
+        // requestedFramerate (no `max` constraint), and demand/VAD signals
+        // that would otherwise install the pace arrive seconds later.
+        if (next === 'recording')
+            this.applyTargetFps();
         for (const cb of this.stateChangeListeners) {
             try { cb(next); } catch (e) { warnLog?.log('state change listener threw', e); }
         }
