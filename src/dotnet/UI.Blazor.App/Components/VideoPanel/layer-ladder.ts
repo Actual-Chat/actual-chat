@@ -141,6 +141,8 @@ function buildExplicitLadder(
 //   any higher tier (focused / real view) → captureFps (full)
 // `maxLayerId < 0` (nobody subscribed / all paused) → 0 = idle (unused in the
 // live path). Unknown/out-of-range ladder → full rate (don't pace).
+// The caller (applyTargetFps) invokes this only under an active thermal
+// ceiling — low fps looks bad, so it's thermal load-shedding, not a default.
 export function fpsForRequestedLayer(
     ladder: readonly LayerConfig[] | null,
     maxLayerId: number,
