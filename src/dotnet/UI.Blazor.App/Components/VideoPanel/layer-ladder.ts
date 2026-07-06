@@ -23,9 +23,6 @@ export const MIN_SIMULCAST_SMALL_AXIS = 150;
 // mis-renders as a top-left-corner crop. mod-8 keeps coded == display.
 const DERIVED_TIER_MULTIPLE = 8;
 
-// fps for the bottom (unfocused-thumbnail) tier; higher tiers run full rate.
-export const LOW_TIER_FPS = 10;
-
 export interface LadderBuildInput {
     /** Top-tier width — the largest tier in the ladder. */
     topWidth: number;
@@ -129,33 +126,6 @@ function buildExplicitLadder(
         });
     }
     return ladder;
-}
-
-// Demand-driven target fps from the highest layer any viewer requests. Only
-// the BOTTOM tier (the tiny unfocused thumbnail, layerId 0) is paced down — any
-// higher request is a real, focused-sized view that must stay smooth, even when
-// the focused viewer's screen only warrants L1 (e.g. a focused tile on a phone).
-// Keying on the requested layer (not focus directly) is what the sender can see;
-// thumbnails are the only thing rendered small enough to request L0.
-//   bottom tier (L0, unfocused thumbnail) → LOW_TIER_FPS (10)
-//   any higher tier (focused / real view) → captureFps (full)
-// `maxLayerId < 0` (nobody subscribed / all paused) → 0 = idle (unused in the
-// live path). Unknown/out-of-range ladder → full rate (don't pace).
-// The caller (applyTargetFps) invokes this only under an active thermal
-// ceiling — low fps looks bad, so it's thermal load-shedding, not a default.
-export function fpsForRequestedLayer(
-    ladder: readonly LayerConfig[] | null,
-    maxLayerId: number,
-    captureFps: number,
-): number {
-    if (maxLayerId < 0)
-        return 0;
-    if (!ladder || ladder.length === 0 || maxLayerId >= ladder.length)
-        return captureFps;
-    // L0 is only a "thumbnail" when a higher tier exists above it; in a 1-tier
-    // ladder L0 IS the full view and must stay smooth.
-    const fps = maxLayerId === 0 && ladder.length > 1 ? LOW_TIER_FPS : captureFps;
-    return Math.min(fps, captureFps);
 }
 
 export function fitWithin(width: number, height: number, maxWidth: number, maxHeight: number): Size {
