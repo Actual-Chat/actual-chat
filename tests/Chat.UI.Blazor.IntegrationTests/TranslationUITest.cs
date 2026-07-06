@@ -69,7 +69,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var chatId = await CreateChat(cancellationToken);
 
         // act
-        await CreateVisibleEntries(chatId,"Does not need translation");
+        await CreateVisibleEntries(chatId, "Does not need translation");
 
         // assert
         await AssertIsSubHeaderVisible(chatId, false);
@@ -154,8 +154,10 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // act
         await TranslationUI.SetIsOn(chatId, true, cancellationToken);
-        var englishEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.English, cancellationToken: cancellationToken);
-        var frenchEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.French, cancellationToken: cancellationToken);
+        var englishEntry = await AliceTester
+            .CreateStreamingEntry(chatId, Languages.English, cancellationToken: cancellationToken);
+        var frenchEntry = await AliceTester
+            .CreateStreamingEntry(chatId, Languages.French, cancellationToken: cancellationToken);
 
         // assert
         await AssertMustTranslate(frenchEntry.ChatEntrySlim, true);
@@ -181,12 +183,31 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // act
         await TranslationUI.SetIsOn(chatId, true, cancellationToken);
-        var streamingEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.French, cancellationToken: cancellationToken);
+        var streamingEntry = await AliceTester
+            .CreateStreamingEntry(chatId, Languages.French, cancellationToken: cancellationToken);
         streamingEntry = await AliceTester.FinalizeStreamingEntry(streamingEntry, "Bonjour!", cancellationToken);
 
         // assert
         await AssertMustTranslate(streamingEntry.ChatEntrySlim, true);
         await AssertTranslation(streamingEntry.ChatEntrySlim, "Hello!");
+    }
+
+    [Fact]
+    public async Task ShouldTranslateVoiceEntryWithNoSavedLanguages()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
+        await TranslationUI.SetIsOn(chatId, true, cancellationToken);
+
+        // act
+        var entry = await CreateVoiceEntryWithNoLanguages(chatId, "¡Hola! ¿Cómo estás?", cancellationToken);
+
+        // assert
+        await AssertMustTranslate(entry, true);
+        await AssertTranslation(entry, "Hello! How are you?");
     }
 
     [Fact(Skip = "Flaky")] // TODO: fix
@@ -258,7 +279,8 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var streamingState = await AssertIsStreaming(entry, true).Require();
 
         // act
-        var rpcStream = await LiveAudioStreams.GetTranscriptStream(Hub.Session, streamingState.StreamId.Value, cancellationToken);
+        var rpcStream = await LiveAudioStreams
+            .GetTranscriptStream(Hub.Session, streamingState.StreamId.Value, cancellationToken);
         var diffs = rpcStream is null
             ? new List<TranscriptDiff>()
             : await ((IAsyncEnumerable<TranscriptDiff>)rpcStream).ToListAsync(cancellationToken);
@@ -280,7 +302,8 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var cancellationToken = cts.Token;
         var chatId = await CreateChat(cancellationToken);
         await TranslationUI.SetTargetLanguage(chatId, Languages.German, cancellationToken);
-        var entries = await CreateEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ConcurrencyLevel + 10).Select(i => $"Hello {i}"));
+        var entries = await CreateEntries(chatId,
+            Enumerable.Range(0, ThrottledTranslations.ConcurrencyLevel + 10).Select(i => $"Hello {i}"));
 
         // act
         var translations = await GetTranslations(entries, cancellationToken);
@@ -326,7 +349,8 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var cancellationToken = cts.Token;
         var chatId = await CreateChat(cancellationToken);
         await TranslationUI.SetTargetLanguage(chatId, Languages.German, cancellationToken);
-        var entries = await CreateVisibleEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ConcurrencyLevel + 10).Select(i => $"Hello {i}"));
+        var entries = await CreateVisibleEntries(chatId,
+            Enumerable.Range(0, ThrottledTranslations.ConcurrencyLevel + 10).Select(i => $"Hello {i}"));
 
         // act
         var translations = await GetTranslations(entries, cancellationToken);
@@ -365,6 +389,23 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         return entries;
     }
 
+    private async Task<ChatEntry> CreateVoiceEntryWithNoLanguages(
+        ChatId chatId, string text, CancellationToken cancellationToken)
+    {
+        var now = AliceTester.AppServices.Clocks().SystemClock.Now;
+        var author = await AliceTester.GetOwnAuthor(chatId, cancellationToken).Require();
+        var command = new ChatsBackend_ChangeEntry(ChatEntryId.New(chatId, 0),
+            null,
+            Change.Create(new ChatEntryDiff {
+                AuthorId = author.Id,
+                Content = text,
+                Audio = new ChatEntryAudio { MediaId = MediaId.Parse("fake:mediaid") },
+                BeginsAt = now,
+                EndsAt = now,
+            }));
+        return await AliceTester.Commander.Call(command, cancellationToken: cancellationToken);
+    }
+
     private async Task<List<ChatEntry>> CreateEntries(ChatId chatId, params IEnumerable<string> texts)
     {
         var entries = new List<ChatEntry>();
@@ -379,7 +420,9 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     {
         var chatId = entries.Select(x => x.ChatId).Distinct().Single();
         var lids = entries.Select(x => x.LocalId).ToHashSet();
-        ChatUI.ItemVisibility.Value = new ChatViewItemVisibility(chatId, lids.Select(lid => ChatMessageKey.New(ChatMessageKind.None, lid)).ToHashSet(), true);
+        ChatUI.ItemVisibility.Value = new ChatViewItemVisibility(chatId,
+            lids.Select(lid => ChatMessageKey.New(ChatMessageKind.None, lid)).ToHashSet(),
+            true);
     }
 
     private void ClearVisibleItems(ChatId chatId)
@@ -416,7 +459,8 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
             return translation;
         }, TimeSpan.FromSeconds(10).Debuggable());
 
-    private async Task<List<Translation?>> GetTranslations(IEnumerable<ChatEntry> entries, CancellationToken cancellationToken)
+    private async Task<List<Translation?>> GetTranslations(
+        IEnumerable<ChatEntry> entries, CancellationToken cancellationToken)
     {
         var translations = new List<Translation?>();
         foreach (var entry in entries) {
