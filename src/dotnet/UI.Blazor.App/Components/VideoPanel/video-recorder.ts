@@ -63,6 +63,7 @@ import {
     buildLadder,
     type LayerConfig,
 } from './layer-ladder';
+import { computeTargetFps } from './fps-policy';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 import {
     type PreviewFramePresentation,
@@ -82,6 +83,12 @@ import { pickRenderBackendKind } from './render-backend-selection';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 const RECORDER_HEALTH_INTERVAL_MS = 1000;
+// Hold full fps this long after voice activity stops, so the thumbnail shed
+// doesn't flap the encoder rate through the natural gaps between words.
+const VAD_FPS_HOLD_MS = 2000;
+// The thumbnail shed arms only after the server aggregate holds this long
+// (focus flips shouldn't flap the rate); any large viewer disarms instantly.
+const THUMBNAIL_SHED_DELAY_MS = 4000;
 // Keep encoding a tier this long after its last viewer demand disappears.
 // Additions are immediate (a starving viewer must not wait); drops are lazy so
 // group-chat joins and focus flips don't churn the encoder set — every reshape
@@ -171,6 +178,8 @@ export interface OwnStreamDiagnostics {
     lastMaxLayerId: number;
     targetFps: number;
     isSpeaking: boolean;
+    thumbnailOnly: boolean;
+    fpsShedActive: boolean;
     // Cumulative bytes encoded.
     bytesEncoded: number;
     // Per-tick instantaneous rates, computed at the recorder-health-monitor
@@ -445,8 +454,15 @@ export class VideoRecorder {
     private demandExpiryTimer: ReturnType<typeof setTimeout> | null = null;
     // Highest aggregate requested layer — drives the tier set, never fps.
     private lastMaxLayerId = -1;
-    // Local VAD edge (diagnostics / future shed guard).
+    // Local VAD edge — exits the thumbnail fps shed instantly.
     private isSpeaking = false;
+    private speakingHoldTimer: ReturnType<typeof setTimeout> | null = null;
+    // Server aggregate ("every active viewer sees a thumbnail") + armed state.
+    private thumbnailOnly = false;
+    private thumbnailShedActive = false;
+    private thumbnailShedTimer: ReturnType<typeof setTimeout> | null = null;
+    // Remote streams displayed locally; 0 ⇒ own preview is the large tile.
+    private remoteStreamCount = 0;
     // Last fps target pushed to the worker (-1 = none pushed yet / no pacing).
     private lastTargetFps = -1;
     // Thermal fps ceiling from C# QC (0 = no ceiling).
@@ -692,22 +708,29 @@ export class VideoRecorder {
             clearTimeout(this.demandExpiryTimer);
             this.demandExpiryTimer = null;
         }
+        this.thumbnailOnly = false;
+        this.thumbnailShedActive = false;
+        if (this.thumbnailShedTimer !== null) {
+            clearTimeout(this.thumbnailShedTimer);
+            this.thumbnailShedTimer = null;
+        }
+        if (this.speakingHoldTimer !== null) {
+            clearTimeout(this.speakingHoldTimer);
+            this.speakingHoldTimer = null;
+        }
     }
 
     private static ladderKey(ladder: LayerConfig[] | null): string {
         return ladder?.map((l, i) => `${l.layerId ?? i}:${l.width}x${l.height}`).join('|') ?? '';
     }
 
-    /**
-     * VAD-driven simulcast top-extra drop is out of scope for the new
-     * pipeline. Kept as a no-op so the C# caller doesn't have to gate
-     * the call site.
-     *
-     * TODO(phase 7+): plumb VAD state into the recorder once adaptive
-     * framerate / VAD-driven layer drop returns.
-     */
-    public setRemoteStreamCount(_count: number): void {
-        // no-op — see TODO above.
+    // 0 remote streams ⇒ the own preview is the large focused tile, which
+    // blocks the thumbnail fps shed (the preview taps after temporalPace).
+    public setRemoteStreamCount(count: number): void {
+        if (this.remoteStreamCount === count)
+            return;
+        this.remoteStreamCount = count;
+        this.applyTargetFps();
     }
 
     /**
@@ -1480,29 +1503,73 @@ export class VideoRecorder {
         this.scheduleDemandExpiry();
     }
 
-    // Local voice-activity edge from the audio recorder's VAD. Kept for
-    // diagnostics and as the guard input for any future fps shedding — the
-    // speaker's video must never be paced down.
+    // Local voice-activity edge from the audio recorder's VAD. Speaking exits
+    // the thumbnail shed instantly; on silence we hold full rate briefly
+    // through natural pauses before letting the shed resume.
     public setSpeaking(isSpeaking: boolean): void {
-        this.isSpeaking = isSpeaking;
+        if (isSpeaking) {
+            if (this.speakingHoldTimer !== null) {
+                clearTimeout(this.speakingHoldTimer);
+                this.speakingHoldTimer = null;
+            }
+            const changed = !this.isSpeaking;
+            this.isSpeaking = true;
+            if (changed)
+                this.applyTargetFps();
+        }
+        else if (this.isSpeaking && this.speakingHoldTimer === null) {
+            this.speakingHoldTimer = setTimeout(() => {
+                this.speakingHoldTimer = null;
+                this.isSpeaking = false;
+                this.applyTargetFps();
+            }, VAD_FPS_HOLD_MS);
+        }
     }
 
-    // Encoder fps = min(camera, requested, thermal ceiling). Frame-rate
-    // shedding is thermal-only by policy: viewer layer demand is a RESOLUTION
-    // signal (small screens and receiver-side bandwidth/thermal clamps also
-    // lower it), not "displayed as a thumbnail" — keying fps on it paced
-    // large views and the self-preview down. Demand still drives which tiers
-    // get encoded (applyEffectiveLayers), never the frame rate.
+    // Server aggregate: every active viewer displays this stream as a
+    // thumbnail. Arms the shed after a delay; disarms instantly.
+    public setThumbnailOnly(thumbnailOnly: boolean): void {
+        if (this.thumbnailOnly === thumbnailOnly)
+            return;
+        this.thumbnailOnly = thumbnailOnly;
+        infoLog?.log(`setThumbnailOnly: ${thumbnailOnly}`);
+        if (thumbnailOnly) {
+            this.thumbnailShedTimer ??= setTimeout(() => {
+                this.thumbnailShedTimer = null;
+                this.thumbnailShedActive = true;
+                this.applyTargetFps();
+            }, THUMBNAIL_SHED_DELAY_MS);
+        }
+        else {
+            if (this.thumbnailShedTimer !== null) {
+                clearTimeout(this.thumbnailShedTimer);
+                this.thumbnailShedTimer = null;
+            }
+            this.thumbnailShedActive = false;
+            this.applyTargetFps();
+        }
+    }
+
+    // Frame-rate shedding needs an explicit display-role or thermal signal —
+    // viewer layer demand is a RESOLUTION signal (small screens and receiver
+    // clamps also lower it) and must never drive fps; it only picks the tier
+    // set (applyEffectiveLayers). The policy itself lives in fps-policy.ts.
     private applyTargetFps(): void {
         if (this._recordingState !== 'recording')
             return;
-        let captureFps = Math.min(
+        const captureFps = Math.min(
             this.currentFramerate ?? VIDEO.frameRate,
             this.requestedFramerate ?? VIDEO.frameRate);
-        if (this.fpsCeiling > 0)
-            captureFps = Math.min(captureFps, this.fpsCeiling);
-        this.lastTargetFps = captureFps;
-        void this.worker?.setTargetFps(captureFps);
+        const fps = computeTargetFps({
+            captureFps,
+            fpsCeiling: this.fpsCeiling,
+            thumbnailShedActive: this.thumbnailShedActive,
+            isSpeaking: this.isSpeaking,
+            remoteStreamCount: this.remoteStreamCount,
+            isScreencast: this.currentMode === 'screen',
+        });
+        this.lastTargetFps = fps;
+        void this.worker?.setTargetFps(fps);
     }
 
     public setFpsCeiling(maxFps: number): void {
@@ -1639,6 +1706,8 @@ export class VideoRecorder {
             lastMaxLayerId: this.lastMaxLayerId,
             targetFps: this.lastTargetFps,
             isSpeaking: this.isSpeaking,
+            thumbnailOnly: this.thumbnailOnly,
+            fpsShedActive: this.thumbnailShedActive,
             bytesEncoded: liveStats?.bytesEncoded ?? 0,
             bundlesPerSec: this.bundlesPerSec,
             bytesPerSec: this.bytesPerSec,
@@ -1675,6 +1744,7 @@ export class VideoRecorder {
         // grows churn pressure.
         this._connectivityHandler = null;
 
+        this.resetDemandState();
         this.isSpeaking = false;
         this.lastMaxLayerId = -1;
         this.isRecording = false;
@@ -1974,6 +2044,11 @@ export class VideoRecorder {
             this.scheduleRecovery(`worker.start rejected: ${message}`);
         });
         this.startRecorderHealthMonitor();
+        // PaceState is recreated per worker run, so a mid-recording restart
+        // (codec switch, recovery) would silently lose the active fps target
+        // until the next demand/VAD/thermal edge — re-push it now.
+        if (this._recordingState === 'recording')
+            this.applyTargetFps();
     }
 
     private async repickCodecAndRestart(reason: string): Promise<void> {

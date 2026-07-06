@@ -33,6 +33,11 @@ public interface ILiveVideoStreams : IComputeService
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<int> RequestedLayersMask(Session session, StreamId streamId, CancellationToken cancellationToken);
 
+    // True iff at least one active (non-paused) viewer exists and every one
+    // reports ReceiveQuality.IsThumbnail — the sender may shed fps. Zero viewers → false.
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<bool> ThumbnailViewersOnly(Session session, StreamId streamId, CancellationToken cancellationToken);
+
     Task RegisterMember(
         Session session, ChatId chatId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken);
     Task UnregisterMember(
