@@ -10,11 +10,13 @@
     @apply overflow-hidden;
 }
 .location-message .c-live-caption {
-    @apply absolute bottom-2 left-2 right-2;
+    @apply absolute bottom-0 left-0 right-0;
     @apply flex-y gap-0.5;
+    @apply px-3 pt-8 pb-2;
+    @apply rounded-b-xl;
     @apply pointer-events-none;
     @apply text-white;
-    text-shadow: 0 1px 2px var(--black-50);
+    background: linear-gradient(to top, var(--black-70), transparent);
 }
 .location-message .c-live-caption .c-title {
     @apply flex-x items-center gap-1.5;
