@@ -89,6 +89,10 @@ const VAD_FPS_HOLD_MS = 2000;
 // The thumbnail shed arms only after the server aggregate holds this long
 // (focus flips shouldn't flap the rate); any large viewer disarms instantly.
 const THUMBNAIL_SHED_DELAY_MS = 4000;
+// No viewer wants any tier (all subscribers gone or paused) this long → collapse
+// the encoder to the bottom tier only. Held to ride out momentary demand gaps;
+// any demand restores instantly. fps is left alone so the self-preview stays smooth.
+const IDLE_COLLAPSE_DELAY_MS = 4000;
 // Keep encoding a tier this long after its last viewer demand disappears.
 // Additions are immediate (a starving viewer must not wait); drops are lazy so
 // group-chat joins and focus flips don't churn the encoder set — every reshape
@@ -180,6 +184,7 @@ export interface OwnStreamDiagnostics {
     isSpeaking: boolean;
     thumbnailOnly: boolean;
     fpsShedActive: boolean;
+    idleCollapseActive: boolean;
     // Cumulative bytes encoded.
     bytesEncoded: number;
     // Per-tick instantaneous rates, computed at the recorder-health-monitor
@@ -448,10 +453,15 @@ export class VideoRecorder {
     private healthLayerCap = Number.MAX_SAFE_INTEGER;
     private receiverLayerCap = Number.MAX_SAFE_INTEGER;
     // Viewer demand bitmask over canonical ladder indices (bit i = tier i wanted);
-    // 0 = no report yet / nobody subscribed → keep the legacy prefix ladder.
+    // 0 = no report yet / nobody subscribed. A brief 0 keeps the current ladder;
+    // a sustained 0 collapses to the bottom tier only (idleCollapse).
     private demandedLayersMask = 0;
     private demandedAtByLayer = new Map<number, number>();
     private demandExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+    // Sustained zero-demand: encoder collapsed to the bottom tier to stop burning
+    // power on tiers nobody consumes, while keeping L0 warm for instant resume.
+    private idleCollapseActive = false;
+    private idleCollapseTimer: ReturnType<typeof setTimeout> | null = null;
     // Highest aggregate requested layer — drives the tier set, never fps.
     private lastMaxLayerId = -1;
     // Local VAD edge — exits the thumbnail fps shed instantly.
@@ -708,6 +718,7 @@ export class VideoRecorder {
             clearTimeout(this.demandExpiryTimer);
             this.demandExpiryTimer = null;
         }
+        this.disarmIdleCollapse();
         this.thumbnailOnly = false;
         this.thumbnailShedActive = false;
         if (this.thumbnailShedTimer !== null) {
@@ -1478,16 +1489,19 @@ export class VideoRecorder {
      *
      * `mask` is the aggregate of `ReceiveQuality.LayerId` bits across all
      * subscribers, as reported by `LiveVideoStreams.RequestedLayersMask`.
-     * 0 == nobody is currently subscribed (or every viewer is paused) — we
-     * leave the ladder alone in that case so the next joiner doesn't pay a
-     * restart cost.
+     * 0 == nobody is currently subscribed (or every viewer is paused). A brief 0
+     * keeps the current ladder (the next joiner pays no restart cost); a sustained
+     * 0 collapses to the bottom tier only — see armIdleCollapse.
      */
     public setDemandedLayers(mask: number): void {
         mask |= 0;
         this.lastMaxLayerId = mask === 0 ? -1 : 31 - Math.clz32(mask);
 
-        if (mask === 0)
+        if (mask === 0) {
+            this.armIdleCollapse();
             return;
+        }
+        this.disarmIdleCollapse();
         this.demandedLayersMask = mask;
         const now = Date.now();
         for (let i = 0; i < 31; i++) {
@@ -1501,6 +1515,33 @@ export class VideoRecorder {
         this.receiverLayerCap = this.lastMaxLayerId + 1;
         this.applyEffectiveLayers();
         this.scheduleDemandExpiry();
+    }
+
+    // Sustained zero-demand: after IDLE_COLLAPSE_DELAY_MS with no viewer wanting
+    // any tier, cap the ladder to the bottom tier only. The expensive upper tiers
+    // stop encoding (the dominant power cost); L0 keeps flowing so a joiner resumes
+    // instantly and the wire stays alive. fps is untouched — the local self-preview
+    // (which taps after temporalPace) must stay smooth.
+    private armIdleCollapse(): void {
+        if (this.idleCollapseActive || this.idleCollapseTimer !== null)
+            return;
+        this.idleCollapseTimer = setTimeout(() => {
+            this.idleCollapseTimer = null;
+            this.idleCollapseActive = true;
+            this.demandedLayersMask = 0;
+            this.demandedAtByLayer.clear();
+            this.receiverLayerCap = 1;
+            this.applyEffectiveLayers();
+            infoLog?.log('idleCollapse: no viewer demand — collapsed to bottom tier');
+        }, IDLE_COLLAPSE_DELAY_MS);
+    }
+
+    private disarmIdleCollapse(): void {
+        if (this.idleCollapseTimer !== null) {
+            clearTimeout(this.idleCollapseTimer);
+            this.idleCollapseTimer = null;
+        }
+        this.idleCollapseActive = false;
     }
 
     // Local voice-activity edge from the audio recorder's VAD. Speaking exits
@@ -1708,6 +1749,7 @@ export class VideoRecorder {
             isSpeaking: this.isSpeaking,
             thumbnailOnly: this.thumbnailOnly,
             fpsShedActive: this.thumbnailShedActive,
+            idleCollapseActive: this.idleCollapseActive,
             bytesEncoded: liveStats?.bytesEncoded ?? 0,
             bundlesPerSec: this.bundlesPerSec,
             bytesPerSec: this.bytesPerSec,
@@ -1994,8 +2036,9 @@ export class VideoRecorder {
             downscalerMode: getDownscalerMode(),
             // Frame-counted 3s GOP: thermal fps pacing stretches it in wall
             // time (keyframe load relaxes with it); PLI covers joins/upgrades.
+            // The 5s wall cap bounds a lost-PLI join/decoder-reset to <=5s black.
             keyframeIntervalFrames: framerate * 3,
-            maxKeyFrameIntervalMs: 10_000,
+            maxKeyFrameIntervalMs: 5_000,
             keepAlivePeriodMs: this.currentMode === 'screen' ? VIDEO.screenCastKeepAlivePeriodMs : 0,
             hardwareAcceleration: this.currentHardwareAcceleration,
             initialGateOpen,

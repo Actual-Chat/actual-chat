@@ -478,9 +478,27 @@ public class LiveVideoStreams : ILiveVideoStreams
     private static int MaxLayerIdFromMask(int mask)
         => mask == 0 ? -1 : System.Numerics.BitOperations.Log2((uint)mask);
 
+    // Single pass over every session's quality for this stream — the mask and
+    // the thumbnail-only aggregate share one scan (called twice per affected
+    // stream per playback-quality heartbeat, so the extra scan is not free).
     private (int Mask, bool ThumbnailOnly) SnapshotDemand(string streamIdValue)
-        => (ComputeLayersMask(streamIdValue),
-            ComputeThumbnailViewersOnly(GetStreamQualities(streamIdValue)));
+    {
+        var mask = 0;
+        var anyActive = false;
+        var allThumbnail = true;
+        foreach (var (_, state) in _qualityBySession) {
+            if (!state.QualityByStream.TryGetValue(streamIdValue, out var q))
+                continue;
+            if (q.LayerId is >= 0 and < 31)
+                mask |= 1 << q.LayerId;
+            if (q.IsPaused)
+                continue;
+            anyActive = true;
+            if (!q.IsThumbnail)
+                allThumbnail = false;
+        }
+        return (mask, anyActive && allThumbnail);
+    }
 
     private void InvalidateLayerDemand(string streamIdValue, (int Mask, bool ThumbnailOnly) prev)
     {

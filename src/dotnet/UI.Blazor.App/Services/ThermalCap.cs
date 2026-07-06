@@ -23,7 +23,8 @@ public sealed class ThermalCap
     private readonly int _deviceCameraCap;
     private readonly int _deviceScreencastCap;
     private readonly ThermalCapConfig _config;
-    private ThermalLevel _effectiveLevel;
+    private readonly object _lock = new();
+    private volatile ThermalLevel _effectiveLevel;
     private ThermalLevel _pendingLevel;
     private Moment? _pendingSince;
 
@@ -63,23 +64,28 @@ public sealed class ThermalCap
 
     public bool Tick(Moment now, ThermalLevel level)
     {
-        if (level >= _effectiveLevel) {
-            var changed = level != _effectiveLevel;
+        // Called from three independent async chains (WatchThermal, the outbound
+        // QC tick, playback recompute); serialize the compound read-modify-write
+        // so a cooldown reset and an escalation can't interleave and drop/flap.
+        lock (_lock) {
+            if (level >= _effectiveLevel) {
+                var changed = level != _effectiveLevel;
+                _effectiveLevel = level;
+                _pendingSince = null;
+                return changed;
+            }
+
+            if (_pendingLevel != level || _pendingSince is null) {
+                _pendingLevel = level;
+                _pendingSince = now;
+                return false;
+            }
+            if ((now - _pendingSince.Value).TotalSeconds < _config.RecoveryDelaySeconds)
+                return false;
+
             _effectiveLevel = level;
             _pendingSince = null;
-            return changed;
+            return true;
         }
-
-        if (_pendingLevel != level || _pendingSince is null) {
-            _pendingLevel = level;
-            _pendingSince = now;
-            return false;
-        }
-        if ((now - _pendingSince.Value).TotalSeconds < _config.RecoveryDelaySeconds)
-            return false;
-
-        _effectiveLevel = level;
-        _pendingSince = null;
-        return true;
     }
 }

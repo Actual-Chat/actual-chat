@@ -324,30 +324,46 @@ public sealed class VideoRecorder : IAsyncDisposable
             }
 
             Log.LogInformation("SubscribeToLayerDemand: found own stream #{StreamId}, subscribing", ownStreamId);
-            try {
-                var cState = await Computed.Capture(
-                    () => LiveVideoStreams.RequestedLayersMask(Session, ownStreamId, cancellationToken),
-                    cancellationToken).ConfigureAwait(false);
-                var lastMask = int.MinValue;
-                await foreach (var (mask, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                    if (mask == lastMask)
-                        continue;
+            var lastMask = int.MinValue;
+            var primaryFailures = 0;
+            var primaryEverWorked = false;
+            while (true) {
+                try {
+                    var cState = await Computed.Capture(
+                        () => LiveVideoStreams.RequestedLayersMask(Session, ownStreamId, cancellationToken),
+                        cancellationToken).ConfigureAwait(false);
+                    await foreach (var (mask, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+                        primaryEverWorked = true;
+                        primaryFailures = 0;
+                        if (mask == lastMask)
+                            continue;
 
-                    lastMask = mask;
-                    Log.LogInformation(
-                        "RequestedLayersMask: stream {StreamId} → {Mask:b}", ownStreamId, mask);
-                    await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
+                        lastMask = mask;
+                        Log.LogInformation(
+                            "RequestedLayersMask: stream {StreamId} → {Mask:b}", ownStreamId, mask);
+                        await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
+                    }
+                    return;
                 }
-                return;
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                throw;
-            }
-            catch (Exception e) {
-                // Old servers don't expose RequestedLayersMask — fall back to the
-                // max aggregate and synthesize a contiguous prefix mask.
-                Log.LogWarning(e,
-                    "SubscribeToLayerDemand: RequestedLayersMask unavailable, falling back to MaxRequestedLayerId");
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                    throw;
+                }
+                catch (Exception e) {
+                    // Only a server that never once answered is treated as "old" and
+                    // downgraded to the legacy aggregate; a fault after the method has
+                    // worked is transient — retry, don't lose demand-set for the session.
+                    primaryFailures++;
+                    if (!primaryEverWorked && primaryFailures >= 3) {
+                        Log.LogWarning(e,
+                            "SubscribeToLayerDemand: RequestedLayersMask unavailable, "
+                            + "falling back to MaxRequestedLayerId");
+                        break;
+                    }
+                    Log.LogWarning(e,
+                        "SubscribeToLayerDemand: RequestedLayersMask faulted (attempt {Attempt}), retrying",
+                        primaryFailures);
+                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+                }
             }
             var cMax = await Computed.Capture(
                 () => LiveVideoStreams.MaxRequestedLayerId(Session, ownStreamId, cancellationToken),
@@ -396,29 +412,46 @@ public sealed class VideoRecorder : IAsyncDisposable
                 return;
             }
 
-            try {
-                var cState = await Computed.Capture(
-                    () => LiveVideoStreams.ThumbnailViewersOnly(Session, ownStreamId, cancellationToken),
-                    cancellationToken).ConfigureAwait(false);
-                bool? lastValue = null;
-                await foreach (var (thumbnailOnly, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                    if (thumbnailOnly == lastValue)
-                        continue;
+            bool? lastValue = null;
+            var failures = 0;
+            var everWorked = false;
+            while (true) {
+                try {
+                    var cState = await Computed.Capture(
+                        () => LiveVideoStreams.ThumbnailViewersOnly(Session, ownStreamId, cancellationToken),
+                        cancellationToken).ConfigureAwait(false);
+                    var changes = cState.Changes(cancellationToken);
+                    await foreach (var (thumbnailOnly, _) in changes.ConfigureAwait(false)) {
+                        everWorked = true;
+                        failures = 0;
+                        if (thumbnailOnly == lastValue)
+                            continue;
 
-                    lastValue = thumbnailOnly;
-                    Log.LogInformation(
-                        "ThumbnailViewersOnly: stream {StreamId} → {Value}", ownStreamId, thumbnailOnly);
-                    await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, thumbnailOnly)
-                        .ConfigureAwait(false);
+                        lastValue = thumbnailOnly;
+                        Log.LogInformation(
+                            "ThumbnailViewersOnly: stream {StreamId} → {Value}", ownStreamId, thumbnailOnly);
+                        await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, thumbnailOnly)
+                            .ConfigureAwait(false);
+                    }
+                    return;
                 }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                throw;
-            }
-            catch (Exception e) {
-                // Old servers don't expose ThumbnailViewersOnly — no shed then.
-                Log.LogWarning(e, "SubscribeToThumbnailOnly: unavailable, fps shed disabled");
-                await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, false).ConfigureAwait(false);
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                    throw;
+                }
+                catch (Exception e) {
+                    // Retry transient faults; only a never-answered server disables the
+                    // shed (old server → no ThumbnailViewersOnly).
+                    failures++;
+                    if (!everWorked && failures >= 3) {
+                        Log.LogWarning(e, "SubscribeToThumbnailOnly: unavailable, fps shed disabled");
+                        await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, false)
+                            .ConfigureAwait(false);
+                        return;
+                    }
+                    Log.LogWarning(e,
+                        "SubscribeToThumbnailOnly: faulted (attempt {Attempt}), retrying", failures);
+                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+                }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }

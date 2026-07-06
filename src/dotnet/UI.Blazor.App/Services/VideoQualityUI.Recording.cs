@@ -40,6 +40,7 @@ public sealed partial class VideoQualityUI
     private UplinkHealth _lastUplinkHealth = UplinkHealth.Empty;
     private CpuTimestamp _outboundStartedAt;
     private CpuTimestamp _outboundLastEvalAt;
+    private volatile bool _forceOutboundEval;
 
     public EncoderHealth OutboundEncoderHealth => _lastEncoderHealth;
     public UplinkHealth OutboundUplinkHealth => _lastUplinkHealth;
@@ -118,10 +119,14 @@ public sealed partial class VideoQualityUI
 
         if (_outboundStartedAt == default)
             _outboundStartedAt = CpuTimestamp.Now;
-        if (!IsEvaluationDue(_outboundStartedAt, _outboundLastEvalAt)) {
+        // A thermal transition forces the next tick to evaluate immediately —
+        // escalation must clamp the encoder now, not after the 5 s QC interval.
+        var forced = _forceOutboundEval;
+        if (!forced && !IsEvaluationDue(_outboundStartedAt, _outboundLastEvalAt)) {
             _lastRecordingReasonByKind[kind] = RecordingQualityReason.Stable;
             return;
         }
+        _forceOutboundEval = false;
         _outboundLastEvalAt = CpuTimestamp.Now;
 
         await RunOutboundTick(cancellationToken).ConfigureAwait(false);

@@ -162,6 +162,7 @@
                                         var dActive = (int)GetNum(stream, "activeLayerCount");
                                         var dFps = (int)GetNum(stream, "targetFps");
                                         var dSpeaking = GetBool(stream, "isSpeaking");
+                                        var dIdleCollapse = GetBool(stream, "idleCollapseActive");
                                     }
                                     <div class="diag-group-header">Demand</div>
                                     <div class="diag-row">
@@ -172,6 +173,12 @@
                                         <span class="diag-label">Active layers</span>
                                         <span class="diag-value">@dActive (recvCap @(dRecvCap < 0 ? "—" : dRecvCap.ToString()), healthCap @(dHealthCap < 0 ? "—" : dHealthCap.ToString()))</span>
                                     </div>
+                                    @if (dIdleCollapse) {
+                                        <div class="diag-row">
+                                            <span class="diag-label">Idle</span>
+                                            <span class="diag-value">collapsed to L0 (no viewer demand)</span>
+                                        </div>
+                                    }
                                     <div class="diag-row">
                                         <span class="diag-label">Target fps</span>
                                         <span class="diag-value">@(dFps < 0 ? "full (unpaced)" : dFps.ToString())@(dSpeaking ? " · speaking (VAD full)" : "")</span>
