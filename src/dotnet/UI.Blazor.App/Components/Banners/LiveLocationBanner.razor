@@ -8,7 +8,7 @@
     IsVisible="@(m.Count > 0)"
     Class="live-location-banner">
     <Icon>
-        <i class="icon-map-point text-2xl"></i>
+        <i class="@(m.IsTrackingBroken ? "icon-alert-triangle text-warning" : "icon-map-point") text-2xl"></i>
     </Icon>
     <Body>
         <div class="c-body" @onclick="@OnOpenMap">
@@ -61,8 +61,9 @@
         var remaining = ownLocation != null
             ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
             : "";
+        var trackingError = await Hub.LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
 
-        return new Model(avatars, locations.Count, ownLocation != null, remaining);
+        return new Model(avatars, locations.Count, ownLocation != null, remaining, ownLocation != null && trackingError != null);
     }
 
     private Task OnOpenMap()
@@ -73,10 +74,17 @@
 
     // Nested types
 
-    public sealed record Model(IReadOnlyList<Avatar> Avatars, int Count, bool IsOwnSharing, string RemainingText = "") {
+    public sealed record Model(
+        IReadOnlyList<Avatar> Avatars,
+        int Count,
+        bool IsOwnSharing,
+        string RemainingText = "",
+        bool IsTrackingBroken = false) {
         public static readonly Model None = new([], 0, false);
 
         public string GetDescription() {
+            if (IsTrackingBroken)
+                return "Location tracking is off";
             if (IsOwnSharing) {
                 var others = Count - 1;
                 return others switch {

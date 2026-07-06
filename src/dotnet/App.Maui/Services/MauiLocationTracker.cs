@@ -17,7 +17,9 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
             return;
 
         IsTracking = true;
+        SetError(null);
         _geolocation.LocationChanged += OnLocationChanged;
+        _geolocation.ListeningFailed += OnListeningFailed;
         var accuracy = await GetGeolocationAccuracy(cancellationToken).ConfigureAwait(false);
         var request = new GeolocationListeningRequest(accuracy, Constants.Location.UpdatePeriod);
         try {
@@ -28,7 +30,9 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
             Log.LogError(e, "Start: failed to start geolocation listening");
             // Roll back so a later Start can retry from a clean state.
             IsTracking = false;
+            SetError(ToTrackingError(e));
             _geolocation.LocationChanged -= OnLocationChanged;
+            _geolocation.ListeningFailed -= OnListeningFailed;
             throw;
         }
     }
@@ -41,10 +45,23 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
         IsTracking = false;
         SetLocation(null);
         _geolocation.LocationChanged -= OnLocationChanged;
+        _geolocation.ListeningFailed -= OnListeningFailed;
         _geolocation.StopListeningForeground();
         return Task.CompletedTask;
     }
 
     private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
         => SetLocation(e.Location.ToGeoPoint());
+
+    private void OnListeningFailed(object? sender, GeolocationListeningFailedEventArgs e)
+    {
+        IsTracking = false;
+        _geolocation.LocationChanged -= OnLocationChanged;
+        _geolocation.ListeningFailed -= OnListeningFailed;
+        SetError(e.Error switch {
+            GeolocationError.Unauthorized => GeoTrackingError.PermissionDenied,
+            GeolocationError.PositionUnavailable => GeoTrackingError.PositionUnavailable,
+            _ => throw new ArgumentOutOfRangeException(nameof(e.Error), e.Error, null),
+        });
+    }
 }

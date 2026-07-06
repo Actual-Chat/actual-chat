@@ -105,6 +105,11 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             if (share.ExpiresAt <= ServerNow)
                 return;
 
+            // While tracking is broken, stop re-posting the last known point so recipients'
+            // "Updated ..." stops advancing instead of showing a stale fix as fresh.
+            if (Tracker.Error.Value is not null)
+                return;
+
             var point = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
             if (point is null)
                 return;

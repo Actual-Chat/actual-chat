@@ -19,6 +19,7 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
             return;
 
         IsTracking = true;
+        SetError(null);
         try {
             var accuracy = await GetAccuracy(cancellationToken).ConfigureAwait(false);
             var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
@@ -29,6 +30,7 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogError(e, "Failed to start Android location foreground service");
             IsTracking = false;
+            SetError(ToTrackingError(e));
             throw;
         }
     }
@@ -60,4 +62,7 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
 
     internal static void ReportLocation(GeoPoint point)
         => _instance?.SetLocation(point);
+
+    internal static void ReportError(GeoTrackingError error)
+        => _instance?.SetError(error);
 }

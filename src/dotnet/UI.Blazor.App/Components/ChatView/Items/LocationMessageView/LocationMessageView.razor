@@ -17,12 +17,19 @@
         @if (m.IsLive) {
             <div class="c-live-caption">
                 <div class="c-title">
-                    <span class="c-live-dot"></span>
-                    <span>Live Location</span>
+                    @if (m.IsBroken) {
+                        <i class="icon-alert-triangle c-broken-icon"></i>
+                        <span>Location tracking is off</span>
+                    } else {
+                        <span class="c-live-dot"></span>
+                        <span>Live Location</span>
+                    }
                 </div>
-                <div class="c-updated">
-                    @("Updated ")<LiveTimeDeltaText Moment="@m.ModifiedAt" NullText=""/>
-                </div>
+                @if (!m.IsBroken) {
+                    <div class="c-updated">
+                        @("Updated ")<LiveTimeDeltaText Moment="@m.ModifiedAt" NullText=""/>
+                    </div>
+                }
             </div>
         }
     }
@@ -51,7 +58,15 @@
 
         var marker = new MapMarker(location.Id.Value, location.Point.Latitude, location.Point.Longitude);
         var isLive = location.IsLive(Hub.Clocks.ServerClock.Now);
-        return new Model(location.Point.Latitude, location.Point.Longitude, [marker], isLive, location.ModifiedAt);
+        var isBroken = false;
+        if (isLive) {
+            var trackingError = await Hub.LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
+            if (trackingError != null) {
+                var ownAuthor = await Hub.AuthorUI.GetOwn(Entry.ChatId, cancellationToken).ConfigureAwait(false);
+                isBroken = location.AuthorId == ownAuthor.Id;
+            }
+        }
+        return new Model(location.Point.Latitude, location.Point.Longitude, [marker], isLive, location.ModifiedAt, isBroken);
     }
 
     private Task OnOpenMap()
@@ -64,5 +79,6 @@
         double Longitude,
         IReadOnlyList<MapMarker> Markers,
         bool IsLive,
-        Moment ModifiedAt);
+        Moment ModifiedAt,
+        bool IsBroken = false);
 }

@@ -9,6 +9,8 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
     private LiveLocationReporter Reporter => field ??= Hub.Services.GetRequiredService<LiveLocationReporter>();
 
+    public IState<GeoTrackingError?> TrackingError => Tracker.Error;
+
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<Avatar>> ListAvatars(ChatId chatId, CancellationToken cancellationToken)
     {

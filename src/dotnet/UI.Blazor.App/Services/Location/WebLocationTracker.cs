@@ -17,6 +17,7 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
             return;
 
         IsTracking = true;
+        SetError(null);
         _blazorRef = DotNetObjectReference.Create(this);
         try {
             _jsRef = await _hub.JS
@@ -39,6 +40,7 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
 
         IsTracking = false;
         SetLocation(null);
+        SetError(null);
         if (_jsRef is { } jsRef) {
             _jsRef = null;
             await jsRef.DisposeSilentlyAsync("stop").ConfigureAwait(false);
@@ -50,6 +52,10 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
     [JSInvokable]
     public void OnLocation(double latitude, double longitude, double? accuracy, double? heading)
         => SetLocation(new GeoPoint(latitude, longitude, (float?)accuracy, (float?)heading));
+
+    [JSInvokable]
+    public void OnError(int code)
+        => SetError(code is >= 1 and <= 3 ? (GeoTrackingError)code : GeoTrackingError.PositionUnavailable);
 
     public override Task<GeoPoint?> Get(CancellationToken cancellationToken)
         => _hub.JS
