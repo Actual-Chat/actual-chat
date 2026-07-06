@@ -3,7 +3,6 @@ import {
     buildLadder,
     fitWithin,
     cameraTopSize,
-    fpsForRequestedLayer,
     type LayerConfig,
 } from '../../../src/dotnet/UI.Blazor.App/Components/VideoPanel/layer-ladder';
 
@@ -210,47 +209,5 @@ describe('capture top sizing', () => {
     it('camera top uses 16:9 cover-crop target capped at 720p', () => {
         expect(cameraTopSize(1600, 1200)).toEqual({ width: 1280, height: 720 });
         expect(cameraTopSize(960, 720)).toEqual({ width: 960, height: 540 });
-    });
-});
-
-describe('fpsForRequestedLayer', () => {
-    const ladder3: LayerConfig[] = [
-        { width: 320, height: 180, bitrateKbps: 312 },
-        { width: 640, height: 360, bitrateKbps: 1250 },
-        { width: 1280, height: 720, bitrateKbps: 4000 },
-    ];
-
-    it('only the bottom tier (L0 thumbnail) is paced down; L1+ stay full', () => {
-        expect(fpsForRequestedLayer(ladder3, 0, 30)).toBe(10); // L0 thumbnail
-        expect(fpsForRequestedLayer(ladder3, 1, 30)).toBe(30); // focused/real view
-        expect(fpsForRequestedLayer(ladder3, 2, 30)).toBe(30); // top
-    });
-
-    it('returns 0 (idle) when nobody is subscribed', () => {
-        expect(fpsForRequestedLayer(ladder3, -1, 30)).toBe(0);
-    });
-
-    it('a focused L1 view on a 2-tier mobile ladder stays full rate', () => {
-        const ladder2: LayerConfig[] = [
-            { width: 320, height: 180, bitrateKbps: 312 },
-            { width: 640, height: 360, bitrateKbps: 1250 },
-        ];
-        expect(fpsForRequestedLayer(ladder2, 1, 30)).toBe(30); // top / focused
-        expect(fpsForRequestedLayer(ladder2, 0, 30)).toBe(10); // L0 thumbnail
-    });
-
-    it('single-tier ladder always earns full rate when requested', () => {
-        const ladder1: LayerConfig[] = [{ width: 1280, height: 720, bitrateKbps: 4000 }];
-        expect(fpsForRequestedLayer(ladder1, 0, 30)).toBe(30);
-    });
-
-    it('unknown / out-of-range ladder → full capture rate (no pacing)', () => {
-        expect(fpsForRequestedLayer(null, 0, 30)).toBe(30);
-        expect(fpsForRequestedLayer(ladder3, 5, 30)).toBe(30);
-    });
-
-    it('never exceeds the capture rate', () => {
-        expect(fpsForRequestedLayer(ladder3, 2, 24)).toBe(24);
-        expect(fpsForRequestedLayer(ladder3, 0, 8)).toBe(8);
     });
 });

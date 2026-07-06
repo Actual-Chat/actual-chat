@@ -61,7 +61,6 @@ import {
 } from '../../Services/Video/codec-support';
 import {
     buildLadder,
-    fpsForRequestedLayer,
     type LayerConfig,
 } from './layer-ladder';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
@@ -83,9 +82,6 @@ import { pickRenderBackendKind } from './render-backend-selection';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 const RECORDER_HEALTH_INTERVAL_MS = 1000;
-// Hold full fps this long after voice activity stops, so demand-driven pacing
-// doesn't flap the encoder rate through the natural gaps between words.
-const VAD_FPS_HOLD_MS = 2000;
 // Keep encoding a tier this long after its last viewer demand disappears.
 // Additions are immediate (a starving viewer must not wait); drops are lazy so
 // group-chat joins and focus flips don't churn the encoder set — every reshape
@@ -454,16 +450,13 @@ export class VideoRecorder {
     private demandedLayersMask = 0;
     private demandedAtByLayer = new Map<number, number>();
     private demandExpiryTimer: ReturnType<typeof setTimeout> | null = null;
-    // Demand-driven fps inputs: last aggregate requested layer, and whether the
-    // local user is speaking (VAD). Speaking forces full rate so the active
-    // speaker never goes choppy; a short hold rides through natural pauses.
+    // Highest aggregate requested layer — drives the tier set, never fps.
     private lastMaxLayerId = -1;
+    // Local VAD edge (diagnostics / future shed guard).
     private isSpeaking = false;
-    private speakingHoldTimer: ReturnType<typeof setTimeout> | null = null;
     // Last fps target pushed to the worker (-1 = none pushed yet / no pacing).
     private lastTargetFps = -1;
-    // Thermal fps ceiling from C# QC (0 = no ceiling); caps even the
-    // speaking-forced full rate.
+    // Thermal fps ceiling from C# QC (0 = no ceiling).
     private fpsCeiling = 0;
     // Codec switch fallback bookkeeping (preserved from legacy).
     private lastCodecSwitchAt = 0;
@@ -1478,7 +1471,6 @@ export class VideoRecorder {
     public setDemandedLayers(mask: number): void {
         mask |= 0;
         this.lastMaxLayerId = mask === 0 ? -1 : 31 - Math.clz32(mask);
-        this.applyTargetFps();
 
         if (mask === 0)
             return;
@@ -1497,39 +1489,19 @@ export class VideoRecorder {
         this.scheduleDemandExpiry();
     }
 
-    // Local voice-activity edge from the audio recorder's VAD. Speaking forces
-    // full fps (the active speaker must stay smooth even when unfocused); on
-    // silence we hold full rate briefly through natural pauses before letting
-    // demand-driven pacing resume.
+    // Local voice-activity edge from the audio recorder's VAD. Kept for
+    // diagnostics and as the guard input for any future fps shedding — the
+    // speaker's video must never be paced down.
     public setSpeaking(isSpeaking: boolean): void {
-        if (isSpeaking) {
-            if (this.speakingHoldTimer !== null) {
-                clearTimeout(this.speakingHoldTimer);
-                this.speakingHoldTimer = null;
-            }
-            const changed = !this.isSpeaking;
-            this.isSpeaking = true;
-            if (changed)
-                this.applyTargetFps();
-        }
-        else if (this.isSpeaking && this.speakingHoldTimer === null) {
-            this.speakingHoldTimer = setTimeout(() => {
-                this.speakingHoldTimer = null;
-                this.isSpeaking = false;
-                this.applyTargetFps();
-            }, VAD_FPS_HOLD_MS);
-        }
+        this.isSpeaking = isSpeaking;
     }
 
-    // Encoder fps = min(camera, requested, thermal ceiling). Demand-driven
-    // low-tier pacing (thumbnail-only viewers → LOW_TIER_FPS) is a load-shedding
-    // measure, not a default: steady low fps looks bad (and paces the self-
-    // preview too), so it applies only while a thermal ceiling is active
-    // (fpsCeiling > 0 ⇔ ThermalCap at Serious/Critical). Speaking overrides it —
-    // the active speaker stays smooth up to the ceiling. maxLayerId < 0 is left
-    // running, NOT idle-stopped: it's ambiguous (no subscriber vs all-paused vs
-    // a join transient vs node-local conservative) and would starve an
-    // actively-watched stream.
+    // Encoder fps = min(camera, requested, thermal ceiling). Frame-rate
+    // shedding is thermal-only by policy: viewer layer demand is a RESOLUTION
+    // signal (small screens and receiver-side bandwidth/thermal clamps also
+    // lower it), not "displayed as a thumbnail" — keying fps on it paced
+    // large views and the self-preview down. Demand still drives which tiers
+    // get encoded (applyEffectiveLayers), never the frame rate.
     private applyTargetFps(): void {
         if (this._recordingState !== 'recording')
             return;
@@ -1538,12 +1510,8 @@ export class VideoRecorder {
             this.requestedFramerate ?? VIDEO.frameRate);
         if (this.fpsCeiling > 0)
             captureFps = Math.min(captureFps, this.fpsCeiling);
-        const shedForDemand = !this.isSpeaking && this.fpsCeiling > 0 && this.lastMaxLayerId >= 0;
-        const fps = shedForDemand
-            ? fpsForRequestedLayer(this.fullLayerLadder, this.lastMaxLayerId, captureFps)
-            : captureFps;
-        this.lastTargetFps = fps;
-        void this.worker?.setTargetFps(fps);
+        this.lastTargetFps = captureFps;
+        void this.worker?.setTargetFps(captureFps);
     }
 
     public setFpsCeiling(maxFps: number): void {
@@ -1716,10 +1684,6 @@ export class VideoRecorder {
         // grows churn pressure.
         this._connectivityHandler = null;
 
-        if (this.speakingHoldTimer !== null) {
-            clearTimeout(this.speakingHoldTimer);
-            this.speakingHoldTimer = null;
-        }
         this.isSpeaking = false;
         this.lastMaxLayerId = -1;
         this.isRecording = false;
@@ -1967,9 +1931,10 @@ export class VideoRecorder {
             encoderConfigs,
             normalizeSize,
             downscalerMode: getDownscalerMode(),
-            // Both camera and screencast use a 3s keyframe cadence.
+            // Frame-counted 3s GOP: thermal fps pacing stretches it in wall
+            // time (keyframe load relaxes with it); PLI covers joins/upgrades.
             keyframeIntervalFrames: framerate * 3,
-            maxKeyFrameIntervalMs: 3000,
+            maxKeyFrameIntervalMs: 10_000,
             keepAlivePeriodMs: this.currentMode === 'screen' ? VIDEO.screenCastKeepAlivePeriodMs : 0,
             hardwareAcceleration: this.currentHardwareAcceleration,
             initialGateOpen,
