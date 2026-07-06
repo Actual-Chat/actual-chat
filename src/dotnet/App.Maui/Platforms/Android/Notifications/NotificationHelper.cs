@@ -5,6 +5,7 @@ using Android.Media;
 using AndroidX.Core.App;
 using AndroidX.Core.Graphics.Drawable;
 using Application = Android.App.Application;
+using Person = AndroidX.Core.App.Person;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using AtomicInteger = Java.Util.Concurrent.Atomic.AtomicInteger;
 

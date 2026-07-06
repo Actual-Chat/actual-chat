@@ -1,4 +1,7 @@
 using ActualChat.Hosting;
+#if IOS || MACCATALYST
+using Foundation;
+#endif
 
 namespace ActualChat.App.Maui.Services;
 
