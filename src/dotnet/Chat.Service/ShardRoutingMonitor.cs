@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 // Periodically probes every DiagnosticsBackend shard and verifies that both routing
 // and computed invalidation work: a call must execute on the host the local shard map
 // points to, and the long-lived probe computed must never get stuck on a former owner.
-public class ShardRoutingMonitor(IServiceProvider services) : WorkerBase
+public sealed class ShardRoutingMonitor(IServiceProvider services) : WorkerBase
 {
     private static readonly TimeSpan CheckPeriod = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
@@ -19,17 +19,7 @@ public class ShardRoutingMonitor(IServiceProvider services) : WorkerBase
     private IDiagnosticsBackend Backend { get; } = services.GetRequiredService<IDiagnosticsBackend>();
     private MeshWatcher MeshWatcher { get; } = services.GetRequiredService<MeshRpcPeerRefs>().MeshWatcher;
     private MomentClockSet Clocks { get; } = services.Clocks();
-    private ILogger Log { get; } = services.LogFor<ShardRoutingMonitor>();
-
-    protected override async Task OnRun(CancellationToken cancellationToken)
-    {
-        await MeshWatcher.WhenAnnounced.WaitAsync(cancellationToken).ConfigureAwait(false);
-        while (!cancellationToken.IsCancellationRequested) {
-            await Clocks.CpuClock.Delay(CheckPeriod, cancellationToken).ConfigureAwait(false);
-            for (var shardIndex = 0; shardIndex < ShardScheme.ShardCount; shardIndex++)
-                await CheckShardWithRetries(shardIndex, cancellationToken).ConfigureAwait(false);
-        }
-    }
+    private ILogger Log => field ??= services.LogFor(GetType());
 
     public async Task CheckShardWithRetries(int shardIndex, CancellationToken cancellationToken)
     {
@@ -54,14 +44,14 @@ public class ShardRoutingMonitor(IServiceProvider services) : WorkerBase
         }
     }
 
-    // Returns null when the check passes or the shard map is in transition, otherwise the error text
     public async Task<string?> CheckShard(int shardIndex, CancellationToken cancellationToken)
     {
+        // Returns null when the check passes or the shard map is in transition, otherwise the error text
         var expected = GetExpectedHostId(shardIndex);
         if (expected == null)
             return null; // The shard has no owner yet - the mesh is in transition
 
-        var direct = await Backend.GetShardHostIdDirect(shardIndex, cancellationToken)
+        var direct = await Backend.GetShardHostIdNonComputed(shardIndex, cancellationToken)
             .WaitAsync(CallTimeout, cancellationToken).ConfigureAwait(false);
 
         var probeComputed = _probeComputeds[shardIndex];
@@ -69,10 +59,11 @@ public class ShardRoutingMonitor(IServiceProvider services) : WorkerBase
             probeComputed = await Computed
                 .Capture(() => Backend.GetShardHostId(shardIndex, cancellationToken), cancellationToken)
                 .AsTask().WaitAsync(CallTimeout, cancellationToken).ConfigureAwait(false);
-        else
+        else {
             // A consistent computed is reused as-is: that's exactly what makes a frozen one detectable
             probeComputed = await probeComputed.Update(cancellationToken)
                 .AsTask().WaitAsync(CallTimeout, cancellationToken).ConfigureAwait(false);
+        }
         _probeComputeds[shardIndex] = probeComputed;
         var computed = probeComputed.Value;
 
@@ -87,7 +78,24 @@ public class ShardRoutingMonitor(IServiceProvider services) : WorkerBase
         return null;
     }
 
+    // Protected/internal methods
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => AsyncChain.From(ProbeAllShards)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(3, 60), Log)
+            .CycleForever()
+            .Run(cancellationToken);
+
     // Private methods
+
+    private async Task ProbeAllShards(CancellationToken cancellationToken)
+    {
+        await MeshWatcher.WhenAnnounced.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await Clocks.CpuClock.Delay(CheckPeriod, cancellationToken).ConfigureAwait(false);
+        for (var shardIndex = 0; shardIndex < ShardScheme.ShardCount; shardIndex++)
+            await CheckShardWithRetries(shardIndex, cancellationToken).ConfigureAwait(false);
+    }
 
     private string? GetExpectedHostId(int shardIndex)
         => MeshWatcher.State.Value.GetShardMap(ShardScheme)[shardIndex]?.Ref.Value;

@@ -350,9 +350,9 @@ public class RoutingStressTest(ITestOutputHelper @out)
 public interface IRoutingTestService : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<RoutingTestValue> GetValue(int shardKey, string key, CancellationToken cancellationToken = default);
+    Task<RoutingTestValue> GetValue(ShardKey shardKey, string key, CancellationToken cancellationToken = default);
 
-    Task SetValue(int shardKey, string key, string value, CancellationToken cancellationToken = default);
+    Task SetValue(ShardKey shardKey, string key, string value, CancellationToken cancellationToken = default);
 }
 
 // Value type returned by the test service
@@ -369,7 +369,7 @@ public class RoutingTestService(IServiceProvider services) : IRoutingTestService
     private readonly MeshWatcher _meshWatcher = services.MeshWatcher();
     private readonly ShardOwner _shardOwner = services.ShardOwner(ShardScheme.TestBackend);
 
-    public virtual async Task<RoutingTestValue> GetValue(int shardKey, string key, CancellationToken cancellationToken = default)
+    public virtual async Task<RoutingTestValue> GetValue(ShardKey shardKey, string key, CancellationToken cancellationToken = default)
     {
         // Ensure we own this shard
         await _shardOwner.RequireShardOwnership(shardKey, addDependency: true, cancellationToken).ConfigureAwait(false);
@@ -378,7 +378,7 @@ public class RoutingTestService(IServiceProvider services) : IRoutingTestService
         return new RoutingTestValue(value, _meshWatcher.ThisNode.Ref.Value);
     }
 
-    public virtual async Task SetValue(int shardKey, string key, string value, CancellationToken cancellationToken = default)
+    public virtual async Task SetValue(ShardKey shardKey, string key, string value, CancellationToken cancellationToken = default)
     {
         // Ensure we own this shard
         await _shardOwner.RequireShardOwnership(shardKey, addDependency: false, cancellationToken).ConfigureAwait(false);
