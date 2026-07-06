@@ -1,4 +1,5 @@
 using _Microsoft.Android.Resource.Designer;
+using ActualChat.UI.Blazor.App.Services;
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
@@ -58,7 +59,8 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
         AndroidLocationTracker.ReportLocation(new GeoPoint(location.Latitude, location.Longitude, accuracy, bearing));
     }
 
-    public void OnProviderDisabled(string provider) { }
+    public void OnProviderDisabled(string provider)
+        => AndroidLocationTracker.ReportError(GeoTrackingError.PositionUnavailable);
     public void OnProviderEnabled(string provider) { }
     public void OnStatusChanged(string? provider, [GeneratedEnum] Availability status, Bundle? extras) { }
 
@@ -85,11 +87,14 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
             else if (_locationManager.IsProviderEnabled(LocationManager.NetworkProvider))
                 _locationManager.RequestLocationUpdates(
                     LocationManager.NetworkProvider, minTimeMs, minDistanceM, this, Looper.MainLooper);
-            else
-                Log.LogWarning("StartLocationUpdates: no location provider is enabled");
+            else {
+                Log.LogError("StartLocationUpdates: no location provider is enabled");
+                AndroidLocationTracker.ReportError(GeoTrackingError.PositionUnavailable);
+            }
         }
         catch (Java.Lang.SecurityException e) {
-            Log.LogWarning(e, "StartLocationUpdates: location permission is not granted");
+            Log.LogError(e, "StartLocationUpdates: location permission is not granted");
+            AndroidLocationTracker.ReportError(GeoTrackingError.PermissionDenied);
         }
     }
 

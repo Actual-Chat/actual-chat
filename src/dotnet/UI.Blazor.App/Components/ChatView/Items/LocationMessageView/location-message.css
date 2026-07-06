@@ -30,6 +30,9 @@
     contain: layout paint style;
     animation: pulseLiveDot 2s ease-in-out infinite;
 }
+.location-message .c-live-caption .c-broken-icon {
+    color: var(--warning);
+}
 .location-message .c-live-caption .c-updated {
     @apply text-caption-2;
     @apply opacity-90;

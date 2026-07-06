@@ -39,7 +39,10 @@ export class LocationTracker {
                 const c = position.coords;
                 void blazorRef.invokeMethodAsync('OnLocation', c.latitude, c.longitude, c.accuracy, c.heading);
             },
-            error => warnLog?.log('geolocation error', error),
+            error => {
+                warnLog?.log('geolocation error', error);
+                void blazorRef.invokeMethodAsync('OnError', error.code);
+            },
             { enableHighAccuracy: true, maximumAge: 0 });
     }
 

@@ -17,4 +17,9 @@ public abstract class MauiLocationTrackerBase(AppUIHub hub) : LocationTrackerBas
             GeoTrackingAccuracy.Low => GeolocationAccuracy.Low,
             _ => GeolocationAccuracy.Medium,
         };
+
+    protected static GeoTrackingError ToTrackingError(Exception error)
+        => error is PermissionException
+            ? GeoTrackingError.PermissionDenied
+            : GeoTrackingError.PositionUnavailable;
 }
