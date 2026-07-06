@@ -566,6 +566,32 @@ describe('wireSend', () => {
         expect(senders.every(s => s.disposed)).toBe(true);
     });
 
+    it('completion waits for the wire flush (whenDisposed) after dispose', async () => {
+        // Regression: the pipe resolving before $sys.End is transmitted lets
+        // worker.terminate() kill the socket first — the server then sees a
+        // disconnect (5s reconnect grace) instead of a graceful end, and
+        // remote peers keep a frozen tile for seconds after hang-up.
+        const stats = createEmptyRecorderStats();
+        let resolveFlush = (): void => undefined;
+        class FlushGatedSender extends FakeSender {
+            public disposed = false;
+            public readonly whenDisposed = new Promise<void>(r => { resolveFlush = r; });
+            dispose(): void { this.disposed = true; }
+        }
+        const sender = new FlushGatedSender();
+        const sink = wireSend({ createSender: () => sender, controller: defaultController() });
+
+        let completed = false;
+        const run = runWith(source([makeEncoded(stats, { type: 'key' })]), sink)
+            .then(() => { completed = true; });
+        await new Promise(r => setTimeout(r, 20));
+        expect(sender.disposed).toBe(true);
+        expect(completed).toBe(false);
+        resolveFlush();
+        await run;
+        expect(completed).toBe(true);
+    });
+
     it('controller-driven layerCount stamps current count per bundle', async () => {
         const stats = createEmptyRecorderStats();
         const sender = new FakeSender();

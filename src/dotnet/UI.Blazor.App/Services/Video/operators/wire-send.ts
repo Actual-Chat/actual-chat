@@ -11,6 +11,9 @@ import {
 import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
 const WIRE_QUEUE_DEPTH_EMA_ALPHA = 0.2;
+// Upper bound on waiting for the wire to flush $sys.End after dispose(). Must
+// stay well under the C# stop budget (3s) so a dead wire can't hang stop().
+const WIRE_END_FLUSH_TIMEOUT_MS = 1000;
 
 const { warnLog } = getLogs('VideoPipeline');
 
@@ -273,6 +276,16 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                 if (sender && lastStats)
                     copyStats(lastStats, sender);
                 try { sender?.dispose?.(); } catch { /* ignore */ }
+                // dispose() only MARKS the stream complete; $sys.End is sent by
+                // the async sender pump. The worker is terminate()d right after
+                // this pipe drains, so without awaiting the flush the socket
+                // dies first and the server sees a disconnect (5s reconnect
+                // grace → frozen remote tiles) instead of a graceful end.
+                if (sender?.whenDisposed)
+                    await Promise.race([
+                        sender.whenDisposed.catch(() => undefined),
+                        new Promise<void>(resolve => setTimeout(resolve, WIRE_END_FLUSH_TIMEOUT_MS)),
+                    ]);
             }
         }
     };
