@@ -18,6 +18,6 @@ public interface IDiagnosticsBackend : IComputeService, IBackendService
     // The compute one is never invalidated explicitly - only via the shard ownership
     // dependency, so a stale result signals a frozen computed (see ShardRoutingMonitor).
     [ComputeMethod]
-    Task<string> GetShardHostId(int shardKey, CancellationToken cancellationToken);
-    Task<string> GetShardHostIdNonComputed(int shardKey, CancellationToken cancellationToken);
+    Task<string> GetShardHostId(ShardKey shardKey, CancellationToken cancellationToken);
+    Task<string> GetShardHostIdNonComputed(ShardKey shardKey, CancellationToken cancellationToken);
 }

@@ -15,9 +15,9 @@ public class DiagnosticsBackend(IServiceProvider services) : IDiagnosticsBackend
         CancellationToken cancellationToken)
         => LocalBackend.GetMeshInfo(tag, extraLevel, cancellationToken);
 
-    public virtual Task<string> GetShardHostId(int shardKey, CancellationToken cancellationToken)
+    public virtual Task<string> GetShardHostId(ShardKey shardKey, CancellationToken cancellationToken)
         => Task.FromResult(ThisNode.Ref.Value);
 
-    public virtual Task<string> GetShardHostIdNonComputed(int shardKey, CancellationToken cancellationToken)
+    public virtual Task<string> GetShardHostIdNonComputed(ShardKey shardKey, CancellationToken cancellationToken)
         => Task.FromResult(ThisNode.Ref.Value);
 }
