@@ -1,5 +1,5 @@
 .location-message {
-    @apply flex-x;
+    @apply relative flex-x;
     @apply w-80 max-w-full h-44;
     @apply mt-1;
     @apply cursor-pointer;
@@ -8,4 +8,31 @@
     @apply flex-1;
     @apply rounded-xl;
     @apply overflow-hidden;
+}
+.location-message .c-live-caption {
+    @apply absolute bottom-2 left-2 right-2;
+    @apply flex-y gap-0.5;
+    @apply pointer-events-none;
+    @apply text-white;
+    text-shadow: 0 1px 2px var(--black-50);
+}
+.location-message .c-live-caption .c-title {
+    @apply flex-x items-center gap-1.5;
+    @apply text-caption-1 font-medium;
+}
+.location-message .c-live-caption .c-live-dot {
+    @apply w-1.5 h-1.5;
+    @apply rounded-full;
+    background: var(--danger);
+    will-change: opacity;
+    contain: layout paint style;
+    animation: pulseLiveDot 2s ease-in-out infinite;
+}
+.location-message .c-live-caption .c-updated {
+    @apply text-caption-2;
+    @apply opacity-90;
+}
+@keyframes pulseLiveDot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
 }
