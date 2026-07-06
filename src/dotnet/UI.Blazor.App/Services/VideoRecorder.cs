@@ -220,7 +220,8 @@ public sealed class VideoRecorder : IAsyncDisposable
         var t3 = ForwardRemoteStreamCount(chatId, cancellationToken);
         var t4 = SubscribeToLayerDemand(chatId, cancellationToken);
         var t5 = SubscribeToVoiceActivity(chatId, cancellationToken);
-        await Task.WhenAll(t1, t2, t3, t4, t5).ConfigureAwait(false);
+        var t6 = SubscribeToThumbnailOnly(chatId, cancellationToken);
+        await Task.WhenAll(t1, t2, t3, t4, t5, t6).ConfigureAwait(false);
     }
 
     private (ChatId, bool) GetStartRequest()
@@ -366,6 +367,63 @@ public sealed class VideoRecorder : IAsyncDisposable
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SubscribeToLayerDemand failed");
+        }
+    }
+
+    // Forwards the "every active viewer displays me as a thumbnail" aggregate
+    // to JS — the fps-shed input. Camera only: screencast never sheds.
+    private async Task SubscribeToThumbnailOnly(ChatId chatId, CancellationToken cancellationToken) {
+        if (Kind != VideoSourceKind.Camera)
+            return;
+        try {
+            StreamId? ownStreamId = null;
+            var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (ownAuthor == null)
+                return;
+
+            for (var i = 0; i < 30; i++) {
+                var streams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+                var ownStream = streams.FirstOrDefault(s => s.AuthorId == ownAuthor.Id && s.SourceKind == Kind);
+                if (ownStream != default) {
+                    ownStreamId = ownStream.StreamId;
+                    break;
+                }
+                await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (ownStreamId == null) {
+                Log.LogWarning("SubscribeToThumbnailOnly: own stream not found after polling for ChatId={ChatId}", chatId);
+                return;
+            }
+
+            try {
+                var cState = await Computed.Capture(
+                    () => LiveVideoStreams.ThumbnailViewersOnly(Session, ownStreamId, cancellationToken),
+                    cancellationToken).ConfigureAwait(false);
+                bool? lastValue = null;
+                await foreach (var (thumbnailOnly, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+                    if (thumbnailOnly == lastValue)
+                        continue;
+
+                    lastValue = thumbnailOnly;
+                    Log.LogInformation(
+                        "ThumbnailViewersOnly: stream {StreamId} → {Value}", ownStreamId, thumbnailOnly);
+                    await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, thumbnailOnly)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                throw;
+            }
+            catch (Exception e) {
+                // Old servers don't expose ThumbnailViewersOnly — no shed then.
+                Log.LogWarning(e, "SubscribeToThumbnailOnly: unavailable, fps shed disabled");
+                await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, false).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "SubscribeToThumbnailOnly failed");
         }
     }
 

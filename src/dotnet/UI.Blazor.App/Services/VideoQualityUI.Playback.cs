@@ -318,8 +318,15 @@ public sealed partial class VideoQualityUI
             : _decoderCapState.Caps;
         var requested = VideoQualityAllocator.Allocate(capacity, primaries, secondaries, decoderLayerCapDict);
         var requestedMap = new ApiMap<string, ReceiveQuality>();
-        foreach (var (streamId, _) in entries)
-            requestedMap[streamId.Value] = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
+        foreach (var (streamId, state) in entries) {
+            var quality = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
+            // Display role for the sender's fps shed. Size uses the PURE render
+            // demand (RequestedLayerCount, pre-clamp) — a bandwidth/thermal-clamped
+            // large view must never read as a thumbnail.
+            var isThumbnail = state.Snapshot.Priority != PlaybackStreamPriority.Primary
+                && state.RequestedLayerCount <= 1;
+            requestedMap[streamId.Value] = quality with { IsThumbnail = isThumbnail };
+        }
         // Float (Collapsed) shows only the primary tile — pause every secondary
         // stream. Hide (or a hidden tab / backgrounded app) pauses every stream.
         // The server filter drops every frame while Paused is in effect, so this

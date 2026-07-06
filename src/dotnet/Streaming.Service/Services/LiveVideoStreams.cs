@@ -227,6 +227,21 @@ public class LiveVideoStreams : ILiveVideoStreams
         CancellationToken cancellationToken)
         => Task.FromResult(ComputeLayersMask(streamId.Value));
 
+    // [ComputeMethod]
+    public virtual async Task<bool> ThumbnailViewersOnly(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+        // Same session-key caveat as MaxRequestedLayerId: the aggregate scans
+        // every session, so delegate to a session-less inner compute.
+        => await ThumbnailViewersOnlyByStream(streamId, cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual Task<bool> ThumbnailViewersOnlyByStream(
+        StreamId streamId,
+        CancellationToken cancellationToken)
+        => Task.FromResult(ComputeThumbnailViewersOnly(GetStreamQualities(streamId.Value)));
+
     public async Task PushStream(
         Session session,
         string chatId,
@@ -293,12 +308,12 @@ public class LiveVideoStreams : ILiveVideoStreams
     {
         if (qualityByStream is null) {
             if (_qualityBySession.TryGetValue(session, out var removing)) {
-                var prevMaskOnClear = new Dictionary<string, int>(removing.QualityByStream.Count);
+                var prevOnClear = new Dictionary<string, (int Mask, bool ThumbnailOnly)>(removing.QualityByStream.Count);
                 foreach (var (sid, _) in removing.QualityByStream)
-                    prevMaskOnClear[sid] = ComputeLayersMask(sid);
+                    prevOnClear[sid] = SnapshotDemand(sid);
                 _qualityBySession.TryRemove(session, out _);
-                foreach (var (sid, prevMask) in prevMaskOnClear)
-                    InvalidateLayerDemand(sid, prevMask);
+                foreach (var (sid, prev) in prevOnClear)
+                    InvalidateLayerDemand(sid, prev);
             }
             DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, info={Info} (cleared)", session, info);
             return;
@@ -306,17 +321,17 @@ public class LiveVideoStreams : ILiveVideoStreams
 
         qualityByStream = ApplyStreamCountCap(qualityByStream, info);
         _qualityBySession.TryGetValue(session, out var prevState);
-        // Snapshot the per-stream demand mask BEFORE we install the new state
-        // so we invalidate the demand computes only for streams whose
+        // Snapshot the per-stream demand aggregates BEFORE we install the new
+        // state so we invalidate the demand computes only for streams whose
         // aggregate actually changed.
         var affectedStreamIds = CollectStreamIdsForInvalidation(
             prevState?.QualityByStream, qualityByStream);
-        var prevMaskByStream = new Dictionary<string, int>(affectedStreamIds.Count);
+        var prevByStream = new Dictionary<string, (int Mask, bool ThumbnailOnly)>(affectedStreamIds.Count);
         foreach (var sid in affectedStreamIds)
-            prevMaskByStream[sid] = ComputeLayersMask(sid);
+            prevByStream[sid] = SnapshotDemand(sid);
         _qualityBySession[session] = new ReceiveQualityState(qualityByStream, SystemClock.Now);
         foreach (var sid in affectedStreamIds)
-            InvalidateLayerDemand(sid, prevMaskByStream[sid]);
+            InvalidateLayerDemand(sid, prevByStream[sid]);
         DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
             session, qualityByStream.Count, info);
 
@@ -437,19 +452,50 @@ public class LiveVideoStreams : ILiveVideoStreams
         return mask;
     }
 
+    private IEnumerable<ReceiveQuality> GetStreamQualities(string streamIdValue)
+    {
+        foreach (var (_, state) in _qualityBySession)
+            if (state.QualityByStream.TryGetValue(streamIdValue, out var q))
+                yield return q;
+    }
+
+    // Node-local scan, and here that is NOT conservative (unlike the layer
+    // cap): a large viewer on another frontend node is invisible and would
+    // cause a wrongful fps shed. Cross-node aggregation is a known follow-up.
+    internal static bool ComputeThumbnailViewersOnly(IEnumerable<ReceiveQuality> qualities)
+    {
+        var anyActive = false;
+        foreach (var q in qualities) {
+            if (q.IsPaused)
+                continue;
+            if (!q.IsThumbnail)
+                return false;
+            anyActive = true;
+        }
+        return anyActive;
+    }
+
     private static int MaxLayerIdFromMask(int mask)
         => mask == 0 ? -1 : System.Numerics.BitOperations.Log2((uint)mask);
 
-    private void InvalidateLayerDemand(string streamIdValue, int prevMask)
+    private (int Mask, bool ThumbnailOnly) SnapshotDemand(string streamIdValue)
+        => (ComputeLayersMask(streamIdValue),
+            ComputeThumbnailViewersOnly(GetStreamQualities(streamIdValue)));
+
+    private void InvalidateLayerDemand(string streamIdValue, (int Mask, bool ThumbnailOnly) prev)
     {
-        var newMask = ComputeLayersMask(streamIdValue);
-        if (newMask == prevMask)
+        var (newMask, newThumbnailOnly) = SnapshotDemand(streamIdValue);
+        if (newMask == prev.Mask && newThumbnailOnly == prev.ThumbnailOnly)
             return;
 
         using (Invalidation.Begin()) {
-            _ = RequestedLayersMaskByStream(StreamId.Parse(streamIdValue), default);
-            if (MaxLayerIdFromMask(newMask) != MaxLayerIdFromMask(prevMask))
-                _ = MaxRequestedLayerIdByStream(StreamId.Parse(streamIdValue), default);
+            if (newMask != prev.Mask) {
+                _ = RequestedLayersMaskByStream(StreamId.Parse(streamIdValue), default);
+                if (MaxLayerIdFromMask(newMask) != MaxLayerIdFromMask(prev.Mask))
+                    _ = MaxRequestedLayerIdByStream(StreamId.Parse(streamIdValue), default);
+            }
+            if (newThumbnailOnly != prev.ThumbnailOnly)
+                _ = ThumbnailViewersOnlyByStream(StreamId.Parse(streamIdValue), default);
         }
     }
 
