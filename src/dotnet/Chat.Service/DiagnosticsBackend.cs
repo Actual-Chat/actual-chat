@@ -18,6 +18,6 @@ public class DiagnosticsBackend(IServiceProvider services) : IDiagnosticsBackend
     public virtual Task<string> GetShardHostId(int shardKey, CancellationToken cancellationToken)
         => Task.FromResult(ThisNode.Ref.Value);
 
-    public virtual Task<string> GetShardHostIdDirect(int shardKey, CancellationToken cancellationToken)
+    public virtual Task<string> GetShardHostIdNonComputed(int shardKey, CancellationToken cancellationToken)
         => Task.FromResult(ThisNode.Ref.Value);
 }
