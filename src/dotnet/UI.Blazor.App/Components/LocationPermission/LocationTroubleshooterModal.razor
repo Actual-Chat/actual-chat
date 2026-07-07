@@ -5,25 +5,69 @@
 @implements IModalView<LocationTroubleshooterModal.Model>
 @{
     var isMaui = HostInfo.HostKind.IsMauiApp();
+    GuideType type;
+    if (ModalModel.TestGuideType is { } testGuideType) {
+        type = testGuideType;
+    } else if (isMaui) {
+        type = HostInfo.AppKind switch {
+            AppKind.Ios => GuideType.IosApp,
+            AppKind.Android => GuideType.AndroidApp,
+            _ => GuideType.WebChrome,
+        };
+    } else {
+        if (ScreenSize.IsNarrow()) {
+            if (BrowserInfo.IsEdge) {
+                type = GuideType.MobileEdgeAndroid;
+            } else if (BrowserInfo.IsWebKit)
+                type = GuideType.MobileSafariIos;
+            else
+                type = GuideType.MobileChromeAndroid;
+        } else {
+            if (BrowserInfo.IsEdge) {
+                type = GuideType.WebEdge;
+            } else if (BrowserInfo.IsWebKit)
+                type = GuideType.WebSafari;
+            else
+                type = GuideType.WebChrome;
+        }
+    }
     var primaryButtonTitle = isMaui ? "Settings" : "Got it";
 }
 
 <DialogFrame
-    Class="location-troubleshooter-modal"
+    Class="location-troubleshooter-modal guide-modal"
+    BodyClass="no-scrollbar"
     Title="Location access"
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.ForSubmitButton(OnPrimaryClick, primaryButtonTitle)">
     <Body>
     <FormBlock>
-        <div class="c-text font-normal">
-            @if (isMaui) {
-                <text>@CoreConstants.AppName needs access to your location to share it with others.
-                Please enable it in <a @onclick="OnPrimaryClick" @onclick:preventDefault class="settings-link">Settings</a>.</text>
-            } else {
-                <text>@CoreConstants.AppName needs access to your location to share it with others.
-                Please allow location access for this site in your browser's site settings.</text>
-            }
-        </div>
+        @switch (type) {
+            case GuideType.MobileSafariIos:
+                <MobileSafariIosLocationGuideContent/>
+                break;
+            case GuideType.WebEdge:
+                <WebEdgeLocationGuideContent/>
+                break;
+            case GuideType.WebSafari:
+                <WebSafariLocationGuideContent/>
+                break;
+            case GuideType.MobileChromeAndroid:
+                <MobileChromeAndroidLocationGuideContent/>
+                break;
+            case GuideType.MobileEdgeAndroid:
+                <MobileEdgeAndroidLocationGuideContent/>
+                break;
+            case GuideType.AndroidApp:
+                <AndroidAppLocationGuideContent/>
+                break;
+            case GuideType.IosApp:
+                <IosAppLocationGuideContent/>
+                break;
+            default:
+                <WebChromeLocationGuideContent/>
+                break;
+        }
     </FormBlock>
     <div class="safe-area-bottom safe-area-bottom-overlay"></div>
     </Body>
@@ -45,7 +89,9 @@
 
 @code {
     private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -56,5 +102,5 @@
         Modal.Close();
     }
 
-    public sealed record Model;
+    public sealed record Model(GuideType? TestGuideType = null);
 }
