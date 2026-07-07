@@ -51,23 +51,35 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         }
     }
 
-    protected override async Task OnRun(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => AsyncChain.From(DispatchShares)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
+            .RunIsolated(cancellationToken);
+
+    // Private methods
+
+    private async Task DispatchShares(CancellationToken cancellationToken)
     {
+        // Runs one ReportLoop worker for the current shares, replacing it whenever the set changes.
         // ReSharper disable once InconsistentlySynchronizedField
         var changes = _shares.Computed.Changes(cancellationToken);
         FuncWorker? worker = null;
-        await foreach (var cShares in changes.ConfigureAwait(false)) {
-            await worker.DisposeSilentlyAsync().ConfigureAwait(false);
-            if (cShares.Value.Length == 0) {
+        try {
+            await foreach (var cShares in changes.ConfigureAwait(false)) {
+                await worker.DisposeSilentlyAsync().ConfigureAwait(false);
                 worker = null;
-                await Tracker.Stop(cancellationToken).ConfigureAwait(false);
-                continue;
+                if (cShares.Value.Length == 0) {
+                    await Tracker.Stop(cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+                worker = FuncWorker.Start(ct => ReportLoop(cShares.Value, ct), cancellationToken);
             }
-            worker = FuncWorker.Start(ct => ReportLoop(cShares.Value, ct), cancellationToken);
+        }
+        finally {
+            await worker.DisposeSilentlyAsync().ConfigureAwait(false);
         }
     }
-
-    // Private methods
 
     private void SetSharedLocationId(ChatId chatId, SharedLocationId locationId)
     {
