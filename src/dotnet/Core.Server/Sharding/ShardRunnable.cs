@@ -6,7 +6,7 @@ public sealed record ShardRunnable : IRunnable
 {
     public static readonly IRetryPolicy DefaultRetryPolicy = new RetryPolicy(RetryDelaySeq.Exp(0.1, 1));
     public static readonly IRetryPolicy NoRetryPolicy = new RetryPolicy(1, RetryDelaySeq.Exp(0.1, 1));
-    public static readonly RandomTimeSpan DefaultRepeatDelay = TimeSpan.FromMicroseconds(50).ToRandom(0.5);
+    public static readonly RandomTimeSpan DefaultRepeatDelay = TimeSpan.FromMilliseconds(50).ToRandom(0.5);
 
     public string Name { get; }
     public Delegate Func { get; }
