@@ -38,15 +38,9 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
         if (!IsTracking)
             return;
 
-        IsTracking = false;
         SetLocation(null);
         SetError(null);
-        if (_jsRef is { } jsRef) {
-            _jsRef = null;
-            await jsRef.DisposeSilentlyAsync("stop").ConfigureAwait(false);
-        }
-        _blazorRef.DisposeSilently();
-        _blazorRef = null;
+        await DisposeWatch().ConfigureAwait(false);
     }
 
     [JSInvokable]
@@ -55,7 +49,25 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
 
     [JSInvokable]
     public void OnError(int code)
-        => SetError(code is >= 1 and <= 3 ? (GeoTrackingError)code : GeoTrackingError.PositionUnavailable);
+    {
+        var error = code is >= 1 and <= 3 ? (GeoTrackingError)code : GeoTrackingError.PositionUnavailable;
+        // W3C removes a denied watch and never resumes it, so drop it here (a later Start re-arms);
+        // PositionUnavailable/Timeout keep the watch, which resumes on its own once a fix returns.
+        if (error == GeoTrackingError.PermissionDenied)
+            _ = DisposeWatch();
+        SetError(error);
+    }
+
+    private async Task DisposeWatch()
+    {
+        IsTracking = false;
+        if (_jsRef is { } jsRef) {
+            _jsRef = null;
+            await jsRef.DisposeSilentlyAsync("stop").ConfigureAwait(false);
+        }
+        _blazorRef.DisposeSilently();
+        _blazorRef = null;
+    }
 
     public override Task<GeoPoint?> Get(CancellationToken cancellationToken)
         => _hub.JS
