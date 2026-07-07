@@ -101,6 +101,7 @@
         public string GetDescription() {
             if (IsTrackingBroken)
                 return GetErrorText();
+
             if (IsOwnSharing) {
                 var others = Count - 1;
                 return others switch {

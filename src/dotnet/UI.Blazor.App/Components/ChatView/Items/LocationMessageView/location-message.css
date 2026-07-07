@@ -1,5 +1,6 @@
 .location-message {
-    @apply relative flex-x;
+    @apply relative;
+    @apply flex-x;
     @apply w-80 max-w-full h-44;
     @apply mt-1;
     @apply cursor-pointer;
@@ -14,9 +15,9 @@
     @apply flex-y gap-0.5;
     @apply px-3 pt-8 pb-2;
     @apply rounded-b-xl;
-    @apply pointer-events-none;
-    @apply text-white;
     background: linear-gradient(to top, var(--black-70), transparent);
+    @apply text-white;
+    @apply pointer-events-none;
 }
 .location-message .c-live-caption .c-title {
     @apply flex-x items-center gap-1.5;
