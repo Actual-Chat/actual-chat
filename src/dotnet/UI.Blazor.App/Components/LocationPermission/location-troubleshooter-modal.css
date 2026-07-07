@@ -5,7 +5,3 @@
 .location-troubleshooter-modal .c-text {
     @apply text-02;
 }
-
-.location-troubleshooter-modal .settings-link {
-    @apply text-primary hover:text-primary-hover cursor-pointer hover:underline;
-}

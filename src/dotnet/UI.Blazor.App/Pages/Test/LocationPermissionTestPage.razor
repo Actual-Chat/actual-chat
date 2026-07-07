@@ -1,12 +1,49 @@
 @page "/test/location-permission"
 
+@{
+    var cls = "btn-danger";
+    if (ScreenSize.IsNarrow()) {
+        cls += " btn-xs";
+    }
+}
+
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Location Permission Test Page</MainHeader>
 
 <div class="test-page-wrapper">
 <div class="test-page-btn-group">
-    <Button Class="btn-danger" Click="OnShowModal">
-        Show Location Troubleshooter Modal
+    <Button Class="@cls" Click="@(_ => OnShowModal())">
+        Show (auto-detected)
+    </Button>
+</div>
+<div class="test-page-btn-group">
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.WebChrome))">
+        Web Chrome
+    </Button>
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.WebEdge))">
+        Web Edge
+    </Button>
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.WebSafari))">
+        Web Safari
+    </Button>
+</div>
+<div class="test-page-btn-group">
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.MobileChromeAndroid))">
+        Android Chrome
+    </Button>
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.MobileEdgeAndroid))">
+        Android Edge
+    </Button>
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.MobileSafariIos))">
+        iOS Safari
+    </Button>
+</div>
+<div class="test-page-btn-group">
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.AndroidApp))">
+        Android App
+    </Button>
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.IosApp))">
+        iOS App
     </Button>
 </div>
 </div>
@@ -15,6 +52,11 @@
     [Inject] protected AppUIHub Hub { get; init; } = null!;
     private ModalUI ModalUI => Hub.ModalUI;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
     private void OnShowModal()
         => ModalUI.Show(new LocationTroubleshooterModal.Model());
+
+    private void OnClick(GuideType guideType)
+        => ModalUI.Show(new LocationTroubleshooterModal.Model(guideType));
 }
