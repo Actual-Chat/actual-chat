@@ -8,7 +8,7 @@
     IsVisible="@(m.Count > 0)"
     Class="live-location-banner">
     <Icon>
-        <i class="@(m.IsTrackingBroken ? "icon-alert-triangle text-warning" : "icon-map-point") text-2xl"></i>
+        <i class="@(m.IsTrackingBroken ? "icon-alert-circle text-danger" : "icon-map-point") text-2xl"></i>
     </Icon>
     <Body>
         <div class="c-body" @onclick="@OnOpenMap">
