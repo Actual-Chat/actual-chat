@@ -1,0 +1,24 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@inherits Menu<UIHub>
+
+<MenuEntry
+    Icon="icon-copy"
+    Text="Copy image"
+    Click="@OnCopyClick">
+</MenuEntry>
+
+@code {
+    private string _url = "";
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [var url])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _url = url;
+    }
+
+    private Task OnCopyClick()
+        => ClipboardUI.WriteImage(_url);
+}
