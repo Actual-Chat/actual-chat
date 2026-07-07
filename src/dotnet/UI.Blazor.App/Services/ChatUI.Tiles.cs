@@ -573,7 +573,7 @@ public partial class ChatUI
                 var flags = default(ChatMessageFlags);
                 if (isBlockStart)
                     flags |= ChatMessageFlags.BlockStart;
-                if ((isBlockStart && isAudio) || isPrevAudio ^ isAudio)
+                if (!entry.HasLocation && ((isBlockStart && isAudio) || isPrevAudio ^ isAudio))
                     flags |= ChatMessageFlags.HasEntryKindSign;
                 if (isForwardBlockStart)
                     flags |= ChatMessageFlags.ForwardStart;
