@@ -38,7 +38,6 @@
 }
 .c-live-card .c-lc-expand {
     @apply flex-none;
-    @apply text-02 text-xl;
 }
 .c-live-card .c-lc-oncall {
     @apply text-caption-1 font-medium;
@@ -72,7 +71,10 @@
 }
 .c-live-card .c-lc-copy {
     @apply flex-none;
-    @apply text-02 text-xl;
+}
+.c-live-card .c-lc-expand i,
+.c-live-card .c-lc-copy i {
+    @apply text-xl;
 }
 .conversation-message .c-join-row {
     @apply block w-full;

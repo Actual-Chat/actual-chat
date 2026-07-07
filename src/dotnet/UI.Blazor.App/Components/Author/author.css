@@ -34,3 +34,6 @@
     @apply rounded-full pointer-events-none;
     border: 2px solid var(--background-01);
 }
+.author-circle-group.no-ring .avatar-circle::after {
+    @apply hidden;
+}

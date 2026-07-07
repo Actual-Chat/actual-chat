@@ -11,9 +11,10 @@
     var sizeStyle = $"--acg-circle-size: {sizePx}px; --acg-circle-overlap: {overlapPx}px;";
     var maxLength = authorIds.Count > MaxCount ? MaxCount - 1 : authorIds.Count;
     var groupCls = IsListening ? "" : "non-active";
+    var ringCls = ShowRing ? "" : "no-ring";
 }
 
-<div class="author-circle-group @Class @groupCls" style="@sizeStyle">
+<div class="author-circle-group @Class @groupCls @ringCls" style="@sizeStyle">
     @{
         var zIndex = 1;
         for (var i = 0; i < maxLength; i++) {
@@ -49,6 +50,7 @@
     [Parameter] public int MaxCount { get; set; } = 5;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public bool IsListening { get; set; }
+    [Parameter] public bool ShowRing { get; set; } = true;
 
     [Parameter, ParameterComparer(typeof(ByItemParameterComparer))]
     public IReadOnlyList<AuthorId>? AuthorIds { get; set; }

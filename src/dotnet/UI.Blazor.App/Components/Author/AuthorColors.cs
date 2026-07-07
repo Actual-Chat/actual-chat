@@ -5,9 +5,12 @@ public static class AuthorColors
     public const int Count = 10;
 
     public static int GetIndex(AuthorId? authorId)
-        => authorId is null || authorId.Value.IsNullOrEmpty()
-            ? 0
-            : (int)(((authorId.LocalId % Count) + Count) % Count);
+    {
+        if (authorId is null || authorId.Value.IsNullOrEmpty())
+            return 0;
+        var offset = authorId.ChatId.Value.GetXxHash3();
+        return (int)((((authorId.LocalId + offset) % Count) + Count) % Count);
+    }
 
     public static string GetColorClass(AuthorId? authorId, bool isOwn = false)
     {
