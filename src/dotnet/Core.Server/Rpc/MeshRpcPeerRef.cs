@@ -44,7 +44,9 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
             // Gating this on a MustOwn snapshot is racy: ShardOwner may lag behind the mesh map,
             // and local calls made via an awaiter-less ref get no shard ownership dependency,
             // so their computeds are never invalidated once the shard migrates away.
-            var isLocal = Resolved.Node == Owner.ThisNode;
+            // ConnectionKind (vs Node == ThisNode) also covers the endpoint-equality branch:
+            // whenever calls execute locally, they must gate on local shard ownership.
+            var isLocal = Resolved.ConnectionKind == RpcPeerConnectionKind.Local;
             if (isLocal) {
                 RouteState.LocalExecutionAwaiter = GetLocalExecutionAwaiter(RouteState);
                 _ = MarkChangedWhenShardOwnershipEnds();
