@@ -1,5 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
@@ -46,7 +47,8 @@ public class MauiLocationPermissionHandler : LocationPermissionHandler
 
     protected override async Task Troubleshoot(CancellationToken cancellationToken)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
-        AppInfo.ShowSettingsUI();
+        var model = new LocationTroubleshooterModal.Model();
+        var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
+        await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 }

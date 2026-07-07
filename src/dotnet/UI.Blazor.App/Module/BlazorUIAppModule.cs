@@ -235,6 +235,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddTypeMap<IModalView>(map => map
             .Add<RecordingTroubleshooterModal.Model, RecordingTroubleshooterModal>()
             .Add<PhotoTroubleshooterModal.Model, PhotoTroubleshooterModal>()
+            .Add<LocationTroubleshooterModal.Model, LocationTroubleshooterModal>()
         );
 
         // DebugUI - override base registration to wire guide handlers
