@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 
@@ -29,6 +30,10 @@ public class WebLocationPermissionHandler : LocationPermissionHandler
     protected override async Task<bool> Request(CancellationToken cancellationToken)
         => await JS.InvokeAsync<bool>(JSRequestPermission, cancellationToken).ConfigureAwait(false);
 
-    protected override Task Troubleshoot(CancellationToken cancellationToken)
-        => Task.CompletedTask;
+    protected override async Task Troubleshoot(CancellationToken cancellationToken)
+    {
+        var model = new LocationTroubleshooterModal.Model();
+        var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
+        await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
 }

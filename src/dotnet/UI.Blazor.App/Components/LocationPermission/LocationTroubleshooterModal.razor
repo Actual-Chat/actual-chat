@@ -1,0 +1,60 @@
+@using ActualChat.Hosting
+@using ActualChat.UI
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<LocationTroubleshooterModal.Model>
+@{
+    var isMaui = HostInfo.HostKind.IsMauiApp();
+    var primaryButtonTitle = isMaui ? "Settings" : "Got it";
+}
+
+<DialogFrame
+    Class="location-troubleshooter-modal"
+    Title="Location access"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.ForSubmitButton(OnPrimaryClick, primaryButtonTitle)">
+    <Body>
+    <FormBlock>
+        <div class="c-text font-normal">
+            @if (isMaui) {
+                <text>@CoreConstants.AppName needs access to your location to share it with others.
+                Please enable it in <a @onclick="OnPrimaryClick" @onclick:preventDefault class="settings-link">Settings</a>.</text>
+            } else {
+                <text>@CoreConstants.AppName needs access to your location to share it with others.
+                Please allow location access for this site in your browser's site settings.</text>
+            }
+        </div>
+    </FormBlock>
+    <div class="safe-area-bottom safe-area-bottom-overlay"></div>
+    </Body>
+    <Buttons>
+        @if (isMaui) {
+            <Button Class="btn-modal" Click="@(() => Modal.Close())">
+                Later
+            </Button>
+            <Button Class="btn-modal btn-primary" Click="OnPrimaryClick">
+                Settings
+            </Button>
+        } else {
+            <Button Class="btn-modal btn-primary" Click="@(() => Modal.Close())">
+                Got it
+            </Button>
+        }
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private async Task OnPrimaryClick() {
+        if (HostInfo.HostKind.IsMauiApp())
+            await SystemSettingsUI.Open();
+        Modal.Close();
+    }
+
+    public sealed record Model;
+}

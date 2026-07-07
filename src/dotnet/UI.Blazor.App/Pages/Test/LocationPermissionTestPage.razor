@@ -1,0 +1,20 @@
+@page "/test/location-permission"
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Location Permission Test Page</MainHeader>
+
+<div class="test-page-wrapper">
+<div class="test-page-btn-group">
+    <Button Class="btn-danger" Click="OnShowModal">
+        Show Location Troubleshooter Modal
+    </Button>
+</div>
+</div>
+
+@code {
+    [Inject] protected AppUIHub Hub { get; init; } = null!;
+    private ModalUI ModalUI => Hub.ModalUI;
+
+    private void OnShowModal()
+        => ModalUI.Show(new LocationTroubleshooterModal.Model());
+}
