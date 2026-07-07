@@ -14,6 +14,7 @@
     var canCopyText = isTextEntry && !e.Content.IsNullOrEmpty();
     var canCopyLink = !ClickedLinkUrl.IsNullOrEmpty();
     var canCopyCode = !ClickedCode.IsNullOrEmpty();
+    var canCopyImage = !ClickedImageUrl.IsNullOrEmpty();
     var canCopyMessageLink = !IsSystem;
     var canForward = !e.IsContentStreaming && !IsSystem && !hasSelection;
     var canStartThread = !e.IsContentStreaming && !IsSystem && !hasSelection;
@@ -87,6 +88,13 @@
                     Text="Copy code">
                 </MenuEntry>
             </CopyTrigger>
+        }
+        @if (canCopyImage) {
+            <MenuEntry
+                Icon="icon-copy"
+                Text="Copy image"
+                Click="@(() => Hub.ClipboardUI.WriteImage(ClickedImageUrl!))">
+            </MenuEntry>
         }
         @if (canCopyMessageLink) {
             <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
@@ -170,6 +178,7 @@
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter, EditorRequired] public string? ClickedLinkUrl { get; set; }
     [Parameter, EditorRequired] public string? ClickedCode { get; set; }
+    [Parameter, EditorRequired] public string? ClickedImageUrl { get; set; }
     [Parameter, EditorRequired] public bool IsSystem { get; set; }
     [Parameter, EditorRequired] public bool IsOwnEntry { get; set; }
     [Parameter, EditorRequired] public bool IsOwner { get; set; }

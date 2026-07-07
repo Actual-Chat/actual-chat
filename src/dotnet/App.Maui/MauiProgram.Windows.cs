@@ -2,6 +2,7 @@ using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Maui.Services;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;
@@ -20,6 +21,7 @@ public static partial class MauiProgram
         services.AddScoped<IRecordingPermissionRequester>(_ => new WindowsRecordingPermissionRequester());
         services.AddScoped<IMauiLogAccessor>(c => new WindowsLogAccessor(c));
         services.AddScoped<IAudioCapture>(c => new WindowsAudioCapture(c.LogFor<WindowsAudioCapture>()));
+        services.AddScoped<ClipboardUI>(c => new WindowsClipboardUI(c.UIHub()));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

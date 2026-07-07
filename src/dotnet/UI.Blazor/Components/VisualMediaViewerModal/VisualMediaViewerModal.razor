@@ -35,8 +35,11 @@
             var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
             var previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)Constants.Attachments.MaxActualThumbnailResolution.Y);
             @if (attachment.IsSupportedImage()) {
+                var imageMenuRef = Hub.ClipboardUI.CanWriteImage && !attachment.IsSvg()
+                    ? MenuRef.New<ImageMenu>(url).ToString()
+                    : null;
                 <swiper-slide @key="@attachment.Id.Value" lazy="true" lazyPreloaderClass="hidden">
-                    <div class="swiper-zoom-container image-container">
+                    <div class="swiper-zoom-container image-container" data-menu="@imageMenuRef">
                         <img src="@url"
                              alt=""
                              loading="lazy"

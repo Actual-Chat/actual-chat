@@ -20,12 +20,16 @@
     var ratioStyle = hasDims
         ? $"aspect-ratio: {((float)mediaW / mediaH).ToString(CultureInfo.InvariantCulture)}"
         : null;
+    var imageMenuRef = Hub.ClipboardUI.CanWriteImage && attachment.IsSupportedImage() && !attachment.IsSvg()
+        ? MenuRef.New<MessageMenu>(attachment.EntryId.Value, bool.FalseString, "", "", url).ToString()
+        : null;
 }
 
 <div class="image-attachment @Class" style="@ratioStyle">
     <a class="c-content"
        href="@url"
        role="button"
+       data-menu="@imageMenuRef"
        @onclick="@(() => VisualMediaViewerUI.Show(url, attachments))"
        @onclick:preventDefault="true">
         @if (attachment.IsSupportedVideo()) {
