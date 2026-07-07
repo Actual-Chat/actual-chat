@@ -352,6 +352,15 @@ public partial class ChatAudioUI
                 restartAttempt = 0;
 
             restartAttempt++;
+            if (restartAttempt >= 2) {
+                // Repeated fast failures while the user still wants to listen usually mean the
+                // platform audio graph died under us (e.g. iOS AVAudioSession/engine went inactive
+                // and never recovered - the "audio's gone but headphones stay on" case). Rebuild it;
+                // this is a no-op on platforms without a recovery implementation.
+                Log.LogWarning(nameof(KeepListeningPlayerAlive)
+                    + ": repeated unhealthy exits for chat #{ChatId}, recovering audio focus", chatId);
+                await AudioFocusUI.TryRecover(cancellationToken).SilentAwait(false);
+            }
             var delay = restartDelays[restartAttempt];
             Log.LogWarning(
                 nameof(KeepListeningPlayerAlive)
