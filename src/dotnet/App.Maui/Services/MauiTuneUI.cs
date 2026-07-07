@@ -57,28 +57,42 @@ public class MauiTuneUI : TuneUI
         if (soundName.IsNullOrEmpty())
             return;
 
-        var audioService = AudioManager.Current;
-        var playerTask = _players.GetOrAdd(soundName,
-            async sound => {
-                var filePath = $"sounds/{sound}.m4a";
-                var stream = await FileSystem.OpenAppPackageFileAsync(filePath).ConfigureAwait(false);
-                return audioService.CreateAsyncPlayer(
-                    stream,
-                    new AudioPlayerOptions {
+        try {
+            var audioService = AudioManager.Current;
+            var playerTask = _players.GetOrAdd(soundName,
+                async sound => {
+                    var filePath = $"sounds/{sound}.m4a";
+                    var stream = await FileSystem.OpenAppPackageFileAsync(filePath).ConfigureAwait(false);
+                    return audioService.CreateAsyncPlayer(
+                        stream,
+                        new AudioPlayerOptions {
 #if ANDROID
-                        AudioContentType = Android.Media.AudioContentType.Sonification,
-                        AudioUsageKind = Android.Media.AudioUsageKind.AssistanceSonification,
+                            AudioContentType = Android.Media.AudioContentType.Sonification,
+                            AudioUsageKind = Android.Media.AudioUsageKind.AssistanceSonification,
 #endif
-                    });
-            });
-        var player = await playerTask.ConfigureAwait(false);
+                        });
+                });
+            AsyncAudioPlayer player;
+            try {
+                player = await playerTask.ConfigureAwait(false);
+            }
+            catch {
+                // A missing/broken sound file caches a faulted task that would otherwise
+                // rethrow (and go unobserved) on every future play - drop it so it's retried.
+                _players.TryRemove(new KeyValuePair<string, Task<AsyncAudioPlayer>>(soundName, playerTask));
+                throw;
+            }
 
-        var scope = await TryAcquireAudioFocus().ConfigureAwait(false);
-        if (scope is null)
-            return;
+            var scope = await TryAcquireAudioFocus().ConfigureAwait(false);
+            if (scope is null)
+                return;
 
-        await player.PlayAsync(CancellationToken.None).ConfigureAwait(false);
-        ReleaseAudioFocus();
+            await player.PlayAsync(CancellationToken.None).ConfigureAwait(false);
+            ReleaseAudioFocus();
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to play sound {SoundName}", soundName);
+        }
     }
 
     protected virtual async Task Vibrate(Tune tune)
