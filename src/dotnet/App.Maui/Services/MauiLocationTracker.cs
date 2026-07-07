@@ -55,6 +55,8 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
 
     private void OnListeningFailed(object? sender, GeolocationListeningFailedEventArgs e)
     {
+        // MAUI stops the underlying session before raising this, so there's no self-heal:
+        // reset tracking state and detach so a later Start re-arms from scratch.
         IsTracking = false;
         _geolocation.LocationChanged -= OnLocationChanged;
         _geolocation.ListeningFailed -= OnListeningFailed;

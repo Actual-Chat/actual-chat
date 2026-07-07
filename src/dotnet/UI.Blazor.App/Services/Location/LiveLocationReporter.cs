@@ -97,11 +97,21 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             .ConfigureAwait(false);
         return;
 
-        Task ReportForChats(CancellationToken cancellationToken1)
-            => activeShares.Select(Report).Collect(cancellationToken1);
+        async Task ReportForChats(CancellationToken cancellationToken1) {
+            await RestartTrackerIfBroken(cancellationToken1).ConfigureAwait(false);
+            await activeShares.Select(Report).Collect(cancellationToken1).ConfigureAwait(false);
+        }
 
-        async Task Report(ActiveShare share)
-        {
+        // Some trackers can't self-heal: on a fatal failure (permission denied, or Windows where MAUI
+        // shuts the session down) they tear themselves down and report an error instead of recovering.
+        // Starting again picks tracking back up once the user resolves the cause; Start returns right
+        // away while the tracker is still running, so calling it every cycle is cheap.
+        Task RestartTrackerIfBroken(CancellationToken cancellationToken1)
+            => Tracker.Error.Value is null
+                ? Task.CompletedTask
+                : Tracker.Start(cancellationToken1);
+
+        async Task Report(ActiveShare share) {
             if (share.ExpiresAt <= ServerNow)
                 return;
 

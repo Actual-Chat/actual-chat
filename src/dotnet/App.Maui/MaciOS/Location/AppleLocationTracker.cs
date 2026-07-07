@@ -83,7 +83,7 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
     {
         Log.LogError(e.Error.ToException(), "Failed to track location");
         var code = e.Error is { } error ? (CLError)error.Code : CLError.LocationUnknown;
-        SetError(code switch {
+        var trackingError = code switch {
             CLError.Denied or CLError.RegionMonitoringDenied or CLError.PromptDeclined
                 => GeoTrackingError.PermissionDenied,
             CLError.LocationUnknown or CLError.Network or CLError.HeadingFailure
@@ -96,6 +96,11 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
                 or CLError.RangingUnavailable or CLError.HistoricalLocationError
                 => GeoTrackingError.PositionUnavailable,
             _ => throw new ArgumentOutOfRangeException(nameof(code), code, null),
-        });
+        };
+        if (trackingError == GeoTrackingError.PermissionDenied) {
+            IsTracking = false;
+            _manager?.StopUpdatingLocation();
+        }
+        SetError(trackingError);
     }
 }
