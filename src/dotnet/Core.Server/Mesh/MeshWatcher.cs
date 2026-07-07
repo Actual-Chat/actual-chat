@@ -6,6 +6,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
     private readonly MutableState<ImmutableArray<MeshNode>> _onlineNodes;
     private readonly ComputedState<MeshState> _state;
     private ImmutableArray<MeshNode> _lastNodes;
+    private int _listNodesFailureCount;
 
     private IMeshLocks EndpointLocks { get; }
     private IMeshLocks NodeLocks { get; }
@@ -186,9 +187,15 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                     return false;
                 }).Order());
             _lastNodes = nodes; // This method isn't called concurrently, so it's safe to update
+            _listNodesFailureCount = 0;
             return nodes;
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // Serving the last known list keeps the mesh going, but a persistent failure
+            // means the topology is frozen - it must be visible in logs
+            _listNodesFailureCount++;
+            Log.LogError(e, "ListNodes failed ({FailureCount} in a row) @ {MeshNode} - using the last known node list",
+                _listNodesFailureCount, ThisNode.Ref.Value);
             return _lastNodes;
         }
     }
