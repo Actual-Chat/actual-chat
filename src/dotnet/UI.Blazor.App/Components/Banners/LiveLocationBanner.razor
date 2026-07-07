@@ -8,7 +8,9 @@
     IsVisible="@(m.Count > 0)"
     Class="live-location-banner">
     <Icon>
-        <i class="@(m.IsTrackingBroken ? "icon-alert-circle text-danger" : "icon-map-point") text-2xl"></i>
+        <i class="@(m.IsTrackingBroken ? "icon-alert-circle text-danger" : "icon-map-point") text-2xl"
+           data-tooltip="@(m.IsTrackingBroken ? m.GetErrorText() : null)"
+           data-tooltip-position="@(m.IsTrackingBroken ? FloatingPosition.Top.ToPositionString() : null)"></i>
     </Icon>
     <Body>
         <div class="c-body" @onclick="@OnOpenMap">
@@ -63,7 +65,7 @@
             : "";
         var trackingError = await Hub.LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
 
-        return new Model(avatars, locations.Count, ownLocation != null, remaining, ownLocation != null && trackingError != null);
+        return new Model(avatars, locations.Count, ownLocation != null, remaining, ownLocation != null ? trackingError : null);
     }
 
     private Task OnOpenMap()
@@ -79,12 +81,22 @@
         int Count,
         bool IsOwnSharing,
         string RemainingText = "",
-        bool IsTrackingBroken = false) {
+        GeoTrackingError? TrackingError = null) {
         public static readonly Model None = new([], 0, false);
+
+        public bool IsTrackingBroken => TrackingError is not null;
+
+        public string GetErrorText()
+            => TrackingError switch {
+                GeoTrackingError.PermissionDenied => "Location permission denied",
+                GeoTrackingError.PositionUnavailable => "Can't determine your location",
+                GeoTrackingError.Timeout => "Location request timed out",
+                _ => "Location tracking is off",
+            };
 
         public string GetDescription() {
             if (IsTrackingBroken)
-                return "Location tracking is off";
+                return GetErrorText();
             if (IsOwnSharing) {
                 var others = Count - 1;
                 return others switch {
