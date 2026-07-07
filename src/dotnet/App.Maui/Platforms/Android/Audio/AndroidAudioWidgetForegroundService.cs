@@ -59,7 +59,12 @@ public class AndroidAudioWidgetForegroundService : Service
         if ((intent?.Action ?? "") != ActionShow)
             return StartCommandResult.Sticky;
 
-        var mode = (AudioWidgetMode)intent!.Extras!.GetInt(IntentExtras.Mode);
+        var mode = (AudioWidgetMode)(intent!.Extras?.GetInt(IntentExtras.Mode) ?? 0);
+        // Android requires StartForeground() within ~5s of StartForegroundService(). Call it up-front
+        // with a placeholder so a throw while building the rich notification (unexpected mode,
+        // ChatId.Parse) can't leave the service without one -> ForegroundServiceDidNotStartInTimeException.
+        StartForeground1(BuildStartingNotification());
+
         var chatTitle = intent.Extras!.GetString(IntentExtras.ChatTitle) ?? "Unknown chat";
         var chatSid = intent.Extras!.GetString(IntentExtras.ChatId);
         var chatPicUrl = intent.Extras!.GetString(IntentExtras.ChatPicUri) ?? "";
@@ -173,6 +178,12 @@ public class AndroidAudioWidgetForegroundService : Service
             });
         }, TaskScheduler.Default);
     }
+
+    private Android.App.Notification BuildStartingNotification()
+        => new NotificationCompat.Builder(this, ChannelId)
+            .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
+            .SetOngoing(true)!
+            .Build()!;
 
     private Android.App.Notification BuildNotification(MediaSessionCompat mediaSession, string link)
     {

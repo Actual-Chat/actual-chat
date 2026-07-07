@@ -133,8 +133,11 @@ public partial class MainActivity : MauiAppCompatActivity
     public override void OnTrimMemory(TrimMemory level)
     {
         Log.LogInformation("OnTrimMemory, Level: {Level}", level);
-        DumpMemoryInfo();
         base.OnTrimMemory(level);
+        // Diagnostics only, so run off the UI thread: OnTrimMemory fires under memory pressure -
+        // exactly when the managed runtime is busy collecting - and the JNI-heavy dump below blocks
+        // the UI thread long enough to be reported as an ANR.
+        _ = Task.Run(DumpMemoryInfo);
     }
 
     public void RequestPermission(string permission, Action<bool> onReceiveResult, bool throwIfHavePendingRequest = false)
@@ -188,11 +191,17 @@ public partial class MainActivity : MauiAppCompatActivity
 
     private class SplashDelayer(AView contentView) : JObject, ViewTreeObserver.IOnPreDrawListener
     {
+        // Failsafe cap on the pre-draw hold. Suspending the first frame until the WebView/Blazor
+        // startup callback fires is fine only if that callback is guaranteed to arrive - but on a
+        // stalled/warm-start boot it may not, and holding forever starves input dispatch, which
+        // Android reports as a "no focused window" ANR. Release the frame after this regardless.
+        private static readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(4);
         private static readonly Task WhenRemoved = MauiLoadingUI.WhenFirstWebViewCreated;
+        private readonly CpuTimestamp _startedAt = CpuTimestamp.Now;
 
         public bool OnPreDraw()
         {
-            if (!WhenRemoved.IsCompleted)
+            if (!WhenRemoved.IsCompleted && CpuTimestamp.Now - _startedAt < MaxDelay)
                 return false;
 
             contentView.ViewTreeObserver!.RemoveOnPreDrawListener(this);

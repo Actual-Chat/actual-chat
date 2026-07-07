@@ -158,7 +158,18 @@ public class AndroidWebChromeClient : WebChromeClient
     }
 
     public override bool OnCreateWindow(WebView? view, bool isDialog, bool isUserGesture, Message? resultMsg)
-        => _client.OnCreateWindow(view, isDialog, isUserGesture, resultMsg);
+    {
+        try {
+            return _client.OnCreateWindow(view, isDialog, isUserGesture, resultMsg);
+        }
+        catch (Exception e) {
+            // A target=_blank / window.open() whose URL has no handling activity makes the default
+            // client throw (e.g. ActivityNotFoundException) on the UI thread, crashing the app.
+            // Decline the new window instead.
+            Log.LogWarning(e, "OnCreateWindow failed");
+            return false;
+        }
+    }
     public override void OnCloseWindow(WebView? window)
         => _client.OnCloseWindow(window);
     public override void OnGeolocationPermissionsHidePrompt()
