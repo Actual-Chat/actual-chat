@@ -1,7 +1,7 @@
 .thread-message {
     @apply flex-y gap-y-2;
-    @apply m-2 p-4;
-    @apply rounded-lg;
+    @apply my-2 p-4;
+    @apply rounded-2xl;
     background: linear-gradient(78deg, var(--thread-gradient-01) -32.23%, var(--thread-gradient-02) 48.44%, var(--thread-gradient-01) 158.27%);
 }
 .thread-message .c-title {

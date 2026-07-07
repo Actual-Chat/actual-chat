@@ -2,7 +2,7 @@
     @apply relative;
     @apply flex-y;
     @apply min-h-6;
-    @apply border-l-2 border-transparent rounded-lg;
+    @apply border-l-2 border-transparent rounded-2xl;
     @apply md:select-text;
     @apply translate-z-0;
 }
@@ -407,7 +407,7 @@ body.hoverable .chat-message-quote:hover,
     @apply relative;
     @apply flex-none flex-y flex-wrap gap-px;
     @apply w-96 max-w-96 md:w-120 md:max-w-120;
-    @apply rounded-xl overflow-hidden;
+    @apply rounded-2xl overflow-hidden;
 }
 .message-image-attachments.wide {
     @apply max-w-full;
