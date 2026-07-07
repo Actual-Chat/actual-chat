@@ -168,33 +168,36 @@ public partial class MainActivity : MauiAppCompatActivity
 
     private void DumpMemoryInfo()
     {
-        var activityManager = (ActivityManager)GetSystemService(ActivityService)!;
-        var memoryClass = activityManager.MemoryClass;
-        Log.LogInformation("MemoryClass: {MemoryClass}", memoryClass);
-        var memoryInfo = new ActivityManager.MemoryInfo();
-        activityManager.GetMemoryInfo(memoryInfo);
-        Log.LogInformation("MemoryInfo: AvailMem={AvailMem}, TotalMem={TotalMem}, LowMemory={LowMemory}, Threshold={Threshold}",
-            memoryInfo.AvailMem,
-            memoryInfo.TotalMem,
-            memoryInfo.LowMemory,
-            memoryInfo.Threshold);
-        var processInfo = new ActivityManager.RunningAppProcessInfo();
-        ActivityManager.GetMyMemoryState(processInfo);
-        Log.LogInformation(
-            "MyMemoryState: Pid={Pid}, LastTrimLevel={LastTrimLevel}, Lru={Lru}, Importance={Importance}, ImportanceReasonCode={ImportanceReasonCode}",
-            processInfo.Pid,
-            processInfo.LastTrimLevel,
-            processInfo.Lru,
-            processInfo.Importance,
-            processInfo.ImportanceReasonCode);
+        try {
+            var activityManager = (ActivityManager)GetSystemService(ActivityService)!;
+            var memoryClass = activityManager.MemoryClass;
+            Log.LogInformation("MemoryClass: {MemoryClass}", memoryClass);
+            var memoryInfo = new ActivityManager.MemoryInfo();
+            activityManager.GetMemoryInfo(memoryInfo);
+            Log.LogInformation("MemoryInfo: AvailMem={AvailMem}, TotalMem={TotalMem}, LowMemory={LowMemory}, Threshold={Threshold}",
+                memoryInfo.AvailMem,
+                memoryInfo.TotalMem,
+                memoryInfo.LowMemory,
+                memoryInfo.Threshold);
+            var processInfo = new ActivityManager.RunningAppProcessInfo();
+            ActivityManager.GetMyMemoryState(processInfo);
+            Log.LogInformation(
+                "MyMemoryState: Pid={Pid}, LastTrimLevel={LastTrimLevel}, Lru={Lru}, Importance={Importance}, ImportanceReasonCode={ImportanceReasonCode}",
+                processInfo.Pid,
+                processInfo.LastTrimLevel,
+                processInfo.Lru,
+                processInfo.Importance,
+                processInfo.ImportanceReasonCode);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "DumpMemoryInfo failed");
+        }
     }
 
     private class SplashDelayer(AView contentView) : JObject, ViewTreeObserver.IOnPreDrawListener
     {
-        // Failsafe cap on the pre-draw hold. Suspending the first frame until the WebView/Blazor
-        // startup callback fires is fine only if that callback is guaranteed to arrive - but on a
-        // stalled/warm-start boot it may not, and holding forever starves input dispatch, which
-        // Android reports as a "no focused window" ANR. Release the frame after this regardless.
+        // Cap the pre-draw hold: if the WebView callback never arrives, holding forever starves
+        // input dispatch and Android reports a "no focused window" ANR.
         private static readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(4);
         private static readonly Task WhenRemoved = MauiLoadingUI.WhenFirstWebViewCreated;
         private readonly CpuTimestamp _startedAt = CpuTimestamp.Now;
