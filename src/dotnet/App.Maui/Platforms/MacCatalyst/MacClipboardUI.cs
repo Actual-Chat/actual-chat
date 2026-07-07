@@ -13,10 +13,11 @@ public class MacClipboardUI(UIHub hub) : MauiClipboardUI(hub)
         if (nsData == null)
             return;
 
-        await MainThread.InvokeOnMainThreadAsync(() => {
-            var image = UIImage.LoadFromData(nsData);
-            if (image != null)
-                UIPasteboard.General.Image = image;
-        }).ConfigureAwait(false);
+        using var image = UIImage.LoadFromData(nsData);
+        if (image is null)
+            return;
+
+        // ReSharper disable once AccessToDisposedClosure
+        await MainThread.InvokeOnMainThreadAsync(() => UIPasteboard.General.Image = image).ConfigureAwait(false);
     }
 }
