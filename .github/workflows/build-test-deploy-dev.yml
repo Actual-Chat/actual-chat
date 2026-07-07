@@ -962,8 +962,9 @@ jobs:
       # Sentry.targets reads to enable its bundled sentry-cli upload; MSBuild picks them up
       # from these env vars. Kept CI-only (no csproj changes) so local builds never touch Sentry.
       # Gated by UPLOAD_SENTRY_SYMBOLS: always on for PROD, opt-in for DEV (uploadDevSymbols input).
-      # SENTRY_AUTH_TOKEN is consumed by sentry-cli from the environment (kept off command lines).
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      # SENTRY_AUTH_TOKEN is the env var sentry-cli reads (kept off command lines); the secret
+      # holding the org token is named SENTRY_ACCESS_TOKEN.
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_ACCESS_TOKEN }}
       SentryOrg: actual-chat
       SentryProject: actual-chat-ui
       SentryUploadSymbols: ${{ needs.calc-pkg-params.outputs.UPLOAD_SENTRY_SYMBOLS }}
