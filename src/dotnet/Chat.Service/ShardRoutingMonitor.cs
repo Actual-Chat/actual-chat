@@ -51,13 +51,13 @@ public sealed class ShardRoutingMonitor(IServiceProvider services) : WorkerBase
         if (expected == null)
             return null; // The shard has no owner yet - the mesh is in transition
 
-        var direct = await Backend.GetShardHostIdNonComputed(shardIndex, cancellationToken)
+        var direct = await Backend.GetShardHostIdNonComputed(ShardKey.New(shardIndex), cancellationToken)
             .WaitAsync(CallTimeout, cancellationToken).ConfigureAwait(false);
 
         var probeComputed = _probeComputeds[shardIndex];
         if (probeComputed == null)
             probeComputed = await Computed
-                .Capture(() => Backend.GetShardHostId(shardIndex, cancellationToken), cancellationToken)
+                .Capture(() => Backend.GetShardHostId(ShardKey.New(shardIndex), cancellationToken), cancellationToken)
                 .AsTask().WaitAsync(CallTimeout, cancellationToken).ConfigureAwait(false);
         else {
             // A consistent computed is reused as-is: that's exactly what makes a frozen one detectable

@@ -1,5 +1,4 @@
 ﻿using ActualChat.Blobs.Internal;
-using ActualChat.Geo;
 using ActualChat.Hosting;
 using ActualChat.AspNetCore;
 using ActualChat.Diagnostics;
@@ -31,6 +30,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         services.AddRpcHost(HostInfo, Log);
 
         // ShardOwners
+        ShardKeyResolvers.MustThrowOnNotFound |= HostInfo.BaseUrlKind != BaseUrlKind.Production;
         services.AddSingleton(c => new ShardOwners(c));
 
         // Queues

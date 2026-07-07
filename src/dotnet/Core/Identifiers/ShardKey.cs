@@ -12,10 +12,11 @@ namespace ActualChat;
 public readonly partial record struct ShardKey(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] int Value)
 {
+    public static ShardKey New(int value) => new(value);
+
     public override string ToString() => Value.Format();
 
     // Conversion
 
-    public static implicit operator ShardKey(int value) => new(value);
     public static implicit operator int(ShardKey shardKey) => shardKey.Value;
 }

@@ -59,8 +59,8 @@ public class RoutingStressTest(ITestOutputHelper @out)
         // Set a value on host1
         var key = "test-key";
         var value1 = "value-from-h1";
-        await s1.SetValue(0, key, value1);
-        var result = await s1.GetValue(0, key);
+        await s1.SetValue(ShardKey.New(0), key, value1);
+        var result = await s1.GetValue(ShardKey.New(0), key);
         result.Value.Should().Be(value1);
         result.HostNodeRef.Should().Be(w1.ThisNode.Ref.Value);
         WriteLine($"Set and got value on h1: {result.Value} from {result.HostNodeRef}");
@@ -91,15 +91,15 @@ public class RoutingStressTest(ITestOutputHelper @out)
         }, TimeSpan.FromSeconds(15));
 
         // Value should still be accessible (may route to h1 or h2 depending on shard ownership)
-        var result2 = await s2.GetValue(0, key);
+        var result2 = await s2.GetValue(ShardKey.New(0), key);
         // Note: The value might be empty if shard 0 moved to h2 (which has empty storage)
         WriteLine($"Got value from h2's perspective: {result2.Value} from {result2.HostNodeRef}");
 
         // Test value on different shard key
         var key2 = "key2";
         var value2 = "value2";
-        await s2.SetValue(1, key2, value2);
-        var result3 = await s1.GetValue(1, key2);
+        await s2.SetValue(ShardKey.New(1), key2, value2);
+        var result3 = await s1.GetValue(ShardKey.New(1), key2);
         result3.Value.Should().Be(value2);
         WriteLine($"Cross-host routing works: got '{result3.Value}' from {result3.HostNodeRef}");
     }
@@ -149,8 +149,8 @@ public class RoutingStressTest(ITestOutputHelper @out)
 
         // Capture a computed value
         var key = "invalidation-test";
-        await s1.SetValue(0, key, "initial");
-        var computed = await Computed.Capture(() => s1.GetValue(0, key));
+        await s1.SetValue(ShardKey.New(0), key, "initial");
+        var computed = await Computed.Capture(() => s1.GetValue(ShardKey.New(0), key));
         computed.Value.Value.Should().Be("initial");
         var initialHostRef = computed.Value.HostNodeRef;
         WriteLine($"Initial computed from {initialHostRef}: {computed.Value.Value}");
@@ -166,7 +166,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         WriteLine($"Host2 joined: {w2.ThisNode.Ref}");
 
         // Update value on h2 for the same key (different shard)
-        await s2.SetValue(1, key, "updated");
+        await s2.SetValue(ShardKey.New(1), key, "updated");
 
         // The computed should eventually update (either same value or rerouted)
         // Note: If shard 0 moves to h2, the value will be empty because h2's storage is empty.
@@ -189,7 +189,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         WriteLine("H2 detected h1 is gone");
 
         // Now calling s2 should work and return values from h2
-        var result = await s2.GetValue(0, key);
+        var result = await s2.GetValue(ShardKey.New(0), key);
         result.HostNodeRef.Should().Be(w2.ThisNode.Ref.Value);
         WriteLine($"After h1 disposal, got value from {result.HostNodeRef}: {result.Value}");
     }
@@ -222,7 +222,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
             var rnd = new Random();
             for (var i = 0; i < callCount && !cancellationToken.IsCancellationRequested; i++) {
                 try {
-                    var shardKey = rnd.Next(0, 10);
+                    var shardKey = ShardKey.New(rnd.Next(0, 10));
                     var key = $"call-{i}";
                     var value = $"value-{i}";
 
@@ -306,7 +306,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
 
         for (var i = 0; i < callCount && !cancellationToken.IsCancellationRequested; i++) {
             try {
-                var shardKey = rnd.Next(0, ShardScheme.TestBackend.ShardCount);
+                var shardKey = ShardKey.New(rnd.Next(0, ShardScheme.TestBackend.ShardCount));
                 var key = $"{workerName}-key-{i}";
                 var value = $"{workerName}-value-{i}";
 

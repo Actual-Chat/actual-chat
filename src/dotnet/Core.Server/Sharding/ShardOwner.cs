@@ -72,6 +72,9 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         => Dispatcher.Use(shardRunnable);
 
     public Computed<ShardState> GetShardStateComputed<T>(T shardKey, bool addDependency)
+        => GetShardStateComputed(ShardScheme.GetShardIndex(shardKey), addDependency);
+
+    public Computed<ShardState> GetShardStateComputed(int shardKey, bool addDependency)
     {
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var cShardState = States[shardIndex].Computed;
@@ -82,6 +85,9 @@ public sealed class ShardOwner : WorkerBase, IHasServices
     }
 
     public ValueTask<ShardOwnership> RequireShardOwnership<T>(T shardKey, bool addDependency, CancellationToken cancellationToken)
+        => RequireShardOwnership(ShardScheme.GetShardIndex(shardKey), addDependency, cancellationToken);
+
+    public ValueTask<ShardOwnership> RequireShardOwnership(int shardKey, bool addDependency, CancellationToken cancellationToken)
     {
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var cShardState = States[shardIndex].Computed;
