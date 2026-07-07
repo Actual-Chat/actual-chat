@@ -10,7 +10,7 @@ public class WindowsClipboardUI(UIHub hub) : MauiClipboardUI(hub)
 {
     protected override async Task SetClipboardImage(Stream data)
     {
-        var stream = new InMemoryRandomAccessStream();
+        using var stream = new InMemoryRandomAccessStream();
         await data.CopyToAsync(stream.AsStreamForWrite()).ConfigureAwait(false);
         stream.Seek(0);
 
@@ -18,6 +18,9 @@ public class WindowsClipboardUI(UIHub hub) : MauiClipboardUI(hub)
             var package = new WinDataPackage();
             package.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream));
             WinClipboard.SetContent(package);
+            // Flush renders the bitmap into the system clipboard now, so it survives app exit
+            // and no longer references our stream - which lets the using above dispose it.
+            WinClipboard.Flush();
         }).ConfigureAwait(false);
     }
 }
