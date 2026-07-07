@@ -60,6 +60,8 @@ public class AndroidAudioWidgetForegroundService : Service
             return StartCommandResult.Sticky;
 
         var mode = (AudioWidgetMode)(intent!.Extras?.GetInt(IntentExtras.Mode) ?? 0);
+        if (!Enum.IsDefined(mode))
+            mode = AudioWidgetMode.Listening;
         // Android requires StartForeground() within ~5s of StartForegroundService(). Call it up-front
         // with a placeholder so a throw while building the rich notification (unexpected mode,
         // ChatId.Parse) can't leave the service without one -> ForegroundServiceDidNotStartInTimeException.
