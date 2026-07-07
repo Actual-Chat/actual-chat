@@ -7,11 +7,16 @@ namespace ActualChat.App.Maui;
 
 public class MacClipboardUI(UIHub hub) : MauiClipboardUI(hub)
 {
-    protected override Task SetClipboardImage(byte[] data)
-        => MainThread.InvokeOnMainThreadAsync(() => {
-            using var nsData = NSData.FromArray(data);
+    protected override async Task SetClipboardImage(Stream data)
+    {
+        using var nsData = NSData.FromStream(data);
+        if (nsData == null)
+            return;
+
+        await MainThread.InvokeOnMainThreadAsync(() => {
             var image = UIImage.LoadFromData(nsData);
             if (image != null)
                 UIPasteboard.General.Image = image;
-        });
+        }).ConfigureAwait(false);
+    }
 }
