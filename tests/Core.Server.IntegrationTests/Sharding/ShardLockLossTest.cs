@@ -58,7 +58,7 @@ public class ShardLockLossTest(ITestOutputHelper @out)
 
             // And RequireShardOwnership must not hand out a dead ownership either
             var ownershipTask = owner
-                .RequireShardOwnership((ShardKey)shard, addDependency: false, cancellationToken)
+                .RequireShardOwnership(ShardKey.New(shard), addDependency: false, cancellationToken)
                 .AsTask();
             await Task.WhenAny(ownershipTask, Task.Delay(TimeSpan.FromSeconds(2), cancellationToken));
             if (ownershipTask is { IsCompletedSuccessfully: true, Result.LockToken.IsCancellationRequested: true })

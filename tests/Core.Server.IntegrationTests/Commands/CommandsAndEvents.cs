@@ -26,10 +26,10 @@ public partial record AddTestEvent1Command(
 public partial record AddBothTestEventsCommand : ICommand<Unit>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public partial record AddBothTestEventsCommandWithShardKey : ICommand<Unit>, IHasShardKey<int>, IHasQueueRef
+public partial record AddBothTestEventsCommandWithShardKey : ICommand<Unit>, IHasShardKey<ShardKey>, IHasQueueRef
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public int ShardKey { get; init; }
+    public ShardKey ShardKey { get; init; }
 
     QueueRef IHasQueueRef.QueueRef => ShardScheme.SlowQueue;
 }

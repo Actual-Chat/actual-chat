@@ -14,22 +14,22 @@ public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
         var r0u = MeshRefResolvers.GetUntyped(typeof(MeshRefResolversTest));
         r0u.Invoke(this).Should().Be(MeshRef.Shard(GetHashCode()));
 
-        var r1 = MeshRefResolvers.Get<int>();
-        r1.Invoke(0).Should().Be(MeshRef.Shard(0));
-        r1.Invoke(10).Should().Be(MeshRef.Shard(10));
+        var r1 = MeshRefResolvers.Get<ShardKey>();
+        r1.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(0));
+        r1.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(10));
 
-        var r1u = MeshRefResolvers.GetUntyped(typeof(int));
-        r1u.Invoke(0).Should().Be(MeshRef.Shard(0));
-        r1u.Invoke(10).Should().Be(MeshRef.Shard(10));
+        var r1u = MeshRefResolvers.GetUntyped(typeof(ShardKey));
+        r1u.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(0));
+        r1u.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(10));
 
-        var r2 = MeshRefResolvers.Get<int?>();
-        r2.Invoke(0).Should().Be(MeshRef.Shard(0));
-        r2.Invoke(10).Should().Be(MeshRef.Shard(10));
+        var r2 = MeshRefResolvers.Get<ShardKey?>();
+        r2.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(0));
+        r2.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(10));
         r2.Invoke(null).Should().Be(MeshRef.Shard(0));
 
-        var r2u = MeshRefResolvers.GetUntyped(typeof(int?));
-        r2u.Invoke(0).Should().Be(MeshRef.Shard(0));
-        r2u.Invoke(10).Should().Be(MeshRef.Shard(10));
+        var r2u = MeshRefResolvers.GetUntyped(typeof(ShardKey?));
+        r2u.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(0));
+        r2u.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(10));
         r2u.Invoke(null).Should().Be(MeshRef.Shard(0));
 
         var r3 = MeshRefResolvers.Get<NodeRef>();
@@ -54,8 +54,8 @@ public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
 
     public sealed record TestNodeCommand(NodeRef NodeRef) : IHasNodeRef;
 
-    public sealed record TestShardCommand(int Value) : IHasShardKey<int>
+    public sealed record TestShardCommand(int Value) : IHasShardKey<ShardKey>
     {
-        int IHasShardKey<int>.ShardKey => Value;
+        ShardKey IHasShardKey<ShardKey>.ShardKey => ShardKey.New(Value);
     }
 }

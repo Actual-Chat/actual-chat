@@ -94,7 +94,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
         var testService = (ScheduledCommandTestService)services.GetRequiredService<IScheduledCommandTestService>();
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        var command = new AddBothTestEventsCommandWithShardKey { ShardKey = 7 };
+        var command = new AddBothTestEventsCommandWithShardKey { ShardKey = ShardKey.New(7) };
         var queueRef = QueueRef.For(command, services);
         queueRef.ShardScheme.Should().Be(ShardScheme.SlowQueue);
 

@@ -19,15 +19,24 @@ public static class ShardKeyResolvers
 
     private static readonly ConcurrentDictionary<Type, Delegate> Registered = new();
 
+    // Set at host startup, before the first resolution (resolvers are cached per type).
+    // Production keeps the warning + hash-based fallback; everywhere else it's better to fail fast:
+    // for reference types without a stable hash the fallback routes the same entity
+    // to different shards on different nodes.
+    public static bool MustThrowOnNotFound { get; set; }
+
     public static ShardKeyResolver<T> NewHashBased<T>() => static x => x?.GetHashCode() ?? 0;
     public static ShardKeyResolver<T?> NewNullable<T>(ShardKeyResolver<T> nonNullableResolver)
         where T : struct
         => source => source is { } v
             ? nonNullableResolver.Invoke(v)
             : 0;
-    //public static ShardKeyResolver<T> NewNotFound<T>() => static x => throw StandardError.Internal($"ShardKeyResolver not found for type {typeof(T).GetName()}.");
     public static ShardKeyResolver<T> NewNotFound<T>()
     {
+        if (MustThrowOnNotFound)
+            return static _ => throw StandardError.Internal(
+                $"ShardKeyResolver not found for type {typeof(T).GetName()}.");
+
         var hashBased = NewHashBased<T>();
         return x => {
             Log.LogWarning("ShardKeyResolver not found for type {TypeName}", typeof(T).GetName());
