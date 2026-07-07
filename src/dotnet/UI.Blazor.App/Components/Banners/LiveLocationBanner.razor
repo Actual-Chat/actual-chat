@@ -6,6 +6,7 @@
 
 <Banner
     IsVisible="@(m.Count > 0)"
+    Severity="@(m.IsTrackingBroken ? BannerSeverity.Error : BannerSeverity.Default)"
     Class="live-location-banner">
     <Icon>
         @if (m.IsTrackingBroken) {
