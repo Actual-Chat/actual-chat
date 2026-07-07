@@ -35,9 +35,11 @@ public static class ChatEntryOperations
 
     public static async Task<ChatEntry[]> CreateTextEntries(this IWebTester tester, ChatId chatId, string textPrefix, int entryCount)
     {
-        var entries = await Enumerable.Range(1, entryCount)
-            .Select(async i => await tester.CreateTextEntry(chatId, $"{textPrefix} {i}").ConfigureAwait(false))
-            .Collect(1);
+        // Posts strictly one-by-one: Collect(1) keeps 2 tasks in flight, so entry LIDs
+        // could come out non-monotonic vs the array order, which tests rely on.
+        var entries = new ChatEntry[entryCount];
+        for (var i = 0; i < entryCount; i++)
+            entries[i] = await tester.CreateTextEntry(chatId, $"{textPrefix} {i + 1}").ConfigureAwait(false);
         return entries;
     }
 
