@@ -35,7 +35,12 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
         var hostInfo = services.HostInfo();
         if (hostInfo.AppKind is AppKind.Ios or AppKind.MacOS)
-            MauiBackgroundState.RegisterSuspendHandler(Suspend);
+            MauiBackgroundState.RegisterStateHandler(isBackground => {
+                if (isBackground)
+                    Suspend();
+                else
+                    Resume();
+            });
     }
 
     public ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
@@ -47,25 +52,23 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         if (_connectionPool == null)
             return ValueTask.FromResult(result);
 
-        Resume();
-        using var lease = _connectionPool.Rent();
-        var connection = lease.Resource;
-        if (keys.Length == 1)
-            result[0] = DbHelpers.Find(connection, keys[0])?.Value;
-        else if (keys.Length < 16) {
-            // Small number of keys, use a simple loop
-            foreach (var dbItem in DbHelpers.FindMany(connection, keys))
-                result[FindIndex(keys, dbItem.Key)] = dbItem.Value;
-        }
-        else {
-            // Large number of keys, use a dictionary
-            var keyIndexes = new Dictionary<string, int>();
-            for (var i = 0; i < keys.Length; i++)
-                keyIndexes[keys[i]] = i;
-            foreach (var dbItem in DbHelpers.FindMany(connection, keys))
-                result[keyIndexes[dbItem.Key]] = dbItem.Value;
-        }
-        // Log.LogDebug("GetMany({KeyCount} keys) -> {Count} items", keys.Length, result.Count(x => x != null));
+        Run(connection => {
+            if (keys.Length == 1)
+                result[0] = DbHelpers.Find(connection, keys[0])?.Value;
+            else if (keys.Length < 16) {
+                // Small number of keys, use a simple loop
+                foreach (var dbItem in DbHelpers.FindMany(connection, keys))
+                    result[FindIndex(keys, dbItem.Key)] = dbItem.Value;
+            }
+            else {
+                // Large number of keys, use a dictionary
+                var keyIndexes = new Dictionary<string, int>();
+                for (var i = 0; i < keys.Length; i++)
+                    keyIndexes[keys[i]] = i;
+                foreach (var dbItem in DbHelpers.FindMany(connection, keys))
+                    result[keyIndexes[dbItem.Key]] = dbItem.Value;
+            }
+        });
         return ValueTask.FromResult(result);
 
         static int FindIndex(string[] keys, string key) {
@@ -81,11 +84,9 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         if (_connectionPool == null)
             return ValueTask.FromResult(Array.Empty<(string Key, byte[] Value)>());
 
-        Resume();
-        using var lease = _connectionPool.Rent();
-        var connection = lease.Resource;
-        var dbItems = DbHelpers.SelectAll(connection);
-        var result = dbItems.Select(dbItem => (dbItem.Key, dbItem.Value)).ToArray();
+        var result = Run(connection => DbHelpers.SelectAll(connection)
+            .Select(dbItem => (dbItem.Key, dbItem.Value))
+            .ToArray());
         return ValueTask.FromResult(result);
     }
 
@@ -94,23 +95,22 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         if (_connectionPool == null || updates.Count == 0)
             return Task.CompletedTask;
 
-        Resume();
-        using var lease = _connectionPool.Rent();
-        var connection = lease.Resource;
-        if (updates.Count == 1)
-            DbHelpers.Set(connection, updates[0]);
-        else {
-            var savepoint = connection.SaveTransactionPoint();
-            try {
-                foreach (var update in updates)
-                    DbHelpers.Set(connection, update);
-                connection.Release(savepoint);
+        Run(connection => {
+            if (updates.Count == 1)
+                DbHelpers.Set(connection, updates[0]);
+            else {
+                var savepoint = connection.SaveTransactionPoint();
+                try {
+                    foreach (var update in updates)
+                        DbHelpers.Set(connection, update);
+                    connection.Release(savepoint);
+                }
+                catch {
+                    connection.Rollback();
+                    throw;
+                }
             }
-            catch {
-                connection.Rollback();
-                throw;
-            }
-        }
+        });
         return Task.CompletedTask;
     }
 
@@ -119,10 +119,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         if (_connectionPool == null)
             return Task.CompletedTask;
 
-        Resume();
-        using var lease = _connectionPool.Rent();
-        var connection = lease.Resource;
-        connection.DeleteAll<DbItem>();
+        Run(connection => connection.DeleteAll<DbItem>());
         return Task.CompletedTask;
     }
 
@@ -220,37 +217,78 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         }
     }
 
+    // Runs an operation on a pooled connection. While suspended (backgrounded) the connection is
+    // checkpointed and closed afterwards instead of being returned open to the pool — an open
+    // connection left holding a WAL/-shm file lock across suspension is what iOS kills with 0xdead10cc.
+    private void Run(Action<SQLiteConnection> action)
+        => Run(connection => {
+            action(connection);
+            return true;
+        });
+
+    private T Run<T>(Func<SQLiteConnection, T> func)
+    {
+        var lease = _connectionPool!.Rent();
+        var connection = lease.Resource;
+        T result;
+        try {
+            result = func(connection);
+        }
+        catch {
+            // Don't return a possibly-broken connection to the pool.
+            CloseQuietly(connection);
+            throw;
+        }
+        // The suspend check and the re-pool/close decision must be atomic w.r.t. Suspend's drain,
+        // otherwise a connection could be re-pooled open right after Suspend has drained the pool.
+        lock (_suspendLock) {
+            if (_isSuspended) {
+                TryCheckpoint(connection);
+                CloseQuietly(connection);
+            }
+            else
+                lease.Dispose();
+        }
+        return result;
+    }
+
     private void Suspend()
     {
         if (_connectionPool == null || _isSuspended)
             return;
 
         lock (_suspendLock) {
-            if (_isSuspended) return; // Double-check locking
+            if (_isSuspended)
+                return;
 
             _isSuspended = true;
-            try {
-                // Checkpoint WAL to flush all pending writes to the main db file,
-                // then close all idle pooled connections to release file locks.
-                using var lease = _connectionPool.Rent();
-                var connection = lease.Resource;
-                connection.ExecuteScalar<string>("PRAGMA wal_checkpoint(TRUNCATE)");
-                connection.Close();
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "Failed to checkpoint WAL during suspend");
-            }
-            _connectionPool.Drain(static c => {
-                try { c.Close(); } catch { /* Intended */ }
-            });
+            // Checkpoint via a rented connection, then close it (dropped, not re-pooled), and close
+            // every idle connection so no WAL/-shm file lock survives into suspension.
+            var lease = _connectionPool.Rent();
+            TryCheckpoint(lease.Resource);
+            CloseQuietly(lease.Resource);
+            _connectionPool.Drain(CloseQuietly);
         }
     }
 
     private void Resume()
+        // Going foreground: pooling open connections is fine again. Lock-free so the main-thread
+        // OnActivated -> Set(false) callback never stalls behind a background op's checkpoint.
+        => _isSuspended = false;
+
+    private void TryCheckpoint(SQLiteConnection connection)
     {
-        if (!_isSuspended) return;
-        lock (_suspendLock)
-            _isSuspended = false;
+        try {
+            connection.ExecuteScalar<string>("PRAGMA wal_checkpoint(TRUNCATE)");
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to checkpoint WAL");
+        }
+    }
+
+    private static void CloseQuietly(SQLiteConnection connection)
+    {
+        try { connection.Close(); } catch { /* Intended */ }
     }
 
     // Nested types
