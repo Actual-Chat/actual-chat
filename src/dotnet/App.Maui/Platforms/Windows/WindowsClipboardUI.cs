@@ -8,18 +8,16 @@ namespace ActualChat.App.Maui;
 
 public class WindowsClipboardUI(UIHub hub) : MauiClipboardUI(hub)
 {
-    protected override Task SetClipboardImage(byte[] data)
-        => MainThread.InvokeOnMainThreadAsync(async () => {
-            var stream = new InMemoryRandomAccessStream();
-            var writer = new DataWriter(stream);
-            writer.WriteBytes(data);
-            await writer.StoreAsync();
-            await writer.FlushAsync();
-            writer.DetachStream();
-            stream.Seek(0);
+    protected override async Task SetClipboardImage(Stream data)
+    {
+        var stream = new InMemoryRandomAccessStream();
+        await data.CopyToAsync(stream.AsStreamForWrite()).ConfigureAwait(false);
+        stream.Seek(0);
 
+        await MainThread.InvokeOnMainThreadAsync(() => {
             var package = new WinDataPackage();
             package.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream));
             WinClipboard.SetContent(package);
-        });
+        }).ConfigureAwait(false);
+    }
 }

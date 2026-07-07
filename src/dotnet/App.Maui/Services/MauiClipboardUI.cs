@@ -13,11 +13,13 @@ public abstract class MauiClipboardUI(UIHub hub) : ClipboardUI(hub)
     public override async Task WriteImage(string uri)
     {
         try {
-            var response = await HttpClient.GetAsync(uri, Hub.StopToken).ConfigureAwait(false);
+            using var response = await HttpClient
+                .GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, Hub.StopToken)
+                .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            // TODO: think of optimizing footprint
-            var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-            await SetClipboardImage(bytes).ConfigureAwait(false);
+            var stream = await response.Content.ReadAsStreamAsync(Hub.StopToken).ConfigureAwait(false);
+            await using var _ = stream.ConfigureAwait(false);
+            await SetClipboardImage(stream).ConfigureAwait(false);
             ToastUI.Show("Image copied to clipboard", "icon-checkmark-circle-2", ToastDismissDelay.Short);
         }
         catch (Exception e) {
@@ -26,5 +28,5 @@ public abstract class MauiClipboardUI(UIHub hub) : ClipboardUI(hub)
         }
     }
 
-    protected abstract Task SetClipboardImage(byte[] data);
+    protected abstract Task SetClipboardImage(Stream data);
 }
