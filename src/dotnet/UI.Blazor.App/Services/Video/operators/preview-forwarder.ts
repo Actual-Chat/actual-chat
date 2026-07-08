@@ -1,6 +1,6 @@
 import { getLogs } from 'logging';
 import type { RotationQuarter } from '../orientation/quantize';
-import { alignToPresentGrid, isPresentGridEnabled } from '../present-grid';
+import { isPresentGridEnabled, whenNextPresentSlot } from '../present-grid';
 import type { PreviewFramePresentation } from '../sender/recorder-worker-contract';
 import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
 
@@ -189,15 +189,18 @@ export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
             if (slotTimerArmed)
                 return;
             slotTimerArmed = true;
-            const now = performance.now();
-            setTimeout(() => {
+            // Shared slot ticker (present-grid.ts): the preview flushes in the
+            // same timer callback as this realm's other slot waiters, so it
+            // lands on the same vsync as the tiles instead of a neighboring
+            // one (a stable ±16.7ms phase split, measured on device).
+            void whenNextPresentSlot().then(() => {
                 slotTimerArmed = false;
                 const frame = pendingFrame;
                 const frameRotation = pendingRotation;
                 pendingFrame = null;
                 if (frame)
                     deliver(frame, frameRotation);
-            }, Math.max(0, alignToPresentGrid(now) - now));
+            });
         },
     };
 }

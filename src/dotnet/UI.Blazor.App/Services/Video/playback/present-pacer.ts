@@ -4,7 +4,7 @@ import { delayAsync } from 'actuallab-core';
 import { DeviceInfo } from 'device-info';
 import { aggregateDropTrace, updatePlaybackRateEma, type DecodedFrame } from '../frame-envelopes';
 import { FrameDropStage } from '../frame-drop-trace';
-import { alignToPresentGrid, isPresentGridEnabled } from '../present-grid';
+import { alignToPresentGrid, isPresentGridEnabled, PRESENT_SLOT_LEAD_MS, whenNextPresentSlot } from '../present-grid';
 import { BufferSpanMeter, type BufferSpanMeterOptions } from './buffer-span-meter';
 
 const PRESENT_SKIP_RATIO_EMA_ALPHA = 0.1;
@@ -165,19 +165,25 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                     if (nextWriteAt - now > MAX_DURATION_MS)
                         nextWriteAt = now + MAX_DURATION_MS;
 
-                    // Land the write on the shared present grid (present-grid.ts)
-                    // so every tile invalidates the same output frame. Only the
-                    // sleep target snaps: the NOMINAL schedule (lastWriteAt) keeps
-                    // tracking source deltas unquantized, so a source whose frame
-                    // interval beats against the grid keeps its average rate
-                    // instead of being decimated by cumulative ceil-rounding.
-                    // Catch-up sprints (durationMs == MIN) skip alignment —
-                    // latency recovery outranks redraw batching.
-                    const writeAt = durationMs > MIN_DURATION_MS && isPresentGridEnabled()
-                        ? alignToPresentGrid(nextWriteAt)
+                    // Snap only the sleep target to the shared present grid — the
+                    // nominal schedule (lastWriteAt) stays unquantized so rates that
+                    // beat against the grid aren't decimated by cumulative rounding.
+                    // Late frames (nominal slot passed — steady state for low-fps
+                    // streams on near-empty buffers) go to the next slot ≥ now:
+                    // ≤1 grid period extra latency, on the video-behind-audio safe
+                    // side. Sprints (durationMs == MIN) bypass the grid entirely.
+                    const isAligned = durationMs > MIN_DURATION_MS && isPresentGridEnabled();
+                    const writeAt = isAligned
+                        ? alignToPresentGrid(Math.max(nextWriteAt, now))
                         : nextWriteAt;
 
-                    if (writeAt > now) {
+                    if (isAligned) {
+                        // Ride the shared slot ticker: all streams due in this
+                        // slot wake from ONE timer and write back-to-back, so
+                        // per-stream wake jitter can't split them across vsyncs.
+                        while (writeAt - performance.now() > PRESENT_SLOT_LEAD_MS + 1)
+                            await whenNextPresentSlot();
+                    } else if (writeAt > now) {
                         const sleepMs = writeAt - now - PRESENT_LEAD_MS;
                         if (sleepMs > 0)
                             await delayFn(sleepMs);

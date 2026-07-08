@@ -123,7 +123,9 @@ body.wide .video-panel.panel-hidden {
     background: var(--danger);
     will-change: opacity;
     contain: layout paint style;
-    animation: pulseLiveDot 2s ease-in-out infinite;
+    /* steps(): every animation tick is a full-screen WebView redraw (even
+       compositor-run ones — the functor redraws whole); ~10Hz reads fine. */
+    animation: pulseLiveDot 2s steps(10) infinite;
 }
 .video-panel.panel-hidden .c-hidden-pill .c-divider {
     @apply w-0.5 h-4;
@@ -486,12 +488,14 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     background-size: 100% 180%;
     background-position: center center;
     background-repeat: no-repeat;
-    animation: bgShake 3s ease-in-out infinite alternate;
+    /* steps(30) matters doubly here: background-position can't composite, so
+       every tick also restyles+repaints on the renderer main thread. */
+    animation: bgShake 3s steps(30) infinite alternate;
 }
 .video-panel .video-panel-footer > button.rec-btn.recording {
     background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
     background-size: auto;
-    animation: record-btn-on-pulse 2s ease-in-out infinite;
+    animation: record-btn-on-pulse 2s steps(10) infinite;
 }
 .video-panel .video-panel-footer > button.rec-btn::after {
     @apply content-empty;
@@ -740,7 +744,7 @@ body.wide .video-panel-content .video-track-player.item-x {
 .video-panel:not(.layout-equal) .video-track-player.item-x.speaking::after {
     @apply border-danger;
     will-change: opacity;
-    animation: vpSpeakingPulse 1.2s ease-in-out infinite;
+    animation: vpSpeakingPulse 1.2s steps(6) infinite;
 }
 @keyframes vpSpeakingPulse {
     0%, 100% { opacity: 0.5; }
@@ -814,7 +818,7 @@ body.narrow .video-panel-content .video-track-player.pip-overlay .video-particip
     @apply rounded-full;
     border: 2px solid var(--white-40);
     border-top-color: var(--white);
-    animation: spin 1s linear infinite;
+    animation: spin 1s steps(10) infinite;
 }
 @keyframes spin {
     to { transform: rotate(360deg); }
@@ -1039,4 +1043,32 @@ body.narrow .video-panel.expanded.layout-equal .c-grid {
         clip-path: inset(50% 50% round 9999px);
         opacity: 0;
     }
+}
+
+/* Narrow (mobile) with the video panel inline (fullscreen): the layout under
+   it is fully covered, but its tickers (skeleton/presence pulse, streaming
+   badges, waiting dots, ...) keep forcing style recalcs and full-screen
+   WebView redraws. Blanket-pause everything covered — pseudo-elements need
+   their own selectors, `*` doesn't match them — then re-run the panel's own
+   animations. All resume the moment the panel collapses or closes. */
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .layout-body *,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .layout-body *::before,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .layout-body *::after,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .side-nav *,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .side-nav *::before,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .side-nav *::after,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .layout-subfooter,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .layout-subfooter::before,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .layout-subfooter::after {
+    /* !important: `animation` shorthands re-declare play-state `running`;
+       deep multi-class ones can out-rank this gate's specificity. */
+    animation-play-state: paused !important;
+}
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .video-panel,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .video-panel *,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .video-panel *::before,
+body.narrow:has(.video-panel:not(.panel-hidden):not(.collapsed)) .video-panel *::after {
+    /* Both gates are !important and tie on specificity — this one wins by
+       source order, so it MUST stay below the paused block. */
+    animation-play-state: running !important;
 }

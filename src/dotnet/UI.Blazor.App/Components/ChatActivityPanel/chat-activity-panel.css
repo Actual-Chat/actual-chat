@@ -176,9 +176,12 @@ body.narrow .c-film-strip {
 body.narrow .layout-header:has(.video-streaming) {
     @apply overflow-hidden;
 }
-/* Dim film strip when watching; hide entirely when activity panel is collapsed into the header pill */
+/* Hide film strip when watching — it advertises "video is streaming", which
+   is redundant (and one more animated full-screen invalidation) once the
+   video panel itself is on screen. Also hidden when the activity panel is
+   collapsed into the header pill. */
 .chat-activity-panel.watching .c-film-strip {
-    @apply opacity-75;
+    @apply hidden;
 }
 .layout-header.collapsed:not(:has(.video-panel:not(.collapsed):not(.panel-hidden))) .c-film-strip {
     @apply opacity-0;
@@ -482,4 +485,18 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
 }
 .chat-activity-panel .c-pin-badge i {
     @apply text-xs;
+}
+
+/* Watching (video panel on screen): pause every animation in the panel —
+   rings, waves, equalizers, the animated video icon (lit component), all of
+   it. Each tick fills a display slot between grid-aligned video frames
+   (present-grid.ts) and costs a full-screen WebView redraw; during a call
+   none of it shows anything the call UI doesn't. */
+.chat-activity-panel.watching *,
+.chat-activity-panel.watching *::before,
+.chat-activity-panel.watching *::after {
+    /* !important: the `animation` shorthand on multi-class selectors (e.g.
+       `.equalizer.active .bar.bar-1`) re-declares play-state `running` at
+       higher specificity than this universal gate. */
+    animation-play-state: paused !important;
 }

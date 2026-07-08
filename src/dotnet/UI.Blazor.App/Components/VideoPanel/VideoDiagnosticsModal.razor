@@ -357,6 +357,12 @@
                     <span class="diag-label">frames presented</span>
                     <span class="diag-value diag-dim">@rate.PresentsPerSec.ToString("0.#")/s across @rate.VideoCount video(s)</span>
                 </div>
+                @foreach (var (i, phase) in _presentPhases.Index()) {
+                    <div class="diag-row diag-sub">
+                        <span class="diag-label">video @(i + 1) grid phase</span>
+                        <span class="diag-value diag-dim">@phase.PhaseMs.ToString("0.#")ms ±@phase.PhaseSpreadMs.ToString("0.#") @@ @phase.PresentsPerSec.ToString("0.#")/s</span>
+                    </div>
+                }
             } else {
                 <div class="diag-row">
                     <span class="diag-label">Union display slots</span>
@@ -711,6 +717,7 @@
     private readonly Dictionary<string, JsonElement> _streamDiags = new();
     private double? _jsServerClockOffsetMs;
     private (double PresentsPerSec, double SlotsPerSec, int VideoCount)? _presentRate;
+    private readonly List<(double PresentsPerSec, double PhaseMs, double PhaseSpreadMs)> _presentPhases = [];
     private bool _isDisposed;
     private bool _showOwnStreamingDetails;
     private Tab _activeTab = Tab.Inbound;
@@ -960,8 +967,17 @@
             if (presentRate.ValueKind == JsonValueKind.Object
                 && presentRate.TryGetProperty("presentsPerSec", out var presentsEl)
                 && presentRate.TryGetProperty("slotsPerSec", out var slotsEl)
-                && presentRate.TryGetProperty("videoCount", out var videosEl))
+                && presentRate.TryGetProperty("videoCount", out var videosEl)) {
                 _presentRate = (presentsEl.GetDouble(), slotsEl.GetDouble(), videosEl.GetInt32());
+                _presentPhases.Clear();
+                if (presentRate.TryGetProperty("perVideo", out var perVideoEl)
+                    && perVideoEl.ValueKind == JsonValueKind.Array)
+                    foreach (var v in perVideoEl.EnumerateArray())
+                        if (v.TryGetProperty("presentsPerSec", out var p)
+                            && v.TryGetProperty("phaseMs", out var ph)
+                            && v.TryGetProperty("phaseSpreadMs", out var sp))
+                            _presentPhases.Add((p.GetDouble(), ph.GetDouble(), sp.GetDouble()));
+            }
 
             // Poll every active outbound source kind — both camera and
             // screencast streams can be live simultaneously, each with its

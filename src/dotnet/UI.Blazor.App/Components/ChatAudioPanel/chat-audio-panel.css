@@ -968,6 +968,16 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
     animation: pulse 2s infinite;
 }
 
+/* Video call open: pause the decorative recorder animations — see the
+   matching block in chat-activity-panel.css for why. */
+body:has(.video-panel:not(.panel-hidden)) .chat-audio-panel .listen-only-btn.btn::before,
+body:has(.video-panel:not(.panel-hidden)) .chat-audio-panel .recorder-wrapper.record-on::before,
+body:has(.video-panel:not(.panel-hidden)) .chat-audio-panel .recorder-wrapper.record-off-to-on::before,
+body:has(.video-panel:not(.panel-hidden)) .chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn,
+body:has(.video-panel:not(.panel-hidden)) .recorder-btn-skeleton {
+    animation-play-state: paused;
+}
+
 /* === 15. Keyframe Animations === */
 
 @keyframes gradientShake {

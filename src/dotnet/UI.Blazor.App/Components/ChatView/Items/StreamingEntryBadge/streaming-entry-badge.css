@@ -26,7 +26,8 @@ body.hoverable .streaming-entry-badge:hover::after,
     @apply pointer-events-none;
     background: linear-gradient(135deg, transparent 35%, var(--ash-80) 50%, transparent 65%);
     transform: translateX(-100%);
-    animation: badge-shimmer 2.5s ease-in-out infinite;
+    /* steps(): each tick forces a full-screen WebView redraw on mobile. */
+    animation: badge-shimmer 2.5s steps(25) infinite;
 }
 @keyframes badge-shimmer {
     to { transform: translateX(100%); }

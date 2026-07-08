@@ -28,3 +28,25 @@ export function alignToPresentGrid(atMs: number): number {
     const slot = Math.ceil((abs - GRID_EPS_MS) / gridMs) * gridMs;
     return slot - performance.timeOrigin;
 }
+
+// Writes land this much before the slot so the frame catches the slot's vsync
+// (setTimeout fires late, never early). Mirrors the pacer's PRESENT_LEAD_MS.
+export const PRESENT_SLOT_LEAD_MS = 4;
+
+// Shared slot ticker: everyone in this realm waiting for the next slot wakes
+// from ONE timer callback and writes back-to-back in the same task — so
+// per-waiter setTimeout wake jitter (±5-15ms under load, enough to straddle a
+// vsync) can no longer scatter same-slot writes across display frames.
+let nextSlotSignal: Promise<void> | null = null;
+
+export function whenNextPresentSlot(): Promise<void> {
+    if (nextSlotSignal)
+        return nextSlotSignal;
+    const now = performance.now();
+    const delayMs = Math.max(0, alignToPresentGrid(now) - now - PRESENT_SLOT_LEAD_MS);
+    nextSlotSignal = new Promise(resolve => setTimeout(() => {
+        nextSlotSignal = null;
+        resolve();
+    }, delayMs));
+    return nextSlotSignal;
+}
