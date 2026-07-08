@@ -27,6 +27,19 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         return avatars;
     }
 
+    [ComputeMethod]
+    public virtual async Task<bool> IsLiveShare(ChatId chatId, SharedLocationId id, CancellationToken cancellationToken)
+    {
+        // Duration is immutable, so capture Get in isolation — IsLiveShare takes no dependency on it
+        // and won't recompute on the per-fix updates that invalidate Get.
+        Computed<SharedLocation?> cLocation;
+        using (Computed.BeginIsolation())
+            cLocation = await Computed
+                .Capture(() => Hub.SharedLocations.Get(Session, chatId, id, cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+        return cLocation.Value is { Duration.Ticks: > 0 };
+    }
+
     public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
         => Reporter.StartSharing(chatId, duration, cancellationToken);
 
