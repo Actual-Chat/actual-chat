@@ -87,6 +87,8 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         var contactId = ContactId.NewUser(ownerId, userId);
         // check existing contact since command always performs db request
         var contact = await ContactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
+        if (contact.IsBlocked)
+            return; // Never revive a blocked contact to Regular
         if (!contact.IsRegular) {
             contact = contact with { State = ContactState.Regular };
             // This command doesn't throw an exception in case contact already exists

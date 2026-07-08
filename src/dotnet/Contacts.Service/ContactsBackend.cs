@@ -360,9 +360,12 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var existing = dbContact?.ToModel();
 
         if (change.IsCreate(out var contact)) {
+            if (contact.State == ContactState.Blocked)
+                throw StandardError.Constraint("Blocking is managed by the SetIsBlocked command.");
             if (dbContact != null) {
                 var existingContact = existing.Require();
-                if (contact.State != ContactState.Regular || existingContact.State == ContactState.Regular)
+                // The only state change Create can cause is reviving a Temporary contact to Regular
+                if (contact.State != ContactState.Regular || existingContact.State != ContactState.Temporary)
                     return existingContact; // Already exists, so we don't recreate one
 
                 contact = existingContact with {
@@ -467,7 +470,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     public virtual async Task OnSetIsBlocked(ContactsBackend_SetIsBlocked command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
+            return; // The child ContactsBackend_Change commands handle invalidation
 
         var (id, isBlocked) = command;
         id.Require();
@@ -475,24 +478,29 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             throw StandardError.Constraint("Only peer contacts can be blocked.");
 
         var ownerId = id.OwnerId;
-        var existing = await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
-        if (existing.Version != 0) {
-            if (existing.IsBlocked == isBlocked)
+        if (isBlocked) {
+            // Ensure a Regular contact exists (create it or promote a Temporary one), then block it.
+            // Both child commands share this command's transaction and the advisory lock OnChange takes,
+            // so a concurrent contact creation can't slip between the two steps.
+            var contact = await Commander
+                .Call(new ContactsBackend_Change(id, null, Change.Create(new Contact(id) { State = ContactState.Regular })),
+                    false, cancellationToken)
+                .ConfigureAwait(false);
+            if (contact!.IsBlocked)
                 return;
 
-            var newState = isBlocked ? ContactState.Blocked : ContactState.Regular;
-            var change = Change.Update(existing with { State = newState });
-            var cmd = new ContactsBackend_Change(id, existing.Version, change);
-            await Commander.Call(cmd, false, cancellationToken).ConfigureAwait(false);
+            var blockChange = Change.Update(contact with { State = ContactState.Blocked });
+            await Commander.Call(new ContactsBackend_Change(id, contact.Version, blockChange), false, cancellationToken)
+                .ConfigureAwait(false);
         }
         else {
-            // Contact doesn't exist yet (e.g. you've never opened the chat); create it as Blocked
-            if (!isBlocked)
+            var contact = await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
+            if (!contact.IsBlocked)
                 return;
 
-            var change = Change.Create(new Contact(id) { State = ContactState.Blocked });
-            var cmd = new ContactsBackend_Change(id, null, change);
-            await Commander.Call(cmd, false, cancellationToken).ConfigureAwait(false);
+            var unblockChange = Change.Update(contact with { State = ContactState.Regular });
+            await Commander.Call(new ContactsBackend_Change(id, contact.Version, unblockChange), false, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
