@@ -18,7 +18,7 @@
         }
     </Icon>
     <Body>
-        <div class="c-body" @onclick="@OnOpenMap">
+        <div class="c-body" @onclick="@OnClick">
             <div class="c-avatars">
                 @foreach (var avatar in m.Avatars.Take(MaxAvatars)) {
                     <AvatarCircle Avatar="@avatar" Size="@SquareSize.Size7"/>
@@ -73,8 +73,12 @@
         return new Model(avatars, locations.Count, ownLocation != null, remaining, ownLocation != null ? trackingError : null);
     }
 
-    private Task OnOpenMap()
-        => ModalUI.Show(new LocationMapModal.Model(Chat.Id));
+    private Task OnClick() {
+        var m = State.Value;
+        return m.IsTrackingBroken
+            ? ModalUI.Show(new LocationTroubleshooterModal.Model())
+            : ModalUI.Show(new LocationMapModal.Model(Chat.Id));
+    }
 
     private Task OnStop()
         => Hub.LocationUI.StopSharing(Chat.Id, CancellationToken.None);

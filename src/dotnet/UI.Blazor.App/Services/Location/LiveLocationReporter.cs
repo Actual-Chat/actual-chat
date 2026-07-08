@@ -1,4 +1,5 @@
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -10,10 +11,14 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 {
+    private static readonly TimeSpan TroubleshooterDelay = TimeSpan.FromSeconds(7.5);
+
     private readonly Lock _lock = new();
     private readonly StoredState<ActiveShare[]> _shares;
 
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
+    private LocationPermissionHandler LocationPermission
+        => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
     private Moment ServerNow => Clocks.ServerClock.Now;
 
     public LiveLocationReporter(AppUIHub hub) : base(hub)
@@ -52,10 +57,18 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
-        => AsyncChain.From(DispatchShares)
-            .Log(LogLevel.Debug, Log)
-            .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
-            .RunIsolated(cancellationToken);
+    {
+        var retryDelays = RetryDelaySeq.Exp(0.5, 10);
+        return (
+            from chain in new[] {
+                AsyncChain.From(DispatchShares),
+                AsyncChain.From(TroubleshootTracking),
+            }
+            select chain
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log)
+            ).RunIsolated(cancellationToken);
+    }
 
     // Private methods
 
@@ -79,6 +92,63 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         finally {
             await worker.DisposeSilentlyAsync().ConfigureAwait(false);
         }
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<bool> MustTroubleshoot(CancellationToken cancellationToken)
+    {
+        // ReSharper disable once InconsistentlySynchronizedField
+        var shares = await _shares.Use(cancellationToken).ConfigureAwait(false);
+        if (shares.Length == 0)
+            return false;
+
+        return await Tracker.Error.Use(cancellationToken).ConfigureAwait(false) is GeoTrackingError.PermissionDenied;
+    }
+
+    private async Task TroubleshootTracking(CancellationToken cancellationToken)
+    {
+        CancellationTokenSource? troubleshooterCts = null;
+        var wasRequired = false;
+        try {
+            var cRequired = await Computed
+                .Capture(() => MustTroubleshoot(cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            await foreach (var (isRequired, _) in cRequired.Changes(cancellationToken).ConfigureAwait(false)) {
+                if (isRequired == wasRequired)
+                    continue;
+
+                wasRequired = isRequired;
+                // TODO: funcworker
+                if (isRequired) {
+                    // Permission was revoked mid-share: invalidate the cached grant the same way
+                    // AudioRecorder does for the mic, so the next CheckOrRequest re-detects it.
+                    LocationPermission.ForgetCached();
+                    troubleshooterCts = new CancellationTokenSource();
+                    _ = ShowLocationTroubleshooter(troubleshooterCts.Token);
+                }
+                else {
+                    troubleshooterCts.CancelAndDisposeSilently();
+                    troubleshooterCts = null;
+                }
+            }
+        }
+        finally {
+            troubleshooterCts.CancelAndDisposeSilently();
+        }
+    }
+
+    private async Task ShowLocationTroubleshooter(CancellationToken cancellationToken)
+    {
+        await Clocks.CpuClock.Delay(TroubleshooterDelay, cancellationToken).ConfigureAwait(false);
+        await Dispatcher.InvokeAsync(async () => {
+            var modalRef = await ModalUI.Show(new LocationTroubleshooterModal.Model(), cancellationToken).ConfigureAwait(true);
+            try {
+                await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                modalRef.Close();
+            }
+        }).ConfigureAwait(false);
     }
 
     private void SetSharedLocationId(ChatId chatId, SharedLocationId locationId)
