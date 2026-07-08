@@ -606,6 +606,27 @@
                             </select>
                         </Right>
                     </TileItem>
+                    <TileItem IsHoverable="false">
+                        <Content>Capture fps override</Content>
+                        <Caption>
+                            Pins the camera capture rate, bypassing the demand-driven
+                            follower (which sheds to 15 fps when every viewer shows a
+                            thumbnail). Renegotiates the live track — applies
+                            immediately, no re-join needed. <b>Auto</b> restores
+                            demand-driven pacing. Cameras snap to the nearest
+                            supported mode (Android is typically 15/30).
+                        </Caption>
+                        <Right>
+                            <select class="diag-select"
+                                    value="@(_captureFpsOverride?.ToString() ?? "")"
+                                    @onchange="@OnCaptureFpsOverrideChange">
+                                <option value="">Auto</option>
+                                @foreach (var fps in CaptureFpsOptions) {
+                                    <option value="@fps">@fps fps</option>
+                                }
+                            </select>
+                        </Right>
+                    </TileItem>
                 </Tile>
             </div>
             <div class="diag-section">

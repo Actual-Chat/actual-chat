@@ -14,6 +14,8 @@ public partial class VideoDiagnosticsModal
         $"{BlazorUIAppModule.ImportName}.setVideoDebugMaxInboundLayerCount";
     private static readonly string JSSetEstBandwidthMultiplierMethod =
         $"{BlazorUIAppModule.ImportName}.setVideoDebugEstBandwidthMultiplier";
+    private static readonly string JSSetCaptureFpsOverrideMethod =
+        $"{BlazorUIAppModule.ImportName}.setVideoDebugCaptureFpsOverride";
     private static readonly string JSCollectStreamHintsMethod =
         $"{BlazorUIAppModule.ImportName}.collectActiveStreamHints";
     private static readonly string JSGetShowFpsOverlayMethod =
@@ -23,9 +25,11 @@ public partial class VideoDiagnosticsModal
 
     private static readonly double[] BandwidthMultiplierOptions =
         [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
+    private static readonly int[] CaptureFpsOptions = [30, 24, 15, 10, 5];
 
     private bool _forceH264Only;
     private string _downscalerMode = "metadata";
+    private int? _captureFpsOverride;
     private bool _showFpsOverlay;
     private int? _maxOutboundLayerCount;
     private int? _maxInboundLayerCount;
@@ -41,6 +45,7 @@ public partial class VideoDiagnosticsModal
             var settings = await Hub.JS.InvokeAsync<VideoDebugSettings>(JSGetSettingsMethod);
             _forceH264Only = settings.ForceH264Only;
             _downscalerMode = settings.DownscalerMode ?? "metadata";
+            _captureFpsOverride = settings.CaptureFpsOverride;
             _maxOutboundLayerCount = settings.MaxOutboundLayerCount;
             _maxInboundLayerCount = settings.MaxInboundLayerCount;
             _estBandwidthMultiplier = NormalizeMultiplier(settings.EstBandwidthMultiplier);
@@ -104,6 +109,15 @@ public partial class VideoDiagnosticsModal
         Hub.VideoQualityUI.SetDebugBandwidthMultiplier(_estBandwidthMultiplier);
     }
 
+    private async Task OnCaptureFpsOverrideChange(ChangeEventArgs e)
+    {
+        _captureFpsOverride = int.TryParse(e.Value?.ToString(), out var fps) && CaptureFpsOptions.Contains(fps)
+            ? fps
+            : null;
+        StateHasChanged();
+        await Hub.JS.InvokeVoidAsync(JSSetCaptureFpsOverrideMethod, _captureFpsOverride).ConfigureAwait(false);
+    }
+
     private static string FormatLayerCount(int? layerCount)
         => layerCount?.ToString() ?? "";
 
@@ -156,5 +170,6 @@ public partial class VideoDiagnosticsModal
         int? MaxOutboundLayerCount,
         int? MaxInboundLayerCount,
         double EstBandwidthMultiplier,
-        string? DownscalerMode);
+        string? DownscalerMode,
+        int? CaptureFpsOverride);
 }

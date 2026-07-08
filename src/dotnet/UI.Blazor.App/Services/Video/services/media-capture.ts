@@ -55,6 +55,29 @@ export class MediaCapture {
         throw lastError;
     }
 
+    // Renegotiate a live track's frame rate in place (no getUserMedia — a
+    // second acquire wedges Android/iOS Safari). applyConstraints REPLACES
+    // the whole constraint set, so the base is the track's ACQUISITION
+    // constraints (getConstraints), not dims rebuilt from getSettings():
+    // re-deriving dims re-runs mode selection without the original
+    // portrait/landscape candidate shape, and Android then satisfies a
+    // portrait request by crop-and-scaling a landscape mode — flipped and
+    // zoomed. `ideal` rate lets drivers with discrete modes (Android:
+    // 15/30) snap to the nearest one instead of failing.
+    static async applyFrameRate(track: MediaStreamTrack, frameRate: number): Promise<boolean> {
+        const base = track.getConstraints();
+        try {
+            await track.applyConstraints({ ...base, frameRate: { ideal: frameRate } });
+            return true;
+        }
+        catch (e) {
+            infoLog?.log(
+                `applyFrameRate: ${frameRate}fps rejected. Error:`,
+                JSON.stringify(e, ['name', 'message', 'constraint']));
+            return false;
+        }
+    }
+
     private static async captureVideoTrack(
         videoConstraints: MediaTrackConstraints,
         maxRetries: number,

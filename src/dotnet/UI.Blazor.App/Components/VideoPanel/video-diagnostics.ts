@@ -1,4 +1,4 @@
-import { getActiveRecorder, type OwnStreamDiagnostics } from './video-recorder';
+import { getActiveRecorder, getAllActiveRecorders, type OwnStreamDiagnostics } from './video-recorder';
 import { getActivePlayers, recordRequestedReceiveQuality, type RemoteStreamDiagnostics } from './video-player';
 import {
     getForceH264Only as getForceH264OnlyImpl,
@@ -9,6 +9,10 @@ import {
     setDownscalerMode as setDownscalerModeImpl,
 } from '../../Services/Video/downscaler-mode';
 import type { DownscalerMode } from '../../Services/Video/operators/downscale';
+import {
+    getCaptureFpsOverride as getCaptureFpsOverrideImpl,
+    setCaptureFpsOverride as setCaptureFpsOverrideImpl,
+} from '../../Services/Video/capture-fps-override';
 import { ServerClock } from 'clocks';
 
 export interface OwnStreamDiagnosticsSnapshot {
@@ -69,6 +73,7 @@ export interface VideoDebugSettings {
     maxInboundLayerCount: number | null;
     estBandwidthMultiplier: number;
     downscalerMode: DownscalerMode;
+    captureFpsOverride: number | null;
 }
 
 export function getVideoDebugSettings(): VideoDebugSettings {
@@ -78,7 +83,14 @@ export function getVideoDebugSettings(): VideoDebugSettings {
         maxInboundLayerCount: getLayerCount(INBOUND_LAYER_COUNT_KEY),
         estBandwidthMultiplier: getBandwidthMultiplier(),
         downscalerMode: getDownscalerModeImpl(),
+        captureFpsOverride: getCaptureFpsOverrideImpl(),
     };
+}
+
+export function setVideoDebugCaptureFpsOverride(fps: number | null): void {
+    setCaptureFpsOverrideImpl(fps);
+    for (const recorder of getAllActiveRecorders())
+        recorder.refreshCaptureFps();
 }
 
 export function setVideoDebugForceH264Only(enabled: boolean): void {

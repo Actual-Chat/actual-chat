@@ -63,7 +63,8 @@ import {
     buildLadder,
     type LayerConfig,
 } from './layer-ladder';
-import { computeTargetFps } from './fps-policy';
+import { computeTargetFps, THUMBNAIL_FPS } from './fps-policy';
+import { getCaptureFpsOverride } from '../../Services/Video/capture-fps-override';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 import {
     type PreviewFramePresentation,
@@ -89,6 +90,10 @@ const VAD_FPS_HOLD_MS = 2000;
 // The thumbnail shed arms only after the server aggregate holds this long
 // (focus flips shouldn't flap the rate); any large viewer disarms instantly.
 const THUMBNAIL_SHED_DELAY_MS = 4000;
+// Capture renegotiation target while the thumbnail shed holds: the mobile
+// camera ISP/stabilization pipeline burns more than encode+render combined,
+// so pace the capture itself. 15, not THUMBNAIL_FPS: Android modes are 15/30.
+const CAPTURE_SHED_FPS = 15;
 // No viewer wants any tier (all subscribers gone or paused) this long → collapse
 // the encoder to the bottom tier only. Held to ride out momentary demand gaps;
 // any demand restores instantly. fps is left alone so the self-preview stays smooth.
@@ -519,6 +524,15 @@ export class VideoRecorder {
     // fps constraints carry no `max` (Android mode quantization) — so the
     // worker's temporalPace enforces this instead.
     private requestedFramerate: number | undefined;
+    // Capture-fps follower state (paceCaptureFps). `captureFpsApplied` is the
+    // last renegotiated rate; null = the track still runs its start-time rate.
+    private captureFpsApplied: number | null = null;
+    private captureFpsBusy = false;
+    private captureFpsUnsupported = false;
+    // True when the worker consumes a transferred CLONE of `inputTrack`
+    // (Safari path): the source serves both tracks, so constraining the
+    // main-side original would not downshift the shared capture.
+    private workerSourceUsesClone = false;
 
     // Listeners.
     private previewFrameListeners = new Set<PreviewFrameListener>();
@@ -1620,6 +1634,61 @@ export class VideoRecorder {
         });
         this.lastTargetFps = fps;
         void this.worker?.setTargetFps(fps);
+        this.paceCaptureFps(fps);
+    }
+
+    // Capture-fps follower: while the encode target sits at thumbnail rate,
+    // renegotiate the camera itself down to CAPTURE_SHED_FPS so the vendor
+    // ISP/stabilization pipeline sheds too; restore on any higher demand.
+    // Mobile cameras only: desktop capture is cheap, screencast tracks are
+    // paced by the source, and the Safari clone path can't be constrained
+    // from here (see workerSourceUsesClone). The diagnostics override pins
+    // the rate on any platform, bypassing demand.
+    private paceCaptureFps(targetFps: number): void {
+        const override = getCaptureFpsOverride();
+        if (override === null && !DeviceInfo.isMobile)
+            return;
+        if (this.currentMode !== 'camera'
+            || this.captureFpsUnsupported
+            || this.captureFpsBusy
+            || this.workerSourceUsesClone)
+            return;
+        const track = this.inputTrack;
+        if (track?.readyState !== 'live')
+            return;
+        const requested = this.requestedFramerate
+            ?? (DeviceInfo.isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate);
+        const fps = override
+            ?? (targetFps <= THUMBNAIL_FPS ? CAPTURE_SHED_FPS : requested);
+        if (fps === (this.captureFpsApplied ?? requested))
+            return;
+        this.captureFpsBusy = true;
+        void MediaCapture.applyFrameRate(track, fps).then(ok => {
+            this.captureFpsBusy = false;
+            if (!ok) {
+                this.captureFpsUnsupported = true;
+                return;
+            }
+            this.captureFpsApplied = fps;
+            infoLog?.log(`paceCaptureFps: capture → ${fps}fps (override=${override ?? 'none'}), `
+                + `settings=${JSON.stringify(track.getSettings().frameRate)}`);
+            // Demand or the override may have moved while the renegotiation
+            // was in flight; applyTargetFps re-runs the follower when
+            // recording, the direct call covers warmup.
+            this.applyTargetFps();
+            this.paceCaptureFps(this.lastKnownTargetFps());
+        });
+    }
+
+    private lastKnownTargetFps(): number {
+        return this.lastTargetFps >= 0 ? this.lastTargetFps : Number.POSITIVE_INFINITY;
+    }
+
+    // Diagnostics: re-evaluate the capture rate now (override changed).
+    // Clears the sticky rejection so an explicit toggle always retries.
+    public refreshCaptureFps(): void {
+        this.captureFpsUnsupported = false;
+        this.paceCaptureFps(this.lastKnownTargetFps());
     }
 
     public setFpsCeiling(maxFps: number): void {
@@ -1678,12 +1747,22 @@ export class VideoRecorder {
         // the focused-era sum and read as "still encoding all layers".
         const aggregateBitrateKbps = (this.bytesPerSec * 8) / 1000;
 
+        // Live track settings, not the dims cached at capture start — the
+        // capture-fps follower renegotiates the track mid-call and the modal
+        // must show what the camera delivers NOW.
+        const liveSettings = this.inputTrack?.readyState === 'live'
+            ? this.inputTrack.getSettings()
+            : null;
+        const inputResolution = liveSettings?.width
+            ? `${liveSettings.width}x${liveSettings.height}`
+            : this.cameraWidth > 0 ? `${this.cameraWidth}x${this.cameraHeight}` : 'N/A';
+
         return {
             mode: this.isScreenCasting ? 'screen' : this.isRecording ? 'camera' : 'none',
             codec: this.currentCodecString,
             codecCategory,
             hardwareAccelerated: this.currentCodecHardwareAccel,
-            inputResolution: this.cameraWidth > 0 ? `${this.cameraWidth}x${this.cameraHeight}` : 'N/A',
+            inputResolution,
             inputFramerate: this.capturedPerSec > 0 ? this.capturedPerSec : (this.currentFramerate ?? 0),
             outputResolution: top ? `${top.width}x${top.height}` : 'N/A',
             configuredBitrate: kbpsToBitsPerSecond(top?.bitrateKbps ?? 0),
@@ -1880,6 +1959,12 @@ export class VideoRecorder {
         }
         // Recovery may call this while a prior MSTP readable / rVFC pump is still alive.
         this.tearDownWorkerSource();
+        // Fresh source negotiation: the capture-fps follower state belongs
+        // to the (track, source-path) pair chosen below.
+        this.workerSourceUsesClone = false;
+        this.captureFpsApplied = null;
+        this.captureFpsBusy = false;
+        this.captureFpsUnsupported = false;
 
         // Frame source — two-tier strategy.
         //
@@ -1933,6 +2018,7 @@ export class VideoRecorder {
                 const ok = await this.worker.setSourceTrack(clone);
                 if (ok) {
                     this.workerSourceCancelled = false;
+                    this.workerSourceUsesClone = true;
                     useMstp = true;
                     infoLog?.log('startWorker: capture path = worker MSTP (transferred clone)');
                 } else {
