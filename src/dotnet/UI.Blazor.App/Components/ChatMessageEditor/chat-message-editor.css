@@ -630,7 +630,6 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 .rounded-sub-footer > .bg-layer:before {
     @apply content-empty;
     @apply absolute inset-0;
-    filter: blur(30px);
     backdrop-filter: blur(8px);
 }
 

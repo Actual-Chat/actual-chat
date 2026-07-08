@@ -50,7 +50,11 @@ body.hoverable .chat-audio-panel .listen-only-btn.btn:hover {
     background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
     border-radius: inherit;
     will-change: transform;
-    animation: gradientShake 3s ease-in-out infinite alternate;
+    /* All infinite animations here use steps(): on mobile WebView every
+       animation tick redraws the whole screen (the WebView functor has no
+       partial damage), so smooth 60Hz interpolation costs real battery.
+       steps() caps ticks at ~10/s; counts are per keyframe segment. */
+    animation: gradientShake 3s steps(30) infinite alternate;
 }
 .chat-audio-panel .record-off-btn.btn,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover {
@@ -242,7 +246,7 @@ body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-pane
     -webkit-mask: radial-gradient(circle closest-side at center, transparent calc(100% - 3px), black calc(100% - 1px));
     mask: radial-gradient(circle closest-side at center, transparent calc(100% - 3px), black calc(100% - 1px));
     will-change: transform;
-    animation: rotate-ring 2.5s 1s linear infinite;
+    animation: rotate-ring 2.5s 1s steps(25) infinite;
 }
 
 /* Mic disabled */
@@ -338,7 +342,7 @@ body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-con
 }
 .chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn {
     @apply opacity-100;
-    animation: record-btn-on-pulse 2s ease-in-out infinite;
+    animation: record-btn-on-pulse 2s steps(10) infinite;
 }
 .chat-audio-panel .record-on-btn.btn::after {
     @apply content-empty;
