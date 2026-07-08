@@ -76,6 +76,9 @@ public sealed class ChatListeningPlayer : ChatPlayer
                     return;
                 }
 
+                // Suppress the "new message after delay" cue while a video call is active in the chat
+                var hasVideo = await Hub.ChatVideoUI.IsAnyoneVideoStreaming(ChatId, cancellationToken).ConfigureAwait(false);
+
                 // Check for sleep drift
                 Moment startAt;
                 lock (state.Lock) {
@@ -83,7 +86,7 @@ public sealed class ChatListeningPlayer : ChatPlayer
                     var sleepDuration = SleepDuration.Value;
                     if (sleepDuration != state.LastSleepDuration)
                         state.Reset(startAt = serverClock.Now, sleepDuration);
-                    if (streamInfo.BeginsAt - state.LastNotifyTunePlayedAt > Hub.AudioSettings.IdleListeningNewMessageTrigger) {
+                    if (!hasVideo && streamInfo.BeginsAt - state.LastNotifyTunePlayedAt > Hub.AudioSettings.IdleListeningNewMessageTrigger) {
                         _ = Hub.TuneUI.Play(Tune.NotifyOnNewAudioMessageAfterDelay);
                         state.LastNotifyTunePlayedAt = streamInfo.BeginsAt;
                     }
