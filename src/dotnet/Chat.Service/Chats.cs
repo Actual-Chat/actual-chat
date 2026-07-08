@@ -23,6 +23,7 @@ public partial class Chats(IServiceProvider services) : IChats
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
     private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
+    private ISharedLocationsBackend SharedLocationsBackend { get; } = services.GetRequiredService<ISharedLocationsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
@@ -495,17 +496,32 @@ public partial class Chats(IServiceProvider services) : IChats
             if (commandResult != null)
                 return commandResult;
 
+            // TODO: 2026-07, remove when all clients support location entries.
+            // Old clients drop the unknown LocationId and render a blank message; bake a maps-link
+            // fallback + upgrade note into the content they already know how to show. LinkPreviewMode.None
+            // keeps the note's URLs from turning into preview cards. New clients hide this content.
+            var content = text;
+            var linkPreviewMode = (LinkPreviewMode?)null;
+            if (command.LocationId is { } locationId && text.IsNullOrWhiteSpace()) {
+                var location = await SharedLocationsBackend.Get(locationId, cancellationToken).ConfigureAwait(false);
+                if (location is not null) {
+                    content = BuildLocationFallbackContent(location);
+                    linkPreviewMode = LinkPreviewMode.None;
+                }
+            }
+
             var chatEntryId = ChatEntryId.New(chatId, 0);
             var upsertCommand = new ChatsBackend_ChangeEntry(
                 chatEntryId,
                 null,
                 Change.Create(new ChatEntryDiff {
                     AuthorId = author.Id,
-                    Content = text,
+                    Content = content,
                     RepliedEntryLid = repliedEntryLid,
                     Forwarded = command.Forwarded,
                     Attachments = attachments.Length == 0 ? null : attachments,
                     LocationId = command.LocationId,
+                    LinkPreviewMode = linkPreviewMode,
                     ClientId = command.ClientId,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
@@ -515,6 +531,17 @@ public partial class Chats(IServiceProvider services) : IChats
         }
 
         return textEntry;
+    }
+
+    // TODO: 2026-07, remove when all clients support location entries.
+    private static string BuildLocationFallbackContent(SharedLocation location)
+    {
+        var label = location.Duration > TimeSpan.Zero ? "📍 Live location" : "📍 Location";
+        var (latitude, longitude, _, _) = location.Point;
+        // TODO: maps.voxt.ai, maps.dev.voxt.ai, maps.local.voxt.ai, etc
+        return
+            $"{label}: https://maps.google.com/?q={latitude:0.######},{longitude:0.######}\n\n"
+            + $"Update {CoreConstants.AppName} to the latest version to see it on the map.";
     }
 
     // [CommandHandler]

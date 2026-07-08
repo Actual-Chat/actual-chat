@@ -5,9 +5,12 @@
     var m = State.Value;
     var sm = m.Streaming;
     var message = Message;
-    var markup = m.Markup;
     var entry = m.Entry;
-    var trimmedContent = entry.Content.Trim();
+    // The server fills a location entry's content with a maps-link fallback for clients that don't
+    // understand location entries; here we render the map instead, so that content stays hidden
+    // (status still shows). TODO: 2026-07, remove when all clients support location entries.
+    var markup = entry.HasLocation ? Markup.EmptyText : m.Markup;
+    var trimmedContent = entry.HasLocation ? "" : entry.Content.Trim();
     var isSoleEmojiMention = markup.IsSoleEmojiMention();
     // Plain-text zoom only for an actual unicode emoji glyph — not a slug id like "ginger-clown".
     var isEmojiOnly = Emojis.BySymbol.GetValueOrDefault(trimmedContent) != null || isSoleEmojiMention;
