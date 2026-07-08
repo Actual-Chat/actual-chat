@@ -538,10 +538,12 @@ public partial class Chats(IServiceProvider services) : IChats
     {
         var label = location.Duration > TimeSpan.Zero ? "📍 Live location" : "📍 Location";
         var (latitude, longitude, _, _) = location.Point;
+        var lat = latitude.ToString("0.######");
+        var lng = longitude.ToString("0.######");
         // TODO: 2026-07, link to our own maps.* domain (per env via UrlMapper.MapTilesBaseUrl)
         // once it serves a viewable map/static image — today it only proxies OpenFreeMap tiles.
         return
-            $"{label}: https://maps.google.com/?q={latitude:0.######},{longitude:0.######}\n\n"
+            $"{label}: https://www.openstreetmap.org/?mlat={lat}&mlon={lng}#map=15/{lat}/{lng}\n\n"
             + $"Update {CoreConstants.AppName} to the latest version to see it on the map.";
     }
 
