@@ -62,6 +62,7 @@ public sealed partial class VideoQualityUI
     // Snapshot of the previous tick's requested layer per stream, used to
     // detect allocator-driven cap moves for the decision log.
     private readonly Dictionary<string, int> _prevRequestedLayerByStream = new();
+    private readonly SemaphoreSlim _recomputeGate = new(1, 1);
     private HealthVerdict _lastAggregateDownlinkVerdict = HealthVerdict.Unknown;
     // Set by GetAllocationCapacity each tick; surfaced in the receiver decision log.
     private string _lastInboundProbeNote = "";
@@ -221,7 +222,22 @@ public sealed partial class VideoQualityUI
         }
     }
 
+    // Serialized: triggers race in from independent watchers (panel mode,
+    // background, thermal, connectivity, keep-alive, stats callbacks) and the
+    // recompute mutates plain-dictionary state (_prevRequestedLayerByStream,
+    // per-stream health maps) across awaits.
     private async Task RecomputePlaybackQuality(PlaybackQualityReason reason, CancellationToken cancellationToken)
+    {
+        await _recomputeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            await RecomputePlaybackQualityLocked(reason, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            _recomputeGate.Release();
+        }
+    }
+
+    private async Task RecomputePlaybackQualityLocked(PlaybackQualityReason reason, CancellationToken cancellationToken)
     {
         var entries = GetFreshPlaybackEntries();
         if (entries.Count == 0) {
