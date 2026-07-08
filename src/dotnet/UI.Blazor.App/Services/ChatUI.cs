@@ -44,6 +44,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
+    private LocationUI LocationUI => Hub.LocationUI;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private KeepAwakeUI KeepAwakeUI => Hub.KeepAwakeUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
@@ -143,6 +144,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                     lastThreadCreator = threadCreator;
                     if (lastThreadChat is not null)
                         lastTextEntryText = $"Thread '{lastThreadChat.Title}'";
+                }
+                else if (lastTextEntry is { HasLocation: true, LocationId: { } locationId }) {
+                    var isLive = await LocationUI.IsLiveShare(chatId, locationId, cancellationToken).ConfigureAwait(false);
+                    lastTextEntryText = isLive ? "Shared live location" : "Sent a location";
                 }
                 else {
                     var emoji = Emojis.TryGetByIdOrSymbol(lastTextEntry.Content.Trim());
