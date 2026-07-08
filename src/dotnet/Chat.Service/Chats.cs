@@ -533,20 +533,6 @@ public partial class Chats(IServiceProvider services) : IChats
         return textEntry;
     }
 
-    // TODO: 2026-07, remove when all clients support location entries.
-    private static string BuildLocationFallbackContent(SharedLocation location)
-    {
-        var label = location.Duration > TimeSpan.Zero ? "📍 Live location" : "📍 Location";
-        var (latitude, longitude, _, _) = location.Point;
-        var lat = latitude.ToString("0.######");
-        var lng = longitude.ToString("0.######");
-        // TODO: 2026-07, link to our own maps.* domain (per env via UrlMapper.MapTilesBaseUrl)
-        // once it serves a viewable map/static image — today it only proxies OpenFreeMap tiles.
-        return
-            $"{label}: https://www.openstreetmap.org/?mlat={lat}&mlon={lng}#map=15/{lat}/{lng}\n\n"
-            + $"Update {CoreConstants.AppName} to the latest version to see it on the map.";
-    }
-
     // [CommandHandler]
     public virtual async Task OnRemoveEntry(Chats_RemoveEntry command, CancellationToken cancellationToken)
     {
@@ -1070,6 +1056,16 @@ public partial class Chats(IServiceProvider services) : IChats
         if (chatId is PlaceChatId { IsRoot: true })
             throw StandardError.Constraint(
                 "A place's root chat can't hold messages — post to one of the place's chats instead.");
+    }
+
+    // TODO: 2026-07, remove when all clients support location entries.
+    private static string BuildLocationFallbackContent(SharedLocation location)
+    {
+        var label = location.Duration > TimeSpan.Zero ? "📍 Live location" : "📍 Location";
+        var (latitude, longitude, _, _) = location.Point;
+        return
+            $"{label}: https://www.openstreetmap.org/?mlat={latitude:0.######}&mlon={longitude:0.######}#map=15/{latitude:0.######}/{longitude:0.######}\n\n"
+            + $"Update {CoreConstants.AppName} to the latest version to see it on the map.";
     }
 
     private async ValueTask RequireCanRead(Session session, ChatId chatId, CancellationToken cancellationToken)
