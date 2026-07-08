@@ -20,13 +20,8 @@
             </Button>;
     }
 
-    RenderFragment RenderSignOutButton(SettingsTab tab)
-        => @<Button Class="unhovered" Click="@SignOut" data-tab-id="@tab.Id" role="tab">
-               @RenderTabTitle(tab)
-           </Button>;
-
-    RenderFragment RenderQuitButton(SettingsTab tab)
-        => @<Button Class="unhovered" Click="@Quit" data-tab-id="@tab.Id" role="tab">
+    RenderFragment RenderActionButton(SettingsTab tab)
+        => @<Button Class="unhovered" Click="@tab.Click" data-tab-id="@tab.Id" role="tab">
                @RenderTabTitle(tab)
            </Button>;
 
@@ -65,16 +60,10 @@
                         <Divider Class="m-4"/>
                     }
                     <div class="c-tab-item @containerCls @activeCls @tabCls">
-                        @switch (tab.Id) {
-                            case "signOut":
-                                @RenderSignOutButton(tab)
-                                break;
-                            case "quit":
-                                @RenderQuitButton(tab)
-                                break;
-                            default:
-                                @RenderCommonButton(tab)
-                                break;
+                        @if (tab.Click.HasDelegate) {
+                            @RenderActionButton(tab)
+                        } else {
+                            @RenderCommonButton(tab)
                         }
                     </div>
                 }
@@ -103,9 +92,6 @@
     private string? _selectedTabId;
     private bool _isRightSideVisible;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
@@ -170,12 +156,4 @@
         _isRightSideVisible = false;
         StateHasChanged();
     }
-
-    private void SignOut() {
-        Modal.Close();
-        _ = Hub.AccountUI.SignOut();
-    }
-
-    private void Quit()
-        => Hub.ReloadUI.Quit();
 }

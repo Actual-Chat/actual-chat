@@ -1,5 +1,12 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 
+@{
+    var tooltipPosition = TooltipPosition ?? NavbarPlacement switch {
+        NavbarPlacement.Top => FloatingPosition.Bottom,
+        NavbarPlacement.Bottom => FloatingPosition.Top,
+        _ => FloatingPosition.Right,
+    };
+}
 <div class="navbar-button @Class"
      @attributes="@AdditionalAttributes">
     @if (IsRound) {
@@ -8,7 +15,7 @@
             Class="@ButtonClass"
             Tooltip="@Tooltip"
             ContentClass="navbar-button-content"
-            TooltipPosition="@TooltipPosition">
+            TooltipPosition="@tooltipPosition">
             @ChildContent
         </ButtonRound>
     } else {
@@ -17,7 +24,7 @@
             Class="@ButtonClass"
             Tooltip="@Tooltip"
             ContentClass="navbar-button-content"
-            TooltipPosition="@TooltipPosition">
+            TooltipPosition="@tooltipPosition">
             @ChildContent
         </ButtonSquare>
     }
@@ -25,12 +32,13 @@
 </div>
 
 @code {
+    [CascadingParameter] public NavbarPlacement NavbarPlacement { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public bool IsRound { get; set; }
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public bool CanMove { get; set; }
-    [Parameter] public FloatingPosition TooltipPosition { get; set; } = FloatingPosition.Right;
+    [Parameter] public FloatingPosition? TooltipPosition { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
     [Parameter] public EventCallback Click { get; set; }

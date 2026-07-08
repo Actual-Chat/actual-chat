@@ -61,6 +61,12 @@
         </TileItem>
     }
 </Tile>
+<Button
+    Class="btn-settings-action"
+    Click="@OnReloadClick">
+    <Icon><i class="icon-refresh text-xl"></i></Icon>
+    <Title>Reload</Title>
+</Button>
 
 <LocationAccuracySelector/>
 
@@ -114,6 +120,9 @@
 
     private Task OnGetLogFileClick()
         => MauiLogAccessor!.GetLogFile!.Invoke();
+
+    private void OnReloadClick()
+        => Hub.ReloadUI.Reload();
 
     // Nested types
 

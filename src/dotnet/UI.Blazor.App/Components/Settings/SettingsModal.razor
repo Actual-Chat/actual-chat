@@ -57,7 +57,16 @@
             </SettingsTab>
         }
 
-        <SettingsTab @key="90" TabIndex="90" Title="Documents" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text" HasSeparatorBefore="true">
+        @if (m.NotesChat != null) {
+            <SettingsTab @key="88" TabIndex="88" Title="Notes" Id="@SettingsTabId.Notes" IconClass="icon-file-text" HasSeparatorBefore="true" Click="@OnNotesClick">
+            </SettingsTab>
+        }
+        @if (account.IsAdmin) {
+            <SettingsTab @key="89" TabIndex="89" Title="Notifications" Id="@SettingsTabId.Notifications" IconClass="icon-bell" HasSeparatorBefore="@(m.NotesChat == null)" Click="@OnNotificationsClick">
+            </SettingsTab>
+        }
+
+        <SettingsTab @key="90" TabIndex="90" Title="Documents" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text" HasSeparatorBefore="@(m.NotesChat == null && !account.IsAdmin)">
             <DocumentsPage/>
         </SettingsTab>
 
@@ -65,8 +74,13 @@
             <DeveloperTools/>
         </SettingsTab>
 
+        @if (account.IsAdmin) {
+            <SettingsTab @key="92" TabIndex="92" Title="Test Pages" Id="@SettingsTabId.TestPages" IconClass="icon-alert-triangle" Click="@OnTestPagesClick">
+            </SettingsTab>
+        }
+
         @if (m.ShowLogViewer) {
-            <SettingsTab @key="92" TabIndex="92" Title="Log Viewer" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" HeaderClass="no-scrollbar" ContentClass="no-scrollbar" IconClass="icon-info">
+            <SettingsTab @key="93" TabIndex="93" Title="Log Viewer" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" HeaderClass="no-scrollbar" ContentClass="no-scrollbar" IconClass="icon-info">
                 <ChildContent>
                     <div class="log-viewer-page">
                         <LogView/>
@@ -82,11 +96,11 @@
         }
 
         @if (showLogout) {
-            <SettingsTab @key="100" TabIndex="100" Title="Log out" Id="@SettingsTabId.SignOut" IconClass="icon-log-out" HasSeparatorBefore="true">
+            <SettingsTab @key="100" TabIndex="100" Title="Log out" Id="@SettingsTabId.SignOut" IconClass="icon-log-out" HasSeparatorBefore="true" Click="@OnSignOutClick">
             </SettingsTab>
         }
         @if (showQuit) {
-            <SettingsTab @key="101" TabIndex="101" Title="@quitTitle" Id="@SettingsTabId.Quit" IconClass="icon-close">
+            <SettingsTab @key="101" TabIndex="101" Title="@quitTitle" Id="@SettingsTabId.Quit" IconClass="icon-close" Click="@OnQuitClick">
             </SettingsTab>
         }
 
@@ -110,13 +124,46 @@
         // Hide the Log Viewer in SSB — it can't capture/show local logs there.
         var showLogViewer = Hub.LogUI.CanCapture
             && await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
+        var notesChat = await Hub.ChatListUI.NotesChat.Use(cancellationToken).ConfigureAwait(false);
         return new ComputedModel(account, tabId) {
             ShowLogViewer = showLogViewer,
+            NotesChat = notesChat,
         };
     }
 
     private void OnCloseClick()
         => Modal.Close();
+
+    private async Task OnNotesClick() {
+        if (State.Value.NotesChat is not { } notesChat)
+            return;
+
+        Modal.Close();
+        await Modal.Ref.WhenClosed;
+        _ = History.NavigateTo(Links.Chat(notesChat.Id));
+    }
+
+    private async Task OnNotificationsClick() {
+        Modal.Close();
+        await Modal.Ref.WhenClosed;
+        _ = History.NavigateTo(Links.Notifications);
+    }
+
+    private async Task OnTestPagesClick() {
+        Modal.Close();
+        await Modal.Ref.WhenClosed;
+        Hub.NavbarUI.SelectGroup(NavbarGroupIds.TestPages, true);
+        _ = History.NavigateTo(Links.TestPageHome);
+        _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
+    }
+
+    private void OnSignOutClick() {
+        Modal.Close();
+        _ = AccountUI.SignOut();
+    }
+
+    private void OnQuitClick()
+        => Hub.ReloadUI.Quit();
 
     private Task OnReportClick()
         => ModalUI.Show(new ReportModal.Model());
@@ -138,6 +185,7 @@
 
     public sealed record ComputedModel(AccountFull AccountFull, string? TabId) {
         public bool ShowLogViewer { get; init; }
+        public ChatInfo? NotesChat { get; init; }
     }
 
     public sealed record Model(string? TabId = null) {

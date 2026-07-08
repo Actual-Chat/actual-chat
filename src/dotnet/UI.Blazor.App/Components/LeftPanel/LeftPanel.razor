@@ -1,22 +1,35 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Components.SideNav
 @implements IDisposable
+@inherits ComputedStateComponent<AppUIHub, UserNavbarSettings>
+@{
+    var settings = State.Value;
+    var placement = settings.GetPlacement(ScreenSize.IsNarrow());
+    var placementCls = placement switch {
+        NavbarPlacement.Top => "navbar-horizontal navbar-top",
+        NavbarPlacement.Bottom => "navbar-horizontal navbar-bottom",
+        _ => "",
+    };
+    var multiRowCls = settings.IsMultiRow ? "navbar-multi-row" : "";
+}
 
 <SideNav
     Side="SideNavSide.Left"
     IsOpen="@_isOpen"
     VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(isOpen => PanelsUI.Left.SetIsVisible(isOpen)))">
-    <div class="left-panel">
-        <ErrorBarrier Name="LeftPanelContent" Kind="@ErrorBarrierKind.Full">
-            <LeftPanelButtons/>
-            @if (IsSkeletonWidePanel) {
-                <WideLeftPanelSkeleton>
-                    @WidePanelBottomContent
-                </WideLeftPanelSkeleton>
-            } else {
-                <LeftPanelContent />
-            }
-        </ErrorBarrier>
+    <div class="left-panel @placementCls @multiRowCls">
+        <CascadingValue Value="@placement">
+            <ErrorBarrier Name="LeftPanelContent" Kind="@ErrorBarrierKind.Full">
+                <LeftPanelButtons/>
+                @if (IsSkeletonWidePanel) {
+                    <WideLeftPanelSkeleton>
+                        @WidePanelBottomContent
+                    </WideLeftPanelSkeleton>
+                } else {
+                    <LeftPanelContent />
+                }
+            </ErrorBarrier>
+        </CascadingValue>
     </div>
 </SideNav>
 
@@ -24,8 +37,10 @@
     private Action? _leftPanelVisibilityChanged;
     private bool _isOpen;
 
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public bool IsSkeletonWidePanel { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? WidePanelBottomContent { get; set; }
@@ -34,7 +49,20 @@
         _isOpen = PanelsUI.Left.IsVisible.Value;
         _leftPanelVisibilityChanged = OnLeftPanelVisibilityChanged;
         PanelsUI.Left.VisibilityChanged += _leftPanelVisibilityChanged;
+        base.OnInitialized();
     }
+
+    public void Dispose()
+        => PanelsUI.Left.VisibilityChanged -= _leftPanelVisibilityChanged;
+
+    protected override ComputedState<UserNavbarSettings>.Options GetStateOptions()
+        => new() {
+            InitialValue = NavbarUI.Settings.Value,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override Task<UserNavbarSettings> ComputeState(CancellationToken cancellationToken)
+        => NavbarUI.Settings.Use(cancellationToken);
 
     private void OnLeftPanelVisibilityChanged() {
         var isOpen = PanelsUI.Left.IsVisible.Value;
@@ -44,7 +72,4 @@
         _isOpen = isOpen;
         StateHasChanged();
     }
-
-    public void Dispose()
-        => PanelsUI.Left.VisibilityChanged -= _leftPanelVisibilityChanged;
 }

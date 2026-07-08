@@ -1,0 +1,31 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, AccountFull>
+@{
+    var account = State.Value;
+    if (!account.IsActive())
+        return;
+}
+
+<ButtonRound
+    Class="btn-create"
+    Tooltip="Create"
+    TooltipPosition="FloatingPosition.Bottom"
+    data-bubble="@(BubbleRef.New<CreateChatOrPlaceBubble>())"
+    data-bubble-priority="201"
+    data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())"
+    data-menu="@(MenuRef.New<CreateMenu>().ToString())"
+    data-menu-trigger="@MenuTrigger.Primary"
+    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+    <i class="icon-plus text-2xl font-medium"></i>
+</ButtonRound>
+
+@code {
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountUI.OwnAccount.Value,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => AccountUI.OwnAccount.Use(cancellationToken);
+}

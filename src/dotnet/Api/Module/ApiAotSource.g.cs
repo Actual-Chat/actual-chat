@@ -66,6 +66,8 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.RecentMentions>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.Role>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.RoleDiff>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.SharedLocation>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.SharedLocationDiff>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.SystemEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.TextEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.Translation>();
@@ -95,6 +97,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Flows.FlowSummary>();
         CodeKeeper.KeepSerializable<global::ActualChat.Flows.FlowTypeStat>();
         CodeKeeper.KeepSerializable<global::ActualChat.Flows.FlowsQuery>();
+        CodeKeeper.KeepSerializable<global::ActualChat.GeoPoint>();
         CodeKeeper.KeepSerializable<global::ActualChat.GroupChatId>();
         CodeKeeper.KeepSerializable<global::ActualChat.Interest>();
         CodeKeeper.KeepSerializable<global::ActualChat.Invite.ChatInvite>();
@@ -156,6 +159,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Search.EntrySearchQuery>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.FoundChatEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.FoundContact>();
+        CodeKeeper.KeepSerializable<global::ActualChat.SharedLocationId>();
         CodeKeeper.KeepSerializable<global::ActualChat.StoredSettings>();
         CodeKeeper.KeepSerializable<global::ActualChat.StreamId>();
         CodeKeeper.KeepSerializable<global::ActualChat.ThreadChatId>();
@@ -400,6 +404,12 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.RoleDiff>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.RoleDiff>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.RoleDiff>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SharedLocation>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SharedLocation>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SharedLocation>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SharedLocationDiff>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SharedLocationDiff>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SharedLocationDiff>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SystemEntry>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SystemEntry>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SystemEntry>>>>();
@@ -508,6 +518,12 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowsQuery>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowsQuery>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowsQuery>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GeoPoint>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GeoPoint>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GeoPoint>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GeoTrackingAccuracy>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GeoTrackingAccuracy>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GeoTrackingAccuracy>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GroupChatId>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GroupChatId>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GroupChatId>>>>();
@@ -787,6 +803,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Search.SearchScope>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Search.SearchScope>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Search.SearchScope>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.SharedLocationId>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.SharedLocationId>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.SharedLocationId>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.StoredSettings>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.StoredSettings>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.StoredSettings>>>>();
@@ -877,6 +896,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ListeningMode>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ListeningMode>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ListeningMode>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.NavbarPlacement>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.NavbarPlacement>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.NavbarPlacement>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SessionInfo>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SessionInfo>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SessionInfo>>>>();
@@ -1138,6 +1160,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::ActualChat.ChatKind>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::ActualChat.ChatKind>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::ActualChat.ChatKind>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::ActualChat.GeoTrackingAccuracy>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::ActualChat.GeoTrackingAccuracy>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::ActualChat.GeoTrackingAccuracy>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::ActualChat.Hashing.HashString>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::ActualChat.Hashing.HashString>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::ActualChat.Hashing.HashString>>>>>();
@@ -1165,6 +1190,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Int64>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Int64>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Int64>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Single>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Single>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Single>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.TimeSpan>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.TimeSpan>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.TimeSpan>>>>>();
@@ -1211,6 +1239,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.PlaceId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.PrincipalId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.RoleId, ActualChat.Api]], ActualChat.Core");
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.SharedLocationId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.StreamId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.ThreadChatId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.TranslationId, ActualChat.Api]], ActualChat.Core");
@@ -1338,6 +1367,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualChat.Chat.ChatPermissions, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualChat.Chat.SystemRole, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualChat.ChatKind, ActualChat.Api]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualChat.GeoTrackingAccuracy, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualChat.Hashing.HashString, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualChat.Mathematics.Range`1[[System.Int64, System.Private.CoreLib]], ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualChat.Media.LinkPreviewMode, ActualChat.Api]], MessagePack");
@@ -1346,6 +1376,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualLab.Time.Moment, ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableInt32Formatter, MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableInt64Formatter, MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.NullableSingleFormatter, MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableStringArrayFormatter, MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.SingleArrayFormatter, MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.StaticNullableFormatter`1[[System.TimeSpan, System.Private.CoreLib]], MessagePack");
@@ -1403,6 +1434,8 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+RecentMentionsFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+RoleDiffFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+RoleFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+SharedLocationDiffFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+SharedLocationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+SystemEntryFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+SystemRoleFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+TextEntryFormatter, ActualChat.Api");
@@ -1425,6 +1458,8 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Flows+FlowSummaryFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Flows+FlowTypeStatFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Flows+FlowsQueryFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+GeoPointFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+GeoTrackingAccuracyFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Invite+ChatInviteFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Invite+ChatInviteSettingsFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Invite+InviteChatLinkPreviewFormatter, ActualChat.Api");
@@ -1502,6 +1537,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+GuestIdOptionFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+LegacySessionInfoFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+ListeningModeFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+NavbarPlacementFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+SessionInfoFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+SessionInfoFullFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+TimeZoneFormatter, ActualChat.Api");
@@ -1585,6 +1621,8 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Chat.RecentMentions), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.Role), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.RoleDiff), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.SharedLocation), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.SharedLocationDiff), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.SystemEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.TextEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.Translation), AotTypeKind.Serializable),
@@ -1614,6 +1652,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Flows.FlowSummary), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Flows.FlowTypeStat), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Flows.FlowsQuery), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.GeoPoint), AotTypeKind.Serializable),
             (typeof(global::ActualChat.GroupChatId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Interest), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Invite.ChatInvite), AotTypeKind.Serializable),
@@ -1675,6 +1714,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Search.EntrySearchQuery), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.FoundChatEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.FoundContact), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.SharedLocationId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.StoredSettings), AotTypeKind.Serializable),
             (typeof(global::ActualChat.StreamId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.ThreadChatId), AotTypeKind.Serializable),

@@ -1,0 +1,22 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<select class="select @Class" disabled="@IsDisabled" @onchange="OnChanged">
+    @foreach (var option in Options) {
+        <option value="@option.Value" selected="@(option.Value == Value)">@option.Text</option>
+    }
+</select>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<Option> Options { get; set; } = [];
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    private Task OnChanged(ChangeEventArgs e)
+        => ValueChanged.InvokeAsync(e.Value as string ?? "");
+
+    // Nested types
+
+    public sealed record Option(string Value, string Text);
+}

@@ -204,7 +204,7 @@ body.hoverable .tile-btn:hover,
 .touch-capable .tile-btn:active {
     @apply text-primary;
 }
-.add-avatar-btn.btn {
+.btn-settings-action.btn {
     @apply justify-start;
     @apply w-auto h-12;
     @apply px-4;
@@ -212,10 +212,10 @@ body.hoverable .tile-btn:hover,
     @apply bg-[var(--hover-after-primary)];
     @apply text-primary;
 }
-.add-avatar-btn.btn > .btn-content {
+.btn-settings-action.btn > .btn-content {
     @apply gap-x-4;
 }
-.add-avatar-btn span {
+.btn-settings-action span {
     @apply text-sm font-medium;
 }
 .settings-tab-title {

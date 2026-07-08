@@ -23,6 +23,9 @@
 
     private async Task NavigateToChatsWhen(Task when) {
         await when;
-        _ = History.NavigateTo(Links.Chats, false, false, true);
+        // Settings tab shortcuts (Notes, Test Pages, ...) navigate on close themselves - don't override them.
+        await History.WhenNavigationCompletedOrTimeout();
+        if (History.LocalUrl.Value.StartsWith("/settings"))
+            _ = History.NavigateTo(Links.Chats, false, false, true);
     }
 }

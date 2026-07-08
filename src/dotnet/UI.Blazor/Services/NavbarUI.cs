@@ -80,6 +80,17 @@ public class NavbarUI : UIServiceBase<UIHub>
     public void SetNavbarPlacesOrder(IReadOnlyCollection<PlaceId> places)
         => Settings.Set(x => x.Value with { PlacesOrder = places.ToArray() });
 
+    public void SetNavbarPlacement(bool isNarrow, NavbarPlacement placement)
+        => Settings.Set(x => isNarrow
+            ? x.Value with { NarrowPlacement = placement }
+            : x.Value with { WidePlacement = placement });
+
+    public void SetIsAccountButtonFirst(bool value)
+        => Settings.Set(x => x.Value with { IsAccountButtonFirst = value });
+
+    public void SetIsMultiRow(bool value)
+        => Settings.Set(x => x.Value with { IsMultiRow = value });
+
     private void UpdateTitle(string id, string title)
     {
         if (id != SelectedGroupId)

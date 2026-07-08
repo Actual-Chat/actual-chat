@@ -21,6 +21,18 @@
     @apply bg-input;
 }
 
+.select {
+    @apply h-9;
+    @apply px-2;
+    @apply rounded-lg border border-separator;
+    @apply bg-01;
+    @apply text-sm text-01;
+    @apply cursor-pointer;
+}
+.select:focus {
+    @apply outline-none border-primary;
+}
+
 .form label {
     @apply font-medium text-03;
 }

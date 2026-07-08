@@ -210,6 +210,22 @@ body.hoverable .add-members-btn:hover {
                 border-color 200ms ease-in-out,
                 border-radius 200ms ease-in-out 200ms;
 }
+.left-search-panel > .c-top {
+    @apply flex-none flex-x items-center justify-end;
+    @apply min-h-14;
+}
+.left-search-panel > .c-top > .btn-create {
+    @apply flex-none;
+    @apply text-03;
+    @apply pointer-events-auto;
+    transition: width 200ms ease-out, opacity 200ms ease-out;
+}
+.left-search-panel:has(.left-chat-search-input.open) > .c-top > .btn-create {
+    @apply w-0 min-w-0;
+    @apply overflow-hidden;
+    @apply opacity-0;
+    @apply pointer-events-none;
+}
 
 .left-panel-content-header.place.chat-roulette > .c-content {
     @apply bg-[var(--indigo-70)];
@@ -222,4 +238,65 @@ body.hoverable .add-members-btn:hover {
 
 .navbar-button .voxt-btn {
     @apply p-1.5;
+}
+
+/* ── Horizontal navbar (top/bottom placement) ── */
+
+.left-panel.navbar-horizontal {
+    @apply flex-y;
+    @apply gap-x-0 gap-y-0;
+}
+.left-panel.navbar-horizontal .left-panel-buttons,
+.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) .left-panel.navbar-horizontal .left-panel-buttons {
+    @apply flex-y;
+    @apply w-full h-auto;
+    @apply py-1;
+    @apply transition-none;
+}
+.left-panel.navbar-bottom .left-panel-buttons {
+    @apply order-2;
+    padding-bottom: var(--safe-area-bottom);
+}
+.left-panel.navbar-top .left-panel-buttons {
+    padding-top: var(--safe-area-top);
+}
+.left-panel.navbar-horizontal .left-panel-buttons > .c-spacer {
+    @apply hidden;
+}
+.left-panel.navbar-horizontal .left-panel-buttons > .c-content {
+    @apply flex-x flex-wrap items-center gap-x-2 gap-y-1;
+    @apply w-full h-auto;
+}
+.left-panel.navbar-bottom.navbar-multi-row .left-panel-buttons > .c-content {
+    flex-wrap: wrap-reverse;
+}
+.left-panel.navbar-horizontal .left-panel-buttons > .c-content > .safe-area-top,
+.left-panel.navbar-horizontal .left-panel-buttons > .c-content > .safe-area-bottom {
+    @apply hidden;
+}
+.left-panel.navbar-horizontal .left-panel-buttons > .c-content > .c-buttons {
+    display: contents;
+}
+.left-panel.navbar-horizontal .navbar-button.settings-btn {
+    @apply my-0;
+}
+.left-panel.navbar-horizontal.navbar-multi-row .left-panel-buttons:not(.account-first) .navbar-button.settings-btn {
+    @apply ml-auto;
+}
+.left-panel.navbar-top .left-panel-content > .safe-area-top {
+    @apply hidden;
+}
+.left-panel.navbar-top .left-search-panel {
+    top: 0;
+}
+.left-panel.navbar-bottom .left-panel-content .safe-area-bottom-overlay {
+    @apply hidden;
+}
+.left-panel.navbar-bottom .active-chats {
+    padding-bottom: 0.5rem;
+}
+.left-panel.navbar-horizontal .left-panel-buttons .c-delimiter {
+    @apply w-px h-10;
+    @apply mx-1 my-0;
+    @apply border-t-0 border-l border-nav-separator;
 }

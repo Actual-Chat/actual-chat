@@ -228,3 +228,66 @@ body.narrow .navbar-chat-buttons .navbar-button .btn-round {
 .sortable-target {
     scale: 1.2;
 }
+
+/* ── Horizontal navbar (top/bottom placement) ── */
+
+.left-panel.navbar-horizontal .navbar-button {
+    @apply justify-center;
+    @apply w-auto md:w-auto xl:w-auto;
+}
+.left-panel.navbar-horizontal .navbar-buttons {
+    @apply flex-x items-center gap-x-2 gap-y-0;
+    @apply grow;
+    @apply w-auto;
+    @apply overflow-x-auto overflow-y-hidden;
+}
+.left-panel.navbar-horizontal.navbar-multi-row .navbar-buttons {
+    @apply order-10 grow-0 basis-full;
+    @apply w-full;
+}
+.left-panel.navbar-horizontal .navbar-place-buttons,
+.left-panel.navbar-horizontal .navbar-chat-buttons {
+    @apply flex-x items-center gap-x-2 gap-y-0;
+    @apply w-auto;
+    @apply pt-0 mt-0;
+}
+.left-panel.navbar-horizontal .navbar-place-buttons:empty {
+    @apply m-0 p-0;
+}
+.left-panel.navbar-horizontal .navbar-button .left-line {
+    @apply absolute left-1/2 z-10;
+    @apply order-none self-auto;
+    @apply w-10 h-auto;
+    @apply p-0 pr-0;
+    transform: translateX(-50%);
+}
+.left-panel.navbar-top .navbar-button .left-line {
+    @apply bottom-0;
+}
+.left-panel.navbar-bottom .navbar-button .left-line {
+    @apply top-0;
+}
+.left-panel.navbar-horizontal .navbar-button .left-line > .c-content {
+    @apply w-full h-0.75;
+}
+body.hoverable .left-panel.navbar-horizontal .navbar-button .left-line.can-move:hover,
+body.hoverable .left-panel.navbar-horizontal .navbar-place-buttons .navbar-button:has(.hover-zone:hover) .left-line.can-move,
+body.hoverable .left-panel.navbar-horizontal .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-line.can-move {
+    transform: translateX(-50%) scale3d(1.2, 2, 1);
+}
+.left-panel.navbar-horizontal .navbar-button .right-line {
+    @apply hidden;
+}
+body.hoverable .left-panel.navbar-horizontal .navbar-place-buttons .navbar-button .hover-zone,
+body.hoverable .left-panel.navbar-horizontal .navbar-chat-buttons .navbar-button .hover-zone {
+    @apply left-0 right-0;
+    @apply w-auto h-3;
+}
+body.hoverable .left-panel.navbar-top .navbar-place-buttons .navbar-button .hover-zone,
+body.hoverable .left-panel.navbar-top .navbar-chat-buttons .navbar-button .hover-zone {
+    @apply bottom-0 top-auto;
+}
+body.hoverable .left-panel.navbar-bottom .navbar-place-buttons .navbar-button .hover-zone,
+body.hoverable .left-panel.navbar-bottom .navbar-chat-buttons .navbar-button .hover-zone {
+    @apply top-0 bottom-auto;
+}

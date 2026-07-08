@@ -15,30 +15,15 @@
     <ThemeSettings/>
 </Tile>
 
+<ChatsBarSettings/>
+
 @code {
-    private ILogger<UserInterface> Log => field ??= Hub.LogFor<UserInterface>();
-
-    private BubbleUI BubbleUI => Hub.BubbleUI;
-    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
-
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         return new(account.IsAdmin);
-    }
-
-    private async Task OnRestartWalkThrough() {
-        await BubbleUI.ResetSettings();
-        ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
-    }
-
-    private void OnRestartOnboarding() {
-        OnboardingUI.ResetSettings();
-        ToastUI.Show("Onboarding steps are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     // Nested types

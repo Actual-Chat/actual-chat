@@ -1,0 +1,35 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.Events
+@inherits ComputedMenuBase<AppUIHub, Unit>
+
+<MenuEntry
+    Icon="icon-log-in"
+    Text="Sign in"
+    Click="@OnSignInClick">
+</MenuEntry>
+<MenuEntry
+    Icon="icon-settings"
+    Text="Settings"
+    Click="@OnSettingsClick">
+</MenuEntry>
+
+@code {
+    protected override ComputedState<Unit>.Options GetStateOptions()
+        => new() {
+            InitialValue = default,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override Task<Unit> ComputeState(CancellationToken cancellationToken)
+        => ActualLab.Async.TaskExt.UnitTask;
+
+    private async Task OnSignInClick() {
+        await WhenClosed;
+        _ = ModalUI.Show(new SignInModal.Model());
+    }
+
+    private async Task OnSettingsClick() {
+        await WhenClosed;
+        _ = UIEventHub.Publish(new ShowSettingsEvent());
+    }
+}

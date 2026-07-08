@@ -1,0 +1,74 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, UserNavbarSettings>
+@{
+    var m = State.Value;
+    var isNarrow = ScreenSize.IsNarrow();
+}
+
+<TileTopic Topic="Chats Bar"/>
+<Tile Class="chats-bar-tile">
+    <TileItem Class="@(isNarrow ? "c-current" : "")" Caption="@(isNarrow ? CurrentModeCaption : null)">
+        <Content>Placement in narrow mode</Content>
+        <Right>
+            <Select
+                Options="@PlacementOptions"
+                Value="@m.NarrowPlacement.ToString()"
+                ValueChanged="@(v => OnPlacementChanged(true, v))"/>
+        </Right>
+    </TileItem>
+    <TileItem Class="@(isNarrow ? "" : "c-current")" Caption="@(isNarrow ? null : CurrentModeCaption)">
+        <Content>Placement in wide mode</Content>
+        <Right>
+            <Select
+                Options="@PlacementOptions"
+                Value="@m.WidePlacement.ToString()"
+                ValueChanged="@(v => OnPlacementChanged(false, v))"/>
+        </Right>
+    </TileItem>
+    <TileItem Click="@OnAccountButtonFirstClick">
+        <Content>Show your account button first</Content>
+        <Right>
+            <Toggle IsChecked="@m.IsAccountButtonFirst"/>
+        </Right>
+    </TileItem>
+    <TileItem Click="@OnMultiRowClick">
+        <Content>Two rows when horizontal</Content>
+        <Caption>The second row shows pinned items</Caption>
+        <Right>
+            <Toggle IsChecked="@m.IsMultiRow"/>
+        </Right>
+    </TileItem>
+</Tile>
+
+@code {
+    private static readonly RenderFragment CurrentModeCaption = @<text>Current mode</text>;
+    private static readonly Select.Option[] PlacementOptions = [
+        new(nameof(NavbarPlacement.Left), "Left"),
+        new(nameof(NavbarPlacement.Top), "Top"),
+        new(nameof(NavbarPlacement.Bottom), "Bottom"),
+    ];
+
+    private NavbarUI NavbarUI => Hub.NavbarUI;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override ComputedState<UserNavbarSettings>.Options GetStateOptions()
+        => new() {
+            InitialValue = NavbarUI.Settings.Value,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override Task<UserNavbarSettings> ComputeState(CancellationToken cancellationToken)
+        => NavbarUI.Settings.Use(cancellationToken);
+
+    private void OnPlacementChanged(bool isNarrow, string value) {
+        if (Enum.TryParse<NavbarPlacement>(value, out var placement))
+            NavbarUI.SetNavbarPlacement(isNarrow, placement);
+    }
+
+    private void OnAccountButtonFirstClick()
+        => NavbarUI.SetIsAccountButtonFirst(!State.Value.IsAccountButtonFirst);
+
+    private void OnMultiRowClick()
+        => NavbarUI.SetIsMultiRow(!State.Value.IsMultiRow);
+}

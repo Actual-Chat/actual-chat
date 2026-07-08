@@ -1,26 +1,37 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+@{
+    var isAccountButtonFirst = State.Value;
+}
 
-<div class="left-panel-buttons">
+<div class="left-panel-buttons @(isAccountButtonFirst ? "account-first" : "")">
     <div class="c-spacer"></div>
     <div class="c-content">
         <div class="safe-area-top"></div>
-        <NavbarButton
-            Class="settings-btn"
-            data-menu="@(MenuRef.New<NavbarLogoMenu>())"
-            data-menu-trigger="@MenuTrigger.Primary"
-            data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
-            <ChildContent>
-                <img draggable="false" src="/dist/images/voxt-icon-color.svg" alt="voxt-icon" class="voxt-btn">
-            </ChildContent>
-            <Ending>
-                <LeftLine/>
-                <div class="right-line"></div>
-            </Ending>
-        </NavbarButton>
+        @if (isAccountButtonFirst) {
+            <AccountDropdown/>
+        }
         <div class="c-buttons">
             <NavbarButtons/>
         </div>
-        <AccountDropdown/>
+        @if (!isAccountButtonFirst) {
+            <AccountDropdown/>
+        }
         <div class="safe-area-bottom"></div>
     </div>
 </div>
+
+@code {
+    private NavbarUI NavbarUI => Hub.NavbarUI;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() {
+            InitialValue = NavbarUI.Settings.Value.IsAccountButtonFirst,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var settings = await NavbarUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        return settings.IsAccountButtonFirst;
+    }
+}
