@@ -107,8 +107,8 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 
     private async Task TroubleshootTracking(CancellationToken cancellationToken)
     {
-        CancellationTokenSource? troubleshooterCts = null;
         var wasRequired = false;
+        FuncWorker? troubleshooter = null;
         try {
             var cRequired = await Computed
                 .Capture(() => MustTroubleshoot(cancellationToken), cancellationToken)
@@ -118,22 +118,19 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
                     continue;
 
                 wasRequired = isRequired;
-                // TODO: funcworker
-                if (isRequired) {
-                    // Permission was revoked mid-share: invalidate the cached grant the same way
-                    // AudioRecorder does for the mic, so the next CheckOrRequest re-detects it.
-                    LocationPermission.ForgetCached();
-                    troubleshooterCts = new CancellationTokenSource();
-                    _ = ShowLocationTroubleshooter(troubleshooterCts.Token);
-                }
-                else {
-                    troubleshooterCts.CancelAndDisposeSilently();
-                    troubleshooterCts = null;
-                }
+                await troubleshooter.DisposeSilentlyAsync().ConfigureAwait(false);
+                troubleshooter = null;
+                if (!isRequired)
+                    continue;
+
+                // Permission was revoked mid-share: invalidate the cached grant the same way
+                // AudioRecorder does for the mic, so the next CheckOrRequest re-detects it.
+                LocationPermission.ForgetCached();
+                troubleshooter = FuncWorker.Start(ShowLocationTroubleshooter, cancellationToken);
             }
         }
         finally {
-            troubleshooterCts.CancelAndDisposeSilently();
+            await troubleshooter.DisposeSilentlyAsync().ConfigureAwait(false);
         }
     }
 
