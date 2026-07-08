@@ -165,6 +165,13 @@ describe('location sharing', () => {
         await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
         await page.screenshot({ path: shot('loc-one-shot') });
 
+        // assert — the chat-list preview summarizes the location entry instead of rendering blank (#4028).
+        // A location entry has empty text Content, so without the fallback the "chat news" line is empty.
+        const listRow = page.locator('.chat-list [data-href="/chat/the-actual-one"]').first();
+        const listPreview = listRow.locator('.c-last-message .c-text:has-text("location")');
+        await listPreview.waitFor({ state: 'visible', timeout: 15_000 });
+        expect(await listRow.locator('.c-last-message .c-text i.icon-map-point').count()).toBe(1);
+
         // assert — there is no live-share banner for a one-shot send (it's a static message)
         const banner = page.locator('.live-location-banner').first();
         expect(await banner.isVisible({ timeout: 2_000 }).catch(() => false)).toBe(false);
