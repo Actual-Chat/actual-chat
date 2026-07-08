@@ -156,6 +156,99 @@ public class ChatBlockTest(ChatCollection.AppHostFixture fixture, ITestOutputHel
         entry.Content.Should().Be("back to talking");
     }
 
+    [Fact]
+    public async Task BlockWorksOverExistingTemporaryContact()
+    {
+        // arrange
+        await using var aliceTester = AppHost.NewBlazorTester(Out);
+        await using var bobTester = AppHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        var bob = await bobTester.SignInAsUniqueBob();
+        var contactId = ContactId.NewUser(alice.Id, bob.Id);
+        var commander = aliceTester.AppServices.Commander();
+        var contactsBackend = aliceTester.AppServices.GetRequiredService<IContactsBackend>();
+        // Emulates the AuthorUpsertedEvent handler creating a Temporary contact first
+        await commander.Call(new ContactsBackend_Change(contactId, null,
+            new Change<Contact> { Create = new Contact(contactId) { State = ContactState.Temporary } }));
+
+        // act
+        await BlockUser(aliceTester, alice.Id, bob.Id);
+
+        // assert
+        var isBlocked = await contactsBackend.IsBlocked(alice.Id, bob.Id, CancellationToken.None);
+        isBlocked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task BlockSurvivesLateTemporaryContactCreate()
+    {
+        // arrange
+        await using var aliceTester = AppHost.NewBlazorTester(Out);
+        await using var bobTester = AppHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        var bob = await bobTester.SignInAsUniqueBob();
+        var contactId = ContactId.NewUser(alice.Id, bob.Id);
+        var commander = aliceTester.AppServices.Commander();
+        var contactsBackend = aliceTester.AppServices.GetRequiredService<IContactsBackend>();
+        await BlockUser(aliceTester, alice.Id, bob.Id);
+
+        // act
+        // The AuthorUpsertedEvent handler lands its Temporary create after the block
+        await commander.Call(new ContactsBackend_Change(contactId, null,
+            new Change<Contact> { Create = new Contact(contactId) { State = ContactState.Temporary } }));
+
+        // assert
+        var isBlocked = await contactsBackend.IsBlocked(alice.Id, bob.Id, CancellationToken.None);
+        isBlocked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateBlockedContactIsRejected()
+    {
+        // arrange
+        await using var aliceTester = AppHost.NewBlazorTester(Out);
+        await using var bobTester = AppHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        var bob = await bobTester.SignInAsUniqueBob();
+        var contactId = ContactId.NewUser(alice.Id, bob.Id);
+        var commander = aliceTester.AppServices.Commander();
+
+        // act
+        var create = () => commander.Call(new ContactsBackend_Change(contactId, null,
+            new Change<Contact> { Create = new Contact(contactId) { State = ContactState.Blocked } }));
+
+        // assert
+        await create.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task CreateRegularDoesNotUnblockContact()
+    {
+        // arrange
+        await using var aliceTester = AppHost.NewBlazorTester(Out);
+        await using var bobTester = AppHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        var bob = await bobTester.SignInAsUniqueBob();
+        var chatId = PeerChatId.New(alice.Id, bob.Id);
+        await bobTester.CreateTextEntry(chatId, "hi");
+        await BlockUser(aliceTester, alice.Id, bob.Id);
+        var contactId = ContactId.NewUser(alice.Id, bob.Id);
+        var commander = aliceTester.AppServices.Commander();
+        var contactsBackend = aliceTester.AppServices.GetRequiredService<IContactsBackend>();
+        var blocked = await contactsBackend.Get(alice.Id, contactId, CancellationToken.None);
+
+        // act
+        await commander.Call(new ContactsBackend_Change(contactId, null,
+            new Change<Contact> { Create = new Contact(contactId) { State = ContactState.Regular } }));
+
+        // assert
+        var contact = await contactsBackend.Get(alice.Id, contactId, CancellationToken.None);
+        contact.State.Should().Be(ContactState.Blocked);
+        contact.Version.Should().Be(blocked.Version);
+        var isBlocked = await contactsBackend.IsBlocked(alice.Id, bob.Id, CancellationToken.None);
+        isBlocked.Should().BeTrue();
+    }
+
     private static Task BlockUser(IWebTester tester, UserId ownerId, UserId otherUserId, bool isBlocked = true)
     {
         var contactId = ContactId.NewUser(ownerId, otherUserId);

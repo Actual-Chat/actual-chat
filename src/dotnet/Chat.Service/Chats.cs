@@ -1072,7 +1072,7 @@ public partial class Chats(IServiceProvider services) : IChats
     {
         var contactId = ContactId.NewUser(ownerId, chatId.AnotherUserId(ownerId));
         var contact = await ContactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
-        if (contact.IsRegular)
+        if (contact.IsRegular || contact.IsBlocked)
             return;
 
         var command = new ContactsBackend_Change(
