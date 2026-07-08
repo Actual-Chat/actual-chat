@@ -105,6 +105,12 @@ public static class ChatMarkupHubExt
         if (consumer is MarkupConsumer.MessageView)
             return Markup.EmptyText;
 
+        if (entry.HasLocation) {
+            var locationText = consumer is MarkupConsumer.ReactionNotification ? "location" : "a location";
+            var locationPreamble = consumer is MarkupConsumer.ReactionNotification ? "your " : "Sent ";
+            return new PlainTextMarkup(string.Concat(locationPreamble, locationText));
+        }
+
         var attachments = entry.Attachments;
         if (attachments.Length == 0)
             return Markup.EmptyText;
