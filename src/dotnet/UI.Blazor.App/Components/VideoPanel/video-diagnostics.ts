@@ -15,6 +15,8 @@ import {
 } from '../../Services/Video/capture-fps-override';
 import { ServerClock } from 'clocks';
 
+export { collectPresentRate } from './present-rate-meter';
+
 export interface OwnStreamDiagnosticsSnapshot {
     stream: OwnStreamDiagnostics | null;
 }

@@ -4,6 +4,7 @@ import { delayAsync } from 'actuallab-core';
 import { DeviceInfo } from 'device-info';
 import { aggregateDropTrace, updatePlaybackRateEma, type DecodedFrame } from '../frame-envelopes';
 import { FrameDropStage } from '../frame-drop-trace';
+import { alignToPresentGrid, isPresentGridEnabled } from '../present-grid';
 import { BufferSpanMeter, type BufferSpanMeterOptions } from './buffer-span-meter';
 
 const PRESENT_SKIP_RATIO_EMA_ALPHA = 0.1;
@@ -164,8 +165,20 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                     if (nextWriteAt - now > MAX_DURATION_MS)
                         nextWriteAt = now + MAX_DURATION_MS;
 
-                    if (nextWriteAt > now) {
-                        const sleepMs = nextWriteAt - now - PRESENT_LEAD_MS;
+                    // Land the write on the shared present grid (present-grid.ts)
+                    // so every tile invalidates the same output frame. Only the
+                    // sleep target snaps: the NOMINAL schedule (lastWriteAt) keeps
+                    // tracking source deltas unquantized, so a source whose frame
+                    // interval beats against the grid keeps its average rate
+                    // instead of being decimated by cumulative ceil-rounding.
+                    // Catch-up sprints (durationMs == MIN) skip alignment —
+                    // latency recovery outranks redraw batching.
+                    const writeAt = durationMs > MIN_DURATION_MS && isPresentGridEnabled()
+                        ? alignToPresentGrid(nextWriteAt)
+                        : nextWriteAt;
+
+                    if (writeAt > now) {
+                        const sleepMs = writeAt - now - PRESENT_LEAD_MS;
                         if (sleepMs > 0)
                             await delayFn(sleepMs);
                     }

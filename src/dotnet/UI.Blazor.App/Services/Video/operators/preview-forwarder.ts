@@ -1,5 +1,6 @@
 import { getLogs } from 'logging';
 import type { RotationQuarter } from '../orientation/quantize';
+import { alignToPresentGrid, isPresentGridEnabled } from '../present-grid';
 import type { PreviewFramePresentation } from '../sender/recorder-worker-contract';
 import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
 
@@ -68,24 +69,112 @@ export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
     const closeFrame = (frame: VideoFrame): void => {
         try { frame.close(); } catch { /* ignore */ }
     };
+    // Present-grid hold (mobile only): stash the newest clone and flush it on
+    // the shared slot boundary so the self-preview invalidates the same output
+    // frame as the remote tiles (see present-grid.ts). Latest-frame-wins — a
+    // newer clone replaces (closes) the held one; no queue builds up. The slot
+    // timer always fires (never cleared), so this does not reintroduce the
+    // cleared-before-fire timer churn the old per-frame pacer was removed for.
+    let pendingFrame: VideoFrame | null = null;
+    let pendingRotation: RotationQuarter = 0;
+    let slotTimerArmed = false;
+
+    const deliver = (source: VideoFrame, rotation: RotationQuarter): void => {
+        let writer: WritableStreamDefaultWriter<VideoFrame> | null;
+        try {
+            writer = getWriter();
+        } catch (e) {
+            reportFailure('getWriter', e);
+            closeFrame(source);
+            return;
+        }
+        if (!writer && !reportFrame) {
+            closeFrame(source);
+            return;
+        }
+
+        // Writer back-pressure: drop instead of buffer. The downstream
+        // <video> element drains MSTG at its render cadence; if desiredSize
+        // is exhausted, the renderer is stalled and queueing here only
+        // delays the same drop while holding a GPU plane.
+        if (writer && writer.desiredSize !== null && writer.desiredSize <= 0) {
+            closeFrame(source);
+            return;
+        }
+
+        deliverFrame(writer, source, rotation);
+    };
+
+    const deliverFrame = (
+        writer: WritableStreamDefaultWriter<VideoFrame> | null,
+        clone: VideoFrame,
+        rotation: RotationQuarter,
+    ): void => {
+        // Generated-track path (<video srcObject>): the element auto-orients,
+        // so report rotation=0 to keep the CSS --video-rotation layer from
+        // double-rotating. Two engines, two mechanisms:
+        //   * Chromium (HAS_VF_ROTATION_INIT): stamp display rotation as
+        //     VideoFrame metadata; the <video> rotates from it.
+        //   * iOS Safari (VTG): the <video> auto-orients the track natively
+        //     (no metadata field exists) — just skip the CSS turn.
+        // Canvas-preview path (writer === null) keeps the legacy path — canvas
+        // drawImage ignores VideoFrame rotation metadata, so it relies on CSS.
+        let frame = clone;
+        let displayRotation = rotation;
+        if (writer && rotation !== 0 && (HAS_VF_ROTATION_INIT || isIos)) {
+            if (HAS_VF_ROTATION_INIT) {
+                frame = wrapWithRotation(clone, rotation);
+                closeFrame(clone);
+            }
+            displayRotation = 0;
+        }
+
+        reportPresentationOnce(displayRotation);
+
+        if (writer) {
+            writer.write(frame)
+                .catch((e: unknown) => reportFailure('writer.write', e))
+                .finally(() => closeFrame(frame));
+        } else if (reportFrame) {
+            const result = reportFrame(frame);
+            if (result && typeof result.then === 'function') {
+                result
+                    .catch((e: unknown) => reportFailure('reportFrame', e))
+                    .finally(() => closeFrame(frame));
+            } else {
+                closeFrame(frame);
+            }
+        }
+    };
+
     return {
         forward(source: VideoFrame, rotation: RotationQuarter): void {
-            let writer: WritableStreamDefaultWriter<VideoFrame> | null;
-            try {
-                writer = getWriter();
-            } catch (e) {
-                reportFailure('getWriter', e);
+            if (!isPresentGridEnabled()) {
+                let writer: WritableStreamDefaultWriter<VideoFrame> | null;
+                try {
+                    writer = getWriter();
+                } catch (e) {
+                    reportFailure('getWriter', e);
+                    return;
+                }
+                if (!writer && !reportFrame)
+                    return;
+                if (writer && writer.desiredSize !== null && writer.desiredSize <= 0)
+                    return;
+                let clone: VideoFrame;
+                try {
+                    clone = source.clone();
+                } catch (e) {
+                    reportFailure('frame clone', e);
+                    return;
+                }
+                deliverFrame(writer, clone, rotation);
                 return;
             }
-            if (!writer && !reportFrame) return;
 
-            // Writer back-pressure: drop instead of buffer. The downstream
-            // <video> element drains MSTG at its render cadence; if desiredSize
-            // is exhausted, the renderer is stalled and queueing here only
-            // delays the same drop while holding a GPU plane.
-            if (writer && writer.desiredSize !== null && writer.desiredSize <= 0)
-                return;
-
+            // Grid path: clone up front (the caller closes `source` on
+            // return), stash latest-wins, flush on the slot. deliver()
+            // re-runs the writer/back-pressure checks at flush time.
             let clone: VideoFrame;
             try {
                 clone = source.clone();
@@ -93,42 +182,22 @@ export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
                 reportFailure('frame clone', e);
                 return;
             }
-
-            // Generated-track path (<video srcObject>): the element auto-orients,
-            // so report rotation=0 to keep the CSS --video-rotation layer from
-            // double-rotating. Two engines, two mechanisms:
-            //   * Chromium (HAS_VF_ROTATION_INIT): stamp display rotation as
-            //     VideoFrame metadata; the <video> rotates from it.
-            //   * iOS Safari (VTG): the <video> auto-orients the track natively
-            //     (no metadata field exists) — just skip the CSS turn.
-            // Canvas-preview path (writer === null) keeps the legacy path — canvas
-            // drawImage ignores VideoFrame rotation metadata, so it relies on CSS.
-            let frame = clone;
-            let displayRotation = rotation;
-            if (writer && rotation !== 0 && (HAS_VF_ROTATION_INIT || isIos)) {
-                if (HAS_VF_ROTATION_INIT) {
-                    frame = wrapWithRotation(clone, rotation);
-                    closeFrame(clone);
-                }
-                displayRotation = 0;
-            }
-
-            reportPresentationOnce(displayRotation);
-
-            if (writer) {
-                writer.write(frame)
-                    .catch((e: unknown) => reportFailure('writer.write', e))
-                    .finally(() => closeFrame(frame));
-            } else if (reportFrame) {
-                const result = reportFrame(frame);
-                if (result && typeof result.then === 'function') {
-                    result
-                        .catch((e: unknown) => reportFailure('reportFrame', e))
-                        .finally(() => closeFrame(frame));
-                } else {
-                    closeFrame(frame);
-                }
-            }
+            if (pendingFrame)
+                closeFrame(pendingFrame);
+            pendingFrame = clone;
+            pendingRotation = rotation;
+            if (slotTimerArmed)
+                return;
+            slotTimerArmed = true;
+            const now = performance.now();
+            setTimeout(() => {
+                slotTimerArmed = false;
+                const frame = pendingFrame;
+                const frameRotation = pendingRotation;
+                pendingFrame = null;
+                if (frame)
+                    deliver(frame, frameRotation);
+            }, Math.max(0, alignToPresentGrid(now) - now));
         },
     };
 }

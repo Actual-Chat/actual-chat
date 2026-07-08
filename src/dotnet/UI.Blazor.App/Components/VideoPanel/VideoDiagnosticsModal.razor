@@ -347,6 +347,24 @@
 
         @if (_activeTab == Tab.Inbound) {
         <div class="diag-section">
+            <div class="diag-section-header">Present rate (all video surfaces)</div>
+            @if (_presentRate is { } rate) {
+                <div class="diag-row">
+                    <span class="diag-label">Union display slots</span>
+                    <span class="diag-value">@rate.SlotsPerSec.ToString("0.#")/s</span>
+                </div>
+                <div class="diag-row diag-sub">
+                    <span class="diag-label">frames presented</span>
+                    <span class="diag-value diag-dim">@rate.PresentsPerSec.ToString("0.#")/s across @rate.VideoCount video(s)</span>
+                </div>
+            } else {
+                <div class="diag-row">
+                    <span class="diag-label">Union display slots</span>
+                    <span class="diag-value diag-dim">collecting…</span>
+                </div>
+            }
+        </div>
+        <div class="diag-section">
             @{
                 var clock = ClockStats.Current;
             }
@@ -684,6 +702,7 @@
     private static readonly string JSCollectOwnMethod = $"{BlazorUIAppModule.ImportName}.collectOwnStreamDiagnostics";
     private static readonly string JSCollectRemoteMethod = $"{BlazorUIAppModule.ImportName}.collectRemoteStreamDiagnostics";
     private static readonly string JSCollectServerClockMethod = $"{BlazorUIAppModule.ImportName}.collectServerClockDiagnostics";
+    private static readonly string JSCollectPresentRateMethod = $"{BlazorUIAppModule.ImportName}.collectPresentRate";
 
     private enum Tab { Inbound, Outbound, Settings }
 
@@ -691,6 +710,7 @@
     private readonly Dictionary<VideoSourceKind, JsonElement> _ownDiagByKind = new();
     private readonly Dictionary<string, JsonElement> _streamDiags = new();
     private double? _jsServerClockOffsetMs;
+    private (double PresentsPerSec, double SlotsPerSec, int VideoCount)? _presentRate;
     private bool _isDisposed;
     private bool _showOwnStreamingDetails;
     private Tab _activeTab = Tab.Inbound;
@@ -935,6 +955,13 @@
             if (clockDiag.ValueKind == JsonValueKind.Object && clockDiag.TryGetProperty("offsetMs", out var offEl)
                 && offEl.ValueKind == JsonValueKind.Number)
                 _jsServerClockOffsetMs = offEl.GetDouble();
+
+            var presentRate = await JS.InvokeAsync<JsonElement>(JSCollectPresentRateMethod);
+            if (presentRate.ValueKind == JsonValueKind.Object
+                && presentRate.TryGetProperty("presentsPerSec", out var presentsEl)
+                && presentRate.TryGetProperty("slotsPerSec", out var slotsEl)
+                && presentRate.TryGetProperty("videoCount", out var videosEl))
+                _presentRate = (presentsEl.GetDouble(), slotsEl.GetDouble(), videosEl.GetInt32());
 
             // Poll every active outbound source kind — both camera and
             // screencast streams can be live simultaneously, each with its
