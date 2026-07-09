@@ -156,6 +156,22 @@ silent push.
 2. **Client-side** — the running app queries `ListActive` and reconciles device
    notifications (e.g. ensures every unread chat has one).
 
+### 3.9 Redelivery idempotency
+
+The queue is at-least-once, so `OnNotify` can be redelivered and events can
+arrive out of order. `Reconcile` decides whether a merge changed anything by
+**reference equality** (`ReferenceEquals(before, after)`): a no-op merge must
+return the *existing* instance so no duplicate push (and, for ringers, no
+re-ring) is emitted. This makes `Notification.MergeWith` idempotency load-bearing:
+
+- **Coalescing kinds** (`ChatEntryRelatedNotification`) return the existing
+  instance when the incoming entry is already inside the merged window.
+- **Individually-seen kinds** (mention / reaction / attention / call) don't
+  coalesce, so the **base** `Notification.MergeWith` returns the existing instance
+  whenever the incoming event is *not newer* (`SentAt <= existing.SentAt`) — a
+  redelivery (equal `SentAt`) or an out-of-order older event. A strictly newer
+  same-key event still updates in place.
+
 ## 4. Implementation plan
 
 - **Phase 1 — Contracts & data model.** `Notification` union, `UserNotificationInfo`

@@ -162,6 +162,51 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void MergeOfRedeliveredIndividualNotificationIsReferenceIdempotent()
+    {
+        // Individually-seen kinds (mention/reaction/attention/call) don't coalesce; a NATS
+        // redelivery of the same event must be a no-op so the reconcile skips the duplicate push.
+        var entryId = ChatEntryId.New(TestChatId, 7);
+        var authorId = AuthorId.New(TestChatId, 1);
+        var t0 = Moment.Now;
+        var existing = MentionNotification.New(TestUserId, entryId, authorId) with { SentAt = t0 };
+        var redelivered = MentionNotification.New(TestUserId, entryId, authorId) with { SentAt = t0 };
+
+        redelivered.MergeWith(existing).Should().BeSameAs(existing);
+    }
+
+    [Fact]
+    public void MergeOfOutOfOrderOlderIndividualNotificationKeepsExisting()
+    {
+        var conversationId = ConversationId.New(TestChatId, 5);
+        var caller = AuthorId.New(TestChatId, 1);
+        var t0 = Moment.Now;
+        var existing = CallNotification.New(TestUserId, conversationId, caller, hasVideo: false) with {
+            SentAt = t0 + TimeSpan.FromSeconds(10),
+        };
+        var late = CallNotification.New(TestUserId, conversationId, caller, hasVideo: false) with { SentAt = t0 };
+
+        late.MergeWith(existing).Should().BeSameAs(existing);
+    }
+
+    [Fact]
+    public void MergeOfNewerIndividualNotificationUpdates()
+    {
+        var entryId = ChatEntryId.New(TestChatId, 7);
+        var authorId = AuthorId.New(TestChatId, 1);
+        var t0 = Moment.Now;
+        var existing = MentionNotification.New(TestUserId, entryId, authorId) with { SentAt = t0, Text = "old" };
+        var newer = MentionNotification.New(TestUserId, entryId, authorId) with {
+            SentAt = t0 + TimeSpan.FromSeconds(1),
+            Text = "new",
+        };
+
+        var merged = newer.MergeWith(existing);
+        merged.Should().NotBeSameAs(existing);
+        merged.Text.Should().Be("new");
+    }
+
+    [Fact]
     public void AggregatedTextCountsOnlyMessagesBeyondLead()
     {
         NotificationHelper.GetAggregatedText("Hi", ["Alice"], 0).Should().Be("Hi");
