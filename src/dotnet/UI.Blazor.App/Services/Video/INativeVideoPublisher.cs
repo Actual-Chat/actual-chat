@@ -60,3 +60,21 @@ public interface INativeCameraDevices
 {
     VideoDevice[] List();
 }
+
+/// <summary>
+/// Native camera preview for platforms where <c>getUserMedia</c> yields no frames
+/// (Mac Catalyst WKWebView enumerates no video inputs). Captures the camera and
+/// pushes downscaled JPEG frames to <paramref name="onFrame"/>; the caller renders
+/// them to the modal's preview canvas.
+/// </summary>
+public interface INativeCameraPreview : IAsyncDisposable
+{
+    bool Start(string? deviceId, Func<byte[], ValueTask> onFrame);
+    bool SwitchTo(string? deviceId);
+    void Stop();
+}
+
+public interface INativeCameraPreviewFactory
+{
+    INativeCameraPreview Create(AppUIHub hub);
+}

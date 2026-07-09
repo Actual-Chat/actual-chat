@@ -113,6 +113,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
                 _ => new ActualChat.App.Maui.Video.MauiVideoPublisherFactory());
             services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeCameraDevices>(
                 _ => new ActualChat.App.Maui.Video.MauiCameraDevices());
+            services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeCameraPreviewFactory>(
+                _ => new ActualChat.App.Maui.Video.AppleCameraPreviewFactory());
         }
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());

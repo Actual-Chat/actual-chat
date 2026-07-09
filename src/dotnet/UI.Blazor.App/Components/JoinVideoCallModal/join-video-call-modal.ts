@@ -4,6 +4,14 @@ import { RecorderPreviewView } from '../../Services/Video/services/recorder-prev
 
 const { infoLog, warnLog, errorLog } = getLogs('JoinVideoCallModal');
 
+function base64ToBytes(base64: string): Uint8Array {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++)
+        bytes[i] = binary.charCodeAt(i);
+    return bytes;
+}
+
 export class JoinVideoCallModal {
     private blazorRef: DotNet.DotNetObject;
     private readonly videoFrame: HTMLElement;
@@ -120,6 +128,40 @@ export class JoinVideoCallModal {
         this.videoFrame.classList.remove('has-video', 'shows-video', 'shows-canvas');
 
         infoLog?.log('Camera preview stopped');
+    }
+
+    // ---------- Mac Catalyst: native preview frames -------------------------
+
+    // WKWebView getUserMedia delivers no camera frames on Mac Catalyst, so the
+    // native side captures the camera and pushes downscaled JPEG frames here to
+    // be drawn on the canvas.
+    public async renderPreviewFrame(base64Jpeg: string): Promise<void> {
+        if (this.disposed) return;
+        try {
+            const bytes = base64ToBytes(base64Jpeg);
+            const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'image/jpeg' });
+            const bitmap = await createImageBitmap(blob);
+            // dispose() can flip `disposed` during the await above.
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (this.disposed) { bitmap.close(); return; }
+
+            const ctx = this.canvasEl.getContext('2d');
+            if (!ctx) { bitmap.close(); return; }
+            if (this.canvasEl.width !== bitmap.width || this.canvasEl.height !== bitmap.height) {
+                this.canvasEl.width = bitmap.width;
+                this.canvasEl.height = bitmap.height;
+            }
+            ctx.drawImage(bitmap, 0, 0);
+            bitmap.close();
+
+            this.videoFrame.classList.add('has-video', 'shows-canvas');
+            if (!this.firstFrameFired) {
+                this.firstFrameFired = true;
+                void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered');
+            }
+        } catch (error) {
+            warnLog?.log('renderPreviewFrame failed:', error);
+        }
     }
 
     public async switchCamera(deviceId: string): Promise<boolean> {
