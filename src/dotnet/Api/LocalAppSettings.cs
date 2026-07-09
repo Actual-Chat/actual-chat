@@ -31,10 +31,10 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsBackgroundBlurEnabledOrDefault => IsBackgroundBlurEnabled ?? false;
-    public bool IsVideoDiagnosticsEnabledOrDefault(bool isDevelopmentInstance)
-        => IsVideoDiagnosticsEnabled ?? isDevelopmentInstance;
-    public bool IsAudioDiagnosticsEnabledOrDefault(bool isDevelopmentInstance)
-        => IsAudioDiagnosticsEnabled ?? isDevelopmentInstance;
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public bool IsVideoDiagnosticsEnabledOrDefault => IsVideoDiagnosticsEnabled ?? false;
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public bool IsAudioDiagnosticsEnabledOrDefault => IsAudioDiagnosticsEnabled ?? false;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public GeoTrackingAccuracy LocationAccuracyOrDefault => LocationAccuracy ?? GeoTrackingAccuracy.Balanced;
 }
