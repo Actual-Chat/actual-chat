@@ -115,8 +115,6 @@ public class NotificationsBackend(IServiceProvider services)
 
         var notification = command.Notification;
         var userId = notification.UserId.Require();
-        if (notification.SentAt == default)
-            notification = notification with { SentAt = Clocks.SystemClock.Now };
 
         DebugLog?.LogInformation("-> OnNotify. UserId={UserId}, NotificationId={NotificationId}",
             userId, notification.Id);
@@ -126,6 +124,14 @@ public class NotificationsBackend(IServiceProvider services)
             DebugLog?.LogInformation("OnNotify: skipped (dormant). UserId={UserId}, NotificationId={NotificationId}",
                 userId, notification.Id);
             return;
+        }
+
+        if (notification.SentAt == default) {
+            // Reuse an already-displayed notification's SentAt so a SentAt-less redelivery stays a
+            // no-op (MergeWith treats an equal SentAt as a duplicate) instead of re-alerting; only a
+            // genuinely first-seen notification is stamped Now.
+            var displayed = info.Displayed.FirstOrDefault(n => n.Id == notification.Id);
+            notification = notification with { SentAt = displayed?.SentAt ?? Clocks.SystemClock.Now };
         }
 
         if (IsSoftUpdate(info, notification)) {
@@ -864,14 +870,14 @@ public class NotificationsBackend(IServiceProvider services)
         return readEntryLid >= entryLid;
     }
 
-    // Holds a plain chat message instead of alerting when the present recipient is already caught
-    // up to the chat's head: they're actively reading, so it's likely read within the grace window
-    // and then dropped silently on every device. Mentions/replies/ringers, users not caught up, and
-    // absent users all alert immediately. No message is lost — an unread one alerts after the grace
-    // window via the deferred re-check (Reconcile drops it only once actually read).
     private async Task<bool> ShouldDeferForActiveReader(
         UserId userId, Notification notification, CancellationToken cancellationToken)
     {
+        // Holds a plain chat message instead of alerting when the present recipient is already caught
+        // up to the chat's head: they're actively reading, so it's likely read within the grace window
+        // and then dropped silently on every device. Mentions/replies/ringers, users not caught up, and
+        // absent users all alert immediately. No message is lost — an unread one alerts after the grace
+        // window via the deferred re-check (Reconcile drops it only once actually read).
         if (NotificationHelper.GetImportance(notification.Kind) != NotificationImportance.Ordinary)
             return false;
 
