@@ -98,8 +98,8 @@
             settings.IsIncompleteUIEnabled ?? false,
             account.IsAdmin,
             appSettings.IsLogViewerEnabledOrDefault,
-            appSettings.IsVideoDiagnosticsEnabledOrDefault(Hub.HostInfo.IsDevelopmentInstance),
-            appSettings.IsAudioDiagnosticsEnabledOrDefault(Hub.HostInfo.IsDevelopmentInstance));
+            appSettings.IsVideoDiagnosticsEnabledOrDefault,
+            appSettings.IsAudioDiagnosticsEnabledOrDefault);
     }
 
     private Task OnExperimentalFeatureEnabledClick()
@@ -121,12 +121,12 @@
 
     private Task OnVideoDiagnosticsEnabledClick()
         => LocalSettings.LocalAppSettings().Update(x => x with {
-            IsVideoDiagnosticsEnabled = !x.IsVideoDiagnosticsEnabledOrDefault(Hub.HostInfo.IsDevelopmentInstance),
+            IsVideoDiagnosticsEnabled = !x.IsVideoDiagnosticsEnabledOrDefault,
         });
 
     private Task OnAudioDiagnosticsEnabledClick()
         => LocalSettings.LocalAppSettings().Update(x => x with {
-            IsAudioDiagnosticsEnabled = !x.IsAudioDiagnosticsEnabledOrDefault(Hub.HostInfo.IsDevelopmentInstance),
+            IsAudioDiagnosticsEnabled = !x.IsAudioDiagnosticsEnabledOrDefault,
         });
 
     private void OnOpenAudioDiagnosticsClick()
