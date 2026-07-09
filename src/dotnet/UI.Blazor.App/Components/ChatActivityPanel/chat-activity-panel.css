@@ -489,8 +489,7 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
 
 /* Watching (video panel on screen): pause every animation in the panel —
    rings, waves, equalizers, the animated video icon (lit component), all of
-   it. Each tick fills a display slot between grid-aligned video frames
-   (present-grid.ts) and costs a full-screen WebView redraw; during a call
+   it. Each tick costs a full-screen WebView redraw on mobile; during a call
    none of it shows anything the call UI doesn't. */
 .chat-activity-panel.watching *,
 .chat-activity-panel.watching *::before,

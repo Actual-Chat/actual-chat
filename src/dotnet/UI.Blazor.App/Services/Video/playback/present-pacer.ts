@@ -4,7 +4,6 @@ import { delayAsync } from 'actuallab-core';
 import { DeviceInfo } from 'device-info';
 import { aggregateDropTrace, updatePlaybackRateEma, type DecodedFrame } from '../frame-envelopes';
 import { FrameDropStage } from '../frame-drop-trace';
-import { alignToPresentGrid, isPresentGridEnabled, PRESENT_SLOT_LEAD_MS, whenNextPresentSlot } from '../present-grid';
 import { BufferSpanMeter, type BufferSpanMeterOptions } from './buffer-span-meter';
 
 const PRESENT_SKIP_RATIO_EMA_ALPHA = 0.1;
@@ -131,6 +130,7 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                         prevCapturedAt = decoded.capturedAt.timeMs;
                         continue;
                     }
+
                     if (trackSkipRatio) {
                         presentSkipRatio.appendSample(0);
                         decoded.stats.presentSkipRatio = presentSkipRatio.value;
@@ -165,26 +165,8 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                     if (nextWriteAt - now > MAX_DURATION_MS)
                         nextWriteAt = now + MAX_DURATION_MS;
 
-                    // Snap only the sleep target to the shared present grid — the
-                    // nominal schedule (lastWriteAt) stays unquantized so rates that
-                    // beat against the grid aren't decimated by cumulative rounding.
-                    // Late frames (nominal slot passed — steady state for low-fps
-                    // streams on near-empty buffers) go to the next slot ≥ now:
-                    // ≤1 grid period extra latency, on the video-behind-audio safe
-                    // side. Sprints (durationMs == MIN) bypass the grid entirely.
-                    const isAligned = durationMs > MIN_DURATION_MS && isPresentGridEnabled();
-                    const writeAt = isAligned
-                        ? alignToPresentGrid(Math.max(nextWriteAt, now))
-                        : nextWriteAt;
-
-                    if (isAligned) {
-                        // Ride the shared slot ticker: all streams due in this
-                        // slot wake from ONE timer and write back-to-back, so
-                        // per-stream wake jitter can't split them across vsyncs.
-                        while (writeAt - performance.now() > PRESENT_SLOT_LEAD_MS + 1)
-                            await whenNextPresentSlot();
-                    } else if (writeAt > now) {
-                        const sleepMs = writeAt - now - PRESENT_LEAD_MS;
+                    if (nextWriteAt > now) {
+                        const sleepMs = nextWriteAt - now - PRESENT_LEAD_MS;
                         if (sleepMs > 0)
                             await delayFn(sleepMs);
                     }
@@ -196,12 +178,11 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                     } finally {
                         if (!presented) {
                             decoded.stats.pendingPresenterDrops++;
-                        }
-                        else {
-                        // Carry-forward Option A: every successful present
-                        // attributes the upstream trace AND any presenter
-                        // drops accumulated since the previous accept to
-                        // the cumulative histogram, then bumps `presented`.
+                        } else {
+                            // Carry-forward Option A: every successful present
+                            // attributes the upstream trace AND any presenter
+                            // drops accumulated since the previous accept to
+                            // the cumulative histogram, then bumps `presented`.
                             aggregateDropTrace(decoded.stats, decoded.dropTrace);
                             if (decoded.stats.pendingPresenterDrops > 0) {
                                 decoded.stats.dropTrace.set(
