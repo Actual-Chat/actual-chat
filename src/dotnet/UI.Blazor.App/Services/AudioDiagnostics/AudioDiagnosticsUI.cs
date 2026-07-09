@@ -8,7 +8,6 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// Gathers audio diagnostics for the Audio Diagnostics UI: the native audio-focus /
 /// session snapshot, and — on the web build only — the Web Audio playback state.
 /// </summary>
-// TODO: fix warnings
 // TODO: UIWorkerBase
 public sealed class AudioDiagnosticsUI(AppUIHub hub)
 {
@@ -29,7 +28,7 @@ public sealed class AudioDiagnosticsUI(AppUIHub hub)
     {
         if (!IsWebAudioUsed)
             return null;
-        return await JS.InvokeAsync<AudioPlaybackDiagnostics>(JSCollectMethod);
+        return await JS.InvokeAsync<AudioPlaybackDiagnostics>(JSCollectMethod).ConfigureAwait(false);
     }
 
     public Task Reactivate(CancellationToken cancellationToken = default)
