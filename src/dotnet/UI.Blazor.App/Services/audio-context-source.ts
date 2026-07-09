@@ -266,6 +266,20 @@ export class AudioContextAction implements Disposable {
 // AudioContextSource
 // This is a singleton - one instance per AudioContextPurpose, lives for the entire app lifetime.
 
+export interface AudioContextSourceDiagnostics {
+    purpose: AudioContextPurpose;
+    state: AudioContextState | 'none';
+    sampleRate: number | null;
+    baseLatencyMs: number | null;
+    outputLatencyMs: number | null;
+    isRunning: boolean;
+    isMaintained: boolean;
+    isUsed: boolean;
+    refCount: number;
+    isReady: boolean;
+    backgroundActivity: BackgroundActivityState | null;
+}
+
 export class AudioContextSource {
     // Private fields
     private readonly _traits = new Map<string, AudioContextTrait>();
@@ -297,6 +311,24 @@ export class AudioContextSource {
     }
     public get isUsed(): boolean {
         return this._refCount > 0;
+    }
+
+    public getDiagnostics(): AudioContextSourceDiagnostics {
+        const context = this._context;
+        const outputLatency = (context as unknown as { outputLatency?: number } | null)?.outputLatency;
+        return {
+            purpose: this.purpose,
+            state: context ? context.state : 'none',
+            sampleRate: context ? context.sampleRate : null,
+            baseLatencyMs: context && typeof context.baseLatency === 'number' ? context.baseLatency * 1000 : null,
+            outputLatencyMs: typeof outputLatency === 'number' ? outputLatency * 1000 : null,
+            isRunning: this.isContextRunning,
+            isMaintained: this._isMaintained,
+            isUsed: this.isUsed,
+            refCount: this._refCount,
+            isReady: this._whenReady.isCompleted,
+            backgroundActivity: this._backgroundActivityState,
+        };
     }
 
     public constructor(public readonly purpose: AudioContextPurpose) {

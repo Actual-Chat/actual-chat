@@ -1,0 +1,343 @@
+@namespace ActualChat.UI.Blazor.App.Components.AudioPanel
+@using System.Text.Json
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<AppUIHub, AudioDiagnosticsModal.ComputedModel>
+@implements IModalView<AudioDiagnosticsModal.Model>
+@{
+    var m = State.Value;
+}
+
+<DialogFrame
+    Class="audio-diagnostics-modal"
+    Title="Audio Diagnostics"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
+    HasCloseButton="true">
+    <Buttons>
+        @if (_copyTextSourceRef is not null) {
+            <CopyTrigger Class="flex-1" Tooltip="Copy diagnostics" CopyTextSourceRef="@_copyTextSourceRef">
+                <Button Class="btn-modal">Copy</Button>
+            </CopyTrigger>
+        }
+    </Buttons>
+    <Body>
+        <div class="diag-tabs">
+            <button type="button"
+                    class="diag-tab @(_activeTab == Tab.Session ? "diag-tab--active" : "")"
+                    @onclick="@(() => OnSelectTab(Tab.Session))">
+                Session
+            </button>
+            <button type="button"
+                    class="diag-tab @(_activeTab == Tab.Playback ? "diag-tab--active" : "")"
+                    @onclick="@(() => OnSelectTab(Tab.Playback))">
+                Playback
+            </button>
+            @if (m.ShowActionsTab) {
+                <button type="button"
+                        class="diag-tab @(_activeTab == Tab.Actions ? "diag-tab--active" : "")"
+                        @onclick="@(() => OnSelectTab(Tab.Actions))">
+                    Actions
+                </button>
+            }
+        </div>
+        <div @ref="_copyTextSourceRef" class="diag-body-content" data-copy-source="innerText">
+
+        @if (_activeTab == Tab.Session) {
+            <div class="diag-section">
+                <div class="diag-section-header">Web Audio context</div>
+                @if (_context is { ValueKind: JsonValueKind.Object } ctx) {
+                    <div class="diag-row">
+                        <span class="diag-label">State</span>
+                        <span class="diag-value">@GetStr(ctx, "state")@(GetBool(ctx, "isRunning") ? "" : " (not running)")</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Ready</span>
+                        <span class="diag-value">@YesNo(GetBool(ctx, "isReady")) · maintained @YesNo(GetBool(ctx, "isMaintained"))</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Refs</span>
+                        <span class="diag-value">@(GetNum(ctx, "refCount").ToString("0")) (used @YesNo(GetBool(ctx, "isUsed")))</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Background</span>
+                        <span class="diag-value">@(GetStr(ctx, "backgroundActivity") is { Length: > 0 } bg ? bg : "—")</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Sample rate</span>
+                        <span class="diag-value">@FormatHz(GetNumOrNull(ctx, "sampleRate"))</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Output latency</span>
+                        <span class="diag-value">@FormatMs(GetNumOrNull(ctx, "outputLatencyMs"))</span>
+                    </div>
+                }
+                else {
+                    <div class="diag-row">
+                        <span class="diag-dim">No context data yet</span>
+                    </div>
+                }
+            </div>
+
+            <div class="diag-section">
+                <div class="diag-section-header">Native audio session</div>
+                @if (!_focus.IsSupported) {
+                    <div class="diag-row">
+                        <span class="diag-value diag-dim">Not managed on this platform (web / always focused)</span>
+                    </div>
+                }
+                else {
+                    <div class="diag-row">
+                        <span class="diag-label">Mode</span>
+                        <span class="diag-value">@_focus.ActiveMode</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Interrupted</span>
+                        <span class="diag-value @(_focus.IsInterrupted ? "diag-error" : "")">@YesNo(_focus.IsInterrupted)</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Suspended</span>
+                        <span class="diag-value @(_focus.IsSuspended ? "diag-error" : "")">@YesNo(_focus.IsSuspended)</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Configured</span>
+                        <span class="diag-value">@YesNo(_focus.IsSessionConfigured)</span>
+                    </div>
+                    @if (_focus.Scopes.Count > 0) {
+                        <div class="diag-row">
+                            <span class="diag-label">Scopes</span>
+                            <span class="diag-value">@FormatScopes(_focus.Scopes)</span>
+                        </div>
+                    }
+                    @if (_focus.Session is { } session) {
+                        <div class="diag-group-header">AVAudioSession</div>
+                        <div class="diag-row">
+                            <span class="diag-label">Category</span>
+                            <span class="diag-value">@session.Category</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Session mode</span>
+                            <span class="diag-value">@(session.Mode is { Length: > 0 } sm ? sm : "—")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Other audio</span>
+                            <span class="diag-value">@YesNo(session.IsOtherAudioPlaying)</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Output</span>
+                            <span class="diag-value multiline">@(session.OutputRoutes.Count > 0 ? string.Join(", ", session.OutputRoutes) : "none")</span>
+                        </div>
+                    }
+                }
+            </div>
+        }
+
+        @if (_activeTab == Tab.Playback) {
+            <div class="diag-section">
+                <div class="diag-section-header">
+                    Players
+                    <span class="diag-badge">@_players.Length</span>
+                </div>
+                @if (_players.Length == 0) {
+                    <div class="diag-row">
+                        <span class="diag-dim">No active players</span>
+                    </div>
+                }
+                else {
+                    @foreach (var p in _players) {
+                        var playback = GetStr(p, "playbackState");
+                        <div class="diag-stream">
+                            <div class="diag-stream-header">
+                                <span>@(GetStr(p, "authorId") is { Length: > 0 } a ? a : "#" + GetStr(p, "internalId"))</span>
+                                <span class="ml-auto diag-chip @PlaybackChipClass(playback)">@playback</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Buffer</span>
+                                <span class="diag-value">@GetStr(p, "bufferState") (@((GetNum(p, "bufferedDuration") * 1000).ToString("0")) ms)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Presentation lag</span>
+                                <span class="diag-value">@FormatMs(GetNumOrNull(p, "presentationLagMs"))</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Target buffer</span>
+                                <span class="diag-value">@(GetNum(p, "targetBufferSizeMs").ToString("0"))ms</span>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+
+        @if (_activeTab == Tab.Actions && m.ShowActionsTab) {
+            <div class="diag-section">
+                <div class="diag-section-header">Recovery</div>
+                <Tile>
+                    <TileItem Click="@OnReactivateSession">
+                        <Content>Reactivate audio session</Content>
+                        <Caption>
+                            Re-runs the native audio-focus recovery
+                            (<code>AudioFocusUI.TryRecover</code>). Use when playback is
+                            stuck after an interruption.
+                        </Caption>
+                    </TileItem>
+                    <TileItem Click="@OnResumeContext">
+                        <Content>Resume AudioContext</Content>
+                        <Caption>
+                            Forces an interactive resume of the Web Audio playback context.
+                            Best-effort — iOS may refuse outside a real user gesture.
+                        </Caption>
+                    </TileItem>
+                </Tile>
+                @if (_lastActionResult is { Length: > 0 }) {
+                    <div class="diag-row">
+                        <span class="diag-label">Last action</span>
+                        <span class="diag-value multiline">@_lastActionResult</span>
+                    </div>
+                }
+            </div>
+        }
+
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    private static readonly string JSCollectMethod = $"{BlazorUIAppModule.ImportName}.collectAudioPlaybackDiagnostics";
+    private static readonly string JSResumeContextMethod = $"{BlazorUIAppModule.ImportName}.audioDebugResumeContext";
+
+    private enum Tab { Session, Playback, Actions }
+
+    private Timer? _pollTimer;
+    private bool _isDisposed;
+    private Tab _activeTab = Tab.Session;
+    private ElementReference? _copyTextSourceRef;
+    private JsonElement? _context;
+    private JsonElement[] _players = [];
+    private AudioFocusDiagnostics _focus = AudioFocusDiagnostics.Unsupported;
+    private string? _lastActionResult;
+
+    private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
+    private ILogger Log => field ??= Services.LogFor<AudioDiagnosticsModal>();
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public override async ValueTask DisposeAsync() {
+        _isDisposed = true;
+        if (_pollTimer is not null)
+            await _pollTimer.DisposeAsync();
+        await base.DisposeAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender)
+            _pollTimer ??= new Timer(_ => _ = Poll(), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.Empty,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var showActionsTab = account.IsAdmin || Hub.HostInfo.IsDevelopmentInstance;
+        return new ComputedModel(showActionsTab);
+    }
+
+    private async Task Poll() {
+        if (_isDisposed)
+            return;
+        try {
+            _focus = AudioFocusUI.GetDiagnostics();
+            var diag = await JS.InvokeAsync<JsonElement>(JSCollectMethod);
+            if (diag.ValueKind == JsonValueKind.Object) {
+                _context = diag.TryGetProperty("context", out var ctx) ? ctx : null;
+                _players = diag.TryGetProperty("players", out var players) && players.ValueKind == JsonValueKind.Array
+                    ? players.EnumerateArray().ToArray()
+                    : [];
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+        catch {
+            // Ignore polling errors (component may be disposing).
+        }
+    }
+
+    private void OnSelectTab(Tab tab) {
+        if (_activeTab == tab)
+            return;
+        _activeTab = tab;
+        StateHasChanged();
+    }
+
+    private async Task OnReactivateSession() {
+        try {
+            await AudioFocusUI.TryRecover();
+            _lastActionResult = "Reactivate requested";
+        }
+        catch (Exception e) {
+            _lastActionResult = $"Reactivate failed: {e.Message}";
+            Log.LogWarning(e, "Reactivate audio session failed");
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnResumeContext() {
+        try {
+            await JS.InvokeVoidAsync(JSResumeContextMethod);
+            _lastActionResult = "Resume requested";
+        }
+        catch (Exception e) {
+            _lastActionResult = $"Resume failed: {e.Message}";
+            Log.LogWarning(e, "Resume AudioContext failed");
+        }
+        StateHasChanged();
+    }
+
+    private static string YesNo(bool value) => value ? "yes" : "no";
+
+    private static string PlaybackChipClass(string playbackState) => playbackState switch {
+        "playing" => "diag-chip-good",
+        "starving" => "diag-chip-bad",
+        "paused" => "diag-chip-marginal",
+        _ => "diag-chip-unknown",
+    };
+
+    private static string FormatScopes(IReadOnlyList<AudioFocusScopeInfo> scopes)
+        => string.Join(", ", scopes.Where(s => s.Count > 0).Select(s => $"{s.Mode}×{s.Count}")) is { Length: > 0 } text
+            ? text
+            : "none";
+
+    private static string FormatMs(double? ms)
+        => ms is null ? "—" : $"{ms.Value:0} ms";
+
+    private static string FormatHz(double? hz)
+        => hz is null ? "—" : $"{hz.Value:0} Hz";
+
+    private static string GetStr(JsonElement el, string prop)
+        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+
+    private static double GetNum(JsonElement el, string prop)
+        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
+
+    private static double? GetNumOrNull(JsonElement el, string prop)
+        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : null;
+
+    private static bool GetBool(JsonElement el, string prop)
+        => el.TryGetProperty(prop, out var v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False && v.GetBoolean();
+
+    // Nested types
+
+    public sealed class Model(ChatId chatId)
+    {
+        public ChatId ChatId { get; } = chatId;
+    }
+
+    public sealed record ComputedModel(bool ShowActionsTab)
+    {
+        public static readonly ComputedModel Empty = new(false);
+    }
+}

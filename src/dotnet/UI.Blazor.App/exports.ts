@@ -64,6 +64,7 @@ export * from './recaptcha-handler';
 
 export * from './Components/AudioAttachmentPlayer/audio-attachment-player';
 export * from './Components/AudioPlayer/audio-player';
+export * from './Components/AudioPanel/audio-diagnostics';
 export * from './Components/AudioRecorder/audio-recorder';
 export * from './Components/AudioRecorder/web-microphone-permission-handler';
 export * from './Components/Camera/camera-devices';

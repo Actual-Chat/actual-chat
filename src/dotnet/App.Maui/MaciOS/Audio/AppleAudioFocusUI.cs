@@ -102,6 +102,25 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             .ConfigureAwait(false);
     }
 
+    public override AudioFocusDiagnostics GetDiagnostics()
+    {
+        AudioSessionDiagnostics? session = null;
+        try {
+            session = AudioSession.GetDiagnostics();
+        }
+        catch (Exception e) {
+            Log.LogError(e, "GetDiagnostics: failed to read AudioSession");
+        }
+        return new AudioFocusDiagnostics(
+            IsSupported: true,
+            ActiveMode: _activeScopes.GetMode(),
+            IsInterrupted: _isInterrupted,
+            IsSuspended: _isSuspended,
+            IsSessionConfigured: _isSessionConfigured,
+            Scopes: _activeScopes.GetScopeInfos(),
+            Session: session);
+    }
+
     // Private methods
 
     private async Task Release(AudioFocusRequester requester, Scope scope)
@@ -341,6 +360,14 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
 
         public IEnumerable<Scope> All()
             => _byMode.SelectMany(x => x.Value.Values);
+
+        public IReadOnlyList<AudioFocusScopeInfo> GetScopeInfos()
+        {
+            var result = new List<AudioFocusScopeInfo>(_byMode.Count);
+            foreach (var (mode, scopes) in _byMode)
+                result.Add(new AudioFocusScopeInfo(mode, scopes.Count));
+            return result;
+        }
 
         public void Dispose()
         {

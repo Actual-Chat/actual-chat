@@ -75,6 +75,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public void Enable()
         => _whenEnabledSource.TrySetResult();
 
+    public void ShowAudioDiagnostics(ChatId chatId)
+        => _ = ModalUI.Show(new Components.AudioPanel.AudioDiagnosticsModal.Model(chatId));
+
     [ComputeMethod] // Synced
     public virtual Task<ChatAudioState> GetState(ChatId chatId)
     {

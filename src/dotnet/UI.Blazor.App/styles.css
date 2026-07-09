@@ -89,6 +89,7 @@
 @import './Components/VideoPanel/video-panel.css';
 @import './Components/VideoPanel/video-streaming-preview.css';
 @import './Components/VideoPanel/video-diagnostics-modal.css';
+@import './Components/AudioPanel/audio-diagnostics-modal.css';
 @import './Components/VideoPanel/live-stream-video.css';
 @import './Components/ChatActivityPanel/chat-activity-panel.css';
 @import './Components/IncomingShare/incoming-share-modal.css';

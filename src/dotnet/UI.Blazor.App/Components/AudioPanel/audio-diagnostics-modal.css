@@ -1,0 +1,20 @@
+body.wide .audio-diagnostics-modal {
+    @apply w-112;
+}
+.audio-diagnostics-modal .dialog-body {
+    @apply flex flex-col gap-3 p-4;
+    font-size: 0.8125rem;
+}
+/* The body content wrapper is explicitly user-selectable so the user can
+   highlight and copy any subset of the diagnostics. */
+.audio-diagnostics-modal .diag-body-content {
+    @apply flex flex-col gap-3 select-text;
+    user-select: text;
+}
+
+/* Standalone status chip (the video modal's .diag-chip-* only set colors and
+   otherwise rely on .diag-log-swatch for shape). */
+.audio-diagnostics-modal .diag-chip {
+    @apply rounded px-1.5 text-xs font-medium;
+    border: 1px solid transparent;
+}

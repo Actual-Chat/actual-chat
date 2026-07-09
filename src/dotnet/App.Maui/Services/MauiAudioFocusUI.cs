@@ -40,6 +40,21 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
         return holder.Scopes[requester];
     }
 
+    public override AudioFocusDiagnostics GetDiagnostics()
+    {
+        var holder = _lastAudioFocusHolder;
+        if (holder is null)
+            return new AudioFocusDiagnostics(true, AudioFocusMode.Tune, false, false, false, [], null);
+        return new AudioFocusDiagnostics(
+            IsSupported: true,
+            ActiveMode: holder.Mode,
+            IsInterrupted: false,
+            IsSuspended: holder.IsSuspended,
+            IsSessionConfigured: true,
+            Scopes: [new AudioFocusScopeInfo(holder.Mode, holder.Scopes.Count)],
+            Session: null);
+    }
+
     // Protected methods
 
     protected abstract Task<MauiAudioFocusHandle?> RequestAudioFocus(AudioFocusMode mode);

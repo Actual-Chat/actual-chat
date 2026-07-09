@@ -25,13 +25,18 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
 
     [DataMember, MemoryPackOrder(4), Key(4)] public bool? IsVideoDiagnosticsEnabled { get; init; }
     [DataMember, MemoryPackOrder(5), Key(5)] public GeoTrackingAccuracy? LocationAccuracy { get; init; }
+    [DataMember, MemoryPackOrder(6), Key(6)] public bool? IsAudioDiagnosticsEnabled { get; init; }
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsBackgroundBlurEnabledOrDefault => IsBackgroundBlurEnabled ?? false;
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool IsVideoDiagnosticsEnabledOrDefault => IsVideoDiagnosticsEnabled ?? false;
+    // Dev instances default to ON so the diagnostics entry points are visible
+    // out of the box; production defaults to OFF until the user opts in.
+    public bool IsVideoDiagnosticsEnabledOrDefault(bool isDevelopmentInstance)
+        => IsVideoDiagnosticsEnabled ?? isDevelopmentInstance;
+    public bool IsAudioDiagnosticsEnabledOrDefault(bool isDevelopmentInstance)
+        => IsAudioDiagnosticsEnabled ?? isDevelopmentInstance;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public GeoTrackingAccuracy LocationAccuracyOrDefault => LocationAccuracy ?? GeoTrackingAccuracy.Balanced;
 }
