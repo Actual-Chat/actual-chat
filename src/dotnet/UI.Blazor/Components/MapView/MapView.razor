@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
-@implements IAsyncDisposable
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<UIHub, MapView.Model?>
 
 <div @ref="Ref" class="map-view @Class"></div>
 
@@ -8,9 +9,9 @@
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.MapView.create";
 
     private IJSObjectReference? _jsRef;
+    private string? _appliedStyleUrl;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     private ElementReference Ref { get; set; }
 
@@ -21,29 +22,62 @@
     [Parameter] public bool Interactive { get; set; } = true;
     [Parameter] public IReadOnlyList<MapMarker> Markers { get; set; } = [];
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender)
-            return;
+    protected override ComputedState<Model?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model?>.Options() {
+                InitialValue = null,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
-        var options = new {
-            styleUrl = $"{UrlMapper.MapTilesBaseUrl}styles/liberty",
-            centerLatitude = CenterLatitude,
-            centerLongitude = CenterLongitude,
-            zoom = Zoom,
-            interactive = Interactive,
-        };
-        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, options).ConfigureAwait(true);
-        await _jsRef.InvokeVoidAsync("setMarkers", Markers).ConfigureAwait(true);
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var themeInfo = await BrowserInfo.ThemeInfo.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(GetStyleUrl(themeInfo.CurrentTheme));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _appliedStyleUrl = GetStyleUrl(BrowserInfo.ThemeInfo.Value.CurrentTheme);
+            var options = new {
+                styleUrl = _appliedStyleUrl,
+                centerLatitude = CenterLatitude,
+                centerLongitude = CenterLongitude,
+                zoom = Zoom,
+                interactive = Interactive,
+            };
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, options).ConfigureAwait(true);
+            await _jsRef.InvokeVoidAsync("setMarkers", Markers).ConfigureAwait(true);
+            return;
+        }
+
+        if (_jsRef is { } jsRef && State.Value is { } m && m.StyleUrl != _appliedStyleUrl) {
+            _appliedStyleUrl = m.StyleUrl;
+            await jsRef.InvokeVoidAsync("setStyle", m.StyleUrl).ConfigureAwait(true);
+        }
     }
 
     protected override Task OnParametersSetAsync()
         => _jsRef?.InvokeVoidAsync("setMarkers", Markers).AsTask() ?? Task.CompletedTask;
 
-    public ValueTask DisposeAsync() {
-        if (_jsRef is not { } jsRef)
-            return ValueTask.CompletedTask;
-
-        _jsRef = null;
-        return jsRef.DisposeSilentlyAsync("dispose");
+    public override async ValueTask DisposeAsync() {
+        if (_jsRef is { } jsRef) {
+            _jsRef = null;
+            await jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
+        }
+        await base.DisposeAsync().ConfigureAwait(false);
     }
+
+    private string GetStyleUrl(Theme theme) {
+        var styleName = theme switch {
+            Theme.Light => "liberty",
+            Theme.Ash => "positron",
+            Theme.Dark => "fiord",
+            _ => "liberty",
+        };
+        return $"{UrlMapper.MapTilesBaseUrl}styles/{styleName}";
+    }
+
+    // Nested types
+
+    public sealed record Model(string StyleUrl);
 }
