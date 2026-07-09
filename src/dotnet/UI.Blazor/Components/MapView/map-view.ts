@@ -43,6 +43,12 @@ export class MapView {
         this.resizeObserver.observe(element);
     }
 
+    // Markers are DOM overlays, not style layers, so they survive setStyle — only
+    // the tile/glyph/sprite layers are swapped when the app theme changes.
+    public setStyle(styleUrl: string): void {
+        this.map.setStyle(styleUrl);
+    }
+
     public setMarkers(markers: MapMarker[]): void {
         const seen = new Set<string>();
         for (const m of markers) {
