@@ -134,6 +134,12 @@ body.narrow .list-view-layout:has(.audio-panel-header) .virtual-list > .c-wrappe
 .virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.show-author) {
     @apply min-h-14;
 }
+/* Collapsed audio-recording placeholder: drop the item min-height so the ~1px slot stays invisible
+   (it exists only to keep the tail item present so the end edge re-pins on its resize). */
+.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.audio-recording-collapsed),
+.virtual-list > .c-wrapper > ul.c-virtual-container .group:has(.audio-recording-collapsed) {
+    @apply min-h-0;
+}
 
 .virtual-list > .c-wrapper > ul.c-virtual-container .group {
     @apply min-h-6;

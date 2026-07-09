@@ -40,3 +40,10 @@ body.hoverable .streaming-entry-badge:hover .c-icon,
 .touch-capable .streaming-entry-badge:active .c-icon {
     @apply text-01;
 }
+/* Collapsed placeholder: a minimal non-zero slot so the VirtualList keeps the tail item and re-pins
+   the end edge on its resize, instead of leaving an unclosed bottom gap. */
+.audio-recording-collapsed {
+    @apply block;
+    height: 1px;
+    min-height: 1px;
+}

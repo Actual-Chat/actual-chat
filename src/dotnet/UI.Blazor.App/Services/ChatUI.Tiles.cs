@@ -508,15 +508,13 @@ public partial class ChatUI
             entries.AddRange(newMessages);
 
             var audioRecordingEntry = await GetAudioRecordingEntry(chatId, currentAuthorId!, cancellationToken).ConfigureAwait(false);
-            if (audioRecordingEntry is not null) {
-                // Hide "Transcribing..." when a real transcription entry already exists
-                // (i.e., the last entry from this author is streaming content).
-                var lastEntry = entries.Count > 0 ? entries[^1] : null;
-                var hasTranscription = lastEntry is { IsContentStreaming: true, AuthorId: var authorId }
-                    && authorId == currentAuthorId;
-                if (!hasTranscription)
-                    entries.Add(audioRecordingEntry);
-            }
+            if (audioRecordingEntry is not null)
+                // Always keep the placeholder as the tail item. When the live transcription makes the badge
+                // redundant, the client collapses it to a ~1px slot (see ChatEntryMessageView) instead of
+                // dropping it: removing the tail item leaves an unclosed bottom gap, since VirtualList's End
+                // re-pin fires on item resize, not on removal. Deciding removal server-side races too - the
+                // server and client run separate compute cycles and can't stay frame-synced.
+                entries.Add(audioRecordingEntry);
         }
         if (entries.Count == 0 && conversations.Length == 0)
             return new VirtualListTile<ChatMessage>(lidRange);

@@ -58,8 +58,15 @@
     case ChatMessageKind.SendingNewMessage:
         break;
     case ChatMessageKind.AudioRecordingMessage:
-        if (HasPriorStreamingEntry(message))
+        // Collapse (don't drop) the placeholder to a ~1px slot when this author's live transcription is
+        // already on screen and makes the badge redundant. Keeping the tail item present lets VirtualList
+        // re-pin the End edge on its resize instead of leaving an unclosed bottom gap. Never collapse
+        // "Listening" (silent) - only the redundant "Transcribing" while actively speaking.
+        var priorStreaming = FindPriorStreamingEntry(message);
+        if (m.IsVoiceActive && priorStreaming is not null) {
+            <div class="audio-recording-collapsed"></div>
             return;
+        }
         break;
     default:
         throw new ArgumentOutOfRangeException();
@@ -503,16 +510,15 @@
     private void OnForwardedAuthorClick(Author forwardedAuthor)
         => _ = AuthorUI.Show(forwardedAuthor.Id);
 
-    private static bool HasPriorStreamingEntry(ChatEntryMessage message) {
+    private static ChatEntryMessage? FindPriorStreamingEntry(ChatEntryMessage message) {
         var authorId = message.Entry.AuthorId;
         var current = message.PreviousMessage;
-        for (var i = 0; i < 50 && current != null; i++, current = current.PreviousMessage) {
+        for (var i = 0; i < 50 && current != null; i++, current = current.PreviousMessage)
             if (current is ChatEntryMessage em
                 && em.Entry.AuthorId == authorId
                 && em.Entry.IsContentStreaming)
-                return true;
-        }
-        return false;
+                return em;
+        return null;
     }
 
     private bool HasAnyMentions(Markup markup)

@@ -52,7 +52,7 @@ const StrandedGapThreshold = InfiniteSize / 10;
 // bottom). When false, the bottom is managed like the top — via a scroll-limit + rubber-band overscroll.
 const CutVirtualSpaceAtBottom = true;
 
-type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'viewport-resize' | 'stranded' | 'unknown';
+type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'item-shrink' | 'viewport-resize' | 'stranded' | 'unknown';
 interface ScrollIntent {
     shouldUseSmoothScroll: boolean;
     reason: ScrollToEdgeReason;
@@ -905,8 +905,13 @@ export class VirtualList {
                 this.repinContainerToModel();
                 // Still follow edge-item growth while pinned: a new message stamps renderCompletedAt,
                 // so transcript growth of the latest messages lands in this window and would slip below.
-                if (this.state.stickyEdge?.edge === this.defaultEdge)
-                    this.scrollToEdge(this.defaultEdge, true, 'item-resize');
+                // A shrink at the edge (e.g. the audio-recording placeholder collapsing) opens a gap the
+                // deferred+smooth follow closes only a frame later — re-pin synchronously and instantly so
+                // the correction lands in this same ResizeObserver frame (after layout, before paint).
+                if (this.state.stickyEdge?.edge === this.defaultEdge) {
+                    const shrank = totalExistingSizeDiff < 0;
+                    this.scrollToEdge(this.defaultEdge, !shrank, shrank ? 'item-shrink' : 'item-resize');
+                }
                 return;
             }
 
@@ -1725,7 +1730,7 @@ export class VirtualList {
 
         // debugLog?.log('scrollToEdge: schedule', edge, useSmoothScroll, reason);
         const isInitialRender = this.isInitialRender;
-        if (isInitialRender && (reason === 'non-item-resize' || reason === 'item-resize'))
+        if (isInitialRender && (reason === 'non-item-resize' || reason === 'item-resize' || reason === 'item-shrink'))
             return; // do not scroll to the end on initial render on spacer resize
 
         if (this.state.renderState.renderIndex <= 1 || isInitialRender)
@@ -1782,7 +1787,7 @@ export class VirtualList {
         // synchronous re-pin lands the correction in the same frame the viewport shrank. The fastRaf path
         // defers read→write by a frame, which lets the edge visibly drift (jitter) while a sub-header or
         // panel animates the viewport height.
-        if (reason === 'viewport-resize') {
+        if (reason === 'viewport-resize' || reason === 'item-shrink') {
             read();
             write();
         }
