@@ -77,6 +77,19 @@ public sealed record AudioFocusDiagnostics(
 {
     public static readonly AudioFocusDiagnostics Unsupported =
         new(false, AudioFocusMode.Tune, false, false, false, [], null);
+
+    public bool Equals(AudioFocusDiagnostics? other)
+        => other is not null
+            && IsSupported == other.IsSupported
+            && ActiveMode == other.ActiveMode
+            && IsInterrupted == other.IsInterrupted
+            && IsSuspended == other.IsSuspended
+            && IsSessionConfigured == other.IsSessionConfigured
+            && Equals(Session, other.Session)
+            && Scopes.SequenceEqual(other.Scopes);
+
+    public override int GetHashCode()
+        => HashCode.Combine(IsSupported, ActiveMode, IsInterrupted, IsSuspended, IsSessionConfigured, Scopes.Count, Session);
 }
 
 /// <summary>
@@ -92,4 +105,15 @@ public sealed record AudioSessionDiagnostics(
     string Category,
     string Mode,
     bool IsOtherAudioPlaying,
-    IReadOnlyList<string> OutputRoutes);
+    IReadOnlyList<string> OutputRoutes)
+{
+    public bool Equals(AudioSessionDiagnostics? other)
+        => other is not null
+            && Category == other.Category
+            && Mode == other.Mode
+            && IsOtherAudioPlaying == other.IsOtherAudioPlaying
+            && OutputRoutes.SequenceEqual(other.OutputRoutes);
+
+    public override int GetHashCode()
+        => HashCode.Combine(Category, Mode, IsOtherAudioPlaying, OutputRoutes.Count);
+}

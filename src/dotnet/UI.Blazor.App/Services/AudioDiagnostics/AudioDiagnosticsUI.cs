@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
@@ -19,7 +18,6 @@ public class AudioDiagnosticsUI : UIWorkerBase<AppUIHub>, IComputeService
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5, 1);
 
     private volatile AudioDiagnosticsState _state = AudioDiagnosticsState.None;
-    private string _stateJson = "";
 
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     private bool IsWebAudioUsed => !Hub.HostInfo.AppKind.IsMaui();
@@ -53,14 +51,10 @@ public class AudioDiagnosticsUI : UIWorkerBase<AppUIHub>, IComputeService
             var focus = AudioFocusUI.GetDiagnostics();
             var playback = await CollectPlaybackDiagnostics().ConfigureAwait(false);
             var state = new AudioDiagnosticsState(focus, playback);
-            // TODO: don't compare JSON, records must be comparable
             // Skip the invalidation (and the observer re-render it triggers) when
-            // nothing changed; the DTO collections rule out record value equality,
-            // so compare a serialized signature instead.
-            var stateJson = JsonSerializer.Serialize(state);
-            if (!string.Equals(stateJson, _stateJson, StringComparison.Ordinal)) {
+            // nothing changed since the last tick.
+            if (state != _state) {
                 _state = state;
-                _stateJson = stateJson;
                 using (Invalidation.Begin())
                     _ = GetState(default);
             }
