@@ -878,7 +878,10 @@ public class NotificationsBackend(IServiceProvider services)
         // and then dropped silently on every device. Mentions/replies/ringers, users not caught up, and
         // absent users all alert immediately. No message is lost — an unread one alerts after the grace
         // window via the deferred re-check (Reconcile drops it only once actually read).
-        if (NotificationHelper.GetImportance(notification.Kind) != NotificationImportance.Ordinary)
+        // Restricted to chat-message notifications: reactions and conversation/attention signals are
+        // Ordinary too but aren't "messages the reader is about to scroll past", so they alert as usual.
+        if (notification is not ChatEntryRelatedNotification
+            || NotificationHelper.GetImportance(notification.Kind) != NotificationImportance.Ordinary)
             return false;
 
         var (chatId, entryLid) = GetReadAnchor(notification);
@@ -1112,6 +1115,16 @@ public class NotificationsBackend(IServiceProvider services)
     private void EnqueueSoft(
         UserId userId, Notification notification, UserNotificationInfo info, TimeSpan minDelay = default)
     {
+        // minDelay floors the coalescing delay: the active-reader grace must elapse even when the
+        // previous push is old (which would otherwise process the buffer immediately).
+        var now = Clocks.SystemClock.Now;
+        var delay = Constants.Notification.SilencePeriod - (now - info.LastPushAt);
+        if (delay < minDelay)
+            delay = minDelay;
+        if (delay < TimeSpan.Zero)
+            delay = TimeSpan.Zero;
+        var processAt = now + delay;
+
         bool mustSchedule;
         while (true) {
             var buffer = _softBuffers.GetOrAdd(userId, static _ => new SoftBuffer());
@@ -1119,27 +1132,30 @@ public class NotificationsBackend(IServiceProvider services)
                 if (buffer.IsRemoved)
                     continue; // a concurrent drain evicted this instance -> get/create a fresh one
                 buffer.Pending.Add(notification);
+                if (processAt > buffer.ProcessAt)
+                    buffer.ProcessAt = processAt; // raise the floor so a grace request isn't truncated
                 mustSchedule = !buffer.IsProcessScheduled;
                 buffer.IsProcessScheduled = true;
             }
             break;
         }
-        if (!mustSchedule)
-            return;
-
-        // minDelay floors the coalescing delay: the active-reader grace must elapse even when the
-        // previous push is old (which would otherwise process the buffer immediately).
-        var delay = Constants.Notification.SilencePeriod - (Clocks.SystemClock.Now - info.LastPushAt);
-        if (delay < minDelay)
-            delay = minDelay;
-        ScheduleProcess(userId, delay);
+        if (mustSchedule)
+            ScheduleProcess(userId);
     }
 
-    private void ScheduleProcess(UserId userId, TimeSpan delay)
+    private void ScheduleProcess(UserId userId)
         => _ = Task.Run(async () => {
             try {
-                if (delay > TimeSpan.Zero)
-                    await Task.Delay(delay, StopToken).ConfigureAwait(false);
+                // Wait until the buffer's ProcessAt floor is reached. A later EnqueueSoft can raise it
+                // (an active-reader grace on top of a sooner coalescing tick), so re-read after each wait.
+                while (_softBuffers.TryGetValue(userId, out var buffer)) {
+                    TimeSpan remaining;
+                    lock (buffer.Lock)
+                        remaining = buffer.ProcessAt - Clocks.SystemClock.Now;
+                    if (remaining <= TimeSpan.Zero)
+                        break;
+                    await Task.Delay(remaining, StopToken).ConfigureAwait(false);
+                }
                 // Outermost: this fires long after the originating command's context (and its scoped
                 // service provider) is disposed, so it must not nest under the ambient CommandContext.
                 await Commander.Call(new NotificationsBackend_Process(userId), true, StopToken).ConfigureAwait(false);
@@ -1407,5 +1423,8 @@ public class NotificationsBackend(IServiceProvider services)
         public readonly List<Notification> Pending = [];
         public bool IsProcessScheduled;
         public bool IsRemoved;
+        // The floor time the pending batch must not drain before; raised (never lowered) as later
+        // enqueues arrive, so an active-reader grace extends an already-scheduled sooner tick.
+        public Moment ProcessAt;
     }
 }

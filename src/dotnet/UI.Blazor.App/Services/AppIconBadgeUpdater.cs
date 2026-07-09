@@ -61,8 +61,14 @@ public class AppIconBadgeUpdater(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
             var isBackground = c.Value;
             if (wasBackground && !isBackground) {
                 try {
-                    var active = await Hub.Notifications.ListActive(Hub.Session, cancellationToken).ConfigureAwait(false);
-                    badge.SetBadgeCount(active.Count);
+                    // Force a fresh compute (not a possibly-stale cached read) so the resume re-assert
+                    // can't write a stale-high count that outlives the OS-drift it exists to correct.
+                    var cActive = await Computed
+                        .Capture(() => Hub.Notifications.ListActive(Hub.Session, cancellationToken), cancellationToken)
+                        .ConfigureAwait(false);
+                    cActive = await cActive.Update(cancellationToken).ConfigureAwait(false);
+                    if (!cActive.HasError)
+                        badge.SetBadgeCount(cActive.Value.Count);
                 }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     // A transient ListActive failure on one resume must not kill the loop.
