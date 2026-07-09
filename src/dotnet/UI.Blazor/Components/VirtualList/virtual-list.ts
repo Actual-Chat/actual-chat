@@ -41,6 +41,11 @@ const RevealTimeout = 1500;
 // flips it ±1px on every re-pin — a visible jitter on each render that re-pins (e.g. a late avatar load).
 // The residual is unclosable, so skip re-pins below 1px; a real edge change is many px.
 const EdgeRepinEpsilon = 1;
+// Max nudge passes per edge re-pin. In infinite mode container.top is recomputed on scroll, so 1 scrollTop
+// unit != 1px near the edge (the ratio drifts ~1.75x) and a single nudge undershoots. Each pass closes most
+// of the residual, so 3 lands sub-pixel; aiming at the model edge instead would strand the list whenever the
+// model over-counts the tail (e.g. a just-removed placeholder).
+const EdgeRepinMaxPasses = 3;
 // Fixed scroll size of an infinite (scrollbar-less) list — its wrapper height. Kept well under the
 // browser's max element height (Firefox ≈ 17.9M); at ~50px/item that is still ~200k items of scroll.
 // Must match InfiniteSize in VirtualList.razor.cs.
@@ -1747,43 +1752,63 @@ export class VirtualList {
         this.updateState('scrollToEdge', this.state, { scrollTime: Date.now() });
 
         let targetScrollTop = 0;
-        fastRaf({
-            read: () => {
-                // Position from the ACTUAL DOM (robust to model/DOM size drift): bring the end anchor
-                // flush to the viewport bottom (End) or the first item to the viewport top (Start).
-                const vr = this.ref.getBoundingClientRect();
-                const maxScrollTop = Math.max(0, this.ref.scrollHeight - this.ref.clientHeight);
-                let delta: number;
-                if (edge === VirtualListEdge.Start) {
-                    const first = this.getFirstItemRef();
-                    delta = first ? first.getBoundingClientRect().top - vr.top : -this.ref.scrollTop;
-                }
+        // Position from the ACTUAL DOM (robust to model/DOM size drift): bring the end anchor
+        // flush to the viewport bottom (End) or the first item to the viewport top (Start).
+        const measureTarget = (): number => {
+            const vr = this.ref.getBoundingClientRect();
+            const maxScrollTop = Math.max(0, this.ref.scrollHeight - this.ref.clientHeight);
+            let delta: number;
+            if (edge === VirtualListEdge.Start) {
+                const first = this.getFirstItemRef();
+                delta = first ? first.getBoundingClientRect().top - vr.top : -this.ref.scrollTop;
+            }
+            else {
+                // Prefer the end anchor (infinite lists — it carries the editor gap); when it's hidden
+                // (finite lists, empty rect) fall back to the last item / full scroll range.
+                const anchorRect = this.endAnchorRef.getBoundingClientRect();
+                if (anchorRect.height > 0)
+                    delta = anchorRect.bottom - vr.bottom;
                 else {
-                    // Prefer the end anchor (infinite lists — it carries the editor gap); when it's hidden
-                    // (finite lists, empty rect) fall back to the last item / full scroll range.
-                    const anchorRect = this.endAnchorRef.getBoundingClientRect();
-                    if (anchorRect.height > 0)
-                        delta = anchorRect.bottom - vr.bottom;
-                    else {
-                        const last = this.getLastItemRef();
-                        delta = last ? last.getBoundingClientRect().bottom - vr.bottom : maxScrollTop - this.ref.scrollTop;
-                    }
+                    const last = this.getLastItemRef();
+                    delta = last ? last.getBoundingClientRect().bottom - vr.bottom : maxScrollTop - this.ref.scrollTop;
                 }
-                targetScrollTop = clamp(this.ref.scrollTop + delta, 0, maxScrollTop);
+            }
 
-                const isFarFromEdge = Math.abs(this.ref.scrollTop - targetScrollTop) > this.ref.offsetHeight;
-                useSmoothScroll = useSmoothScroll && !isFarFromEdge;
-            },
-            write: () => {
-                if (Math.abs(this.ref.scrollTop - targetScrollTop) >= EdgeRepinEpsilon)
-                    this.scrollController.scrollTo(targetScrollTop, { smooth: useSmoothScroll });
-                if (edge == VirtualListEdge.End) {
-                    void this.turnOnIsEndAnchorVisible();
-                    this.turnOffIsEndAnchorVisibleDebounced.reset();
-                }
-                debugLog?.log('scrollToEdge: complete', edge, useSmoothScroll, reason);
-            },
-        });
+            return clamp(this.ref.scrollTop + delta, 0, maxScrollTop);
+        };
+        const read = () => {
+            targetScrollTop = measureTarget();
+            const isFarFromEdge = Math.abs(this.ref.scrollTop - targetScrollTop) > this.ref.offsetHeight;
+            useSmoothScroll = useSmoothScroll && !isFarFromEdge;
+        };
+        const write = () => {
+            // A non-smooth scrollTo forces a reflow, so re-measuring right after it sees the new geometry:
+            // nudge again until flush. A smooth one animates, so its target can't be re-measured here.
+            for (let pass = 0; pass < EdgeRepinMaxPasses; pass++) {
+                if (Math.abs(this.ref.scrollTop - targetScrollTop) < EdgeRepinEpsilon)
+                    break;
+
+                this.scrollController.scrollTo(targetScrollTop, { smooth: useSmoothScroll });
+                if (useSmoothScroll)
+                    break;
+
+                targetScrollTop = measureTarget();
+            }
+            if (edge == VirtualListEdge.End) {
+                void this.turnOnIsEndAnchorVisible();
+                this.turnOffIsEndAnchorVisibleDebounced.reset();
+            }
+            debugLog?.log('scrollToEdge: complete', edge, useSmoothScroll, reason);
+        };
+        // A viewport resize arrives inside a ResizeObserver callback — after layout, before paint — so a
+        // synchronous re-pin lands the correction in the same frame the viewport changed. The fastRaf path
+        // defers read→write by a frame, which lets the edge visibly drift while a sub-header animates.
+        if (reason === 'viewport-resize') {
+            read();
+            write();
+        }
+        else
+            fastRaf({ read, write });
     }
 
     // True when the viewport is still flush with the current sticky edge (End: end anchor visible;
