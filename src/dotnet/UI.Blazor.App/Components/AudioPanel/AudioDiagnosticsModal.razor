@@ -28,11 +28,13 @@
                     @onclick="@(() => OnSelectTab(Tab.Session))">
                 Session
             </button>
-            <button type="button"
-                    class="diag-tab @(_activeTab == Tab.Playback ? "diag-tab--active" : "")"
-                    @onclick="@(() => OnSelectTab(Tab.Playback))">
-                Playback
-            </button>
+            @if (!IsMaui) {
+                <button type="button"
+                        class="diag-tab @(_activeTab == Tab.Playback ? "diag-tab--active" : "")"
+                        @onclick="@(() => OnSelectTab(Tab.Playback))">
+                    Playback
+                </button>
+            }
             @if (m.ShowActionsTab) {
                 <button type="button"
                         class="diag-tab @(_activeTab == Tab.Actions ? "diag-tab--active" : "")"
@@ -44,45 +46,44 @@
         <div @ref="_copyTextSourceRef" class="diag-body-content" data-copy-source="innerText">
 
         @if (_activeTab == Tab.Session) {
-            <div class="diag-section">
-                <div class="diag-section-header">Web Audio context</div>
-                @if (_context is { ValueKind: JsonValueKind.Object } ctx) {
-                    <div class="diag-row">
-                        <span class="diag-label">State</span>
-                        <span class="diag-value">@GetStr(ctx, "state")@(GetBool(ctx, "isRunning") ? "" : " (not running)")</span>
-                    </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Ready</span>
-                        <span class="diag-value">@YesNo(GetBool(ctx, "isReady")) · maintained @YesNo(GetBool(ctx, "isMaintained"))</span>
-                    </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Refs</span>
-                        <span class="diag-value">@(GetNum(ctx, "refCount").ToString("0")) (used @YesNo(GetBool(ctx, "isUsed")))</span>
-                    </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Background</span>
-                        <span class="diag-value">@(GetStr(ctx, "backgroundActivity") is { Length: > 0 } bg ? bg : "—")</span>
-                    </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Sample rate</span>
-                        <span class="diag-value">@FormatHz(GetNumOrNull(ctx, "sampleRate"))</span>
-                    </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Output latency</span>
-                        <span class="diag-value">@FormatMs(GetNumOrNull(ctx, "outputLatencyMs"))</span>
-                    </div>
-                }
-                else if (IsMaui) {
-                    <div class="diag-row">
-                        <span class="diag-value diag-dim">Native playback — Web Audio not used on this app</span>
-                    </div>
-                }
-                else {
-                    <div class="diag-row">
-                        <span class="diag-dim">No context data yet</span>
-                    </div>
-                }
-            </div>
+            @* Web Audio is only used on the web build; native apps play through the
+               native engine, so this section is hidden there. *@
+            @if (!IsMaui) {
+                <div class="diag-section">
+                    <div class="diag-section-header">Web Audio context</div>
+                    @if (_context is { ValueKind: JsonValueKind.Object } ctx) {
+                        <div class="diag-row">
+                            <span class="diag-label">State</span>
+                            <span class="diag-value">@GetStr(ctx, "state")@(GetBool(ctx, "isRunning") ? "" : " (not running)")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Ready</span>
+                            <span class="diag-value">@YesNo(GetBool(ctx, "isReady")) · maintained @YesNo(GetBool(ctx, "isMaintained"))</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Refs</span>
+                            <span class="diag-value">@(GetNum(ctx, "refCount").ToString("0")) (used @YesNo(GetBool(ctx, "isUsed")))</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Background</span>
+                            <span class="diag-value">@(GetStr(ctx, "backgroundActivity") is { Length: > 0 } bg ? bg : "—")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Sample rate</span>
+                            <span class="diag-value">@FormatHz(GetNumOrNull(ctx, "sampleRate"))</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Output latency</span>
+                            <span class="diag-value">@FormatMs(GetNumOrNull(ctx, "outputLatencyMs"))</span>
+                        </div>
+                    }
+                    else {
+                        <div class="diag-row">
+                            <span class="diag-dim">No context data yet</span>
+                        </div>
+                    }
+                </div>
+            }
 
             <div class="diag-section">
                 <div class="diag-section-header">Native audio session</div>
@@ -145,7 +146,7 @@
                 </div>
                 @if (_players.Length == 0) {
                     <div class="diag-row">
-                        <span class="diag-value diag-dim">@(IsMaui ? "Native playback — no Web Audio players on this app" : "No active players")</span>
+                        <span class="diag-dim">No active players</span>
                     </div>
                 }
                 else {
@@ -186,13 +187,15 @@
                             stuck after an interruption.
                         </Caption>
                     </TileItem>
-                    <TileItem Click="@OnResumeContext">
-                        <Content>Resume AudioContext</Content>
-                        <Caption>
-                            Forces an interactive resume of the Web Audio playback context.
-                            Best-effort — iOS may refuse outside a real user gesture.
-                        </Caption>
-                    </TileItem>
+                    @if (!IsMaui) {
+                        <TileItem Click="@OnResumeContext">
+                            <Content>Resume AudioContext</Content>
+                            <Caption>
+                                Forces an interactive resume of the Web Audio playback context.
+                                Best-effort — iOS may refuse outside a real user gesture.
+                            </Caption>
+                        </TileItem>
+                    }
                 </Tile>
                 @if (_lastActionResult is { Length: > 0 }) {
                     <div class="diag-row">
@@ -266,19 +269,25 @@
         catch (Exception e) {
             Log.LogWarning(e, "Poll: AudioFocusUI.GetDiagnostics failed");
         }
-        try {
-            var diag = await JS.InvokeAsync<JsonElement>(JSCollectMethod);
-            if (diag.ValueKind == JsonValueKind.Object) {
-                _context = diag.TryGetProperty("context", out var ctx) && ctx.ValueKind == JsonValueKind.Object
-                    ? ctx
-                    : null;
-                _players = diag.TryGetProperty("players", out var players) && players.ValueKind == JsonValueKind.Array
-                    ? players.EnumerateArray().ToArray()
-                    : [];
+        // The JS Web Audio pipeline is web-only; native apps play through the native
+        // engine and hide those sections, so skip the interop there.
+        if (!IsMaui) {
+            try {
+                // TODO: use custom type for deserializing
+                // TODO: extract AudioDiagnosticsUI
+                var diag = await JS.InvokeAsync<JsonElement>(JSCollectMethod);
+                if (diag.ValueKind == JsonValueKind.Object) {
+                    _context = diag.TryGetProperty("context", out var ctx) && ctx.ValueKind == JsonValueKind.Object
+                        ? ctx
+                        : null;
+                    _players = diag.TryGetProperty("players", out var players) && players.ValueKind == JsonValueKind.Array
+                        ? players.EnumerateArray().ToArray()
+                        : [];
+                }
             }
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Poll: collectAudioPlaybackDiagnostics failed");
+            catch (Exception e) {
+                Log.LogWarning(e, "Poll: collectAudioPlaybackDiagnostics failed");
+            }
         }
         if (!_isDisposed)
             await InvokeAsync(StateHasChanged);
