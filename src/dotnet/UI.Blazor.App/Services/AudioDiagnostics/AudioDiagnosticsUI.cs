@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
@@ -7,8 +8,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <summary>
 /// Gathers audio diagnostics for the Audio Diagnostics UI: the native audio-focus /
 /// session snapshot, and — on the web build only — the Web Audio playback state.
-/// <see cref="GetState"/> is invalidated ~1 Hz by the worker loop, so observers
-/// re-read only while the panel is open.
+/// The worker loop refreshes ~1 Hz and invalidates <see cref="GetState"/> only when
+/// the snapshot actually changed, so observers don't re-render on every tick.
 /// </summary>
 public class AudioDiagnosticsUI : UIWorkerBase<AppUIHub>, IComputeService
 {
@@ -17,6 +18,9 @@ public class AudioDiagnosticsUI : UIWorkerBase<AppUIHub>, IComputeService
     private static readonly TimeSpan RefreshPeriod = TimeSpan.FromSeconds(1);
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5, 1);
 
+    private volatile AudioDiagnosticsState _state = AudioDiagnosticsState.None;
+    private string _stateJson = "";
+
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     private bool IsWebAudioUsed => !Hub.HostInfo.AppKind.IsMaui();
 
@@ -24,12 +28,8 @@ public class AudioDiagnosticsUI : UIWorkerBase<AppUIHub>, IComputeService
         => this.Start();
 
     [ComputeMethod]
-    public virtual async Task<AudioDiagnosticsState> GetState(CancellationToken cancellationToken)
-    {
-        var focus = AudioFocusUI.GetDiagnostics();
-        var playback = await CollectPlaybackDiagnostics().ConfigureAwait(false);
-        return new AudioDiagnosticsState(focus, playback);
-    }
+    public virtual Task<AudioDiagnosticsState> GetState(CancellationToken cancellationToken)
+        => Task.FromResult(_state);
 
     public Task Reactivate(CancellationToken cancellationToken = default)
         => AudioFocusUI.TryRecover(cancellationToken);
@@ -49,10 +49,21 @@ public class AudioDiagnosticsUI : UIWorkerBase<AppUIHub>, IComputeService
 
     private async Task RefreshState(CancellationToken cancellationToken)
     {
-        // TODO: do not invalidate if not changed
         while (!cancellationToken.IsCancellationRequested) {
-            using (Invalidation.Begin())
-                _ = GetState(default);
+            var focus = AudioFocusUI.GetDiagnostics();
+            var playback = await CollectPlaybackDiagnostics().ConfigureAwait(false);
+            var state = new AudioDiagnosticsState(focus, playback);
+            // TODO: don't compare JSON, records must be comparable
+            // Skip the invalidation (and the observer re-render it triggers) when
+            // nothing changed; the DTO collections rule out record value equality,
+            // so compare a serialized signature instead.
+            var stateJson = JsonSerializer.Serialize(state);
+            if (!string.Equals(stateJson, _stateJson, StringComparison.Ordinal)) {
+                _state = state;
+                _stateJson = stateJson;
+                using (Invalidation.Begin())
+                    _ = GetState(default);
+            }
             await Task.Delay(RefreshPeriod, cancellationToken).ConfigureAwait(false);
         }
     }
