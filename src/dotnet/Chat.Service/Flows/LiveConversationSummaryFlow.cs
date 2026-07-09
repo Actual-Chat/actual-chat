@@ -11,14 +11,16 @@ namespace ActualChat.Chat.Flows;
 /// finalization (materialize into a persisted <see cref="Conversation"/> or vanish) is owned by
 /// <c>LiveSessionsBackend</c>; this flow only summarizes while the call is live.
 /// </summary>
-[Flow(ResumeTimeout = 60)]
+[Flow(ResumeTimeout = 60, DelayQuanta = 30)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 {
     private const int MaxEntries = 1000;
-    // Resume throttle: kept short so a closing session is materialized and finalized promptly; the actual
-    // resummary is additionally gated on Settings.Summarization.ResummarizationDelay.
-    private static readonly TimeSpan Throttle = TimeSpan.FromSeconds(20);
+    // Resume throttle: the flow re-checks this often so entries maturing during silence (and the tail before
+    // the backend closes + materializes the session) get summarized without a new audio entry to trigger it;
+    // resummary itself is additionally gated on Settings.Summarization.ResummarizationDelay. Keep DelayQuanta
+    // (see [Flow]) <= Throttle so overlapping self-resumes coalesce without the loop stalling.
+    private static readonly TimeSpan Throttle = TimeSpan.FromSeconds(30);
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();

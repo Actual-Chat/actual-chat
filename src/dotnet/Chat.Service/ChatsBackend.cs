@@ -2106,6 +2106,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // no-ops and completes when there's no active live conversation for the chat.
             if (entry.HasAudio)
                 await FlowHub.NewResumeEvent<LiveConversationSummaryFlow>(chat.Id.Value)
+                    .WithDelay(Settings.Summarization.ChatEntrySummarizationDelayQuanta, Settings.Summarization.ChatEntrySummarizationDelayQuanta)
                     .Schedule(cancellationToken)
                     .ConfigureAwait(false);
         }
