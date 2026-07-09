@@ -397,6 +397,11 @@
                 () => _isVideoOn,
                 () => _selectedDevice?.DeviceId,
                 () => _isBlurEnabled,
+                // Mac Catalyst publishes the live stream natively, so the recorder
+                // exposes no JS preview pipeline to attach to — show an independent
+                // getUserMedia preview instead (getUserMedia works; only WebCodecs
+                // is missing there).
+                OperatingSystem.IsMacCatalyst(),
                 _disposeCts.Token);
 
     public override async ValueTask DisposeAsync() {
@@ -685,6 +690,7 @@
         Func<bool> getIsVideoOn,
         Func<string?> getSelectedDeviceId,
         Func<bool> getIsBlurEnabled,
+        bool useOwnPreview,
         CancellationToken disposeCt) : VideoSessionBase
     {
         public override async Task Start()
@@ -704,7 +710,16 @@
                 SetState(CameraState.Unavailable);
                 return;
             }
-            await jsRef.InvokeVoidAsync("attachToRecorder");
+            if (useOwnPreview) {
+                // Mac Catalyst: the native publisher owns capture and opens the camera
+                // at OpenGate (Join), independent of this preview. getUserMedia preview
+                // is best-effort — mark the camera ready so Join isn't blocked on a
+                // first-frame the WKWebView may never deliver.
+                _ = jsRef.InvokeVoidAsync("startPreview", getSelectedDeviceId());
+                SetState(CameraState.On);
+            }
+            else
+                await jsRef.InvokeVoidAsync("attachToRecorder");
         }
 
         public override async Task ChangeCamera(string deviceId)
@@ -712,8 +727,14 @@
             SetState(CameraState.Starting);
             var ok = await chatVideoUI.UpdateCameraWarmupSettings(
                 chatId, deviceId, getIsBlurEnabled(), disposeCt);
-            if (!ok)
+            if (!ok) {
                 SetState(CameraState.Unavailable);
+                return;
+            }
+            if (useOwnPreview) {
+                _ = jsRef.InvokeVoidAsync("switchCamera", deviceId);
+                SetState(CameraState.On);
+            }
         }
 
         public override Task SetBlurEnabled(bool enabled)

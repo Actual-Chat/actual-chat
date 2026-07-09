@@ -36,6 +36,11 @@ public class CameraUI : UIServiceBase<AppUIHub>, IComputeService
 
     public async Task<VideoDevice[]> EnumerateDevices(bool includeAll = false)
     {
+        // Mac Catalyst: WKWebView's enumerateDevices returns no video inputs, so
+        // camera listing comes from AVFoundation via the native publisher seam.
+        if (Hub.Services.GetService<Video.INativeCameraDevices>() is { } nativeDevices)
+            return nativeDevices.List();
+
         try {
             return await JS.InvokeAsync<VideoDevice[]>(JSEnumerateDevices, includeAll).ConfigureAwait(false);
         }

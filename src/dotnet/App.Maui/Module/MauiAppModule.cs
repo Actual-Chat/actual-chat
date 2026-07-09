@@ -105,6 +105,15 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
         services.AddScoped<IAudioCapture>(c => new AppleAudioCapture(c.AppUIHub()));
         services.AddScoped<ILocationTracker>(c => new AppleLocationTracker(c.AppUIHub()));
+        // Native camera publish path. Enabled on Mac Catalyst only for now (the WKWebView
+        // there has no WebCodecs encoder); iOS keeps the working JS recorder until the
+        // native path is validated on-device.
+        if (OperatingSystem.IsMacCatalyst()) {
+            services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeVideoPublisherFactory>(
+                _ => new ActualChat.App.Maui.Video.MauiVideoPublisherFactory());
+            services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeCameraDevices>(
+                _ => new ActualChat.App.Maui.Video.MauiCameraDevices());
+        }
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));
