@@ -78,6 +78,7 @@ export class VisualMediaViewer {
             touchAngle: 45,
             resistanceRatio: 0.85,
             threshold: 10,
+            keyboard: { enabled: true, onlyInViewport: false },
         };
         Object.assign(this.swiperEl, mainSwiperParams);
         // eslint-disable-next-line
