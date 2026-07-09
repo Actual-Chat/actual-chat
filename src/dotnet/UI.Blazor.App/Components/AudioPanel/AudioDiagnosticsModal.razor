@@ -148,7 +148,7 @@
                         <div class="diag-stream">
                             <div class="diag-stream-header">
                                 <span>@(GetStr(p, "authorId") is { Length: > 0 } a ? a : "#" + GetStr(p, "internalId"))</span>
-                                <span class="ml-auto diag-chip @PlaybackChipClass(playback)">@playback</span>
+                                <span class="diag-chip @PlaybackChipClass(playback)">@playback</span>
                             </div>
                             <div class="diag-row">
                                 <span class="diag-label">Buffer</span>
