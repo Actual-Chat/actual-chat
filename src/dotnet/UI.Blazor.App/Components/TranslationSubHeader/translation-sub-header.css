@@ -26,37 +26,3 @@ sub-header.translation-sub-header .c-language {
 sub-header.translation-sub-header .c-right {
     @apply flex-none;
 }
-/* Reserve the full height in a single step (one viewport resize → one synchronous re-pin in the list) and
-   reveal via opacity only. The shared showSubHeader animation grows max-height frame-by-frame, shrinking
-   the chat viewport every frame, which the list can't track without jitter. */
-sub-header.translation-sub-header.enter {
-    animation: showTranslationSubHeader 150ms ease-out forwards;
-}
-/* Release the height in one step immediately on close (single viewport resize, re-pinned cleanly), kept
-   separate from the unmount. Collapsing height gradually, or together with the unmount, races the list's
-   re-pin against ResizeObserver delivery and strands the bottom edge a few px off. The animation only
-   carries the lifecycle (its end unmounts the element, which is already zero-height by then — a no-op). */
-sub-header.translation-sub-header.exit {
-    max-height: 0;
-    margin-top: 0;
-    border-width: 0;
-    animation: hideTranslationSubHeader 150ms linear forwards;
-}
-@keyframes showTranslationSubHeader {
-    from {
-        max-height: var(--subheader-height, 3.5rem);
-        opacity: 0;
-    }
-    to {
-        max-height: var(--subheader-height, 3.5rem);
-        opacity: 1;
-    }
-}
-@keyframes hideTranslationSubHeader {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 0;
-    }
-}
