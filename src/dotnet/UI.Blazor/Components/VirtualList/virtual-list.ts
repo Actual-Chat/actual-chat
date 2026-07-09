@@ -1747,20 +1747,12 @@ export class VirtualList {
         this.updateState('scrollToEdge', this.state, { scrollTime: Date.now() });
 
         let targetScrollTop = 0;
-        const read = () => {
-            const vr = this.ref.getBoundingClientRect();
-            const maxScrollTop = Math.max(0, this.ref.scrollHeight - this.ref.clientHeight);
-            // The End edge has a deterministic flush position — the model's max limit. Prefer it: the
-            // relative DOM nudge below assumes 1 scrollTop unit == 1px, but in infinite mode container.top
-            // is recomputed on scroll, so near the edge that ratio drifts (~1.75x) and a one-shot nudge
-            // undershoots the edge, leaving the newest item a few px high. The model edge is exact, and
-            // ScrollController already clamps to this same limit — so aiming at it can't overshoot.
-            const modelMax = edge === VirtualListEdge.End ? this.computeScrollLimits().max : null;
-            if (modelMax != null)
-                targetScrollTop = clamp(modelMax, 0, maxScrollTop);
-            else {
+        fastRaf({
+            read: () => {
                 // Position from the ACTUAL DOM (robust to model/DOM size drift): bring the end anchor
                 // flush to the viewport bottom (End) or the first item to the viewport top (Start).
+                const vr = this.ref.getBoundingClientRect();
+                const maxScrollTop = Math.max(0, this.ref.scrollHeight - this.ref.clientHeight);
                 let delta: number;
                 if (edge === VirtualListEdge.Start) {
                     const first = this.getFirstItemRef();
@@ -1778,30 +1770,20 @@ export class VirtualList {
                     }
                 }
                 targetScrollTop = clamp(this.ref.scrollTop + delta, 0, maxScrollTop);
-            }
 
-            const isFarFromEdge = Math.abs(this.ref.scrollTop - targetScrollTop) > this.ref.offsetHeight;
-            useSmoothScroll = useSmoothScroll && !isFarFromEdge;
-        };
-        const write = () => {
-            if (Math.abs(this.ref.scrollTop - targetScrollTop) >= EdgeRepinEpsilon)
-                this.scrollController.scrollTo(targetScrollTop, { smooth: useSmoothScroll });
-            if (edge == VirtualListEdge.End) {
-                void this.turnOnIsEndAnchorVisible();
-                this.turnOffIsEndAnchorVisibleDebounced.reset();
-            }
-            debugLog?.log('scrollToEdge: complete', edge, useSmoothScroll, reason);
-        };
-        // A viewport resize arrives inside a ResizeObserver callback — after layout, before paint — so a
-        // synchronous re-pin lands the correction in the same frame the viewport shrank. The fastRaf path
-        // defers read→write by a frame, which lets the edge visibly drift (jitter) while a sub-header or
-        // panel animates the viewport height.
-        if (reason === 'viewport-resize') {
-            read();
-            write();
-        }
-        else
-            fastRaf({ read, write });
+                const isFarFromEdge = Math.abs(this.ref.scrollTop - targetScrollTop) > this.ref.offsetHeight;
+                useSmoothScroll = useSmoothScroll && !isFarFromEdge;
+            },
+            write: () => {
+                if (Math.abs(this.ref.scrollTop - targetScrollTop) >= EdgeRepinEpsilon)
+                    this.scrollController.scrollTo(targetScrollTop, { smooth: useSmoothScroll });
+                if (edge == VirtualListEdge.End) {
+                    void this.turnOnIsEndAnchorVisible();
+                    this.turnOffIsEndAnchorVisibleDebounced.reset();
+                }
+                debugLog?.log('scrollToEdge: complete', edge, useSmoothScroll, reason);
+            },
+        });
     }
 
     // True when the viewport is still flush with the current sticky edge (End: end anchor visible;
