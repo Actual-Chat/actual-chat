@@ -25,6 +25,7 @@ export interface VirtualListDebugTarget {
     readonly identity: string;
     readonly defaultEdge: VirtualListEdge;
     readonly isInfinite: boolean;
+    readonly isContainerRevealed: boolean;
     readonly ref: HTMLElement;
     readonly wrapperRef: HTMLElement;
     readonly containerRef: HTMLElement;
@@ -125,6 +126,11 @@ export class VirtualListDebug {
     // No-jump tracking: a keyed item's viewport-relative position across consecutive checks.
     private lastAnchor: { key: string; top: number; scrollTop: number; time: number } | null = null;
     private lastRendering = false;
+    // Anchor captured at render start (before Blazor mutates nodes). Capturing later — inside
+    // syncLayoutAfterRender — sees the DOM already shifted by inserted items but not yet compensated
+    // by the container.top write, so the bracket reported that never-painted intermediate state as a
+    // jump. One-shot: consumed by the render that follows.
+    private preRenderAnchor: { key: string; top: number } | null = null;
 
     public static readonly checks: Record<string, Check> = {
         blankViewport,
@@ -175,6 +181,8 @@ export class VirtualListDebug {
     public check(trigger: string): VlViolation[] {
         if (this.vl.ref.clientHeight === 0)
             return []; // hidden / not laid out
+        if (!this.vl.isContainerRevealed)
+            return []; // initial placement hasn't landed yet — the wrapper is still visibility:hidden
         const s = this.capture(trigger);
         const geom = this.readGeom();
         const found: VlViolation[] = [];
@@ -192,6 +200,16 @@ export class VirtualListDebug {
             this.report(v);
 
         return found;
+    }
+
+    public noteRenderStart(anchor: { key: string; top: number } | null): void {
+        this.preRenderAnchor = anchor;
+    }
+
+    public takePreRenderAnchor(): { key: string; top: number } | null {
+        const anchor = this.preRenderAnchor;
+        this.preRenderAnchor = null;
+        return anchor;
     }
 
     // No-jump invariant: between two consecutive checks a keyed item that is still on screen must

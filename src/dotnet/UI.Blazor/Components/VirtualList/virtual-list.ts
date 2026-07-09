@@ -368,6 +368,10 @@ export class VirtualList {
                 const time = Date.now();
                 debugLog?.log(`renderStartedAt: `, time, value);
                 this.updateState('renderIndex.setAttribute', this.state, { renderStartedAt: time });
+                // Last pre-mutation moment — the no-jump anchor must be captured here, not inside
+                // syncLayoutAfterRender (by then the DOM is already shifted by inserted items but not
+                // yet compensated by container.top).
+                this.debug?.noteRenderStart(this.captureViewportAnchor());
                 origSetAttribute.call(this.renderIndexRef, qualifiedName, value);
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 fastRaf(() => this.endRender());
@@ -761,13 +765,13 @@ export class VirtualList {
                     const oldItem = this.items.get(key);
                     const newItem = this.createListItem(key, itemRef);
                     if (oldItem) {
-                        if (this.state.pivots.some(pivot => pivot.itemKey === key)) {
-                            // if the item is a pivot, we need to update its size and keep range
-                            if (oldItem.range && newItem.size && newItem.size > 0)
-                                oldItem.range = new NumberRange(oldItem.range.start, oldItem.range.start + newItem.size);
-                        }
-                        else
-                            oldItem.range = undefined; // reset range
+                        // A retained item keeps its range (anchored at start; the end tracks the new size):
+                        // retained ranges are the only anchors that survive a render. Pivots are cleared on
+                        // every user scroll, so resetting non-pivot ranges here left scroll-triggered renders
+                        // with no cornerstone at all — rebuildItemRangeFromAnchor then re-centered the chain
+                        // at InfiniteSize/2 and everything on screen jumped by half the loaded chunk.
+                        if (oldItem.range && newItem.size && newItem.size > 0)
+                            oldItem.range = new NumberRange(oldItem.range.start, oldItem.range.start + newItem.size);
                         oldItem.size = newItem.size;
                         oldItem.shouldSkipKey = newItem.shouldSkipKey;
                         if (oldItem?.size && oldItem.size > 0)
@@ -836,13 +840,11 @@ export class VirtualList {
                         totalExistingSizeDiff += size - oldSize;
                     }
                     item.size = size;
-                    if (this.state.pivots.some(pivot => pivot.itemKey === key)) {
-                        // if the item is a pivot, we need to update its size and keep range
-                        if (item.range)
-                            item.range = new NumberRange(item.range.start, item.range.start + size);
-                    }
-                    else
-                        item.range = undefined; // reset range
+                    // Keep the range anchored at start (same reason as in onItemSetChange): a resize must
+                    // not cost the item its anchor role, or a resize burst with cleared pivots re-centers
+                    // the whole chain.
+                    if (item.range)
+                        item.range = new NumberRange(item.range.start, item.range.start + size);
 
                     this.sizeCache.set(key, size);
                     this.statistics.addItem(item.size);
@@ -1192,7 +1194,12 @@ export class VirtualList {
                 // Keep position of visible item
                 scrollFunc = () => this.scrollTo(scrollToItemRef, false, 'end');
             }
-        } else if (this.state.query.isNone && this.state.stickyEdge != null) {
+        } else if (this.state.stickyEdge != null
+            && (this.state.query.isNone
+                || (this.state.stickyEdge.edge === VirtualListEdge.End && this.state.isEndAnchorVisible))) {
+            // The End case also covers query renders: a load-above render used to have no scroll intent
+            // at all, so any layout shift it caused stranded an at-the-bottom view above the newest item
+            // with nothing to re-pin it. Gated on isEndAnchorVisible so it can't fight a scroll away.
             const itemKey = this.state.stickyEdge.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
                 ? this.getFirstItemKey()
                 : this.state.stickyEdge.edge === VirtualListEdge.End && rs.hasVeryLastItem
@@ -1561,7 +1568,7 @@ export class VirtualList {
     private captureViewportAnchor(key?: string): { key: string; top: number } | null {
         const viewRect = this.ref.getBoundingClientRect();
         if (key != null) {
-            const li = this.containerRef.querySelector<HTMLElement>(`li.item[data-key="${CSS.escape(key)}"]`);
+            const li = this.containerRef.querySelector<HTMLElement>(`.item[data-key="${CSS.escape(key)}"]`);
             if (li == null)
                 return null;
             const r = li.getBoundingClientRect();
@@ -1570,10 +1577,17 @@ export class VirtualList {
         const centre = viewRect.height / 2;
         let best: { key: string; top: number } | null = null;
         let bestDist = Infinity;
-        for (const li of this.containerRef.querySelectorAll<HTMLElement>('li.item[data-key]')) {
+        // `.item`, not `li.item`: grouped messages are div.item inside li.group — matching only li.item
+        // made the check blind for most of a real chat. Sticky/skip rows are excluded as in pickAnchor.
+        for (const li of this.containerRef.querySelectorAll<HTMLElement>('.item[data-key]')) {
+            if ((li.dataset.skip != null && li.dataset.skip !== 'false')
+                || window.getComputedStyle(li).position === 'sticky')
+                continue;
+
             const r = li.getBoundingClientRect();
             if (r.height <= 0 || r.bottom <= viewRect.top || r.top >= viewRect.bottom)
                 continue;
+
             const top = r.top - viewRect.top;
             const dist = Math.abs(top + r.height / 2 - centre);
             if (dist < bestDist) {
@@ -1906,7 +1920,7 @@ export class VirtualList {
             key: `syncLayoutAfterRender_${this.identity}`,
             read: () => {
                 if (this.debug)
-                    jumpAnchor = this.captureViewportAnchor();
+                    jumpAnchor = this.debug.takePreRenderAnchor() ?? this.captureViewportAnchor();
                 // Pivots anchor the item-range coords across re-measurement (a pivot's range stays fixed).
                 // They're cleared on scroll and only re-made on interactive events, so wheel/mouse leaves
                 // none — without one the ranges recompute from scratch and the viewport jumps. Force one
@@ -2175,13 +2189,8 @@ export class VirtualList {
 
             if (size > 0) {
                 item.size = size;
-                if (this.state.pivots.some(pivot => pivot.itemKey === key)) {
-                    // if the item is a pivot, we need to update its size and keep range
-                    if (item.range)
-                        item.range = new NumberRange(item.range.start, item.range.start + size);
-                }
-                else
-                    item.range = undefined; // reset range
+                if (item.range)
+                    item.range = new NumberRange(item.range.start, item.range.start + size);
                 itemsWereMeasured = true;
                 this.sizeCache.set(key, size);
                 removeUnmeasuredItem(key);
@@ -2432,7 +2441,13 @@ export class VirtualList {
             cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size!);
 
         this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
-        rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range!.start - r.start));
+        // The rigid-shift delta is only computable from items that had a range before the rebuild; a
+        // genuinely new item set has none — return null then, not NaN (NaN silently disabled the
+        // scrollTop compensation in reCenter while the chain still moved).
+        const shiftDeltas = originalRanges
+            .map((r, i) => r.start != null ? orderedItems[i].range!.start - r.start : null)
+            .filter((d): d is number => d != null && !Number.isNaN(d));
+        rangeDelta = shiftDeltas.length > 0 ? Math.max(...shiftDeltas) : null;
         const newItemRange = new NumberRange(
             orderedItems[0].range!.start,
             orderedItems[orderedItems.length - 1].range!.end);
