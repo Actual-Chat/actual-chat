@@ -31,8 +31,6 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsBackgroundBlurEnabledOrDefault => IsBackgroundBlurEnabled ?? false;
-    // Dev instances default to ON so the diagnostics entry points are visible
-    // out of the box; production defaults to OFF until the user opts in.
     public bool IsVideoDiagnosticsEnabledOrDefault(bool isDevelopmentInstance)
         => IsVideoDiagnosticsEnabled ?? isDevelopmentInstance;
     public bool IsAudioDiagnosticsEnabledOrDefault(bool isDevelopmentInstance)

@@ -1,6 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.Kvas;
 using ActualChat.UI.App.Services;
+using ActualChat.UI.Blazor.App.Components.AudioPanel;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
@@ -76,7 +77,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         => _whenEnabledSource.TrySetResult();
 
     public void ShowAudioDiagnostics(ChatId chatId)
-        => _ = ModalUI.Show(new Components.AudioPanel.AudioDiagnosticsModal.Model(chatId));
+        => _ = ModalUI.Show(new AudioDiagnosticsModal.Model(chatId));
 
     [ComputeMethod] // Synced
     public virtual Task<ChatAudioState> GetState(ChatId chatId)

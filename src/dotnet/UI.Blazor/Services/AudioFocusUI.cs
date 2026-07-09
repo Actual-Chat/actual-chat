@@ -62,9 +62,10 @@ public class AudioFocusUI : ProcessorBase
     }
 }
 
-// Read-only snapshot of the platform audio-focus / session state, surfaced by
-// the Audio Diagnostics UI. `IsSupported` is false on platforms with no native
-// focus management (web), where focus is implicitly always held.
+/// <summary>
+/// Read-only snapshot of the platform audio-focus / session state for the Audio
+/// Diagnostics UI. <see cref="IsSupported"/> is false where focus is implicit (web).
+/// </summary>
 public sealed record AudioFocusDiagnostics(
     bool IsSupported,
     AudioFocusMode ActiveMode,
@@ -78,10 +79,15 @@ public sealed record AudioFocusDiagnostics(
         new(false, AudioFocusMode.Tune, false, false, false, [], null);
 }
 
+/// <summary>
+/// One audio-focus mode and the number of active scopes currently holding it.
+/// </summary>
 public sealed record AudioFocusScopeInfo(AudioFocusMode Mode, int Count);
 
-// Native AVAudioSession snapshot (iOS / Mac Catalyst only). Values are strings
-// so this type can live in UI.Blazor without an AVFoundation dependency.
+/// <summary>
+/// Native AVAudioSession snapshot (iOS / Mac Catalyst). Strings avoid an
+/// AVFoundation dependency in UI.Blazor.
+/// </summary>
 public sealed record AudioSessionDiagnostics(
     string Category,
     string Mode,
