@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components.AudioPanel
 @using System.Text.Json
+@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<AppUIHub, AudioDiagnosticsModal.ComputedModel>
@@ -71,6 +72,11 @@
                         <span class="diag-value">@FormatMs(GetNumOrNull(ctx, "outputLatencyMs"))</span>
                     </div>
                 }
+                else if (IsMaui) {
+                    <div class="diag-row">
+                        <span class="diag-value diag-dim">Native playback — Web Audio not used on this app</span>
+                    </div>
+                }
                 else {
                     <div class="diag-row">
                         <span class="diag-dim">No context data yet</span>
@@ -139,7 +145,7 @@
                 </div>
                 @if (_players.Length == 0) {
                     <div class="diag-row">
-                        <span class="diag-dim">No active players</span>
+                        <span class="diag-value diag-dim">@(IsMaui ? "Native playback — no Web Audio players on this app" : "No active players")</span>
                     </div>
                 }
                 else {
@@ -217,6 +223,7 @@
     private string? _lastActionResult;
 
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
+    private bool IsMaui => Hub.HostInfo.AppKind.IsMaui();
     private ILogger Log => field ??= Services.LogFor<AudioDiagnosticsModal>();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -250,20 +257,31 @@
     private async Task Poll() {
         if (_isDisposed)
             return;
+        // Native and JS reads are independent: on the MAUI app the JS Web Audio
+        // context is null and its collector is irrelevant, but the native session
+        // data must still refresh — so a JS failure can't abort the whole poll.
         try {
             _focus = AudioFocusUI.GetDiagnostics();
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Poll: AudioFocusUI.GetDiagnostics failed");
+        }
+        try {
             var diag = await JS.InvokeAsync<JsonElement>(JSCollectMethod);
             if (diag.ValueKind == JsonValueKind.Object) {
-                _context = diag.TryGetProperty("context", out var ctx) ? ctx : null;
+                _context = diag.TryGetProperty("context", out var ctx) && ctx.ValueKind == JsonValueKind.Object
+                    ? ctx
+                    : null;
                 _players = diag.TryGetProperty("players", out var players) && players.ValueKind == JsonValueKind.Array
                     ? players.EnumerateArray().ToArray()
                     : [];
             }
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Poll: collectAudioPlaybackDiagnostics failed");
+        }
+        if (!_isDisposed)
             await InvokeAsync(StateHasChanged);
-        }
-        catch {
-            // Ignore polling errors (component may be disposing).
-        }
     }
 
     private void OnSelectTab(Tab tab) {
