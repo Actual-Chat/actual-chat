@@ -15,6 +15,7 @@ public class AudioDiagnosticsUI : UIWorkerBase<AppUIHub>, IComputeService
     private static readonly string JSCollectMethod = $"{BlazorUIAppModule.ImportName}.collectAudioPlaybackDiagnostics";
     private static readonly string JSResumeContextMethod = $"{BlazorUIAppModule.ImportName}.audioDebugResumeContext";
     private static readonly TimeSpan RefreshPeriod = TimeSpan.FromSeconds(1);
+    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5, 1);
 
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     private bool IsWebAudioUsed => !Hub.HostInfo.AppKind.IsMaui();
@@ -38,16 +39,23 @@ public class AudioDiagnosticsUI : UIWorkerBase<AppUIHub>, IComputeService
 
     // Protected methods
 
-    protected override async Task OnRun(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => AsyncChain.From(RefreshState)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelays, Log)
+            .Run(cancellationToken);
+
+    // Private methods
+
+    private async Task RefreshState(CancellationToken cancellationToken)
     {
+        // TODO: do not invalidate if not changed
         while (!cancellationToken.IsCancellationRequested) {
             using (Invalidation.Begin())
                 _ = GetState(default);
             await Task.Delay(RefreshPeriod, cancellationToken).ConfigureAwait(false);
         }
     }
-
-    // Private methods
 
     private async Task<AudioPlaybackDiagnostics?> CollectPlaybackDiagnostics()
     {
