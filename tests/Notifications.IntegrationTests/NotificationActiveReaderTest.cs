@@ -11,11 +11,11 @@ public class NotificationActiveReaderTest(AppHostFixture fixture, ITestOutputHel
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
     private FirebaseMessagingTestSink Sink => AppHost.Services.GetRequiredService<FirebaseMessagingTestSink>();
 
-    // A present reader who is caught up to the head is held for the grace window, and if they read
-    // the message within it, it never alerts on any device (no SendMessage at all).
     [Fact]
     public async Task CaughtUpMessageIsSwallowedWhenReadWithinGrace()
     {
+        // A present reader who is caught up to the head is held for the grace window, and if they read
+        // the message within it, it never alerts on any device (no SendMessage at all).
         var (alice, chatId) = await SetUpAliceInChat("Active reader — swallow");
         await Tester.ForcePresent(alice);
         // A registered device makes the "no push" assertion meaningful — a real send target exists.
@@ -39,11 +39,11 @@ public class NotificationActiveReaderTest(AppHostFixture fixture, ITestOutputHel
             "a message read during the grace window must never be pushed to any device");
     }
 
-    // The same held message is not lost: if the reader does not read it, it alerts after the grace
-    // window instead of immediately.
     [Fact]
     public async Task CaughtUpMessageAlertsAfterGraceWhenUnread()
     {
+        // The same held message is not lost: if the reader does not read it, it alerts after the grace
+        // window instead of immediately.
         var (alice, chatId) = await SetUpAliceInChat("Active reader — no loss");
         await Tester.ForcePresent(alice);
         var deviceId = await RegisterDevice(alice.Id);
@@ -70,9 +70,9 @@ public class NotificationActiveReaderTest(AppHostFixture fixture, ITestOutputHel
         }, Constants.Notification.ActiveReaderGrace + TimeSpan.FromSeconds(10));
     }
 
-    // bob owns the chat (so he is the message author) and alice is an invited, deliverable member.
     private async Task<(AccountFull Alice, ChatId ChatId)> SetUpAliceInChat(string title)
     {
+        // bob owns the chat (so he is the message author) and alice is an invited, deliverable member.
         var alice = await Tester.SignInAsAlice();
         await Tester.SignInAsBob();
         var (chatId, _) = await Tester.CreateChat(false, title);
@@ -80,10 +80,12 @@ public class NotificationActiveReaderTest(AppHostFixture fixture, ITestOutputHel
         return (alice, chatId);
     }
 
-    // Submitted through the queue (as production does) so the deferred OnProcess runs in the queue
-    // consumer's context — a direct Commander.Call would leak its disposed scope into the timer.
     private Task Enqueue(Notification notification)
-        => AppHost.Services.Queues().Enqueue(new NotificationsBackend_Notify(notification));
+    {
+        // Submitted through the queue (as production does) so the deferred OnProcess runs in the queue
+        // consumer's context — a direct Commander.Call would leak its disposed scope into the timer.
+        return AppHost.Services.Queues().Enqueue(new NotificationsBackend_Notify(notification));
+    }
 
     private static MessageNotification NewMessageNotification(UserId userId, ChatId chatId, long entryLid, string text)
     {

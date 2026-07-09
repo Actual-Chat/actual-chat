@@ -55,9 +55,9 @@ public static class UserOperations
         }, TimeSpan.FromSeconds(5));
     }
 
-    // Symmetric to ForceOffline: checks the user in right now and waits until presence reads Online.
     public static async Task ForcePresent(this IWebTester tester, AccountFull user)
     {
+        // Symmetric to ForceOffline: checks the user in right now and waits until presence reads Online.
         var clocks = tester.AppServices.Clocks();
         await tester.Commander.Call(new UserPresencesBackend_CheckIn(
             user.Id, clocks.SystemClock.Now, true));

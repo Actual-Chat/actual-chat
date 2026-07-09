@@ -40,12 +40,12 @@ public class AppIconBadgeUpdater(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
         }
     }
 
-    // The OS badge drifts while we're backgrounded: a delivered push sets it from aps.badge, and a
-    // throttled/dropped silent dismissal push then leaves it stale. ListActive may not change across
-    // the resume, so UpdateOnActiveChanges won't fire — re-assert the count unconditionally whenever
-    // we return to the foreground.
     private async Task ReassertOnForeground(IAppIconBadge badge, CancellationToken cancellationToken)
     {
+        // The OS badge drifts while we're backgrounded: a delivered push sets it from aps.badge, and a
+        // throttled/dropped silent dismissal push then leaves it stale. ListActive may not change across
+        // the resume, so UpdateOnActiveChanges won't fire — re-assert the count unconditionally whenever
+        // we return to the foreground.
         var backgroundStateTracker = Services.GetService<BackgroundStateTracker>();
         if (backgroundStateTracker is null)
             return;
