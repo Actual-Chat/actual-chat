@@ -136,6 +136,18 @@ from-source-of-truth recompute. This is the hard form of throttling for non-read
 Every push carries `aps.badge` = unmuted `Displayed` count, computed by the push
 handler. Dismissals (clear-on-read) lower the count via a silent push.
 
+**Client backstop (foreground re-assert).** The `aps.badge` on the silent
+dismissal push is the *only* thing that clears a backgrounded iOS app's badge —
+and iOS throttles/drops background (`content-available`) pushes, so a badge set
+by an earlier alert push can linger after the chat is read on another device.
+`AppIconBadgeUpdater` therefore watches **two** signals: the `ListActive` count
+(as before) *and* a background→foreground transition (`BackgroundStateTracker`).
+On resume it re-asserts `SetBadgeCount(ListActive.Count)` **unconditionally** —
+bypassing the `lastCount` de-dupe, because the OS badge may have drifted
+out-of-band while `ListActive` itself was unchanged. This makes the badge
+client-authoritative on every resume rather than dependent on a deliverable
+silent push.
+
 ### 3.8 Reconciliation layers
 
 1. **Population re-check** — `GetUserNotificationInfo` re-checks each item's read
