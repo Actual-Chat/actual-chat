@@ -1,7 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components.AudioPanel
-@using System.Text.Json
 @using ActualChat.Hosting
-@using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<AppUIHub, AudioDiagnosticsModal.ComputedModel>
 @implements IModalView<AudioDiagnosticsModal.Model>
@@ -51,30 +49,30 @@
             @if (!IsMaui) {
                 <div class="diag-section">
                     <div class="diag-section-header">Web Audio context</div>
-                    @if (_context is { ValueKind: JsonValueKind.Object } ctx) {
+                    @if (_playback?.Context is { } ctx) {
                         <div class="diag-row">
                             <span class="diag-label">State</span>
-                            <span class="diag-value">@GetStr(ctx, "state")@(GetBool(ctx, "isRunning") ? "" : " (not running)")</span>
+                            <span class="diag-value">@ctx.State@(ctx.IsRunning ? "" : " (not running)")</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Ready</span>
-                            <span class="diag-value">@YesNo(GetBool(ctx, "isReady")) · maintained @YesNo(GetBool(ctx, "isMaintained"))</span>
+                            <span class="diag-value">@YesNo(ctx.IsReady) · maintained @YesNo(ctx.IsMaintained)</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Refs</span>
-                            <span class="diag-value">@(GetNum(ctx, "refCount").ToString("0")) (used @YesNo(GetBool(ctx, "isUsed")))</span>
+                            <span class="diag-value">@ctx.RefCount (used @YesNo(ctx.IsUsed))</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Background</span>
-                            <span class="diag-value">@(GetStr(ctx, "backgroundActivity") is { Length: > 0 } bg ? bg : "—")</span>
+                            <span class="diag-value">@(ctx.BackgroundActivity is { Length: > 0 } bg ? bg : "—")</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Sample rate</span>
-                            <span class="diag-value">@FormatHz(GetNumOrNull(ctx, "sampleRate"))</span>
+                            <span class="diag-value">@FormatHz(ctx.SampleRate)</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Output latency</span>
-                            <span class="diag-value">@FormatMs(GetNumOrNull(ctx, "outputLatencyMs"))</span>
+                            <span class="diag-value">@FormatMs(ctx.OutputLatencyMs)</span>
                         </div>
                     }
                     else {
@@ -139,35 +137,35 @@
         }
 
         @if (_activeTab == Tab.Playback) {
+            var players = _playback?.Players ?? [];
             <div class="diag-section">
                 <div class="diag-section-header">
                     Players
-                    <span class="diag-badge">@_players.Length</span>
+                    <span class="diag-badge">@players.Length</span>
                 </div>
-                @if (_players.Length == 0) {
+                @if (players.Length == 0) {
                     <div class="diag-row">
                         <span class="diag-dim">No active players</span>
                     </div>
                 }
                 else {
-                    @foreach (var p in _players) {
-                        var playback = GetStr(p, "playbackState");
+                    @foreach (var p in players) {
                         <div class="diag-stream">
                             <div class="diag-stream-header">
-                                <span>@(GetStr(p, "authorId") is { Length: > 0 } a ? a : "#" + GetStr(p, "internalId"))</span>
-                                <span class="diag-chip @PlaybackChipClass(playback)">@playback</span>
+                                <span>@(p.AuthorId is { Length: > 0 } a ? a : "#" + p.InternalId)</span>
+                                <span class="diag-chip @PlaybackChipClass(p.PlaybackState)">@p.PlaybackState</span>
                             </div>
                             <div class="diag-row">
                                 <span class="diag-label">Buffer</span>
-                                <span class="diag-value">@GetStr(p, "bufferState") (@((GetNum(p, "bufferedDuration") * 1000).ToString("0")) ms)</span>
+                                <span class="diag-value">@p.BufferState (@((p.BufferedDuration * 1000).ToString("0")) ms)</span>
                             </div>
                             <div class="diag-row">
                                 <span class="diag-label">Presentation lag</span>
-                                <span class="diag-value">@FormatMs(GetNumOrNull(p, "presentationLagMs"))</span>
+                                <span class="diag-value">@FormatMs(p.PresentationLagMs)</span>
                             </div>
                             <div class="diag-row">
                                 <span class="diag-label">Target buffer</span>
-                                <span class="diag-value">@(GetNum(p, "targetBufferSizeMs").ToString("0"))ms</span>
+                                <span class="diag-value">@(p.TargetBufferSizeMs.ToString("0"))ms</span>
                             </div>
                         </div>
                     }
@@ -211,21 +209,17 @@
 </DialogFrame>
 
 @code {
-    private static readonly string JSCollectMethod = $"{BlazorUIAppModule.ImportName}.collectAudioPlaybackDiagnostics";
-    private static readonly string JSResumeContextMethod = $"{BlazorUIAppModule.ImportName}.audioDebugResumeContext";
-
     private enum Tab { Session, Playback, Actions }
 
     private Timer? _pollTimer;
     private bool _isDisposed;
     private Tab _activeTab = Tab.Session;
     private ElementReference? _copyTextSourceRef;
-    private JsonElement? _context;
-    private JsonElement[] _players = [];
+    private AudioPlaybackDiagnostics? _playback;
     private AudioFocusDiagnostics _focus = AudioFocusDiagnostics.Unsupported;
     private string? _lastActionResult;
 
-    private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
+    private AudioDiagnosticsUI Diagnostics => Hub.AudioDiagnosticsUI;
     private bool IsMaui => Hub.HostInfo.AppKind.IsMaui();
     private ILogger Log => field ??= Services.LogFor<AudioDiagnosticsModal>();
 
@@ -260,34 +254,19 @@
     private async Task Poll() {
         if (_isDisposed)
             return;
-        // Native and JS reads are independent: on the MAUI app the JS Web Audio
-        // context is null and its collector is irrelevant, but the native session
-        // data must still refresh — so a JS failure can't abort the whole poll.
+        // The native session read and the (web-only) JS playback read are independent,
+        // so a JS failure can't block the native session refresh.
         try {
-            _focus = AudioFocusUI.GetDiagnostics();
+            _focus = Diagnostics.GetFocusDiagnostics();
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Poll: AudioFocusUI.GetDiagnostics failed");
+            Log.LogWarning(e, "Poll: focus diagnostics failed");
         }
-        // The JS Web Audio pipeline is web-only; native apps play through the native
-        // engine and hide those sections, so skip the interop there.
-        if (!IsMaui) {
-            try {
-                // TODO: use custom type for deserializing
-                // TODO: extract AudioDiagnosticsUI
-                var diag = await JS.InvokeAsync<JsonElement>(JSCollectMethod);
-                if (diag.ValueKind == JsonValueKind.Object) {
-                    _context = diag.TryGetProperty("context", out var ctx) && ctx.ValueKind == JsonValueKind.Object
-                        ? ctx
-                        : null;
-                    _players = diag.TryGetProperty("players", out var players) && players.ValueKind == JsonValueKind.Array
-                        ? players.EnumerateArray().ToArray()
-                        : [];
-                }
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "Poll: collectAudioPlaybackDiagnostics failed");
-            }
+        try {
+            _playback = await Diagnostics.CollectPlaybackDiagnostics();
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Poll: playback diagnostics failed");
         }
         if (!_isDisposed)
             await InvokeAsync(StateHasChanged);
@@ -302,7 +281,7 @@
 
     private async Task OnReactivateSession() {
         try {
-            await AudioFocusUI.TryRecover();
+            await Diagnostics.Reactivate();
             _lastActionResult = "Reactivate requested";
         }
         catch (Exception e) {
@@ -314,7 +293,7 @@
 
     private async Task OnResumeContext() {
         try {
-            await JS.InvokeVoidAsync(JSResumeContextMethod);
+            await Diagnostics.ResumeContext();
             _lastActionResult = "Resume requested";
         }
         catch (Exception e) {
@@ -343,18 +322,6 @@
 
     private static string FormatHz(double? hz)
         => hz is null ? "—" : $"{hz.Value:0} Hz";
-
-    private static string GetStr(JsonElement el, string prop)
-        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
-
-    private static double GetNum(JsonElement el, string prop)
-        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
-
-    private static double? GetNumOrNull(JsonElement el, string prop)
-        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : null;
-
-    private static bool GetBool(JsonElement el, string prop)
-        => el.TryGetProperty(prop, out var v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False && v.GetBoolean();
 
     // Nested types
 
