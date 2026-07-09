@@ -334,6 +334,10 @@ public static partial class Constants
         // is collapsed to one per (user, chat) per this window via a delay-bucketed event uuid.
         // This bounds the background-banner dismissal lag on other devices (in-app is instant).
         public static readonly TimeSpan ReadReconcileWindow = TimeSpan.FromSeconds(15);
+        // When a present user is already caught up to a chat's head, a new plain message is held
+        // (not pushed) for this grace period instead of alerting immediately. If the user reads it
+        // within the window it's dropped silently on every device; otherwise it alerts as usual.
+        public static readonly TimeSpan ActiveReaderGrace = TimeSpan.FromSeconds(10);
     }
 
     public static class Media

@@ -30,6 +30,7 @@ public class NotificationsBackend(IServiceProvider services)
     private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
+    private IUserPresencesBackend UserPresencesBackend { get; } = services.GetRequiredService<IUserPresencesBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbExplicitNotification> DbExplicitNotificationResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbExplicitNotification>>();
@@ -129,6 +130,13 @@ public class NotificationsBackend(IServiceProvider services)
 
         if (IsSoftUpdate(info, notification)) {
             EnqueueSoft(userId, notification, info);
+            return;
+        }
+
+        if (await ShouldDeferForActiveReader(userId, notification, cancellationToken).ConfigureAwait(false)) {
+            DebugLog?.LogInformation("OnNotify: deferred (active reader). UserId={UserId}, Id={NotificationId}",
+                userId, notification.Id);
+            EnqueueSoft(userId, notification, info, Constants.Notification.ActiveReaderGrace);
             return;
         }
 
@@ -856,6 +864,33 @@ public class NotificationsBackend(IServiceProvider services)
         return readEntryLid >= entryLid;
     }
 
+    // Holds a plain chat message instead of alerting when the present recipient is already caught
+    // up to the chat's head: they're actively reading, so it's likely read within the grace window
+    // and then dropped silently on every device. Mentions/replies/ringers, users not caught up, and
+    // absent users all alert immediately. No message is lost — an unread one alerts after the grace
+    // window via the deferred re-check (Reconcile drops it only once actually read).
+    private async Task<bool> ShouldDeferForActiveReader(
+        UserId userId, Notification notification, CancellationToken cancellationToken)
+    {
+        if (NotificationHelper.GetImportance(notification.Kind) != NotificationImportance.Ordinary)
+            return false;
+
+        var (chatId, entryLid) = GetReadAnchor(notification);
+        if (chatId is null || entryLid <= 0)
+            return false;
+
+        var readEntryLid = (await ChatPositionsBackend
+            .Get(userId, chatId, ChatPositionKind.Read, cancellationToken)
+            .ConfigureAwait(false)).EntryLid;
+        // long.MaxValue is the client's "unbounded" read sentinel; caught up == read the entry just
+        // before this one (readEntryLid + 1 >= entryLid), tolerating the common consecutive-lid case.
+        if (readEntryLid is <= 0 or long.MaxValue || readEntryLid + 1 < entryLid)
+            return false;
+
+        var lastCheckIn = await UserPresencesBackend.GetLastCheckIn(userId, cancellationToken).ConfigureAwait(false);
+        return lastCheckIn is { } at && Clocks.SystemClock.Now - at <= Constants.Presence.AwayTimeout;
+    }
+
     // Returns the notification mode of the notifications' chats, read once per distinct chat
     // (in parallel).
     private async Task<Dictionary<ChatId, ChatNotificationMode>> GetChatNotificationModes(
@@ -1068,7 +1103,8 @@ public class NotificationsBackend(IServiceProvider services)
         return sinceLastPush <= Constants.Notification.SilencePeriod;
     }
 
-    private void EnqueueSoft(UserId userId, Notification notification, UserNotificationInfo info)
+    private void EnqueueSoft(
+        UserId userId, Notification notification, UserNotificationInfo info, TimeSpan minDelay = default)
     {
         bool mustSchedule;
         while (true) {
@@ -1085,7 +1121,11 @@ public class NotificationsBackend(IServiceProvider services)
         if (!mustSchedule)
             return;
 
+        // minDelay floors the coalescing delay: the active-reader grace must elapse even when the
+        // previous push is old (which would otherwise process the buffer immediately).
         var delay = Constants.Notification.SilencePeriod - (Clocks.SystemClock.Now - info.LastPushAt);
+        if (delay < minDelay)
+            delay = minDelay;
         ScheduleProcess(userId, delay);
     }
 
@@ -1094,7 +1134,9 @@ public class NotificationsBackend(IServiceProvider services)
             try {
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, StopToken).ConfigureAwait(false);
-                await Commander.Call(new NotificationsBackend_Process(userId), StopToken).ConfigureAwait(false);
+                // Outermost: this fires long after the originating command's context (and its scoped
+                // service provider) is disposed, so it must not nest under the ambient CommandContext.
+                await Commander.Call(new NotificationsBackend_Process(userId), true, StopToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) {
                 // Host is shutting down; the soft buffer is in-memory and intentionally transient.
