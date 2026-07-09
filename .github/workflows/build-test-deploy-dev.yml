@@ -26,11 +26,6 @@ on:
         required: false
         default: false
         description: Build the iOS app with Native AOT (experimental, hits upstream linker bug — dotnet/runtime#119380)
-      uploadDevSymbols:
-        type: boolean
-        required: false
-        default: false
-        description: Upload Android debug symbols to Sentry for DEV builds too (PROD always uploads)
   create:
   push:
     branches:
@@ -85,7 +80,6 @@ jobs:
       MUST_BUILD_PACKAGE: ${{ steps.calc.outputs.MUST_BUILD_PACKAGE }}
       ENVIRONMENT: ${{ steps.calc.outputs.ENVIRONMENT }}
       IS_PROD_BRANCH: ${{ steps.calc.outputs.IS_PROD_BRANCH }}
-      UPLOAD_SENTRY_SYMBOLS: ${{ steps.calc.outputs.UPLOAD_SENTRY_SYMBOLS }}
     steps:
       - id: calc
         name: Calculate params for package jobs
@@ -115,19 +109,11 @@ jobs:
             environment=""
           fi
 
-          # Sentry symbol upload: always for PROD builds; for DEV only when explicitly requested
-          # (dev branch churns many builds/day — no point flooding Sentry's debug-file storage).
-          uploadSentrySymbols=false
-          if [[ $isDevMaui == false || "${{ github.event.inputs.uploadDevSymbols }}" == "true" ]]; then
-            uploadSentrySymbols=true
-          fi
-
           echo "IS_DEV_MAUI=$isDevMaui" | tee -a $GITHUB_OUTPUT
           echo "APP_ID=$appId" | tee -a $GITHUB_OUTPUT
           echo "MUST_BUILD_PACKAGE=$mustBuildPkg" | tee -a $GITHUB_OUTPUT
           echo "ENVIRONMENT=$environment" | tee -a $GITHUB_OUTPUT
           echo "IS_PROD_BRANCH=$isProdBranch" | tee -a $GITHUB_OUTPUT
-          echo "UPLOAD_SENTRY_SYMBOLS=$uploadSentrySymbols" | tee -a $GITHUB_OUTPUT
 
   build:
     name: Build image for ${{ github.ref_name }}
@@ -957,18 +943,6 @@ jobs:
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
       ActualChat_AndroidSigningKeyPass: ${{ secrets.ANDROIDSIGNINGKEYPASS }}
       ActualChat_AndroidSigningStorePass: ${{ secrets.ANDROIDSIGNINGSTOREPASS }}
-      # Sentry debug-symbol + ProGuard mapping upload for Android crash/ANR symbolication.
-      # SentryUploadSymbols / SentryUploadAndroidProguardMapping are MSBuild properties that
-      # Sentry.targets reads to enable its bundled sentry-cli upload; MSBuild picks them up
-      # from these env vars. Kept CI-only (no csproj changes) so local builds never touch Sentry.
-      # Gated by UPLOAD_SENTRY_SYMBOLS: always on for PROD, opt-in for DEV (uploadDevSymbols input).
-      # SENTRY_AUTH_TOKEN is the env var sentry-cli reads (kept off command lines); the secret
-      # holding the org token is named SENTRY_ACCESS_TOKEN.
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_ACCESS_TOKEN }}
-      SentryOrg: actual-chat
-      SentryProject: actual-chat-ui
-      SentryUploadSymbols: ${{ needs.calc-pkg-params.outputs.UPLOAD_SENTRY_SYMBOLS }}
-      SentryUploadAndroidProguardMapping: ${{ needs.calc-pkg-params.outputs.UPLOAD_SENTRY_SYMBOLS }}
       IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
       APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
       AAB_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.aab
