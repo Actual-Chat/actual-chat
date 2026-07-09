@@ -67,5 +67,16 @@ public abstract partial record Notification(
     // Merges this incoming notification with the one it replaces (null = first for its key). The
     // base keeps only the identity carry-over; subtypes that coalesce accumulate their state here.
     public virtual Notification MergeWith(Notification? existing)
-        => existing is null ? this : WithSimilar(existing);
+    {
+        if (existing is null)
+            return this;
+
+        // A redelivered (same SentAt) or out-of-order older event carries no new content: return the
+        // existing instance unchanged so the reconcile's reference-equality check skips a duplicate
+        // push. Without this an at-least-once redelivery re-alerts — an incoming call would re-ring.
+        // Coalescing kinds override this with their own idempotent merge.
+        if (SentAt <= existing.SentAt)
+            return existing;
+        return WithSimilar(existing);
+    }
 }
