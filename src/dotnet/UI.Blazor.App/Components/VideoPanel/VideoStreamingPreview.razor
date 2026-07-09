@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Services.Video
 @inherits ComputedStateComponent<AppUIHub, VideoStreamingPreview.Model>
 @{
     var m = State.Value;
@@ -57,8 +58,14 @@
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ElementReference Ref { get; set; }
     private IJSObjectReference? JSRef { get; set; }
+    private INativeCameraPreview? _nativePreview;
     private bool _isSuspended;
     private Model _suspendedModel = Model.None;
+
+    // Mac Catalyst: the WKWebView can't render getUserMedia, so the self-tile is
+    // fed native JPEG frames captured alongside the live publish, same as the
+    // join-video preview modal. Camera source only; ScreenCast stays on JS.
+    private bool UseNativePreview => OperatingSystem.IsMacCatalyst() && SourceKind == VideoSourceKind.Camera;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public VideoSourceKind SourceKind { get; set; }
@@ -66,6 +73,10 @@
 
     public override async ValueTask DisposeAsync() {
         ChatVideoUI.SuspendOwnStreamingPreview -= OnSuspendOwnStreamingPreview;
+        if (_nativePreview is not null) {
+            await _nativePreview.DisposeAsync().ConfigureAwait(false);
+            _nativePreview = null;
+        }
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         await base.DisposeAsync();
@@ -96,11 +107,49 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender)
-            return;
+        if (firstRender) {
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                JSCreateMethod, Ref, (int)SourceKind, UseNativePreview);
+            ChatVideoUI.SuspendOwnStreamingPreview += OnSuspendOwnStreamingPreview;
+        }
 
-        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, (int)SourceKind);
-        ChatVideoUI.SuspendOwnStreamingPreview += OnSuspendOwnStreamingPreview;
+        if (UseNativePreview)
+            await SyncNativePreview();
+    }
+
+    // Run the native capture-backed preview exactly while the local camera is
+    // recording and the surface isn't suspended (a JoinVideoCallModal is not
+    // taking over). Starting it opens a second AVCaptureSession on the same
+    // camera the publisher uses — macOS shares the device across sessions.
+    private async Task SyncNativePreview() {
+        var shouldRun = !_isSuspended && State.Value.IsOwnCameraRecording;
+        if (shouldRun && _nativePreview is null) {
+            _nativePreview = Hub.Services.GetService<INativeCameraPreviewFactory>()?.Create(Hub);
+            _nativePreview?.Start(CameraUI.LastDeviceId, OnNativePreviewFrame);
+        }
+        else if (!shouldRun && _nativePreview is not null) {
+            await _nativePreview.DisposeAsync().ConfigureAwait(false);
+            _nativePreview = null;
+        }
+    }
+
+    // Runs on the capture thread; marshal to the Blazor dispatcher before
+    // touching JSRef and let the returned task gate the native side.
+    private ValueTask OnNativePreviewFrame(byte[] jpeg) {
+        var base64 = Convert.ToBase64String(jpeg);
+        return new ValueTask(InvokeAsync(async () => {
+            var jsRef = JSRef;
+            if (jsRef is null)
+                return;
+
+            try {
+                await jsRef.InvokeVoidAsync("renderPreviewFrame", base64);
+            }
+            catch {
+                // The renderer/JS ref can go away as the tile unmounts — a
+                // dropped preview frame is harmless.
+            }
+        }));
     }
 
     private void OnSettingsClick()
