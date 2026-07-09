@@ -54,7 +54,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<LiveLocationReporter>(ServiceLifetime.Scoped);
         fusion.AddService<CameraUI>(ServiceLifetime.Scoped);
         services.AddScoped(c => new VideoQualityUI(c.AppUIHub()));
-        services.AddScoped(c => new AudioDiagnosticsUI(c.AppUIHub()));
+        fusion.AddService<AudioDiagnosticsUI>(ServiceLifetime.Scoped);
         fusion.AddService<VideoPanelLayoutCalculator>(ServiceLifetime.Transient);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<HighlightUI>(ServiceLifetime.Scoped);

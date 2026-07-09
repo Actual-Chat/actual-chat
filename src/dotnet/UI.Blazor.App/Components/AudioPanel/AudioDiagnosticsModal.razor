@@ -49,7 +49,7 @@
             @if (!IsMaui) {
                 <div class="diag-section">
                     <div class="diag-section-header">Web Audio context</div>
-                    @if (_playback?.Context is { } ctx) {
+                    @if (m.Playback?.Context is { } ctx) {
                         <div class="diag-row">
                             <span class="diag-label">State</span>
                             <span class="diag-value">@ctx.State@(ctx.IsRunning ? "" : " (not running)")</span>
@@ -85,7 +85,7 @@
 
             <div class="diag-section">
                 <div class="diag-section-header">Native audio session</div>
-                @if (!_focus.IsSupported) {
+                @if (!m.Focus.IsSupported) {
                     <div class="diag-row">
                         <span class="diag-value diag-dim">Not managed on this platform (web / always focused)</span>
                     </div>
@@ -93,27 +93,27 @@
                 else {
                     <div class="diag-row">
                         <span class="diag-label">Mode</span>
-                        <span class="diag-value">@_focus.ActiveMode</span>
+                        <span class="diag-value">@m.Focus.ActiveMode</span>
                     </div>
                     <div class="diag-row">
                         <span class="diag-label">Interrupted</span>
-                        <span class="diag-value @(_focus.IsInterrupted ? "diag-error" : "")">@YesNo(_focus.IsInterrupted)</span>
+                        <span class="diag-value @(m.Focus.IsInterrupted ? "diag-error" : "")">@YesNo(m.Focus.IsInterrupted)</span>
                     </div>
                     <div class="diag-row">
                         <span class="diag-label">Suspended</span>
-                        <span class="diag-value @(_focus.IsSuspended ? "diag-error" : "")">@YesNo(_focus.IsSuspended)</span>
+                        <span class="diag-value @(m.Focus.IsSuspended ? "diag-error" : "")">@YesNo(m.Focus.IsSuspended)</span>
                     </div>
                     <div class="diag-row">
                         <span class="diag-label">Configured</span>
-                        <span class="diag-value">@YesNo(_focus.IsSessionConfigured)</span>
+                        <span class="diag-value">@YesNo(m.Focus.IsSessionConfigured)</span>
                     </div>
-                    @if (_focus.Scopes.Count > 0) {
+                    @if (m.Focus.Scopes.Count > 0) {
                         <div class="diag-row">
                             <span class="diag-label">Scopes</span>
-                            <span class="diag-value">@FormatScopes(_focus.Scopes)</span>
+                            <span class="diag-value">@FormatScopes(m.Focus.Scopes)</span>
                         </div>
                     }
-                    @if (_focus.Session is { } session) {
+                    @if (m.Focus.Session is { } session) {
                         <div class="diag-group-header">AVAudioSession</div>
                         <div class="diag-row">
                             <span class="diag-label">Category</span>
@@ -137,7 +137,7 @@
         }
 
         @if (_activeTab == Tab.Playback) {
-            var players = _playback?.Players ?? [];
+            var players = m.Playback?.Players ?? [];
             <div class="diag-section">
                 <div class="diag-section-header">
                     Players
@@ -211,12 +211,8 @@
 @code {
     private enum Tab { Session, Playback, Actions }
 
-    private Timer? _pollTimer;
-    private bool _isDisposed;
     private Tab _activeTab = Tab.Session;
     private ElementReference? _copyTextSourceRef;
-    private AudioPlaybackDiagnostics? _playback;
-    private AudioFocusDiagnostics _focus = AudioFocusDiagnostics.Unsupported;
     private string? _lastActionResult;
 
     private AudioDiagnosticsUI Diagnostics => Hub.AudioDiagnosticsUI;
@@ -225,18 +221,6 @@
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    public override async ValueTask DisposeAsync() {
-        _isDisposed = true;
-        if (_pollTimer is not null)
-            await _pollTimer.DisposeAsync();
-        await base.DisposeAsync();
-    }
-
-    protected override void OnAfterRender(bool firstRender) {
-        if (firstRender)
-            _pollTimer ??= new Timer(_ => _ = Poll(), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
-    }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
@@ -248,28 +232,8 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var showActionsTab = account.IsAdmin || Hub.HostInfo.IsDevelopmentInstance;
-        return new ComputedModel(showActionsTab);
-    }
-
-    private async Task Poll() {
-        if (_isDisposed)
-            return;
-        // The native session read and the (web-only) JS playback read are independent,
-        // so a JS failure can't block the native session refresh.
-        try {
-            _focus = Diagnostics.GetFocusDiagnostics();
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Poll: focus diagnostics failed");
-        }
-        try {
-            _playback = await Diagnostics.CollectPlaybackDiagnostics();
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Poll: playback diagnostics failed");
-        }
-        if (!_isDisposed)
-            await InvokeAsync(StateHasChanged);
+        var diagnostics = await Diagnostics.GetState(cancellationToken).ConfigureAwait(false);
+        return new ComputedModel(showActionsTab, diagnostics.Focus, diagnostics.Playback);
     }
 
     private void OnSelectTab(Tab tab) {
@@ -330,8 +294,11 @@
         public ChatId ChatId { get; } = chatId;
     }
 
-    public sealed record ComputedModel(bool ShowActionsTab)
+    public sealed record ComputedModel(
+        bool ShowActionsTab,
+        AudioFocusDiagnostics Focus,
+        AudioPlaybackDiagnostics? Playback)
     {
-        public static readonly ComputedModel Empty = new(false);
+        public static readonly ComputedModel Empty = new(false, AudioFocusDiagnostics.Unsupported, null);
     }
 }
