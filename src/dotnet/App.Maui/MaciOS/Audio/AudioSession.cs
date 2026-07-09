@@ -28,6 +28,20 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     public Task EnsureCorrectOutputRoute()
         => DispatchToMainThread(EnsureCorrectOutputRouteUnsafe);
 
+    public AudioSessionDiagnostics GetDiagnostics()
+    {
+        var session = AVAudioSession.SharedInstance();
+        var outputs = session.CurrentRoute?.Outputs ?? [];
+        var routes = new List<string>(outputs.Length);
+        foreach (var output in outputs)
+            routes.Add($"{output.PortName} ({output.PortType})");
+        return new AudioSessionDiagnostics(
+            session.Category ?? "",
+            session.Mode ?? "",
+            session.OtherAudioPlaying,
+            routes);
+    }
+
     private void ReactivateUnsafe(AudioFocusMode mode)
     {
         var session = AVAudioSession.SharedInstance();

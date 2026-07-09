@@ -48,6 +48,9 @@ public class AudioFocusUI : ProcessorBase
     public virtual Task WarmUp()
         => Task.CompletedTask;
 
+    public virtual AudioFocusDiagnostics GetDiagnostics()
+        => AudioFocusDiagnostics.Unsupported;
+
     // Nested types
 
     private class FakeScope : AudioFocusScope
@@ -58,3 +61,29 @@ public class AudioFocusUI : ProcessorBase
         { }
     }
 }
+
+// Read-only snapshot of the platform audio-focus / session state, surfaced by
+// the Audio Diagnostics UI. `IsSupported` is false on platforms with no native
+// focus management (web), where focus is implicitly always held.
+public sealed record AudioFocusDiagnostics(
+    bool IsSupported,
+    AudioFocusMode ActiveMode,
+    bool IsInterrupted,
+    bool IsSuspended,
+    bool IsSessionConfigured,
+    IReadOnlyList<AudioFocusScopeInfo> Scopes,
+    AudioSessionDiagnostics? Session)
+{
+    public static readonly AudioFocusDiagnostics Unsupported =
+        new(false, AudioFocusMode.Tune, false, false, false, [], null);
+}
+
+public sealed record AudioFocusScopeInfo(AudioFocusMode Mode, int Count);
+
+// Native AVAudioSession snapshot (iOS / Mac Catalyst only). Values are strings
+// so this type can live in UI.Blazor without an AVFoundation dependency.
+public sealed record AudioSessionDiagnostics(
+    string Category,
+    string Mode,
+    bool IsOtherAudioPlaying,
+    IReadOnlyList<string> OutputRoutes);

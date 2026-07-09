@@ -53,6 +53,17 @@
             <Toggle IsChecked="@m.IsVideoDiagnosticsEnabled"/>
         </Right>
     </TileItem>
+    <TileItem Click="@OnAudioDiagnosticsEnabledClick">
+        <Content>Enable audio diagnostics</Content>
+        <Right>
+            <Toggle IsChecked="@m.IsAudioDiagnosticsEnabled"/>
+        </Right>
+    </TileItem>
+    @if (m.IsAudioDiagnosticsEnabled) {
+        <TileItem Click="@OnOpenAudioDiagnosticsClick">
+            <Content>Open audio diagnostics</Content>
+        </TileItem>
+    }
     @if (MauiLogAccessor?.GetLogFile != null) {
         <TileItem Click="@OnGetLogFileClick">
             <Content>
@@ -87,7 +98,8 @@
             settings.IsIncompleteUIEnabled ?? false,
             account.IsAdmin,
             appSettings.IsLogViewerEnabledOrDefault,
-            appSettings.IsVideoDiagnosticsEnabledOrDefault);
+            appSettings.IsVideoDiagnosticsEnabledOrDefault(Hub.HostInfo.IsDevelopmentInstance),
+            appSettings.IsAudioDiagnosticsEnabledOrDefault(Hub.HostInfo.IsDevelopmentInstance));
     }
 
     private Task OnExperimentalFeatureEnabledClick()
@@ -109,8 +121,16 @@
 
     private Task OnVideoDiagnosticsEnabledClick()
         => LocalSettings.LocalAppSettings().Update(x => x with {
-            IsVideoDiagnosticsEnabled = !x.IsVideoDiagnosticsEnabledOrDefault,
+            IsVideoDiagnosticsEnabled = !x.IsVideoDiagnosticsEnabledOrDefault(Hub.HostInfo.IsDevelopmentInstance),
         });
+
+    private Task OnAudioDiagnosticsEnabledClick()
+        => LocalSettings.LocalAppSettings().Update(x => x with {
+            IsAudioDiagnosticsEnabled = !x.IsAudioDiagnosticsEnabledOrDefault(Hub.HostInfo.IsDevelopmentInstance),
+        });
+
+    private void OnOpenAudioDiagnosticsClick()
+        => Hub.ChatAudioUI.ShowAudioDiagnostics(default);
 
     private Task OnGetLogFileClick()
         => MauiLogAccessor!.GetLogFile!.Invoke();
@@ -122,8 +142,9 @@
         bool IsIncompleteUIEnabled,
         bool IsAdmin,
         bool IsLogUIEnabled,
-        bool IsVideoDiagnosticsEnabled)
+        bool IsVideoDiagnosticsEnabled,
+        bool IsAudioDiagnosticsEnabled)
     {
-        public static readonly Model None = new(false, false, false, false, false);
+        public static readonly Model None = new(false, false, false, false, false, false);
     }
 }

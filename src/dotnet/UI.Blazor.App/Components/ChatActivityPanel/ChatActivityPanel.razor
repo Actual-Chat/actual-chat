@@ -58,6 +58,17 @@
     }
     <div class="flex-1"></div>
     <div class="c-buttons">
+        @if (m.CanShowAudioDiagnostics) {
+            <HeaderButton
+                Class="unhovered"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnAudioDiagnosticsClick"
+                Tooltip="Audio diagnostics"
+                TooltipPosition="FloatingPosition.Bottom">
+                <i class="icon-activity"></i>
+            </HeaderButton>
+        }
         @if (!isListening && !isRecordingHere && !isOwnVideoStreaming) {
             <Button
                 Class="btn-sm btn-transparent unhovered not-listening"
@@ -123,9 +134,14 @@
         var isOwnVideoStreaming = ownSourceKind is not null;
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatchingHere = chat.Id == watchingChatId;
-        var model = new Model(audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere);
+        var appSettings = await Hub.LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        var canShowAudioDiagnostics = appSettings.IsAudioDiagnosticsEnabledOrDefault(Hub.HostInfo.IsDevelopmentInstance);
+        var model = new Model(audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere, canShowAudioDiagnostics);
         return model;
     }
+
+    private void OnAudioDiagnosticsClick()
+        => ChatAudioUI.ShowAudioDiagnostics(Chat.Id);
 
     private async Task OnJoinClick() {
         // User is not participating — join with listening only (no recording, no camera)
@@ -178,7 +194,8 @@
         bool IsAnyoneTalking,
         bool HasRemoteStreams,
         bool IsOwnVideoStreaming,
-        bool IsWatchingHere) {
+        bool IsWatchingHere,
+        bool CanShowAudioDiagnostics) {
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
     }

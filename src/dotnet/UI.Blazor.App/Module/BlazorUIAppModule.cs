@@ -3,6 +3,7 @@ using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Components.AudioPanel;
 using ActualChat.UI.Blazor.App.Components.AudioPlayer;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
@@ -142,6 +143,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<JoinVideoCallModal.Model, JoinVideoCallModal>()
             .Add<ScreenCastAlreadyActiveModal.Model, ScreenCastAlreadyActiveModal>()
             .Add<VideoDiagnosticsModal.Model, VideoDiagnosticsModal>()
+            .Add<AudioDiagnosticsModal.Model, AudioDiagnosticsModal>()
             .Add<IncomingCallModal.Model, IncomingCallModal>()
             .Add<TimeZoneEditorModal.Model, TimeZoneEditorModal>()
             .Add<ApiKeyCreateModal.Model, ApiKeyCreateModal>()

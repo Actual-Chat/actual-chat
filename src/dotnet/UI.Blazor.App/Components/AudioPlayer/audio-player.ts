@@ -6,7 +6,7 @@ import {
     AudioContextAction,
 } from '../../Services/audio-context-source';
 import { AudioContextTrait, AttachedAudioContextTrait, DestinationFallbackTrait, DemandInteractiveUI } from '../../Services/audio-context-traits';
-import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
+import { BufferState, FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
@@ -135,8 +135,22 @@ class AttachedFeederNode implements AttachedAudioContextTrait {
     }
 }
 
+export interface AudioPlayerDiagnostics {
+    internalId: string;
+    authorId: string | null;
+    playbackState: PlaybackState;
+    bufferState: BufferState;
+    presentationLagMs: number | null;
+    targetBufferSizeMs: number;
+    playingAt: number;
+    bufferedDuration: number;
+}
+
 export class AudioPlayer implements Resettable {
     private static readonly pool: ObjectPool<AudioPlayer> = new ObjectPool<AudioPlayer>(() => new AudioPlayer());
+    // Live set of players that are currently playing a track. The pool above also
+    // holds idle/parked instances, so diagnostics must read this, not the pool.
+    private static readonly activePlayers = new Set<AudioPlayer>();
     private static whenInitialized = new PromiseSource<void>();
     private static nextInternalId = 0;
     private static initStarted = false;
@@ -150,6 +164,10 @@ export class AudioPlayer implements Resettable {
     private whenEnded?: PromiseSource<void>;
 
     private playbackState: PlaybackState = 'paused';
+    private lastBufferState: BufferState = 'ok';
+    private lastPresentationLagMs: number | null = null;
+    private lastPlayingAt = 0;
+    private lastBufferedDuration = 0;
     private targetBufferSizeMs = 0;
     private authorId: string | null = null;
     private readonly audioLatencyEma = new RunningEMA(0, 3, 0.3);
@@ -172,6 +190,23 @@ export class AudioPlayer implements Resettable {
 
     public static get isInitialized() {
         return AudioPlayer.whenInitialized.isCompleted;
+    }
+
+    public static collectDiagnostics(): AudioPlayerDiagnostics[] {
+        return [...AudioPlayer.activePlayers].map(p => p.getDiagnostics());
+    }
+
+    public getDiagnostics(): AudioPlayerDiagnostics {
+        return {
+            internalId: this.internalId,
+            authorId: this.authorId,
+            playbackState: this.playbackState,
+            bufferState: this.lastBufferState,
+            presentationLagMs: this.lastPresentationLagMs,
+            targetBufferSizeMs: this.targetBufferSizeMs,
+            playingAt: this.lastPlayingAt,
+            bufferedDuration: this.lastBufferedDuration,
+        };
     }
 
     public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
@@ -261,7 +296,12 @@ export class AudioPlayer implements Resettable {
         this.lastReportAttemptedAtMs = 0;
         this.lastReportFailedAtMs = 0;
         this.warnedFeederMissingInFrame = false;
+        this.lastBufferState = 'ok';
+        this.lastPresentationLagMs = null;
+        this.lastPlayingAt = 0;
+        this.lastBufferedDuration = 0;
         this.whenEnded = new PromiseSource<void>();
+        AudioPlayer.activePlayers.add(this);
 
         // Create a ref with the feeder node trait
         this.contextRef = audioContextSource.createRef(this.feederNodeTrait, DemandInteractiveUI.instance);
@@ -309,6 +349,7 @@ export class AudioPlayer implements Resettable {
 
     public async reset(): Promise<void> {
         debugLog?.log(`#${this.internalId} reset()`);
+        AudioPlayer.activePlayers.delete(this);
         const attachedFeeder = this.contextRef?.getTrait<AttachedFeederNode>(this.feederNodeTrait);
         if (attachedFeeder) {
             void attachedFeeder.feederNode.pause(rpcNoWait);
@@ -448,6 +489,11 @@ export class AudioPlayer implements Resettable {
                 `buffer: ${state.bufferState} (${state.bufferedDuration}s)`);
 
         this.playbackState = state.playbackState;
+        this.lastBufferState = state.bufferState;
+        this.lastPlayingAt = state.playingAt;
+        this.lastBufferedDuration = state.bufferedDuration;
+        if (state.presentationLagMs !== null)
+            this.lastPresentationLagMs = state.presentationLagMs;
         if (this.playbackState === 'ended') {
             try {
                 await this.reportEnded();
@@ -461,6 +507,7 @@ export class AudioPlayer implements Resettable {
                 this.contextRef?.dispose();
                 this.contextRef = undefined;
                 this.whenEnded?.resolve(undefined);
+                AudioPlayer.activePlayers.delete(this);
                 AudioPlayer.pool.release(this);
             }
         }

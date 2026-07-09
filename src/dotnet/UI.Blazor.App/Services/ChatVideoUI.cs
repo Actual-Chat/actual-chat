@@ -144,7 +144,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             CanToggleVideo: isVideoAvailable,
             CanToggleScreenCast: !isNarrow && !BrowserInfo.IsMobile && isVideoAvailable,
             CanToggleChatPanel: !isNarrow && mode == VideoPanelMode.Expanded,
-            CanShowDiagnostics: settings.IsVideoDiagnosticsEnabledOrDefault || HostInfo.IsDevelopmentInstance,
+            CanShowDiagnostics: settings.IsVideoDiagnosticsEnabledOrDefault(HostInfo.IsDevelopmentInstance),
             CanShowVoiceSettings: true,
             CanShowVideoSettings: isVideoAvailable);
     }
