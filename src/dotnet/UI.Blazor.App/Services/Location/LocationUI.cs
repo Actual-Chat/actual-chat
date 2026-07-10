@@ -6,6 +6,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
+    private static readonly TimeSpan RemainingTextUpdatePeriod = TimeSpan.FromSeconds(60);
+
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
     private LiveLocationReporter Reporter => field ??= Hub.Services.GetRequiredService<LiveLocationReporter>();
 
@@ -20,7 +22,8 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
         var avatars = new List<Avatar>(locations.Count);
         foreach (var location in locations) {
-            var author = await Hub.Authors.Get(Session, chatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
+            var author = await Hub.Authors.Get(Session, chatId, location.AuthorId, cancellationToken)
+                .ConfigureAwait(false);
             if (author != null)
                 avatars.Add(author.Avatar);
         }
@@ -40,10 +43,26 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         return cLocation.Value is { Duration.Ticks: > 0 };
     }
 
-    public string GetOwnSharingRemainingText(ChatId chatId, CancellationToken cancellationToken)
+    [ComputeMethod]
+    public virtual async Task<string> GetOwnSharingRemainingText(ChatId chatId, CancellationToken cancellationToken)
     {
-        // TODO: implement and use from location banner and location modal
-        throw new NotImplementedException();
+        var ownLocation = await GetOwnLiveLocation(chatId, cancellationToken).ConfigureAwait(false);
+        if (ownLocation is null)
+            return "";
+
+        return await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, RemainingTextUpdatePeriod, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<SharedLocation?> GetOwnLiveLocation(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return null;
+
+        var locations = await Hub.SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id);
     }
 
     public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)

@@ -53,13 +53,12 @@
 </DialogFrame>
 
 @code {
-    private static readonly TimeSpan CountdownTickPeriod = TimeSpan.FromSeconds(30);
-
     private MapView? _mapView;
 
     private IAuthors Authors => Hub.Authors;
     private ISharedLocations SharedLocations => Hub.SharedLocations;
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
+    private LocationUI LocationUI => field ??= Hub.LocationUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -81,12 +80,11 @@
         // Authors.GetOwn, not AuthorUI.GetOwn: the viewer may have no author here
         // (e.g. reading a public chat they haven't joined), and the latter throws.
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var ownLocation = ownAuthor != null ? locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id) : null;
+        var ownLocation = await LocationUI.GetOwnLiveLocation(chatId, cancellationToken).ConfigureAwait(false);
         var ownPoint = ownLocation?.Point
             ?? await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
-        var ownRemainingText = ownLocation != null
-            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
-            : "";
+        var ownRemainingText = await LocationUI.GetOwnSharingRemainingText(chatId, cancellationToken).ConfigureAwait(false);
+        var now = Clocks.ServerClock.Now;
         var markers = new List<MapMarker>(locations.Count);
         var participants = new List<Participant>(locations.Count);
         foreach (var location in locations) {
@@ -107,7 +105,7 @@
                 location.Point,
                 location.ModifiedAt,
                 distanceText,
-                isOwn ? ownRemainingText : ""));
+                isOwn && location.IsLive(now) ? ownRemainingText : ""));
         }
         participants = participants
             .OrderByDescending(p => p.IsOwn)
@@ -148,7 +146,7 @@
 
         // A live share opens the shared map with everyone currently sharing (Telegram-style);
         // a stopped/one-shot pin stays a single static marker.
-        if (!location.IsLive(Hub.Clocks.ServerClock.Now))
+        if (!location.IsLive(Clocks.ServerClock.Now))
             return [location];
 
         var locations = await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
