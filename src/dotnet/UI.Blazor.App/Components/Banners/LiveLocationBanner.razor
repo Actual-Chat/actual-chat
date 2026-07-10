@@ -62,14 +62,11 @@
         if (locations.Count == 0)
             return Model.None;
 
-        // Authors.GetOwn, not AuthorUI.GetOwn: the viewer may have no author here
-        // (e.g. reading a public chat they haven't joined), and the latter throws.
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownLocation = ownAuthor != null ? locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id) : null;
         var avatars = await Hub.LocationUI.ListAvatars(chatId, cancellationToken).ConfigureAwait(false);
         var remaining = ownLocation != null
-            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken)
-                .ConfigureAwait(false)
+            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
             : "";
         var trackingError = await Hub.LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
 
