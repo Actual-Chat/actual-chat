@@ -18,71 +18,21 @@
                 </div>
             </div>
         }
-        @if (!m.SkipMicrophonePermission) {
-            <div class="step-tile"
-                 @onclick="OnMicrophonePermissionClick">
-                <img draggable="false"
-                     class="step-tile-icon"
-                     alt="Mic"
-                     src="/dist/images/onboarding/mic.svg"/>
+        @foreach (var row in m.Rows) {
+            if (!row.IsVisible)
+                continue;
+
+            var r = row;
+            <div class="step-tile" @onclick="() => OnToggle(r, true)">
+                <i class="step-tile-icon @r.Icon @(r.IsGranted ? "on" : "")"></i>
                 <div class="step-tile-body">
-                    <div class="step-tile-title">
-                        Microphone
-                    </div>
-                    <div class="step-tile-subtitle">
-                        Live-transcribed voice messaging is where @CoreConstants.AppName shines,
-                        but this feature won't work without microphone access.
-                    </div>
+                    <div class="step-tile-title">@r.Title</div>
+                    <div class="step-tile-subtitle">@((MarkupString)r.Subtitle)</div>
                 </div>
-                <Checkbox
-                    IsChecked="@m.RequestMicrophonePermission"
-                    Class="!flex-none"
-                    Change="OnMicrophonePermissionClick"/>
-            </div>
-        }
-        @if (!m.SkipNotificationsPermission) {
-            <div class="step-tile"
-                 @onclick="OnNotificationsPermissionClick">
-                <img draggable="false"
-                     class="step-tile-icon"
-                     alt="Bell"
-                     src="/dist/images/onboarding/bell.svg"/>
-                <div class="step-tile-body">
-                    <div class="step-tile-title">
-                        Notifications
-                    </div>
-                    <div class="step-tile-subtitle">
-                        We send notifications related to the chats you've joined,
-                        and you can mute these notifications on a per-chat basis.
-                    </div>
-                </div>
-                <Checkbox
-                    IsChecked="@m.RequestNotificationsPermission"
-                    Class="!flex-none"
-                    Change="OnNotificationsPermissionClick"/>
-            </div>
-        }
-        @if (!m.SkipContactsPermission) {
-            <div class="step-tile"
-                 @onclick="OnContactsPermissionClick">
-                <img draggable="false"
-                     class="step-tile-icon"
-                     alt="Contacts"
-                     src="/dist/images/onboarding/contacts.svg"/>
-                <div class="step-tile-body">
-                    <div class="step-tile-title">
-                        Contacts
-                    </div>
-                    <div class="step-tile-subtitle">
-                        @CoreConstants.AppName can import your contacts to help you find friends who are already using the service.<br/>
-                        If you grant access to your contact list, we will send the contact names and the hashed values of phone numbers and email addresses to our servers.
-                        This is sufficient for matching purposes, but not enough to restore your actual contacts.
-                    </div>
-                </div>
-                <Checkbox
-                    IsChecked="@m.RequestContactsPermission"
-                    Class="!flex-none"
-                    Change="OnContactsPermissionClick"/>
+                <Toggle
+                    IsChecked="@r.IsGranted"
+                    IsDisabled="@(r.IsGranted || _isRequesting)"
+                    IsCheckedChanged="isOn => OnToggle(r, isOn)"/>
             </div>
         }
         <div class="step-tile">
@@ -102,20 +52,14 @@
 
 @code {
     private PermissionStepModel? _model;
-    private ElementReference _notificationPermissionHandlerRef;
+    private bool _isRequesting;
 
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
-    private NotificationUI NotificationUI => Hub.NotificationUI;
-
-    [Parameter, EditorRequired] public Mutable<ElementReference> NextButtonRef { get; set; } = null!;
 
     public override bool IsCompleted => OnboardingUI.LocalSettings.Value.IsPermissionsStepCompleted;
 
     protected override async Task OnInitializedAsync()
         => _model = await PermissionStepModel.New(Services);
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-        => await UpdateNotificationPermissionHandler();
 
     protected override Task<bool> Validate()
         => Task.FromResult(_model != null);
@@ -123,55 +67,21 @@
     protected override void MarkCompleted()
         => _model?.MarkCompleted();
 
-    protected override async Task<bool> Save() {
-        if (_model is not { } m)
-            return false;
+    protected override Task<bool> Save()
+        => Task.FromResult(_model != null);
 
-        var requests = new List<Func<Task>>();
-        if (m.RequestMicrophonePermission)
-            requests.Add(() => m.MicrophonePermission.CheckOrRequest().AsTask());
-        if (m.RequestNotificationsPermission)
-            requests.Add(() => m.NotificationsPermission.Request());
-        if (m.RequestContactsPermission)
-            requests.Add(() => m.ContactsPermission.CheckOrRequest(mustRequest: true, mustTroubleshoot: false).AsTask());
-
-        for (var i = 0; i < requests.Count; i++) {
-            if (i != 0)
-                await Task.Delay(300);
-            await requests[i].Invoke();
-        }
-        return true;
-    }
-
-    private void OnMicrophonePermissionClick()
-        => _model!.RequestMicrophonePermission = !_model.RequestMicrophonePermission;
-
-    private void OnContactsPermissionClick()
-        => _model!.RequestContactsPermission = !_model.RequestContactsPermission;
-
-    private Task OnNotificationsPermissionClick() {
-        _model!.RequestNotificationsPermission = !_model.RequestNotificationsPermission;
-        return UpdateNotificationPermissionHandler();
-    }
-
-    private async Task UpdateNotificationPermissionHandler() {
-        if (_model is not { } m)
+    private async Task OnToggle(PermissionRow row, bool isOn) {
+        if (!isOn || row.IsGranted || _isRequesting)
             return;
 
-        var mustRegisterHandler = CurrentStep == this && m.RequestNotificationsPermission;
-        var nextButtonRef = NextButtonRef.Value;
-        var isRegistered = nextButtonRef.Id == _notificationPermissionHandlerRef.Id
-            && ReferenceEquals(nextButtonRef.Context, _notificationPermissionHandlerRef.Context);
-        if (isRegistered == mustRegisterHandler)
-            return;
-
-        if (mustRegisterHandler) {
-            await NotificationUI.RegisterRequestNotificationHandler(nextButtonRef);
-            _notificationPermissionHandlerRef = nextButtonRef;
+        _isRequesting = true;
+        StateHasChanged();
+        try {
+            row.IsGranted = await row.Request();
         }
-        else {
-            await NotificationUI.UnregisterRequestNotificationHandler(nextButtonRef);
-            _notificationPermissionHandlerRef = default;
+        finally {
+            _isRequesting = false;
+            StateHasChanged();
         }
     }
 }
