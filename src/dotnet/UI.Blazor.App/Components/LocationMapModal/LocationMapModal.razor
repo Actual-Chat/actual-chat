@@ -25,6 +25,7 @@
         </div>
         @if (m.Participants.Count > 0) {
             <div class="c-participants custom-scrollbar">
+                @* TODO: extract single participant component *@
                 @foreach (var p in m.Participants) {
                     <div class="c-participant" @key="@p.LocationId" @onclick="@(() => OnParticipantClick(p))">
                         <AvatarCircle Avatar="@p.Avatar" Size="@SquareSize.Size10"/>
@@ -83,8 +84,6 @@
         var ownLocation = await LocationUI.GetOwnLiveLocation(chatId, cancellationToken).ConfigureAwait(false);
         var ownPoint = ownLocation?.Point
             ?? await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
-        var ownRemainingText = await LocationUI.GetOwnSharingRemainingText(chatId, cancellationToken).ConfigureAwait(false);
-        var now = Clocks.ServerClock.Now;
         var markers = new List<MapMarker>(locations.Count);
         var participants = new List<Participant>(locations.Count);
         foreach (var location in locations) {
@@ -98,6 +97,7 @@
             var distanceText = !isOwn && ownPoint != null
                 ? ToDistanceText(ownPoint.DistanceTo(location.Point))
                 : "";
+            var remainingTime = await LocationUI.GetRemainingTimeText(location.AuthorId, cancellationToken).ConfigureAwait(false);
             participants.Add(new Participant(
                 location.Id,
                 author.Avatar,
@@ -105,7 +105,7 @@
                 location.Point,
                 location.ModifiedAt,
                 distanceText,
-                isOwn && location.IsLive(now) ? ownRemainingText : ""));
+                remainingTime));
         }
         participants = participants
             .OrderByDescending(p => p.IsOwn)
