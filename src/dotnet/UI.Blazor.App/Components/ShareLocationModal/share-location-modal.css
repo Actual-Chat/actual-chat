@@ -14,10 +14,12 @@
 }
 .share-location-modal .c-permission-block .c-text {
     @apply text-center text-headline-1 text-02;
+    text-wrap: balance;
 }
 .share-location-modal .c-permission-block .c-hint {
     @apply mb-0;
     @apply text-center text-caption-1 text-03;
+    text-wrap: balance;
 }
 .share-location-modal .c-settings {
     @apply w-full;
@@ -25,6 +27,7 @@
 .share-location-modal .c-hint {
     @apply mb-2;
     @apply text-02;
+    text-wrap: balance;
 }
 .share-location-modal .c-duration {
     @apply w-full;
