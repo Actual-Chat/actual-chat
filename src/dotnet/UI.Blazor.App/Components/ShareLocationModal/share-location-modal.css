@@ -2,6 +2,26 @@
     @apply flex-y gap-y-2;
     @apply p-4;
 }
+.share-location-modal .c-permission-block {
+    @apply flex-y items-center justify-center gap-y-3;
+    @apply mb-2;
+    @apply px-6 py-4;
+    @apply rounded-2xl;
+    @apply bg-03;
+}
+.share-location-modal .c-permission-block > i {
+    @apply text-5xl text-03;
+}
+.share-location-modal .c-permission-block .c-text {
+    @apply text-center text-headline-1 text-02;
+}
+.share-location-modal .c-permission-block .c-hint {
+    @apply mb-0;
+    @apply text-center text-caption-1 text-03;
+}
+.share-location-modal .c-settings {
+    @apply w-full;
+}
 .share-location-modal .c-hint {
     @apply mb-2;
     @apply text-02;
