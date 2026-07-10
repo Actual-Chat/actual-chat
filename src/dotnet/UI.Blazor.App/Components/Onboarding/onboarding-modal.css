@@ -47,9 +47,7 @@ body.narrow .stepper.onboarding-stepper {
 }
 .permissions-step .step-tile-icon {
     @apply flex-none self-center;
-    @apply text-03;
-    font-size: 2rem;
-    line-height: 1;
+    @apply text-3.5xl leading-none text-03;
 }
 .permissions-step .step-tile-icon.on {
     @apply text-primary;
