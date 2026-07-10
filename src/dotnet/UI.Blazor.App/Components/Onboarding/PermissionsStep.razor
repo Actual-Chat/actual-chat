@@ -27,7 +27,7 @@
                 <i class="step-tile-icon @r.Icon @(r.IsGranted ? "on" : "")"></i>
                 <div class="step-tile-body">
                     <div class="step-tile-title">@r.Title</div>
-                    <div class="step-tile-subtitle">@((MarkupString)r.Subtitle)</div>
+                    <div class="step-tile-subtitle">@r.Rationale</div>
                 </div>
                 <Toggle
                     IsChecked="@r.IsGranted"

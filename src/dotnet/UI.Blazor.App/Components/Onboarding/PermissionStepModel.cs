@@ -35,16 +35,14 @@ public sealed class PermissionStepModel(IServiceProvider services)
         m.Rows = [
             new PermissionRow(
                 "Microphone",
-                $"Live-transcribed voice messaging is where {CoreConstants.AppName} shines, "
-                + "but this feature won't work without microphone access.",
+                "Voice messages and live transcription won't work without it.",
                 "icon-mic",
                 ct => microphonePermission.CheckOrRequest(true, false, ct).AsTask()) {
                 IsVisible = !isMicrophoneGranted,
             },
             new PermissionRow(
                 "Notifications",
-                "We send notifications related to the chats you've joined, "
-                + "and you can mute these notifications on a per-chat basis.",
+                "Get notified about new messages. Any chat can be muted individually.",
                 "icon-bell",
                 async ct => {
                     await notificationsPermission.Request(ct);
@@ -54,8 +52,7 @@ public sealed class PermissionStepModel(IServiceProvider services)
             },
             new PermissionRow(
                 "Background activity",
-                $"Android may put {CoreConstants.AppName} to sleep to save battery, which can delay or drop "
-                + "incoming calls and voice messages. Allow unrestricted battery usage so calls always ring.",
+                $"Keeps calls ringing when Android tries to put {CoreConstants.AppName} to sleep.",
                 "icon-battery",
                 ct => batteryOptimization!.CheckOrRequest(true, false, ct).AsTask()) {
                 IsVisible = isBatteryOptimizationVisible,
@@ -75,12 +72,12 @@ public sealed class PermissionStepModel(IServiceProvider services)
 
 public sealed class PermissionRow(
     string title,
-    string subtitle,
+    string rationale,
     string icon,
     Func<CancellationToken, Task<bool>> request)
 {
     public string Title { get; } = title;
-    public string Subtitle { get; } = subtitle;
+    public string Rationale { get; } = rationale;
     public string Icon { get; } = icon;
     public bool IsVisible { get; init; }
     public bool IsGranted { get; set; }
