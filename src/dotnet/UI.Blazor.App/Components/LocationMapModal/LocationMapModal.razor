@@ -78,8 +78,10 @@
         if (locations.Count == 0)
             return ComputedModel.None;
 
-        var ownAuthor = await Hub.AuthorUI.GetOwn(chatId, cancellationToken).ConfigureAwait(false);
-        var ownLocation = locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id);
+        // Authors.GetOwn, not AuthorUI.GetOwn: the viewer may have no author here
+        // (e.g. reading a public chat they haven't joined), and the latter throws.
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownLocation = ownAuthor != null ? locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id) : null;
         var ownPoint = ownLocation?.Point
             ?? await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
         var ownRemainingText = ownLocation != null
@@ -93,7 +95,7 @@
                 continue;
 
             markers.Add(ToAvatarMarker(location, author.Avatar));
-            var isOwn = location.AuthorId == ownAuthor.Id;
+            var isOwn = ownAuthor != null && location.AuthorId == ownAuthor.Id;
             var distanceText = !isOwn && ownPoint != null
                 ? ToDistanceText(ownPoint.DistanceTo(location.Point))
                 : "";
