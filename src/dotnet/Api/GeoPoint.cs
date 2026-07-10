@@ -12,6 +12,7 @@ public sealed partial record GeoPoint(
     [property: DataMember, MemoryPackOrder(3), Key(3)] float? Bearing = null
 )
 {
+    // TODO: extension
     public double DistanceTo(GeoPoint other)
     {
         // Haversine great-circle distance in meters.
