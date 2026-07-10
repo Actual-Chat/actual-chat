@@ -85,12 +85,14 @@
         var ownPoint = ownLocation?.Point
             ?? await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
         var ownRemainingText = ownLocation != null
-            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
+            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken)
+                .ConfigureAwait(false)
             : "";
         var markers = new List<MapMarker>(locations.Count);
         var participants = new List<Participant>(locations.Count);
         foreach (var location in locations) {
-            var author = await Authors.Get(Session, location.ChatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
+            var author = await Authors.Get(Session, location.ChatId, location.AuthorId, cancellationToken)
+                .ConfigureAwait(false);
             if (author is null)
                 continue;
 
@@ -112,7 +114,9 @@
             .OrderByDescending(p => p.IsOwn)
             .ThenBy(p => p.Avatar.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        var center = (ownLocation ?? locations[0]).Point;
+        // Center on the clicked share first, then the viewer's own, then the first one.
+        var clicked = ModalModel.LocationId is { } id ? locations.FirstOrDefault(x => x.Id == id) : null;
+        var center = (clicked ?? ownLocation ?? locations[0]).Point;
         return new ComputedModel(markers, participants, center.Latitude, center.Longitude);
     }
 
@@ -121,8 +125,7 @@
 
     private MapMarker ToAvatarMarker(
         SharedLocation location,
-        Avatar? avatar)
-    {
+        Avatar? avatar) {
         var pictureUrl = avatar?.Picture is { } picture ? UrlMapper.PicturePreview128Url(picture) : "";
         var avatarKey = pictureUrl.IsNullOrEmpty()
             ? (avatar?.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(location.AuthorId.Value)
@@ -141,7 +144,16 @@
             return await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken).ConfigureAwait(false);
-        return location is null ? [] : [location];
+        if (location is null)
+            return [];
+
+        // A live share opens the shared map with everyone currently sharing (Telegram-style);
+        // a stopped/one-shot pin stays a single static marker.
+        if (!location.IsLive(Hub.Clocks.ServerClock.Now))
+            return [location];
+
+        var locations = await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return locations.Count > 0 ? locations : [location];
     }
 
     private static string ToDistanceText(double meters)

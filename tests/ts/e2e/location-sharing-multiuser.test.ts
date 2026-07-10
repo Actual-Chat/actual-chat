@@ -32,8 +32,11 @@ const ALICE_START = { latitude: 51.5074, longitude: -0.1278, accuracy: 12 }; // 
 const ALICE_MOVED = { latitude: 48.8566, longitude: 2.3522, accuracy: 12 };  // Paris
 const BOB_START = { latitude: 52.5200, longitude: 13.4050, accuracy: 12 };   // Berlin
 
+// An ACTUAL tile/glyph fetch from our maps.* proxy (not just the style JSON).
+const TILE_URL_RE = /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/;
+
 const tileLoaded = (page: Page) => page.waitForResponse(
-    r => /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url()) && r.ok(),
+    r => TILE_URL_RE.test(r.url()) && r.ok(),
     { timeout: 20_000 });
 
 async function openChat(page: Page) {
@@ -160,6 +163,17 @@ describe('multi-user location sharing', () => {
         expect(rows[1].toLowerCase()).not.toContain('(you)');
         expect(rows[1].toLowerCase()).toMatch(/\d+ km from you/);
         await alice.screenshot({ path: shot('alice-map-2-markers') });
+        await alice.keyboard.press('Escape');
+        await aliceMap.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
+
+        // act + assert — clicking a LIVE location message opens the shared map with
+        // everyone currently sharing (Telegram-style), not just that message's share
+        await alice.locator('.location-message').last().click();
+        await aliceMap.waitFor({ state: 'visible', timeout: 10_000 });
+        await expect.poll(
+            async () => aliceMap.locator('.c-participant').count(),
+            { timeout: 15_000 },
+        ).toBe(2);
         await alice.keyboard.press('Escape');
         await aliceMap.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
 
