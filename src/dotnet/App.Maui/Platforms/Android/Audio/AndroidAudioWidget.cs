@@ -53,6 +53,7 @@ public class AndroidAudioWidget : AudioWidget
         intent.PutExtra(IntentExtras.ExtraChatCount, state.Chat.ExtraChatCount);
         intent.PutExtra(IntentExtras.IsPaused, state.IsPaused);
         context.StartForegroundService(intent);
+        AndroidAudioWidgetForegroundService.OnStartRequested();
         _isShown = true;
     }
 
@@ -62,8 +63,6 @@ public class AndroidAudioWidget : AudioWidget
             return;
 
         _isShown = false;
-        var context = Context;
-        var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
-        context.StopService(intent);
+        AndroidAudioWidgetForegroundService.Stop(Context);
     }
 }
