@@ -10,6 +10,8 @@ public class LocationUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task ShouldInvalidateSharingRemainingTextWhenSharingStops()
     {
+        // TODO: use AAA in lowercase
+        // TODO: check if follows conventions of other XxxUITest classes
         await using var tester = AppHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
 

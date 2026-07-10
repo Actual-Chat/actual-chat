@@ -64,8 +64,8 @@
 
         var ownLive = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
         var avatars = await LocationUI.ListAvatars(chatId, cancellationToken).ConfigureAwait(false);
-        var remaining = ownLive is not null ? await LocationUI.GetOwnTimeLeftText(chatId, cancellationToken).ConfigureAwait(false) : "";
-        var trackingError = ownLive is not null ? await LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false) : null;
+        var remaining = await LocationUI.GetOwnTimeLeftText(chatId, cancellationToken).ConfigureAwait(false);
+        var trackingError = await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false);
 
         return new Model(
             avatars,

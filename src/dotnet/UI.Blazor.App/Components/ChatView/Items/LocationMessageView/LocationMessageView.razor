@@ -17,7 +17,7 @@
         @if (m.IsLive) {
             <div class="c-live-caption">
                 <div class="c-title">
-                    @if (m.IsBroken) {
+                    @if (m.TrackingError is not null) {
                         <i class="icon-alert-circle c-broken-icon"></i>
                         <span>Location tracking is off</span>
                     } else {
@@ -25,7 +25,7 @@
                         <span>Live Location</span>
                     }
                 </div>
-                @if (!m.IsBroken) {
+                @if (m.TrackingError is null) {
                     <div class="c-updated">
                         @("Updated ")<LiveTimeDeltaText Moment="@m.ModifiedAt" NullText=""/>
                     </div>
@@ -37,6 +37,7 @@
 
 @code {
     private ISharedLocations SharedLocations => Hub.SharedLocations;
+    private LocationUI LocationUI => Hub.LocationUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
 
@@ -58,18 +59,14 @@
             return null;
 
         var marker = new MapMarker(location.Id.Value, location.Point.Latitude, location.Point.Longitude);
-        var isLive = location.IsLive(Hub.Clocks.ServerClock.Now);
-        var isBroken = false;
-        if (isLive) {
-            var trackingError = await Hub.LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
-            if (trackingError != null) {
-                var ownAuthor = await Hub.Authors.GetOwn(Session, Entry.ChatId, cancellationToken)
-                    .ConfigureAwait(false);
-                isBroken = ownAuthor != null && location.AuthorId == ownAuthor.Id;
-            }
-        }
+        var trackingError = await LocationUI.GetTrackingError(Entry.ChatId, cancellationToken).ConfigureAwait(false);
         return new Model(
-            location.Point.Latitude, location.Point.Longitude, [marker], isLive, location.ModifiedAt, isBroken);
+            location.Point.Latitude,
+            location.Point.Longitude,
+            [marker],
+            location.IsLive(Clocks.ServerClock.Now),
+            location.ModifiedAt,
+            trackingError);
     }
 
     private Task OnOpenMap()
@@ -83,5 +80,5 @@
         IReadOnlyList<MapMarker> Markers,
         bool IsLive,
         Moment ModifiedAt,
-        bool IsBroken = false);
+        GeoTrackingError? TrackingError = null);
 }
