@@ -24,7 +24,7 @@
                             }
                         </div>
                     } else {
-                        <div class="c-text">To share your location, @CoreConstants.AppName needs location access.</div>
+                        <div class="c-text">@CoreConstants.AppName needs access to your location.</div>
                         <div class="c-hint">
                             Your location is visible only to members of this chat, only for the duration you choose,
                             and you can stop sharing at any time.
@@ -51,7 +51,8 @@
     private bool? _isGranted;
     private readonly CancellationTokenSource _disposeCts = new();
 
-    private LocationPermissionHandler LocationPermission => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
+    private LocationPermissionHandler LocationPermission
+        => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
     private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
@@ -67,6 +68,8 @@
 
     public void Dispose()
         => _disposeCts.CancelAndDisposeSilently();
+
+    // Private methods
 
     private void OnSendCurrent() {
         ModalModel.SendCurrentRequested = true;
@@ -86,11 +89,9 @@
     private Task OnOpenSettings()
         => SystemSettingsUI.Open();
 
-    // Private methods
-
-    // Neither browsers nor the OS signal external permission changes (address-bar
-    // toggle, app settings), so re-query every few seconds until granted.
     private async Task PollPermissionWhileNotGranted() {
+        // Neither browsers nor the OS signal external permission changes (address-bar
+        // toggle, app settings), so re-query every few seconds until granted.
         try {
             while (!_disposeCts.IsCancellationRequested && _isGranted != true) {
                 await Task.Delay(TimeSpan.FromSeconds(3), _disposeCts.Token).ConfigureAwait(false);
