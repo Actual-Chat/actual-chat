@@ -16,8 +16,6 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     private ISharedLocations SharedLocations => Hub.SharedLocations;
     private LiveTime LiveTime => Hub.LiveTime;
 
-    public IState<GeoTrackingError?> TrackingError => Tracker.Error;
-
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<Avatar>> ListAvatars(ChatId chatId, CancellationToken cancellationToken)
     {
@@ -85,6 +83,22 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     {
         var locations = await SharedLocations.ListLive(Session, authorId.ChatId, cancellationToken).ConfigureAwait(false);
         return locations.FirstOrDefault(x => x.AuthorId == authorId);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<GeoTrackingError?> GetTrackingError(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return null;
+
+        var ownLive = await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
+        if (ownLive is null)
+            return null;
+
+        return await Tracker.Error.Use(cancellationToken).ConfigureAwait(false);
     }
 
     public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
