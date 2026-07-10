@@ -62,8 +62,10 @@
         if (isLive) {
             var trackingError = await Hub.LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
             if (trackingError != null) {
-                var ownAuthor = await Hub.AuthorUI.GetOwn(Entry.ChatId, cancellationToken).ConfigureAwait(false);
-                isBroken = location.AuthorId == ownAuthor.Id;
+                // Authors.GetOwn, not AuthorUI.GetOwn: the viewer may have no author here
+                // (e.g. reading a public chat they haven't joined), and the latter throws.
+                var ownAuthor = await Hub.Authors.GetOwn(Session, Entry.ChatId, cancellationToken).ConfigureAwait(false);
+                isBroken = ownAuthor != null && location.AuthorId == ownAuthor.Id;
             }
         }
         return new Model(location.Point.Latitude, location.Point.Longitude, [marker], isLive, location.ModifiedAt, isBroken);
