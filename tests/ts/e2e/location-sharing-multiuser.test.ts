@@ -118,12 +118,14 @@ describe('multi-user location sharing', () => {
         expect(await bobMap.locator('.maplibregl-marker').count()).toBe(1);
 
         // assert — the participants list shows exactly Alice: not marked "(you)", with an
-        // "Updated ..." status; no distance since Bob (not sharing) has no known location
+        // "Updated ..." status and her share's countdown; no distance since Bob (not sharing)
+        // has no known location
         const bobRow = bobMap.locator('.c-participant').first();
         await bobRow.waitFor({ state: 'visible', timeout: 10_000 });
         expect(await bobMap.locator('.c-participant').count()).toBe(1);
         const bobRowText = (await bobRow.innerText()).toLowerCase();
         expect(bobRowText).toContain('updated');
+        expect(bobRowText).toContain('left');
         expect(bobRowText).not.toContain('(you)');
         await bob.screenshot({ path: shot('bob-map-1-marker') });
 
@@ -155,12 +157,13 @@ describe('multi-user location sharing', () => {
         expect(await aliceMap.locator('.maplibregl-marker').count()).toBe(2);
 
         // assert — two participant rows: Alice's own row first ("(you)" + countdown), then
-        // Bob's with his distance from her (Paris -> Berlin, so hundreds of km)
+        // Bob's with his countdown and his distance from her (Paris -> Berlin, hundreds of km)
         expect(await aliceMap.locator('.c-participant').count()).toBe(2);
         const rows = await aliceMap.locator('.c-participant').allInnerTexts();
         expect(rows[0].toLowerCase()).toContain('(you)');
         expect(rows[0].toLowerCase()).toContain('left');
         expect(rows[1].toLowerCase()).not.toContain('(you)');
+        expect(rows[1].toLowerCase()).toContain('left');
         expect(rows[1].toLowerCase()).toMatch(/\d+ km from you/);
         await alice.screenshot({ path: shot('alice-map-2-markers') });
         await alice.keyboard.press('Escape');

@@ -64,7 +64,7 @@
 
         var ownLocation = await LocationUI.GetOwnLiveLocation(chatId, cancellationToken).ConfigureAwait(false);
         var avatars = await LocationUI.ListAvatars(chatId, cancellationToken).ConfigureAwait(false);
-        var remaining = await LocationUI.GetOwnSharingRemainingText(chatId, cancellationToken)
+        var remaining = await LocationUI.GetOwnRemainingTimeText(chatId, cancellationToken)
             .ConfigureAwait(false);
         var trackingError = await LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
 

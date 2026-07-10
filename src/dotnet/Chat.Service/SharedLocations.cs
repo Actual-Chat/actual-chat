@@ -14,6 +14,7 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
         SharedLocationId id,
         CancellationToken cancellationToken)
     {
+        // TODO: do we really need to pass chatId?
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
         return await Backend.Get(id, cancellationToken).ConfigureAwait(false);
