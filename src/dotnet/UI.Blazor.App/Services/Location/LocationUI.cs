@@ -31,7 +31,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsLiveShare(ChatId chatId, SharedLocationId id, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsLive(ChatId chatId, SharedLocationId id, CancellationToken cancellationToken)
     {
         // Duration is immutable, so capture Get in isolation — IsLiveShare takes no dependency on it
         // and won't recompute on the per-fix updates that invalidate Get.
@@ -44,21 +44,20 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
-    public virtual async Task<string> GetOwnRemainingTimeText(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<string> GetOwnTimeLeftText(ChatId chatId, CancellationToken cancellationToken)
     {
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return ownAuthor is null
             ? ""
-            : await GetRemainingTimeText(ownAuthor.Id, cancellationToken).ConfigureAwait(false);
+            : await GetTimeLeftText(ownAuthor.Id, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
-    // TODO: better name?
-    public virtual async Task<string> GetRemainingTimeText(
+    public virtual async Task<string> GetTimeLeftText(
         AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        var location = await GetLiveLocation(authorId, cancellationToken).ConfigureAwait(false);
+        var location = await GetLive(authorId, cancellationToken).ConfigureAwait(false);
         return location is null
             ? ""
             : await Hub.LiveTime.GetRemainingText(location.LiveUntil, RemainingTextUpdatePeriod, cancellationToken)
@@ -66,16 +65,16 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
-    public virtual async Task<SharedLocation?> GetOwnLiveLocation(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<SharedLocation?> GetOwnLive(ChatId chatId, CancellationToken cancellationToken)
     {
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return ownAuthor is null
             ? null
-            : await GetLiveLocation(ownAuthor.Id, cancellationToken).ConfigureAwait(false);
+            : await GetLive(ownAuthor.Id, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
-    public virtual async Task<SharedLocation?> GetLiveLocation(
+    public virtual async Task<SharedLocation?> GetLive(
         AuthorId authorId,
         CancellationToken cancellationToken)
     {

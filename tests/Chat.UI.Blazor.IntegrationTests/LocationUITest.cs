@@ -27,7 +27,7 @@ public class LocationUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
         var locationId = entry.LocationId.Require();
 
         var computed = await Computed.Capture(
-            () => locationUI.GetRemainingTimeText(author.Id, ct),
+            () => locationUI.GetTimeLeftText(author.Id, ct),
             ct);
         computed.Value.Should().NotBeEmpty();
         computed.IsConsistent().Should().BeTrue();
