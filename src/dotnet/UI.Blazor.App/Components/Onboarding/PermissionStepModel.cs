@@ -1,6 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -16,9 +15,6 @@ public sealed class PermissionStepModel(IServiceProvider services)
         var hostInfo = services.HostInfo();
         var microphonePermission = services.GetRequiredService<AudioRecorder>().MicrophonePermission;
         var notificationsPermission = services.GetRequiredService<INotificationsPermission>();
-        var contactsPermission = services.GetRequiredService<ContactsPermissionHandler>();
-        var locationPermission = services.GetRequiredService<LocationPermissionHandler>();
-        var batteryOptimization = services.GetService<BatteryOptimizationHandler>();
 
         var isMicrophoneGranted = await microphonePermission.Check(cancellationToken) == true;
         // Notifications are mobile-only here: on web the permission prompt must be bound
@@ -26,11 +22,10 @@ public sealed class PermissionStepModel(IServiceProvider services)
         // NotificationsPermissionBanner allows enabling it later anyway.
         var isNotificationsVisible = hostInfo.AppKind.IsMobile()
             && await notificationsPermission.IsGranted(cancellationToken) != true;
-        var isContactsGranted = await contactsPermission.Check(cancellationToken) == true;
-        var isLocationGranted = await locationPermission.Check(cancellationToken) == true;
-        var isBatteryOptimizationVisible = batteryOptimization != null
-            && await batteryOptimization.Check(cancellationToken) != true;
 
+        // Other permissions are requested contextually: camera on video start,
+        // contacts in contact-related UIs, location on "Share live location",
+        // battery optimization via a reliability prompt (see BatteryOptimizationHandler).
         var m = new PermissionStepModel(services);
         m.Rows = [
             new PermissionRow(
@@ -51,32 +46,6 @@ public sealed class PermissionStepModel(IServiceProvider services)
                     return await notificationsPermission.IsGranted(ct) == true;
                 }) {
                 IsVisible = isNotificationsVisible,
-            },
-            new PermissionRow(
-                "Contacts",
-                $"{CoreConstants.AppName} can import your contacts to help you find friends "
-                + "who are already using the service.<br/>"
-                + "If you grant access to your contact list, we will send the contact names and the hashed values "
-                + "of phone numbers and email addresses to our servers. "
-                + "This is sufficient for matching purposes, but not enough to restore your actual contacts.",
-                "icon-people",
-                ct => contactsPermission.CheckOrRequest(mustRequest: true, mustTroubleshoot: false, ct).AsTask()) {
-                IsVisible = !isContactsGranted,
-            },
-            new PermissionRow(
-                "Location",
-                "Share your live location in a chat so others can follow you in real time.",
-                "icon-map-point",
-                ct => locationPermission.CheckOrRequest(true, false, ct).AsTask()) {
-                IsVisible = !isLocationGranted,
-            },
-            new PermissionRow(
-                "Background activity",
-                $"Android may put {CoreConstants.AppName} to sleep to save battery, which can delay or drop "
-                + "incoming calls and voice messages. Allow unrestricted battery usage so calls always ring.",
-                "icon-battery",
-                ct => batteryOptimization!.CheckOrRequest(true, false, ct).AsTask()) {
-                IsVisible = isBatteryOptimizationVisible,
             },
         ];
         return m;
