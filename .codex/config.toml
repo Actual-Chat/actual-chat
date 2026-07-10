@@ -1,0 +1,34 @@
+[mcp_servers.chrome-devtools-1]
+url = "http://localhost:8765/mcp"
+
+[mcp_servers.chrome-devtools-2]
+url = "http://localhost:8766/mcp"
+
+[mcp_servers.figma]
+url = "https://mcp.figma.com/mcp"
+
+[mcp_servers.github]
+url = "https://api.githubcopilot.com/mcp/"
+bearer_token_env_var = "AC_GITHUB_TOKEN"
+
+[mcp_servers.sentry]
+command = "npx"
+args = [
+    "-y",
+    "@sentry/mcp-server@latest",
+]
+env_vars = ["SENTRY_ACCESS_TOKEN"]
+
+[mcp_servers.sentry.env]
+SENTRY_HOST = "sentry.io"
+
+[mcp_servers.seq]
+command = "tools/seq-mcp-mcp-wrapper"
+
+[mcp_servers.voxt-robokitty]
+url = "https://voxt.ai/api/mcp"
+bearer_token_env_var = "ActualChat_RoboKitty_API_Key"
+
+[mcp_servers.voxt-robokitty-dev]
+url = "https://dev.voxt.ai/api/mcp"
+bearer_token_env_var = "ActualChat_RoboKitty_Dev_API_Key"
