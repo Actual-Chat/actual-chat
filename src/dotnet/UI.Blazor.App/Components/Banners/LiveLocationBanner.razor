@@ -62,14 +62,17 @@
         if (locations.Count == 0)
             return Model.None;
 
-        var ownLocation = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
+        var ownLive = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
         var avatars = await LocationUI.ListAvatars(chatId, cancellationToken).ConfigureAwait(false);
-        var remaining = await LocationUI.GetOwnTimeLeftText(chatId, cancellationToken)
-            .ConfigureAwait(false);
-        var trackingError = await LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
+        var remaining = ownLive is not null ? await LocationUI.GetOwnTimeLeftText(chatId, cancellationToken).ConfigureAwait(false) : "";
+        var trackingError = ownLive is not null ? await LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false) : null;
 
         return new Model(
-            avatars, locations.Count, ownLocation != null, remaining, ownLocation != null ? trackingError : null);
+            avatars,
+            locations.Count,
+            ownLive is not null,
+            remaining,
+            trackingError);
     }
 
     private Task OnClick() {

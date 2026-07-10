@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
@@ -10,19 +12,22 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
     private LiveLocationReporter Reporter => field ??= Hub.Services.GetRequiredService<LiveLocationReporter>();
+    private IAuthors Authors => Hub.Authors;
+    private ISharedLocations SharedLocations => Hub.SharedLocations;
+    private LiveTime LiveTime => Hub.LiveTime;
 
     public IState<GeoTrackingError?> TrackingError => Tracker.Error;
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<Avatar>> ListAvatars(ChatId chatId, CancellationToken cancellationToken)
     {
-        var locations = await Hub.SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var locations = await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (locations.Count == 0)
             return [];
 
         var avatars = new List<Avatar>(locations.Count);
         foreach (var location in locations) {
-            var author = await Hub.Authors.Get(Session, chatId, location.AuthorId, cancellationToken)
+            var author = await Authors.Get(Session, chatId, location.AuthorId, cancellationToken)
                 .ConfigureAwait(false);
             if (author != null)
                 avatars.Add(author.Avatar);
@@ -38,7 +43,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         Computed<SharedLocation?> cLocation;
         using (Computed.BeginIsolation())
             cLocation = await Computed
-                .Capture(() => Hub.SharedLocations.Get(Session, chatId, id, cancellationToken), cancellationToken)
+                .Capture(() => SharedLocations.Get(Session, chatId, id, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
         return cLocation.Value is { Duration.Ticks: > 0 };
     }
@@ -46,7 +51,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     [ComputeMethod]
     public virtual async Task<string> GetOwnTimeLeftText(ChatId chatId, CancellationToken cancellationToken)
     {
-        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return ownAuthor is null
             ? ""
             : await GetTimeLeftText(ownAuthor.Id, cancellationToken).ConfigureAwait(false);
@@ -60,14 +65,14 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         var location = await GetLive(authorId, cancellationToken).ConfigureAwait(false);
         return location is null
             ? ""
-            : await Hub.LiveTime.GetRemainingText(location.LiveUntil, RemainingTextUpdatePeriod, cancellationToken)
+            : await LiveTime.GetRemainingText(location.LiveUntil, RemainingTextUpdatePeriod, cancellationToken)
                 .ConfigureAwait(false);
     }
 
     [ComputeMethod]
     public virtual async Task<SharedLocation?> GetOwnLive(ChatId chatId, CancellationToken cancellationToken)
     {
-        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return ownAuthor is null
             ? null
             : await GetLive(ownAuthor.Id, cancellationToken).ConfigureAwait(false);
@@ -78,7 +83,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        var locations = await Hub.SharedLocations.ListLive(Session, authorId.ChatId, cancellationToken).ConfigureAwait(false);
+        var locations = await SharedLocations.ListLive(Session, authorId.ChatId, cancellationToken).ConfigureAwait(false);
         return locations.FirstOrDefault(x => x.AuthorId == authorId);
     }
 

@@ -58,8 +58,8 @@
 
     private IAuthors Authors => Hub.Authors;
     private ISharedLocations SharedLocations => Hub.SharedLocations;
-    private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
-    private LocationUI LocationUI => field ??= Hub.LocationUI;
+    private ILocationTracker Tracker => Hub.LocationTracker;
+    private LocationUI LocationUI => Hub.LocationUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
