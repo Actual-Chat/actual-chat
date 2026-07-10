@@ -27,9 +27,32 @@ public class AndroidAudioWidgetForegroundService : Service
     public const string ActionShow = "ACTION_SHOW";
     private const string ChannelId = "audio_widget";
     private const int NotificationId = 3001;
+    private static int _pendingStartCount;
+    private static volatile bool _isStopPending;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
     private ILogger Log { get; } = StaticLog.For<AndroidAudioWidgetForegroundService>();
+
+    public static void OnStartRequested()
+    {
+        // A new Show cancels a stop that's still waiting for the service to reach foreground.
+        _isStopPending = false;
+        Interlocked.Increment(ref _pendingStartCount);
+    }
+
+    public static void Stop(Context context)
+    {
+        // StopService() while a StartForegroundService() request hasn't reached OnStartCommand yet makes
+        // Android kill the process with ForegroundServiceDidNotStartInTimeException, even though
+        // OnStartCommand does call StartForeground(). Let the service stop itself in that case.
+        if (Volatile.Read(ref _pendingStartCount) > 0) {
+            _isStopPending = true;
+            return;
+        }
+
+        var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
+        context.StopService(intent);
+    }
 
     public override void OnCreate()
     {
@@ -42,6 +65,8 @@ public class AndroidAudioWidgetForegroundService : Service
     {
         Log.LogDebug("OnDestroy");
         _requestId = Guid.NewGuid().ToString();
+        Interlocked.Exchange(ref _pendingStartCount, 0);
+        _isStopPending = false;
         if (_mediaSession is not null) {
             _mediaSession.Active = false;
             _mediaSession.Release();
@@ -66,6 +91,15 @@ public class AndroidAudioWidgetForegroundService : Service
         // with a placeholder so a throw while building the rich notification (unexpected mode,
         // ChatId.Parse) can't leave the service without one -> ForegroundServiceDidNotStartInTimeException.
         StartForeground1(BuildStartingNotification());
+        if (Volatile.Read(ref _pendingStartCount) > 0)
+            Interlocked.Decrement(ref _pendingStartCount);
+        if (_isStopPending && Volatile.Read(ref _pendingStartCount) == 0) {
+            // Stop() deferred to us: StartForeground() above satisfied Android, so we can go away now.
+            _isStopPending = false;
+            StopForeground(StopForegroundFlags.Remove);
+            StopSelf();
+            return StartCommandResult.NotSticky;
+        }
 
         var chatTitle = intent.Extras!.GetString(IntentExtras.ChatTitle) ?? "Unknown chat";
         var chatSid = intent.Extras!.GetString(IntentExtras.ChatId);
