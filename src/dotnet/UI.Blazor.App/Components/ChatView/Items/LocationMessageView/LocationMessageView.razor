@@ -52,7 +52,8 @@
         if (Entry.LocationId is not { } locationId)
             return null;
 
-        var location = await SharedLocations.Get(Session, Entry.ChatId, locationId, cancellationToken).ConfigureAwait(false);
+        var location = await SharedLocations.Get(Session, Entry.ChatId, locationId, cancellationToken)
+            .ConfigureAwait(false);
         if (location is null)
             return null;
 
@@ -62,11 +63,13 @@
         if (isLive) {
             var trackingError = await Hub.LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
             if (trackingError != null) {
-                var ownAuthor = await Hub.Authors.GetOwn(Session, Entry.ChatId, cancellationToken).ConfigureAwait(false);
+                var ownAuthor = await Hub.Authors.GetOwn(Session, Entry.ChatId, cancellationToken)
+                    .ConfigureAwait(false);
                 isBroken = ownAuthor != null && location.AuthorId == ownAuthor.Id;
             }
         }
-        return new Model(location.Point.Latitude, location.Point.Longitude, [marker], isLive, location.ModifiedAt, isBroken);
+        return new Model(
+            location.Point.Latitude, location.Point.Longitude, [marker], isLive, location.ModifiedAt, isBroken);
     }
 
     private Task OnOpenMap()

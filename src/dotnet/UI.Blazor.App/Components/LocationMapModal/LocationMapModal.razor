@@ -85,8 +85,7 @@
         var ownPoint = ownLocation?.Point
             ?? await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
         var ownRemainingText = ownLocation != null
-            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken)
-                .ConfigureAwait(false)
+            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
             : "";
         var markers = new List<MapMarker>(locations.Count);
         var participants = new List<Participant>(locations.Count);
