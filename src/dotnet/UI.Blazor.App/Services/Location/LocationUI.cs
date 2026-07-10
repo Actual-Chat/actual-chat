@@ -40,6 +40,12 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         return cLocation.Value is { Duration.Ticks: > 0 };
     }
 
+    public string GetOwnSharingRemainingText(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // TODO: implement and use from location banner and location modal
+        throw new NotImplementedException();
+    }
+
     public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
         => Reporter.StartSharing(chatId, duration, cancellationToken);
 
