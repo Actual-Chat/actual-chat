@@ -42,7 +42,7 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(c => new AndroidNotificationsPermission(c.AppUIHub()));
         services.AddScoped<IDeviceNotifications>(_ => new AndroidDeviceNotifications());
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
-        services.AddScoped<BatteryOptimizationHandler>(c => new AndroidBatteryOptimizationHandler(c.UIHub()));
+        services.AddScoped<BatteryOptimizationHandler>(c => new AndroidBatteryOptimizationHandler(c.AppUIHub()));
         services.AddSingleton(c => new NativeGoogleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMauiLogAccessor>(c => new AndroidLogAccessor(c));
