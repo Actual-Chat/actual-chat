@@ -41,10 +41,10 @@
 
 @code {
     private const int MaxAvatars = Constants.Location.MaxSharingAuthorsPerChat;
-    private static readonly TimeSpan CountdownTickPeriod = TimeSpan.FromSeconds(30);
 
     private Chat Chat => ChatContext.Chat;
     private ISharedLocations SharedLocations => Hub.SharedLocations;
+    private LocationUI LocationUI => field ??= Hub.LocationUI;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
@@ -62,13 +62,11 @@
         if (locations.Count == 0)
             return Model.None;
 
-        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var ownLocation = ownAuthor != null ? locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id) : null;
-        var avatars = await Hub.LocationUI.ListAvatars(chatId, cancellationToken).ConfigureAwait(false);
-        var remaining = ownLocation != null
-            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
-            : "";
-        var trackingError = await Hub.LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
+        var ownLocation = await LocationUI.GetOwnLiveLocation(chatId, cancellationToken).ConfigureAwait(false);
+        var avatars = await LocationUI.ListAvatars(chatId, cancellationToken).ConfigureAwait(false);
+        var remaining = await LocationUI.GetOwnSharingRemainingText(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        var trackingError = await LocationUI.TrackingError.Use(cancellationToken).ConfigureAwait(false);
 
         return new Model(
             avatars, locations.Count, ownLocation != null, remaining, ownLocation != null ? trackingError : null);
@@ -82,7 +80,7 @@
     }
 
     private Task OnStop()
-        => Hub.LocationUI.StopSharing(Chat.Id, CancellationToken.None);
+        => LocationUI.StopSharing(Chat.Id, CancellationToken.None);
 
     // Nested types
 
