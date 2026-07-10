@@ -60,7 +60,7 @@
         => _jsRef?.InvokeVoidAsync("setMarkers", Markers).AsTask() ?? Task.CompletedTask;
 
     public ValueTask FlyTo(double latitude, double longitude)
-        => _jsRef?.InvokeVoidAsync("flyTo", latitude, longitude) ?? default;
+        => _jsRef?.InvokeVoidAsync("flyTo", latitude, longitude) ?? ValueTask.CompletedTask;
 
     public override async ValueTask DisposeAsync() {
         if (_jsRef is { } jsRef) {

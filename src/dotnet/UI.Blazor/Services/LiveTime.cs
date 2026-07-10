@@ -37,9 +37,6 @@ public class LiveTime : SafeAsyncDisposableBase, IComputeService
         return Task.FromResult(text);
     }
 
-    public string GetDeltaText(Moment time)
-        => GetDeltaTextInternal(time).Text;
-
     [ComputeMethod]
     public virtual Task<string> GetRemainingText(Moment time, TimeSpan updatePeriod, CancellationToken cancellationToken)
     {
@@ -55,6 +52,9 @@ public class LiveTime : SafeAsyncDisposableBase, IComputeService
             : $"{Math.Max(1, minutes)}m";
         return Task.FromResult(text);
     }
+
+    public string GetDeltaText(Moment time)
+        => GetDeltaTextInternal(time).Text;
 
     // Private methods
 
