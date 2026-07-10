@@ -35,7 +35,8 @@ public sealed class PermissionStepModel(IServiceProvider services)
         m.Rows = [
             new PermissionRow(
                 "Microphone",
-                "Voice messages and live transcription won't work without it.",
+                $"Live-transcribed voice messaging is where {CoreConstants.AppName} shines, "
+                + "but this feature won't work without microphone access.",
                 "icon-mic",
                 ct => microphonePermission.CheckOrRequest(true, false, ct).AsTask()) {
                 IsVisible = !isMicrophoneGranted,

@@ -49,6 +49,9 @@ body.narrow .stepper.onboarding-stepper {
     @apply flex-none self-center;
     @apply text-2.5xl leading-none text-03;
 }
+.permissions-step .step-tile-icon.icon-mic {
+    @apply text-3.5xl;
+}
 .permissions-step .step-tile-icon.on {
     @apply text-primary;
 }
