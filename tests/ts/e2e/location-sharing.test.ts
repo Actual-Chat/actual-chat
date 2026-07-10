@@ -30,6 +30,9 @@ const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 const START = { latitude: 51.5074, longitude: -0.1278, accuracy: 12 };
 const MOVED = { latitude: 48.8566, longitude: 2.3522, accuracy: 12 };
 
+// An ACTUAL tile/glyph fetch from our maps.* proxy (not just the style JSON).
+const TILE_URL_RE = /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/;
+
 describe('location sharing', () => {
     let conn: BrowserConnection;
     let page: Page;
@@ -40,7 +43,10 @@ describe('location sharing', () => {
         await conn.context.setGeolocation(START);
         page = await conn.context.newPage();
         page.on('pageerror', e => console.log('PAGEERROR:', e.message));
-        page.on('console', m => { if (m.type() === 'error') console.log('CONSOLE.ERROR:', m.text()); });
+        page.on('console', m => {
+            if (m.type() === 'error')
+                console.log('CONSOLE.ERROR:', m.text());
+        });
         await ensureSignedIn(page);
     }, 120_000);
 
@@ -87,8 +93,7 @@ describe('location sharing', () => {
         // real viewport and is painting — guards against the CSP block AND the 0-size-in-modal
         // bug where the style loads but no tiles are ever requested.
         const tileLoaded = page.waitForResponse(
-            r => /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url())
-                && r.ok(),
+            r => TILE_URL_RE.test(r.url()) && r.ok(),
             { timeout: 20_000 });
         await banner.locator('.c-body').first().click();
         const mapModal = page.locator('.location-map-modal').first();
@@ -97,6 +102,16 @@ describe('location sharing', () => {
         // assert — a MapLibre marker renders for the share
         const marker = mapModal.locator('.maplibregl-marker').first();
         await marker.waitFor({ state: 'visible', timeout: 15_000 });
+
+        // assert — the participants list shows the sharer: own row marked "(you)",
+        // with a live "Updated ..." status and the remaining-time countdown
+        const participant = mapModal.locator('.c-participant').first();
+        await participant.waitFor({ state: 'visible', timeout: 10_000 });
+        expect(await mapModal.locator('.c-participant').count()).toBe(1);
+        const participantText = (await participant.innerText()).toLowerCase();
+        expect(participantText).toContain('(you)');
+        expect(participantText).toContain('updated');
+        expect(participantText).toContain('left');
 
         // assert — no attribution control (MapLibre | OpenFreeMap ... info bar) is drawn
         expect(await mapModal.locator('.maplibregl-ctrl-attrib').count()).toBe(0);
@@ -148,8 +163,7 @@ describe('location sharing', () => {
 
         // arm the tile listener before posting so we don't miss the inline-map tile requests
         const tileLoaded = page.waitForResponse(
-            r => /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/.test(r.url())
-                && r.ok(),
+            r => TILE_URL_RE.test(r.url()) && r.ok(),
             { timeout: 20_000 });
         await modal.locator('button:has-text("Send current location")').first().click();
 
@@ -167,7 +181,8 @@ describe('location sharing', () => {
 
         // assert — the chat-list preview summarizes the location entry instead of rendering blank (#4028).
         // A location entry has empty text Content, so without the fallback the "chat news" line is empty.
-        const listRow = page.locator('.chat-list [data-href="/chat/the-actual-one"]').first();
+        // Select the row by title: the current chat's row carries no data-href (NavbarItem drops it).
+        const listRow = page.locator('.chat-list .navbar-item', { hasText: 'The Actual One' }).first();
         const listPreview = listRow.locator('.c-last-message .c-text:has-text("location")');
         await listPreview.waitFor({ state: 'visible', timeout: 15_000 });
         expect(await listRow.locator('.c-last-message .c-text i.icon-map-point').count()).toBe(1);
@@ -187,6 +202,14 @@ describe('location sharing', () => {
         // assert — the modal map is interactive and shows the location's marker
         await mapModal.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
         expect(await mapModal.locator('.maplibregl-interactive').count()).toBeGreaterThan(0);
+
+        // assert — the one-shot sender appears in the participants list with an update time,
+        // but no countdown (a one-shot share has no live duration)
+        const senderRow = mapModal.locator('.c-participant').first();
+        await senderRow.waitFor({ state: 'visible', timeout: 10_000 });
+        const senderText = (await senderRow.innerText()).toLowerCase();
+        expect(senderText).toContain('updated');
+        expect(senderText).not.toContain('left');
         await page.screenshot({ path: shot('loc-one-shot-modal') });
         await page.keyboard.press('Escape');
         await mapModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });

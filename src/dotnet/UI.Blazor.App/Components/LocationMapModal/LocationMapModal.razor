@@ -16,18 +16,50 @@
                 <div class="c-empty">No one is sharing their location right now.</div>
             } else {
                 <MapView
+                    @ref="_mapView"
                     Class="c-map"
                     Markers="@m.Markers"
                     CenterLatitude="@m.CenterLatitude"
                     CenterLongitude="@m.CenterLongitude"/>
             }
         </div>
+        @if (m.Participants.Count > 0) {
+            <div class="c-participants custom-scrollbar">
+                @foreach (var p in m.Participants) {
+                    <div class="c-participant" @key="@p.LocationId" @onclick="@(() => OnParticipantClick(p))">
+                        <AvatarCircle Avatar="@p.Avatar" Size="@SquareSize.Size10"/>
+                        <div class="c-info">
+                            <div class="c-name">
+                                <span>@p.Avatar.Name</span>
+                                @if (p.IsOwn) {
+                                    <span class="c-you">(you)</span>
+                                }
+                            </div>
+                            <div class="c-status">
+                                <span>Updated&nbsp;</span><LiveTimeDeltaText Moment="@p.ModifiedAt" NullText=""/>
+                                @if (!p.DistanceText.IsNullOrEmpty()) {
+                                    <span> · @p.DistanceText from you</span>
+                                }
+                                @if (!p.RemainingText.IsNullOrEmpty()) {
+                                    <span> · @p.RemainingText left</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     </Body>
 </DialogFrame>
 
 @code {
+    private static readonly TimeSpan CountdownTickPeriod = TimeSpan.FromSeconds(30);
+
+    private MapView? _mapView;
+
     private IAuthors Authors => Hub.Authors;
     private ISharedLocations SharedLocations => Hub.SharedLocations;
+    private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -46,28 +78,44 @@
         if (locations.Count == 0)
             return ComputedModel.None;
 
+        var ownAuthor = await Hub.AuthorUI.GetOwn(chatId, cancellationToken).ConfigureAwait(false);
+        var ownLocation = locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id);
+        var ownPoint = ownLocation?.Point
+            ?? await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
+        var ownRemainingText = ownLocation != null
+            ? await Hub.LiveTime.GetRemainingText(ownLocation.LiveUntil, CountdownTickPeriod, cancellationToken).ConfigureAwait(false)
+            : "";
         var markers = new List<MapMarker>(locations.Count);
+        var participants = new List<Participant>(locations.Count);
         foreach (var location in locations) {
             var author = await Authors.Get(Session, location.ChatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
             if (author is null)
                 continue;
 
             markers.Add(ToAvatarMarker(location, author.Avatar));
+            var isOwn = location.AuthorId == ownAuthor.Id;
+            var distanceText = !isOwn && ownPoint != null
+                ? ToDistanceText(ownPoint.DistanceTo(location.Point))
+                : "";
+            participants.Add(new Participant(
+                location.Id,
+                author.Avatar,
+                isOwn,
+                location.Point,
+                location.ModifiedAt,
+                distanceText,
+                isOwn ? ownRemainingText : ""));
         }
-        var center = await GetCenter(chatId, locations, cancellationToken).ConfigureAwait(false);
-        return new ComputedModel(markers, center.Latitude, center.Longitude);
+        participants = participants
+            .OrderByDescending(p => p.IsOwn)
+            .ThenBy(p => p.Avatar.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var center = (ownLocation ?? locations[0]).Point;
+        return new ComputedModel(markers, participants, center.Latitude, center.Longitude);
     }
 
-    private async Task<GeoPoint> GetCenter(
-        ChatId chatId,
-        IReadOnlyList<SharedLocation> locations,
-        CancellationToken cancellationToken)
-    {
-        // With several people sharing, center on the viewer's own share first.
-        var ownAuthor = await Hub.AuthorUI.GetOwn(chatId, cancellationToken).ConfigureAwait(false);
-        var ownLocation = locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id);
-        return (ownLocation ?? locations[0]).Point;
-    }
+    private Task OnParticipantClick(Participant participant)
+        => _mapView?.FlyTo(participant.Point.Latitude, participant.Point.Longitude).AsTask() ?? Task.CompletedTask;
 
     private MapMarker ToAvatarMarker(
         SharedLocation location,
@@ -94,14 +142,32 @@
         return location is null ? [] : [location];
     }
 
+    private static string ToDistanceText(double meters)
+        => meters switch {
+            < 1 => "1 m",
+            < 1000 => $"{meters:F0} m",
+            < 10_000 => $"{meters / 1000:F1} km",
+            _ => $"{meters / 1000:F0} km",
+        };
+
     // Nested types
 
     public sealed record ComputedModel(
         IReadOnlyList<MapMarker> Markers,
+        IReadOnlyList<Participant> Participants,
         double CenterLatitude,
         double CenterLongitude) {
-        public static readonly ComputedModel None = new([], 0, 0);
+        public static readonly ComputedModel None = new([], [], 0, 0);
     }
+
+    public sealed record Participant(
+        SharedLocationId LocationId,
+        Avatar Avatar,
+        bool IsOwn,
+        GeoPoint Point,
+        Moment ModifiedAt,
+        string DistanceText,
+        string RemainingText);
 
     public sealed record Model(ChatId ChatId, SharedLocationId? LocationId = null);
 }

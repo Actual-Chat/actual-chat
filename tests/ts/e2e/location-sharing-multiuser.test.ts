@@ -113,6 +113,15 @@ describe('multi-user location sharing', () => {
         expect((await bobTiles).ok()).toBe(true);
         await bob.waitForTimeout(1_000);
         expect(await bobMap.locator('.maplibregl-marker').count()).toBe(1);
+
+        // assert — the participants list shows exactly Alice: not marked "(you)", with an
+        // "Updated ..." status; no distance since Bob (not sharing) has no known location
+        const bobRow = bobMap.locator('.c-participant').first();
+        await bobRow.waitFor({ state: 'visible', timeout: 10_000 });
+        expect(await bobMap.locator('.c-participant').count()).toBe(1);
+        const bobRowText = (await bobRow.innerText()).toLowerCase();
+        expect(bobRowText).toContain('updated');
+        expect(bobRowText).not.toContain('(you)');
         await bob.screenshot({ path: shot('bob-map-1-marker') });
 
         // act — Alice moves; Bob's view should still show exactly one marker (it tracks, not duplicates)
@@ -141,6 +150,15 @@ describe('multi-user location sharing', () => {
         expect((await aliceTiles).ok()).toBe(true);
         await alice.waitForTimeout(1_500);
         expect(await aliceMap.locator('.maplibregl-marker').count()).toBe(2);
+
+        // assert — two participant rows: Alice's own row first ("(you)" + countdown), then
+        // Bob's with his distance from her (Paris -> Berlin, so hundreds of km)
+        expect(await aliceMap.locator('.c-participant').count()).toBe(2);
+        const rows = await aliceMap.locator('.c-participant').allInnerTexts();
+        expect(rows[0].toLowerCase()).toContain('(you)');
+        expect(rows[0].toLowerCase()).toContain('left');
+        expect(rows[1].toLowerCase()).not.toContain('(you)');
+        expect(rows[1].toLowerCase()).toMatch(/\d+ km from you/);
         await alice.screenshot({ path: shot('alice-map-2-markers') });
         await alice.keyboard.press('Escape');
         await aliceMap.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });

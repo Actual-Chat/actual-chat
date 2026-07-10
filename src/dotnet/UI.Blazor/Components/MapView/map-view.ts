@@ -73,6 +73,10 @@ export class MapView {
         }
     }
 
+    public flyTo(latitude: number, longitude: number): void {
+        this.map.flyTo({ center: [longitude, latitude] });
+    }
+
     public dispose(): void {
         this.resizeObserver.disconnect();
         this.markers.clear();
@@ -103,12 +107,14 @@ export class MapView {
             img.alt = m.label ?? '';
             return img;
         }
+
         if (m.avatarKey != null && m.avatarKey !== '') {
             const beam = document.createElement('beam-avatar');
             beam.className = 'c-avatar';
             beam.setAttribute('key', m.avatarKey);
             return beam;
         }
+
         return null;
     }
 }
