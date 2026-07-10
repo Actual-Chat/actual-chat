@@ -195,7 +195,7 @@ public class AndroidAudioFocusHelper : IDisposable
             _log = log;
 
             // Register listener for device changes
-            _listener = new CommunicationDeviceListener(audioManager, log);
+            _listener = new CommunicationDeviceListener(log);
             _audioManager.AddOnCommunicationDeviceChangedListener(
                 Platform.AppContext.MainExecutor!,
                 _listener);
