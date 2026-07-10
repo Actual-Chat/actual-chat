@@ -39,6 +39,22 @@ body.narrow .stepper.onboarding-stepper {
 .onboarding-modal .stepper-footer {
     @apply sticky bottom-0;
 }
+
+/* ── Permissions step ── */
+
+.permissions-step .step-tile {
+    @apply cursor-pointer;
+}
+.permissions-step .step-tile-icon {
+    @apply flex-none self-center;
+    @apply text-4xl text-03;
+}
+.permissions-step .step-tile-icon.on {
+    @apply text-primary;
+}
+.permissions-step .step-tile .toggle {
+    @apply flex-none self-center;
+}
 .onboarding-stepper:not(:has(.onboarding-tutorial)) .stepper-footer {
     background: linear-gradient(89deg, #FFEFFF 5.09%, #DAD2FF 94.69%);
 }

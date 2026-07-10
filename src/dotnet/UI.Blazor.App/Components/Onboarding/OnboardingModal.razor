@@ -37,7 +37,7 @@
             <EmailStep Account="m.AccountFull"/>
             @* <TimeZoneStep Account="m.AccountFull"/> *@ @* Disabled *@
             <AvatarStep/>
-            <PermissionsStep NextButtonRef="@_nextButtonRef"/>
+            <PermissionsStep/>
             <LanguagesStep/>
             <DataCollectionStep IsConfigured="m.IsDataCollectionConfigured"/>
             @* <CreateChatsStep/> *@ @* Disabled *@
@@ -86,7 +86,6 @@
                     @if (!isTutorial) {
                         <Button
                             Class="btn-primary"
-                            ButtonRef="@_nextButtonRef"
                             Click="@(() => OnNext(stepper))">
                             @if (stepper.CurrentStep is PhoneStep or EmailStep or DataCollectionStep) {
                                 <span>@stepper.NextTitle</span>
@@ -107,8 +106,6 @@
 </DialogFrame>
 
 @code {
-    private readonly Mutable<ElementReference> _nextButtonRef = new();
-
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -116,7 +113,8 @@
 
     protected override async Task<ViewModel?> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var isDataCollectionConfigured = await DataCollectionSettingsUI.IsConfigured(cancellationToken).ConfigureAwait(false);
+        var isDataCollectionConfigured = await DataCollectionSettingsUI.IsConfigured(cancellationToken)
+            .ConfigureAwait(false);
         return new() {
             AccountFull = account,
             IsDataCollectionConfigured = isDataCollectionConfigured,
