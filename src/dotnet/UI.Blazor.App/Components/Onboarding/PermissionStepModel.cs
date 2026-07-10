@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -15,6 +16,7 @@ public sealed class PermissionStepModel(IServiceProvider services)
         var hostInfo = services.HostInfo();
         var microphonePermission = services.GetRequiredService<AudioRecorder>().MicrophonePermission;
         var notificationsPermission = services.GetRequiredService<INotificationsPermission>();
+        var batteryOptimization = services.GetService<BatteryOptimizationHandler>();
 
         var isMicrophoneGranted = await microphonePermission.Check(cancellationToken) == true;
         // Notifications are mobile-only here: on web the permission prompt must be bound
@@ -22,10 +24,13 @@ public sealed class PermissionStepModel(IServiceProvider services)
         // NotificationsPermissionBanner allows enabling it later anyway.
         var isNotificationsVisible = hostInfo.AppKind.IsMobile()
             && await notificationsPermission.IsGranted(cancellationToken) != true;
+        // The handler is Android-only; iOS has no battery-optimization equivalent —
+        // APNs/PushKit delivery isn't gated on a per-app battery setting.
+        var isBatteryOptimizationVisible = batteryOptimization != null
+            && await batteryOptimization.Check(cancellationToken) != true;
 
         // Other permissions are requested contextually: camera on video start,
-        // contacts in contact-related UIs, location on "Share live location",
-        // battery optimization via a reliability prompt (see BatteryOptimizationHandler).
+        // contacts in contact-related UIs, location on "Share live location".
         var m = new PermissionStepModel(services);
         m.Rows = [
             new PermissionRow(
@@ -46,6 +51,14 @@ public sealed class PermissionStepModel(IServiceProvider services)
                     return await notificationsPermission.IsGranted(ct) == true;
                 }) {
                 IsVisible = isNotificationsVisible,
+            },
+            new PermissionRow(
+                "Background activity",
+                $"Android may put {CoreConstants.AppName} to sleep to save battery, which can delay or drop "
+                + "incoming calls and voice messages. Allow unrestricted battery usage so calls always ring.",
+                "icon-battery",
+                ct => batteryOptimization!.CheckOrRequest(true, false, ct).AsTask()) {
+                IsVisible = isBatteryOptimizationVisible,
             },
         ];
         return m;
