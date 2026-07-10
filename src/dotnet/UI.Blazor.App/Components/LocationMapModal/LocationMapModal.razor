@@ -81,7 +81,7 @@
         // Authors.GetOwn, not AuthorUI.GetOwn: the viewer may have no author here
         // (e.g. reading a public chat they haven't joined), and the latter throws.
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var ownLocation = await LocationUI.GetOwnLiveLocation(chatId, cancellationToken).ConfigureAwait(false);
+        var ownLocation = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
         var ownPoint = ownLocation?.Point
             ?? await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
         var markers = new List<MapMarker>(locations.Count);
@@ -97,7 +97,7 @@
             var distanceText = !isOwn && ownPoint != null
                 ? ToDistanceText(ownPoint.DistanceTo(location.Point))
                 : "";
-            var remainingTime = await LocationUI.GetRemainingTimeText(location.AuthorId, cancellationToken).ConfigureAwait(false);
+            var remainingTime = await LocationUI.GetTimeLeftText(location.AuthorId, cancellationToken).ConfigureAwait(false);
             participants.Add(new Participant(
                 location.Id,
                 author.Avatar,

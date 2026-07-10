@@ -146,7 +146,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                         lastTextEntryText = $"Thread '{lastThreadChat.Title}'";
                 }
                 else if (lastTextEntry is { HasLocation: true, LocationId: { } locationId }) {
-                    var isLive = await LocationUI.IsLiveShare(chatId, locationId, cancellationToken).ConfigureAwait(false);
+                    var isLive = await LocationUI.IsLive(chatId, locationId, cancellationToken).ConfigureAwait(false);
                     lastTextEntryText = isLive ? "Shared live location" : "Sent a location";
                 }
                 else {
