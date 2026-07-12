@@ -26,7 +26,7 @@
         @if (m.Participants.Count > 0) {
             <div class="c-participants custom-scrollbar">
                 @foreach (var p in m.Participants) {
-                    <SharingParticipant
+                    <LocationParticipant
                         @key="@p.LocationId"
                         Participant="@p"
                         Click="@(() => OnParticipantClick(p))"/>
