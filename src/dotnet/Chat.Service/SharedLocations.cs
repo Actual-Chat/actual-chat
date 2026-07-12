@@ -10,15 +10,22 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
     // [ComputeMethod]
     public virtual async Task<SharedLocation?> Get(
         Session session,
-        ChatId chatId,
         SharedLocationId id,
         CancellationToken cancellationToken)
     {
-        // TODO: do we really need to pass chatId?
-        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        var location = await Backend.Get(id, cancellationToken).ConfigureAwait(false);
+        if (location is null)
+            return null;
+
+        var chatRules = await Chats.GetRules(session, location.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        return await Backend.Get(id, cancellationToken).ConfigureAwait(false);
+        return location;
     }
+
+    [Obsolete("2026.07: Use Get without chatId")]
+    public virtual Task<SharedLocation?> Get(
+        Session session, ChatId chatId, SharedLocationId id, CancellationToken cancellationToken)
+        => Get(session, id, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<SharedLocation>> ListLive(
