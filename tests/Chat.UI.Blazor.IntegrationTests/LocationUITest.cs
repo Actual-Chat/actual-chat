@@ -1,5 +1,6 @@
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -7,37 +8,45 @@ namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 public class LocationUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ChatAppHostFixture>(fixture, @out)
 {
+    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
+    private AppUIHub Hub => field ??= Tester.ScopedAppServices.AppUIHub();
+    private LocationUI LocationUI => Hub.LocationUI;
+
+    protected override async Task DisposeAsync()
+    {
+        await Tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
+
     [Fact]
     public async Task ShouldInvalidateSharingRemainingTextWhenSharingStops()
     {
-        // TODO: use AAA in lowercase
-        // TODO: check if follows conventions of other XxxUITest classes
-        await using var tester = AppHost.NewBlazorTester(Out);
-        await tester.SignInAsUniqueBob();
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30).Debuggable());
+        var cancellationToken = cts.Token;
 
-        var (chatId, _) = await tester.CreateChat(true);
-        var author = await tester.GetOwnAuthor(chatId).Require();
-        var locationUI = tester.ScopedAppServices.AppUIHub().LocationUI;
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var ct = cts.Token;
-
-        var entry = await tester.CreateLocationEntry(
+        var (chatId, _) = await Tester.CreateChat(true, cancellationToken: cancellationToken);
+        var author = await Tester.GetOwnAuthor(chatId, cancellationToken: cancellationToken).Require();
+        var entry = await Tester.CreateLocationEntry(
             chatId,
             new GeoPoint(51.5074, -0.1278, 12f, 90f),
             TimeSpan.FromHours(1),
-            ct);
+            cancellationToken);
         var locationId = entry.LocationId.Require();
 
         var computed = await Computed.Capture(
-            () => locationUI.GetTimeLeftText(author.Id, ct),
-            ct);
+            () => LocationUI.GetTimeLeftText(author.Id, cancellationToken),
+            cancellationToken);
         computed.Value.Should().NotBeEmpty();
         computed.IsConsistent().Should().BeTrue();
 
-        await tester.StopSharingLocation(chatId, locationId, ct);
-        computed.IsConsistent().Should().BeFalse();
+        // act
+        await Tester.StopSharingLocation(chatId, locationId, cancellationToken);
 
-        computed = await computed.Update(ct);
+        // assert
+        computed.IsConsistent().Should().BeFalse();
+        computed = await computed.Update(cancellationToken);
         computed.Value.Should().Be("");
         computed.IsConsistent().Should().BeTrue();
     }
