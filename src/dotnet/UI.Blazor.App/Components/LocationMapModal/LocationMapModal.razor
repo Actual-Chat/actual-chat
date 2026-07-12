@@ -3,6 +3,7 @@
 @implements IModalView<LocationMapModal.Model>
 @{
     var m = State.Value;
+    var markers = m.Participants.Select(p => p.ToMapMarker(UrlMapper)).ToList();
 }
 
 <DialogFrame
@@ -12,13 +13,13 @@
     NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
     <Body>
         <div class="c-map-host">
-            @if (m.Markers.Count == 0) {
+            @if (markers.Count == 0) {
                 <div class="c-empty">No one is sharing their location right now.</div>
             } else {
                 <MapView
                     @ref="_mapView"
                     Class="c-map"
-                    Markers="@m.Markers"
+                    Markers="@markers"
                     CenterLatitude="@m.CenterLatitude"
                     CenterLongitude="@m.CenterLongitude"/>
             }
@@ -67,7 +68,6 @@
         var ownLocation = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
         var ownPoint = ownLocation?.Point
             ?? await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
-        var markers = new List<MapMarker>(locations.Count);
         var participants = new List<Participant>(locations.Count);
         foreach (var location in locations) {
             var author = await Authors.Get(Session, location.ChatId, location.AuthorId, cancellationToken)
@@ -75,7 +75,6 @@
             if (author is null)
                 continue;
 
-            markers.Add(ToAvatarMarker(location, author.Avatar));
             var isOwn = ownAuthor != null && location.AuthorId == ownAuthor.Id;
             var distanceText = !isOwn && ownPoint != null
                 ? ToDistanceText(ownPoint.DistanceTo(location.Point))
@@ -84,6 +83,7 @@
                 .ConfigureAwait(false);
             participants.Add(new Participant(
                 location.Id,
+                location.AuthorId,
                 author.Avatar,
                 isOwn,
                 location.Point,
@@ -98,27 +98,11 @@
         // Center on the clicked share first, then the viewer's own, then the first one.
         var clicked = ModalModel.LocationId is { } id ? locations.FirstOrDefault(x => x.Id == id) : null;
         var center = (clicked ?? ownLocation ?? locations[0]).Point;
-        return new ComputedModel(markers, participants, center.Latitude, center.Longitude);
+        return new ComputedModel(participants, center.Latitude, center.Longitude);
     }
 
     private Task OnParticipantClick(Participant participant)
         => _mapView?.FlyTo(participant.Point.Latitude, participant.Point.Longitude).AsTask() ?? Task.CompletedTask;
-
-    private MapMarker ToAvatarMarker(
-        SharedLocation location,
-        Avatar? avatar) {
-        var pictureUrl = avatar?.Picture is { } picture ? UrlMapper.PicturePreview128Url(picture) : "";
-        var avatarKey = pictureUrl.IsNullOrEmpty()
-            ? (avatar?.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(location.AuthorId.Value)
-            : "";
-        return new MapMarker(
-            location.Id.Value,
-            location.Point.Latitude,
-            location.Point.Longitude,
-            avatar?.Name,
-            pictureUrl.NullIfEmpty(),
-            avatarKey.NullIfEmpty());
-    }
 
     private async Task<IReadOnlyList<SharedLocation>> GetLocations(ChatId chatId, CancellationToken cancellationToken) {
         if (ModalModel.LocationId is not { } locationId)
@@ -148,21 +132,42 @@
     // Nested types
 
     public sealed record ComputedModel(
-        IReadOnlyList<MapMarker> Markers,
         IReadOnlyList<Participant> Participants,
         double CenterLatitude,
         double CenterLongitude) {
-        public static readonly ComputedModel None = new([], [], 0, 0);
+        public static readonly ComputedModel None = new([], 0, 0);
     }
 
     public sealed record Participant(
+        // TODO: pass SharedLocation instead
         SharedLocationId LocationId,
+        // TODO: pass Author instead
+        AuthorId AuthorId,
+        // TODO: use from Author
         Avatar Avatar,
         bool IsOwn,
+        // TODO: use come from Location
         GeoPoint Point,
+        // TODO: use come from Location
         Moment ModifiedAt,
+        // TODO: calculate in Participant component if possible
         string DistanceText,
-        string RemainingText);
+        // TODO: calculate in Participant component if possible
+        string RemainingText) {
+        public MapMarker ToMapMarker(UrlMapper urlMapper) {
+            var pictureUrl = Avatar.Picture is { } picture ? urlMapper.PicturePreview128Url(picture) : "";
+            var avatarKey = pictureUrl.IsNullOrEmpty()
+                ? (Avatar.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(AuthorId.Value)
+                : "";
+            return new MapMarker(
+                LocationId.Value,
+                Point.Latitude,
+                Point.Longitude,
+                Avatar.Name,
+                pictureUrl.NullIfEmpty(),
+                avatarKey.NullIfEmpty());
+        }
+    }
 
     public sealed record Model(ChatId ChatId, SharedLocationId? LocationId = null);
 }
