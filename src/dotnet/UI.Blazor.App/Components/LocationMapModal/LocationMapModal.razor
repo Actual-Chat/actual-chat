@@ -25,28 +25,11 @@
         </div>
         @if (m.Participants.Count > 0) {
             <div class="c-participants custom-scrollbar">
-                @* TODO: extract single participant component *@
                 @foreach (var p in m.Participants) {
-                    <div class="c-participant" @key="@p.LocationId" @onclick="@(() => OnParticipantClick(p))">
-                        <AvatarCircle Avatar="@p.Avatar" Size="@SquareSize.Size10"/>
-                        <div class="c-info">
-                            <div class="c-name">
-                                <span>@p.Avatar.Name</span>
-                                @if (p.IsOwn) {
-                                    <span class="c-you">(you)</span>
-                                }
-                            </div>
-                            <div class="c-status">
-                                <span>Updated&nbsp;</span><LiveTimeDeltaText Moment="@p.ModifiedAt" NullText=""/>
-                                @if (!p.DistanceText.IsNullOrEmpty()) {
-                                    <span> · @p.DistanceText from you</span>
-                                }
-                                @if (!p.RemainingText.IsNullOrEmpty()) {
-                                    <span> · @p.RemainingText left</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
+                    <SharingParticipant
+                        @key="@p.LocationId"
+                        Participant="@p"
+                        Click="@(() => OnParticipantClick(p))"/>
                 }
             </div>
         }
@@ -97,7 +80,8 @@
             var distanceText = !isOwn && ownPoint != null
                 ? ToDistanceText(ownPoint.DistanceTo(location.Point))
                 : "";
-            var remainingTime = await LocationUI.GetTimeLeftText(location.AuthorId, cancellationToken).ConfigureAwait(false);
+            var remainingTime = await LocationUI.GetTimeLeftText(location.AuthorId, cancellationToken)
+                .ConfigureAwait(false);
             participants.Add(new Participant(
                 location.Id,
                 author.Avatar,

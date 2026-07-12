@@ -1,0 +1,27 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="c-participant" @onclick="@Click">
+    <AvatarCircle Avatar="@Participant.Avatar" Size="@SquareSize.Size10"/>
+    <div class="c-info">
+        <div class="c-name">
+            <span>@Participant.Avatar.Name</span>
+            @if (Participant.IsOwn) {
+                <span class="c-you">(you)</span>
+            }
+        </div>
+        <div class="c-status">
+            <span>Updated&nbsp;</span><LiveTimeDeltaText Moment="@Participant.ModifiedAt" NullText=""/>
+            @if (!Participant.DistanceText.IsNullOrEmpty()) {
+                <span> · @Participant.DistanceText from you</span>
+            }
+            @if (!Participant.RemainingText.IsNullOrEmpty()) {
+                <span> · @Participant.RemainingText left</span>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public LocationMapModal.Participant Participant { get; set; } = null!;
+    [Parameter] public EventCallback Click { get; set; }
+}
