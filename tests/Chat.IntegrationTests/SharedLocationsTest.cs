@@ -40,7 +40,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // assert - the entry references a shared location that is frozen (not live)
         entry.LocationId.Should().NotBeNull();
-        var location = await sharedLocations.Get(session, chatId, entry.LocationId!, ct);
+        var location = await sharedLocations.Get(session, entry.LocationId!, ct);
         location.Should().NotBeNull();
         location.Point.Should().Be(point);
         location.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
@@ -93,7 +93,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // assert - no longer live, but the last position is frozen and kept (not scrubbed)
         await cList.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
-        var frozen = await sharedLocations.Get(session, chatId, locationId, ct);
+        var frozen = await sharedLocations.Get(session, locationId, ct);
         frozen.Should().NotBeNull();
         frozen.Point.Should().Be(point2);
         frozen.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
@@ -150,7 +150,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         await cList.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(10), ct);
 
         // assert - the frozen record is still readable as the message's history backing
-        var frozen = await sharedLocations.Get(session, chatId, locationId, ct);
+        var frozen = await sharedLocations.Get(session, locationId, ct);
         frozen.Should().NotBeNull();
     }
 

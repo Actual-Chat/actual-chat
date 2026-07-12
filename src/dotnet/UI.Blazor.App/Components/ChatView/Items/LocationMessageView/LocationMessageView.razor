@@ -53,7 +53,7 @@
         if (Entry.LocationId is not { } locationId)
             return null;
 
-        var location = await SharedLocations.Get(Session, Entry.ChatId, locationId, cancellationToken)
+        var location = await SharedLocations.Get(Session, locationId, cancellationToken)
             .ConfigureAwait(false);
         if (location is null)
             return null;

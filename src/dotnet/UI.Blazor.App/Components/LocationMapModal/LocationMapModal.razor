@@ -140,7 +140,7 @@
         if (ModalModel.LocationId is not { } locationId)
             return await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
 
-        var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken).ConfigureAwait(false);
+        var location = await SharedLocations.Get(Session, locationId, cancellationToken).ConfigureAwait(false);
         if (location is null)
             return [];
 

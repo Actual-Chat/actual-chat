@@ -6,6 +6,9 @@ namespace ActualChat.Chat;
 public interface ISharedLocations : IComputeService
 {
     [ComputeMethod]
+    Task<SharedLocation?> Get(Session session, SharedLocationId id, CancellationToken cancellationToken);
+    [ComputeMethod]
+    [Obsolete("2026.07: Use Get without chatId")]
     Task<SharedLocation?> Get(Session session, ChatId chatId, SharedLocationId id, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<SharedLocation>> ListLive(Session session, ChatId chatId, CancellationToken cancellationToken);
