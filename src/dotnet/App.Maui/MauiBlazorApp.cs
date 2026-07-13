@@ -31,6 +31,9 @@ public sealed class MauiBlazorApp : AppBase
         var session = await TrueSessionResolver.SessionTask.ConfigureAwait(true);
         if (_mauiWebView != null)
             await _mauiWebView.SetScopedServices(Services, session).ConfigureAwait(true);
+#if IOS
+        _ = Services.GetService<IosPushToTalkUI>();
+#endif
 
         FirebaseAnalyticsExt.ActivateOwnAnalyticsCollection(Services);
         _ = Services.GetRequiredService<MauiSentryInitializer>().Start();
