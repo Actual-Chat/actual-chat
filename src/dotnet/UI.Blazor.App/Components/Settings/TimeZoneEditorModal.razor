@@ -1,10 +1,11 @@
 @using TimeZone = ActualChat.Users.TimeZone
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<TimeZoneEditorModal.Model>
+@inject IStringLocalizer<Strings> L
 
 <DialogFrame
     Class="time-zone-editor-modal"
-    Title="Select time zone"
+    Title="@L["TimeZone_SelectTitle"].Value"
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
@@ -43,7 +44,7 @@
         if (error != null)
             return;
 
-        Hub.ToastUI.Show("Time zone has been updated", "icon-checkmark-circle", ToastDismissDelay.Short);
+        Hub.ToastUI.Show(L["TimeZone_Updated"].Value, "icon-checkmark-circle", ToastDismissDelay.Short);
         Modal.Close();
     }
 

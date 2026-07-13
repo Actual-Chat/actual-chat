@@ -1,3 +1,4 @@
+@inject IStringLocalizer<Strings> L
 @{
 #pragma warning disable IL2091
 }
@@ -7,7 +8,7 @@
     <FormBlock>
         <InputRadioGroup
             Name="theme"
-            DisplayName="Theme"
+            DisplayName="@L["UserInterface_Theme"].Value"
             @bind-Value="_formModel.Theme">
 
             <TileItem
@@ -19,7 +20,7 @@
                         Value="@GetThemeKey(Theme.Light)"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_formModel.LightThemeFormId" Text="Light" IsRequired="true"></Label>
+                    <Label InputId="@_formModel.LightThemeFormId" Text="@L["ThemeSettings_Light"].Value" IsRequired="true"></Label>
                 </Content>
             </TileItem>
 
@@ -32,7 +33,7 @@
                         Value="@GetThemeKey(Theme.Ash)"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_formModel.AshThemeFormId" Text="Light, Link Water accent" IsRequired="true"></Label>
+                    <Label InputId="@_formModel.AshThemeFormId" Text="@L["ThemeSettings_LightLinkWater"].Value" IsRequired="true"></Label>
                 </Content>
             </TileItem>
 
@@ -45,7 +46,7 @@
                         Value="@GetThemeKey(Theme.Dark)"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_formModel.DarkThemeFormId" Text="Dark" IsRequired="true"></Label>
+                    <Label InputId="@_formModel.DarkThemeFormId" Text="@L["ThemeSettings_Dark"].Value" IsRequired="true"></Label>
                 </Content>
             </TileItem>
 
@@ -58,7 +59,7 @@
                         Value="@GetThemeKey(null)"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_formModel.SystemThemeFormId" Text="Match system theme" IsRequired="true"></Label>
+                    <Label InputId="@_formModel.SystemThemeFormId" Text="@L["ThemeSettings_MatchSystem"].Value" IsRequired="true"></Label>
                 </Content>
             </TileItem>
 

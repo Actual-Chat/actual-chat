@@ -1,0 +1,63 @@
+@inject IStringLocalizer<Strings> L
+
+<Form Model="@_formModel">
+    <FormBlock>
+        <FormSection
+            For="() => _formModel.Language"
+            InputId="@_formModel.LanguageFormId"
+            IsLabelInsideInput="true"
+            IsRequired="true"
+            Label="@L["Settings_Language"].Value">
+            <InputSelect
+                class="c-language-select"
+                Value="_formModel.Language"
+                ValueExpression="@(() => _formModel.Language)"
+                ValueChanged="@((string language) => OnLanguageChanged(language))">
+                @foreach (var language in SupportedLanguages) {
+                    <option value="@language.Code">@language.Name</option>
+                }
+            </InputSelect>
+        </FormSection>
+    </FormBlock>
+</Form>
+
+@code {
+    // TODO: support most of languages supported by transcription
+    private static readonly (string Code, string Name)[] SupportedLanguages = [
+        ("en", "English"),
+        ("es", "Español"),
+        ("fr", "Français"),
+        ("it", "Italiano"),
+        ("ru", "Русский"),
+        ("de", "Deutsch"),
+    ];
+
+    private FormModel _formModel = null!;
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private History History => Hub.History;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private UILanguageState LanguageState => field ??= Hub.Services.GetRequiredService<UILanguageState>();
+    private UILanguageUI LanguageUI => field ??= Hub.Services.GetRequiredService<UILanguageUI>();
+
+    protected override void OnInitialized()
+        => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageState.Language };
+
+    private async Task OnLanguageChanged(string language) {
+        await LanguageUI.Set(language);
+        await History.ForceReload("Language changed", History.Uri);
+    }
+
+    public sealed class FormModel
+    {
+        private string FormId { get; }
+        public string LanguageFormId { get; }
+        public string Language { get; set; } = UILanguageState.DefaultLanguage;
+
+        public FormModel(ComponentIdGenerator componentIdGenerator)
+        {
+            FormId = componentIdGenerator.Next("ui-language-form");
+            LanguageFormId = $"{FormId}-language";
+        }
+    }
+}

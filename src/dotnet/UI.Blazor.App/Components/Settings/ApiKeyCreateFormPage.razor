@@ -1,4 +1,6 @@
 @inherits ComponentBase<AppUIHub>
+@* TODO: if it's not best practice, move it to @code section *@
+@inject IStringLocalizer<Strings> L
 
 <Tile>
     <Form Model="@_formModel">
@@ -7,10 +9,10 @@
                 For="() => _formModel.Name"
                 InputId="@_formModel.NameFormId"
                 IsLabelInsideInput="true"
-                Label="Name">
+                Label="@L["ApiKeyCreate_Name"].Value">
                 <TextBox
                     Id="@_formModel.NameFormId"
-                    Placeholder="My API key"
+                    Placeholder="@L["ApiKeyCreate_Placeholder"].Value"
                     @bind-Value="@_formModel.Name"
                     ClearButton="true"/>
             </FormSection>
@@ -19,7 +21,7 @@
                 For="() => _formModel.ExpiresInDaysText"
                 InputId="@_formModel.ExpiresInDaysFormId"
                 IsLabelInsideInput="true"
-                Label="Expires in (days)">
+                Label="@L["ApiKeyCreate_ExpiresInDays"].Value">
                 <TextBox
                     Id="@_formModel.ExpiresInDaysFormId"
                     Type="number"
@@ -35,8 +37,8 @@
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
-        Context.Title = "Create API Key";
-        Context.Buttons = [DialogButtonInfo.CancelButton, DialogButtonInfo.CreateSubmitButton("Create", OnCreate)];
+        Context.Title = L["ApiKeyCreate_Title"].Value;
+        Context.Buttons = [DialogButtonInfo.CancelButton, DialogButtonInfo.CreateSubmitButton(L["ApiKeyCreate_Create"].Value, OnCreate)];
     }
 
     private async Task OnCreate() {

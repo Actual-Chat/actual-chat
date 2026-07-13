@@ -1,6 +1,7 @@
 @using System.ComponentModel.DataAnnotations
 @inherits ComponentBase<AppUIHub>
 @implements IDisposable
+@inject IStringLocalizer<Strings> L
 @{
     #pragma warning disable IL2091
 
@@ -13,7 +14,7 @@
     var isEmailVerified = !isEmailEmpty && _account.Identities.HasEmail(email);
 }
 
-<TileTopic Topic="Email"/>
+<TileTopic Topic="@L["Email_Title"].Value"/>
 <Tile>
     <Form EditContext="_emailFormEditContext">
         <DataAnnotationsValidator/>
@@ -22,7 +23,7 @@
             <FormSection
                 For="() => email"
                 InputId="@_emailForm.EmailFieldId"
-                Label="Email"
+                Label="@L["Email_Label"].Value"
                 IsLabelInsideInput="true">
                 <ChildContent>
                     <TextBox

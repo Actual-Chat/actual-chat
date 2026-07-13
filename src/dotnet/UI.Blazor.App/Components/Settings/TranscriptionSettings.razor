@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, TranscriptionSettings.Model>
+@inject IStringLocalizer<Strings> L
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2091:GenericArgumentDoNotHaveAnnotation", Justification = "Primitive types will be preserved.")]
 @{
 #pragma warning disable IL2091
@@ -13,7 +14,7 @@
     var shouldDisplayTranscriberEngineSettings = m.EnableIncompleteUI;
 }
 
-<TileTopic Topic="Languages"/>
+<TileTopic Topic="@L["Transcription_Languages"].Value"/>
 
 <Tile>
     <Form Model="@_formModel">
@@ -24,7 +25,7 @@
                 For="() => _formModel.PrimaryLanguageId"
                 InputId="@_formModel.PrimaryLanguageFormId"
                 IsLabelInsideInput="true"
-                Label="Primary language"
+                Label="@L["Transcription_PrimaryLanguage"].Value"
                 IsRequired="true">
                 <InputSelect
                     Value="_formModel.PrimaryLanguageId"
@@ -40,12 +41,12 @@
                 For="() => _formModel.SecondaryLanguageId"
                 InputId="@_formModel.SecondaryLanguageFormId"
                 IsLabelInsideInput="true"
-                Label="2nd language">
+                Label="@L["Transcription_SecondLanguage"].Value">
                 <InputSelect
                     Value="_formModel.SecondaryLanguageId"
                     ValueExpression="@(() => _formModel.SecondaryLanguageId)"
                     ValueChanged="@((string languageId) => OnLanguageChanged(1, languageId))">
-                    <option value="">None</option>
+                    <option value="">@L["Transcription_None"]</option>
                     @foreach (var language in Languages.All) {
                         <option value="@language.Id">@language.Title</option>
                     }
@@ -56,12 +57,12 @@
                 For="() => _formModel.TertiaryLanguageId"
                 InputId="@_formModel.TertiaryLanguageFormId"
                 IsLabelInsideInput="true"
-                Label="3rd language">
+                Label="@L["Transcription_ThirdLanguage"].Value">
                 <InputSelect
                     Value="_formModel.TertiaryLanguageId"
                     ValueExpression="@(() => _formModel.TertiaryLanguageId)"
                     ValueChanged="@((string languageId) => OnLanguageChanged(2, languageId))">
-                    <option value="">None</option>
+                    <option value="">@L["Transcription_None"]</option>
                     @foreach (var language in Languages.All) {
                         <option value="@language.Id">@language.Title</option>
                     }
@@ -72,7 +73,7 @@
 </Tile>
 
 @if (shouldDisplayTranscriberEngineSettings) {
-    <TileTopic Topic="Transcription Engines"/>
+    <TileTopic Topic="@L["Transcription_Engines"].Value"/>
     <Tile Class="theme-tile">
         <TranscriptionEngineSettings/>
     </Tile>

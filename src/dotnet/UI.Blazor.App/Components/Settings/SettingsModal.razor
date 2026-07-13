@@ -2,6 +2,7 @@
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, SettingsModal.ComputedModel>
+@inject IStringLocalizer<Strings> L
 @{
     var m = State.Value;
     var account = m.AccountFull;
@@ -10,7 +11,7 @@
     var showLogout = !isGuest;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
     var showPushToTalk = HostInfo.HostKind.IsMauiApp() && m.EnableIncompleteUI;
-    var quitTitle = $"Quit {CoreConstants.AppName}";
+    var quitTitle = L["Settings_Quit_Format", CoreConstants.AppName].Value;
 }
 
 <ModalFrame Class="settings-modal">
@@ -19,18 +20,18 @@
             <i class="icon-close text-xl"></i>
         </ButtonRound>
     }
-    <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId">
+    <SettingsPanel Title="@L["Settings_Title"].Value" CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId">
         @if (showMyAccount) {
-            <SettingsTab @key="1" TabIndex="1" Title="Your Account" Id="@SettingsTabId.Account" IconClass="icon-person">
+            <SettingsTab @key="1" TabIndex="1" Title="@L["Settings_YourAccount"].Value" Id="@SettingsTabId.Account" IconClass="icon-person">
                 <YourAccount/>
             </SettingsTab>
         }
 
-        <SettingsTab @key="2" TabIndex="2" Title="User Interface" Id="@SettingsTabId.UserInterface" IconClass="icon-interface">
+        <SettingsTab @key="2" TabIndex="2" Title="@L["Settings_UserInterface"].Value" Id="@SettingsTabId.UserInterface" IconClass="icon-interface">
             <UserInterface/>
         </SettingsTab>
 
-        <SettingsTab @key="3" TabIndex="3" Title="Transcription" Id="@SettingsTabId.Transcription" IconClass="icon-transcription">
+        <SettingsTab @key="3" TabIndex="3" Title="@L["Settings_Transcription"].Value" Id="@SettingsTabId.Transcription" IconClass="icon-transcription">
             <TitleContent>
                 <LanguageShortcut/>
             </TitleContent>
@@ -46,35 +47,35 @@
             </SettingsTab>
         }
 
-        <SettingsTab @key="5" TabIndex="5" Title="Application" Id="@SettingsTabId.App" IconClass="icon-settings">
+        <SettingsTab @key="5" TabIndex="5" Title="@L["Settings_Application"].Value" Id="@SettingsTabId.App" IconClass="icon-settings">
             <AppSettings/>
         </SettingsTab>
 
         @if (showMyAccount) {
-            <SettingsTab @key="6" TabIndex="6" Title="Sessions" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
+            <SettingsTab @key="6" TabIndex="6" Title="@L["Settings_Sessions"].Value" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
                 <SessionSettings/>
             </SettingsTab>
-            <SettingsTab @key="7" TabIndex="7" Title="API Keys" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
+            <SettingsTab @key="7" TabIndex="7" Title="@L["Settings_ApiKeys"].Value" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
                 <ApiKeySettings/>
             </SettingsTab>
         }
 
         @if (showMyAccount) {
-            <SettingsTab @key="8" TabIndex="8" Title="Privacy" Id="@SettingsTabId.Privacy" IconClass="icon-lock">
+            <SettingsTab @key="8" TabIndex="8" Title="@L["Settings_Privacy"].Value" Id="@SettingsTabId.Privacy" IconClass="icon-lock">
                 <PrivacySettings/>
             </SettingsTab>
         }
 
-        <SettingsTab @key="90" TabIndex="90" Title="Documents" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text" HasSeparatorBefore="true">
+        <SettingsTab @key="90" TabIndex="90" Title="@L["Settings_Documents"].Value" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text" HasSeparatorBefore="true">
             <DocumentsPage/>
         </SettingsTab>
 
-        <SettingsTab @key="91" TabIndex="91" Title="Developer tools" Id="@SettingsTabId.DevTools" IconClass="icon-eye">
+        <SettingsTab @key="91" TabIndex="91" Title="@L["Settings_DeveloperTools"].Value" Id="@SettingsTabId.DevTools" IconClass="icon-eye">
             <DeveloperTools/>
         </SettingsTab>
 
         @if (m.ShowLogViewer) {
-            <SettingsTab @key="92" TabIndex="92" Title="Log Viewer" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" HeaderClass="no-scrollbar" ContentClass="no-scrollbar" IconClass="icon-info">
+            <SettingsTab @key="92" TabIndex="92" Title="@L["Settings_LogViewer"].Value" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" HeaderClass="no-scrollbar" ContentClass="no-scrollbar" IconClass="icon-info">
                 <ChildContent>
                     <div class="log-viewer-page">
                         <LogView/>
@@ -90,7 +91,7 @@
         }
 
         @if (showLogout) {
-            <SettingsTab @key="100" TabIndex="100" Title="Log out" Id="@SettingsTabId.SignOut" IconClass="icon-log-out" HasSeparatorBefore="true">
+            <SettingsTab @key="100" TabIndex="100" Title="@L["Settings_LogOut"].Value" Id="@SettingsTabId.SignOut" IconClass="icon-log-out" HasSeparatorBefore="true">
             </SettingsTab>
         }
         @if (showQuit) {

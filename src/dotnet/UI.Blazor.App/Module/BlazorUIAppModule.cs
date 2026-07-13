@@ -12,9 +12,11 @@ using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
 using ActualChat.UI.Blazor.App.Testing;
+using ActualChat.UI.Blazor.App.Resources;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.App.Module;
 
@@ -25,6 +27,11 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
+        // Localization: custom JSON-based localizer (InvariantGlobalization rules out the standard .resx one)
+        services.AddScoped<UILanguageState>();
+        services.AddScoped(c => new UILanguageUI(c.AppUIHub()));
+        services.AddScoped<IStringLocalizer<Strings>, AppStringLocalizer>();
+
         var fusion = services.AddFusion();
 
         // Singletons

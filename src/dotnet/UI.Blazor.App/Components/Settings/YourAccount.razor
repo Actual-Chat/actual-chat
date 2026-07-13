@@ -2,12 +2,13 @@
 @using AccountField = ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal.AccountField
 @inherits ComputedStateComponent<AppUIHub, AccountFull>
 @implements IDisposable
+@inject IStringLocalizer<Strings> L
 @{
     var account = State.Value;
     var readablePhone = account.Phone?.ToReadable() ?? "";
 }
 
-<TileTopic Topic="Information"/>
+<TileTopic Topic="@L["YourAccount_Information"].Value"/>
 
 <Tile Class="your-account-tile">
     <TileItem Class="first-tile-item" Click="@(() => OnEditClick(AccountField.Name))">
@@ -21,7 +22,7 @@
             @account.Name
         </Content>
         <Caption>
-            Name
+            @L["YourAccount_Name"]
         </Caption>
     </TileItem>
 
@@ -34,7 +35,7 @@
                 @("@" + aliasId.Value)
             </Content>
             <Caption>
-                User link
+                @L["YourAccount_UserLink"]
             </Caption>
             <Right>
                 <div class="c-actions" @onclick:stopPropagation="true">
@@ -54,7 +55,7 @@
             @account.Email
         </Content>
         <Caption>
-            Email
+            @L["YourAccount_Email"]
         </Caption>
         <Right>
             <div class="c-actions" @onclick:stopPropagation="true">
@@ -86,7 +87,7 @@
             @account.Phone?.ToReadable()
         </Content>
         <Caption>
-            Phone
+            @L["YourAccount_Phone"]
         </Caption>
     </TileItem>
 
@@ -95,10 +96,10 @@
             <i class="icon-globe"></i>
         </Icon>
         <Content>
-            @(_timeZoneName ?? "Not set")
+            @(_timeZoneName ?? L["YourAccount_TimeZoneNotSet"].Value)
         </Content>
         <Caption>
-            Time zone (for digest)
+            @L["YourAccount_TimeZone"]
         </Caption>
     </TileItem>
 
@@ -119,15 +120,15 @@
             <i class="icon-share"></i>
         </Icon>
         <Content>
-            Share
+            @L["YourAccount_Share"]
         </Content>
         <Caption>
-            Share your contact
+            @L["YourAccount_ShareYourContact"]
         </Caption>
     </TileItem>
 </Tile>
 
-<TileTopic Topic="My avatars"/>
+<TileTopic Topic="@L["YourAccount_MyAvatars"].Value"/>
 
 <OwnAvatarList Account="@account"/>
 

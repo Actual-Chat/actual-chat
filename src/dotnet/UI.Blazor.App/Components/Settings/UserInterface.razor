@@ -1,16 +1,22 @@
 @inherits ComputedStateComponent<AppUIHub, UserInterface.Model>
+@inject IStringLocalizer<Strings> L
 @{
     var m = State.Value;
 }
 
-<TileTopic Topic="Font"/>
+<TileTopic Topic="@L["Settings_UILanguage"].Value"/>
+<Tile>
+    <LanguageSettings/>
+</Tile>
+
+<TileTopic Topic="@L["UserInterface_Font"].Value"/>
 <Tile Class="font-size-tile">
     <div class="ui-settings">
         <FontSizeSlider/>
     </div>
 </Tile>
 
-<TileTopic Topic="Theme"/>
+<TileTopic Topic="@L["UserInterface_Theme"].Value"/>
 <Tile Class="theme-tile">
     <ThemeSettings/>
 </Tile>
@@ -51,12 +57,12 @@
 
     private async Task OnRestartWalkThrough() {
         await BubbleUI.ResetSettings();
-        ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+        ToastUI.Show(L["UserInterface_WalkThroughRestarted"].Value, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     private void OnRestartOnboarding() {
         OnboardingUI.ResetSettings();
-        ToastUI.Show("Onboarding steps are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+        ToastUI.Show(L["UserInterface_OnboardingRestarted"].Value, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     // Nested types

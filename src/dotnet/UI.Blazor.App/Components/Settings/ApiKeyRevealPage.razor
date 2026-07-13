@@ -1,7 +1,8 @@
 @inherits ComponentBase<AppUIHub>
+@inject IStringLocalizer<Strings> L
 
 <FormBlock>
-    <p class="c-title">Copy this key now. It will not be shown again.</p>
+    <p class="c-title">@L["ApiKeyReveal_CopyWarning"]</p>
     <div class="api-key-container">
         <code>@_model.ApiKey</code>
         <CopyToClipboard
@@ -19,8 +20,8 @@
 
     protected override void OnInitialized() {
         _model = Context.GetModel<Model>();
-        Context.Title = "Your new API key";
-        Context.Buttons = [DialogButtonInfo.CreateSubmitButton("Close", OnClose)];
+        Context.Title = L["ApiKeyReveal_Title"].Value;
+        Context.Buttons = [DialogButtonInfo.CreateSubmitButton(L["Common_Close"].Value, OnClose)];
     }
 
     private void OnClose()
