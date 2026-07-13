@@ -20,8 +20,8 @@
     <Body>
         <div class="c-body" @onclick="@OnClick">
             <div class="c-avatars">
-                @foreach (var avatar in m.Avatars.Take(MaxAvatars)) {
-                    <AvatarCircle Avatar="@avatar" Size="@SquareSize.Size7"/>
+                @foreach (var author in m.Authors.Take(MaxAvatars)) {
+                    <AvatarCircle Avatar="@author.Avatar" Size="@SquareSize.Size7"/>
                 }
             </div>
             <div class="c-text">
@@ -63,12 +63,12 @@
             return Model.None;
 
         var ownLive = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-        var avatars = await LocationUI.ListAvatars(chatId, cancellationToken).ConfigureAwait(false);
+        var authors = await LocationUI.ListAuthors(chatId, cancellationToken).ConfigureAwait(false);
         var remaining = await LocationUI.GetOwnTimeLeftText(chatId, cancellationToken).ConfigureAwait(false);
         var trackingError = await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false);
 
         return new Model(
-            avatars,
+            authors,
             locations.Count,
             ownLive is not null,
             remaining,
@@ -88,7 +88,7 @@
     // Nested types
 
     public sealed record Model(
-        IReadOnlyList<Avatar> Avatars,
+        IReadOnlyList<Author> Authors,
         int Count,
         bool IsOwnSharing,
         string RemainingText = "",

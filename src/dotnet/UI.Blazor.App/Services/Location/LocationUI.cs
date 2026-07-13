@@ -17,20 +17,44 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     private LiveTime LiveTime => Hub.LiveTime;
 
     [ComputeMethod]
-    public virtual async Task<IReadOnlyList<Avatar>> ListAvatars(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<IReadOnlyList<Author>> ListAuthors(ChatId chatId, CancellationToken cancellationToken)
     {
-        var locations = await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var participants = await ListParticipants(chatId, cancellationToken).ConfigureAwait(false);
+        return participants.Select(x => x.Author).ToList();
+    }
+
+    public Task<IReadOnlyList<LocationParticipant>> ListParticipants(ChatId chatId, CancellationToken cancellationToken)
+        => ListParticipants(chatId, null, cancellationToken);
+
+    [ComputeMethod]
+    public virtual async Task<IReadOnlyList<LocationParticipant>> ListParticipants(ChatId chatId, SharedLocationId? locationId, CancellationToken cancellationToken)
+    {
+        var locations = await GetLocations().ConfigureAwait(false);
         if (locations.Count == 0)
             return [];
 
-        var avatars = new List<Avatar>(locations.Count);
-        foreach (var location in locations) {
-            var author = await Authors.Get(Session, chatId, location.AuthorId, cancellationToken)
-                .ConfigureAwait(false);
-            if (author != null)
-                avatars.Add(author.Avatar);
+        var participants = await locations.Select(GetParticipant)
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return participants
+            .SkipNullItems()
+            .OrderByDescending(p => ownAuthor != null && p.Author.Id == ownAuthor.Id)
+            .ThenBy(p => p.Author.Avatar.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        async Task<IReadOnlyList<SharedLocation>> GetLocations() {
+            if (locationId is null)
+                return await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+
+            var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken).ConfigureAwait(false);
+            return location is null ? [] : [location];
         }
-        return avatars;
+
+        async Task<LocationParticipant?> GetParticipant(SharedLocation sharedLocation) {
+            var author = await Authors.Get(Session, sharedLocation.ChatId, sharedLocation.AuthorId, cancellationToken).ConfigureAwait(false);
+            return author is null ? null : new LocationParticipant(sharedLocation, author);
+        }
     }
 
     [ComputeMethod]
@@ -124,3 +148,5 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 }
+
+public sealed record LocationParticipant(SharedLocation Location, Author Author);
