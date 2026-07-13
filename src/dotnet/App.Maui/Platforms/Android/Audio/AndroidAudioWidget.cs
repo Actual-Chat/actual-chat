@@ -49,6 +49,11 @@ public class AndroidAudioWidget : AudioWidget
         base.Dispose();
     }
 
+    // Protected/internal methods
+
+    internal static void MarkForegroundServiceShown() => _isShown = true;
+    internal static void MarkForegroundServiceHidden() => _isShown = false;
+
     // Private methods
 
     private static void ShowImpl(AudioWidgetState state)

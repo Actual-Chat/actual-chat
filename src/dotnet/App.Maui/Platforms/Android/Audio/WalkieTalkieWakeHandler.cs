@@ -185,6 +185,7 @@ public static class WalkieTalkieWakeHandler
         intent.PutExtra(IntentExtras.ExtraChatCount, 0);
         intent.PutExtra(IntentExtras.IsPaused, false);
         context.StartForegroundService(intent);
+        AndroidAudioWidget.MarkForegroundServiceShown();
     }
 
     private static void HideForegroundService()
@@ -192,6 +193,7 @@ public static class WalkieTalkieWakeHandler
         var context = Platform.AppContext;
         var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
         context.StopService(intent);
+        AndroidAudioWidget.MarkForegroundServiceHidden();
     }
 
     private static void ShowFallbackNotification(ChatId chatId)
