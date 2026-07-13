@@ -1,4 +1,5 @@
 namespace ActualChat.UI.Blazor.Components;
+
 public sealed record MapMarker(
     string Id,
     double Latitude,

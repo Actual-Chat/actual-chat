@@ -20,8 +20,7 @@
                     @ref="_mapView"
                     Class="c-map"
                     Markers="@markers"
-                    CenterLatitude="@m.CenterLatitude"
-                    CenterLongitude="@m.CenterLongitude"/>
+                    Center="@m.Center"/>
             }
         </div>
         @if (m.Participants.Count > 0) {
@@ -60,37 +59,43 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ModalModel.ChatId;
-        var locations = await GetLocations(chatId, cancellationToken).ConfigureAwait(false);
-        if (locations.Count == 0)
+        var participants = await GetParticipants(cancellationToken);
+        if (participants.Count == 0)
             return ComputedModel.None;
 
-        // Authors.GetOwn, not AuthorUI.GetOwn: the viewer may have no author here
-        // (e.g. reading a public chat they haven't joined), and the latter throws.
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownLocation = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
         var ownPoint = ownLocation?.Point
             ?? await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
-        var participants = new List<Participant>(locations.Count);
-        foreach (var location in locations) {
-            var author = await Authors.Get(Session, location.ChatId, location.AuthorId, cancellationToken)
-                .ConfigureAwait(false);
-            if (author is null)
-                continue;
+        var clicked = ModalModel.LocationId is { } id ? participants.FirstOrDefault(x => x.Location.Id == id) : null;
+        var center = clicked?.Location ?? ownLocation ?? participants[0].Location;
+        return new ComputedModel(participants, ownPoint, center.Point);
+    }
 
-            participants.Add(new Participant(location, author));
-        }
-        participants = participants
+    private async Task<IReadOnlyList<Participant>> GetParticipants(CancellationToken cancellationToken) {
+        var chatId = ModalModel.ChatId;
+        var session = Session;
+        var locations = await GetLocations(chatId, cancellationToken).ConfigureAwait(false);
+        if (locations.Count == 0)
+            return [];
+
+        var participants = await locations.Select(x => GetParticipant(x, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        return participants
+            .SkipNullItems()
             .OrderByDescending(p => ownAuthor != null && p.Author.Id == ownAuthor.Id)
             .ThenBy(p => p.Author.Avatar.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        // Center on the clicked share first, then the viewer's own, then the first one.
-        var clicked = ModalModel.LocationId is { } id ? locations.FirstOrDefault(x => x.Id == id) : null;
-        var center = (clicked ?? ownLocation ?? locations[0]).Point;
-        return new ComputedModel(participants, ownPoint, center.Latitude, center.Longitude);
+    }
+
+    private async Task<Participant?> GetParticipant(SharedLocation sharedLocation, CancellationToken cancellationToken) {
+        var author = await Authors.Get(Session, sharedLocation.ChatId, sharedLocation.AuthorId, cancellationToken).ConfigureAwait(false);
+        return author is null ? null : new Participant(sharedLocation, author);
     }
 
     private Task OnParticipantClick(Participant participant)
-        => _mapView?.FlyTo(participant.Location.Point.Latitude, participant.Location.Point.Longitude).AsTask() ?? Task.CompletedTask;
+        => _mapView?.FlyTo(participant.Location.Point).AsTask() ?? Task.CompletedTask;
 
     private async Task<IReadOnlyList<SharedLocation>> GetLocations(ChatId chatId, CancellationToken cancellationToken) {
         if (ModalModel.LocationId is not { } locationId)
@@ -114,9 +119,8 @@
     public sealed record ComputedModel(
         IReadOnlyList<Participant> Participants,
         GeoPoint? OwnPoint,
-        double CenterLatitude,
-        double CenterLongitude) {
-        public static readonly ComputedModel None = new([], null, 0, 0);
+        GeoPoint Center) {
+        public static readonly ComputedModel None = new([], null, new GeoPoint(0, 0));
     }
 
     public sealed record Participant(
