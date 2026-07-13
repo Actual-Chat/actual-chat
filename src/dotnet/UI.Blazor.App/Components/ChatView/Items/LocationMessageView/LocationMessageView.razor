@@ -11,8 +11,7 @@
             Class="c-map"
             Zoom="15"
             Interactive="false"
-            CenterLatitude="@m.Latitude"
-            CenterLongitude="@m.Longitude"
+            Center="@m.Center"
             Markers="@m.Markers"/>
         @if (m.IsLive) {
             <div class="c-live-caption">
@@ -61,8 +60,7 @@
         var marker = new MapMarker(location.Id.Value, location.Point.Latitude, location.Point.Longitude);
         var trackingError = await LocationUI.GetTrackingError(Entry.ChatId, cancellationToken).ConfigureAwait(false);
         return new Model(
-            location.Point.Latitude,
-            location.Point.Longitude,
+            location.Point,
             [marker],
             location.IsLive(Clocks.ServerClock.Now),
             location.ModifiedAt,
@@ -75,8 +73,7 @@
     // Nested types
 
     public sealed record Model(
-        double Latitude,
-        double Longitude,
+        GeoPoint Center,
         IReadOnlyList<MapMarker> Markers,
         bool IsLive,
         Moment ModifiedAt,

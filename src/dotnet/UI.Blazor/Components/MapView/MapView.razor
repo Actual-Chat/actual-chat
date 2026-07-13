@@ -16,8 +16,7 @@
     private ElementReference Ref { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public double CenterLatitude { get; set; }
-    [Parameter] public double CenterLongitude { get; set; }
+    [Parameter] public GeoPoint Center { get; set; } = new(0, 0);
     [Parameter] public double Zoom { get; set; } = 12;
     [Parameter] public bool Interactive { get; set; } = true;
     [Parameter] public IReadOnlyList<MapMarker> Markers { get; set; } = [];
@@ -40,8 +39,8 @@
             _appliedStyleUrl = GetStyleUrl(BrowserInfo.ThemeInfo.Value.CurrentTheme);
             var options = new {
                 styleUrl = _appliedStyleUrl,
-                centerLatitude = CenterLatitude,
-                centerLongitude = CenterLongitude,
+                centerLatitude = Center.Latitude,
+                centerLongitude = Center.Longitude,
                 zoom = Zoom,
                 interactive = Interactive,
             };
@@ -59,8 +58,8 @@
     protected override Task OnParametersSetAsync()
         => _jsRef?.InvokeVoidAsync("setMarkers", Markers).AsTask() ?? Task.CompletedTask;
 
-    public ValueTask FlyTo(double latitude, double longitude)
-        => _jsRef?.InvokeVoidAsync("flyTo", latitude, longitude) ?? ValueTask.CompletedTask;
+    public ValueTask FlyTo(GeoPoint point)
+        => _jsRef?.InvokeVoidAsync("flyTo", point.Latitude, point.Longitude) ?? ValueTask.CompletedTask;
 
     public override async ValueTask DisposeAsync() {
         if (_jsRef is { } jsRef) {
