@@ -1090,7 +1090,32 @@ jobs:
         with:
           name: ${{env.ARTIFACT_NAME}}
 
-      - run: test -f ${{env.PACKAGE_FILE_NAME}} || exit /b 1
+      - run: test -f ${{env.PACKAGE_FILE_NAME}} || exit 1
+
+      # The AAB carries the R8/ProGuard mapping automatically (Play reads it from
+      # BUNDLE-METADATA), but not native symbols. Extract the arm64 .so files
+      # (AndroidStripNativeLibraries=false keeps their symbol tables) into a lib/
+      # tree so Android Vitals can symbolicate native crash stacks.
+      - name: Extract native debug symbols from AAB
+        run: |
+          unzip -o "${{env.PACKAGE_FILE_NAME}}" 'base/lib/*' -d native-debug-symbols
+          find native-debug-symbols/base/lib -name '*.so' -printf '%s\t%p\n'
+
+      # The runtime-pack libs (libmonosgen, libcoreclr, libSystem.*, …) ship
+      # stripped; their *.so.dbg symbol files live on the Microsoft symbol server,
+      # keyed by ELF build-id. Pull them and swap each symbol-bearing file in place
+      # of the stripped .so so Play matches them. || true: msdl only serves official
+      # runtime versions — a miss must not fail the deploy.
+      - name: Fetch runtime-pack native symbols from Microsoft symbol server
+        run: |
+          dotnet tool install -g dotnet-symbol
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          libdir=native-debug-symbols/base/lib/arm64-v8a
+          dotnet-symbol --symbols --output "$libdir" "$libdir"/*.so || true
+          for dbg in "$libdir"/*.so.dbg; do
+            [ -e "$dbg" ] && mv -f "$dbg" "${dbg%.dbg}"
+          done
+          ls -la "$libdir"
 
       - name: Deploy to internal testing
         uses: r0adkll/upload-google-play@v1
@@ -1099,6 +1124,7 @@ jobs:
           packageName: ${{env.APP_ID}}
           releaseFiles: ${{env.PACKAGE_FILE_NAME}}
           track: internal
+          debugSymbols: native-debug-symbols/base/lib
 
   build-win-pkg:
     name: Build win app package for ${{ github.ref_name }}
