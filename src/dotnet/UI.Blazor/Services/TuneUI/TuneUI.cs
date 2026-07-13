@@ -28,6 +28,7 @@ public abstract class TuneUI : ProcessorBase
         [Tune.StopListening] = new ([20] /*, "stop-listening"*/),
         [Tune.StartReplay] = new ([100] /*, "start-replay"*/),
         [Tune.StopReplay] = new ([20] /*, "stop-replay"*/),
+        [Tune.WalkieTalkieSquelch] = new ([30, 20, 30], "walkie-talkie-squelch"),
         // Chat UI
         [Tune.PinUnpinChat] = new ([50] /*, "pin-unpin-chat"*/),
         [Tune.NotifyOnNewMessageInApp] = new ([20], "notify-on-new-message-in-app"),
@@ -146,6 +147,7 @@ public enum Tune
     DragStart,
     ChangeToggle,
     ClickButton,
+    WalkieTalkieSquelch,
 }
 
 /// <summary>

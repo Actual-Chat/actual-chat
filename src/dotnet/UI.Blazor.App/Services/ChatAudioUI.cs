@@ -38,6 +38,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private new ILogger? DebugLog => DebugMode ? Log : null;
 
     public bool IsAudioSyncEnabled { get; set; } = true;
+    public bool IsWalkieTalkieHeadless { get; set; }
     public SyncedState<UserReplaySettings> ReplaySettings { get; init; }
     public IState<ReplayState?> ReplayState => _replayState;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time
@@ -160,7 +161,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return Task.FromResult(recordingChat?.ChatId);
     }
 
-    public ValueTask SetRecordingChatId(ChatId? chatId)
+    public ValueTask SetRecordingChatId(ChatId? chatId, bool isPushToTalk = false)
     {
         if (chatId is not null)
             Hub.AudioAttachmentPlayer.OnConversationJoined();
@@ -184,22 +185,29 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
                 // Begin recording
                 var chat = activeChats.FirstOrDefault(c => c.ChatId == chatId);
+                var mustListen = !isPushToTalk;
                 if (chat == null)
-                    chat = new ActiveChat(chatId, true, true, now, now);
+                    chat = new ActiveChat(chatId, mustListen, true, now, mustListen ? now : default);
                 else {
+                    var isListening = mustListen || chat.IsListening;
                     chat = chat with {
-                        IsListening = true,
+                        IsListening = isListening,
                         IsRecording = true,
                         Recency = now,
-                        ListeningRecency = chat.IsListening ? chat.ListeningRecency : now,
+                        ListeningRecency = isListening && !chat.IsListening ? now : chat.ListeningRecency,
                     };
                 }
                 activeChats = activeChats.WithOrReplace(chat, true).ToArray();
-                // Turn off listening for all the rest chats
-                activeChats = activeChats.WithUpdate(
-                    c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
-                    c => c with { IsRecording = false, IsListening = false })
-                    .ToArray();
+                // Turn off listening for all the rest chats if mustListen
+                activeChats = mustListen
+                    ? activeChats.WithUpdate(
+                        c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
+                        c => c with { IsRecording = false, IsListening = false })
+                        .ToArray()
+                    : activeChats.WithUpdate(
+                        c => c.ChatId != chatId && c.IsRecording,
+                        c => c with { IsRecording = false })
+                        .ToArray();
                 return activeChats;
 
                 async Task RestoreListening(CancellationToken ct)

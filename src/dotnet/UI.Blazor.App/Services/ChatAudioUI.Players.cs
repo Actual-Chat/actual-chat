@@ -92,6 +92,26 @@ public partial class ChatAudioUI
         _ = Hub.AudioAttachmentPlayer.Stop();
     }
 
+    public async Task StartWalkieTalkieReplay(
+        ChatId chatId, Moment startAt, IReadOnlyCollection<ChatId> listeningChatsToRestore)
+    {
+        // Wake-driven StartReplay variant: no confirm modal, and the listening set restored
+        // when the replay ends is the armed-chat set supplied by the wake handler.
+        lock (Lock) {
+            if (_listeningChatsBeforeReplay.IsEmpty)
+                _listeningChatsBeforeReplay = listeningChatsToRestore.ToImmutableHashSet();
+        }
+        await ClearListeningChats().ConfigureAwait(false);
+
+        var speed = ReplaySettings.Value.Speed;
+        DebugLog?.LogInformation("StartWalkieTalkieReplay: chatId={ChatId}, startAt={StartAt}, speed={Speed}",
+            chatId, startAt, speed);
+
+        StopReplay();
+        _replayState.Value = new ReplayState(chatId, startAt, default, speed);
+        _ = Hub.AudioAttachmentPlayer.Stop();
+    }
+
     public void PauseReplay(Moment pausedAt)
     {
         var state = _replayState.Value;
