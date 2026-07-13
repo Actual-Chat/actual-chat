@@ -94,7 +94,11 @@ public static class WalkieTalkieWakeHandler
     }
 
     private static async Task StartPlayback(
-        IServiceProvider scopedServices, ChatId chatId, Moment startedAt, bool isForeground, bool isHeadless)
+        IServiceProvider scopedServices,
+        ChatId chatId,
+        Moment startedAt,
+        bool isForeground,
+        bool isHeadless)
     {
         var hub = scopedServices.GetRequiredService<AppUIHub>();
         var chatAudioUI = hub.ChatAudioUI;
@@ -102,17 +106,22 @@ public static class WalkieTalkieWakeHandler
             chatAudioUI.IsWalkieTalkieHeadless = true;
         chatAudioUI.Enable();
 
+        if (isForeground) {
+            // The user is in the app: don't hijack their state with a forced replay -
+            // just make sure the trigger chat is being listened to.
+            await chatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
+            return;
+        }
+
+        // The replay path bypasses ChatListeningPlayer, which normally plays this cue on
+        // stream-start after a long lull - so the wake plays it explicitly.
+        _ = hub.TuneUI.Play(Tune.NotifyOnNewAudioMessageAfterDelay);
+
         // The server gates wakes on the same settings; re-read them for the restore set.
         var restoreSet = await chatAudioUI.GetChatsYouNeedToKeepListeningTo(CancellationToken.None)
             .ConfigureAwait(false);
         if (!restoreSet.Contains(chatId))
             restoreSet = [..restoreSet, chatId];
-
-        if (!isForeground) {
-            // The replay path bypasses ChatListeningPlayer, which normally plays this cue on
-            // stream-start after a long lull - so the wake plays it explicitly.
-            _ = hub.TuneUI.Play(Tune.NotifyOnNewAudioMessageAfterDelay);
-        }
 
         if (WalkieTalkie.IsStaleWake(startedAt, hub.Clocks.SystemClock.Now))
             foreach (var armedChatId in restoreSet)
@@ -120,8 +129,7 @@ public static class WalkieTalkieWakeHandler
         else
             await chatAudioUI.StartWalkieTalkieReplay(chatId, startedAt, restoreSet).ConfigureAwait(false);
 
-        if (!isForeground)
-            _ = UpdateForegroundServiceTitle(hub, chatId);
+        _ = UpdateForegroundServiceTitle(hub, chatId);
     }
 
     private static async Task UpdateForegroundServiceTitle(AppUIHub hub, ChatId chatId)

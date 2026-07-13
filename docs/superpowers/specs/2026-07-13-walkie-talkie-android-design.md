@@ -96,7 +96,8 @@ Established platform facts this design builds on (verified in source):
    Other armed chats get plain `SetListeningState(true)` (live) — if
    someone speaks there, we are already connected.
 
-3. **Hot ⇄ armed state machine, background only.**
+3. **Hot ⇄ armed state machine, background only** (Android-only until
+   other platforms gain a wake path).
 
    ```
                  speech / wake push               5 min background silence
@@ -131,7 +132,9 @@ Established platform facts this design builds on (verified in source):
    existing `InitializeListening` then restores listening from
    settings. No double-playback window. Warm wakes (WebView scope
    alive in background) skip headless machinery entirely and forward to
-   the live scope.
+   the live scope. A wake landing while the app is foreground only
+   ensures the trigger chat is being listened to — it never forces a
+   replay over the user's current state.
 
 6. **FGS first, silent notification, tap-to-open.** The wake handler
    starts the existing `AndroidAudioWidgetForegroundService`
@@ -164,15 +167,17 @@ FCM data push (kind=SpeechStarted, chatId, authorId, timestamp)
                silence → stop players, stop FGS,
                dispose headless scope → ARMED
        any step throws → fallback notification
-       ("🔊 <Author> is talking in <chat>", default channel,
-        tap opens chat) + stop FGS
+       ("Someone is talking in a chat you keep listening to",
+        default channel, tap opens chat) + stop FGS
 ```
 
 ## Components
 
 1. **`FirebaseMessagingService` branch + `NotificationData` fields** —
-   parse `authorId` and `timestamp` (epoch ms → `Moment`); on
-   `NotificationKind.SpeechStarted`, delegate to the wake handler.
+   parse `timestamp` (epoch ms → `Moment`); on
+   `NotificationKind.SpeechStarted`, delegate to the wake handler
+   (`authorId` is deliberately not parsed in v1 — the fallback
+   notification is generic and replay needs no author).
    (`src/dotnet/App.Maui/Platforms/Android/Notifications/`)
 2. **`WalkieTalkieWakeHandler`** (new, App.Maui Android) — the
    orchestration above: FGS start, `EnsureStarted`, session check,
@@ -193,7 +198,8 @@ FCM data push (kind=SpeechStarted, chatId, authorId, timestamp)
    (same server-activity signal as `StopListeningWhenIdle`), after
    `Constants.Audio.WalkieTalkieIdleTimeout` (5 min) of silence stops
    listening players + FGS (+ headless scope). Applies to Forever chats
-   too, unlike the existing watcher. Foreground: inert.
+   too, unlike the existing watcher. Foreground: inert. (Android-only
+   until other platforms gain a wake path.)
 6. **Wake cue** — nothing new to build; the wake handler plays the
    existing `Tune.NotifyOnNewAudioMessageAfterDelay`.
 7. **FGS notification content intent** — tap opens `MainActivity` at
@@ -234,7 +240,8 @@ shared `UI.Blazor` tune stack — iOS reuses it as-is.
 - Any headless-chain failure (container build, no/expired session,
   scope creation, replay error) → fallback notification + stop FGS.
   A wake is never silently dropped.
-- FGS start denied → fallback notification (needs no FGS).
+- FGS start denied → the wake continues best-effort without the FGS;
+  any later failure still produces the fallback notification.
 - Stale wake (`now − startedAt > WalkieTalkieStaleWakeAge`) → live
   listening only, no replay-from-start.
 - No retry within one wake; the next utterance's push retries
@@ -245,7 +252,7 @@ shared `UI.Blazor` tune stack — iOS reuses it as-is.
 ## Testing
 
 - **Unit tests** (plain C#, no device): `NotificationData` parsing of
-  `authorId`/`timestamp`; stale-wake decision; `WalkieTalkieIdleWatcher`
+  `timestamp`; stale-wake decision; `WalkieTalkieIdleWatcher`
   state machine with virtual clock (background+silence→drop;
   foreground→never; activity resets; Forever chats included in
   background only).
