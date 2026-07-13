@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
 using ActualLab.Diagnostics;
 using ActualChat.UI.Blazor.App.Services;
@@ -105,6 +106,11 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
         if (data.NotificationKind == NotificationKind.IncomingCall) {
             HandleIncomingCall(data);
+            return;
+        }
+
+        if (data.NotificationKind == NotificationKind.SpeechStarted) {
+            WalkieTalkieWakeHandler.Handle(data);
             return;
         }
 

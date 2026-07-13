@@ -21,7 +21,15 @@ public class AndroidAudioWidget : AudioWidget
 
     public static void Pause() => _instance?.InvokeAction(ActionNames.Pause);
     public static void Resume() => _instance?.InvokeAction(ActionNames.Resume);
-    public static void Stop() => _instance?.InvokeAction(ActionNames.Stop);
+    public static void Stop()
+    {
+        // In a headless wake session no AndroidAudioWidget instance exists - the wake
+        // handler owns the FGS and the listening state.
+        if (_instance is { } instance)
+            instance.InvokeAction(ActionNames.Stop);
+        else
+            WalkieTalkieWakeHandler.StopHeadlessSession();
+    }
     public static void Hide() => HideImpl();
 
     protected override void OnStateChanged(AudioWidgetState? state, AudioWidgetState? oldState)
