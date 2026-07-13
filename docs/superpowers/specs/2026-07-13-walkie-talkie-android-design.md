@@ -156,12 +156,14 @@ FCM data push (kind=SpeechStarted, chatId, authorId, timestamp)
             3. session ready? (MauiSession /
                TrueSessionResolver)                     — none → fallback notification, stop FGS
             4. WebView scope alive? → forward to it     — warm path, no headless work
-               else create headless scope               — HeadlessScopeFactory NEW
+               else create headless scope               — HeadlessBlazorScope NEW
             5. ChatAudioUI.Enable()
-               + SetListeningState(true) per armed chat
+               (foreground wake → just SetListeningState(trigger chat), stop here)
             6. TuneUI.Play(Tune.NotifyOnNewAudioMessageAfterDelay) — wake lead-in cue
-            7. StartReplay(chatId, startedAt,
-               rewindOffset)                            — internal overload, no modal
+            7. StartWalkieTalkieReplay(chatId, startedAt,
+               restoreSet = armed chats)                — no modal; when the replay
+               ends, listening for the restore set starts automatically (replay and
+               listening are mutually exclusive by design)
             8. …listening continues (hot) …
             9. WalkieTalkieIdleWatcher: 5 min background
                silence → stop players, stop FGS,
@@ -182,13 +184,16 @@ FCM data push (kind=SpeechStarted, chatId, authorId, timestamp)
 2. **`WalkieTalkieWakeHandler`** (new, App.Maui Android) — the
    orchestration above: FGS start, `EnsureStarted`, session check,
    warm-vs-headless routing, fallback notification, stale-wake rule.
-3. **`HeadlessScopeFactory`** (new, App.Maui) — creates/disposes the
-   headless DI scope on `BlazorWebViewApp.Current.Services`, publishes
-   it via `AppServicesAccessor` semantics, and enforces the
-   single-owner handover with the WebView scope. The headless scope
-   audit: `InteractiveUI`/`ModalUI` must no-op or auto-approve when no
-   JS channel exists (`SafeJSRuntime` pattern); `TuneUI`,
-   `AudioFocusUI`, vibration are already native on MAUI.
+3. **`HeadlessBlazorScope`** (new, App.Maui) — creates/disposes the
+   headless DI scope on `BlazorWebViewApp.Current.Services`. It is
+   deliberately NEVER published via `AppServicesAccessor` (that channel
+   is WebView-coupled); it stays private to the wake session, and
+   single-owner handover is enforced by disposing it in
+   `MainActivity.OnCreate` before the WebView scope initializes. JS is
+   neutralized wholesale via `SafeJSRuntime.MarkDisconnected()` — every
+   JS call fails with the `JSRuntimeDisconnected` the UI code already
+   tolerates; `TuneUI`, `AudioFocusUI`, vibration are already native on
+   MAUI.
 4. **`ChatAudioUI` additions** — an internal `StartReplay` overload
    without the confirm-modal/pause-listening UX branch; an internal
    enable path not gated on ChatPage (`Enable()` is currently flipped
@@ -227,7 +232,7 @@ FCM data push (kind=SpeechStarted, chatId, authorId, timestamp)
 | Headless JS guard | `SafeJSRuntime` pattern |
 | Notification fallback | existing chat-notification path in `FirebaseMessagingService` |
 
-New components' reusability: `HeadlessScopeFactory` and the wake
+New components' reusability: `HeadlessBlazorScope` and the wake
 handler are Android-specific by nature but placed so sub-project C can
 mirror them (`App.Maui` shared vs `Platforms/Android` split decided at
 planning: scope factory is platform-neutral → `App.Maui/Services`;
