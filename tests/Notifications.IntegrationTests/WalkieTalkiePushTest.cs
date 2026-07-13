@@ -144,6 +144,25 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         Sink.Wakes.Should().NotContain(w => w.DeviceIds.Contains(deviceId));
     }
 
+    [Fact]
+    public async Task PttDeviceIsExcludedFromMessagePushes()
+    {
+        // arrange
+        var (chatId, alice, _, _) = await CreateChatWithAliceAndBob("WT ptt-excluded");
+        var pttDeviceId = await RegisterDevice(alice.Id, DeviceType.iOSPttApp);
+        var fcmDeviceId = await RegisterDevice(alice.Id, DeviceType.WebBrowser);
+        Sink.Clear();
+
+        // act: a normal message notification for alice
+        await Tester.CreateTextEntry(chatId, "Hi Alice");
+
+        // assert: the FCM push reaches the web device but never the PTT token
+        await WaitFor(() => Sink.Messages.Any(m => !m.IsDismissal && m.DeviceIds.Contains(fcmDeviceId)),
+            WakeTimeout);
+        Sink.Messages.Should().Contain(m => !m.IsDismissal && m.DeviceIds.Contains(fcmDeviceId));
+        Sink.Messages.Should().NotContain(m => m.DeviceIds.Contains(pttDeviceId));
+    }
+
     // Private methods
 
     private static async Task WaitFor(Func<bool> condition, TimeSpan timeout)

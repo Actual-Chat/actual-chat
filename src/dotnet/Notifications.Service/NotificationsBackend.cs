@@ -896,6 +896,7 @@ public class NotificationsBackend(IServiceProvider services)
         notification = displayed;
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
+        devices = devices.Where(d => d.DeviceType != DeviceType.iOSPttApp).ToList();
         if (devices.Count == 0) {
             DebugLog?.LogDebug("No recipient devices found for notification #{NotificationId}",
                 notification.Id);
@@ -925,6 +926,7 @@ public class NotificationsBackend(IServiceProvider services)
         var (userId, dismissed) = command;
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
+        devices = devices.Where(d => d.DeviceType != DeviceType.iOSPttApp).ToList();
         if (devices.Count == 0)
             return;
 
