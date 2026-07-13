@@ -15,6 +15,8 @@ allowed-tools:
   - Write
   - Grep
   - Glob
+  - mcp__chrome1__*
+  - mcp__chrome2__*
   - mcp__chrome-devtools-1__*
   - mcp__chrome-devtools-2__*
   - AskUserQuestion

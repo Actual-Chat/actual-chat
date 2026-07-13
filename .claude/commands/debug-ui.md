@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash, Read, mcp__chrome-devtools-1__*, mcp__chrome-devtools-2__*
+allowed-tools: Bash, Read, mcp__chrome1__*, mcp__chrome2__*, mcp__chrome-devtools-1__*, mcp__chrome-devtools-2__*
 description: Drive the Voxt UI from Claude — chrome-devtools MCP setup, debugUI helpers, fast multi-user sign-in
 ---
 
@@ -17,9 +17,10 @@ loop manages the .NET server; this skill manages the browser side.
 ## TL;DR
 
 - One Chrome on `:9222`, one MCP at `localhost:8765`. Tools appear in
-  Claude as `mcp__chrome-devtools-1__*`. Two browsers? `c chrome*2` on
-  the host gives anonymous profiles on `:9222` and `:9223`; the second
-  MCP at `localhost:8766` exposes `mcp__chrome-devtools-2__*`.
+  Claude as `mcp__chrome1__*` (the older `mcp__chrome-devtools-1__*`
+  names still resolve too). Two browsers? `c chrome*2` on the host gives
+  anonymous profiles on `:9222` and `:9223`; the second MCP at
+  `localhost:8766` exposes `mcp__chrome2__*`.
 - Sign in instantly with `await debugUI.signIn('+1 555 555 5550')` — the
   predefined phones (`+1 555 555 5550..5555`) and dev emails
   (`test-*@actual.chat`) all accept TOTP `111111`.
@@ -75,8 +76,8 @@ Chrome  :9223 (profile 2) ───CDP──┼─ host.docker  ─┤
                                   │                   HTTP :8766 → Chrome :9223
                                   │
         ┌─────────────────────────┴┐
-        │  Claude MCP client       │  → tools `mcp__chrome-devtools-1__*`
-        │  (`.mcp.json`)           │           `mcp__chrome-devtools-2__*`
+        │  Claude MCP client       │  → tools `mcp__chrome1__*`
+        │  (`.mcp.json`)           │           `mcp__chrome2__*`
         └──────────────────────────┘
 ```
 
@@ -249,10 +250,10 @@ validation — feature, not bug.
 ### Sign in two users in one go
 
 ```js
-// Chrome 1 (mcp__chrome-devtools-1)
+// Chrome 1 (mcp__chrome1)
 await debugUI.signIn('+1 555 555 5550');           // user A
 const a = await debugUI.getUserId();
-// Chrome 2 (mcp__chrome-devtools-2)
+// Chrome 2 (mcp__chrome2)
 await debugUI.signIn('+1 555 555 5551');           // user B
 const b = await debugUI.getUserId();
 // Build the PM URL — peer chat IDs sort their two UserIds ordinally

@@ -109,7 +109,8 @@ multi-user tests).
 services are wired up in `docker-compose.yml`
 (`chrome-devtools-mcp-1` → `localhost:8765` → Chrome :9222 and
 `chrome-devtools-mcp-2` → `localhost:8766` → Chrome :9223). Tools land
-in Claude as `mcp__chrome-devtools-1__*` / `mcp__chrome-devtools-2__*`.
+in Claude as `mcp__chrome1__*` / `mcp__chrome2__*` (the older
+`mcp__chrome-devtools-{1,2}__*` names still resolve too).
 Setup details and usage live in `/debug-ui`.
 
 ## Where to look
