@@ -266,14 +266,22 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         AuthorId authorId,
         long? entryLid,
         bool transcriptionOn,
+        bool hasVoice,
         CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
 
-        // Before the dedup/early-return below: the walkie-talkie wake trigger fires per utterance.
-        await Services.Queues()
-            .Enqueue(new SpeechStartedEvent(chatId, authorId, Clocks.SystemClock.Now), cancellationToken)
-            .ConfigureAwait(false);
+        // Best-effort wake trigger: per utterance (before the dedup/early-return below), voice-only,
+        // and never allowed to fail stream registration.
+        if (hasVoice)
+            try {
+                await Services.Queues()
+                    .Enqueue(new SpeechStartedEvent(chatId, authorId, Clocks.SystemClock.Now), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, "Failed to enqueue SpeechStartedEvent for chat '{ChatId}'", chatId);
+            }
 
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
 

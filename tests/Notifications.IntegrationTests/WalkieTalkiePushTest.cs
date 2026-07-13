@@ -165,7 +165,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
     }
 
     private Task Speak(ChatId chatId, AuthorId authorId)
-        => LiveSessionsBackend.OnStreamRegistered(chatId, authorId, null, false, CancellationToken.None);
+        => LiveSessionsBackend.OnStreamRegistered(chatId, authorId, null, false, true, CancellationToken.None);
 
     private Task ArmByAlwaysListened(UserId userId, ChatId chatId)
         => ServerKvasBackend.ForUser(userId).UserListeningSettings()

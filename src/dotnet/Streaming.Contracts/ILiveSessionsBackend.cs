@@ -33,6 +33,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         AuthorId authorId,
         long? entryLid,
         bool transcriptionOn,
+        bool hasVoice,
         CancellationToken cancellationToken);
     Task SetParticipation(
         ChatId chatId,

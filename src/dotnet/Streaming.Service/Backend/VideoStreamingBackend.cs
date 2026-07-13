@@ -253,7 +253,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
         var chat = await Chats.Get(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
         await LiveSessionsBackend
-            .OnStreamRegistered(record.ChatId, author.Id, null, chat?.IsSummarized ?? false, cancellationToken)
+            .OnStreamRegistered(record.ChatId, author.Id, null, chat?.IsSummarized ?? false, false, cancellationToken)
             .ConfigureAwait(false);
 
         Task? silenceWatchdogTask = null;

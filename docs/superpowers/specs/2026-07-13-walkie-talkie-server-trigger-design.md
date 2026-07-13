@@ -69,7 +69,10 @@ play the utterance from its first word despite the 1–3 s wake latency.
    earliest server hook with ChatId + AuthorId, fired from
    `AudioStreamingBackend.ProcessAudio` before any transcript or chat
    entry exists. No streaming `ChatEntry` exists at speech start, so
-   entry-based events are unusable for this.
+   entry-based events are unusable for this. The emission is gated to
+   voice-carrying streams (`hasVoice`) — video/screen-share registrations
+   do not fire it — and the enqueue is try/catch-insulated so a queue
+   failure can never abort stream registration.
 
 3. **Decoupled via a domain event** (`SpeechStartedEvent` over NATS),
    not a direct call: Streaming.Service stays ignorant of
@@ -103,7 +106,7 @@ Speaker's client
   └─ ILiveAudioStreams.PushStream                      (existing)
        └─ AudioStreamingBackend.ProcessAudio           (existing)
             └─ LiveSessionsBackend.OnStreamRegistered  (existing command)
-                 └─ + AddEvent(SpeechStartedEvent)      NEW — ChatId, AuthorId, StartedAt
+                 └─ + Enqueue(SpeechStartedEvent)       NEW — ChatId, AuthorId, StartedAt; voice-only, failure-insulated
                         │  (NATS, sharded by ChatId)
                         ▼
 NotificationsBackend.OnSpeechStartedEvent               NEW [EventHandler]

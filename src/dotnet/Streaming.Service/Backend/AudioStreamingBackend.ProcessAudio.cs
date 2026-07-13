@@ -145,7 +145,7 @@ public partial class AudioStreamingBackend
         var isSummarized = chat?.IsSummarized ?? false;
         if (mustStreamVoice || isSummarized)
             await LiveSessionsBackend
-                .OnStreamRegistered(chatId, author.Id, null, isSummarized, cancellationToken)
+                .OnStreamRegistered(chatId, author.Id, null, isSummarized, mustStreamVoice, cancellationToken)
                 .ConfigureAwait(false);
 
         var headerFrame = new AudioFrame {
