@@ -53,6 +53,18 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     public override void OnMessageReceived(RemoteMessage message)
     {
+        // This runs on an FCM dispatch thread and is called from Java: an escaping exception
+        // crosses the JNI boundary and crashes the process, so nothing here may throw.
+        try {
+            OnMessageReceivedImpl(message);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "OnMessageReceived failed for message #{MessageId}", message.MessageId);
+        }
+    }
+
+    private void OnMessageReceivedImpl(RemoteMessage message)
+    {
         Log.LogDebug("OnMessageReceived: message #{MessageId}, CollapseKey='{CollapseKey}'" +
             ", Priority={Priority}, OriginalPriority={OriginalPriority}, IsDeprioritized={IsDeprioritized}",
             message.MessageId, message.CollapseKey, message.Priority, message.OriginalPriority, message.Priority != message.OriginalPriority);
@@ -85,33 +97,51 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             return;
 
         var chatId = data.ChatId;
-        if (chatId is not null && TryGetScopedServices(out var scopedServices)) {
-            // Skip if the user is currently viewing this chat.
-            if ((AndroidUtils.IsAppForeground() ?? false)
-                && scopedServices.GetRequiredService<History>().LocalUrl.IsChat(out var currentChatId)
-                && currentChatId == chatId) {
-                Log.LogDebug("OnMessageReceived: notification in the current chat #{ChatId}", chatId);
-                return;
-            }
-
-            // Skip if this device has already read past the notification's entry. Uses the cached
-            // read position (non-blocking) — it's fresher than the server's debounced cursor. If
-            // there's no cached value (the chat was never opened here), don't suppress.
-            var entryLid = data.EntryLocalId;
-            if (entryLid > 0) {
-                var chatUI = scopedServices.GetRequiredService<ChatUI>();
-                var cReadEntryLid = Computed.GetExisting(() => chatUI.GetReadEntryLid(chatId, default));
-                if (cReadEntryLid is not null && cReadEntryLid.IsValue(out var readEntryLid) && readEntryLid >= entryLid) {
-                    Log.LogDebug("OnMessageReceived: already read on this device #{ChatId} @ {EntryLid}", chatId, entryLid);
-                    return;
-                }
-            }
-        }
+        if (chatId is not null && ShouldSuppressForDevice(chatId, data.EntryLocalId))
+            return;
 
         ShowChatMessageNotification(data);
     }
 
     // Private methods
+
+    // Decides whether this device should suppress the banner using its own (fresher-than-server)
+    // read/view state. Fail-open: this runs on background deliveries too, where the Blazor scope
+    // may be disposed and the scoped-service calls throw — a failed check must never suppress a
+    // message or crash, so it returns false (show the notification) on any error.
+    private static bool ShouldSuppressForDevice(ChatId chatId, long entryLid)
+    {
+        try {
+            if (!TryGetScopedServices(out var scopedServices))
+                return false;
+
+            // Skip if the user is currently viewing this chat.
+            if ((AndroidUtils.IsAppForeground() ?? false)
+                && scopedServices.GetRequiredService<History>().LocalUrl.IsChat(out var currentChatId)
+                && currentChatId == chatId) {
+                Log.LogDebug("OnMessageReceived: notification in the current chat #{ChatId}", chatId);
+                return true;
+            }
+
+            // Skip if this device has already read past the notification's entry. Uses the cached
+            // read position (non-blocking) — it's fresher than the server's debounced cursor. If
+            // there's no cached value (the chat was never opened here), don't suppress.
+            if (entryLid > 0) {
+                var chatUI = scopedServices.GetRequiredService<ChatUI>();
+                var cReadEntryLid = Computed.GetExisting(() => chatUI.GetReadEntryLid(chatId, default));
+                if (cReadEntryLid is not null && cReadEntryLid.IsValue(out var readEntryLid) && readEntryLid >= entryLid) {
+                    Log.LogDebug("OnMessageReceived: already read on this device #{ChatId} @ {EntryLid}", chatId, entryLid);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "ShouldSuppressForDevice failed for chat #{ChatId}; showing the notification", chatId);
+            return false;
+        }
+    }
     private static bool ShowGetAttentionNotification(
         NotificationData data,
         long messageSentTime)
