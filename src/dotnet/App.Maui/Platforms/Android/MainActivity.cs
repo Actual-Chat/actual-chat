@@ -87,6 +87,7 @@ public partial class MainActivity : MauiAppCompatActivity
         }
 
         BlazorWebViewApp.EnsureStarted();
+        _ = HeadlessBlazorScope.DisposeCurrent("MainActivity.OnCreate");
 
         Interlocked.Exchange(ref _current, this);
         // If app is sent to background with back button
