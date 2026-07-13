@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// Scoped holder of the current UI language, read synchronously by the string localizer.
-/// Seeded and persisted by <see cref="UILanguageUI"/> (local settings).
+/// Seeded and persisted by <see cref="LanguageUI"/> (local settings).
 /// </summary>
 // TODO: why do we need it at all? Why do we need separate a separate class for state?
 public sealed class UILanguageState

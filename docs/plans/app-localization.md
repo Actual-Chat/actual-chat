@@ -4,6 +4,13 @@
 **Branch:** `feat/3721-app-localization`
 **Status:** Draft — supersedes the earlier `.resx`-based draft (see §8)
 
+> **Amendment (2026-07-13):** the standalone `UILanguageUI` service described below was
+> folded into the existing `LanguageUI` (`Services/LanguageUI/LanguageUI.cs`). The
+> UI-language logic now lives there as `InitializeUILanguage` / `SetUILanguage` and reuses
+> `LanguageUI.GetClientLanguages()` for default detection. `UILanguageState` (the scoped
+> holder the localizer reads) is unchanged. Read "`UILanguageUI`" below as "the UI-language
+> members of `LanguageUI`".
+
 ## 0. TL;DR
 
 - **Goal of this MVP:** localize exactly **one screen — the Settings modal** — into a

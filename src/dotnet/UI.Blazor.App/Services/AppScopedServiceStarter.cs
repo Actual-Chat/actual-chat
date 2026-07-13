@@ -64,7 +64,7 @@ public sealed class AppScopedServiceStarter
             Tracer.Point("BrowserInfo is ready");
 
             Hub.Services.GetRequiredService<ThemeUI>().Start();
-            await Hub.Services.GetRequiredService<UILanguageUI>().Initialize().ConfigureAwait(false);
+            await Hub.LanguageUI.InitializeUILanguage().ConfigureAwait(false);
             var dateTimeConverter = Hub.DateTimeConverter;
             if (dateTimeConverter is ServerSideDateTimeConverter serverSideDateTimeConverter)
                 serverSideDateTimeConverter.Initialize(browserInfo.UtcOffset);
