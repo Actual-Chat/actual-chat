@@ -24,6 +24,12 @@ public static class DbEntityExt
 
     public static void DefineIndexes(this EntityTypeBuilder<DbEvent> events)
     {
+        // Deterministic-Uuid events (e.g. delay-quantized FlowResumeEvent, KeyConflictStrategy.Skip) let
+        // concurrent producers race on the same _events PK; DoNothing makes the INSERT idempotent instead
+        // of throwing 23505. NpgsqlUpdateSqlGenerator caches this per CLR type, so it must be set on every
+        // DbContext that maps DbEvent - hence here, in the shared configuration, not per-context.
+        events.HasAnnotation(nameof(ConflictStrategy), ConflictStrategy.DoNothing);
+
         // 1. The MOST important index: partial index for pending (New) events
         events
             .HasIndex(e => e.DelayUntil)
