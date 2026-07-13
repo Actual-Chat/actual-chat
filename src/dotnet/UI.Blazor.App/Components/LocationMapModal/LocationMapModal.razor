@@ -29,7 +29,10 @@
                 @foreach (var p in m.Participants) {
                     <LocationParticipant
                         @key="@p.LocationId"
-                        Participant="@p"
+                        Location="@p.Location"
+                        Author="@p.Author"
+                        IsOwn="@p.IsOwn"
+                        OwnPoint="@m.OwnPoint"
                         Click="@(() => OnParticipantClick(p))"/>
                 }
             </div>
@@ -76,33 +79,20 @@
                 continue;
 
             var isOwn = ownAuthor != null && location.AuthorId == ownAuthor.Id;
-            var distanceText = !isOwn && ownPoint != null
-                ? ToDistanceText(ownPoint.DistanceTo(location.Point))
-                : "";
-            var remainingTime = await LocationUI.GetTimeLeftText(location.AuthorId, cancellationToken)
-                .ConfigureAwait(false);
-            participants.Add(new Participant(
-                location.Id,
-                location.AuthorId,
-                author.Avatar,
-                isOwn,
-                location.Point,
-                location.ModifiedAt,
-                distanceText,
-                remainingTime));
+            participants.Add(new Participant(location, author, isOwn));
         }
         participants = participants
             .OrderByDescending(p => p.IsOwn)
-            .ThenBy(p => p.Avatar.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(p => p.Author.Avatar.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
         // Center on the clicked share first, then the viewer's own, then the first one.
         var clicked = ModalModel.LocationId is { } id ? locations.FirstOrDefault(x => x.Id == id) : null;
         var center = (clicked ?? ownLocation ?? locations[0]).Point;
-        return new ComputedModel(participants, center.Latitude, center.Longitude);
+        return new ComputedModel(participants, ownPoint, center.Latitude, center.Longitude);
     }
 
-    private Task OnParticipantClick(Participant participant)
-        => _mapView?.FlyTo(participant.Point.Latitude, participant.Point.Longitude).AsTask() ?? Task.CompletedTask;
+    private ValueTask OnParticipantClick(Participant participant)
+        => _mapView?.FlyTo(participant.Location.Point.Latitude, participant.Location.Point.Longitude) ?? ValueTask.CompletedTask;
 
     private async Task<IReadOnlyList<SharedLocation>> GetLocations(ChatId chatId, CancellationToken cancellationToken) {
         if (ModalModel.LocationId is not { } locationId)
@@ -121,49 +111,33 @@
         return locations.Count > 0 ? locations : [location];
     }
 
-    private static string ToDistanceText(double meters)
-        => meters switch {
-            < 1 => "1 m",
-            < 1000 => $"{meters:F0} m",
-            < 10_000 => $"{meters / 1000:F1} km",
-            _ => $"{meters / 1000:F0} km",
-        };
-
     // Nested types
 
     public sealed record ComputedModel(
         IReadOnlyList<Participant> Participants,
+        GeoPoint? OwnPoint,
         double CenterLatitude,
         double CenterLongitude) {
-        public static readonly ComputedModel None = new([], 0, 0);
+        public static readonly ComputedModel None = new([], null, 0, 0);
     }
 
     public sealed record Participant(
-        // TODO: pass SharedLocation instead
-        SharedLocationId LocationId,
-        // TODO: pass Author instead
-        AuthorId AuthorId,
-        // TODO: use from Author
-        Avatar Avatar,
-        bool IsOwn,
-        // TODO: use come from Location
-        GeoPoint Point,
-        // TODO: use come from Location
-        Moment ModifiedAt,
-        // TODO: calculate in Participant component if possible
-        string DistanceText,
-        // TODO: calculate in Participant component if possible
-        string RemainingText) {
+        SharedLocation Location,
+        Author Author,
+        // TODO: isown can be calculated in Participant component
+        bool IsOwn) {
+        public SharedLocationId LocationId => Location.Id;
+
         public MapMarker ToMapMarker(UrlMapper urlMapper) {
-            var pictureUrl = Avatar.Picture is { } picture ? urlMapper.PicturePreview128Url(picture) : "";
+            var pictureUrl = Author.Avatar.Picture is { } picture ? urlMapper.PicturePreview128Url(picture) : "";
             var avatarKey = pictureUrl.IsNullOrEmpty()
-                ? (Avatar.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(AuthorId.Value)
+                ? (Author.Avatar.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(Author.Id.Value)
                 : "";
             return new MapMarker(
                 LocationId.Value,
-                Point.Latitude,
-                Point.Longitude,
-                Avatar.Name,
+                Location.Point.Latitude,
+                Location.Point.Longitude,
+                Author.Avatar.Name,
                 pictureUrl.NullIfEmpty(),
                 avatarKey.NullIfEmpty());
         }

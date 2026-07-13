@@ -1,27 +1,64 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, LocationParticipant.Model>
+@{
+    var m = State.Value;
+}
 
 <div class="c-participant" @onclick="@Click">
-    <AvatarCircle Avatar="@Participant.Avatar" Size="@SquareSize.Size10"/>
+    <AvatarCircle Avatar="@Author.Avatar" Size="@SquareSize.Size10"/>
     <div class="c-info">
         <div class="c-name">
-            <span>@Participant.Avatar.Name</span>
-            @if (Participant.IsOwn) {
+            <span>@Author.Avatar.Name</span>
+            @if (IsOwn) {
                 <span class="c-you">(you)</span>
             }
         </div>
         <div class="c-status">
-            <span>Updated&nbsp;</span><LiveTimeDeltaText Moment="@Participant.ModifiedAt" NullText=""/>
-            @if (!Participant.DistanceText.IsNullOrEmpty()) {
-                <span> · @Participant.DistanceText from you</span>
+            <span>Updated&nbsp;</span><LiveTimeDeltaText Moment="@Location.ModifiedAt" NullText=""/>
+            @if (!m.DistanceText.IsNullOrEmpty()) {
+                <span> · @m.DistanceText from you</span>
             }
-            @if (!Participant.RemainingText.IsNullOrEmpty()) {
-                <span> · @Participant.RemainingText left</span>
+            @if (!m.RemainingText.IsNullOrEmpty()) {
+                <span> · @m.RemainingText left</span>
             }
         </div>
     </div>
 </div>
 
 @code {
-    [Parameter, EditorRequired] public LocationMapModal.Participant Participant { get; set; } = null!;
+    private LocationUI LocationUI => Hub.LocationUI;
+
+    [Parameter, EditorRequired] public SharedLocation Location { get; set; } = null!;
+    [Parameter, EditorRequired] public Author Author { get; set; } = null!;
+    [Parameter] public bool IsOwn { get; set; }
+    [Parameter] public GeoPoint? OwnPoint { get; set; }
     [Parameter] public EventCallback Click { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new () {
+            InitialValue = Model.None,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var distanceText = !IsOwn && OwnPoint is { } ownPoint
+            ? ToDistanceText(ownPoint.DistanceTo(Location.Point))
+            : "";
+        var remainingText = await LocationUI.GetTimeLeftText(Location.AuthorId, cancellationToken).ConfigureAwait(false);
+        return new Model(distanceText, remainingText);
+    }
+
+    private static string ToDistanceText(double meters)
+        => meters switch {
+            < 1 => "1 m",
+            < 1000 => $"{meters:F0} m",
+            < 10_000 => $"{meters / 1000:F1} km",
+            _ => $"{meters / 1000:F0} km",
+        };
+
+    // Nested types
+
+    public sealed record Model(string DistanceText, string RemainingText) {
+        public static readonly Model None = new ("", "");
+    }
 }
