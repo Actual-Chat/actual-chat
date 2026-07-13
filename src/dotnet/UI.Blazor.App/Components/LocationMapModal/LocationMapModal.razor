@@ -28,8 +28,7 @@
                 @foreach (var p in m.Participants) {
                     <LocationParticipantView
                         @key="@p.Location.Id"
-                        Location="@p.Location"
-                        Author="@p.Author"
+                        Participant="@p"
                         OwnPoint="@m.OwnPoint"
                         Click="@(() => OnParticipantClick(p))"/>
                 }

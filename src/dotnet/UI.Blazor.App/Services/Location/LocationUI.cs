@@ -33,13 +33,13 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         if (locations.Count == 0)
             return [];
 
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var participants = await locations.Select(GetParticipant)
             .Collect(cancellationToken)
             .ConfigureAwait(false);
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return participants
             .SkipNullItems()
-            .OrderByDescending(p => ownAuthor != null && p.Author.Id == ownAuthor.Id)
+            .OrderByDescending(p => p.IsOwn)
             .ThenBy(p => p.Author.Avatar.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -53,7 +53,11 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
         async Task<LocationParticipant?> GetParticipant(SharedLocation sharedLocation) {
             var author = await Authors.Get(Session, sharedLocation.ChatId, sharedLocation.AuthorId, cancellationToken).ConfigureAwait(false);
-            return author is null ? null : new LocationParticipant(sharedLocation, author);
+            if (author is null)
+                return null;
+
+            var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
+            return new LocationParticipant(sharedLocation, author, isOwn);
         }
     }
 
@@ -149,4 +153,4 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 }
 
-public sealed record LocationParticipant(SharedLocation Location, Author Author);
+public sealed record LocationParticipant(SharedLocation Location, Author Author, bool IsOwn);

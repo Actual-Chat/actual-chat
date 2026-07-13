@@ -5,16 +5,16 @@
 }
 
 <div class="c-participant" @onclick="@Click">
-    <AvatarCircle Avatar="@Author.Avatar" Size="@SquareSize.Size10"/>
+    <AvatarCircle Avatar="@Participant.Author.Avatar" Size="@SquareSize.Size10"/>
     <div class="c-info">
         <div class="c-name">
-            <span>@Author.Avatar.Name</span>
-            @if (m.IsOwn) {
+            <span>@Participant.Author.Avatar.Name</span>
+            @if (Participant.IsOwn) {
                 <span class="c-you">(you)</span>
             }
         </div>
         <div class="c-status">
-            <span>Updated&nbsp;</span><LiveTimeDeltaText Moment="@Location.ModifiedAt" NullText=""/>
+            <span>Updated&nbsp;</span><LiveTimeDeltaText Moment="@Participant.Location.ModifiedAt" NullText=""/>
             @if (!m.DistanceText.IsNullOrEmpty()) {
                 <span> · @m.DistanceText from you</span>
             }
@@ -26,11 +26,9 @@
 </div>
 
 @code {
-    private IAuthors Authors => Hub.Authors;
     private LocationUI LocationUI => Hub.LocationUI;
 
-    [Parameter, EditorRequired] public SharedLocation Location { get; set; } = null!;
-    [Parameter, EditorRequired] public Author Author { get; set; } = null!;
+    [Parameter, EditorRequired] public LocationParticipant Participant { get; set; } = null!;
     [Parameter] public GeoPoint? OwnPoint { get; set; }
     [Parameter] public EventCallback Click { get; set; }
 
@@ -41,13 +39,11 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var ownAuthor = await Authors.GetOwn(Session, Location.AuthorId.ChatId, cancellationToken).ConfigureAwait(false);
-        var isOwn = ownAuthor != null && ownAuthor.Id == Author.Id;
-        var distanceText = !isOwn && OwnPoint is { } ownPoint
-            ? ToDistanceText(ownPoint.DistanceTo(Location.Point))
+        var distanceText = !Participant.IsOwn && OwnPoint is { } ownPoint
+            ? ToDistanceText(ownPoint.DistanceTo(Participant.Location.Point))
             : "";
-        var remainingText = await LocationUI.GetTimeLeftText(Location.AuthorId, cancellationToken).ConfigureAwait(false);
-        return new Model(isOwn, distanceText, remainingText);
+        var remainingText = await LocationUI.GetTimeLeftText(Participant.Location.AuthorId, cancellationToken).ConfigureAwait(false);
+        return new Model(distanceText, remainingText);
     }
 
     private static string ToDistanceText(double meters)
@@ -60,7 +56,7 @@
 
     // Nested types
 
-    public sealed record Model(bool IsOwn, string DistanceText, string RemainingText) {
-        public static readonly Model None = new (false, "", "");
+    public sealed record Model(string DistanceText, string RemainingText) {
+        public static readonly Model None = new ("", "");
     }
 }
