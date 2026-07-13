@@ -9,7 +9,7 @@ using FirebaseAdmin.Messaging;
 namespace ActualChat.Notifications.Module;
 
 public sealed class NotificationServiceModule(IServiceProvider moduleServices)
-    : HostModule(moduleServices), IServerModule
+    : HostModule<NotificationsSettings>(moduleServices), IServerModule
 {
     private static readonly Lock FirebaseAppFactoryLock = new();
 
