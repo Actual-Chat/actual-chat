@@ -10,22 +10,18 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
     // [ComputeMethod]
     public virtual async Task<SharedLocation?> Get(
         Session session,
+        ChatId chatId,
         SharedLocationId id,
         CancellationToken cancellationToken)
     {
         var location = await Backend.Get(id, cancellationToken).ConfigureAwait(false);
-        if (location is null)
+        if (location is null || location.ChatId != chatId)
             return null;
 
-        var chatRules = await Chats.GetRules(session, location.ChatId, cancellationToken).ConfigureAwait(false);
+        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
         return location;
     }
-
-    [Obsolete("2026.07: Use Get without chatId")]
-    public virtual Task<SharedLocation?> Get(
-        Session session, ChatId chatId, SharedLocationId id, CancellationToken cancellationToken)
-        => Get(session, id, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<SharedLocation>> ListLive(
