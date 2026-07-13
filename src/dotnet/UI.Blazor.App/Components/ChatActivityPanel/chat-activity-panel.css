@@ -213,6 +213,9 @@ body.narrow .layout-header:has(.video-streaming) {
 .chat-activity-panel > .c-buttons > .btn i {
     @apply text-2xl md:text-xl;
 }
+.chat-activity-panel > .c-buttons > .c-diagnostics-btn {
+    @apply cursor-pointer;
+}
 .chat-activity-panel > .c-buttons > .btn.btn-transparent:active::after {
     @apply hidden;
 }
