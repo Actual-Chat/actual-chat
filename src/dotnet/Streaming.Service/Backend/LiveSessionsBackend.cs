@@ -269,6 +269,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
+
+        // Before the dedup/early-return below: the walkie-talkie wake trigger fires per utterance.
+        await Services.Queues()
+            .Enqueue(new SpeechStartedEvent(chatId, authorId, Clocks.SystemClock.Now), cancellationToken)
+            .ConfigureAwait(false);
+
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
 
         var now = Clocks.SystemClock.Now;
