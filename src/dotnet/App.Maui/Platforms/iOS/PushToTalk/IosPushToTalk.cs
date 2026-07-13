@@ -88,6 +88,7 @@ public static class IosPushToTalk
 
     private static void RegisterToken(string token)
     {
+        BlazorWebViewApp.EnsureStarted();
         _pttToken = token;
         _ = BackgroundTask.Run(async () => {
             var app = await BlazorWebViewApp.WhenAppReady.ConfigureAwait(false);
@@ -171,6 +172,9 @@ public static class IosPushToTalk
         public override void DidLeaveChannel(
             PTChannelManager channelManager, NSUuid channelUuid, PTChannelLeaveReason reason)
         {
+            // A leave can tear the session down without DidDeactivateAudioSession;
+            // a stuck flag would permanently disable the app's own session activation.
+            AudioSession.IsExternallyActivated = false;
             Log.LogInformation("PTT channel left ({Reason})", reason);
             DeregisterToken();
         }
@@ -196,7 +200,7 @@ public static class IosPushToTalk
             // Must return synchronously and fast; playback starts in DidActivateAudioSession.
             var chatSid = GetString(pushPayload, Constants.Notification.MessageDataKeys.ChatId);
             var sTimestamp = GetString(pushPayload, Constants.Notification.MessageDataKeys.Timestamp);
-            var chatTitle = GetString(pushPayload, "chatTitle") ?? ChannelName;
+            var chatTitle = GetString(pushPayload, "chatTitle").NullIfEmpty() ?? ChannelName;
             var chatId = ChatId.TryParse(chatSid, allowNull: true);
             if (chatId is not { } vChatId || !long.TryParse(sTimestamp, out var epochMs)) {
                 Log.LogWarning("Invalid PTT push payload");

@@ -1086,7 +1086,7 @@ public class NotificationsBackend(IServiceProvider services)
             // The PTT system UI needs a channel/speaker label at push time, before any RPC.
             var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
             await ApnsClient
-                .SendPushToTalkWake(chatId, startedAt, chat?.Title ?? "Voxt", pttDeviceIds, cancellationToken)
+                .SendPushToTalkWake(chatId, startedAt, chat?.Title.NullIfEmpty() ?? "Voxt", pttDeviceIds, cancellationToken)
                 .ConfigureAwait(false);
         }
     }
