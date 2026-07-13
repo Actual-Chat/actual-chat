@@ -7,10 +7,17 @@ namespace ActualChat.App.Maui.Audio;
 
 public class AudioSession(AppUIHub hub) : IAsyncDisposable
 {
+    // Set while an Apple Push to Talk transmission owns AVAudioSession activation:
+    // the PTT delegate activates/deactivates the session; we may only configure it.
+    public static volatile bool IsExternallyActivated;
+
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     public ValueTask DisposeAsync()
         => BackgroundTask.Run(() => DispatchToMainThread(() => {
+                    if (IsExternallyActivated)
+                        return;
+
                     var session = AVAudioSession.SharedInstance();
                     session.SetActive(false, AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation)
                         .Assert("Failed to deactivate session");
@@ -46,6 +53,8 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     {
         var session = AVAudioSession.SharedInstance();
         ConfigureUnsafe(session, mode);
+        if (IsExternallyActivated)
+            return;
 
         if (!session.SetActive(true, out var error)) {
             Log.LogWarning("Failed to re-activate audio session: {Error}", error.LocalizedDescription);
@@ -62,6 +71,11 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     private void ReconfigureUnsafe(AudioFocusMode minMode)
     {
         var session = AVAudioSession.SharedInstance();
+        if (IsExternallyActivated) {
+            ConfigureUnsafe(session, minMode);
+            return;
+        }
+
         var deactivateOptions = minMode is AudioFocusMode.Tune
             ? AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation
             : 0;

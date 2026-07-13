@@ -609,9 +609,9 @@ public partial class ChatAudioUI
     // never stops - after WalkieTalkieIdleTimeout of silence. The FCM wake push re-arms us.
     private async Task StopListeningWhenIdleInBackground(CancellationToken cancellationToken)
     {
-        // Only Android has the FCM wake path that re-arms dropped listening;
-        // gate others out until they get one (iOS: sub-project C).
-        if (HostInfo.AppKind != AppKind.Android)
+        // Only platforms with a wake path that re-arms dropped listening:
+        // FCM data pushes on Android, Apple Push to Talk on iOS.
+        if (HostInfo.AppKind is not (AppKind.Android or AppKind.Ios))
             return;
 
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
