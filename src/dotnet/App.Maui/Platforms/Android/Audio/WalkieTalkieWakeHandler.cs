@@ -108,8 +108,11 @@ public static class WalkieTalkieWakeHandler
         if (!restoreSet.Contains(chatId))
             restoreSet = [..restoreSet, chatId];
 
-        if (!isForeground)
-            _ = hub.TuneUI.Play(Tune.WalkieTalkieSquelch);
+        if (!isForeground) {
+            // The replay path bypasses ChatListeningPlayer, which normally plays this cue on
+            // stream-start after a long lull - so the wake plays it explicitly.
+            _ = hub.TuneUI.Play(Tune.NotifyOnNewAudioMessageAfterDelay);
+        }
 
         if (WalkieTalkie.IsStaleWake(startedAt, hub.Clocks.SystemClock.Now))
             foreach (var armedChatId in restoreSet)

@@ -53,9 +53,9 @@ Established platform facts this design builds on (verified in source):
 - **Wake-to-hear:** on a `SpeechStarted` push with the app killed or
   backgrounded, play the utterance from its first word within a few
   seconds, with no user interaction ("silent headless play").
-- **Radio squelch cue:** when playback starts after a long silent
-  period, play a short static-burst tune first, so speech doesn't
-  startle the listener.
+- **Wake lead-in cue:** when playback starts after a long silent
+  period, play the app's existing new-audio-after-delay tune first, so
+  speech doesn't startle the listener.
 - **Armed/hot lifecycle:** hold the live subscription (hot) only while
   there is recent activity; after 5 minutes of background silence, stop
   players and the foreground service and become process-reclaimable
@@ -114,14 +114,16 @@ Established platform facts this design builds on (verified in source):
    mean "hold a socket in the pocket forever". Foreground behavior is
    untouched.
 
-4. **Squelch cue via the existing tune stack.** New `Tune` member
-   (`WalkieTalkieSquelch`) + bundled asset + `Tunes` table entry, played
-   through scoped `TuneUI` → native `MauiTuneUI` (no WebView). Played
-   when a background/headless walkie-talkie playback session starts
-   after ≥ 5 min of chat silence — i.e., every headless wake and
-   near-expired hot-path starts. It overlaps connect/seek latency
-   (fills dead air, adds none). Not played during foreground use. iOS
-   later inherits via `AppleTuneUI`.
+4. **Wake cue reuses `Tune.NotifyOnNewAudioMessageAfterDelay`.** The
+   existing tune (asset already shipped in all formats) is the app's
+   audio-after-a-lull cue: `ChatListeningPlayer` plays it automatically
+   when a stream starts after `AudioSettings.IdleListeningNewMessageTrigger`
+   (5 min) of quiet — so the hot path needs nothing new. The wake
+   handler plays the same tune before starting the wake replay, because
+   the replay path bypasses `ChatListeningPlayer`. Played through
+   scoped `TuneUI` → native `MauiTuneUI` (no WebView); not played in
+   foreground. iOS later inherits via `AppleTuneUI`. No new tune member
+   or asset.
 
 5. **Single scope owner at all times.** Headless scope exists only
    while no WebView scope does. `MainActivity.OnCreate` disposes the
@@ -154,7 +156,7 @@ FCM data push (kind=SpeechStarted, chatId, authorId, timestamp)
                else create headless scope               — HeadlessScopeFactory NEW
             5. ChatAudioUI.Enable()
                + SetListeningState(true) per armed chat
-            6. TuneUI.Play(Tune.WalkieTalkieSquelch)    — if chat silent ≥ 5 min
+            6. TuneUI.Play(Tune.NotifyOnNewAudioMessageAfterDelay) — wake lead-in cue
             7. StartReplay(chatId, startedAt,
                rewindOffset)                            — internal overload, no modal
             8. …listening continues (hot) …
@@ -192,8 +194,8 @@ FCM data push (kind=SpeechStarted, chatId, authorId, timestamp)
    `Constants.Audio.WalkieTalkieIdleTimeout` (5 min) of silence stops
    listening players + FGS (+ headless scope). Applies to Forever chats
    too, unlike the existing watcher. Foreground: inert.
-6. **`Tune.WalkieTalkieSquelch`** — enum member, `Tunes` table entry,
-   ~0.5 s static-burst asset in the app's sound resources.
+6. **Wake cue** — nothing new to build; the wake handler plays the
+   existing `Tune.NotifyOnNewAudioMessageAfterDelay`.
 7. **FGS notification content intent** — tap opens `MainActivity` at
    the triggering chat (deep link, existing `Links.Chat` routing).
 8. **Constants** — `Constants.Audio.WalkieTalkieIdleTimeout = 5 min`
@@ -213,7 +215,7 @@ FCM data push (kind=SpeechStarted, chatId, authorId, timestamp)
 | Live subscriptions | `ChatAudioUI.SetListeningState` + `KeepListeningPlayerAlive` |
 | Armed-chat set | `ChatAudioUI.GetChatsYouNeedToKeepListeningTo` (reads the same settings the server gates on) |
 | FGS + media notification | `AndroidAudioWidgetForegroundService` / `AndroidAudioWidget` |
-| Squelch cue | `TuneUI` → `MauiTuneUI` (native), new `Tune` member |
+| Wake lead-in cue | existing `Tune.NotifyOnNewAudioMessageAfterDelay` via `TuneUI` → `MauiTuneUI` (native) |
 | Idle detection signal | same server-activity source as `StopListeningWhenIdle` |
 | Background detection | `MauiBackgroundStateTracker` |
 | Headless JS guard | `SafeJSRuntime` pattern |
@@ -224,8 +226,8 @@ handler are Android-specific by nature but placed so sub-project C can
 mirror them (`App.Maui` shared vs `Platforms/Android` split decided at
 planning: scope factory is platform-neutral → `App.Maui/Services`;
 wake handler is Android-only → `Platforms/Android`).
-`Tune.WalkieTalkieSquelch` lands in the shared `UI.Blazor` tune stack —
-iOS reuses it as-is.
+The wake cue reuses `Tune.NotifyOnNewAudioMessageAfterDelay` from the
+shared `UI.Blazor` tune stack — iOS reuses it as-is.
 
 ## Error Handling
 
@@ -249,7 +251,7 @@ iOS reuses it as-is.
   background only).
 - **Manual device script** (documented with `adb logcat` markers per
   wake step):
-  1. Kill app → speak from a second account → expect squelch + playback
+  1. Kill app → speak from a second account → expect the new-audio cue + playback
      from first word within ~3 s; FGS notification shows
      "Listening · <chat>".
   2. Stay silent 5 min → FGS notification disappears (armed).
