@@ -23,6 +23,7 @@ public partial class ChatAudioUI
             AsyncChain.From(StartStopReplayingPlayers),
             AsyncChain.From(StopReplayWhenRecordingStarts),
             AsyncChain.From(StopListeningWhenIdle),
+            AsyncChain.From(StopListeningWhenIdleInBackground),
             AsyncChain.From(StopRecordingAndReplayOnDeviceAwake),
             AsyncChain.From(UpdateNextBeepAt),
             AsyncChain.From(PlayBeep),
@@ -601,6 +602,53 @@ public partial class ChatAudioUI
             _stopListeningAtMap.Value = _stopListeningAtMap.Value.SetItem(chatId, stopAt.Value);
         else
             _stopListeningAtMap.Value = _stopListeningAtMap.Value.Remove(chatId);
+    }
+
+    // Walkie-talkie hot->armed drop: in background (or a headless wake session), stop ALL
+    // listening - including ListeningMode.Forever chats, which the watcher above deliberately
+    // never stops - after WalkieTalkieIdleTimeout of silence. The FCM wake push re-arms us.
+    private async Task StopListeningWhenIdleInBackground(CancellationToken cancellationToken)
+    {
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        var backgroundStateTracker = Hub.Services.GetRequiredService<BackgroundStateTracker>();
+        var serverClock = Clocks.ServerClock;
+        Moment? idleSince = null;
+        while (!cancellationToken.IsCancellationRequested) {
+            await Clocks.CpuClock.Delay(Constants.Audio.WalkieTalkieIdleCheckPeriod, cancellationToken)
+                .ConfigureAwait(false);
+
+            var isBackground = backgroundStateTracker.IsBackground.Value || IsWalkieTalkieHeadless;
+            if (!isBackground) {
+                idleSince = null;
+                continue;
+            }
+
+            var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
+            var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
+            if (listeningChatIds.IsEmpty || _replayState.Value is not null || recordingChatId is not null) {
+                idleSince = null;
+                continue;
+            }
+
+            var now = serverClock.Now;
+            idleSince ??= now;
+            var lastActivityTimes = new List<Moment?>(listeningChatIds.Count);
+            foreach (var chatId in listeningChatIds)
+                lastActivityTimes.Add(
+                    await LiveStreamUI.GetLastActivityServerTime(chatId, cancellationToken).ConfigureAwait(false));
+
+            var dropAt = WalkieTalkie.ComputeIdleDropAt(
+                lastActivityTimes, idleSince.Value, Constants.Audio.WalkieTalkieIdleTimeout);
+            if (dropAt is null || now < dropAt)
+                continue;
+
+            Log.LogInformation(
+                "Walkie-talkie: {Count} listening chat(s) idle in background, dropping to armed",
+                listeningChatIds.Count);
+            await ClearListeningChats().ConfigureAwait(false);
+            idleSince = null;
+        }
     }
 
     private async Task StopRecordingAndReplayOnDeviceAwake(CancellationToken cancellationToken)
