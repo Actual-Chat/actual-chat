@@ -14,13 +14,10 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
         SharedLocationId id,
         CancellationToken cancellationToken)
     {
-        var location = await Backend.Get(id, cancellationToken).ConfigureAwait(false);
-        if (location is null || location.ChatId != chatId)
-            return null;
-
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        return location;
+        var location = await Backend.Get(id, cancellationToken).ConfigureAwait(false);
+        return location is null || location.ChatId != chatId ? null : location;
     }
 
     // [ComputeMethod]
