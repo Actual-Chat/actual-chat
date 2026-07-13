@@ -41,7 +41,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         Computed<SharedLocation?> cLocation;
         using (Computed.BeginIsolation())
             cLocation = await Computed
-                .Capture(() => SharedLocations.Get(Session, id, cancellationToken), cancellationToken)
+                .Capture(() => SharedLocations.Get(Session, chatId, id, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
         return cLocation.Value is { Duration.Ticks: > 0 };
     }
