@@ -1,6 +1,5 @@
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
-using ActualLab.Interception;
 
 namespace ActualChat.App.Maui;
 
@@ -8,9 +7,9 @@ namespace ActualChat.App.Maui;
 /// Scoped watcher: joins the PTT channel while the user has armed ("Keep listening")
 /// chats and leaves it when the last one is disarmed.
 /// </summary>
-public class IosPushToTalkUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), INotifyInitialized
+public class IosPushToTalkUI : UIWorkerBase<AppUIHub>
 {
-    void INotifyInitialized.Initialized()
+    public IosPushToTalkUI(AppUIHub hub) : base(hub)
         => this.Start();
 
     protected override async Task OnRun(CancellationToken cancellationToken)

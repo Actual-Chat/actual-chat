@@ -1,4 +1,6 @@
+using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
+using ActualChat.Notifications;
 using ActualChat.Security;
 using AVFoundation;
 using Foundation;
@@ -196,7 +198,7 @@ public static class IosPushToTalk
             var sTimestamp = GetString(pushPayload, Constants.Notification.MessageDataKeys.Timestamp);
             var chatTitle = GetString(pushPayload, "chatTitle") ?? ChannelName;
             var chatId = ChatId.TryParse(chatSid, allowNull: true);
-            if (chatId is not { } vChatId || vChatId.IsNone || !long.TryParse(sTimestamp, out var epochMs)) {
+            if (chatId is not { } vChatId || !long.TryParse(sTimestamp, out var epochMs)) {
                 Log.LogWarning("Invalid PTT push payload");
                 return PTPushResult.Create(new PTParticipant(ChannelName, null!));
             }
