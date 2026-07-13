@@ -1,6 +1,7 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -10,7 +11,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// The worker loop refreshes ~1 Hz and invalidates <see cref="GetState"/> only when
 /// the snapshot actually changed, so observers don't re-render on every tick.
 /// </summary>
-public class AudioDiagnosticsUI : UIWorkerBase<AppUIHub>, IComputeService
+public class AudioDiagnosticsUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeService, INotifyInitialized
 {
     private static readonly string JSCollectMethod = $"{BlazorUIAppModule.ImportName}.collectAudioPlaybackDiagnostics";
     private static readonly string JSResumeContextMethod = $"{BlazorUIAppModule.ImportName}.audioDebugResumeContext";
@@ -22,7 +23,7 @@ public class AudioDiagnosticsUI : UIWorkerBase<AppUIHub>, IComputeService
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     private bool IsWebAudioUsed => !Hub.HostInfo.AppKind.IsMaui();
 
-    public AudioDiagnosticsUI(AppUIHub hub) : base(hub)
+    void INotifyInitialized.Initialized()
         => this.Start();
 
     [ComputeMethod]
