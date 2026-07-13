@@ -32,10 +32,8 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         await Speak(chatId, bobAuthor.Id);
 
         // assert
-        await TestExt.When(() => {
-            Sink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
-            return Task.CompletedTask;
-        }, WakeTimeout);
+        await WaitFor(() => Sink.Wakes.Any(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId)), WakeTimeout);
+        Sink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
     }
 
     [Fact]
@@ -51,10 +49,8 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         await Speak(chatId, bobAuthor.Id);
 
         // assert
-        await TestExt.When(() => {
-            Sink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
-            return Task.CompletedTask;
-        }, WakeTimeout);
+        await WaitFor(() => Sink.Wakes.Any(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId)), WakeTimeout);
+        Sink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
     }
 
     [Fact]
@@ -122,10 +118,8 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
 
         // act
         await Speak(chatId, bobAuthor.Id);
-        await TestExt.When(() => {
-            Sink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
-            return Task.CompletedTask;
-        }, WakeTimeout);
+        await WaitFor(() => Sink.Wakes.Any(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId)), WakeTimeout);
+        Sink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
         await Speak(chatId, bobAuthor.Id);
 
         // assert
@@ -151,6 +145,13 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
     }
 
     // Private methods
+
+    private static async Task WaitFor(Func<bool> condition, TimeSpan timeout)
+    {
+        var deadline = CpuTimestamp.Now + timeout;
+        while (CpuTimestamp.Now < deadline && !condition())
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
+    }
 
     private async Task<(ChatId ChatId, AccountFull Alice, AccountFull Bob, Author BobAuthor)>
         CreateChatWithAliceAndBob(string title)
