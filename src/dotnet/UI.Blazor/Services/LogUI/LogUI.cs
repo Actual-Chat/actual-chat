@@ -30,7 +30,6 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
         _isEnabled = Hub.StateFactory.NewComputed(
             ct => LocalSettings.LocalAppSettings().Get(x => x.IsLogViewerEnabledOrDefault, ct));
         Hub.RegisterDisposable(_isEnabled);
-        Hub.RegisterDisposable(() => TailLoggerSinks.Remove(this));
         Hub.RegisterDisposable(() => _whenReady.TrySetException(new ObjectDisposedException("LogUI is disposed")));
         this.Start();
     }
@@ -148,8 +147,14 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
     }
 
     protected override Task OnRun(CancellationToken cancellationToken) {
-        if (CanCapture) // SECURITY: No log streaming from SSB!
-            TailLoggerSinks.Add(this);
+        if (CanCapture) { // SECURITY: No log streaming from SSB!
+            // Capture the resolved sink set while the DI scope is alive and pair Remove with Add, so
+            // teardown never re-resolves TailLoggerSinkSet from an already-disposed scope (which threw
+            // ObjectDisposedException on the server, where CanCapture is false and Add never ran).
+            var tailLoggerSinks = TailLoggerSinks;
+            tailLoggerSinks.Add(this);
+            Hub.RegisterDisposable(() => tailLoggerSinks.Remove(this));
+        }
         _whenReady.TrySetResult();
         return Task.CompletedTask;
     }
