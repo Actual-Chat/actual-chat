@@ -51,6 +51,7 @@ public class NotificationsBackend(IServiceProvider services)
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IFirebaseMessagingClient FirebaseMessagingClient { get; }
         = services.GetRequiredService<IFirebaseMessagingClient>();
+    private IApnsClient ApnsClient { get; } = services.GetRequiredService<IApnsClient>();
     private FlowHub FlowHub { get; } = services.FlowHub();
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
@@ -1068,16 +1069,26 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         var devices = await ListDevices(userId, cancellationToken).ConfigureAwait(false);
-        var deviceIds = devices
+        var fcmDeviceIds = devices
             .Where(d => d.DeviceType == DeviceType.AndroidApp)
             .Select(d => d.DeviceId)
             .ToList();
-        if (deviceIds.Count == 0)
-            return;
+        if (fcmDeviceIds.Count != 0)
+            await FirebaseMessagingClient
+                .SendSpeechStartedWake(chatId, authorId, startedAt, fcmDeviceIds, cancellationToken)
+                .ConfigureAwait(false);
 
-        await FirebaseMessagingClient
-            .SendSpeechStartedWake(chatId, authorId, startedAt, deviceIds, cancellationToken)
-            .ConfigureAwait(false);
+        var pttDeviceIds = devices
+            .Where(d => d.DeviceType == DeviceType.iOSPttApp)
+            .Select(d => d.DeviceId)
+            .ToList();
+        if (pttDeviceIds.Count != 0) {
+            // The PTT system UI needs a channel/speaker label at push time, before any RPC.
+            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            await ApnsClient
+                .SendPushToTalkWake(chatId, startedAt, chat?.Title ?? "Voxt", pttDeviceIds, cancellationToken)
+                .ConfigureAwait(false);
+        }
     }
 
     private async Task<bool> IsArmedForWalkieTalkie(UserId userId, ChatId chatId, CancellationToken cancellationToken)

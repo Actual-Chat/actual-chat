@@ -100,6 +100,9 @@ public static class TestAppHostFactory
                 services.AddSingleton<FirebaseMessagingTestSink>();
                 services.AddSingleton<IFirebaseMessagingClient>(
                     c => c.GetRequiredService<FirebaseMessagingTestSink>());
+                services.AddSingleton<ApnsTestSink>();
+                services.AddSingleton<IApnsClient>(
+                    c => c.GetRequiredService<ApnsTestSink>());
 
                 // Overrides from options
                 options.ConfigureServices?.Invoke(ctx, services);

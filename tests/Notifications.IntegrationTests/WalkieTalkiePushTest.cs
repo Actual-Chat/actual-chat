@@ -15,6 +15,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
 
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
     private FirebaseMessagingTestSink Sink => AppHost.Services.GetRequiredService<FirebaseMessagingTestSink>();
+    private ApnsTestSink ApnsSink => AppHost.Services.GetRequiredService<ApnsTestSink>();
     private ILiveSessionsBackend LiveSessionsBackend => AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
     private IServerKvasBackend ServerKvasBackend => AppHost.Services.GetRequiredService<IServerKvasBackend>();
     private IAuthors Authors => Tester.AppServices.GetRequiredService<IAuthors>();
@@ -161,6 +162,47 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
             WakeTimeout);
         Sink.Messages.Should().Contain(m => !m.IsDismissal && m.DeviceIds.Contains(fcmDeviceId));
         Sink.Messages.Should().NotContain(m => m.DeviceIds.Contains(pttDeviceId));
+    }
+
+    [Fact]
+    public async Task ArmedIosPttDeviceGetsApnsWake()
+    {
+        // arrange
+        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT ios-ptt");
+        var deviceId = await RegisterDevice(alice.Id, DeviceType.iOSPttApp);
+        await ArmByAlwaysListened(alice.Id, chatId);
+        ApnsSink.Clear();
+
+        // act
+        await Speak(chatId, bobAuthor.Id);
+
+        // assert
+        await WaitFor(() => ApnsSink.Wakes.Any(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId)),
+            WakeTimeout);
+        var wake = ApnsSink.Wakes.Should()
+            .Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId)).Subject;
+        wake.ChatTitle.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task DualDeviceUserGetsBothTransports()
+    {
+        // arrange
+        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT dual-device");
+        var androidDeviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
+        var pttDeviceId = await RegisterDevice(alice.Id, DeviceType.iOSPttApp);
+        await ArmByAlwaysListened(alice.Id, chatId);
+        Sink.Clear();
+        ApnsSink.Clear();
+
+        // act
+        await Speak(chatId, bobAuthor.Id);
+
+        // assert
+        await WaitFor(() => Sink.Wakes.Any(w => w.ChatId == chatId && w.DeviceIds.Contains(androidDeviceId))
+            && ApnsSink.Wakes.Any(w => w.ChatId == chatId && w.DeviceIds.Contains(pttDeviceId)), WakeTimeout);
+        Sink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(androidDeviceId));
+        ApnsSink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(pttDeviceId));
     }
 
     // Private methods
