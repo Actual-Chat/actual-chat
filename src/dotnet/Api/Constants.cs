@@ -334,6 +334,7 @@ public static partial class Constants
         public static class MessageDataKeys
         {
             public const string NotificationId = "notificationId";
+            public const string AuthorId = "authorId";
             public const string ChatId = "chatId";
             public const string ChatEntryId = "chatEntryId";
             public const string LastEntryLocalId = "lastEntryLocalId";
@@ -351,7 +352,7 @@ public static partial class Constants
             public const string Silent = "silent";
 
             public static readonly string[] ValidKeys = {
-                Body, ChatId, ChatEntryId, DismissedIds, DismissedTags, LastEntryLocalId, Icon, ImageUrl, Kind, Link, Messages, NotificationId, Silent, Tag, Title, Timestamp
+                AuthorId, Body, ChatId, ChatEntryId, DismissedIds, DismissedTags, LastEntryLocalId, Icon, ImageUrl, Kind, Link, Messages, NotificationId, Silent, Tag, Title, Timestamp
             };
 
             public static bool IsValidKey(string key)

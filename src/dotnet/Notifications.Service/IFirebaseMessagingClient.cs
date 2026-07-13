@@ -15,4 +15,11 @@ public interface IFirebaseMessagingClient
         IReadOnlyCollection<Symbol> deviceIds,
         int badgeCount,
         CancellationToken cancellationToken);
+
+    Task SendSpeechStartedWake(
+        ChatId chatId,
+        AuthorId authorId,
+        Moment startedAt,
+        IReadOnlyCollection<Symbol> deviceIds,
+        CancellationToken cancellationToken);
 }
