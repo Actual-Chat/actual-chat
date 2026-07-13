@@ -10,6 +10,9 @@ public static class NotificationExt
     public static string? GetPushTag(this Notification notification)
         => notification switch {
             ChatEntryNotification n => n.EntryId.Value,
+            // A call's ring and its dismissal must collapse onto a banner of their own —
+            // the chat-wide tag would make a call dismissal close the chat's message banners too.
+            CallNotification n => Constants.Notification.CallTagPrefix + n.ChatId.Value,
             _ => notification.GetChatTag(),
         };
 
@@ -20,6 +23,7 @@ public static class NotificationExt
             ConversationNotification n => n.ChatId.Value,
             ChatEntryRelatedNotification n => n.ChatId.Value,
             ChatEntryNotification n => n.ChatId.Value,
+            CallNotification n => n.ChatId.Value,
             ChatNotification n when ChatId.TryParse(n.SimilarityKey, out var chatId) => chatId.Value,
             _ => null,
         };

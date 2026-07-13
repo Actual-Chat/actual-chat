@@ -264,6 +264,8 @@ public static partial class Constants
 
     public static class Notification
     {
+        public const string CallTagPrefix = "call-";
+
         public static class MessageDataKeys
         {
             public const string NotificationId = "notificationId";
