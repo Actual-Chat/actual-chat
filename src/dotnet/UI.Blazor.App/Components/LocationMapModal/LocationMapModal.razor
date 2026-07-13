@@ -28,10 +28,9 @@
             <div class="c-participants custom-scrollbar">
                 @foreach (var p in m.Participants) {
                     <LocationParticipant
-                        @key="@p.LocationId"
+                        @key="@p.Location.Id"
                         Location="@p.Location"
                         Author="@p.Author"
-                        IsOwn="@p.IsOwn"
                         OwnPoint="@m.OwnPoint"
                         Click="@(() => OnParticipantClick(p))"/>
                 }
@@ -78,11 +77,10 @@
             if (author is null)
                 continue;
 
-            var isOwn = ownAuthor != null && location.AuthorId == ownAuthor.Id;
-            participants.Add(new Participant(location, author, isOwn));
+            participants.Add(new Participant(location, author));
         }
         participants = participants
-            .OrderByDescending(p => p.IsOwn)
+            .OrderByDescending(p => ownAuthor != null && p.Author.Id == ownAuthor.Id)
             .ThenBy(p => p.Author.Avatar.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
         // Center on the clicked share first, then the viewer's own, then the first one.
@@ -91,8 +89,8 @@
         return new ComputedModel(participants, ownPoint, center.Latitude, center.Longitude);
     }
 
-    private ValueTask OnParticipantClick(Participant participant)
-        => _mapView?.FlyTo(participant.Location.Point.Latitude, participant.Location.Point.Longitude) ?? ValueTask.CompletedTask;
+    private Task OnParticipantClick(Participant participant)
+        => _mapView?.FlyTo(participant.Location.Point.Latitude, participant.Location.Point.Longitude).AsTask() ?? Task.CompletedTask;
 
     private async Task<IReadOnlyList<SharedLocation>> GetLocations(ChatId chatId, CancellationToken cancellationToken) {
         if (ModalModel.LocationId is not { } locationId)
@@ -123,10 +121,7 @@
 
     public sealed record Participant(
         SharedLocation Location,
-        Author Author,
-        // TODO: isown can be calculated in Participant component
-        bool IsOwn) {
-        public SharedLocationId LocationId => Location.Id;
+        Author Author) {
 
         public MapMarker ToMapMarker(UrlMapper urlMapper) {
             var pictureUrl = Author.Avatar.Picture is { } picture ? urlMapper.PicturePreview128Url(picture) : "";
@@ -134,7 +129,7 @@
                 ? (Author.Avatar.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(Author.Id.Value)
                 : "";
             return new MapMarker(
-                LocationId.Value,
+                Location.Id.Value,
                 Location.Point.Latitude,
                 Location.Point.Longitude,
                 Author.Avatar.Name,
