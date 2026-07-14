@@ -5,10 +5,9 @@ using ActualChat.UI.Blazor.Services;
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// Gathers audio diagnostics for the Audio Diagnostics UI: the native audio-focus /
-/// session snapshot, and — on the web build only — the Web Audio playback state.
-/// <see cref="GetState"/> re-collects on a fixed cadence via auto-invalidation, so it
-/// polls only while something observes it (i.e. while the diagnostics modal is open).
+/// Gathers Audio Diagnostics UI data: the native audio-focus / session snapshot and
+/// (web build only) the Web Audio playback state. <see cref="GetState"/> auto-invalidates
+/// on a cadence, so it polls only while observed (i.e. the diagnostics modal is open).
 /// </summary>
 public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
@@ -18,7 +17,7 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     private bool IsWebAudioUsed => !HostInfo.AppKind.IsMaui();
 
-    // AutoInvalidationDelay is in seconds: re-collect every 3s while observed.
+    // AutoInvalidationDelay unit is seconds.
     [ComputeMethod(AutoInvalidationDelay = 3)]
     public virtual async Task<AudioDiagnosticsState> GetState(CancellationToken cancellationToken)
     {
