@@ -135,8 +135,9 @@ export interface PlayerStats {
     // (server fan-out hiccup) raises this independently of latency. -1 == not
     // yet sampled.
     arrivalIntervalEma: number;
-    // Cumulative ArrivedChunks the decode operator pulled from its source.
-    // Pairs with `framesDecoded` to derive the decoder throughput deficit.
+    // Cumulative chunks actually SUBMITTED to the decoder (keyframe-wait and
+    // pre-configure drops excluded, so input starvation can't read as decoder
+    // failure). Pairs with `framesDecoded` to derive the decoder throughput deficit.
     chunksReceived: number;
     // Cumulative VideoFrames the decoder emitted (onFrame callback). Strictly
     // ≤ chunksReceived; the gap is decoder slowness + post-recovery losses.

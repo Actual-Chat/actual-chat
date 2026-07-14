@@ -154,8 +154,16 @@ export class VideoDecoderBridge {
             + `pending=${this.pending.length}, codec=${this.currentCodec})`);
         this.codecProofTracker.noteDecoderError();
         this.recordHang(now);
-        if (this.currentStats)
+        // Drop the wedged in-flight FIFO: the decoder is recreated on the next
+        // keyframe anyway, and a populated FIFO keeps hangDeadline() armed — the
+        // watchdog would re-fire every 2s through the whole keyframe wait,
+        // counting ONE real stall as many hangs (observed hang/60s=6). Late
+        // outputs from the wedged decoder are closed by the `!meta` guard.
+        this.pending.length = 0;
+        if (this.currentStats) {
             this.currentStats.hangRateIn60s = this.hangTimestamps.length;
+            this.currentStats.decoderQueueSize = 0;
+        }
         this.lastDecoderActivityMs = now;
         // pendingError now opens the pump's backpressure gate; wake it so it
         // consumes the recovery keyframe (a hung decoder won't drain pending).
@@ -169,7 +177,6 @@ export class VideoDecoderBridge {
         const now = this.opts.now;
         try {
             this.currentStats = arrived.stats;
-            arrived.stats.chunksReceived++;
             // Time-decay hangs so the count drops without needing a new event.
             const arrivalNowMs = now();
             while (this.hangTimestamps.length > 0
@@ -266,6 +273,12 @@ export class VideoDecoderBridge {
             });
             try {
                 dec.decode(arrived.chunk);
+                // Counted here — after the keyframe-wait / unconfigured gates and a
+                // successful decode() — so the deficit's input only ever contains
+                // chunks the decoder could actually work on. Counting at arrival
+                // made a keyframe-wait read as decoder failure (deficit 0.5-0.96).
+                arrived.stats.chunksReceived++;
+                arrived.stats.decoderQueueSize = this.pending.length;
                 // Nudge the drain loop so it (re)arms the hang watchdog now that a
                 // chunk is in flight — the pump, not the consumer, drives submission.
                 this.whenDataReady.notify();
