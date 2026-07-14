@@ -15,7 +15,7 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICo
 {
     private static readonly string JSCollectMethod = $"{BlazorUIAppModule.ImportName}.collectAudioPlaybackDiagnostics";
     private static readonly string JSResumeContextMethod = $"{BlazorUIAppModule.ImportName}.audioDebugResumeContext";
-    private static readonly TimeSpan RefreshPeriod = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan RefreshPeriod = TimeSpan.FromSeconds(5);
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5, 1);
 
     private volatile AudioDiagnosticsState _state = AudioDiagnosticsState.None;
@@ -42,24 +42,23 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICo
         => AsyncChain.From(RefreshState)
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelays, Log)
+            .AppendDelay(RefreshPeriod)
+            .CycleForever()
             .Run(cancellationToken);
 
     // Private methods
 
     private async Task RefreshState(CancellationToken cancellationToken)
     {
-        while (!cancellationToken.IsCancellationRequested) {
-            var focus = AudioFocusUI.GetDiagnostics();
-            var playback = await CollectPlaybackDiagnostics().ConfigureAwait(false);
-            var state = new AudioDiagnosticsState(focus, playback);
-            // Skip the invalidation (and the observer re-render it triggers) when
-            // nothing changed since the last tick.
-            if (state != _state) {
-                _state = state;
-                using (Invalidation.Begin())
-                    _ = GetState(default);
-            }
-            await Task.Delay(RefreshPeriod, cancellationToken).ConfigureAwait(false);
+        var focus = AudioFocusUI.GetDiagnostics();
+        var playback = await CollectPlaybackDiagnostics().ConfigureAwait(false);
+        var state = new AudioDiagnosticsState(focus, playback);
+        // Skip the invalidation (and the observer re-render it triggers) when
+        // nothing changed since the last tick.
+        if (state != _state) {
+            _state = state;
+            using (Invalidation.Begin())
+                _ = GetState(default);
         }
     }
 
