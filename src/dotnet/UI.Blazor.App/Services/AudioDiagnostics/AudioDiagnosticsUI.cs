@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// Gathers Audio Diagnostics UI data: the native audio-focus / session snapshot and
-/// (web build only) the Web Audio playback state. <see cref="GetState"/> auto-invalidates
+/// (web build only) the Web Audio playback state. <see cref="Get"/> auto-invalidates
 /// on a cadence, so it polls only while observed (i.e. the diagnostics modal is open).
 /// </summary>
 public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
@@ -19,11 +19,21 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
 
     // AutoInvalidationDelay unit is seconds.
     [ComputeMethod(AutoInvalidationDelay = 3)]
-    public virtual async Task<AudioDiagnosticsState> GetState(CancellationToken cancellationToken)
+    public virtual async Task<AudioDiagnosticsState> Get(CancellationToken cancellationToken)
     {
         var focus = AudioFocusUI.GetDiagnostics();
         var web = await CollectWebAudioDiagnostics().ConfigureAwait(false);
         return new AudioDiagnosticsState(focus, web);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsEnabled(CancellationToken cancellationToken = default)
+    {
+        if (HostInfo.IsDevelopmentInstance)
+            return true;
+
+        var appSettings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        return appSettings.IsAudioDiagnosticsEnabledOrDefault;
     }
 
     public Task Reactivate(CancellationToken cancellationToken = default)

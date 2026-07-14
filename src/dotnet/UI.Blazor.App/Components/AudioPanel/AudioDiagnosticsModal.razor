@@ -231,7 +231,7 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var showActionsTab = account.IsAdmin || Hub.HostInfo.IsDevelopmentInstance;
-        var diagnostics = await Diagnostics.GetState(cancellationToken).ConfigureAwait(false);
+        var diagnostics = await Diagnostics.Get(cancellationToken).ConfigureAwait(false);
         return new ComputedModel(showActionsTab, diagnostics.Focus, diagnostics.Web);
     }
 
