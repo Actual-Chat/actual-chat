@@ -123,4 +123,39 @@ public class SenderHealthClassifierTest
             senderWirePathDropRatio: 0);
         up.Verdict.Should().Be(HealthVerdict.Bad);
     }
+
+    [Fact]
+    public void UplinkBad_DecaysToMarginalAfterSustainedBadFreeDeadZone()
+    {
+        // Queue depth between Good (<1) and Bad (>4) resets both streaks, so a
+        // latched Bad has no Good exit; it must decay after 2×GoodStreakRequired
+        // bad-free ticks (the steady state of a high-RTT link lives in that zone).
+        var c = new SenderHealthClassifier(T());
+        UplinkHealth up = UplinkHealth.Empty;
+
+        // act: trip Bad, then hold the dead zone
+        for (var i = 0; i < 2; i++)
+            up = ClassifyUplinkWithQueueDepth(c, 5.0);
+        up.Verdict.Should().Be(HealthVerdict.Bad);
+        for (var i = 0; i < 5; i++)
+            up = ClassifyUplinkWithQueueDepth(c, 2.5);
+        up.Verdict.Should().Be(HealthVerdict.Bad, "the dead zone alone must not clear a latched Bad early");
+
+        // assert: 6th bad-free tick (= 2 × GoodStreakRequired) decays to Marginal
+        up = ClassifyUplinkWithQueueDepth(c, 2.5);
+        up.Verdict.Should().Be(HealthVerdict.Marginal);
+
+        // truly-good readings still complete the recovery to Good
+        for (var i = 0; i < 3; i++)
+            up = ClassifyUplinkWithQueueDepth(c, 0.5);
+        up.Verdict.Should().Be(HealthVerdict.Good);
+    }
+
+    private static UplinkHealth ClassifyUplinkWithQueueDepth(SenderHealthClassifier c, double queueDepth)
+        => c.ClassifyUplink(
+            wireLastAckAgeMs: 100,
+            wireQueueDepthEma: queueDepth,
+            floodGateSkipPerSec: 0,
+            peerReconnectStreak: 0,
+            senderWirePathDropRatio: 0);
 }

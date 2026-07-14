@@ -21,8 +21,9 @@ public sealed record BandwidthEstimatorConfig(long InitialCeilingBps)
     public int    HistorySize             { get; init; } = 10;
     public double BaseProbeCooldownSec    { get; init; } = 5;
     public double ProbeCooldownGrowth     { get; init; } = 1.7;
-    public double MaxProbeCooldownSec     { get; init; } = 120;
-    public int    ProbeFailureResetStreak { get; init; } = 20;
+    public double MaxProbeCooldownSec      { get; init; } = 120;
+    public int    ProbeFailureResetStreak  { get; init; } = 20;
+    public double MeasuredCapacityLagRatio { get; init; } = 0.9;
     public Func<double, BandwidthVerdict>? Classify { get; init; }
 }
 
@@ -61,15 +62,11 @@ public sealed class BandwidthEstimator(BandwidthEstimatorConfig config)
     public bool    HasSeenBadSignal  { get; private set; }
     public IReadOnlyCollection<BandwidthEstimateRecord> History => _history;
 
-    /// <summary>
-    /// Clears the verdict streak counters without touching the ceiling
-    /// estimate. Call when an upstream event (e.g. recorder pipeline
-    /// restart) creates a transient noise window — pre-event streaks
-    /// would otherwise carry over and trigger an immediate cap walk on
-    /// the first eval after the noise clears.
-    /// </summary>
     public void ResetStreaks()
     {
+        // Clears streaks without touching the ceiling. Call on transient noise
+        // windows (e.g. recorder pipeline restart) so pre-event streaks don't
+        // trigger an immediate cap walk on the first eval after the noise clears.
         NegativeStreak = 0;
         PositiveStreak = 0;
         CalmTicks = 0;
@@ -144,6 +141,26 @@ public sealed class BandwidthEstimator(BandwidthEstimatorConfig config)
         AppendHistory(now, currentBandwidthBps, signalLevel, ceilingBefore, verdict);
     }
 
+    public void ApplyMeasuredCapacity(long measuredBps, long producedBps, Moment now)
+    {
+        // Anchors the ceiling to the backlog-drain rate (hard evidence, overrides
+        // the verdict-based estimate). Downward only when drain genuinely lags
+        // production — a backlog draining at the produce rate is a credit-window
+        // (RTT) stall, so its drain rate reflects the window, not the link.
+        if (measuredBps <= 0)
+            return;
+        if (measuredBps < CeilingBps && measuredBps >= producedBps * config.MeasuredCapacityLagRatio)
+            return;
+
+        LastCurrentBps = measuredBps;
+        CeilingBps = Math.Max(config.FloorBps, measuredBps);
+        // A real measurement isn't a failed probe — clear the back-off anchor so
+        // the next good tick can lift immediately.
+        LastCeilingDownAt = null;
+    }
+
+    // Private methods
+
     private BandwidthVerdict ClassifyVerdict(double signalLevel)
     {
         if (config.Classify is { } classify)
@@ -205,26 +222,6 @@ public sealed class BandwidthEstimator(BandwidthEstimatorConfig config)
         CeilingBps = lift;
         PositiveStreak++;
         NegativeStreak = 0;
-    }
-
-    /// <summary>
-    /// Anchor the ceiling to a confirmed measured drain rate (bytes/sec), taken
-    /// while the wire was backlogged — there the measured throughput IS the link
-    /// capacity. Unlike the verdict-driven paths this is hard evidence, so it
-    /// overrides the estimate in both directions (even with <see cref="HasSeenBadSignal"/>)
-    /// and refreshes <see cref="LastCurrentBps"/> so a ratcheted-down cap can
-    /// re-confirm headroom and climb back.
-    /// </summary>
-    public void ApplyMeasuredCapacity(long measuredBps, Moment now)
-    {
-        if (measuredBps <= 0)
-            return;
-
-        LastCurrentBps = measuredBps;
-        CeilingBps = Math.Max(config.FloorBps, measuredBps);
-        // A real measurement isn't a failed probe — clear the back-off anchor so
-        // the next good tick can lift immediately.
-        LastCeilingDownAt = null;
     }
 
     private void ApplyNeutralOrIdleGood(long currentBandwidthBps)

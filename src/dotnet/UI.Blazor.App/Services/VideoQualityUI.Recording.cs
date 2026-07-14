@@ -243,18 +243,18 @@ public sealed partial class VideoQualityUI
         // RecordingQualityInfo grows the per-leg fields, the server-side
         // ChangeRecordingQuality handler will record them.
 
-        // Uplink-only signal feeds BWE. Verdict→continuous mapping: Good=1,
-        // Bad=0, Marginal/Unknown=0.5. Streak hysteresis inside the classifier
+        // Uplink-only signal feeds BWE. Verdict→continuous mapping: Bad=0,
+        // everything else=1. Streak hysteresis inside the classifier
         // is the smoothing; BWE no longer averages raw penalties.
         var uplinkSignal = VerdictToSignal(uplinkHealth.Verdict);
         var connection = ConnectivityUI.ConnectionInfo.Value;
         _outboundBwEstimator.Tick(connection, SystemClock.Now, totalBytesPerSec, uplinkSignal);
-        // Drain-rate measurement: a sustained wire backlog means the link is the
-        // bottleneck, so the acked-bytes rate IS the capacity. Anchor the ceiling
-        // to it (overriding the verdict-based guess) — this is what lets a
-        // ratcheted-down ceiling become accurate again and the cap climb back.
+        // Drain-rate measurement under wire backlog: the acked-bytes rate is the
+        // capacity — but only when it lags production (the estimator rejects the
+        // downward anchor otherwise: a backlog draining at the produce rate is a
+        // credit-window/RTT stall, not a link bottleneck).
         if (fusedWireQueueDepth >= WireBacklogBundles && ackedBytesPerSec > 0)
-            _outboundBwEstimator.ApplyMeasuredCapacity(ackedBytesPerSec, SystemClock.Now);
+            _outboundBwEstimator.ApplyMeasuredCapacity(ackedBytesPerSec, totalBytesPerSec, SystemClock.Now);
         var preEncCam = _outboundEncodingCap.Layers.CameraLayers;
         var preBwCam = _outboundBandwidthCap.Layers.CameraLayers;
         // EncodingCap still consumes the raw encode ratio. The classifier

@@ -375,8 +375,9 @@ public class BandwidthEstimatorTest
         e.Tick(conn, At(1), 900_000, 0.3);
         e.HasSeenBadSignal.Should().BeTrue();
 
-        // Backlogged drain rate of 300_000 B/s = the real capacity.
-        e.ApplyMeasuredCapacity(300_000, At(2));
+        // Backlogged drain rate of 300_000 B/s lagging a 900_000 B/s produce
+        // rate = the real capacity.
+        e.ApplyMeasuredCapacity(300_000, 900_000, At(2));
 
         e.CeilingBps.Should().Be(300_000, "the ceiling anchors to the measurement, even after a bad signal");
         e.LastCurrentBps.Should().Be(300_000);
@@ -393,11 +394,40 @@ public class BandwidthEstimatorTest
         e.Tick(conn, At(1), 50_000, 1.0);
         var before = e.CeilingBps;
 
-        e.ApplyMeasuredCapacity(0, At(2));
+        e.ApplyMeasuredCapacity(0, 50_000, At(2));
         e.CeilingBps.Should().Be(before, "non-positive measurement is ignored");
 
-        e.ApplyMeasuredCapacity(10_000, At(3));
+        e.ApplyMeasuredCapacity(10_000, 50_000, At(3));
         e.CeilingBps.Should().Be(100_000, "measurement below the floor is clamped to the floor");
+    }
+
+    [Fact]
+    public void ApplyMeasuredCapacity_SkipsDownwardAnchorOnCreditStall()
+    {
+        var e = NewEstimator();
+        var conn = Conn();
+        e.Tick(conn, At(1), 310_000, 1.0);
+        var ceilingBefore = e.CeilingBps;
+        var currentBefore = e.LastCurrentBps;
+
+        // Backlog draining at ~the produce rate is a credit-window (RTT) stall,
+        // not a link bottleneck — the low drain rate must not become the ceiling.
+        e.ApplyMeasuredCapacity(300_000, 310_000, At(2));
+
+        e.CeilingBps.Should().Be(ceilingBefore, "drain keeping pace with production isn't a capacity measurement");
+        e.LastCurrentBps.Should().Be(currentBefore);
+    }
+
+    [Fact]
+    public void ApplyMeasuredCapacity_AnchorsUpwardRegardlessOfProduction()
+    {
+        var e = NewEstimator();
+        var conn = Conn();
+        e.Tick(conn, At(1), 900_000, 0.3);
+
+        e.ApplyMeasuredCapacity(1_500_000, 1_500_000, At(2));
+
+        e.CeilingBps.Should().Be(1_500_000, "a drain rate above the ceiling proves capacity regardless of production");
     }
 
     [Fact]
