@@ -73,7 +73,7 @@ public sealed record AudioFocusDiagnostics(
     bool IsSuspended,
     bool IsSessionConfigured,
     IReadOnlyList<AudioFocusScopeInfo> Scopes,
-    AudioSessionDiagnostics? Session)
+    AppleAudioSessionDiagnostics? Session)
 {
     public static readonly AudioFocusDiagnostics Unsupported =
         new(false, AudioFocusMode.Tune, false, false, false, [], null);
@@ -101,13 +101,13 @@ public sealed record AudioFocusScopeInfo(AudioFocusMode Mode, int Count);
 /// Native AVAudioSession snapshot (iOS / Mac Catalyst). Strings avoid an
 /// AVFoundation dependency in UI.Blazor.
 /// </summary>
-public sealed record AudioSessionDiagnostics(
+public sealed record AppleAudioSessionDiagnostics(
     string Category,
     string Mode,
     bool IsOtherAudioPlaying,
     IReadOnlyList<string> OutputRoutes)
 {
-    public bool Equals(AudioSessionDiagnostics? other)
+    public bool Equals(AppleAudioSessionDiagnostics? other)
         => other is not null
             && Category == other.Category
             && Mode == other.Mode

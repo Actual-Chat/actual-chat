@@ -104,7 +104,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
 
     public override AudioFocusDiagnostics GetDiagnostics()
     {
-        AudioSessionDiagnostics? session = null;
+        AppleAudioSessionDiagnostics? session = null;
         try {
             session = AudioSession.GetDiagnostics();
         }
