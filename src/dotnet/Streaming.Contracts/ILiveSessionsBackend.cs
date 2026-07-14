@@ -37,6 +37,8 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         ChatId chatId,
         LiveSessionSummary summary,
         CancellationToken cancellationToken);
+    Task SetContextStart(ChatId chatId, long contextStartLid, CancellationToken cancellationToken);
+    Task FinalizeSession(ChatId chatId, CancellationToken cancellationToken);
 
     // Voice-call ring lifecycle (StartCall invitees empty = every other chat member).
     // Caller methods

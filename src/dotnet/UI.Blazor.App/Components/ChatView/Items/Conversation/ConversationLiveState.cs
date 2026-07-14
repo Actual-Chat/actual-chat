@@ -11,4 +11,6 @@ public sealed record ConversationLiveState(
     bool IsLive,
     bool IsJoined,
     bool IsVoiceOnly,
-    string ParticipantsText = "");
+    string ParticipantsText = "",
+    bool HasFoldedEntries = false,
+    bool IsExpanded = false);

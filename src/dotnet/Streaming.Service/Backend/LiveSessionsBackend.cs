@@ -254,8 +254,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
 
         if (state.SessionStartedAt is null && state.AuthorIds.Count >= 2) {
+            var visibleStartLid = (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
             state = state with {
                 SessionStartedAt = now,
+                VisibleStartLid = visibleStartLid,
                 Version = VersionGenerator.NextVersion(state.Version),
             };
             // START fires at the 2+ latch for both modes; transcription's later Titled updates the same banner.
@@ -365,6 +367,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             EndEntryLid = summary.EndEntryLid,
             MessageCount = summary.MessageCount,
             AuthorIds = summary.AuthorIds.Count > 0 ? summary.AuthorIds : state.AuthorIds,
+            IsExpandedByDefault = summary.IsExpandedByDefault,
             LastSummaryAt = Clocks.SystemClock.Now,
             Version = VersionGenerator.NextVersion(state.Version),
         };
@@ -374,6 +377,34 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 state, ConversationNotificationPhase.Titled, $"Voice chat: {summary.Title}", cancellationToken)
                 .ConfigureAwait(false);
         InvalidateState(chatId);
+    }
+
+    public virtual async Task SetContextStart(ChatId chatId, long contextStartLid, CancellationToken cancellationToken)
+    {
+        using var _ = Computed.BeginIsolation();
+        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        if (state is null || state.ContextStartLid > 0)
+            return;
+
+        state = state with {
+            ContextStartLid = contextStartLid,
+            Version = VersionGenerator.NextVersion(state.Version),
+        };
+        await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
+        InvalidateState(chatId);
+    }
+
+    public virtual async Task FinalizeSession(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        if (state is null)
+            return;
+        if (!state.IsClosing && await HasParticipant(chatId).ConfigureAwait(false))
+            return; // a participant rejoined during the final pass - keep the session live
+
+        await CloseWithFinal(state, cancellationToken).ConfigureAwait(false);
     }
 
     // Voice-call ring lifecycle
@@ -392,8 +423,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var now = Clocks.SystemClock.Now;
             var state = await SafeGet(chatId).ConfigureAwait(false);
-            var startEntryLid = state?.StartEntryLid
-                ?? (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
+            var lidRangeEnd = (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
+            var startEntryLid = state?.StartEntryLid ?? lidRangeEnd;
             // A call latches immediately: it is "live" the moment it rings, with the caller alone.
             // Promote an already-live (ambient) session to a call too, so ring dismissal/close - gated
             // on Kind == Call - runs for it.
@@ -401,6 +432,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 EndEntryLid = state?.EndEntryLid ?? startEntryLid,
                 StartedAt = state?.StartedAt ?? now,
                 SessionStartedAt = state?.SessionStartedAt ?? now,
+                VisibleStartLid = state?.VisibleStartLid is { } vsl && vsl > 0 ? vsl : lidRangeEnd,
                 AuthorIds = state?.AuthorIds is { Count: > 0 } ids ? ids : [callerAuthorId],
                 Host = callerAuthorId,
                 Kind = LiveSessionKind.Call,
@@ -714,6 +746,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 return;
             if (await HasParticipant(chatId).ConfigureAwait(false))
                 return; // someone (re)joined before we got here
+            if (state is { TranscriptionOn: true, SessionStartedAt: not null, Kind: not LiveSessionKind.Call }) {
+                // Hand the close to LiveConversationSummaryFlow: it runs the final summary pass, decides the
+                // tier, materializes, then calls FinalizeSession. StartClosingGrace marks IsClosing; the 90s
+                // SelfClose stays the backstop if the flow never finalizes.
+                await StartClosingGrace(chatId).ConfigureAwait(false);
+                return;
+            }
             await CloseWithFinal(state, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -772,7 +811,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             // threshold) has nothing to keep and just vanishes.
             if (!state.Title.IsNullOrEmpty())
                 await Commander
-                    .Call(new ConversationBackend_Materialize(state.ToConversation()), true, cancellationToken)
+                    .Call(new ConversationBackend_Materialize(state.ToMaterializedConversation()), true, cancellationToken)
                     .ConfigureAwait(false);
             var content = state.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {state.Title}";
             await EnqueueLiveNotification(state, ConversationNotificationPhase.Final, content, cancellationToken)

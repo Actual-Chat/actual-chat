@@ -281,3 +281,15 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply bg-cr-badge-selected;
     @apply text-cr-badge-selected-text;
 }
+/* Joined live block: the group wrapper owns one continuous surface (card + folded range + tail),
+   and the live card sits flush as its first row instead of carrying its own border/rounding. */
+.virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live.joined) {
+    @apply rounded-2xl overflow-hidden mb-2;
+    @apply border border-solid;
+    border-color: var(--violet-60);
+    background: linear-gradient(249deg, rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%);
+}
+.virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live.joined) > .item > .conversation-message.live.joined {
+    @apply rounded-none border-none mb-0;
+    background: transparent;
+}

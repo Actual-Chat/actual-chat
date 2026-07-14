@@ -678,4 +678,145 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         state!.Kind.Should().Be(LiveSessionKind.Call);
         state.Host.Should().Be(bobAuthor.Id);
     }
+
+    [Fact]
+    public async Task LatchSetsVisibleStartLidToChatEnd()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var chatsBackend = tester.AppServices.GetRequiredService<IChatsBackend>();
+
+        // act — a second peer latches the session
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_021), null, true, default);
+
+        // assert — VisibleStartLid is pinned to the chat end at latch time
+        var chatEnd = (await chatsBackend.GetLidRange(chatId, false, default)).End;
+        var live = await backend.GetState(chatId, default);
+        live.Should().NotBeNull();
+        live!.SessionStartedAt.Should().NotBeNull();
+        live.VisibleStartLid.Should().Be(chatEnd);
+        live.VisibleStartLid.Should().BeGreaterThan(0);
+        live.EffectiveVisibleStartLid.Should().Be(live.VisibleStartLid);
+    }
+
+    [Fact]
+    public async Task CloseNowKeepsLatchedTranscriptionSessionClosing()
+    {
+        // arrange — a latched transcription session (2 peers)
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var otherId = AuthorId.New(chatId, 777_022);
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, otherId, null, true, default);
+        (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
+
+        // act — everyone leaves
+        await backend.SetParticipation(chatId, otherId, ParticipationKind.Record, false, default);
+        await backend.SetParticipation(chatId, author.Id, ParticipationKind.Record, false, default);
+
+        // assert — it doesn't vanish instantly; the flow finalizes it, so it stays live-but-closing
+        var live = await backend.GetState(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FinalizeSessionMaterializesContextRange()
+    {
+        // arrange — a chat with a few entries, then a latched transcription session
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var commander = tester.Commander;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversationsBackend = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        var entries = new List<ChatEntry>();
+        foreach (var text in new[] { "one", "two", "three" }) {
+            var entry = await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = text });
+            entries.Add(entry);
+        }
+        var contextStart = entries[0].LocalId;
+        var endEntryLid = entries[^1].LocalId;
+
+        var otherId = AuthorId.New(chatId, 777_024);
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, otherId, null, true, default);
+
+        await backend.SetContextStart(chatId, contextStart, default);
+        await backend.UpdateSummary(chatId, new LiveSessionSummary {
+            Title = "Recap",
+            Description = "A description",
+            Summary = "A summary",
+            EndEntryLid = endEntryLid,
+            MessageCount = 8,
+            AuthorIds = [author.Id],
+            IsExpandedByDefault = true,
+        }, default);
+
+        // everyone leaves -> the session is marked closing
+        await backend.SetParticipation(chatId, otherId, ParticipationKind.Record, false, default);
+        await backend.SetParticipation(chatId, author.Id, ParticipationKind.Record, false, default);
+
+        // act — finalize materializes the conversation at the context start, then drops the live state
+        await backend.FinalizeSession(chatId, default);
+
+        // assert
+        (await backend.GetState(chatId, default)).Should().BeNull();
+        var materialized = await conversationsBackend.Get(ConversationId.New(chatId, contextStart), default);
+        materialized.Should().NotBeNull();
+        materialized!.Title.Should().Be("Recap");
+        materialized.IsExpandedByDefault.Should().BeTrue();
+        materialized.EndEntryLid.Should().Be(endEntryLid);
+    }
+
+    [Fact]
+    public async Task RangeMetaKeepsPreLatchConversationsVisible()
+    {
+        // arrange — transcription starts solo at e0, a conversation is persisted over [e0, e2] before the
+        // session latches (V = chat end after e3), so it sits in [StartEntryLid, VisibleStartLid).
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var commander = tester.Commander;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversationsBackend = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        var e0 = await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "e0" });
+        await backend.OnStreamRegistered(chatId, author!.Id, e0.LocalId, true, default); // solo, StartEntryLid = e0
+        await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "e1" });
+        var e2 = await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "e2" });
+
+        var preLatch = new Conversation(ConversationId.New(chatId, e0.LocalId), 1) {
+            Title = "Earlier", Description = "d", Summary = "s", MessageCount = 3,
+            EndEntryLid = e2.LocalId,
+            StartsAt = e0.BeginsAt, EndsAt = e2.BeginsAt,
+        };
+        await commander.Call(new ConversationBackend_Materialize(preLatch));
+
+        await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "e3" });
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_025), null, true, default); // latch
+        (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
+
+        // act
+        var idTileStart = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(e0.LocalId).Range.Start;
+        var meta = await conversationsBackend.GetRangeMeta(chatId, idTileStart, default);
+
+        // assert — the pre-latch conversation's exact range survives; the live range no longer swallows it
+        meta.ConversationLidRanges.Should().Contain(new Range<long>(e0.LocalId, e2.LocalId + 1));
+    }
 }

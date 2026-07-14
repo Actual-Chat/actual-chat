@@ -18,4 +18,6 @@ public sealed partial record LiveSessionSummary
     public int MessageCount { get; init; }
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
+    [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
+    public bool IsExpandedByDefault { get; init; }
 }

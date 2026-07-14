@@ -313,6 +313,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             StartsAt = new Moment(DateTime.UtcNow),
             EndsAt = new Moment(DateTime.UtcNow) + TimeSpan.FromHours(1),
             MessageCount = 42,
+            IsExpandedByDefault = true,
         };
 
         var s = conv.PassThroughAllSerializers(Out);
@@ -321,6 +322,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         s.Description.Should().Be(conv.Description);
         s.Summary.Should().Be(conv.Summary);
         s.MessageCount.Should().Be(conv.MessageCount);
+        s.IsExpandedByDefault.Should().BeTrue();
     }
 
     [Fact]
@@ -329,11 +331,13 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var diff = new ConversationDiff {
             Title = "Updated",
             MessageCount = 10,
+            IsExpandedByDefault = true,
         };
 
         var s = diff.PassThroughAllSerializers(Out);
         s.Title.Should().Be(diff.Title);
         s.MessageCount.Should().Be(diff.MessageCount);
+        s.IsExpandedByDefault.Should().Be(true);
     }
 
     [Fact]
