@@ -1,34 +1,31 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// Gathers audio diagnostics for the Audio Diagnostics UI: the native audio-focus /
 /// session snapshot, and — on the web build only — the Web Audio playback state.
-/// The worker loop refreshes ~1 Hz and invalidates <see cref="GetState"/> only when
-/// the snapshot actually changed, so observers don't re-render on every tick.
+/// <see cref="GetState"/> re-collects on a fixed cadence via auto-invalidation, so it
+/// polls only while something observes it (i.e. while the diagnostics modal is open).
 /// </summary>
-public class AudioDiagnosticsUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeService, INotifyInitialized
+public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
     private static readonly string JSCollectMethod = $"{BlazorUIAppModule.ImportName}.collectAudioPlaybackDiagnostics";
     private static readonly string JSResumeContextMethod = $"{BlazorUIAppModule.ImportName}.audioDebugResumeContext";
-    private static readonly TimeSpan RefreshPeriod = TimeSpan.FromSeconds(5);
-    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5, 1);
-
-    private volatile AudioDiagnosticsState _state = AudioDiagnosticsState.None;
 
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
-    private bool IsWebAudioUsed => !Hub.HostInfo.AppKind.IsMaui();
+    private bool IsWebAudioUsed => !HostInfo.AppKind.IsMaui();
 
-    void INotifyInitialized.Initialized()
-        => this.Start();
-
-    [ComputeMethod]
-    public virtual Task<AudioDiagnosticsState> GetState(CancellationToken cancellationToken)
-        => Task.FromResult(_state);
+    // AutoInvalidationDelay is in seconds: re-collect every 3s while observed.
+    [ComputeMethod(AutoInvalidationDelay = 3)]
+    public virtual async Task<AudioDiagnosticsState> GetState(CancellationToken cancellationToken)
+    {
+        var focus = AudioFocusUI.GetDiagnostics();
+        var playback = await CollectPlaybackDiagnostics().ConfigureAwait(false);
+        return new AudioDiagnosticsState(focus, playback);
+    }
 
     public Task Reactivate(CancellationToken cancellationToken = default)
         => AudioFocusUI.TryRecover(cancellationToken);
@@ -36,31 +33,7 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICo
     public ValueTask ResumeContext()
         => JS.InvokeVoidAsync(JSResumeContextMethod);
 
-    // Protected methods
-
-    protected override Task OnRun(CancellationToken cancellationToken)
-        => AsyncChain.From(RefreshState)
-            .Log(LogLevel.Debug, Log)
-            .RetryForever(RetryDelays, Log)
-            .AppendDelay(RefreshPeriod)
-            .CycleForever()
-            .Run(cancellationToken);
-
     // Private methods
-
-    private async Task RefreshState(CancellationToken cancellationToken)
-    {
-        var focus = AudioFocusUI.GetDiagnostics();
-        var playback = await CollectPlaybackDiagnostics().ConfigureAwait(false);
-        var state = new AudioDiagnosticsState(focus, playback);
-        // Skip the invalidation (and the observer re-render it triggers) when
-        // nothing changed since the last tick.
-        if (state != _state) {
-            _state = state;
-            using (Invalidation.Begin())
-                _ = GetState(default);
-        }
-    }
 
     private async Task<AudioPlaybackDiagnostics?> CollectPlaybackDiagnostics()
     {
@@ -76,7 +49,4 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICo
 /// </summary>
 public sealed record AudioDiagnosticsState(
     AudioFocusDiagnostics Focus,
-    AudioPlaybackDiagnostics? Playback)
-{
-    public static readonly AudioDiagnosticsState None = new(AudioFocusDiagnostics.Unsupported, null);
-}
+    AudioPlaybackDiagnostics? Playback);
