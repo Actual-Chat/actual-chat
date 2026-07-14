@@ -58,8 +58,6 @@
     case ChatMessageKind.SendingNewMessage:
         break;
     case ChatMessageKind.AudioRecordingMessage:
-        if (HasPriorStreamingEntry(message))
-            return;
         break;
     default:
         throw new ArgumentOutOfRangeException();
@@ -164,7 +162,7 @@
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
                 @if (message.Kind is ChatMessageKind.AudioRecordingMessage) {
-                    <StreamingEntryBadge ChatId="@ChatId" IsLanguageKnown="@m.IsChatLanguageSelected" IsVoiceActive="@m.IsVoiceActive"/>
+                    <StreamingEntryBadge ChatId="@ChatId" IsVoiceActive="@false" IsLanguageKnown="@false"/>
                 } else {
                     <ChatEntryMessageInternalView
                         Markup="@markup"
@@ -172,8 +170,7 @@
                         ChatContext="@ChatContext"
                         IsUnreadByOthers="@m.IsUnreadByOthers"
                         IsUnreadByOthersBlockStart="@m.IsUnreadByOthersBlockStart"
-                        IsFirstAuthorMessage="@showAuthorBadge"
-                        IsChatLanguageSelected="@m.IsChatLanguageSelected"/>
+                        IsOwnMessage="@m.IsOwnMessage"/>
                 }
             </div>
             @if (entry.Attachments.Length > 0 || entry.HasUploadingAttachments) {
@@ -235,7 +232,6 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private SelectionUI SelectionUI => Hub.SelectionUI;
-    private LanguageUI LanguageUI => Hub.LanguageUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
@@ -318,11 +314,7 @@
         if (repliedEntryId is not null)
             repliedEntry = ChatEntry.Loading(repliedEntryId);
         var isOwnMessage = Message.Flags.HasFlag(ChatMessageFlags.IsOwnMessage);
-        var selectedComputed = Computed.GetExisting(() => LanguageUI.IsChatLanguageSelected(Message.Entry.ChatId));
-        var isSelected = selectedComputed ?.IsConsistent() == true &&  selectedComputed is { HasValue: true, Value: true };
-        initialValue = new Model(null) {
-            IsChatLanguageSelected = isSelected,
-        };
+        initialValue = new Model(null);
         if (isOwnMessage || repliedEntry != null) {
             initialValue = initialValue with {
                 IsOwnMessage = isOwnMessage,
@@ -406,12 +398,6 @@
         var (isUnreadByOthers, isUnreadBlockStart) = (false, false);
         if (chat is not null && ownAuthorId is not null)
             (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
-        var isChatLanguageSelected = await LanguageUI.IsChatLanguageSelected(chatId, cancellationToken).ConfigureAwait(false);
-        var isVoiceActive = false;
-        if (chatMessage.Kind is ChatMessageKind.AudioRecordingMessage) {
-            var recorderState = await Hub.AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
-            isVoiceActive = recorderState.ChatId == chatId && recorderState.IsVoiceActive;
-        }
         var result = new Model(chat) {
             RepliedEntry = repliedEntry,
             IsOwnMessage = isOwnMessage,
@@ -428,8 +414,6 @@
             IsUnreadByOthers = isUnreadByOthers,
             IsUnreadByOthersBlockStart = isUnreadBlockStart,
             MentionedAuthorIds = mentionedAuthorIds,
-            IsChatLanguageSelected = isChatLanguageSelected,
-            IsVoiceActive = isVoiceActive,
         };
         return result.Equals(_rendered) ? _rendered! : result;
 
@@ -502,18 +486,6 @@
 
     private void OnForwardedAuthorClick(Author forwardedAuthor)
         => _ = AuthorUI.Show(forwardedAuthor.Id);
-
-    private static bool HasPriorStreamingEntry(ChatEntryMessage message) {
-        var authorId = message.Entry.AuthorId;
-        var current = message.PreviousMessage;
-        for (var i = 0; i < 50 && current != null; i++, current = current.PreviousMessage) {
-            if (current is ChatEntryMessage em
-                && em.Entry.AuthorId == authorId
-                && em.Entry.IsContentStreaming)
-                return true;
-        }
-        return false;
-    }
 
     private bool HasAnyMentions(Markup markup)
         => MarkupValidator.ContainsAnyMention.IsValid(markup);
@@ -607,7 +579,5 @@
         public bool IsUnreadByOthers { get; init; }
         public bool IsUnreadByOthersBlockStart { get; init; }
         public IReadOnlyList<AuthorId>? MentionedAuthorIds { get; init; }
-        public bool IsChatLanguageSelected { get; init; }
-        public bool IsVoiceActive { get; init; }
     }
 }

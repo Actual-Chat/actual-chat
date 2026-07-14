@@ -27,7 +27,6 @@
     }
 
     _rendered = m;
-    _renderedIsChatLanguageSelected = IsChatLanguageSelected;
     var streamingCls = "";
     if (!oldIsStreaming && !m.IsStreaming) {
         streamingCls = "not-streaming";
@@ -87,11 +86,15 @@
         <ChatEntryKindView IsTranscribed="@entry.HasAudio"/>
     }
     @if (m.IsStreaming) {
-        @if (sm.RetainedText.IsNullOrEmpty()
+        @if (IsOwnMessage
+             && sm.RetainedText.IsNullOrEmpty()
              && sm.ChangedText.IsNullOrEmpty()
              && sm.AnimatedText.IsNullOrEmpty()
              && !HasNewerStreamingEntry()) {
-            <StreamingEntryBadge ChatId="@ChatContext.Chat.Id" IsLanguageKnown="@IsChatLanguageSelected" IsVoiceActive="@true"/>
+            <StreamingEntryBadge
+                ChatId="@ChatContext.Chat.Id"
+                IsVoiceActive="@true"
+                IsLanguageKnown="@m.IsChatLanguageSelected"/>
         }
         @if (!sm.RetainedText.IsNullOrEmpty()) {
             <span class="retained">@sm.RetainedText</span>
@@ -151,13 +154,13 @@
 
     private string? _temporaryText;
     private Model? _rendered;
-    private bool _renderedIsChatLanguageSelected;
     private TranscriptStreamReader _streamReader = null!;
     private ChatEntryId _textEntryId = null!;
     private ILogger Log => Hub.LogFor(GetType());
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
     private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
 
     private bool HasNewerStreamingEntry() {
@@ -180,8 +183,7 @@
     [Parameter, EditorRequired] public Markup Markup { get; set; } = null!;
     [Parameter] public bool IsUnreadByOthers { get; set; }
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
-    [Parameter] public bool IsFirstAuthorMessage { get; set; }
-    [Parameter] public bool IsChatLanguageSelected { get; set; }
+    [Parameter] public bool IsOwnMessage { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -232,10 +234,10 @@
     protected override bool ShouldRender() {
         var stateValue = State.Value;
         var shouldRender = _rendered is null
-            || _renderedIsChatLanguageSelected != IsChatLanguageSelected
             || !ReferenceEquals(_rendered, stateValue)
                 && (stateValue.IsStreaming
                     || _rendered.IsStreaming != stateValue.IsStreaming
+                    || _rendered.IsChatLanguageSelected != stateValue.IsChatLanguageSelected
                     || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
                     || _rendered.Entry.IsSending != stateValue.Entry.IsSending
                     || _rendered.Entry.HasAudio != stateValue.Entry.HasAudio
@@ -281,7 +283,10 @@
             var translationState = streamingState.IsTranslating
                 ? TranslationState.Translating
                 : TranslationState.None;
-            return new(markup, entry, translationState, streamingState, isUnreadByOthers, isUnreadByOthersBlockStart);
+            var isChatLanguageSelected = await LanguageUI.IsChatLanguageSelected(entry.ChatId, cancellationToken).ConfigureAwait(false);
+            return new(markup, entry, translationState, streamingState, isUnreadByOthers, isUnreadByOthersBlockStart) {
+                IsChatLanguageSelected = isChatLanguageSelected,
+            };
         }
 
         // If we're not streaming, handle possible translation
@@ -332,6 +337,7 @@
         bool IsUnread,
         bool IsUnreadBlockStart)
     {
+        public bool IsChatLanguageSelected { get; init; }
         public bool IsStreaming => Entry.IsContentStreaming || Streaming.IsStreaming;
     }
 }
