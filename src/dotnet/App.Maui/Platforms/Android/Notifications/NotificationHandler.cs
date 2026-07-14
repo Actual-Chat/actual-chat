@@ -11,5 +11,6 @@ public static class NotificationHandler
             return;
 
         AppNavigationQueue.EnqueueOrNavigateToUrl(intent.Data?.ToString(), AutoNavigationReason.Notification);
+        IncomingCallNotifications.HandleViewIntent(intent);
     }
 }
