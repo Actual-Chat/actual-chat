@@ -164,10 +164,7 @@ export class AudioPlayer implements Resettable {
     private whenEnded?: PromiseSource<void>;
 
     private playbackState: PlaybackState = 'paused';
-    private lastBufferState: BufferState = 'ok';
-    private lastPresentationLagMs: number | null = null;
-    private lastPlayingAt = 0;
-    private lastBufferedDuration = 0;
+    private lastFeederState?: FeederState;
     private targetBufferSizeMs = 0;
     private authorId: string | null = null;
     private readonly audioLatencyEma = new RunningEMA(0, 3, 0.3);
@@ -197,15 +194,16 @@ export class AudioPlayer implements Resettable {
     }
 
     public getDiagnostics(): AudioPlayerDiagnostics {
+        const state = this.lastFeederState;
         return {
             internalId: this.internalId,
             authorId: this.authorId,
             playbackState: this.playbackState,
-            bufferState: this.lastBufferState,
-            presentationLagMs: this.lastPresentationLagMs,
+            bufferState: state?.bufferState ?? 'ok',
+            presentationLagMs: state?.presentationLagMs ?? null,
             targetBufferSizeMs: this.targetBufferSizeMs,
-            playingAt: this.lastPlayingAt,
-            bufferedDuration: this.lastBufferedDuration,
+            playingAt: state?.playingAt ?? 0,
+            bufferedDuration: state?.bufferedDuration ?? 0,
         };
     }
 
@@ -296,10 +294,7 @@ export class AudioPlayer implements Resettable {
         this.lastReportAttemptedAtMs = 0;
         this.lastReportFailedAtMs = 0;
         this.warnedFeederMissingInFrame = false;
-        this.lastBufferState = 'ok';
-        this.lastPresentationLagMs = null;
-        this.lastPlayingAt = 0;
-        this.lastBufferedDuration = 0;
+        this.lastFeederState = undefined;
         this.whenEnded = new PromiseSource<void>();
         AudioPlayer.activePlayers.add(this);
 
@@ -489,11 +484,7 @@ export class AudioPlayer implements Resettable {
                 `buffer: ${state.bufferState} (${state.bufferedDuration}s)`);
 
         this.playbackState = state.playbackState;
-        this.lastBufferState = state.bufferState;
-        this.lastPlayingAt = state.playingAt;
-        this.lastBufferedDuration = state.bufferedDuration;
-        if (state.presentationLagMs !== null)
-            this.lastPresentationLagMs = state.presentationLagMs;
+        this.lastFeederState = state;
         if (this.playbackState === 'ended') {
             try {
                 await this.reportEnded();
