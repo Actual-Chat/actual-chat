@@ -69,8 +69,8 @@ public enum EntryGroupLimit
 public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILogger<EntryGroupExtractor> log, int? groupWordCount = null) : IEntryGroupExtractor
 {
     private const int ChunkWordCount = 100;
-    private const int MaxPauseBetweenEntries = 60 * 60 * 12; // 12 hours
-    private const int MinPauseBetweenTextEntries = 5 * 60; // 5 minutes
+    public const int MaxPauseBetweenEntries = 60 * 60 * 12; // 12 hours
+    public const int MinPauseBetweenTextEntries = 5 * 60; // 5 minutes
 
     private IEmbeddingsCalculator EmbeddingsCalculator { get; } = embeddingsCalculator;
     private ILogger Log { get; } = log;

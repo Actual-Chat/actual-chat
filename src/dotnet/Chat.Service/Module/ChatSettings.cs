@@ -50,6 +50,9 @@ public class SummarizationSettings
     public string OpenAIModel { get; set; } = "gpt-4.1";
     public int MinConversationWords { get; set; } = 1200;
     public int MinConversationEntries { get; set; } = 10;
+    public int MinLiveConversationWords { get; set; } = 150;
+    public int MinLiveConversationEntries { get; set; } = 3;
+    public TimeSpan FirstLiveSummaryDelay { get; set; } = TimeSpan.FromMinutes(1);
     public TimeSpan ChatEntrySummarizationDelay { get; set; } = TimeSpan.FromMinutes(3);
     public TimeSpan ResummarizationDelay { get; set; } = TimeSpan.FromMinutes(5);
     public TimeSpan ChatEntrySummarizationDelayQuanta { get; set; } = TimeSpan.FromMinutes(1);

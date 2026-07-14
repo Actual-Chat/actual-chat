@@ -33,6 +33,10 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     }
 
     [ComputeMethod]
+    public virtual Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.GetState(Session, chatId, cancellationToken);
+
+    [ComputeMethod]
     public virtual async Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken)
         => await LiveSessions.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
 

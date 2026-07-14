@@ -85,8 +85,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         // the single live range (the UI swaps the regular block for the live one).
         var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (live is { SessionStartedAt: not null } lc
-            && lc.StartEntryLid < idTileRange.End && lc.EndEntryLid >= idTileRange.Start) {
-            var liveRange = new Range<long>(lc.StartEntryLid, lc.EndEntryLid + 1);
+            && !lc.VisibleEntryLidRange.IntersectWith(idTileRange).IsEmpty) {
+            var liveRange = lc.VisibleEntryLidRange;
             conversationRanges = conversationRanges
                 .Where(r => r.IntersectWith(liveRange).IsEmpty)
                 .Append(liveRange)

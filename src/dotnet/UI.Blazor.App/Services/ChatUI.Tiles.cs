@@ -11,7 +11,9 @@ public record ChatItems(IReadOnlyList<ChatMessage> Items, bool HasBefore, bool H
 public sealed record ConversationViewState(
     bool ShowConversations,
     IImmutableSet<ConversationId> ExpandedConversations,
-    Range<long> HiddenLiveTailRange);
+    Range<long> HiddenLiveTailRange,
+    ConversationId? JoinedLiveConversationId,
+    Range<long> LiveFoldRange);
 
 public partial class ChatUI
 {
@@ -23,7 +25,7 @@ public partial class ChatUI
 
     private volatile ChatEntry? _audioRecordingEntry;
 
-    private IImmutableSet<ConversationId> LastExpandedConversations { get; set; } =
+    private IImmutableSet<ConversationId> LastConversationExpansionOverrides { get; set; } =
         ImmutableHashSet<ConversationId>.Empty;
 
     public int HalfLoadLimit => BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2; // 20 for mobile
@@ -59,10 +61,17 @@ public partial class ChatUI
         var liveConversation = await Hub.LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(false);
         var amInLiveConversation = liveConversation != null
             && await Hub.LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        var joinedLiveConversation = amInLiveConversation ? liveConversation : null;
         // Non-joined users see the live block's summary only — no live entries. The synthetic
         // conversation already collapses [Start, EndEntryLid]; hide the un-summarized tail too.
         var hiddenLiveTailRange = liveConversation is { } liveConv && !amInLiveConversation
             ? new Range<long>(liveConv.EndEntryLid + 1, long.MaxValue)
+            : default;
+        // Joined viewers fold only the summarized range [V, EndEntryLid]; it is empty until the first
+        // summary advances EndEntryLid past V, so nothing folds (and entry V isn't hidden) pre-summary.
+        var rawLive = await Hub.LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        var liveFoldRange = rawLive is { SessionStartedAt: not null } && rawLive.EndEntryLid >= rawLive.EffectiveVisibleStartLid
+            ? new Range<long>(rawLive.EffectiveVisibleStartLid, rawLive.EndEntryLid + 1)
             : default;
 
         var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
@@ -79,42 +88,63 @@ public partial class ChatUI
             .ToList();
 
         var showConversations = (chat.IsSummarized ?? false) || liveConversation != null;
-        if (showConversations && dataQuery.Navigation is { ShouldRestoreViewPosition: false, KeepConversationsCollapsed: false }) {
-            var conversationRanges = chatRangeMetaList
-                .SelectMany(rm => rm.ConversationLidRanges)
-                .EnsureMonotonic()
-                .ToList();
-            var navigateToId = dataQuery.Navigation.EntryLid;
-            var index = conversationRanges.AsSpan().BinarySearch(r => r.Contains(navigateToId) || r.Start > navigateToId);
-            if (index >= 0) {
-                var conversationRange = conversationRanges[index];
-                if (conversationRange.Contains(navigateToId)) {
-                    // Expand the conversation if its range contains the navigateToId
-                    var conversationId = ConversationId.New(chatId, conversationRange.Start);
-                    var currentExpandedConversations = ExpandedConversations.Value;
-                    var newExpandedConversations =  currentExpandedConversations.Add(conversationId);
-                    if (!ReferenceEquals(newExpandedConversations, currentExpandedConversations)) {
-                        _expandedConversations.Value = newExpandedConversations;
-                        // We don't need to navigate to the conversation start entry
-                        LastExpandedConversations = newExpandedConversations;
+
+        // Effective expansion = each conversation's IsExpandedByDefault flipped by a local override, so
+        // expandedConversations below is the resolved "render expanded" set, not the raw override set.
+        IImmutableSet<ConversationId> defaultExpanded = ImmutableHashSet<ConversationId>.Empty;
+        IImmutableSet<ConversationId> expandedConversations = ImmutableHashSet<ConversationId>.Empty;
+        if (showConversations) {
+            var conversationTiles = await metaIdTiles
+                .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            defaultExpanded = conversationTiles
+                .SelectMany(t => t)
+                .Where(c => c.IsExpandedByDefault)
+                .Select(c => c.Id)
+                .ToImmutableHashSet();
+
+            if (dataQuery.Navigation is { ShouldRestoreViewPosition: false, KeepConversationsCollapsed: false }) {
+                var conversationRanges = chatRangeMetaList
+                    .SelectMany(rm => rm.ConversationLidRanges)
+                    .EnsureMonotonic()
+                    .ToList();
+                var navigateToId = dataQuery.Navigation.EntryLid;
+                var index = conversationRanges.AsSpan().BinarySearch(r => r.Contains(navigateToId) || r.Start > navigateToId);
+                if (index >= 0) {
+                    var conversationRange = conversationRanges[index];
+                    if (conversationRange.Contains(navigateToId)) {
+                        // Ensure the navigated-to conversation is effective-expanded (flip its override if not).
+                        var conversationId = ConversationId.New(chatId, conversationRange.Start);
+                        var overrides0 = ConversationExpansionOverrides.Value;
+                        var isExpanded = defaultExpanded.Contains(conversationId) ^ overrides0.Contains(conversationId);
+                        if (!isExpanded) {
+                            var newOverrides = overrides0.Contains(conversationId)
+                                ? overrides0.Remove(conversationId)
+                                : overrides0.Add(conversationId);
+                            _conversationExpansionOverrides.Value = newOverrides;
+                            LastConversationExpansionOverrides = newOverrides;
+                        }
                     }
                 }
             }
-        }
 
-        IImmutableSet<ConversationId> expandedConversations = [];
-        if (showConversations) {
-            expandedConversations = await ExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
-            var changedExpand = expandedConversations.SymmetricExcept(LastExpandedConversations)
+            var overrides = await ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(false);
+            var changedOverrides = overrides.SymmetricExcept(LastConversationExpansionOverrides)
                 .OrderBy(c => c.StartEntryLid)
                 .ToList();
-            LastExpandedConversations = expandedConversations;
-            if (changedExpand.FirstOrDefault() is { } conversationId)
-                // Adjust data query to load tiles around expanded conversation entries
+            LastConversationExpansionOverrides = overrides;
+            if (changedOverrides.FirstOrDefault() is { } toggledId)
+                // Adjust data query to load tiles around the toggled conversation's entries
                 dataQuery = new ChatDataQuery(
-                    IdTileStack.LastLayer.GetTile(conversationId.StartEntryLid).Range,
+                    IdTileStack.LastLayer.GetTile(toggledId.StartEntryLid).Range,
                     -HalfLoadLimit,
                     HalfLoadLimit);
+
+            expandedConversations = defaultExpanded.SymmetricExcept(overrides);
+            // A stale joined-era expand must not leak the hidden tail once the viewer is no longer joined.
+            if (liveConversation != null && !amInLiveConversation)
+                expandedConversations = expandedConversations.Remove(liveConversation.Id);
         }
 
         Range<long> chatLidRange;
@@ -191,7 +221,7 @@ public partial class ChatUI
                     chatId,
                     chat.Rules.Author?.Id,
                     idTile,
-                    new ConversationViewState(showConversations, expandedConversations, hiddenLiveTailRange),
+                    new ConversationViewState(showConversations, expandedConversations, hiddenLiveTailRange, joinedLiveConversation?.Id, liveFoldRange),
                     prevMessage,
                     lastReadEntryLid,
                     isLastTile ? chatLidRange.End : null,
@@ -239,7 +269,7 @@ public partial class ChatUI
                     chatId,
                     chat.Rules.Author?.Id,
                     tailRange,
-                    new ConversationViewState(showConversations, expandedConversations, hiddenLiveTailRange),
+                    new ConversationViewState(showConversations, expandedConversations, hiddenLiveTailRange, joinedLiveConversation?.Id, liveFoldRange),
                     prevMessage,
                     shownReadyEntryLid,
                     chatLidRange.End,
@@ -299,10 +329,10 @@ public partial class ChatUI
 
         var groupedItems = GroupAuthorMessages(items);
 
-        if (expandedConversations.Count == 0)
+        if (expandedConversations.Count == 0 && joinedLiveConversation == null)
             return new ChatItems(groupedItems, hasMoreBefore, hasMoreAfter);
 
-        var groupedTiles = GroupExpandedConversations(groupedItems);
+        var groupedTiles = GroupExpandedConversations(groupedItems, joinedLiveConversation);
         return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter);
 
         bool TryGetIdTilesToLoad(
@@ -454,7 +484,7 @@ public partial class ChatUI
         if (lidRange.IsEmptyOrNegative)
             throw new ArgumentOutOfRangeException(nameof(lidRange));
 
-        var (showConversations, expandedConversations, hiddenLiveTailRange) = conversationView;
+        var (showConversations, expandedConversations, hiddenLiveTailRange, joinedLiveId, liveFoldRange) = conversationView;
 
         var chatSendingMessages = chatSendingMessagesWrapper.Value;
         var requestedIdRange = prevMessage == null
@@ -474,7 +504,10 @@ public partial class ChatUI
                 .ToArray();
             idRangesToSkip = conversations
                 .Where(c => !expandedConversations.Contains(c.Id))
-                .Select(c => c.EntryLidRange)
+                // The joined live block folds only its summarized range (empty pre-summary), never the whole
+                // EntryLidRange - so entry V and the un-summarized tail stay visible.
+                .Select(c => c.Id == joinedLiveId ? liveFoldRange : c.EntryLidRange)
+                .Where(r => !r.IsEmpty)
                 .ToArray();
         }
         if (!hiddenLiveTailRange.IsEmpty)
@@ -536,12 +569,20 @@ public partial class ChatUI
         }
 
         var messages = new List<ChatMessage>(entries.Count);
-        var items = entries.Merge(conversations.Where(c => !expandedConversations.Contains(c.Id)),
+        // The joined live card is emitted even when expanded (it is the block header), so keep it on the
+        // merge's right side regardless of expansion.
+        var items = entries.Merge(
+            conversations.Where(c => !expandedConversations.Contains(c.Id) || c.Id == joinedLiveId),
             e => e.LocalId,
             c => c.Id.StartEntryLid);
         var isWelcomeBlockAdded = false;
         foreach (var (entry, conversation) in items) {
             var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry?.BeginsAt ?? conversation!.StartsAt));
+            var shouldEmitCard = conversation != null
+                && (!expandedConversations.Contains(conversation.Id) || conversation.Id == joinedLiveId);
+            // Paired tuple: a loaded entry shares the card's key lid (V) - emit the card before the entry.
+            if (shouldEmitCard && entry != null)
+                EmitConversationCard(conversation!, date);
             if (entry is { IsThreadStart: true }) {
                 var threadChatId = entry.ChatId.CreateThreadId(entry.LocalId);
                 var threadChat = await Chats.Get(Session, threadChatId, cancellationToken).ConfigureAwait(false);
@@ -560,6 +601,11 @@ public partial class ChatUI
                 var isClientMsg = entry.Version == 0;
                 var expandedConversation = conversations.FirstOrDefault(c => c.EntryLidRange.Contains(entry.LocalId));
                 var isBlockStart = IsBlockStart(prevEntry, entry);
+                // Force a block start on the first entry crossing into the joined live block, so a same-author
+                // pre-latch group can't swallow the block's tail entries.
+                if (joinedLiveId is { } jlId && entry.LocalId >= jlId.StartEntryLid
+                    && (prevEntry == null || prevEntry.LocalId < jlId.StartEntryLid))
+                    isBlockStart = true;
                 var isForward = entry.Forwarded is not null;
                 var isPrevForward = prevEntry is not null && prevEntry.Forwarded is not null;
                 var isForwardFromOtherChat = prevEntry?.Forwarded?.AuthorId.ChatId != entry.Forwarded?.AuthorId.ChatId;
@@ -611,8 +657,9 @@ public partial class ChatUI
                         prevMessage = newLineMessage;
                     }
 
-                    // Conversation header goes before the date line
-                    if (expandedConversation != null && alreadyAddedConversationHeaders.Add(expandedConversation.Id)
+                    // Conversation header goes before the date line (the joined live card is its own header).
+                    if (expandedConversation != null && expandedConversation.Id != joinedLiveId
+                        && alreadyAddedConversationHeaders.Add(expandedConversation.Id)
                         && (prevMessage == null
                             || prevMessage.Kind == ChatMessageKind.WelcomeBlock
                             || prevMessage.Id < expandedConversation.Id.StartEntryLid)) {
@@ -664,7 +711,7 @@ public partial class ChatUI
                     messages.Add(message);
                     prevMessage = message;
 
-                    if (expandedConversation != null)
+                    if (expandedConversation != null && expandedConversation.Id != joinedLiveId)
                         if (entry.Id.LocalId == expandedConversation.EndEntryLid) {
                             var conversationFooterMessage = new ConversationFooter(expandedConversation) {
                                 Kind = ChatMessageKind.ConversationEnd,
@@ -681,19 +728,8 @@ public partial class ChatUI
                 isPrevUnread = isEntryUnread;
                 isPrevAudio = isAudio;
             }
-            else if (conversation != null && !expandedConversations.Contains(conversation.Id)) {
-                var message = new ConversationMessage(conversation) {
-                    Kind = ChatMessageKind.ConversationStart,
-                    Date = date,
-                    PreviousMessage = prevMessage,
-                };
-                // Can't skip adding a conversation message even if it's the same as previous message
-                // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
-                if (prevMessage != null)
-                    prevMessage.NextMessage = message;
-                messages.Add(message);
-                prevMessage = message;
-            }
+            else if (shouldEmitCard)
+                EmitConversationCard(conversation!, date);
             prevDate = date;
         }
         if (messages.Count > 0 && !lidRange.Contains(messages[0].Id))
@@ -702,6 +738,21 @@ public partial class ChatUI
                 (m is ChatEntryMessage && !lidRange.Contains(m.Id))
                 || (m is ConversationMessage cm && lidRange.IntersectWith(cm.Conversation!.EntryLidRange).IsEmpty));
         return new VirtualListTile<ChatMessage>($"tile:{lidRange.Format()}", messages);
+
+        void EmitConversationCard(Conversation conversation, DateOnly date)
+        {
+            var message = new ConversationMessage(conversation) {
+                Kind = ChatMessageKind.ConversationStart,
+                Date = date,
+                PreviousMessage = prevMessage,
+            };
+            // Can't skip adding a conversation message even if it's the same as previous message
+            // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
+            if (prevMessage != null)
+                prevMessage.NextMessage = message;
+            messages.Add(message);
+            prevMessage = message;
+        }
     }
 
     [ComputeMethod]
@@ -779,7 +830,7 @@ public partial class ChatUI
         }
     }
 
-    private static List<ChatMessage> GroupExpandedConversations(IReadOnlyList<ChatMessage> messages)
+    private static List<ChatMessage> GroupExpandedConversations(IReadOnlyList<ChatMessage> messages, Conversation? joinedLive)
     {
         // Wrap every item of one expanded conversation into a single ExpandedConversationMessage in
         // source order - the block is the sticky containing element for the conversation header and
@@ -791,20 +842,29 @@ public partial class ChatUI
         var result = new List<ChatMessage>();
         Conversation? blockConversation = null;
         var blockItems = new List<ChatMessage>();
+        // The joined live block groups by lid range [V, ∞) so the un-summarized tail and the trailing
+        // AudioRecordingMessage (both Conversation == null) land inside it.
+        var liveStartLid = joinedLive?.Id.StartEntryLid ?? long.MaxValue;
 
         foreach (var item in messages) {
             var conversation = item.Conversation;
+            var isLiveBlock = joinedLive != null && blockConversation?.Id == joinedLive.Id;
             var belongs = blockConversation != null
                 && (conversation != null
                     ? conversation.Id == blockConversation.Id
-                    : blockConversation.EntryLidRange.Contains(item.Id));
+                    : isLiveBlock
+                        ? item.Id >= liveStartLid
+                        : blockConversation.EntryLidRange.Contains(item.Id));
             if (belongs) {
                 blockItems.Add(item);
                 continue;
             }
 
             FinalizeBlock();
-            if (conversation != null && item is not ConversationMessage) {
+            // A joined live card (a ConversationMessage) starts its block; other ConversationMessages don't.
+            var startsBlock = conversation != null
+                && (item is not ConversationMessage || conversation.Id == joinedLive?.Id);
+            if (startsBlock) {
                 blockConversation = conversation;
                 blockItems.Add(item);
             }

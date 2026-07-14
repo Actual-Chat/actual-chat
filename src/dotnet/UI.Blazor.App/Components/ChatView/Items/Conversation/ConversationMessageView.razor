@@ -21,14 +21,14 @@
     @if (state.IsLive) {
         var secondLine = state.IsVoiceOnly ? "Voice only" : messageCount + " message".Pluralize(messageCount);
         var startedAt = $"Started at {startsAt:HH:mm}";
-        var hasSummary = !state.IsVoiceOnly;
+        var hasSummary = state.HasFoldedEntries;
         <div class="c-live-card">
             <div class="c-lc-title">
                 <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
                 <span class="c-lc-name">@liveTitle</span>
                 @if (hasSummary) {
                     <HeaderButton Class="c-lc-expand" Click="@ToggleShowMessage">
-                        <i class="@(_isOpen ? "icon-collapse" : "icon-expand")"></i>
+                        <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
                     </HeaderButton>
                 }
             </div>
@@ -172,7 +172,16 @@
         var participantsText = isLive
             ? await GetParticipantsText(chatId, conversation.AuthorIds, cancellationToken).ConfigureAwait(true)
             : "";
-        return new ConversationLiveState(translated, isLive, isJoined, isVoiceOnly, participantsText);
+        // EndEntryLid only advances past the visible start once a summary lands, so this both gates the
+        // expand affordance and marks that a summary/folded range exists.
+        var rawLive = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(true);
+        var hasFoldedEntries = isLive && !isVoiceOnly
+            && rawLive is { SessionStartedAt: not null }
+            && rawLive.EndEntryLid >= rawLive.EffectiveVisibleStartLid;
+        var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
+        var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
+        return new ConversationLiveState(
+            translated, isLive, isJoined, isVoiceOnly, participantsText, hasFoldedEntries, isExpanded);
     }
 
     private async Task<string> GetParticipantsText(

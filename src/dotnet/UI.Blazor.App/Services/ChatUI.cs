@@ -23,7 +23,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly StoredState<string> _selectedNavbarGroupId;
     private readonly StoredState<IImmutableDictionary<string, ChatId>> _selectedChatIds;
     private readonly MutableState<ChatEntryId?> _highlightedEntryId;
-    private readonly MutableState<IImmutableSet<ConversationId>> _expandedConversations;
+    private readonly MutableState<IImmutableSet<ConversationId>> _conversationExpansionOverrides;
     private ChatId? _searchEnabledChatId;
     private List<ChatId>? _pendingSelectedChatIds = new();
 
@@ -55,7 +55,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public IState<PlaceId?> SelectedPlaceId => _selectedPlaceId;
     public IState<IImmutableDictionary<string, ChatId>> SelectedChatIds => _selectedChatIds;
     public IState<ChatEntryId?> HighlightedEntryId => _highlightedEntryId;
-    public IState<IImmutableSet<ConversationId>> ExpandedConversations => _expandedConversations;
+    public IState<IImmutableSet<ConversationId>> ConversationExpansionOverrides => _conversationExpansionOverrides;
     public Task WhenReady => _selectedChatId.WhenRead;
     public MutableState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
 
@@ -85,9 +85,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _highlightedEntryId = StateFactory.NewMutable(
             (ChatEntryId?)null,
             StateCategories.Get(type, nameof(HighlightedEntryId)));
-        _expandedConversations = StateFactory.NewMutable(
+        _conversationExpansionOverrides = StateFactory.NewMutable(
             (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
-            StateCategories.Get(type, nameof(ExpandedConversations)));
+            StateCategories.Get(type, nameof(ConversationExpansionOverrides)));
         _itemVisibility = StateFactory.NewMutable(
             ChatViewItemVisibility.Empty,
             StateCategories.Get(type, nameof(ItemVisibility)));
@@ -356,13 +356,18 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public void ToggleExpandConversation(ConversationId conversationId)
     {
-        var expandedConversations = _expandedConversations.Value;
-        var mustRemove = expandedConversations.Contains(conversationId);
-        expandedConversations = mustRemove
-            ? expandedConversations.Remove(conversationId)
-            : expandedConversations.Add(conversationId);
-        _expandedConversations.Value = expandedConversations;
+        // Membership here flips a conversation's expansion away from its IsExpandedByDefault, so the
+        // toggle works regardless of which default (expanded/collapsed) the conversation carries.
+        var overrides = _conversationExpansionOverrides.Value;
+        var mustRemove = overrides.Contains(conversationId);
+        overrides = mustRemove
+            ? overrides.Remove(conversationId)
+            : overrides.Add(conversationId);
+        _conversationExpansionOverrides.Value = overrides;
     }
+
+    public bool IsConversationExpanded(Conversation conversation)
+        => conversation.IsExpandedByDefault ^ _conversationExpansionOverrides.Value.Contains(conversation.Id);
 
     // Helpers
 

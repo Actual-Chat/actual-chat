@@ -48,10 +48,36 @@ public sealed partial record LiveSessionState
     public Moment? SessionStartedAt { get; init; }
     [DataMember(Order = 18), MemoryPackOrder(18), Key(18)]
     public LiveSessionKind Kind { get; init; } = LiveSessionKind.Ambient;
+    [DataMember(Order = 19), MemoryPackOrder(19), Key(19)]
+    public long VisibleStartLid { get; init; }
+    [DataMember(Order = 20), MemoryPackOrder(20), Key(20)]
+    public long ContextStartLid { get; init; }
+    [DataMember(Order = 21), MemoryPackOrder(21), Key(21)]
+    public bool IsExpandedByDefault { get; init; }
+
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public ConversationId ConversationId => ConversationId.New(ChatId, StartEntryLid);
+    public long EffectiveVisibleStartLid => VisibleStartLid > 0 ? VisibleStartLid : StartEntryLid;
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public Range<long> VisibleEntryLidRange
+        => new(EffectiveVisibleStartLid, Math.Max(EndEntryLid, EffectiveVisibleStartLid) + 1);
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ConversationId ConversationId => ConversationId.New(ChatId, EffectiveVisibleStartLid);
+
     public Conversation ToConversation()
         => new(ConversationId, Version) {
+            Title = Title,
+            Description = Description,
+            Summary = Summary,
+            EndEntryLid = Math.Max(EndEntryLid, EffectiveVisibleStartLid),
+            StartsAt = StartedAt,
+            EndsAt = LastSummaryAt == default ? StartedAt : LastSummaryAt,
+            MessageCount = MessageCount,
+            AuthorIds = AuthorIds,
+            IsExpandedByDefault = IsExpandedByDefault,
+        };
+
+    public Conversation ToMaterializedConversation()
+        => new(ConversationId.New(ChatId, ContextStartLid > 0 ? ContextStartLid : EffectiveVisibleStartLid), Version) {
             Title = Title,
             Description = Description,
             Summary = Summary,
@@ -60,5 +86,6 @@ public sealed partial record LiveSessionState
             EndsAt = LastSummaryAt == default ? StartedAt : LastSummaryAt,
             MessageCount = MessageCount,
             AuthorIds = AuthorIds,
+            IsExpandedByDefault = IsExpandedByDefault,
         };
 }

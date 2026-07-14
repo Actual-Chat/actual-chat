@@ -30,6 +30,7 @@ public sealed partial record Conversation(
     [DataMember, MemoryPackOrder(10), Key(10)] public int AttachmentCount { get; init; }
     [DataMember, MemoryPackOrder(11), Key(11)] public Symbol[] AttachmentIds { get; init; } = [];
     [DataMember, MemoryPackOrder(12), Key(12)] public ChatEntryAttachment[] Attachments { get; init; } = []; // Populated only on reads by ConversationsBackend
+    [DataMember, MemoryPackOrder(13), Key(13)] public bool IsExpandedByDefault { get; init; }
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Range<long> EntryLidRange => new(Id.StartEntryLid, EndEntryLid + 1);
@@ -57,6 +58,7 @@ public sealed partial record ConversationDiff() : RecordDiff
     [DataMember, MemoryPackOrder(7)] public IReadOnlyList<AuthorId>? AuthorIds { get; init; }
     [DataMember, MemoryPackOrder(8)] public int? AttachmentCount { get; init; }
     [DataMember, MemoryPackOrder(9)] public Symbol[]? AttachmentIds { get; init; } = [];
+    [DataMember, MemoryPackOrder(10)] public bool? IsExpandedByDefault { get; init; }
 
     public ConversationDiff(Conversation conversation) : this()
     {
@@ -70,5 +72,6 @@ public sealed partial record ConversationDiff() : RecordDiff
         AuthorIds = conversation.AuthorIds;
         AttachmentCount = conversation.AttachmentCount;
         AttachmentIds = conversation.AttachmentIds;
+        IsExpandedByDefault = conversation.IsExpandedByDefault;
     }
 }
