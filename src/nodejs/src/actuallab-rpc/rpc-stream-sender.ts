@@ -11,6 +11,8 @@ const { warnLog } = getLogs('RpcSharedStream');
 const DEFAULT_ACK_PERIOD = 256;
 /** Default ack advance window for server-side streams. */
 const DEFAULT_ACK_ADVANCE = 128;
+/** Sliding window over which minRttMs is the minimum of ack round-trip samples. */
+const RTT_WINDOW_MS = 20_000;
 
 /**
  * Server-side RPC stream producer — sends items to a remote consumer via
@@ -99,6 +101,10 @@ export class RpcStreamSender<T> implements IRpcObject {
      *  until the next ACK frees space. Listener errors are swallowed. */
     onBuffered?: (bufferedCount: number) => void;
 
+    // -- RTT sampling (send → matching ack round trips, windowed minimum) --
+    private _pendingSendTimes: { index: number; sentAtMs: number }[] = [];
+    private _rttSamples: { atMs: number; rttMs: number }[] = [];
+
     get nextIndex(): number {
         return this._nextIndex;
     }
@@ -107,6 +113,22 @@ export class RpcStreamSender<T> implements IRpcObject {
     }
     get skipCount(): number {
         return this._skipCount;
+    }
+    // Windowed-MIN ack round trip (ms, -1 until sampled): converges on propagation
+    // RTT — unlike a mean/EMA it is not inflated by self-induced queuing.
+    get minRttMs(): number {
+        const cutoffMs = Date.now() - RTT_WINDOW_MS;
+        while (this._rttSamples.length > 0 && this._rttSamples[0].atMs < cutoffMs)
+            this._rttSamples.shift();
+        if (this._rttSamples.length === 0)
+            return -1;
+
+        let min = this._rttSamples[0].rttMs;
+        for (const s of this._rttSamples) {
+            if (s.rttMs < min)
+                min = s.rttMs;
+        }
+        return min;
     }
 
     // -- ACK queue (analog of .NET's Channel<(long, bool)>) --
@@ -159,6 +181,7 @@ export class RpcStreamSender<T> implements IRpcObject {
     onAck(nextIndex: number, hostId: string): void {
         const mustReset = hostId !== '' && hostId !== RpcStreamSender._emptyGuid;
         if (!this._started.isCompleted) this._started.resolve();
+        this._sampleRtt(nextIndex, mustReset);
         this._acks.push({ nextIndex, mustReset });
         if (this._whenAckReady) {
             this._whenAckReady.resolve();
@@ -187,6 +210,7 @@ export class RpcStreamSender<T> implements IRpcObject {
             this.peer.hub.systemCallSender.item(
                 conn, this.peer.serializationFormat, this.id.localId, this._nextIndex, item,
             );
+            this._pendingSendTimes.push({ index: this._nextIndex, sentAtMs: Date.now() });
         }
         this._nextIndex++;
     }
@@ -453,6 +477,29 @@ export class RpcStreamSender<T> implements IRpcObject {
             this.onAckProcessed?.();
         } catch { /* listener errors don't break the pump */ }
         return last;
+    }
+
+    // One RTT sample per ack: time from sending the newest acked item to the
+    // ack's arrival (a slight upper bound — includes the server's ack cadence).
+    private _sampleRtt(ackNextIndex: number, mustReset: boolean): void {
+        if (mustReset) {
+            this._pendingSendTimes.length = 0;
+            return;
+        }
+
+        let sentAtMs = -1;
+        while (this._pendingSendTimes.length > 0 && this._pendingSendTimes[0].index < ackNextIndex) {
+            sentAtMs = this._pendingSendTimes[0].sentAtMs;
+            this._pendingSendTimes.shift();
+        }
+        if (sentAtMs < 0)
+            return;
+
+        const nowMs = Date.now();
+        const cutoffMs = nowMs - RTT_WINDOW_MS;
+        while (this._rttSamples.length > 0 && this._rttSamples[0].atMs < cutoffMs)
+            this._rttSamples.shift();
+        this._rttSamples.push({ atMs: nowMs, rttMs: nowMs - sentAtMs });
     }
 
     /** Wait for the ACK queue to have at least one entry (or `_ended`). */

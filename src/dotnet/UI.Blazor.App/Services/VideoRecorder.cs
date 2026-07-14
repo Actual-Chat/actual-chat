@@ -608,7 +608,8 @@ public sealed class VideoRecorder : IAsyncDisposable
             double downscaleTimeMsMean = -1,
             double downscaleTimeMsMax = -1,
             int keepAliveFramesInjected = 0,
-            bool isHardwareAccelerated = false)
+            bool isHardwareAccelerated = false,
+            double wireMinRttMs = -1)
         {
             var dropTrace = new Dictionary<FrameDropStage, int>(dropStages.Length);
             for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
@@ -634,7 +635,8 @@ public sealed class VideoRecorder : IAsyncDisposable
                 DownscaleTimeMsMean: downscaleTimeMsMean,
                 DownscaleTimeMsMax: downscaleTimeMsMax,
                 KeepAliveFramesInjected: keepAliveFramesInjected,
-                IsHardwareAccelerated: isHardwareAccelerated));
+                IsHardwareAccelerated: isHardwareAccelerated,
+                WireMinRttMs: wireMinRttMs));
         }
     }
 }

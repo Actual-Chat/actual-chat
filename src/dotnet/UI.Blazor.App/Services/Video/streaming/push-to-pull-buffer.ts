@@ -67,8 +67,10 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
         dto.Width = frame.width;
         dto.Height = frame.height;
     }
-    if (frame.description) dto.Description = frame.description;
-    if (frame.codec) dto.Codec = frame.codec;
+    if (frame.description)
+        dto.Description = frame.description;
+    if (frame.codec)
+        dto.Codec = frame.codec;
     if (frame.layerId !== undefined && frame.layerId > 0)
         dto.LayerId = frame.layerId;
     // Always emit producer's canonical ladder size — server's
@@ -132,6 +134,7 @@ export interface WireSenderStats extends StreamSenderStats {
     rpcStreamSkipped: number;
     floodGateSkipCount: number;
     lastAckAgeMs: number;
+    minRttMs: number;
     isPeerConnected: boolean;
 }
 
@@ -158,7 +161,11 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     let shiftedBytes = 0;
     let maxQueueDepth = 0;
     let rpcStreamSkipped = 0;
-    let rpcStreamSender: { readonly skipCount: number; onAckProcessed?: () => void } | null = null;
+    let rpcStreamSender: {
+        readonly skipCount: number;
+        readonly minRttMs: number;
+        onAckProcessed?: () => void;
+    } | null = null;
     let lastAckAtMs = -1;
     let isCompleted = false;
     let isDisposed = false;
@@ -208,7 +215,9 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                                 floodGate.open();
                             yield bundleToDto(bundle);
                         }
-                        if (isCompleted) return;
+                        if (isCompleted)
+                            return;
+
                         await frameAdded.whenNextVoid();
                     }
                 })(),
@@ -255,14 +264,22 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     void pump();
 
     const send = (bundle: VideoStreamFrameBundle): void => {
-        if (isCompleted) return;
+        if (isCompleted)
+            return;
+
         // Drop late frames silently — throwing would race with the wire-send
         // operator's whenDisposed handler and mask the real PushStream error.
-        if (isDisposed) return;
-        if (bundle.layers.length === 0) return;
+        if (isDisposed)
+            return;
+
+        if (bundle.layers.length === 0)
+            return;
+
         let totalBytes = 0;
-        for (const f of bundle.layers) totalBytes += f.data.byteLength;
-        if (totalBytes === 0) return;
+        for (const f of bundle.layers)
+            totalBytes += f.data.byteLength;
+        if (totalBytes === 0)
+            return;
 
         bundles.push(bundle);
         addedFrameCount += bundle.layers.length;
@@ -286,7 +303,9 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     };
 
     const dispose = (): void => {
-        if (isCompleted) return;
+        if (isCompleted)
+            return;
+
         isCompleted = true;
         // Drop the backlog so $sys.End jumps the ack-window-gated queue — draining
         // a congested uplink first delays End past the stop flush budget (a frozen
@@ -309,6 +328,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         rpcStreamSkipped: streamSkipped(),
         floodGateSkipCount: floodGate.skipCount,
         lastAckAgeMs: lastAckAtMs >= 0 ? Date.now() - lastAckAtMs : -1,
+        minRttMs: rpcStreamSender?.minRttMs ?? -1,
         // Gate on !lastError too — without it, a stream-create rejection
         // (auth/permission) would still report connected because the RPC peer is healthy.
         isPeerConnected: Api.peer.isConnected && !lastError,

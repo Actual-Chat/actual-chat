@@ -6,7 +6,11 @@ public sealed record SpeculativeProbeConfig(
     // The probe "fails" if ack-age rises by more than this over the baseline.
     double AckAgeInflationMs = 150,
     // Only start a probe when ack-age is at or below this (link looks idle/healthy).
+    // On links with a measured min RTT the effective gate is
+    // max(HealthyAckAgeMs, minRttMs + HealthyAckSlackMs) — an absolute gate is
+    // unsatisfiable when the RTT alone exceeds it.
     double HealthyAckAgeMs = 120,
+    double HealthyAckSlackMs = 60,
     // Only start a probe when the wire queue is at or below this (no backlog).
     double ShallowQueueBundles = 1.5,
     int BaseCooldownTicks = 6,
@@ -16,14 +20,15 @@ public sealed record SpeculativeProbeConfig(
     public static SpeculativeProbeConfig Default { get; } = new();
 }
 
+// The committed climb only raises the health ceiling; what's actually
+// transmitted long-term is still gated by receiver demand, so a passed
+// probe costs nothing once the window ends.
+
 /// <summary>
 /// Active uplink bandwidth probe for the idle case the drain-rate measurement
 /// can't cover (an empty wire queue offers nothing to measure). Periodically
 /// sends one extra spatial layer for a short window; if the uplink absorbs it
-/// (ack-age stays flat), the bandwidth cap is allowed to climb — otherwise the
-/// probe reverts and backs off. The committed climb only raises the health
-/// ceiling; what's actually transmitted long-term is still gated by receiver
-/// demand, so a passed probe costs nothing once the window ends.
+/// (ack-age stays flat) the bandwidth cap climbs, otherwise it reverts and backs off.
 /// </summary>
 public sealed class SpeculativeProbe
 {
@@ -39,16 +44,17 @@ public sealed class SpeculativeProbe
     public SpeculativeProbe(SpeculativeProbeConfig? config = null)
         => _config = config ?? SpeculativeProbeConfig.Default;
 
-    // Drives the probe state machine once per outbound tick. Returns the extra
-    // layer count (0 or 1) to add to the transmitted camera target. On a passed
-    // probe it commits by bumping `cap` so subsequent ticks keep the headroom.
     public int Tick(
         bool canGrow,
         double ackAgeMs,
         double wireQueueDepth,
         LayerCap cap,
-        IReadOnlyCollection<VideoSourceKind>? activeKinds = null)
+        IReadOnlyCollection<VideoSourceKind>? activeKinds = null,
+        double minRttMs = -1)
     {
+        // Drives the probe state machine once per outbound tick. Returns the extra
+        // layer count (0 or 1) to add to the transmitted camera target. On a passed
+        // probe it commits by bumping `cap` so subsequent ticks keep the headroom.
         if (_windowRemaining > 0) {
             _windowRemaining--;
             var inflated = (ackAgeMs >= 0 && ackAgeMs > _baselineAckAgeMs + _config.AckAgeInflationMs)
@@ -74,8 +80,12 @@ public sealed class SpeculativeProbe
             _cooldownRemaining--;
             return 0;
         }
+
+        var healthyAckAgeMs = minRttMs >= 0
+            ? Math.Max(_config.HealthyAckAgeMs, minRttMs + _config.HealthyAckSlackMs)
+            : _config.HealthyAckAgeMs;
         if (canGrow
-            && ackAgeMs >= 0 && ackAgeMs <= _config.HealthyAckAgeMs
+            && ackAgeMs >= 0 && ackAgeMs <= healthyAckAgeMs
             && wireQueueDepth <= _config.ShallowQueueBundles) {
             _windowRemaining = _config.WindowTicks;
             _baselineAckAgeMs = Math.Max(0, ackAgeMs);

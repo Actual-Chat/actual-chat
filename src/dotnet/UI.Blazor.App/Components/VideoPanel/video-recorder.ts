@@ -2739,7 +2739,8 @@ export class VideoRecorder {
                 this.windowMeanDownscaleTimeMs,
                 this.windowDownscaleTimeMsMax,
                 stats.keepAliveFramesInjected,
-                this.currentCodecHardwareAccel);
+                this.currentCodecHardwareAccel,
+                stats.wireMinRttMs);
         } catch (e) {
             warnLog?.log('reportRecorderStats failed:', e);
         } finally {

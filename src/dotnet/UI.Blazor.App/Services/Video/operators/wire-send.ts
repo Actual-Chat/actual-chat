@@ -79,6 +79,8 @@ export interface StreamSenderStats {
     rpcStreamSkipped: number;
     floodGateSkipCount: number;
     lastAckAgeMs: number;
+    // Windowed-min ack round trip (ms, -1 until sampled) ≈ propagation RTT.
+    minRttMs: number;
     isPeerConnected: boolean;
     // Cumulative bytes drained out of the wire send buffer (handed to the
     // RpcStream as it pulls; the pull is ack-window-gated). Delta/time while the
@@ -115,10 +117,15 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
             // of disconnects accrues correctly.
             const reconnectTracker = { streak: 0, prevConnected: false };
             const copyStats = (stats: RecorderStats, sender: StreamSenderLike | null): void => {
-                if (!sender) return;
+                if (!sender)
+                    return;
+
                 const senderStats = sender.getStats?.();
-                if (!senderStats) return;
+                if (!senderStats)
+                    return;
+
                 stats.wireLastAckAgeMs = senderStats.lastAckAgeMs;
+                stats.wireMinRttMs = senderStats.minRttMs;
                 stats.isPeerConnected = senderStats.isPeerConnected;
                 stats.wireAckedBytes = senderStats.ackedBytes;
                 wireQueueDepthEma.appendSample(senderStats.queueDepth);
@@ -156,7 +163,8 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
             const lastKfIndexByLayer = new Map<number, number>();
             try {
                 for await (const bundle of source) {
-                    if (abortSignal?.aborted) return;
+                    if (abortSignal?.aborted)
+                        return;
 
                     try {
                         if (bundle.layers.length === 0)
@@ -221,8 +229,10 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                                 layerCount,
                                 layerMask,
                             };
-                            if (encoded.rotation !== 0) dto.rotation = encoded.rotation;
-                            if (dropTraceBytes) dto.dropTrace = dropTraceBytes;
+                            if (encoded.rotation !== 0)
+                                dto.rotation = encoded.rotation;
+                            if (dropTraceBytes)
+                                dto.dropTrace = dropTraceBytes;
                             if (isKey && encoded.description)
                                 dto.description = encoded.description;
                             return dto;
@@ -294,7 +304,9 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
 // Chunked Latin-1 base64: workers don't expose Buffer, and HVCC/SPS inputs
 // can overflow String.fromCharCode(...) in one shot.
 function bytesToBase64(bytes: Uint8Array): string {
-    if (bytes.byteLength === 0) return '';
+    if (bytes.byteLength === 0)
+        return '';
+
     const CHUNK = 0x8000;
     let s = '';
     for (let i = 0; i < bytes.byteLength; i += CHUNK) {

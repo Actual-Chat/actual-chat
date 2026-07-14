@@ -76,6 +76,33 @@ public class SpeculativeProbeTest
     }
 
     [Fact]
+    public void HighMinRtt_RelaxesStartGate()
+    {
+        // arrange
+        // At 200ms propagation RTT an absolute 120ms gate is unsatisfiable;
+        // with minRtt known the gate becomes minRtt + HealthyAckSlackMs.
+        var probe = new SpeculativeProbe(Cfg());
+        var layers = CameraBelowMax();
+
+        // act + assert
+        probe.Tick(true, ackAgeMs: 230, wireQueueDepth: 0.5, layers, Camera).Should().Be(0);
+        probe.Tick(true, ackAgeMs: 230, wireQueueDepth: 0.5, layers, Camera, minRttMs: 200).Should().Be(1);
+        probe.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public void HighMinRtt_DoesNotProbeWhenAckAgeExceedsRelativeGate()
+    {
+        // arrange
+        var probe = new SpeculativeProbe(Cfg());
+        var layers = CameraBelowMax();
+
+        // act + assert
+        probe.Tick(true, ackAgeMs: 300, wireQueueDepth: 0.5, layers, Camera, minRttMs: 200).Should().Be(0);
+        probe.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
     public void Reset_ClearsWindowAndCooldown()
     {
         var probe = new SpeculativeProbe(Cfg());

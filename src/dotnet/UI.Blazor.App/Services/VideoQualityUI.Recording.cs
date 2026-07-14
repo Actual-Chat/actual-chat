@@ -207,10 +207,13 @@ public sealed partial class VideoQualityUI
         long totalBytesPerSec = 0;
         long ackedBytesPerSec = 0;
         var sampleAt = CpuTimestamp.Now;
+        var fusedMinRttMs = -1.0;
         foreach (var (k, stats) in _lastRecorderStatsByKind) {
             fusedDropRatio = Math.Max(fusedDropRatio, stats.SenderFrameDropRatioEma);
             if (stats.LastAckAgeMs >= 0)
                 fusedAckAgeMs = Math.Max(fusedAckAgeMs, stats.LastAckAgeMs);
+            if (stats.WireMinRttMs >= 0)
+                fusedMinRttMs = fusedMinRttMs < 0 ? stats.WireMinRttMs : Math.Min(fusedMinRttMs, stats.WireMinRttMs);
             fusedEncodeDeficit = Math.Max(fusedEncodeDeficit, stats.EncodeDeficitEma);
             if (stats.EncodeQueueDepthEma >= 0)
                 fusedEncodeQueueDepth = Math.Max(fusedEncodeQueueDepth, stats.EncodeQueueDepthEma);
@@ -291,7 +294,7 @@ public sealed partial class VideoQualityUI
             && baseCamera == bwLayers.CameraLayers
             && !backlogged;
         var cameraProbeExtra = _outboundProbe.Tick(
-            canGrow, fusedAckAgeMs, fusedWireQueueDepth, bwLayers, _recordersByKind.Keys);
+            canGrow, fusedAckAgeMs, fusedWireQueueDepth, bwLayers, _recordersByKind.Keys, fusedMinRttMs);
 
         // Recompute after a possible commit, then add the in-window probe layer.
         var effCamera = Math.Min(

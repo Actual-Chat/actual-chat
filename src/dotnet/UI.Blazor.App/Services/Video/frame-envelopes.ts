@@ -60,6 +60,8 @@ export interface RecorderStats {
     downscaleTimeMsMax: number;
     // Wire-sender side-channels copied from the active sender's stats.
     wireLastAckAgeMs: number;
+    // Windowed-min ack round trip (ms, -1 until sampled) ≈ propagation RTT.
+    wireMinRttMs: number;
     isPeerConnected: boolean;
     // Cumulative bytes drained out of the wire send buffer (handed to the
     // RpcStream as it pulls, gated by the ack-window). While the buffer is
@@ -177,6 +179,7 @@ export function createEmptyRecorderStats(): RecorderStats {
         downscaleTimeMsCount: 0,
         downscaleTimeMsMax: 0,
         wireLastAckAgeMs: -1,
+        wireMinRttMs: -1,
         isPeerConnected: false,
         wireAckedBytes: 0,
         encodeQueueDepthEma: -1,
@@ -234,7 +237,8 @@ export function updatePlaybackRateEma(
     }
 
     const wallDelta = wallNowMs - stats.driftLastSampleWallMs;
-    if (wallDelta < DRIFT_SAMPLE_INTERVAL_MS) return;
+    if (wallDelta < DRIFT_SAMPLE_INTERVAL_MS)
+        return;
 
     const offsetDelta = Math.max(0, presentedOffset.timeMs - stats.driftLastSampleOffsetMs);
     const playbackRate = Math.min(1, offsetDelta / wallDelta);
@@ -252,6 +256,7 @@ export function aggregateDropTrace(
 ): void {
     if (frameDropTrace.length === 0)
         return;
+
     const histogram = stats.dropTrace;
     for (const stage of frameDropTrace) {
         histogram.set(stage, (histogram.get(stage) ?? 0) + 1);

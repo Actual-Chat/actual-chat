@@ -67,6 +67,7 @@ export function pushFrameToHost(frame: VideoFrame): void {
         try { frame.close(); } catch { /* ignore */ }
         return;
     }
+
     pushedSlot.push(frame);
     wakeFrameWaiter();
 }
@@ -201,7 +202,9 @@ function createSender(chatId: string, floodGate: FloodGate): StreamSenderLike {
     return {
         whenDisposed,
         init(format) {
-            if (inner) return;
+            if (inner)
+                return;
+
             inner = createWireSender({
                 chatId,
                 format,
@@ -220,10 +223,12 @@ function createSender(chatId: string, floodGate: FloodGate): StreamSenderLike {
                 void inner.send(dto);
                 return;
             }
+
             // Defensive: wireSend should always init() before send(). Cap
             // buffer to avoid unbounded growth if init never fires.
             buffered ??= [];
-            if (buffered.length < 32) buffered.push(dto);
+            if (buffered.length < 32)
+                buffered.push(dto);
         },
         dispose() {
             inner?.dispose();
@@ -236,6 +241,7 @@ function createSender(chatId: string, floodGate: FloodGate): StreamSenderLike {
                 rpcStreamSkipped: 0,
                 floodGateSkipCount: 0,
                 lastAckAgeMs: -1,
+                minRttMs: -1,
                 isPeerConnected: false,
                 ackedBytes: 0,
             };

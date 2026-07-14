@@ -86,6 +86,7 @@ class StatsSender extends FakeSender {
         rpcStreamSkipped: 0,
         floodGateSkipCount: 0,
         lastAckAgeMs: -1,
+        minRttMs: -1,
         isPeerConnected: false,
         ackedBytes: 0,
     };

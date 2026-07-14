@@ -90,7 +90,10 @@ public sealed record RecorderStats(
     int KeepAliveFramesInjected = 0,
     // Whether the active encoder is hardware-accelerated (from CodecInfo).
     // A software-encoding device throttles thermally far sooner.
-    bool IsHardwareAccelerated = false)
+    bool IsHardwareAccelerated = false,
+    // Windowed-min ack round trip on the publisher RpcStream (ms, -1 until
+    // sampled) ≈ propagation RTT — the baseline for RTT-relative QC gates.
+    double WireMinRttMs = -1)
 {
     private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
         = new Dictionary<FrameDropStage, int>();
