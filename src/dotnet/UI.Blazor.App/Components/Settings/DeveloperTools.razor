@@ -59,11 +59,6 @@
             <Toggle IsChecked="@m.IsAudioDiagnosticsEnabled"/>
         </Right>
     </TileItem>
-    @if (m.IsAudioDiagnosticsEnabled) {
-        <TileItem Click="@OnOpenAudioDiagnosticsClick">
-            <Content>Open audio diagnostics</Content>
-        </TileItem>
-    }
     @if (MauiLogAccessor?.GetLogFile != null) {
         <TileItem Click="@OnGetLogFileClick">
             <Content>
@@ -128,9 +123,6 @@
         => LocalSettings.LocalAppSettings().Update(x => x with {
             IsAudioDiagnosticsEnabled = !x.IsAudioDiagnosticsEnabledOrDefault,
         });
-
-    private void OnOpenAudioDiagnosticsClick()
-        => Hub.ChatAudioUI.ShowAudioDiagnostics(default);
 
     private Task OnGetLogFileClick()
         => MauiLogAccessor!.GetLogFile!.Invoke();
