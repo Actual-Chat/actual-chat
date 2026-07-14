@@ -1,0 +1,67 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, IncomingCallBanner.ComputedModel>
+@{
+    var m = State.Value;
+    if (m.Call is not { } call)
+        return;
+}
+
+<Banner Class="incoming-call-banner" Severity="BannerSeverity.Info">
+    <Body>
+        <div class="c-texts" @onclick="@OnExpandClick">
+            <AuthorBadge AuthorId="@call.Caller" ShowPresence="true"/>
+            <div class="c-subtitle">
+                @(call.HasVideo ? "Incoming video call" : "Incoming call")@(m.ChatTitle.IsNullOrEmpty() ? "" : $" · {m.ChatTitle}")
+            </div>
+        </div>
+    </Body>
+    <Buttons>
+        <Button Class="btn-transparent unhovered" Click="@OnDeclineClick">Decline</Button>
+        <Button Class="btn-transparent unhovered on" Click="@OnAcceptClick">Accept</Button>
+    </Buttons>
+</Banner>
+
+@code {
+    private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var call = await IncomingCallUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
+        if (call is null)
+            return ComputedModel.None;
+
+        var chat = await Hub.Chats.Get(Session, call.ChatId, cancellationToken).ConfigureAwait(false);
+        return new ComputedModel {
+            Call = call,
+            ChatTitle = chat is { Kind: not ChatKind.Peer } ? chat.Title : "",
+        };
+    }
+
+    private Task OnAcceptClick()
+        => State.Value.Call is { } call ? IncomingCallUI.Accept(call.ChatId) : Task.CompletedTask;
+
+    private Task OnDeclineClick()
+        => State.Value.Call is { } call ? IncomingCallUI.Decline(call.ChatId) : Task.CompletedTask;
+
+    private Task OnExpandClick() {
+        if (State.Value.Call is { } call)
+            _ = Hub.ModalUI.Show(new IncomingCallModal.Model(call.Caller));
+        return Task.CompletedTask;
+    }
+
+    // Nested types
+
+    public sealed record ComputedModel {
+        public static readonly ComputedModel None = new();
+
+        public IncomingCall? Call { get; init; }
+        public string ChatTitle { get; init; } = "";
+    }
+}
