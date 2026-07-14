@@ -21,15 +21,11 @@ public interface IVideoStreamingBackend : IComputeService, IBackendService
 
     Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default);
 
-    // Publisher-facing viewer-demand aggregates. Demand reports from every API
-    // pod route to the stream's owning node (StreamId routes by NodeRef), so
-    // these see all viewers regardless of which pod each viewer is connected to.
-    [ComputeMethod]
-    Task<int> DemandedLayersMask(StreamId streamId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<int> MaxDemandedLayerId(StreamId streamId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<bool> ThumbnailViewersOnly(StreamId streamId, CancellationToken cancellationToken);
+    // Publisher-facing viewer-demand aggregate. Demand reports from every API
+    // pod route to the stream's owning node (StreamId routes by NodeRef), so it
+    // sees all viewers regardless of which pod each viewer is connected to.
+    // The API service projects the per-question views (mask, max, thumbnail)
+    // from this single compute.
     [ComputeMethod]
     Task<StreamDemandInfo> DemandInfo(StreamId streamId, CancellationToken cancellationToken);
 

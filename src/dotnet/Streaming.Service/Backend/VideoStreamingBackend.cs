@@ -131,19 +131,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             _ = LastKeyframeRequestAt(streamId, default);
     }
 
-    // [ComputeMethod] - aggregate of 1 << LayerId over all reporting viewers.
-    public virtual Task<int> DemandedLayersMask(StreamId streamId, CancellationToken cancellationToken)
-        => Task.FromResult(SnapshotDemand(streamId).Mask);
-
-    // [ComputeMethod] - invalidated only when the max itself changes.
-    public virtual Task<int> MaxDemandedLayerId(StreamId streamId, CancellationToken cancellationToken)
-        => Task.FromResult(MaxLayerIdFromMask(SnapshotDemand(streamId).Mask));
-
-    // [ComputeMethod]
-    public virtual Task<bool> ThumbnailViewersOnly(StreamId streamId, CancellationToken cancellationToken)
-        => Task.FromResult(SnapshotDemand(streamId).ThumbnailViewersOnly);
-
-    // [ComputeMethod] - full demand aggregate for the publisher's diagnostics.
+    // [ComputeMethod] - the single viewer-demand aggregate for this stream.
     public virtual Task<StreamDemandInfo> DemandInfo(StreamId streamId, CancellationToken cancellationToken)
         => Task.FromResult(SnapshotDemand(streamId));
 
@@ -417,24 +405,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     private void InvalidateDemand(StreamId streamId, StreamDemandInfo prev)
     {
-        var current = SnapshotDemand(streamId);
-        if (current == prev)
+        if (SnapshotDemand(streamId) == prev)
             return;
 
-        using (Invalidation.Begin()) {
+        using (Invalidation.Begin())
             _ = DemandInfo(streamId, default);
-            if (current.Mask != prev.Mask) {
-                _ = DemandedLayersMask(streamId, default);
-                if (MaxLayerIdFromMask(current.Mask) != MaxLayerIdFromMask(prev.Mask))
-                    _ = MaxDemandedLayerId(streamId, default);
-            }
-            if (current.ThumbnailViewersOnly != prev.ThumbnailViewersOnly)
-                _ = ThumbnailViewersOnly(streamId, default);
-        }
     }
-
-    private static int MaxLayerIdFromMask(int mask)
-        => mask == 0 ? -1 : System.Numerics.BitOperations.Log2((uint)mask);
 
     private async Task RunDemandCleanup(CancellationToken cancellationToken)
     {

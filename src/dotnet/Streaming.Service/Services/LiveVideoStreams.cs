@@ -194,7 +194,10 @@ public class LiveVideoStreams : ILiveVideoStreams
     public virtual async Task<int> MaxRequestedLayerIdByStream(
         StreamId streamId,
         CancellationToken cancellationToken)
-        => await VideoStreamingBackend.MaxDemandedLayerId(streamId, cancellationToken).ConfigureAwait(false);
+    {
+        var info = await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
+        return MaxLayerIdFromMask(info.Mask);
+    }
 
     // [ComputeMethod]
     public virtual async Task<int> RequestedLayersMask(
@@ -209,7 +212,10 @@ public class LiveVideoStreams : ILiveVideoStreams
     public virtual async Task<int> RequestedLayersMaskByStream(
         StreamId streamId,
         CancellationToken cancellationToken)
-        => await VideoStreamingBackend.DemandedLayersMask(streamId, cancellationToken).ConfigureAwait(false);
+    {
+        var info = await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
+        return info.Mask;
+    }
 
     // [ComputeMethod]
     public virtual async Task<bool> ThumbnailViewersOnly(
@@ -224,7 +230,10 @@ public class LiveVideoStreams : ILiveVideoStreams
     public virtual async Task<bool> ThumbnailViewersOnlyByStream(
         StreamId streamId,
         CancellationToken cancellationToken)
-        => await VideoStreamingBackend.ThumbnailViewersOnly(streamId, cancellationToken).ConfigureAwait(false);
+    {
+        var info = await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
+        return info.ThumbnailViewersOnly;
+    }
 
     // [ComputeMethod]
     public virtual async Task<StreamDemandInfo> DemandInfo(
@@ -428,6 +437,9 @@ public class LiveVideoStreams : ILiveVideoStreams
                 ? quality
                 : ReceiveQuality.Lowest
             : ReceiveQuality.Default;
+
+    private static int MaxLayerIdFromMask(int mask)
+        => mask == 0 ? -1 : System.Numerics.BitOperations.Log2((uint)mask);
 
     private async Task ForwardDemandChanges(
         Session session,
