@@ -194,6 +194,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.HasContextMenuBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ImageCropPicker>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.InaccessiblePlace>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingShareModal>();
@@ -221,9 +222,14 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LinkRow>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListenButtonBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveLocationBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveConversationFooterView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveConversationHeaderView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocalLinkPreview>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationAccuracySelector>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationMapModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationMessageView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationTroubleshooterModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationAccuracySelector>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationMapModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationMessageView>();
@@ -923,6 +929,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.HasContextMenuBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ImageCropPicker), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.InaccessiblePlace), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingShareModal), AotTypeKind.Component),
@@ -950,9 +957,14 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.LinkRow), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListenButtonBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.LiveLocationBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LiveConversationFooterView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LiveConversationHeaderView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocalLinkPreview), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.LocationAccuracySelector), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.LocationMapModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.LocationMessageView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.LocationTroubleshooterModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationAccuracySelector), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationMapModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationMessageView), AotTypeKind.Component),
