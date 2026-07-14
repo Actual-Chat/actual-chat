@@ -2,8 +2,8 @@ namespace ActualChat.UI.Blazor.Components;
 
 public sealed record MapMarker(
     string Id,
-    double Latitude,
-    double Longitude,
+    GeoPoint Point,
     string? Label = null,
     string? AvatarUrl = null,
-    string? AvatarKey = null);
+    string? AvatarKey = null,
+    bool IsOwnLocation = false);

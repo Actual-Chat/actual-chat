@@ -57,7 +57,7 @@
         if (location is null)
             return null;
 
-        var marker = new MapMarker(location.Id.Value, location.Point.Latitude, location.Point.Longitude);
+        var marker = new MapMarker(location.Id.Value, location.Point);
         var trackingError = await LocationUI.GetTrackingError(Entry.ChatId, cancellationToken).ConfigureAwait(false);
         return new Model(
             location.Point,

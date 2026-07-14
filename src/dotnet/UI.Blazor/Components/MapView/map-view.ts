@@ -1,13 +1,20 @@
 import maplibregl, { Map as MlMap, Marker as MlMarker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-interface MapMarker {
-    id: string;
+interface GeoPoint {
     latitude: number;
     longitude: number;
+    accuracy?: number | null;
+    bearing?: number | null;
+}
+
+interface MapMarker {
+    id: string;
+    point: GeoPoint;
     label?: string;
     avatarUrl?: string;
     avatarKey?: string;
+    isOwnLocation?: boolean;
 }
 
 interface MapViewOptions {
@@ -55,12 +62,14 @@ export class MapView {
             seen.add(m.id);
             const existing = this.markers.get(m.id);
             if (existing != null) {
-                existing.setLngLat([m.longitude, m.latitude]);
+                existing.setLngLat([m.point.longitude, m.point.latitude]);
+                if (m.isOwnLocation)
+                    MapView.applyHeading(existing.getElement(), m.point.bearing);
                 continue;
             }
 
             const marker = new maplibregl.Marker({ element: MapView.createMarkerElement(m) })
-                .setLngLat([m.longitude, m.latitude]);
+                .setLngLat([m.point.longitude, m.point.latitude]);
             marker.addTo(this.map);
             this.markers.set(m.id, marker);
         }
@@ -85,11 +94,17 @@ export class MapView {
 
     // Private methods
 
-    // Two marker styles: a plain dot when there's no avatar (in-chat preview), or an
-    // author avatar in a white-bordered circle (the map modal) — Telegram-style.
+    // Three marker styles: the viewer's own live position (blue dot + heading fan), a plain
+    // dot when there's no avatar (in-chat preview), or an author avatar in a white-bordered
+    // circle (the map modal) — Telegram-style.
     private static createMarkerElement(m: MapMarker): HTMLElement {
         const el = document.createElement('div');
         el.className = 'map-marker';
+        if (m.isOwnLocation) {
+            el.appendChild(MapView.createOwnLocationElement(m));
+            return el;
+        }
+
         const avatar = MapView.createAvatarElement(m);
         const pin = document.createElement('div');
         pin.className = avatar != null ? 'c-pin c-pin-avatar' : 'c-pin c-pin-dot';
@@ -97,6 +112,35 @@ export class MapView {
             pin.appendChild(avatar);
         el.appendChild(pin);
         return el;
+    }
+
+    private static createOwnLocationElement(m: MapMarker): HTMLElement {
+        const own = document.createElement('div');
+        own.className = 'c-own-location';
+        const heading = document.createElement('div');
+        heading.className = 'c-own-heading';
+        const pulse = document.createElement('div');
+        pulse.className = 'c-own-pulse';
+        const dot = document.createElement('div');
+        dot.className = 'c-own-dot';
+        own.append(heading, pulse, dot);
+        MapView.applyHeading(own, m.point.bearing);
+        return own;
+    }
+
+    // Heading is only known while moving; hide the fan when it's absent so a stale
+    // direction isn't shown, and otherwise rotate it (0° = north) around the dot.
+    private static applyHeading(element: HTMLElement, bearing?: number | null): void {
+        const heading = element.querySelector<HTMLElement>('.c-own-heading');
+        if (heading == null)
+            return;
+
+        if (bearing == null) {
+            heading.style.display = 'none';
+            return;
+        }
+        heading.style.display = '';
+        heading.style.transform = `rotate(${bearing}deg)`;
     }
 
     private static createAvatarElement(m: MapMarker): HTMLElement | null {

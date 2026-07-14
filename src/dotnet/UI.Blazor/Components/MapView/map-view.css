@@ -27,3 +27,35 @@
     @apply rounded-full;
     @apply object-cover;
 }
+.map-view .map-marker .c-own-location {
+    @apply relative;
+    @apply flex items-center justify-center;
+    @apply w-4 h-4;
+}
+.map-view .map-marker .c-own-dot {
+    @apply relative z-10;
+    @apply w-4 h-4;
+    @apply rounded-full border-[3px] border-white;
+    @apply bg-primary;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.map-view .map-marker .c-own-pulse {
+    @apply absolute inset-0 z-0;
+    @apply rounded-full;
+    @apply bg-primary;
+    animation: own-location-pulse 2s ease-out infinite;
+}
+.map-view .map-marker .c-own-heading {
+    @apply absolute left-1/2 z-0;
+    bottom: 50%;
+    width: 3rem;
+    height: 2.5rem;
+    margin-left: -1.5rem;
+    transform-origin: 50% 100%;
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    background: linear-gradient(to top, var(--primary), transparent);
+}
+@keyframes own-location-pulse {
+    0% { transform: scale(1); opacity: 0.35; }
+    100% { transform: scale(3.5); opacity: 0; }
+}
