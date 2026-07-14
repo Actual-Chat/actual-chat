@@ -103,23 +103,14 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     }
 
     public override AudioFocusDiagnostics GetDiagnostics()
-    {
-        AppleAudioSessionDiagnostics? session = null;
-        try {
-            session = AudioSession.GetDiagnostics();
-        }
-        catch (Exception e) {
-            Log.LogError(e, "GetDiagnostics: failed to read AudioSession");
-        }
-        return new AudioFocusDiagnostics(
+        => new (
             IsSupported: true,
             ActiveMode: _activeScopes.GetMode(),
             IsInterrupted: _isInterrupted,
             IsSuspended: _isSuspended,
             IsSessionConfigured: _isSessionConfigured,
             Scopes: _activeScopes.GetScopeInfos(),
-            Session: session);
-    }
+            Session: AudioSession.GetDiagnostics());
 
     // Private methods
 
@@ -362,12 +353,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             => _byMode.SelectMany(x => x.Value.Values);
 
         public IReadOnlyList<AudioFocusScopeInfo> GetScopeInfos()
-        {
-            var result = new List<AudioFocusScopeInfo>(_byMode.Count);
-            foreach (var (mode, scopes) in _byMode)
-                result.Add(new AudioFocusScopeInfo(mode, scopes.Count));
-            return result;
-        }
+            => _byMode.Select(x => new AudioFocusScopeInfo(x.Key, x.Value.Count)).ToList();
 
         public void Dispose()
         {
