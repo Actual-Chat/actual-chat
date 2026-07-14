@@ -17,6 +17,7 @@ public sealed partial class VideoQualityUI
     // WireQueueDepthEma above this (bundles) is treated as a sustained backlog:
     // the link can't drain instantly, so the acked-bytes rate equals capacity.
     private const double WireBacklogBundles = 2.0;
+    private double _lastFusedMinRttMs = -1;
     private readonly Dictionary<VideoSourceKind, int> _lastAppliedTargetByKind = new();
     private readonly Dictionary<VideoSourceKind, int> _lastAppliedFpsCeilingByKind = new();
     // Worker-restart cooldown: a worker.stop()/start() cycle resets the
@@ -185,7 +186,8 @@ public sealed partial class VideoQualityUI
             _outboundBwEstimator.PositiveStreak,
             _outboundBwEstimator.NegativeStreak,
             _outboundBwEstimator.CeilingBps * 8 / 1000.0,
-            _outboundBwEstimator.LastCurrentBps * 8 / 1000.0);
+            _outboundBwEstimator.LastCurrentBps * 8 / 1000.0,
+            FormatProbeStatus());
     }
 
     // Private methods
@@ -227,6 +229,7 @@ public sealed partial class VideoQualityUI
             ackedBytesPerSec += ComputeAndUpdateBytesPerSec(_lastAckedSampleByKind, k, stats.WireAckedBytes, sampleAt);
         }
 
+        _lastFusedMinRttMs = fusedMinRttMs;
         var encoderHealth = _senderHealthClassifier.ClassifyEncoder(
             encodeDeficitEma: fusedEncodeDeficit,
             encodeQueueDepthEma: fusedEncodeQueueDepth,
@@ -256,8 +259,11 @@ public sealed partial class VideoQualityUI
         // capacity — but only when it lags production (the estimator rejects the
         // downward anchor otherwise: a backlog draining at the produce rate is a
         // credit-window/RTT stall, not a link bottleneck).
+        var anchorNote = "";
         if (fusedWireQueueDepth >= WireBacklogBundles && ackedBytesPerSec > 0)
-            _outboundBwEstimator.ApplyMeasuredCapacity(ackedBytesPerSec, totalBytesPerSec, SystemClock.Now);
+            anchorNote = _outboundBwEstimator.ApplyMeasuredCapacity(ackedBytesPerSec, totalBytesPerSec, SystemClock.Now)
+                ? $" · anchored {ackedBytesPerSec * 8 / 1000} kbps"
+                : " · anchor rejected (credit-stall)";
         var preEncCam = _outboundEncodingCap.Layers.CameraLayers;
         var preBwCam = _outboundBandwidthCap.Layers.CameraLayers;
         // EncodingCap still consumes the raw encode ratio. The classifier
@@ -324,17 +330,22 @@ public sealed partial class VideoQualityUI
         var ceilingKbps = _outboundBwEstimator.CeilingBps * 8 / 1000;
         var currentKbps = _outboundBwEstimator.LastCurrentBps * 8 / 1000;
         var reason = encoderHealth.Verdict == HealthVerdict.Bad
-            ? $"encDeficit {(fusedEncodeDeficit * 100):F0}%"
+            ? $"encoder: {encoderHealth.BadSignals}"
             : uplinkHealth.Verdict == HealthVerdict.Bad
-                ? $"ack {fusedAckAgeMs:F0}ms / drop {fusedDropRatio:F2}"
+                ? $"uplink: {uplinkHealth.BadSignals}"
                 : _outboundBwEstimator.LastVerdict switch {
                     BandwidthVerdict.Good => $"BW ↑ {ceilingKbps} kbps",
                     BandwidthVerdict.Bad => $"BW ↓ {ceilingKbps} kbps",
                     _ => "stable",
                 };
-        var rawA = $"def={(fusedEncodeDeficit * 100):F0}% q={fusedEncodeQueueDepth:F1} rs={maxRestartStreak}";
-        var rawB = $"ack={(fusedAckAgeMs < 0 ? "n/a" : fusedAckAgeMs.ToString("F0") + "ms")} drop={fusedDropRatio:F2} qd={fusedWireQueueDepth:F1} flood={fusedFloodSkipPerSec:F1}";
-        var rawBw = $"{(_outboundBwEstimator.LastVerdict == BandwidthVerdict.Good ? "↑" : _outboundBwEstimator.LastVerdict == BandwidthVerdict.Bad ? "↓" : "=")}{ceilingKbps}/cur {currentKbps} kbps";
+        var rawA = $"def={(fusedEncodeDeficit * 100):F0}% q={fusedEncodeQueueDepth:F1} rs={maxRestartStreak}"
+            + FormatBadAttribution(encoderHealth.BadSignals, encoderHealth.BadFreeStreak, encoderHealth.BadRecoverAtStreak);
+        var rawB = $"ack={(fusedAckAgeMs < 0 ? "n/a" : fusedAckAgeMs.ToString("F0") + "ms")}"
+            + $" rtt={(fusedMinRttMs < 0 ? "n/a" : fusedMinRttMs.ToString("F0") + "ms")}"
+            + $" drop={fusedDropRatio:F2} qd={fusedWireQueueDepth:F1} flood={fusedFloodSkipPerSec:F1}"
+            + FormatBadAttribution(uplinkHealth.BadSignals, uplinkHealth.BadFreeStreak, uplinkHealth.BadRecoverAtStreak);
+        var rawBw = $"{(_outboundBwEstimator.LastVerdict == BandwidthVerdict.Good ? "↑" : _outboundBwEstimator.LastVerdict == BandwidthVerdict.Bad ? "↓" : "=")}{ceilingKbps}/cur {currentKbps} kbps"
+            + anchorNote;
         AppendOutboundDecision(new QualityDecisionEntry(
             SystemClock.Now,
             encoderHealth.Verdict,
@@ -423,6 +434,24 @@ public sealed partial class VideoQualityUI
     private static double VerdictToSignal(HealthVerdict verdict)
         => verdict == HealthVerdict.Bad ? 0.0 : 1.0;
 
+    private static string FormatBadAttribution(string badSignals, int badFreeStreak, int recoverAtStreak)
+        => badSignals.IsNullOrEmpty()
+            ? ""
+            : $" bad=[{badSignals} {badFreeStreak}/{recoverAtStreak}]";
+
+    private string FormatProbeStatus()
+    {
+        var config = _outboundProbe.Config;
+        var gateMs = _lastFusedMinRttMs >= 0
+            ? Math.Max(config.HealthyAckAgeMs, _lastFusedMinRttMs + config.HealthyAckSlackMs)
+            : config.HealthyAckAgeMs;
+        if (_outboundProbe.IsActive)
+            return $"probing ({config.WindowTicks - _outboundProbe.WindowRemaining + 1}/{config.WindowTicks})";
+        if (_outboundProbe.CooldownRemaining > 0)
+            return $"cooldown {_outboundProbe.CooldownRemaining} ticks (failures {_outboundProbe.Failures}), gate ≤{gateMs:0}ms";
+        return $"idle (failures {_outboundProbe.Failures}), gate ≤{gateMs:0}ms";
+    }
+
     // Nested types
 
     public sealed record RecordingQualitySnapshot(
@@ -439,5 +468,6 @@ public sealed partial class VideoQualityUI
         int BwPositiveStreak,
         int BwNegativeStreak,
         double CeilingKbps,
-        double CurrentKbps);
+        double CurrentKbps,
+        string ProbeStatus);
 }

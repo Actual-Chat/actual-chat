@@ -30,6 +30,8 @@ public interface IVideoStreamingBackend : IComputeService, IBackendService
     Task<int> MaxDemandedLayerId(StreamId streamId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<bool> ThumbnailViewersOnly(StreamId streamId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<StreamDemandInfo> DemandInfo(StreamId streamId, CancellationToken cancellationToken);
 
     Task ReportDemand(
         StreamId streamId, string sessionId, ReceiveQuality quality, CancellationToken cancellationToken = default);

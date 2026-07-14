@@ -39,6 +39,9 @@ public sealed class SpeculativeProbe
     private double _baselineAckAgeMs;
 
     public bool IsActive => _windowRemaining > 0;
+    public int WindowRemaining => _windowRemaining;
+    public int CooldownRemaining => _cooldownRemaining;
+    public int Failures => _failures;
     public SpeculativeProbeConfig Config => _config;
 
     public SpeculativeProbe(SpeculativeProbeConfig? config = null)

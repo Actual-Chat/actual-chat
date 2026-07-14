@@ -9,7 +9,14 @@ public sealed record EncoderHealth(
     double EncodeQueueDepthEma,
     int RestartStreakIn60s,
     double SenderEncodePathDropRatio,
-    bool IsTabBackgrounded)
+    bool IsTabBackgrounded,
+    // Comma-joined names of the signals whose verdict equals the combined
+    // Bad verdict ("" when not Bad) — the diagnostics attribution.
+    string BadSignals = "",
+    // Bad-free tick count / recovery target of the latched Bad signal
+    // furthest from decay (0/0 when not applicable).
+    int BadFreeStreak = 0,
+    int BadRecoverAtStreak = 0)
 {
     public static EncoderHealth Empty { get; } =
         new(HealthVerdict.Unknown, 0, 0, 0, 0, false);

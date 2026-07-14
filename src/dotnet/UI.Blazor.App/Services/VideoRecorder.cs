@@ -221,7 +221,8 @@ public sealed class VideoRecorder : IAsyncDisposable
         var t4 = SubscribeToLayerDemand(chatId, cancellationToken);
         var t5 = SubscribeToVoiceActivity(chatId, cancellationToken);
         var t6 = SubscribeToThumbnailOnly(chatId, cancellationToken);
-        await Task.WhenAll(t1, t2, t3, t4, t5, t6).ConfigureAwait(false);
+        var t7 = SubscribeToDemandInfo(chatId, cancellationToken);
+        await Task.WhenAll(t1, t2, t3, t4, t5, t6, t7).ConfigureAwait(false);
     }
 
     private (ChatId, bool) GetStartRequest()
@@ -388,6 +389,47 @@ public sealed class VideoRecorder : IAsyncDisposable
 
     // Forwards the "every active viewer displays me as a thumbnail" aggregate
     // to JS — the fps-shed input. Camera only: screencast never sheds.
+    private async Task SubscribeToDemandInfo(ChatId chatId, CancellationToken cancellationToken) {
+        // Diagnostics-only: pushes the aggregate's viewer/paused counts to JS so
+        // the demand section can attribute an empty mask (no reports vs. paused).
+        try {
+            StreamId? ownStreamId = null;
+            var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (ownAuthor == null)
+                return;
+
+            for (var i = 0; i < 30; i++) {
+                var streams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+                var ownStream = streams.FirstOrDefault(s => s.AuthorId == ownAuthor.Id && s.SourceKind == Kind);
+                if (ownStream != default) {
+                    ownStreamId = ownStream.StreamId;
+                    break;
+                }
+                await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+            }
+            if (ownStreamId == null)
+                return;
+
+            StreamDemandInfo? lastValue = null;
+            var cState = await Computed.Capture(
+                () => LiveVideoStreams.DemandInfo(Session, ownStreamId, cancellationToken),
+                cancellationToken).ConfigureAwait(false);
+            await foreach (var (info, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+                if (info == lastValue)
+                    continue;
+
+                lastValue = info;
+                await _jsRef.InvokeVoidAsync(
+                        "setDemandInfo", cancellationToken, info.ViewerCount, info.PausedCount)
+                    .ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "SubscribeToDemandInfo failed (diagnostics only)");
+        }
+    }
+
     private async Task SubscribeToThumbnailOnly(ChatId chatId, CancellationToken cancellationToken) {
         if (Kind != VideoSourceKind.Camera)
             return;

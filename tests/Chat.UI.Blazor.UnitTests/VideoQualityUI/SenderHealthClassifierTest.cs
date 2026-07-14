@@ -137,9 +137,12 @@ public class SenderHealthClassifierTest
         for (var i = 0; i < 2; i++)
             up = ClassifyUplinkWithQueueDepth(c, 5.0);
         up.Verdict.Should().Be(HealthVerdict.Bad);
+        up.BadSignals.Should().Be("queue");
         for (var i = 0; i < 5; i++)
             up = ClassifyUplinkWithQueueDepth(c, 2.5);
         up.Verdict.Should().Be(HealthVerdict.Bad, "the dead zone alone must not clear a latched Bad early");
+        up.BadFreeStreak.Should().Be(5);
+        up.BadRecoverAtStreak.Should().Be(6);
 
         // assert: 6th bad-free tick (= 2 × GoodStreakRequired) decays to Marginal
         up = ClassifyUplinkWithQueueDepth(c, 2.5);

@@ -163,11 +163,20 @@
                                         var dFps = (int)GetNum(stream, "targetFps");
                                         var dSpeaking = GetBool(stream, "isSpeaking");
                                         var dIdleCollapse = GetBool(stream, "idleCollapseActive");
+                                        // GetNum yields 0 for a missing field; distinguish "field absent /
+                                        // no server aggregate yet" (-1) from a real 0-viewer report.
+                                        var dViewers = stream.TryGetProperty("demandViewerCount", out var dv)
+                                            && dv.ValueKind == JsonValueKind.Number ? dv.GetInt32() : -1;
+                                        var dPaused = (int)GetNum(stream, "demandPausedCount");
                                     }
                                     <div class="diag-group-header">Demand</div>
                                     <div class="diag-row">
                                         <span class="diag-label">Requested</span>
                                         <span class="diag-value">@(dMax < 0 ? "none (nobody / all paused)" : $"max L{dMax} across viewers")</span>
+                                    </div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Viewers</span>
+                                        <span class="diag-value">@(dViewers < 0 ? "no aggregate from server yet" : $"{dViewers} reporting ({dPaused} paused)")</span>
                                     </div>
                                     <div class="diag-row">
                                         <span class="diag-label">Active layers</span>
@@ -320,6 +329,10 @@
                                     <div class="diag-row">
                                         <span class="diag-label">Bandwidth</span>
                                         <span class="diag-value">@FormatRecordingBandwidth(recordingSnap)</span>
+                                    </div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Probe</span>
+                                        <span class="diag-value">@recordingSnap.ProbeStatus</span>
                                     </div>
 
                                     @if (recordingSnap.Health is { } health) {
@@ -1081,6 +1094,7 @@
         => $"encDeficit={(stats.EncodeDeficitEma * 100):F1}%, "
             + $"encQueueDepth={stats.EncodeQueueDepthEma:F2}, "
             + $"ackAge={FormatAckAge(stats.LastAckAgeMs)}, "
+            + $"minRtt={FormatAckAge(stats.WireMinRttMs)}, "
             + $"dropRatioEma={stats.SenderFrameDropRatioEma:F2}, "
             + $"connected={(stats.IsConnected ? "yes" : "no")}";
 

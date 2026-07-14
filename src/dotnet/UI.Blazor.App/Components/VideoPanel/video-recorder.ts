@@ -192,6 +192,9 @@ export interface OwnStreamDiagnostics {
     receiverLayerCap: number;
     healthLayerCap: number;
     lastMaxLayerId: number;
+    // Demand provenance from the owning node (-1 viewers = no report yet).
+    demandViewerCount: number;
+    demandPausedCount: number;
     targetFps: number;
     isSpeaking: boolean;
     thumbnailOnly: boolean;
@@ -476,6 +479,9 @@ export class VideoRecorder {
     private idleCollapseTimer: ReturnType<typeof setTimeout> | null = null;
     // Highest aggregate requested layer — drives the tier set, never fps.
     private lastMaxLayerId = -1;
+    // Diagnostics-only demand provenance (-1 = no report from the server yet).
+    private demandViewerCount = -1;
+    private demandPausedCount = 0;
     // Local VAD edge — exits the thumbnail fps shed instantly.
     private isSpeaking = false;
     private speakingHoldTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1540,6 +1546,12 @@ export class VideoRecorder {
         this.scheduleDemandExpiry();
     }
 
+    // Diagnostics-only: who the owning node sees reporting demand.
+    public setDemandInfo(viewerCount: number, pausedCount: number): void {
+        this.demandViewerCount = viewerCount;
+        this.demandPausedCount = pausedCount;
+    }
+
     // Sustained zero-demand: after IDLE_COLLAPSE_DELAY_MS with no viewer wanting
     // any tier, cap the ladder to the bottom tier only. The expensive upper tiers
     // stop encoding (the dominant power cost); L0 keeps flowing so a joiner resumes
@@ -1833,6 +1845,8 @@ export class VideoRecorder {
             receiverLayerCap: this.receiverLayerCap === Number.MAX_SAFE_INTEGER ? -1 : this.receiverLayerCap,
             healthLayerCap: this.healthLayerCap === Number.MAX_SAFE_INTEGER ? -1 : this.healthLayerCap,
             lastMaxLayerId: this.lastMaxLayerId,
+            demandViewerCount: this.demandViewerCount,
+            demandPausedCount: this.demandPausedCount,
             targetFps: this.lastTargetFps,
             isSpeaking: this.isSpeaking,
             thumbnailOnly: this.thumbnailOnly,

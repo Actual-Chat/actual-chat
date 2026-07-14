@@ -66,9 +66,18 @@ public sealed class SenderHealthClassifier(SenderHealthThresholds? thresholds = 
             ? HealthVerdict.Bad
             : HealthVerdict.Good;
         var combined = HealthVerdictExt.Combine([ratioVerdict, queueVerdict, restartVerdict, dropVerdict]);
+        var (badSignals, badFreeStreak) = combined != HealthVerdict.Bad
+            ? ("", 0)
+            : Attribute([
+                ("deficit", ratioVerdict, _encRatio),
+                ("encQueue", queueVerdict, _encQueue),
+                ("restarts", restartVerdict, null),
+                ("encDrop", dropVerdict, null),
+            ]);
         return new EncoderHealth(combined,
             encodeDeficitEma, encodeQueueDepthEma, restartStreakIn60s,
-            senderEncodePathDropRatio, isTabBackgrounded);
+            senderEncodePathDropRatio, isTabBackgrounded,
+            badSignals, badFreeStreak, 2 * _t.GoodStreakRequired);
     }
 
     public UplinkHealth ClassifyUplink(
@@ -94,9 +103,38 @@ public sealed class SenderHealthClassifier(SenderHealthThresholds? thresholds = 
             ? HealthVerdict.Bad
             : HealthVerdict.Good;
         var combined = HealthVerdictExt.Combine([ackVerdict, queueVerdict, floodVerdict, reconnectVerdict, dropVerdict]);
+        var (badSignals, badFreeStreak) = combined != HealthVerdict.Bad
+            ? ("", 0)
+            : Attribute([
+                ("ack", ackVerdict, _wireAck),
+                ("queue", queueVerdict, _wireQueue),
+                ("flood", floodVerdict, _floodSkip),
+                ("reconnect", reconnectVerdict, null),
+                ("drop", dropVerdict, null),
+            ]);
         return new UplinkHealth(combined,
             wireLastAckAgeMs, wireQueueDepthEma, floodGateSkipPerSec,
-            peerReconnectStreak, senderWirePathDropRatio);
+            peerReconnectStreak, senderWirePathDropRatio,
+            badSignals, badFreeStreak, 2 * _t.GoodStreakRequired);
+    }
+
+    // Private methods
+
+    private static (string BadSignals, int BadFreeStreak) Attribute(
+        ReadOnlySpan<(string Name, HealthVerdict Verdict, HealthStreakState? State)> signals)
+    {
+        // Names the Bad contributors and reports the latched signal furthest from
+        // the bad-free decay (min BadFreeStreak); stateless signals report 0.
+        var names = new List<string>();
+        var badFreeStreak = int.MaxValue;
+        foreach (var (name, verdict, state) in signals) {
+            if (verdict != HealthVerdict.Bad)
+                continue;
+
+            names.Add(name);
+            badFreeStreak = Math.Min(badFreeStreak, state?.BadFreeStreak ?? 0);
+        }
+        return (string.Join('+', names), badFreeStreak == int.MaxValue ? 0 : badFreeStreak);
     }
 
     private HealthVerdict ClassifyRestartStreak(int restartStreakIn60s)

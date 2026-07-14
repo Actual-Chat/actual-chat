@@ -9,7 +9,14 @@ public sealed record UplinkHealth(
     double WireQueueDepthEma,
     double FloodGateSkipPerSec,
     int PeerReconnectStreak,
-    double SenderWirePathDropRatio)
+    double SenderWirePathDropRatio,
+    // Comma-joined names of the signals whose verdict equals the combined
+    // Bad verdict ("" when not Bad) — the diagnostics attribution.
+    string BadSignals = "",
+    // Bad-free tick count / recovery target of the latched Bad signal
+    // furthest from decay (0/0 when not applicable).
+    int BadFreeStreak = 0,
+    int BadRecoverAtStreak = 0)
 {
     public static UplinkHealth Empty { get; } =
         new(HealthVerdict.Unknown, 0, 0, 0, 0, 0);

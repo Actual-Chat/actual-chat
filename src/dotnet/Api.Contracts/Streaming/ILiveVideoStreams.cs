@@ -38,6 +38,11 @@ public interface ILiveVideoStreams : IComputeService
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<bool> ThumbnailViewersOnly(Session session, StreamId streamId, CancellationToken cancellationToken);
 
+    // Full demand aggregate (mask + viewer/paused counts) for the publisher's
+    // diagnostics — makes an empty mask attributable (no reports vs. all paused).
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<StreamDemandInfo> DemandInfo(Session session, StreamId streamId, CancellationToken cancellationToken);
+
     Task RegisterMember(
         Session session, ChatId chatId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken);
     Task UnregisterMember(

@@ -141,7 +141,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     // [ComputeMethod]
     public virtual Task<bool> ThumbnailViewersOnly(StreamId streamId, CancellationToken cancellationToken)
-        => Task.FromResult(SnapshotDemand(streamId).ThumbnailOnly);
+        => Task.FromResult(SnapshotDemand(streamId).ThumbnailViewersOnly);
+
+    // [ComputeMethod] - full demand aggregate for the publisher's diagnostics.
+    public virtual Task<StreamDemandInfo> DemandInfo(StreamId streamId, CancellationToken cancellationToken)
+        => Task.FromResult(SnapshotDemand(streamId));
 
     public virtual Task ReportDemand(
         StreamId streamId, string sessionId, ReceiveQuality quality, CancellationToken cancellationToken = default)
@@ -381,45 +385,50 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 $"Wrong mesh node: expected {ThisNode.Ref}, but got {streamId.NodeRef}.");
     }
 
-    private (int Mask, bool ThumbnailOnly) SnapshotDemand(StreamId streamId)
+    private StreamDemandInfo SnapshotDemand(StreamId streamId)
         => _demandByStream.TryGetValue(streamId, out var sessions)
             ? ComputeDemandSnapshot(sessions.Select(kv => kv.Value.Quality))
-            : (0, false);
+            : StreamDemandInfo.None;
 
-    // Single pass shared by the mask and the thumbnail-only aggregate: mask is
-    // the OR of 1 << LayerId; thumbnail-only is "any active viewer, and every
-    // active (non-paused) viewer displays the stream as a thumbnail".
-    internal static (int Mask, bool ThumbnailOnly) ComputeDemandSnapshot(IEnumerable<ReceiveQuality> qualities)
+    // Single pass shared by all demand aggregates: mask is the OR of
+    // 1 << LayerId; thumbnail-only is "any active viewer, and every active
+    // (non-paused) viewer displays the stream as a thumbnail".
+    internal static StreamDemandInfo ComputeDemandSnapshot(IEnumerable<ReceiveQuality> qualities)
     {
         var mask = 0;
-        var anyActive = false;
+        var viewerCount = 0;
+        var pausedCount = 0;
         var allThumbnail = true;
         foreach (var q in qualities) {
+            viewerCount++;
             if (q.LayerId is >= 0 and < 31)
                 mask |= 1 << q.LayerId;
-            if (q.IsPaused)
+            if (q.IsPaused) {
+                pausedCount++;
                 continue;
+            }
 
-            anyActive = true;
             if (!q.IsThumbnail)
                 allThumbnail = false;
         }
-        return (mask, anyActive && allThumbnail);
+        var anyActive = viewerCount > pausedCount;
+        return new StreamDemandInfo(mask, viewerCount, pausedCount, anyActive && allThumbnail);
     }
 
-    private void InvalidateDemand(StreamId streamId, (int Mask, bool ThumbnailOnly) prev)
+    private void InvalidateDemand(StreamId streamId, StreamDemandInfo prev)
     {
-        var (newMask, newThumbnailOnly) = SnapshotDemand(streamId);
-        if (newMask == prev.Mask && newThumbnailOnly == prev.ThumbnailOnly)
+        var current = SnapshotDemand(streamId);
+        if (current == prev)
             return;
 
         using (Invalidation.Begin()) {
-            if (newMask != prev.Mask) {
+            _ = DemandInfo(streamId, default);
+            if (current.Mask != prev.Mask) {
                 _ = DemandedLayersMask(streamId, default);
-                if (MaxLayerIdFromMask(newMask) != MaxLayerIdFromMask(prev.Mask))
+                if (MaxLayerIdFromMask(current.Mask) != MaxLayerIdFromMask(prev.Mask))
                     _ = MaxDemandedLayerId(streamId, default);
             }
-            if (newThumbnailOnly != prev.ThumbnailOnly)
+            if (current.ThumbnailViewersOnly != prev.ThumbnailViewersOnly)
                 _ = ThumbnailViewersOnly(streamId, default);
         }
     }

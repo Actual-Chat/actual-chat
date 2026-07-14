@@ -226,6 +226,21 @@ public class LiveVideoStreams : ILiveVideoStreams
         CancellationToken cancellationToken)
         => await VideoStreamingBackend.ThumbnailViewersOnly(streamId, cancellationToken).ConfigureAwait(false);
 
+    // [ComputeMethod]
+    public virtual async Task<StreamDemandInfo> DemandInfo(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+        // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
+        // every viewer, so delegate to a session-less inner compute.
+        => await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual async Task<StreamDemandInfo> DemandInfoByStream(
+        StreamId streamId,
+        CancellationToken cancellationToken)
+        => await VideoStreamingBackend.DemandInfo(streamId, cancellationToken).ConfigureAwait(false);
+
     public async Task PushStream(
         Session session,
         string chatId,

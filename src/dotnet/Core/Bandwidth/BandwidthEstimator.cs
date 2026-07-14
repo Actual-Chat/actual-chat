@@ -141,22 +141,24 @@ public sealed class BandwidthEstimator(BandwidthEstimatorConfig config)
         AppendHistory(now, currentBandwidthBps, signalLevel, ceilingBefore, verdict);
     }
 
-    public void ApplyMeasuredCapacity(long measuredBps, long producedBps, Moment now)
+    public bool ApplyMeasuredCapacity(long measuredBps, long producedBps, Moment now)
     {
         // Anchors the ceiling to the backlog-drain rate (hard evidence, overrides
-        // the verdict-based estimate). Downward only when drain genuinely lags
-        // production — a backlog draining at the produce rate is a credit-window
-        // (RTT) stall, so its drain rate reflects the window, not the link.
+        // the verdict-based estimate) and returns whether it did. Downward only
+        // when drain genuinely lags production — a backlog draining at the produce
+        // rate is a credit-window (RTT) stall, so its drain rate reflects the
+        // window, not the link.
         if (measuredBps <= 0)
-            return;
+            return false;
         if (measuredBps < CeilingBps && measuredBps >= producedBps * config.MeasuredCapacityLagRatio)
-            return;
+            return false;
 
         LastCurrentBps = measuredBps;
         CeilingBps = Math.Max(config.FloorBps, measuredBps);
         // A real measurement isn't a failed probe — clear the back-off anchor so
         // the next good tick can lift immediately.
         LastCeilingDownAt = null;
+        return true;
     }
 
     // Private methods
