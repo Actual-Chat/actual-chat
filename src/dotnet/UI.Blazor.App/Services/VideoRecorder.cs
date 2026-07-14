@@ -255,48 +255,36 @@ public sealed class VideoRecorder : IAsyncDisposable
     }
 
     private async Task SubscribeToKeyFrameRequests(ChatId chatId, CancellationToken cancellationToken) {
-        try {
-            Log.LogInformation("SubscribeToKeyFrameRequests: starting for ChatId={ChatId}", chatId);
+        await RunPerOwnStreamSubscription(
+            chatId, nameof(SubscribeToKeyFrameRequests), SubscribeToKeyFrameRequestsCore, cancellationToken)
+            .ConfigureAwait(false);
+    }
 
-            var ownStreamId = await FindOwnStreamId(chatId, cancellationToken).ConfigureAwait(false);
-            if (ownStreamId == null) {
-                Log.LogWarning("SubscribeToKeyFrameRequests: own stream not found after polling for ChatId={ChatId}", chatId);
-                return;
-            }
+    private async Task SubscribeToKeyFrameRequestsCore(StreamId ownStreamId, CancellationToken cancellationToken) {
+        var cState = await Computed.Capture(
+            () => LiveVideoStreams.LastKeyframeRequestAt(Session, ownStreamId, cancellationToken),
+            cancellationToken).ConfigureAwait(false);
+        var lastRequestAt = cState.Value;
+        await foreach (var (requestAt, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (requestAt == lastRequestAt)
+                continue;
 
-            Log.LogInformation("SubscribeToKeyFrameRequests: found own stream #{StreamId}, subscribing", ownStreamId);
-
-            var cState = await Computed.Capture(
-                () => LiveVideoStreams.LastKeyframeRequestAt(Session, ownStreamId, cancellationToken),
-                cancellationToken).ConfigureAwait(false);
-            var lastRequestAt = cState.Value;
-            await foreach (var (requestAt, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                if (requestAt == lastRequestAt)
-                    continue;
-
-                lastRequestAt = requestAt;
-                Log.LogInformation(
-                    "Keyframe request: invoking forceKeyFrame interop for stream {StreamId}, requestAt={RequestAt}",
-                    ownStreamId, requestAt);
-                await _jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (Exception e) {
-            Log.LogWarning(e, "SubscribeToKeyFrameRequests failed");
+            lastRequestAt = requestAt;
+            Log.LogInformation(
+                "Keyframe request: invoking forceKeyFrame interop for stream {StreamId}, requestAt={RequestAt}",
+                ownStreamId, requestAt);
+            await _jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken).ConfigureAwait(false);
         }
     }
 
     private async Task SubscribeToDemand(ChatId chatId, CancellationToken cancellationToken) {
-        try {
-            Log.LogInformation("SubscribeToDemand: starting for ChatId={ChatId}", chatId);
-            var ownStreamId = await FindOwnStreamId(chatId, cancellationToken).ConfigureAwait(false);
-            if (ownStreamId == null) {
-                Log.LogWarning("SubscribeToDemand: own stream not found after polling for ChatId={ChatId}", chatId);
-                return;
-            }
+        await RunPerOwnStreamSubscription(
+            chatId, nameof(SubscribeToDemand), SubscribeToDemandCore, cancellationToken)
+            .ConfigureAwait(false);
+    }
 
-            Log.LogInformation("SubscribeToDemand: found own stream #{StreamId}, subscribing", ownStreamId);
+    private async Task SubscribeToDemandCore(StreamId ownStreamId, CancellationToken cancellationToken) {
+        try {
             var lastMask = int.MinValue;
             bool? lastThumbnailOnly = null;
             var failures = 0;
@@ -436,20 +424,72 @@ public sealed class VideoRecorder : IAsyncDisposable
     }
 #pragma warning restore CS0618
 
-    private async Task<StreamId?> FindOwnStreamId(ChatId chatId, CancellationToken cancellationToken) {
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (ownAuthor == null)
-            return null;
+    private async Task RunPerOwnStreamSubscription(
+        ChatId chatId,
+        string name,
+        Func<StreamId, CancellationToken, Task> subscribe,
+        CancellationToken cancellationToken)
+    {
+        // A recording's StreamId is NOT stable: any wire-sender restart (codec
+        // switch, reconnect, ladder rebuild) issues a fresh PushStream and the
+        // server mints a new id — viewers' demand/PLI state follows it, so a
+        // subscription pinned to the first id goes stale after the first restart.
+        // Tracks the own stream id reactively; restarts `subscribe` on change.
+        Log.LogInformation("{Name}: starting for ChatId={ChatId}", name, chatId);
+        Task? worker = null;
+        CancellationTokenSource? workerCts = null;
+        try {
+            var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (ownAuthor == null)
+                return;
 
-        for (var i = 0; i < 30; i++) { // poll up to 15s: registration is async
-            var streams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
-            var ownStream = streams.FirstOrDefault(s => s.AuthorId == ownAuthor.Id && s.SourceKind == Kind);
-            if (ownStream != default)
-                return ownStream.StreamId;
+            var currentStreamId = (StreamId?)null;
+            while (true) {
+                try {
+                    var cState = await Computed.Capture(
+                        () => ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken),
+                        cancellationToken).ConfigureAwait(false);
+                    await foreach (var (streams, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+                        var ownStream = streams.FirstOrDefault(
+                            s => s.AuthorId == ownAuthor.Id && s.SourceKind == Kind);
+                        var newStreamId = ownStream == default ? (StreamId?)null : ownStream.StreamId;
+                        if (newStreamId == currentStreamId)
+                            continue;
 
-            await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+                        Log.LogInformation(
+                            "{Name}: own stream {OldStreamId} → {NewStreamId}", name, currentStreamId, newStreamId);
+                        currentStreamId = newStreamId;
+                        workerCts.CancelAndDisposeSilently();
+                        if (worker != null)
+                            await worker.SilentAwait(false);
+                        worker = null;
+                        workerCts = null;
+                        if (newStreamId is { } streamId) {
+                            workerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                            var workerToken = workerCts.Token;
+                            worker = Task.Run(() => subscribe(streamId, workerToken), workerToken);
+                        }
+                    }
+                    return;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                    return;
+                }
+                catch (Exception e) {
+                    Log.LogWarning(e, "{Name}: stream watcher faulted, retrying", name);
+                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+                }
+            }
         }
-        return null;
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "{Name} failed", name);
+        }
+        finally {
+            workerCts.CancelAndDisposeSilently();
+            if (worker != null)
+                await worker.SilentAwait(false);
+        }
     }
 
 #pragma warning disable CS0618 // old-server fallback intentionally calls the obsolete method
