@@ -9,7 +9,7 @@
     "GoogleRegionId": "us-central1"
   },
   "RedisSettings": {
-    "DefaultRedis": "localhost|test_{instance.}{context}"
+    "DefaultRedis": "127.0.0.1|test_{instance.}{context}"
   },
   "DbSettings": {
     // "DefaultDb": "mysql:Server=localhost;Database=ac_{instance_}{context};Port=3306;User=root;Password=mariadb",
