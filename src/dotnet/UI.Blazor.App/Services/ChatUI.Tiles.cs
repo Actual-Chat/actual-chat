@@ -1,4 +1,3 @@
-using ActualChat.Kvas;
 using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -511,17 +510,13 @@ public partial class ChatUI
             if (audioRecordingEntry is not null) {
                 // Hide "Transcribing..." when a real transcription entry already exists
                 // (i.e., the last entry from this author is streaming content).
-                var lastEntry = entries.Count > 0 ? entries[^1] : null;
-                var hasTranscription = lastEntry is { IsContentStreaming: true, AuthorId: var authorId }
-                    && authorId == currentAuthorId;
-                if (!hasTranscription)
+                var hasPriorStreamingEntry = HasPriorStreamingEntry(entries, currentAuthorId!);
+                if (!hasPriorStreamingEntry)
                     entries.Add(audioRecordingEntry);
             }
         }
         if (entries.Count == 0 && conversations.Length == 0)
             return new VirtualListTile<ChatMessage>(lidRange);
-
-        IReadOnlyDictionary<ChatEntryId, string> indexDocIds = ImmutableDictionary<ChatEntryId, string>.Empty;
 
         var prevEntry = (ChatEntry?)null;
         var prevDate = prevMessage?.Date ?? DateOnly.MinValue;
@@ -944,6 +939,24 @@ public partial class ChatUI
 
         int actualOffset = (int)(isForward ? travelled : -travelled);
         return (currentId, actualOffset);
+    }
+
+    private static bool HasPriorStreamingEntry(IList<ChatEntry> entries, AuthorId ownAuthorId)
+    {
+        var j = 0;
+        for (var i = entries.Count - 1; i >= 0; i--) {
+            if (j > 50) // scan depth is 50 entries
+                break;
+            j++;
+            var entry = entries[i];
+            if (entry.AuthorId != ownAuthorId)
+                continue;
+            if (entry.IsContentStreaming)
+                return true;
+            if (entry.HasAudio)
+                return false;
+        }
+        return false;
     }
 
     // Nested types
