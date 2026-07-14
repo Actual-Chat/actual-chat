@@ -108,6 +108,7 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private AudioDiagnosticsUI AudioDiagnosticsUI => Hub.AudioDiagnosticsUI;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -134,9 +135,8 @@
         var isOwnVideoStreaming = ownSourceKind is not null;
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatchingHere = chat.Id == watchingChatId;
-        var canShowAudioDiagnostics = await Hub.AudioDiagnosticsUI.IsEnabled(cancellationToken).ConfigureAwait(false);
-        var model = new Model(audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere, canShowAudioDiagnostics);
-        return model;
+        var canShowAudioDiagnostics = await AudioDiagnosticsUI.IsEnabled(cancellationToken).ConfigureAwait(false);
+        return new (audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere, canShowAudioDiagnostics);
     }
 
     private void OnAudioDiagnosticsClick()
