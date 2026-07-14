@@ -127,10 +127,7 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     @apply cursor-pointer;
 }
 .live-location-banner .c-avatars {
-    @apply flex-x items-center;
-}
-.live-location-banner .c-avatars .avatar-circle:not(:first-child) {
-    @apply -ml-2;
+    @apply flex-none;
 }
 .live-location-banner .c-text {
     @apply text-text-1;

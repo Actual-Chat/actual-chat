@@ -19,11 +19,12 @@
     </Icon>
     <Body>
         <div class="c-body" @onclick="@OnClick">
-            <div class="c-avatars">
-                @foreach (var author in m.Authors.Take(MaxAvatars)) {
-                    <AvatarCircle Avatar="@author.Avatar" Size="@SquareSize.Size7"/>
-                }
-            </div>
+            <AuthorCircleGroup
+                Class="c-avatars"
+                MaxCount="@MaxAvatars"
+                Size="@SquareSize.Size7"
+                ShowRing="false"
+                AuthorIds="@m.AuthorIds"/>
             <div class="c-text">
                 <span class="c-description">@m.GetDescription()</span>
                 @if (!m.RemainingText.IsNullOrEmpty()) {
@@ -43,7 +44,6 @@
     private const int MaxAvatars = Constants.Location.MaxSharingAuthorsPerChat;
 
     private Chat Chat => ChatContext.Chat;
-    private ISharedLocations SharedLocations => Hub.SharedLocations;
     private LocationUI LocationUI => field ??= Hub.LocationUI;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
@@ -58,21 +58,14 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
-        var locations = await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (locations.Count == 0)
+        var participants = await LocationUI.ListParticipants(chatId, cancellationToken).ConfigureAwait(false);
+        if (participants.Count == 0)
             return Model.None;
 
-        var ownLive = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-        var authors = await LocationUI.ListAuthors(chatId, cancellationToken).ConfigureAwait(false);
         var remaining = await LocationUI.GetOwnTimeLeftText(chatId, cancellationToken).ConfigureAwait(false);
         var trackingError = await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false);
 
-        return new Model(
-            authors,
-            locations.Count,
-            ownLive is not null,
-            remaining,
-            trackingError);
+        return new Model(participants, remaining, trackingError);
     }
 
     private Task OnClick() {
@@ -88,14 +81,15 @@
     // Nested types
 
     public sealed record Model(
-        IReadOnlyList<Author> Authors,
-        int Count,
-        bool IsOwnSharing,
+        IReadOnlyList<LocationParticipant> Participants,
         string RemainingText = "",
         GeoTrackingError? TrackingError = null) {
-        public static readonly Model None = new([], 0, false);
+        public static readonly Model None = new([]);
 
         public bool IsTrackingBroken => TrackingError is not null;
+        public int Count => Participants.Count;
+        public bool IsOwnSharing => Participants.Any(x => x.IsOwn);
+        public IReadOnlyList<AuthorId> AuthorIds => [..Participants.Select(x => x.Author.Id)];
 
         public string GetErrorText()
             => TrackingError switch {
