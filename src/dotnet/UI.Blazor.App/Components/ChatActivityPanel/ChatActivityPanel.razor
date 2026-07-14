@@ -134,8 +134,7 @@
         var isOwnVideoStreaming = ownSourceKind is not null;
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatchingHere = chat.Id == watchingChatId;
-        var appSettings = await Hub.LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
-        var canShowAudioDiagnostics = appSettings.IsAudioDiagnosticsEnabledOrDefault || Hub.HostInfo.IsDevelopmentInstance;
+        var canShowAudioDiagnostics = await Hub.AudioDiagnosticsUI.IsEnabled(cancellationToken).ConfigureAwait(false);
         var model = new Model(audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere, canShowAudioDiagnostics);
         return model;
     }
