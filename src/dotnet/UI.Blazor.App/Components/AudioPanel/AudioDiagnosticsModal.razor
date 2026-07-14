@@ -44,8 +44,6 @@
         <div @ref="_copyTextSourceRef" class="diag-body-content" data-copy-source="innerText">
 
         @if (_activeTab == Tab.Session) {
-            @* Web Audio is only used on the web build; native apps play through the
-               native engine, so this section is hidden there. *@
             @if (!IsMaui) {
                 <div class="diag-section">
                     <div class="diag-section-header">Web Audio context</div>

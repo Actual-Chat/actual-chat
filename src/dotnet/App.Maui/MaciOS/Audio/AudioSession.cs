@@ -30,15 +30,13 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
 
     public AppleAudioSessionDiagnostics? GetDiagnostics()
     {
-        try
-        {
+        try {
             var session = AVAudioSession.SharedInstance();
             var outputs = session.CurrentRoute.Outputs;
             var routes = outputs.Select(output => $"{output.PortName} ({output.PortType})").ToList();
             return new AppleAudioSessionDiagnostics(session.Category, session.Mode, session.OtherAudioPlaying, routes);
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             Log.LogError(e, "Failed to get audio session diagnostics");
             return null;
         }
