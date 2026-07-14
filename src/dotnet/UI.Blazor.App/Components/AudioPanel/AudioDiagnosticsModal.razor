@@ -175,14 +175,16 @@
             <div class="diag-section">
                 <div class="diag-section-header">Recovery</div>
                 <Tile>
-                    <TileItem Click="@OnReactivateSession">
-                        <Content>Reactivate audio session</Content>
-                        <Caption>
-                            Re-runs the native audio-focus recovery
-                            (<code>AudioFocusUI.TryRecover</code>). Use when playback is
-                            stuck after an interruption.
-                        </Caption>
-                    </TileItem>
+                    @if (m.Focus.IsSupported) {
+                        <TileItem Click="@OnReactivateSession">
+                            <Content>Reactivate audio session</Content>
+                            <Caption>
+                                Re-runs the native audio-focus recovery
+                                (<code>AudioFocusUI.TryRecover</code>). Use when playback is
+                                stuck after an interruption.
+                            </Caption>
+                        </TileItem>
+                    }
                     @if (!IsMaui) {
                         <TileItem Click="@OnResumeContext">
                             <Content>Resume AudioContext</Content>
