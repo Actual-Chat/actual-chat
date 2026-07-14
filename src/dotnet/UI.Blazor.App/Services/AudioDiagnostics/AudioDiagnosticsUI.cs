@@ -19,11 +19,11 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
 
     // AutoInvalidationDelay unit is seconds.
     [ComputeMethod(AutoInvalidationDelay = 3)]
-    public virtual async Task<AudioDiagnosticsState> Get(CancellationToken cancellationToken)
+    public virtual async Task<AudioDiagnostics> Get(CancellationToken cancellationToken)
     {
         var focus = AudioFocusUI.GetDiagnostics();
         var web = await CollectWebAudioDiagnostics().ConfigureAwait(false);
-        return new AudioDiagnosticsState(focus, web);
+        return new AudioDiagnostics(focus, web);
     }
 
     [ComputeMethod]
@@ -56,7 +56,7 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
 /// A single Audio Diagnostics snapshot: the native audio-focus / session state and
 /// (web only) the Web Audio playback state. <see cref="Web"/> is null on native.
 /// </summary>
-public sealed record AudioDiagnosticsState(
+public sealed record AudioDiagnostics(
     AudioFocusDiagnostics Focus,
     WebAudioDiagnostics? Web);
 
@@ -65,8 +65,8 @@ public sealed record AudioDiagnosticsState(
 /// <see cref="Context"/> is null on native apps, which have no Web Audio pipeline.
 /// </summary>
 public sealed record WebAudioDiagnostics(
-    AudioContextDiagnostics? Context,
-    AudioPlayerDiagnostics[] Players)
+    WebAudioContextDiagnostics? Context,
+    WebAudioPlayerDiagnostics[] Players)
 {
     public bool Equals(WebAudioDiagnostics? other)
         => other is not null
@@ -77,7 +77,7 @@ public sealed record WebAudioDiagnostics(
         => HashCode.Combine(Context, Players.Length);
 }
 
-public sealed record AudioPlayerDiagnostics(
+public sealed record WebAudioPlayerDiagnostics(
     string InternalId,
     string? AuthorId,
     string PlaybackState,

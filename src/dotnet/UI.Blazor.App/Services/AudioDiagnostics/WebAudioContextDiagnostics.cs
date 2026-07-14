@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed record AudioContextDiagnostics(
+public sealed record WebAudioContextDiagnostics(
     string Purpose,
     string State,
     double? SampleRate,
