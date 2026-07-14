@@ -12,7 +12,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private static readonly string JSCollectMethod = $"{BlazorUIAppModule.ImportName}.collectAudioPlaybackDiagnostics";
+    private static readonly string JSCollectMethod = $"{BlazorUIAppModule.ImportName}.collectWebAudioDiagnostics";
     private static readonly string JSResumeContextMethod = $"{BlazorUIAppModule.ImportName}.audioDebugResumeContext";
 
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
@@ -23,8 +23,8 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     public virtual async Task<AudioDiagnosticsState> GetState(CancellationToken cancellationToken)
     {
         var focus = AudioFocusUI.GetDiagnostics();
-        var playback = await CollectPlaybackDiagnostics().ConfigureAwait(false);
-        return new AudioDiagnosticsState(focus, playback);
+        var web = await CollectWebAudioDiagnostics().ConfigureAwait(false);
+        return new AudioDiagnosticsState(focus, web);
     }
 
     public Task Reactivate(CancellationToken cancellationToken = default)
@@ -35,18 +35,18 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
 
     // Private methods
 
-    private async Task<AudioPlaybackDiagnostics?> CollectPlaybackDiagnostics()
+    private async Task<WebAudioDiagnostics?> CollectWebAudioDiagnostics()
     {
         if (!IsWebAudioUsed)
             return null;
-        return await JS.InvokeAsync<AudioPlaybackDiagnostics>(JSCollectMethod).ConfigureAwait(false);
+        return await JS.InvokeAsync<WebAudioDiagnostics>(JSCollectMethod).ConfigureAwait(false);
     }
 }
 
 /// <summary>
 /// A single Audio Diagnostics snapshot: the native audio-focus / session state and
-/// (web only) the Web Audio playback state. <see cref="Playback"/> is null on native.
+/// (web only) the Web Audio playback state. <see cref="Web"/> is null on native.
 /// </summary>
 public sealed record AudioDiagnosticsState(
     AudioFocusDiagnostics Focus,
-    AudioPlaybackDiagnostics? Playback);
+    WebAudioDiagnostics? Web);

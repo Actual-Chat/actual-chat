@@ -1,7 +1,7 @@
 import { AudioPlayer, type AudioPlayerDiagnostics } from '../AudioPlayer/audio-player';
 import { audioContextSource, type AudioContextSource, type AudioContextSourceDiagnostics } from '../../Services/audio-context-source';
 
-export interface AudioPlaybackDiagnostics {
+export interface WebAudioDiagnostics {
     // Null on the MAUI app, where playback is native and there is no Web Audio context.
     context: AudioContextSourceDiagnostics | null;
     players: AudioPlayerDiagnostics[];
@@ -9,7 +9,7 @@ export interface AudioPlaybackDiagnostics {
 
 // audioContextSource is `null!` on the MAUI app (native playback), so it must be
 // treated as nullable despite its declared type.
-export function collectAudioPlaybackDiagnostics(): AudioPlaybackDiagnostics {
+export function collectWebAudioDiagnostics(): WebAudioDiagnostics {
     const source = audioContextSource as AudioContextSource | null;
     return {
         context: source ? source.getDiagnostics() : null,
