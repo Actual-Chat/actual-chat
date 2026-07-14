@@ -139,32 +139,27 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         => Task.FromResult(SnapshotDemand(streamId).Stats);
 
     public virtual Task ReportDemand(
-        StreamId streamId, string sessionId, ReceiveQuality quality, CancellationToken cancellationToken = default)
+        StreamId streamId, string sessionId, ReceiveQuality? quality, CancellationToken cancellationToken = default)
     {
         ValidateStreamId(streamId);
         var prev = SnapshotDemand(streamId);
-        var demand = new SessionDemand(quality, Clocks.SystemClock.Now);
-        while (true) {
-            var sessions = _demandByStream.GetOrAdd(
-                streamId, static _ => new ConcurrentDictionary<string, SessionDemand>());
-            sessions[sessionId] = demand;
-            // The cleanup sweep may remove an emptied stream entry between
-            // GetOrAdd and the write; re-check so the write isn't orphaned.
-            if (_demandByStream.TryGetValue(streamId, out var current) && ReferenceEquals(current, sessions))
-                break;
+        if (quality is null) {
+            if (!(_demandByStream.TryGetValue(streamId, out var existing) && existing.TryRemove(sessionId, out _)))
+                return Task.CompletedTask;
+        }
+        else {
+            var demand = new SessionDemand(quality, Clocks.SystemClock.Now);
+            while (true) {
+                var sessions = _demandByStream.GetOrAdd(
+                    streamId, static _ => new ConcurrentDictionary<string, SessionDemand>());
+                sessions[sessionId] = demand;
+                // The cleanup sweep may remove an emptied stream entry between
+                // GetOrAdd and the write; re-check so the write isn't orphaned.
+                if (_demandByStream.TryGetValue(streamId, out var current) && ReferenceEquals(current, sessions))
+                    break;
+            }
         }
         InvalidateDemand(streamId, prev);
-        return Task.CompletedTask;
-    }
-
-    public virtual Task ClearDemand(StreamId streamId, string sessionId, CancellationToken cancellationToken = default)
-    {
-        ValidateStreamId(streamId);
-        if (_demandByStream.TryGetValue(streamId, out var sessions)) {
-            var prev = SnapshotDemand(streamId);
-            if (sessions.TryRemove(sessionId, out _))
-                InvalidateDemand(streamId, prev);
-        }
         return Task.CompletedTask;
     }
 

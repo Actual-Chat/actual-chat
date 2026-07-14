@@ -462,12 +462,12 @@ public class LiveVideoStreams : ILiveVideoStreams
         if (previous is not null)
             foreach (var (sid, _) in previous)
                 if (current is null || !current.ContainsKey(sid))
-                    tasks.Add(Clear(sid));
+                    tasks.Add(Report(sid, null)); // null = the viewer left this stream
         if (tasks.Count != 0)
             await Task.WhenAll(tasks).ConfigureAwait(false);
         return;
 
-        async Task Report(string sid, ReceiveQuality quality) {
+        async Task Report(string sid, ReceiveQuality? quality) {
             try {
                 await VideoStreamingBackend
                     .ReportDemand(StreamId.Parse(sid), session.Id, quality, cancellationToken)
@@ -475,17 +475,6 @@ public class LiveVideoStreams : ILiveVideoStreams
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogWarning(e, "ReportDemand failed for stream #{StreamId}", sid);
-            }
-        }
-
-        async Task Clear(string sid) {
-            try {
-                await VideoStreamingBackend
-                    .ClearDemand(StreamId.Parse(sid), session.Id, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogWarning(e, "ClearDemand failed for stream #{StreamId}", sid);
             }
         }
     }
