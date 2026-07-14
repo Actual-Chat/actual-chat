@@ -28,6 +28,9 @@ public interface IVideoStreamingBackend : IComputeService, IBackendService
     // from this single compute.
     [ComputeMethod]
     Task<StreamDemandInfo> DemandInfo(StreamId streamId, CancellationToken cancellationToken);
+    // Plain (non-compute) on purpose: the counters change on every viewer
+    // join/leave/pause; diagnostics poll this instead of subscribing.
+    Task<StreamDemandStats> GetDemandStats(StreamId streamId, CancellationToken cancellationToken);
 
     Task ReportDemand(
         StreamId streamId, string sessionId, ReceiveQuality quality, CancellationToken cancellationToken = default);

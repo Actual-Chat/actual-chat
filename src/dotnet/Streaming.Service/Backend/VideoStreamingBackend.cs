@@ -133,7 +133,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     // [ComputeMethod] - the single viewer-demand aggregate for this stream.
     public virtual Task<StreamDemandInfo> DemandInfo(StreamId streamId, CancellationToken cancellationToken)
-        => Task.FromResult(SnapshotDemand(streamId));
+        => Task.FromResult(SnapshotDemand(streamId).Info);
+
+    public virtual Task<StreamDemandStats> GetDemandStats(StreamId streamId, CancellationToken cancellationToken)
+        => Task.FromResult(SnapshotDemand(streamId).Stats);
 
     public virtual Task ReportDemand(
         StreamId streamId, string sessionId, ReceiveQuality quality, CancellationToken cancellationToken = default)
@@ -373,15 +376,15 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 $"Wrong mesh node: expected {ThisNode.Ref}, but got {streamId.NodeRef}.");
     }
 
-    private StreamDemandInfo SnapshotDemand(StreamId streamId)
+    private DemandSnapshot SnapshotDemand(StreamId streamId)
         => _demandByStream.TryGetValue(streamId, out var sessions)
             ? ComputeDemandSnapshot(sessions.Select(kv => kv.Value.Quality))
-            : StreamDemandInfo.None;
+            : DemandSnapshot.None;
 
     // Single pass shared by all demand aggregates: mask is the OR of
     // 1 << LayerId; thumbnail-only is "any active viewer, and every active
     // (non-paused) viewer displays the stream as a thumbnail".
-    internal static StreamDemandInfo ComputeDemandSnapshot(IEnumerable<ReceiveQuality> qualities)
+    internal static DemandSnapshot ComputeDemandSnapshot(IEnumerable<ReceiveQuality> qualities)
     {
         var mask = 0;
         var viewerCount = 0;
@@ -400,12 +403,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 allThumbnail = false;
         }
         var anyActive = viewerCount > pausedCount;
-        return new StreamDemandInfo(mask, viewerCount, pausedCount, anyActive && allThumbnail);
+        return new DemandSnapshot(mask, anyActive && allThumbnail, viewerCount, pausedCount);
     }
 
-    private void InvalidateDemand(StreamId streamId, StreamDemandInfo prev)
+    private void InvalidateDemand(StreamId streamId, DemandSnapshot prev)
     {
-        if (SnapshotDemand(streamId) == prev)
+        // Only the functional part gates invalidation: the provenance counters
+        // change on every viewer join/leave/pause and are pull-only (GetDemandStats).
+        if (SnapshotDemand(streamId).Info == prev.Info)
             return;
 
         using (Invalidation.Begin())
@@ -434,4 +439,13 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     // Nested types
 
     private sealed record SessionDemand(ReceiveQuality Quality, Moment UpdatedAt);
+
+    internal readonly record struct DemandSnapshot(
+        int Mask, bool ThumbnailViewersOnly, int ViewerCount, int PausedCount)
+    {
+        public static readonly DemandSnapshot None = default;
+
+        public StreamDemandInfo Info => new(Mask, ThumbnailViewersOnly);
+        public StreamDemandStats Stats => new(ViewerCount, PausedCount);
+    }
 }

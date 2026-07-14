@@ -36,34 +36,34 @@ public class LiveVideoStreamsTest
     public void ComputeDemandSnapshot_ZeroViewersIsEmpty()
     {
         // act
-        var info = VideoStreamingBackend.ComputeDemandSnapshot([]);
+        var snapshot = VideoStreamingBackend.ComputeDemandSnapshot([]);
 
         // assert
-        info.Should().Be(StreamDemandInfo.None);
+        snapshot.Should().Be(VideoStreamingBackend.DemandSnapshot.None);
     }
 
     [Fact]
     public void ComputeDemandSnapshot_SingleThumbnailViewerIsThumbnailOnly()
     {
         // act
-        var info = VideoStreamingBackend.ComputeDemandSnapshot(
+        var snapshot = VideoStreamingBackend.ComputeDemandSnapshot(
             [new ReceiveQuality(0, isThumbnail: true)]);
 
         // assert
-        info.Should().Be(new StreamDemandInfo(1, 1, 0, true));
+        snapshot.Should().Be(new VideoStreamingBackend.DemandSnapshot(1, true, 1, 0));
     }
 
     [Fact]
     public void ComputeDemandSnapshot_AnyLargeViewerIsNotThumbnailOnly()
     {
         // act
-        var info = VideoStreamingBackend.ComputeDemandSnapshot([
+        var snapshot = VideoStreamingBackend.ComputeDemandSnapshot([
             new ReceiveQuality(0, isThumbnail: true),
             new ReceiveQuality(2),
         ]);
 
         // assert
-        info.Should().Be(new StreamDemandInfo(0b101, 2, 0, false));
+        snapshot.Should().Be(new VideoStreamingBackend.DemandSnapshot(0b101, false, 2, 0));
     }
 
     [Fact]
@@ -74,8 +74,8 @@ public class LiveVideoStreamsTest
                 new ReceiveQuality(0, isThumbnail: true),
                 ReceiveQuality.Paused,
             ])
-            .Should().Be(new StreamDemandInfo(1, 2, 1, true));
+            .Should().Be(new VideoStreamingBackend.DemandSnapshot(1, true, 2, 1));
         VideoStreamingBackend.ComputeDemandSnapshot([ReceiveQuality.Paused])
-            .Should().Be(new StreamDemandInfo(0, 1, 1, false));
+            .Should().Be(new VideoStreamingBackend.DemandSnapshot(0, false, 1, 1));
     }
 }

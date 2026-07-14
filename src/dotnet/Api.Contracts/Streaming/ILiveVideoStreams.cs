@@ -23,25 +23,28 @@ public interface ILiveVideoStreams : IComputeService
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<Moment> LastKeyframeRequestAt(Session session, StreamId streamId, CancellationToken cancellationToken);
 
-    // Max ReceiveQuality.LayerId across all subscribers; -1 = none subscribed.
-    // Superseded by RequestedLayersMask; kept for older clients.
+    [Obsolete("2026.07: Use DemandInfo. Old clients only.")]
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<int> MaxRequestedLayerId(Session session, StreamId streamId, CancellationToken cancellationToken);
 
-    // Demanded-layer bitmask across all subscribers (bit i = canonical ladder
-    // index i is wanted; 0 = none subscribed) — the recorder skips undemanded tiers.
+    [Obsolete("2026.07: Use DemandInfo. Old clients only.")]
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<int> RequestedLayersMask(Session session, StreamId streamId, CancellationToken cancellationToken);
 
-    // True iff at least one active (non-paused) viewer exists and every one
-    // reports ReceiveQuality.IsThumbnail — the sender may shed fps. Zero viewers → false.
+    [Obsolete("2026.07: Use DemandInfo. Old clients only.")]
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<bool> ThumbnailViewersOnly(Session session, StreamId streamId, CancellationToken cancellationToken);
 
-    // Full demand aggregate (mask + viewer/paused counts) for the publisher's
-    // diagnostics — makes an empty mask attributable (no reports vs. all paused).
+    // The viewer-demand aggregate: layer bitmask (bit i = canonical ladder
+    // index i is wanted; 0 = none subscribed) + thumbnail-only ("every active
+    // viewer displays this stream as a thumbnail" — the sender may shed fps).
+    // Replaces the three per-question methods above.
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<StreamDemandInfo> DemandInfo(Session session, StreamId streamId, CancellationToken cancellationToken);
+
+    // Demand provenance for diagnostics (poll-only; deliberately not a compute
+    // method — see StreamDemandStats).
+    Task<StreamDemandStats> GetDemandStats(Session session, StreamId streamId, CancellationToken cancellationToken);
 
     Task RegisterMember(
         Session session, ChatId chatId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken);

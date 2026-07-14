@@ -163,11 +163,7 @@
                                         var dFps = (int)GetNum(stream, "targetFps");
                                         var dSpeaking = GetBool(stream, "isSpeaking");
                                         var dIdleCollapse = GetBool(stream, "idleCollapseActive");
-                                        // GetNum yields 0 for a missing field; distinguish "field absent /
-                                        // no server aggregate yet" (-1) from a real 0-viewer report.
-                                        var dViewers = stream.TryGetProperty("demandViewerCount", out var dv)
-                                            && dv.ValueKind == JsonValueKind.Number ? dv.GetInt32() : -1;
-                                        var dPaused = (int)GetNum(stream, "demandPausedCount");
+                                        var dStats = _demandStatsByKind.GetValueOrDefault(kind);
                                     }
                                     <div class="diag-group-header">Demand</div>
                                     <div class="diag-row">
@@ -176,7 +172,7 @@
                                     </div>
                                     <div class="diag-row">
                                         <span class="diag-label">Viewers</span>
-                                        <span class="diag-value">@(dViewers < 0 ? "no aggregate from server yet" : $"{dViewers} reporting ({dPaused} paused)")</span>
+                                        <span class="diag-value">@(dStats is null ? "no aggregate from server yet" : $"{dStats.ViewerCount} reporting ({dStats.PausedCount} paused)")</span>
                                     </div>
                                     <div class="diag-row">
                                         <span class="diag-label">Active layers</span>
@@ -721,6 +717,7 @@
 
     private Timer? _pollTimer;
     private readonly Dictionary<VideoSourceKind, JsonElement> _ownDiagByKind = new();
+    private readonly Dictionary<VideoSourceKind, StreamDemandStats> _demandStatsByKind = new();
     private readonly Dictionary<string, JsonElement> _streamDiags = new();
     private double? _jsServerClockOffsetMs;
     private (double PresentsPerSec, double SlotsPerSec, int VideoCount)? _presentRate;
@@ -989,7 +986,19 @@
             }
 
             foreach (var entry in State.Value.Streams) {
-                if (entry.IsOwn) continue;
+                if (entry.IsOwn) {
+                    // Demand provenance is pull-only by design (see StreamDemandStats) —
+                    // fetched here instead of subscribing so the counters' churn can't
+                    // drive invalidations. Old servers throw → row shows "no aggregate".
+                    try {
+                        _demandStatsByKind[entry.Info.SourceKind] = await Hub.LiveVideoStreams
+                            .GetDemandStats(Session, entry.Info.StreamId, CancellationToken.None);
+                    } catch {
+                        _demandStatsByKind.Remove(entry.Info.SourceKind);
+                    }
+                    continue;
+                }
+
                 var streamId = entry.Info.StreamId.Value;
                 var diag = await JS.InvokeAsync<JsonElement>(JSCollectRemoteMethod, streamId);
                 if (diag.ValueKind == JsonValueKind.Object) {

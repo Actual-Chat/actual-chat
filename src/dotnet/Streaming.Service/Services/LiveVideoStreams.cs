@@ -250,6 +250,12 @@ public class LiveVideoStreams : ILiveVideoStreams
         CancellationToken cancellationToken)
         => await VideoStreamingBackend.DemandInfo(streamId, cancellationToken).ConfigureAwait(false);
 
+    public Task<StreamDemandStats> GetDemandStats(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+        => VideoStreamingBackend.GetDemandStats(streamId, cancellationToken);
+
     public async Task PushStream(
         Session session,
         string chatId,
