@@ -90,9 +90,11 @@ const VAD_FPS_HOLD_MS = 2000;
 // The thumbnail shed arms only after the server aggregate holds this long
 // (focus flips shouldn't flap the rate); any large viewer disarms instantly.
 const THUMBNAIL_SHED_DELAY_MS = 4000;
-// Capture renegotiation target while the thumbnail shed holds: the mobile
-// camera ISP/stabilization pipeline burns more than encode+render combined,
-// so pace the capture itself. 15, not THUMBNAIL_FPS: Android modes are 15/30.
+// Capture renegotiation target while the thumbnail shed holds: the camera
+// ISP/stabilization pipeline burns more than encode+render combined (worst on
+// mobile, still real on desktop — every captured frame is copied and shuffled
+// through the worker before temporalPace discards it). 15, not THUMBNAIL_FPS:
+// Android modes are 15/30, and the temporalPace decimates the rest anyway.
 const CAPTURE_SHED_FPS = 15;
 // No viewer wants any tier (all subscribers gone or paused) this long → collapse
 // the encoder to the bottom tier only. Held to ride out momentary demand gaps;
@@ -1642,14 +1644,14 @@ export class VideoRecorder {
     // Capture-fps follower: while the encode target sits at thumbnail rate,
     // renegotiate the camera itself down to CAPTURE_SHED_FPS so the vendor
     // ISP/stabilization pipeline sheds too; restore on any higher demand.
-    // Mobile cameras only: desktop capture is cheap, screencast tracks are
-    // paced by the source, and the Safari clone path can't be constrained
-    // from here (see workerSourceUsesClone). The diagnostics override pins
-    // the rate on any platform, bypassing demand.
+    // All camera platforms: applyFrameRate uses an `ideal` constraint (never
+    // rejects) and temporalPace stays the instant authority, so a driver that
+    // ignores the request just keeps feeding frames temporalPace discards.
+    // Screencast tracks are paced by the source, and the Safari clone path
+    // can't be constrained from here (see workerSourceUsesClone). The
+    // diagnostics override pins the rate, bypassing demand.
     private paceCaptureFps(targetFps: number): void {
         const override = getCaptureFpsOverride();
-        if (override === null && !DeviceInfo.isMobile)
-            return;
         if (this.currentMode !== 'camera'
             || this.captureFpsUnsupported
             || this.captureFpsBusy
