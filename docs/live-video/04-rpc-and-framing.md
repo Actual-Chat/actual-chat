@@ -58,8 +58,8 @@ Built in `streaming/push-to-pull-buffer.ts` via
 |---|---|---|
 | `isRealTime` | `true` | `api.ts:101` |
 | `allowReconnect` | `true` | same |
-| `ackPeriod` | `floor(targetBufferSize / 3)` ≈ 3 frames | `app-constants.ts:342` |
-| `ackAdvance` | `targetBufferSize` (10) | same |
+| `ackPeriod` | `floor(targetBufferSize / 3)` = 2 frames | `app-constants.ts` (`expandVideo`) |
+| `ackAdvance` | `ceil(frameRate × 1.5)` = 45 bundles — BDP-sized: credits are per bundle, so throughput ≤ `ackAdvance / RTT`; 1.5 s of frames sustains 30 fps up to ~750 ms RTT | same |
 | `bufferSize` | `senderBufferSize ≈ keyFramePeriodSize × 4/3` (~120 source moments) | same |
 | `canSkipTo` | `bundle ⇒ bundle.Layers[0].IsKeyFrame` | `api.ts:111` |
 

@@ -71,23 +71,12 @@ export interface VideoConstants {
     readonly maxBufferSize: number;              // targetBufferSize + bufferHysteresisSize
     readonly serverReplayTailSize: number;       // frameRate * serverReplayTailDurationMs / 1000
     readonly rpcStreamAckPeriod: number;         // floor(targetBufferSize / 3)
-    readonly rpcStreamAckAdvance: number;        // targetBufferSize
-    /**
-     * RPC sender's local buffer (in source moments / bundles). Sized to
-     * one keyframe interval × 1.33, so the sender's canSkipTo=isKeyFrame
-     * compaction has room to skip past at least one full GOP without
-     * wedging on a slow ACK. Fusion's pump fills this buffer
-     * continuously while connected — capture drains into it regardless
-     * of whether the wire window is open. Wired to RpcStreamOptions
-     * `bufferSize` via {@link MediaRpcStreamOptions.videoRecording}.
-     */
+    readonly rpcStreamAckAdvance: number;        // ceil(frameRate * 1.5) — BDP-sized credit window
+    // RPC sender's local ring (in bundles), one GOP × 1.33 so canSkipTo=isKeyFrame
+    // compaction can skip a full GOP without wedging on a slow ACK.
     readonly senderBufferSize: number;           // ceil(keyFramePeriodSize * 1.33)
-    /**
-     * push-to-pull-buffer (capture-side rendezvous Denque) capacity.
-     * One source moment per slot. ≈ 1 s at frameRate. The flood gate
-     * closes when this queue reaches half capacity and reopens at a
-     * quarter — propagates backpressure to the capture source.
-     */
+    // Capture-side rendezvous Denque capacity (≈ 1s); the flood gate closes at
+    // half capacity and reopens at a quarter, backpressuring the capture source.
     readonly pushPullBufferSize: number;         // frameRate
 }
 
@@ -261,10 +250,18 @@ let initialized = false;
 
 export function parseVideoCodecKind(codec: string): VideoCodecKind {
     const c = codec.trim().toLowerCase();
-    if (c.startsWith('avc1') || c.startsWith('h264')) return VideoCodecKind.H264;
-    if (c.startsWith('hev1') || c.startsWith('hvc1') || c.startsWith('hevc') || c.startsWith('h265')) return VideoCodecKind.Hevc;
-    if (c.startsWith('vp09') || c.startsWith('vp9')) return VideoCodecKind.Vp9;
-    if (c.startsWith('av01') || c.startsWith('av1')) return VideoCodecKind.Av1;
+    if (c.startsWith('avc1') || c.startsWith('h264'))
+        return VideoCodecKind.H264;
+
+    if (c.startsWith('hev1') || c.startsWith('hvc1') || c.startsWith('hevc') || c.startsWith('h265'))
+        return VideoCodecKind.Hevc;
+
+    if (c.startsWith('vp09') || c.startsWith('vp9'))
+        return VideoCodecKind.Vp9;
+
+    if (c.startsWith('av01') || c.startsWith('av1'))
+        return VideoCodecKind.Av1;
+
     return VideoCodecKind.Unknown;
 }
 
@@ -326,8 +323,8 @@ export function initAppConstants(appConstants: AppConstants): void {
 }
 
 // Computes derived video fields from the .NET-supplied base values.
-// Kept module-private — consumers see the expanded `VideoConstants` shape via `VIDEO`.
-function expandVideo(video: VideoConstants): VideoConstants {
+// Exported for tests; runtime consumers see the expanded shape via `VIDEO`.
+export function expandVideo(video: VideoConstants): VideoConstants {
     const { frameRate, targetBufferSize, keyFramePeriodMs, serverReplayTailDurationMs } = video;
     const bufferHysteresisSize = Math.floor(targetBufferSize / 2);
     const keyFramePeriodSize = Math.round(frameRate * keyFramePeriodMs / 1000);
@@ -341,7 +338,9 @@ function expandVideo(video: VideoConstants): VideoConstants {
         maxBufferSize: targetBufferSize + bufferHysteresisSize,
         serverReplayTailSize: Math.round(frameRate * serverReplayTailDurationMs / 1000),
         rpcStreamAckPeriod: Math.floor(targetBufferSize / 3),
-        rpcStreamAckAdvance: targetBufferSize,
+        // Throughput ≤ ackAdvance / RTT (credits are per bundle, not per byte),
+        // so the window must cover the BDP: 1.5s of frames rides out ~750ms RTT.
+        rpcStreamAckAdvance: Math.ceil(frameRate * 1.5),
         senderBufferSize: Math.ceil(keyFramePeriodSize * 4 / 3),
         pushPullBufferSize: frameRate,
     };
