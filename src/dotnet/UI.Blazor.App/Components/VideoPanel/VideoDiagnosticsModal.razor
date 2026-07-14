@@ -1104,6 +1104,7 @@
             + $"encQueueDepth={stats.EncodeQueueDepthEma:F2}, "
             + $"ackAge={FormatAckAge(stats.LastAckAgeMs)}, "
             + $"minRtt={FormatAckAge(stats.WireMinRttMs)}, "
+            + $"ringDepth={stats.WireRingDepthEma:F1}, "
             + $"dropRatioEma={stats.SenderFrameDropRatioEma:F2}, "
             + $"connected={(stats.IsConnected ? "yes" : "no")}";
 

@@ -97,7 +97,9 @@ const CAPTURE_SHED_FPS = 15;
 // No viewer wants any tier (all subscribers gone or paused) this long → collapse
 // the encoder to the bottom tier only. Held to ride out momentary demand gaps;
 // any demand restores instantly. fps is left alone so the self-preview stays smooth.
-const IDLE_COLLAPSE_DELAY_MS = 4000;
+// Must exceed 2× the viewers' steady QC re-report interval (QcSteadyInterval = 5s):
+// a single transient mask=0 must not outlast the next re-assertion.
+const IDLE_COLLAPSE_DELAY_MS = 12_000;
 // Keep encoding a tier this long after its last viewer demand disappears.
 // Additions are immediate (a starving viewer must not wait); drops are lazy so
 // group-chat joins and focus flips don't churn the encoder set — every reshape
@@ -2740,7 +2742,8 @@ export class VideoRecorder {
                 this.windowDownscaleTimeMsMax,
                 stats.keepAliveFramesInjected,
                 this.currentCodecHardwareAccel,
-                stats.wireMinRttMs);
+                stats.wireMinRttMs,
+                stats.wireRingDepthEma);
         } catch (e) {
             warnLog?.log('reportRecorderStats failed:', e);
         } finally {

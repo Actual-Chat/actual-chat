@@ -87,6 +87,7 @@ class StatsSender extends FakeSender {
         floodGateSkipCount: 0,
         lastAckAgeMs: -1,
         minRttMs: -1,
+        ringDepth: 0,
         isPeerConnected: false,
         ackedBytes: 0,
     };

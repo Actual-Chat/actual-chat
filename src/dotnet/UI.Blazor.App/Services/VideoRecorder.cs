@@ -10,6 +10,10 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public sealed class VideoRecorder : IAsyncDisposable
 {
+    // Demand invalidation is edge-only; re-assert the current aggregate this
+    // often so a push lost anywhere along the chain heals without an edge.
+    private static readonly TimeSpan DemandReassertPeriod = TimeSpan.FromSeconds(30);
+
     private readonly TaskCompletionSource _whenStartedTaskCompletionSource = TaskCompletionSourceExt.New();
     private readonly TaskCompletionSource _whenStoppedTaskCompletionSource = TaskCompletionSourceExt.New();
     private readonly CancellationTokenSource _maintenanceCts = new ();
@@ -302,28 +306,43 @@ public sealed class VideoRecorder : IAsyncDisposable
                     var cState = await Computed.Capture(
                         () => LiveVideoStreams.DemandInfo(Session, ownStreamId, cancellationToken),
                         cancellationToken).ConfigureAwait(false);
-                    await foreach (var (info, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+                    while (true) {
+                        cState = await cState.Update(cancellationToken).ConfigureAwait(false);
+                        var info = cState.Value;
                         everWorked = true;
                         failures = 0;
+                        // Dedupe state advances only AFTER a successful JS push:
+                        // a failed interop call must be retried, not swallowed.
                         if (info.Mask != lastMask) {
-                            lastMask = info.Mask;
                             Log.LogInformation(
                                 "DemandInfo: stream {StreamId} → mask {Mask:b}", ownStreamId, info.Mask);
                             await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, info.Mask)
                                 .ConfigureAwait(false);
+                            lastMask = info.Mask;
                         }
                         // Camera only: screencast never sheds fps.
                         if (Kind == VideoSourceKind.Camera && info.ThumbnailViewersOnly != lastThumbnailOnly) {
-                            lastThumbnailOnly = info.ThumbnailViewersOnly;
                             Log.LogInformation(
                                 "DemandInfo: stream {StreamId} → thumbnailOnly {Value}",
                                 ownStreamId, info.ThumbnailViewersOnly);
                             await _jsRef
                                 .InvokeVoidAsync("setThumbnailOnly", cancellationToken, info.ThumbnailViewersOnly)
                                 .ConfigureAwait(false);
+                            lastThumbnailOnly = info.ThumbnailViewersOnly;
+                        }
+                        try {
+                            await cState.WhenInvalidated(cancellationToken)
+                                .WaitAsync(DemandReassertPeriod, cancellationToken)
+                                .ConfigureAwait(false);
+                        }
+                        catch (TimeoutException) {
+                            // Invalidation is edge-only, so a push lost anywhere along
+                            // the chain would otherwise stay wrong until the aggregate
+                            // happens to change — re-assert the current value instead.
+                            lastMask = int.MinValue;
+                            lastThumbnailOnly = null;
                         }
                     }
-                    return;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                     throw;
@@ -373,10 +392,10 @@ public sealed class VideoRecorder : IAsyncDisposable
                     if (mask == lastMask)
                         continue;
 
-                    lastMask = mask;
                     Log.LogInformation(
                         "RequestedLayersMask (legacy): stream {StreamId} → {Mask:b}", ownStreamId, mask);
                     await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
+                    lastMask = mask;
                 }
                 return;
             }
@@ -408,11 +427,11 @@ public sealed class VideoRecorder : IAsyncDisposable
             if (maxLayerId == lastMax)
                 continue;
 
-            lastMax = maxLayerId;
             var mask = maxLayerId < 0 ? 0 : (1 << (maxLayerId + 1)) - 1;
             Log.LogInformation(
                 "MaxRequestedLayerId (fallback): stream {StreamId} → {MaxLayerId}", ownStreamId, maxLayerId);
             await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
+            lastMax = maxLayerId;
         }
     }
 #pragma warning restore CS0618
@@ -454,11 +473,11 @@ public sealed class VideoRecorder : IAsyncDisposable
                     if (thumbnailOnly == lastValue)
                         continue;
 
-                    lastValue = thumbnailOnly;
                     Log.LogInformation(
                         "ThumbnailViewersOnly (legacy): stream {StreamId} → {Value}", ownStreamId, thumbnailOnly);
                     await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, thumbnailOnly)
                         .ConfigureAwait(false);
+                    lastValue = thumbnailOnly;
                 }
                 return;
             }
@@ -632,7 +651,8 @@ public sealed class VideoRecorder : IAsyncDisposable
             double downscaleTimeMsMax = -1,
             int keepAliveFramesInjected = 0,
             bool isHardwareAccelerated = false,
-            double wireMinRttMs = -1)
+            double wireMinRttMs = -1,
+            double wireRingDepthEma = -1)
         {
             var dropTrace = new Dictionary<FrameDropStage, int>(dropStages.Length);
             for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
@@ -659,7 +679,8 @@ public sealed class VideoRecorder : IAsyncDisposable
                 DownscaleTimeMsMax: downscaleTimeMsMax,
                 KeepAliveFramesInjected: keepAliveFramesInjected,
                 IsHardwareAccelerated: isHardwareAccelerated,
-                WireMinRttMs: wireMinRttMs));
+                WireMinRttMs: wireMinRttMs,
+                WireRingDepthEma: wireRingDepthEma));
         }
     }
 }

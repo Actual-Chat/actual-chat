@@ -62,6 +62,9 @@ export interface RecorderStats {
     wireLastAckAgeMs: number;
     // Windowed-min ack round trip (ms, -1 until sampled) ≈ propagation RTT.
     wireMinRttMs: number;
+    // EMA of the RpcStream ring occupancy (bundles) — the earliest outbound
+    // backpressure signal. -1 == not yet sampled. Maintained by wireSend.
+    wireRingDepthEma: number;
     isPeerConnected: boolean;
     // Cumulative bytes drained out of the wire send buffer (handed to the
     // RpcStream as it pulls, gated by the ack-window). While the buffer is
@@ -180,6 +183,7 @@ export function createEmptyRecorderStats(): RecorderStats {
         downscaleTimeMsMax: 0,
         wireLastAckAgeMs: -1,
         wireMinRttMs: -1,
+        wireRingDepthEma: -1,
         isPeerConnected: false,
         wireAckedBytes: 0,
         encodeQueueDepthEma: -1,

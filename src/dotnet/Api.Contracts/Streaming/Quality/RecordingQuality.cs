@@ -93,7 +93,11 @@ public sealed record RecorderStats(
     bool IsHardwareAccelerated = false,
     // Windowed-min ack round trip on the publisher RpcStream (ms, -1 until
     // sampled) ≈ propagation RTT — the baseline for RTT-relative QC gates.
-    double WireMinRttMs = -1)
+    double WireMinRttMs = -1,
+    // EMA of the RpcStream local ring occupancy (bundles, -1 until sampled) —
+    // the earliest outbound-backpressure signal (the ring absorbs ~4s of
+    // backlog before the Denque behind WireQueueDepthEma even starts filling).
+    double WireRingDepthEma = -1)
 {
     private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
         = new Dictionary<FrameDropStage, int>();

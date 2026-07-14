@@ -7,7 +7,7 @@ import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
 import { RpcStream } from 'actuallab-rpc';
-import { VIDEO } from 'app-constants';
+import { computeUplinkAckAdvance, VIDEO } from 'app-constants';
 import { Api, MediaRpcStreamOptions, streamingApi, toMoment,
     type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto,
     type VideoFrameBundleDto, type VideoFrameDto } from 'api';
@@ -26,6 +26,10 @@ const { infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 // '~' = Session.Default, resolved from the WebSocket connection context.
 const RPC_SESSION_DEFAULT = '~';
+
+// Last measured uplink min-RTT (ms, -1 = never measured). Survives stream
+// restarts so the next stream's credit window is sized for the real link.
+let lastUplinkMinRttMs = -1;
 
 export interface StreamingContext {
     chatId: string;
@@ -135,6 +139,7 @@ export interface WireSenderStats extends StreamSenderStats {
     floodGateSkipCount: number;
     lastAckAgeMs: number;
     minRttMs: number;
+    ringDepth: number;
     isPeerConnected: boolean;
 }
 
@@ -165,7 +170,9 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         readonly skipCount: number;
         readonly minRttMs: number;
         onAckProcessed?: () => void;
+        onBuffered?: (bufferedCount: number) => void;
     } | null = null;
+    let ringDepth = 0;
     let lastAckAtMs = -1;
     let isCompleted = false;
     let isDisposed = false;
@@ -201,6 +208,15 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                 SourceSize: { Width: format.sourceWidth, Height: format.sourceHeight },
             };
 
+            const streamOptions = {
+                ...MediaRpcStreamOptions.videoRecording<VideoFrameBundleDto>(isVideoFrameBundleDtoKeyFrame),
+                ackAdvance: computeUplinkAckAdvance(
+                    VIDEO.frameRate, lastUplinkMinRttMs, VIDEO.rpcStreamAckAdvance, VIDEO.senderBufferSize),
+            };
+            if (streamOptions.ackAdvance !== VIDEO.rpcStreamAckAdvance)
+                infoLog?.log(`createWireSender: ackAdvance=${streamOptions.ackAdvance} ` +
+                    `(minRtt=${lastUplinkMinRttMs.toFixed(0)}ms)`);
+
             // allowReconnect=true keeps the sender alive across same-peer WS
             // reconnects; resume via $sys.Ack(MustReset=true). On peer-change,
             // disposed via sharedObjects.disconnectAll().
@@ -215,13 +231,14 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                                 floodGate.open();
                             yield bundleToDto(bundle);
                         }
+
                         if (isCompleted)
                             return;
 
                         await frameAdded.whenNextVoid();
                     }
                 })(),
-                MediaRpcStreamOptions.videoRecording<VideoFrameBundleDto>(isVideoFrameBundleDtoKeyFrame),
+                streamOptions,
             );
 
             const streamRef = stream.toRef(peer);
@@ -230,6 +247,15 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                 rpcStreamSender.onAckProcessed = () => {
                     lastAckAtMs = Date.now();
                     rpcStreamSkipped = rpcStreamSender?.skipCount ?? rpcStreamSkipped;
+                    const minRttMs = rpcStreamSender?.minRttMs ?? -1;
+                    if (minRttMs >= 0)
+                        lastUplinkMinRttMs = minRttMs;
+                };
+                // The ring absorbs ~4s of backlog before the Denque even starts
+                // filling, so its occupancy is the EARLIEST outbound-backpressure
+                // signal — queueDepth only moves after the ring saturates.
+                rpcStreamSender.onBuffered = bufferedCount => {
+                    ringDepth = bufferedCount;
                 };
             }
             if (isCompleted) {
@@ -329,6 +355,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         floodGateSkipCount: floodGate.skipCount,
         lastAckAgeMs: lastAckAtMs >= 0 ? Date.now() - lastAckAtMs : -1,
         minRttMs: rpcStreamSender?.minRttMs ?? -1,
+        ringDepth,
         // Gate on !lastError too — without it, a stream-create rejection
         // (auth/permission) would still report connected because the RPC peer is healthy.
         isPeerConnected: Api.peer.isConnected && !lastError,

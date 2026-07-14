@@ -210,12 +210,15 @@ public sealed partial class VideoQualityUI
         long ackedBytesPerSec = 0;
         var sampleAt = CpuTimestamp.Now;
         var fusedMinRttMs = -1.0;
+        var fusedRingDepth = 0.0;
         foreach (var (k, stats) in _lastRecorderStatsByKind) {
             fusedDropRatio = Math.Max(fusedDropRatio, stats.SenderFrameDropRatioEma);
             if (stats.LastAckAgeMs >= 0)
                 fusedAckAgeMs = Math.Max(fusedAckAgeMs, stats.LastAckAgeMs);
             if (stats.WireMinRttMs >= 0)
                 fusedMinRttMs = fusedMinRttMs < 0 ? stats.WireMinRttMs : Math.Min(fusedMinRttMs, stats.WireMinRttMs);
+            if (stats.WireRingDepthEma >= 0)
+                fusedRingDepth = Math.Max(fusedRingDepth, stats.WireRingDepthEma);
             fusedEncodeDeficit = Math.Max(fusedEncodeDeficit, stats.EncodeDeficitEma);
             if (stats.EncodeQueueDepthEma >= 0)
                 fusedEncodeQueueDepth = Math.Max(fusedEncodeQueueDepth, stats.EncodeQueueDepthEma);
@@ -342,7 +345,8 @@ public sealed partial class VideoQualityUI
             + FormatBadAttribution(encoderHealth.BadSignals, encoderHealth.BadFreeStreak, encoderHealth.BadRecoverAtStreak);
         var rawB = $"ack={(fusedAckAgeMs < 0 ? "n/a" : fusedAckAgeMs.ToString("F0") + "ms")}"
             + $" rtt={(fusedMinRttMs < 0 ? "n/a" : fusedMinRttMs.ToString("F0") + "ms")}"
-            + $" drop={fusedDropRatio:F2} qd={fusedWireQueueDepth:F1} flood={fusedFloodSkipPerSec:F1}"
+            + $" drop={fusedDropRatio:F2} qd={fusedWireQueueDepth:F1} ring={fusedRingDepth:F1}"
+            + $" flood={fusedFloodSkipPerSec:F1}"
             + FormatBadAttribution(uplinkHealth.BadSignals, uplinkHealth.BadFreeStreak, uplinkHealth.BadRecoverAtStreak);
         var rawBw = $"{(_outboundBwEstimator.LastVerdict == BandwidthVerdict.Good ? "↑" : _outboundBwEstimator.LastVerdict == BandwidthVerdict.Bad ? "↓" : "=")}{ceilingKbps}/cur {currentKbps} kbps"
             + anchorNote;

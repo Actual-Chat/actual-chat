@@ -81,6 +81,8 @@ export interface StreamSenderStats {
     lastAckAgeMs: number;
     // Windowed-min ack round trip (ms, -1 until sampled) ≈ propagation RTT.
     minRttMs: number;
+    // RpcStream local ring occupancy (bundles) as of the last push into it.
+    ringDepth: number;
     isPeerConnected: boolean;
     // Cumulative bytes drained out of the wire send buffer (handed to the
     // RpcStream as it pulls; the pull is ack-window-gated). Delta/time while the
@@ -113,6 +115,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
         async function* impl(): AsyncIterable<void> {
             const { createSender, controller, abortSignal } = opts;
             const wireQueueDepthEma = new RunningEMA(0, 1, WIRE_QUEUE_DEPTH_EMA_ALPHA);
+            const wireRingDepthEma = new RunningEMA(0, 1, WIRE_QUEUE_DEPTH_EMA_ALPHA);
             // Reconnect streak: persists across resetSender() calls so a burst
             // of disconnects accrues correctly.
             const reconnectTracker = { streak: 0, prevConnected: false };
@@ -130,6 +133,8 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                 stats.wireAckedBytes = senderStats.ackedBytes;
                 wireQueueDepthEma.appendSample(senderStats.queueDepth);
                 stats.wireQueueDepthEma = wireQueueDepthEma.value;
+                wireRingDepthEma.appendSample(senderStats.ringDepth);
+                stats.wireRingDepthEma = wireRingDepthEma.value;
                 if (!senderStats.isPeerConnected && reconnectTracker.prevConnected)
                     reconnectTracker.streak++;
                 else if (senderStats.isPeerConnected)

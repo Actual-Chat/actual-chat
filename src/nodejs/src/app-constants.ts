@@ -301,6 +301,19 @@ export function kbpsToBitsPerSecond(bitrateKbps: number): number {
     return Math.max(1, Math.round(bitrateKbps * 1_000));
 }
 
+// BDP-sized publisher credit window: throughput ≤ ackAdvance / RTT (credits are
+// per bundle), so the window must cover frameRate × RTT with 2× margin. The
+// static floor keeps short/unmeasured links at the default; the cap is the
+// sender ring size (a window beyond it could not be filled anyway).
+export function computeUplinkAckAdvance(
+    frameRate: number, minRttMs: number, floor: number, cap: number): number {
+    if (minRttMs < 0)
+        return floor;
+
+    const bdpFrames = Math.ceil(frameRate * (minRttMs / 1000) * 2) + 6;
+    return Math.max(floor, Math.min(cap, bdpFrames));
+}
+
 // First call wins. Subsequent calls are silently ignored so a redundant init
 // from e.g. a re-acquired shared worker doesn't reset the holders.
 export function initAppConstants(appConstants: AppConstants): void {

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RpcStreamSender } from '../../../src/nodejs/src/actuallab-rpc/rpc-stream-sender';
 import type { RpcPeer } from '../../../src/nodejs/src/actuallab-rpc/rpc-peer';
-import { expandVideo, type VideoConstants } from '../../../src/nodejs/src/app-constants';
+import { computeUplinkAckAdvance, expandVideo, type VideoConstants } from '../../../src/nodejs/src/app-constants';
 
 // Publisher-leg simulation: paced producer vs. a consumer whose ACKs arrive one
 // full RTT after each item. Bundle-count flow control caps throughput at
@@ -157,5 +157,14 @@ describe('RpcStreamSender flow-control window', () => {
         expect(result.skipCount).toBe(0);
         expect(result.delivered.length).toBe(600);
         expect(result.delivered.at(-1)?.index).toBe(599);
+    });
+
+    it('computeUplinkAckAdvance scales the window with measured min RTT', () => {
+        // act + assert: unmeasured and short-RTT links keep the static floor;
+        // long-RTT links grow to cover BDP × 2 + slack, capped at the ring size.
+        expect(computeUplinkAckAdvance(30, -1, 45, 120)).toBe(45);
+        expect(computeUplinkAckAdvance(30, 200, 45, 120)).toBe(45);
+        expect(computeUplinkAckAdvance(30, 1000, 45, 120)).toBe(66);
+        expect(computeUplinkAckAdvance(30, 3000, 45, 120)).toBe(120);
     });
 });
