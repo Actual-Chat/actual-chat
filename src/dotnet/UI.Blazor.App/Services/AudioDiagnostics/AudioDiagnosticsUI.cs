@@ -77,6 +77,19 @@ public sealed record WebAudioDiagnostics(
         => HashCode.Combine(Context, Players.Length);
 }
 
+public sealed record WebAudioContextDiagnostics(
+    string Purpose,
+    string State,
+    double? SampleRate,
+    double? BaseLatencyMs,
+    double? OutputLatencyMs,
+    bool IsRunning,
+    bool IsMaintained,
+    bool IsUsed,
+    int RefCount,
+    bool IsReady,
+    string? BackgroundActivity);
+
 public sealed record WebAudioPlayerDiagnostics(
     string InternalId,
     string? AuthorId,
