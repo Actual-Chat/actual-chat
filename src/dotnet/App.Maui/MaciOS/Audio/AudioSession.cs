@@ -28,12 +28,20 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     public Task EnsureCorrectOutputRoute()
         => DispatchToMainThread(EnsureCorrectOutputRouteUnsafe);
 
-    public AppleAudioSessionDiagnostics GetDiagnostics()
+    public AppleAudioSessionDiagnostics? GetDiagnostics()
     {
-        var session = AVAudioSession.SharedInstance();
-        var outputs = session.CurrentRoute.Outputs;
-        var routes = outputs.Select(output => $"{output.PortName} ({output.PortType})").ToList();
-        return new AppleAudioSessionDiagnostics(session.Category, session.Mode, session.OtherAudioPlaying, routes);
+        try
+        {
+            var session = AVAudioSession.SharedInstance();
+            var outputs = session.CurrentRoute.Outputs;
+            var routes = outputs.Select(output => $"{output.PortName} ({output.PortType})").ToList();
+            return new AppleAudioSessionDiagnostics(session.Category, session.Mode, session.OtherAudioPlaying, routes);
+        }
+        catch (Exception e)
+        {
+            Log.LogError(e, "Failed to get audio session diagnostics");
+            return null;
+        }
     }
 
     private void ReactivateUnsafe(AudioFocusMode mode)
