@@ -216,8 +216,9 @@
     private string? _lastActionResult;
 
     private AudioDiagnosticsUI Diagnostics => Hub.AudioDiagnosticsUI;
-    private bool IsMaui => Hub.HostInfo.AppKind.IsMaui();
     private ILogger Log => field ??= Services.LogFor<AudioDiagnosticsModal>();
+
+    private bool IsMaui => Hub.HostInfo.AppKind.IsMaui();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
