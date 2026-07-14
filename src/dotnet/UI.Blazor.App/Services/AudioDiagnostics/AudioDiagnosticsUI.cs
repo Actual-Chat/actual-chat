@@ -59,3 +59,30 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
 public sealed record AudioDiagnosticsState(
     AudioFocusDiagnostics Focus,
     WebAudioDiagnostics? Web);
+
+/// <summary>
+/// Typed mirror of the TS <c>collectWebAudioDiagnostics()</c> result.
+/// <see cref="Context"/> is null on native apps, which have no Web Audio pipeline.
+/// </summary>
+public sealed record WebAudioDiagnostics(
+    AudioContextDiagnostics? Context,
+    AudioPlayerDiagnostics[] Players)
+{
+    public bool Equals(WebAudioDiagnostics? other)
+        => other is not null
+            && Equals(Context, other.Context)
+            && Players.SequenceEqual(other.Players);
+
+    public override int GetHashCode()
+        => HashCode.Combine(Context, Players.Length);
+}
+
+public sealed record AudioPlayerDiagnostics(
+    string InternalId,
+    string? AuthorId,
+    string PlaybackState,
+    string BufferState,
+    double? PresentationLagMs,
+    double TargetBufferSizeMs,
+    double PlayingAt,
+    double BufferedDuration);
