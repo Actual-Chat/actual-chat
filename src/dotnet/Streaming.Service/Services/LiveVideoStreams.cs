@@ -176,71 +176,55 @@ public class LiveVideoStreams : ILiveVideoStreams
         => await VideoStreamingBackend.LastKeyframeRequestAt(streamId, cancellationToken).ConfigureAwait(false);
 
     // [ComputeMethod]
-    // Single-node aggregate: scans _qualityBySession on this frontend node.
-    // Cross-node aggregation is out of scope here; for multi-node deployments
-    // the recorder still sees a node-local cap that is at worst conservative
-    // (lower than the true global max), which preserves the safety property
-    // we care about: no viewer asks for a layer the sender isn't producing.
+    // Cross-node aggregate: delegates to VideoStreamingBackend on the stream's
+    // owning node, which receives demand reports from every API pod.
     public virtual async Task<int> MaxRequestedLayerId(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
-        // `session` is unused in the result (the aggregate scans every session),
+        // `session` is unused in the result (the aggregate spans every viewer),
         // so it must NOT take part in the cache key — otherwise a viewer's
         // ChangePlaybackQuality invalidates its OWN session's key while the
         // producer subscribes under the producer's session key, and the producer
         // never sees the change (stuck at its startup value). Delegate to a
-        // session-less inner compute and invalidate THAT instead.
+        // session-less inner compute instead.
         => await MaxRequestedLayerIdByStream(streamId, cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
-    public virtual Task<int> MaxRequestedLayerIdByStream(
+    public virtual async Task<int> MaxRequestedLayerIdByStream(
         StreamId streamId,
         CancellationToken cancellationToken)
-    {
-        var streamIdValue = streamId.Value;
-        var max = ComputeMaxLayerId(streamIdValue);
-        if (Log.IsEnabled(LogLevel.Debug)) {
-            // Per-viewer breakdown so a stuck-high producer can be traced to the
-            // session that's requesting the top layer (e.g. "who is focusing it").
-            var breakdown = string.Join(", ", _qualityBySession
-                .Where(kv => kv.Value.QualityByStream.ContainsKey(streamIdValue))
-                .Select(kv => $"{kv.Key.Hash}=L{kv.Value.QualityByStream[streamIdValue].LayerId}"));
-            Log.LogDebug("MaxRequestedLayerId: stream {StreamId} -> L{Max} [{Breakdown}]",
-                streamIdValue, max, breakdown);
-        }
-        return Task.FromResult(max);
-    }
+        => await VideoStreamingBackend.MaxDemandedLayerId(streamId, cancellationToken).ConfigureAwait(false);
 
     // [ComputeMethod]
     public virtual async Task<int> RequestedLayersMask(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
-        // Same session-key caveat as MaxRequestedLayerId: the aggregate scans
-        // every session, so delegate to a session-less inner compute.
+        // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
+        // every viewer, so delegate to a session-less inner compute.
         => await RequestedLayersMaskByStream(streamId, cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
-    public virtual Task<int> RequestedLayersMaskByStream(
+    public virtual async Task<int> RequestedLayersMaskByStream(
         StreamId streamId,
         CancellationToken cancellationToken)
-        => Task.FromResult(ComputeLayersMask(streamId.Value));
+        => await VideoStreamingBackend.DemandedLayersMask(streamId, cancellationToken).ConfigureAwait(false);
 
     // [ComputeMethod]
     public virtual async Task<bool> ThumbnailViewersOnly(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
-        // Same session-key caveat as MaxRequestedLayerId: the aggregate scans
-        // every session, so delegate to a session-less inner compute.
+        // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
+        // every viewer, so delegate to a session-less inner compute.
         => await ThumbnailViewersOnlyByStream(streamId, cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
-    public virtual Task<bool> ThumbnailViewersOnlyByStream(
+    public virtual async Task<bool> ThumbnailViewersOnlyByStream(
         StreamId streamId,
         CancellationToken cancellationToken)
-        => Task.FromResult(ComputeThumbnailViewersOnly(GetStreamQualities(streamId.Value)));
+        => await VideoStreamingBackend.ThumbnailViewersOnly(streamId, cancellationToken).ConfigureAwait(false);
 
     public async Task PushStream(
         Session session,
@@ -307,31 +291,22 @@ public class LiveVideoStreams : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         if (qualityByStream is null) {
-            if (_qualityBySession.TryGetValue(session, out var removing)) {
-                var prevOnClear = new Dictionary<string, (int Mask, bool ThumbnailOnly)>(removing.QualityByStream.Count);
-                foreach (var (sid, _) in removing.QualityByStream)
-                    prevOnClear[sid] = SnapshotDemand(sid);
-                _qualityBySession.TryRemove(session, out _);
-                foreach (var (sid, prev) in prevOnClear)
-                    InvalidateLayerDemand(sid, prev);
-            }
+            if (_qualityBySession.TryRemove(session, out var removing))
+                await ForwardDemandChanges(session, removing.QualityByStream, null, cancellationToken)
+                    .ConfigureAwait(false);
             DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, info={Info} (cleared)", session, info);
             return;
         }
 
         qualityByStream = ApplyStreamCountCap(qualityByStream, info);
         _qualityBySession.TryGetValue(session, out var prevState);
-        // Snapshot the per-stream demand aggregates BEFORE we install the new
-        // state so we invalidate the demand computes only for streams whose
-        // aggregate actually changed.
-        var affectedStreamIds = CollectStreamIdsForInvalidation(
-            prevState?.QualityByStream, qualityByStream);
-        var prevByStream = new Dictionary<string, (int Mask, bool ThumbnailOnly)>(affectedStreamIds.Count);
-        foreach (var sid in affectedStreamIds)
-            prevByStream[sid] = SnapshotDemand(sid);
         _qualityBySession[session] = new ReceiveQualityState(qualityByStream, SystemClock.Now);
-        foreach (var sid in affectedStreamIds)
-            InvalidateLayerDemand(sid, prevByStream[sid]);
+        // The demand aggregates live on each stream's owning node
+        // (VideoStreamingBackend); forward this viewer's per-stream demand
+        // there. Every entry is forwarded — not just changed ones — so the
+        // backend's retention stamp is refreshed by the 1-min keepalive.
+        await ForwardDemandChanges(session, prevState?.QualityByStream, qualityByStream, cancellationToken)
+            .ConfigureAwait(false);
         DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
             session, qualityByStream.Count, info);
 
@@ -439,95 +414,47 @@ public class LiveVideoStreams : ILiveVideoStreams
                 : ReceiveQuality.Lowest
             : ReceiveQuality.Default;
 
-    private int ComputeMaxLayerId(string streamIdValue)
-        => MaxLayerIdFromMask(ComputeLayersMask(streamIdValue));
-
-    private int ComputeLayersMask(string streamIdValue)
-    {
-        var mask = 0;
-        foreach (var (_, state) in _qualityBySession) {
-            if (state.QualityByStream.TryGetValue(streamIdValue, out var q) && q.LayerId is >= 0 and < 31)
-                mask |= 1 << q.LayerId;
-        }
-        return mask;
-    }
-
-    private IEnumerable<ReceiveQuality> GetStreamQualities(string streamIdValue)
-    {
-        foreach (var (_, state) in _qualityBySession)
-            if (state.QualityByStream.TryGetValue(streamIdValue, out var q))
-                yield return q;
-    }
-
-    // Node-local scan, and here that is NOT conservative (unlike the layer
-    // cap): a large viewer on another frontend node is invisible and would
-    // cause a wrongful fps shed. Cross-node aggregation is a known follow-up.
-    internal static bool ComputeThumbnailViewersOnly(IEnumerable<ReceiveQuality> qualities)
-    {
-        var anyActive = false;
-        foreach (var q in qualities) {
-            if (q.IsPaused)
-                continue;
-            if (!q.IsThumbnail)
-                return false;
-            anyActive = true;
-        }
-        return anyActive;
-    }
-
-    private static int MaxLayerIdFromMask(int mask)
-        => mask == 0 ? -1 : System.Numerics.BitOperations.Log2((uint)mask);
-
-    // Single pass over every session's quality for this stream — the mask and
-    // the thumbnail-only aggregate share one scan (called twice per affected
-    // stream per playback-quality heartbeat, so the extra scan is not free).
-    private (int Mask, bool ThumbnailOnly) SnapshotDemand(string streamIdValue)
-    {
-        var mask = 0;
-        var anyActive = false;
-        var allThumbnail = true;
-        foreach (var (_, state) in _qualityBySession) {
-            if (!state.QualityByStream.TryGetValue(streamIdValue, out var q))
-                continue;
-            if (q.LayerId is >= 0 and < 31)
-                mask |= 1 << q.LayerId;
-            if (q.IsPaused)
-                continue;
-            anyActive = true;
-            if (!q.IsThumbnail)
-                allThumbnail = false;
-        }
-        return (mask, anyActive && allThumbnail);
-    }
-
-    private void InvalidateLayerDemand(string streamIdValue, (int Mask, bool ThumbnailOnly) prev)
-    {
-        var (newMask, newThumbnailOnly) = SnapshotDemand(streamIdValue);
-        if (newMask == prev.Mask && newThumbnailOnly == prev.ThumbnailOnly)
-            return;
-
-        using (Invalidation.Begin()) {
-            if (newMask != prev.Mask) {
-                _ = RequestedLayersMaskByStream(StreamId.Parse(streamIdValue), default);
-                if (MaxLayerIdFromMask(newMask) != MaxLayerIdFromMask(prev.Mask))
-                    _ = MaxRequestedLayerIdByStream(StreamId.Parse(streamIdValue), default);
-            }
-            if (newThumbnailOnly != prev.ThumbnailOnly)
-                _ = ThumbnailViewersOnlyByStream(StreamId.Parse(streamIdValue), default);
-        }
-    }
-
-    private static HashSet<string> CollectStreamIdsForInvalidation(
+    private async Task ForwardDemandChanges(
+        Session session,
         ApiMap<string, ReceiveQuality>? previous,
-        ApiMap<string, ReceiveQuality> current)
+        ApiMap<string, ReceiveQuality>? current,
+        CancellationToken cancellationToken)
     {
-        var ids = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var (streamId, _) in current)
-            ids.Add(streamId);
+        // Per-stream failures are isolated: a dead publisher node must not
+        // break demand reporting for this viewer's other streams.
+        var tasks = new List<Task>();
+        if (current is not null)
+            foreach (var (sid, quality) in current)
+                tasks.Add(Report(sid, quality));
         if (previous is not null)
-            foreach (var (streamId, _) in previous)
-                ids.Add(streamId);
-        return ids;
+            foreach (var (sid, _) in previous)
+                if (current is null || !current.ContainsKey(sid))
+                    tasks.Add(Clear(sid));
+        if (tasks.Count != 0)
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+        return;
+
+        async Task Report(string sid, ReceiveQuality quality) {
+            try {
+                await VideoStreamingBackend
+                    .ReportDemand(StreamId.Parse(sid), session.Id, quality, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e, "ReportDemand failed for stream #{StreamId}", sid);
+            }
+        }
+
+        async Task Clear(string sid) {
+            try {
+                await VideoStreamingBackend
+                    .ClearDemand(StreamId.Parse(sid), session.Id, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e, "ClearDemand failed for stream #{StreamId}", sid);
+            }
+        }
     }
 
     internal static IEnumerable<string> GetUpgradedStreams(

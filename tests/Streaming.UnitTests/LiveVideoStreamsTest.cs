@@ -33,31 +33,52 @@ public class LiveVideoStreamsTest
     }
 
     [Fact]
-    public void ComputeThumbnailViewersOnly_ZeroViewersIsFalse()
-        => LiveVideoStreams.ComputeThumbnailViewersOnly([]).Should().BeFalse();
-
-    [Fact]
-    public void ComputeThumbnailViewersOnly_SingleThumbnailViewerIsTrue()
-        => LiveVideoStreams.ComputeThumbnailViewersOnly([new ReceiveQuality(0, isThumbnail: true)])
-            .Should().BeTrue();
-
-    [Fact]
-    public void ComputeThumbnailViewersOnly_AnyLargeViewerIsFalse()
-        => LiveVideoStreams.ComputeThumbnailViewersOnly([
-                new ReceiveQuality(0, isThumbnail: true),
-                new ReceiveQuality(2),
-            ])
-            .Should().BeFalse();
-
-    [Fact]
-    public void ComputeThumbnailViewersOnly_PausedViewersAreIgnored()
+    public void ComputeDemandSnapshot_ZeroViewersIsEmpty()
     {
-        LiveVideoStreams.ComputeThumbnailViewersOnly([
+        // act
+        var (mask, thumbnailOnly) = VideoStreamingBackend.ComputeDemandSnapshot([]);
+
+        // assert
+        mask.Should().Be(0);
+        thumbnailOnly.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ComputeDemandSnapshot_SingleThumbnailViewerIsThumbnailOnly()
+    {
+        // act
+        var (mask, thumbnailOnly) = VideoStreamingBackend.ComputeDemandSnapshot(
+            [new ReceiveQuality(0, isThumbnail: true)]);
+
+        // assert
+        mask.Should().Be(1);
+        thumbnailOnly.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ComputeDemandSnapshot_AnyLargeViewerIsNotThumbnailOnly()
+    {
+        // act
+        var (mask, thumbnailOnly) = VideoStreamingBackend.ComputeDemandSnapshot([
+            new ReceiveQuality(0, isThumbnail: true),
+            new ReceiveQuality(2),
+        ]);
+
+        // assert
+        mask.Should().Be(0b101);
+        thumbnailOnly.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ComputeDemandSnapshot_PausedViewersAreIgnored()
+    {
+        // act + assert
+        VideoStreamingBackend.ComputeDemandSnapshot([
                 new ReceiveQuality(0, isThumbnail: true),
                 ReceiveQuality.Paused,
             ])
-            .Should().BeTrue();
-        LiveVideoStreams.ComputeThumbnailViewersOnly([ReceiveQuality.Paused])
-            .Should().BeFalse();
+            .Should().Be((1, true));
+        VideoStreamingBackend.ComputeDemandSnapshot([ReceiveQuality.Paused])
+            .Should().Be((0, false));
     }
 }

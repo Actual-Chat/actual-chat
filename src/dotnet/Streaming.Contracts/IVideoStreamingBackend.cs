@@ -20,4 +20,18 @@ public interface IVideoStreamingBackend : IComputeService, IBackendService
     Task<Moment> LastKeyframeRequestAt(StreamId streamId, CancellationToken cancellationToken);
 
     Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default);
+
+    // Publisher-facing viewer-demand aggregates. Demand reports from every API
+    // pod route to the stream's owning node (StreamId routes by NodeRef), so
+    // these see all viewers regardless of which pod each viewer is connected to.
+    [ComputeMethod]
+    Task<int> DemandedLayersMask(StreamId streamId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<int> MaxDemandedLayerId(StreamId streamId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<bool> ThumbnailViewersOnly(StreamId streamId, CancellationToken cancellationToken);
+
+    Task ReportDemand(
+        StreamId streamId, string sessionId, ReceiveQuality quality, CancellationToken cancellationToken = default);
+    Task ClearDemand(StreamId streamId, string sessionId, CancellationToken cancellationToken = default);
 }

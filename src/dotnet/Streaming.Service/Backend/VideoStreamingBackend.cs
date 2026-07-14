@@ -7,7 +7,13 @@ namespace ActualChat.Streaming;
 
 public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 {
+    private static readonly TimeSpan DemandRetention = TimeSpan.FromMinutes(3);
+    private static readonly TimeSpan DemandCleanupPeriod = TimeSpan.FromMinutes(5);
+
     private readonly StreamStore<VideoFrame> _videoStreams;
+    private readonly ConcurrentDictionary<StreamId, ConcurrentDictionary<string, SessionDemand>> _demandByStream = new();
+    // ReSharper disable once NotAccessedField.Local
+    private readonly Task _demandCleanupTask;
 
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
 
@@ -34,6 +40,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             ReplayTailSize = Constants.Video.ServerReplayTailSize,
             Log = services.LogFor($"{typeFullName}.VideoStreams"),
         };
+        var stopToken = services.HostLifetime().ApplicationStopping;
+        _demandCleanupTask = BackgroundTask.Run(
+            () => RunDemandCleanup(stopToken),
+            Log, "VideoStreamingBackend demand cleanup failed", stopToken);
     }
 
     public void Dispose()
@@ -119,6 +129,48 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         Log.LogInformation("RequestKeyFrame: streamId={StreamId}", streamId);
         using (Invalidation.Begin())
             _ = LastKeyframeRequestAt(streamId, default);
+    }
+
+    // [ComputeMethod] - aggregate of 1 << LayerId over all reporting viewers.
+    public virtual Task<int> DemandedLayersMask(StreamId streamId, CancellationToken cancellationToken)
+        => Task.FromResult(SnapshotDemand(streamId).Mask);
+
+    // [ComputeMethod] - invalidated only when the max itself changes.
+    public virtual Task<int> MaxDemandedLayerId(StreamId streamId, CancellationToken cancellationToken)
+        => Task.FromResult(MaxLayerIdFromMask(SnapshotDemand(streamId).Mask));
+
+    // [ComputeMethod]
+    public virtual Task<bool> ThumbnailViewersOnly(StreamId streamId, CancellationToken cancellationToken)
+        => Task.FromResult(SnapshotDemand(streamId).ThumbnailOnly);
+
+    public virtual Task ReportDemand(
+        StreamId streamId, string sessionId, ReceiveQuality quality, CancellationToken cancellationToken = default)
+    {
+        ValidateStreamId(streamId);
+        var prev = SnapshotDemand(streamId);
+        var demand = new SessionDemand(quality, Clocks.SystemClock.Now);
+        while (true) {
+            var sessions = _demandByStream.GetOrAdd(
+                streamId, static _ => new ConcurrentDictionary<string, SessionDemand>());
+            sessions[sessionId] = demand;
+            // The cleanup sweep may remove an emptied stream entry between
+            // GetOrAdd and the write; re-check so the write isn't orphaned.
+            if (_demandByStream.TryGetValue(streamId, out var current) && ReferenceEquals(current, sessions))
+                break;
+        }
+        InvalidateDemand(streamId, prev);
+        return Task.CompletedTask;
+    }
+
+    public virtual Task ClearDemand(StreamId streamId, string sessionId, CancellationToken cancellationToken = default)
+    {
+        ValidateStreamId(streamId);
+        if (_demandByStream.TryGetValue(streamId, out var sessions)) {
+            var prev = SnapshotDemand(streamId);
+            if (sessions.TryRemove(sessionId, out _))
+                InvalidateDemand(streamId, prev);
+        }
+        return Task.CompletedTask;
     }
 
     // Private methods
@@ -328,4 +380,73 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             throw new ArgumentOutOfRangeException(nameof(streamId),
                 $"Wrong mesh node: expected {ThisNode.Ref}, but got {streamId.NodeRef}.");
     }
+
+    private (int Mask, bool ThumbnailOnly) SnapshotDemand(StreamId streamId)
+        => _demandByStream.TryGetValue(streamId, out var sessions)
+            ? ComputeDemandSnapshot(sessions.Select(kv => kv.Value.Quality))
+            : (0, false);
+
+    // Single pass shared by the mask and the thumbnail-only aggregate: mask is
+    // the OR of 1 << LayerId; thumbnail-only is "any active viewer, and every
+    // active (non-paused) viewer displays the stream as a thumbnail".
+    internal static (int Mask, bool ThumbnailOnly) ComputeDemandSnapshot(IEnumerable<ReceiveQuality> qualities)
+    {
+        var mask = 0;
+        var anyActive = false;
+        var allThumbnail = true;
+        foreach (var q in qualities) {
+            if (q.LayerId is >= 0 and < 31)
+                mask |= 1 << q.LayerId;
+            if (q.IsPaused)
+                continue;
+
+            anyActive = true;
+            if (!q.IsThumbnail)
+                allThumbnail = false;
+        }
+        return (mask, anyActive && allThumbnail);
+    }
+
+    private void InvalidateDemand(StreamId streamId, (int Mask, bool ThumbnailOnly) prev)
+    {
+        var (newMask, newThumbnailOnly) = SnapshotDemand(streamId);
+        if (newMask == prev.Mask && newThumbnailOnly == prev.ThumbnailOnly)
+            return;
+
+        using (Invalidation.Begin()) {
+            if (newMask != prev.Mask) {
+                _ = DemandedLayersMask(streamId, default);
+                if (MaxLayerIdFromMask(newMask) != MaxLayerIdFromMask(prev.Mask))
+                    _ = MaxDemandedLayerId(streamId, default);
+            }
+            if (newThumbnailOnly != prev.ThumbnailOnly)
+                _ = ThumbnailViewersOnly(streamId, default);
+        }
+    }
+
+    private static int MaxLayerIdFromMask(int mask)
+        => mask == 0 ? -1 : System.Numerics.BitOperations.Log2((uint)mask);
+
+    private async Task RunDemandCleanup(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            await Task.Delay(DemandCleanupPeriod, cancellationToken).ConfigureAwait(false);
+            var threshold = Clocks.SystemClock.Now - DemandRetention;
+            foreach (var (streamId, sessions) in _demandByStream) {
+                var prev = SnapshotDemand(streamId);
+                var removedAny = false;
+                foreach (var kv in sessions)
+                    if (kv.Value.UpdatedAt < threshold)
+                        removedAny |= sessions.TryRemove(kv);
+                if (sessions.IsEmpty)
+                    _demandByStream.TryRemove(streamId, out _);
+                if (removedAny)
+                    InvalidateDemand(streamId, prev);
+            }
+        }
+    }
+
+    // Nested types
+
+    private sealed record SessionDemand(ReceiveQuality Quality, Moment UpdatedAt);
 }
