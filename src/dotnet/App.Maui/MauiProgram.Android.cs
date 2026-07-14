@@ -41,6 +41,7 @@ public static partial class MauiProgram
         //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
         services.AddScoped<INotificationsPermission>(c => new AndroidNotificationsPermission(c.AppUIHub()));
         services.AddScoped<IDeviceNotifications>(_ => new AndroidDeviceNotifications());
+        services.AddScoped<IIncomingCallsBridge>(_ => new AndroidIncomingCallsBridge());
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
         services.AddScoped<BatteryOptimizationHandler>(c => new AndroidBatteryOptimizationHandler(c.AppUIHub()));
         services.AddSingleton(c => new NativeGoogleAuth(c));

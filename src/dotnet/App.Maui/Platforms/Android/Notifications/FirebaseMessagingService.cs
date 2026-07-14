@@ -97,6 +97,12 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             var notificationManager = NotificationManagerCompat.From(this)!;
             foreach (var tag in data.DismissedTags)
                 notificationManager.Cancel(tag, 0);
+            ClearForegroundCallRings(data.DismissedTags);
+            return;
+        }
+
+        if (data.NotificationKind == NotificationKind.IncomingCall) {
+            HandleIncomingCall(data);
             return;
         }
 
@@ -157,6 +163,48 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             return false;
         }
     }
+    private static void ClearForegroundCallRings(IReadOnlyList<string> dismissedTags)
+    {
+        // A foreground ring lives in the in-app banner/ringer, not a system notification, so a
+        // cancel/decline/timeout dismissal must reach IncomingCallUI directly — the reactive
+        // live-session computed (NoCache) would otherwise clear the ring only on its slow self-heal.
+        if (!(AndroidUtils.IsAppForeground() ?? false) || !TryGetScopedServices(out _))
+            return;
+
+        foreach (var tag in dismissedTags) {
+            if (!tag.StartsWith(Constants.Notification.CallTagPrefix))
+                continue;
+
+            var chatId = ChatId.TryParse(tag[Constants.Notification.CallTagPrefix.Length..], allowNull: true);
+            if (chatId is null)
+                continue;
+
+            _ = DispatchToBlazor(
+                c => c.GetRequiredService<IncomingCallUI>().OnCallDismissed(chatId),
+                "IncomingCallUI.OnCallDismissed");
+        }
+    }
+
+    private static void HandleIncomingCall(NotificationData data)
+    {
+        var chatId = data.ChatId;
+        if (chatId is null) {
+            Log.LogWarning("Can't handle incoming-call push. Invalid ChatId. Ref messageId: '{MessageId}'", data.MessageId);
+            return;
+        }
+
+        // Foreground with a live Blazor scope: the in-app banner + ringer own the ring,
+        // no system notification — otherwise both would ring at once.
+        if ((AndroidUtils.IsAppForeground() ?? false) && TryGetScopedServices(out _)) {
+            _ = DispatchToBlazor(
+                c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId),
+                "IncomingCallUI.OnRing");
+            return;
+        }
+
+        IncomingCallNotifications.Show(data);
+    }
+
     private static bool ShowGetAttentionNotification(
         NotificationData data,
         long messageSentTime)

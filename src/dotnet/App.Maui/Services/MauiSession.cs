@@ -26,6 +26,9 @@ public sealed class MauiSession(IServiceProvider services)
     public static Task Start()
         => _readSessionTask = Task.Run(Read);
 
+    public static Task<Session?> ReadStored()
+        => _readSessionTask ?? Task.Run(Read);
+
     public Task Acquire()
     {
         if (TrueSessionResolver.HasSession)
