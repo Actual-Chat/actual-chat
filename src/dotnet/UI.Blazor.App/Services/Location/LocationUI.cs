@@ -44,11 +44,16 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             .ToList();
 
         async Task<IReadOnlyList<SharedLocation>> GetLocations() {
-            if (locationId is null)
-                return await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (locationId is not null) {
+                var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken).ConfigureAwait(false);
+                if (location is null)
+                    return [];
 
-            var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken).ConfigureAwait(false);
-            return location is null ? [] : [location];
+                if (location.Duration == TimeSpan.Zero)
+                    return [location];
+            }
+
+            return await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
         }
 
         async Task<LocationParticipant?> GetParticipant(SharedLocation sharedLocation) {
