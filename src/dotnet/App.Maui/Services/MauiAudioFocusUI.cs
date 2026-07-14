@@ -43,16 +43,22 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
     public override AudioFocusDiagnostics GetDiagnostics()
     {
         var holder = _lastAudioFocusHolder;
-        if (holder is null)
-            return new AudioFocusDiagnostics(true, AudioFocusMode.Tune, false, false, false, [], null);
-        return new AudioFocusDiagnostics(
-            IsSupported: true,
-            ActiveMode: holder.Mode,
-            IsInterrupted: false,
-            IsSuspended: holder.IsSuspended,
-            IsSessionConfigured: true,
-            Scopes: [new AudioFocusScopeInfo(holder.Mode, holder.Scopes.Count)],
-            Session: null);
+        return holder is null
+            ? new AudioFocusDiagnostics(IsSupported: true,
+                ActiveMode: AudioFocusMode.Tune,
+                IsInterrupted: false,
+                IsSuspended: false,
+                IsSessionConfigured: false,
+                Scopes: [],
+                Session: null)
+            : new AudioFocusDiagnostics(
+                IsSupported: true,
+                ActiveMode: holder.Mode,
+                IsInterrupted: false,
+                IsSuspended: holder.IsSuspended,
+                IsSessionConfigured: true,
+                Scopes: [new AudioFocusScopeInfo(holder.Mode, holder.Scopes.Count)],
+                Session: null);
     }
 
     // Protected methods
