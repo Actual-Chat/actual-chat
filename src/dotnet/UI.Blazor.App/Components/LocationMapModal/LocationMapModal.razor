@@ -3,7 +3,13 @@
 @implements IModalView<LocationMapModal.Model>
 @{
     var m = State.Value;
-    var markers = m.Participants.Select(ToMapMarker).ToList();
+    var showOwnDot = m.OwnPoint is not null;
+    var markers = m.Participants
+        .Where(p => !(showOwnDot && p.IsOwn))
+        .Select(ToMapMarker)
+        .ToList();
+    if (m.OwnPoint is { } ownPoint)
+        markers.Add(ToOwnMarker(ownPoint));
 }
 
 <DialogFrame
@@ -39,12 +45,18 @@
 
 @code {
     private MapView? _mapView;
+    private MutableState<GeoPoint?> _currentLocation = null!;
 
     private ILocationTracker Tracker => Hub.LocationTracker;
     private LocationUI LocationUI => Hub.LocationUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _currentLocation = StateFactory.NewMutable((GeoPoint?)null, StateCategories.Get(GetType(), nameof(_currentLocation)));
+        _ = FetchCurrentLocation();
+    }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -61,11 +73,17 @@
             return ComputedModel.None;
 
         var ownLocation = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-        var ownPoint = ownLocation?.Point
-            ?? await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
+        var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
+        var currentPoint = await _currentLocation.Use(cancellationToken).ConfigureAwait(false);
+        var ownPoint = livePoint ?? ownLocation?.Point ?? currentPoint;
         var clicked = ModalModel.LocationId is { } id ? participants.FirstOrDefault(x => x.Location.Id == id) : null;
         var center = clicked?.Location ?? ownLocation ?? participants[0].Location;
         return new ComputedModel(participants, ownPoint, center.Point);
+    }
+
+    private async Task FetchCurrentLocation() {
+        if (await Tracker.Get(default).ConfigureAwait(false) is { } point)
+            _currentLocation.Value = point;
     }
 
     private Task OnParticipantClick(LocationParticipant participant)
@@ -78,12 +96,14 @@
             : "";
         return new MapMarker(
             participant.Location.Id.Value,
-            participant.Location.Point.Latitude,
-            participant.Location.Point.Longitude,
+            participant.Location.Point,
             participant.Author.Avatar.Name,
             pictureUrl.NullIfEmpty(),
             avatarKey.NullIfEmpty());
     }
+
+    private static MapMarker ToOwnMarker(GeoPoint point)
+        => new("own-location", point, IsOwnLocation: true);
 
     // Nested types
 
