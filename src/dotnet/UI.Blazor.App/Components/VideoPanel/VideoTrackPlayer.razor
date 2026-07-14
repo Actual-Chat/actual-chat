@@ -32,6 +32,7 @@
     <canvas @ref="BgCanvasRef" class="remote-video-bg" width="64" height="64" aria-hidden="true"></canvas>
     <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
     <video @ref="VideoElRef" class="remote-video live-stream-video"
+           data-stream-id="@StreamInfo.StreamId.Value"
            autoplay playsinline muted aria-hidden="true"
            disablepictureinpicture disableremoteplayback
            controlslist="nodownload nofullscreen noremoteplayback"></video>

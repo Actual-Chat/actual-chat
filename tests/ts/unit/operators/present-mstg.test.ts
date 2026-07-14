@@ -15,12 +15,12 @@ import {
 
 class MockVideoFrame {
     closed = false;
-    constructor(public id = 0) {}
-    close(): void { this.closed = true; }
     codedWidth = 320;
     codedHeight = 180;
     displayWidth = 320;
     displayHeight = 180;
+    constructor(public id = 0) {}
+    close(): void { this.closed = true; }
 }
 
 interface PendingWrite {
@@ -64,7 +64,9 @@ class FakeWriter {
 
     write(frame: VideoFrame): Promise<void> {
         this.written.push(frame);
-        if (!this.manualMode) return Promise.resolve();
+        if (!this.manualMode)
+            return Promise.resolve();
+
         return new Promise<void>((resolve, reject) => {
             this.pending.push({ frame, resolve, reject });
         });
@@ -72,7 +74,9 @@ class FakeWriter {
 
     async flushNext(): Promise<void> {
         const next = this.pending.shift();
-        if (!next) throw new Error('no pending write to flush');
+        if (!next)
+            throw new Error('no pending write to flush');
+
         next.resolve();
         await Promise.resolve();
         await Promise.resolve();
@@ -80,7 +84,9 @@ class FakeWriter {
 
     async rejectNext(e: unknown = new Error('write failed')): Promise<void> {
         const next = this.pending.shift();
-        if (!next) throw new Error('no pending write to reject');
+        if (!next)
+            throw new Error('no pending write to reject');
+
         next.reject(e);
         await Promise.resolve();
         await Promise.resolve();
@@ -146,7 +152,9 @@ function controllableSource<T>(): ControllableSource<T> {
                     if (queue.length > 0) {
                         return Promise.resolve({ value: queue.shift()!, done: false });
                     }
-                    if (closed) return Promise.resolve({ value: undefined as unknown as T, done: true });
+                    if (closed)
+                        return Promise.resolve({ value: undefined as unknown as T, done: true });
+
                     return new Promise<IteratorResult<T>>(resolve => { resolveNext = resolve; });
                 },
             };
@@ -337,7 +345,7 @@ describe('mstgPresent', () => {
         for (const d of clock.delays) expect(d).toBeCloseTo(100 - PRESENT_LEAD_MS, 5);
     });
 
-    it('catch-up mode (extra > 0, ≤ budget): writes every frame at MIN_DURATION_MS cadence', async () => {
+    it('catch-up mode (extra > 0, ≤ budget): writes every frame at a bounded, evenly spaced overspeed', async () => {
         const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         const clock = fakeClock(0);
@@ -357,12 +365,13 @@ describe('mstgPresent', () => {
         expect(writer.written).toHaveLength(4);
         expect(stats.presented).toBe(4);
         expect(clock.delays).toHaveLength(3);
-        // MIN_DURATION_MS cadence; first delay also carries the PRESENT_LEAD_MS lead.
-        expect(clock.delays[0]).toBeCloseTo(1000 / 120 - PRESENT_LEAD_MS, 5);
-        for (const d of clock.delays.slice(1)) {
-            expect(d).toBeGreaterThan(8);
-            expect(d).toBeLessThan(9);
-        }
+        // Bounded overspeed: natural 33ms compressed by rate 1 + extra/500 =
+        // 1.334 → evenly spaced ~24.7ms writes, NOT a MIN_DURATION_MS burst.
+        // First delay also carries the PRESENT_LEAD_MS lead.
+        const durationMs = 33 / (1 + 167 / 500);
+        expect(clock.delays[0]).toBeCloseTo(durationMs - PRESENT_LEAD_MS, 5);
+        for (const d of clock.delays.slice(1))
+            expect(d).toBeCloseTo(durationMs, 5);
     });
 
     it('catch-up overflow (extra > CATCHUP_BUDGET_MS) AND frozen clock → skip-after-decode', async () => {

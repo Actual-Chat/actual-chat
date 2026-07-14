@@ -509,6 +509,17 @@
                             }
                         }
 
+                        @if (_displayRateByStream.TryGetValue(sid, out var displayRate)) {
+                            @* rVFC-measured distinct display slots — what the eye sees.
+                               Throughput above is the MSTG WRITE rate: bursty writes
+                               coalesce at the compositor, so it can read 30 while
+                               the display shows far fewer distinct frames. *@
+                            <div class="diag-row">
+                                <span class="diag-label">Display rate</span>
+                                <span class="diag-value">@displayRate.ToString("0.#")/s</span>
+                            </div>
+                        }
+
                         @if (Hub.VideoQualityUI.InboundDecoderHealthByStream.TryGetValue(s.Info.StreamId, out var decoderHealth)
                             && decoderHealth.Verdict != HealthVerdict.Unknown) {
                             <div class="diag-group-header">Decoder</div>
@@ -721,6 +732,7 @@
     private readonly Dictionary<string, JsonElement> _streamDiags = new();
     private double? _jsServerClockOffsetMs;
     private (double PresentsPerSec, double SlotsPerSec, int VideoCount)? _presentRate;
+    private readonly Dictionary<string, double> _displayRateByStream = new();
     private bool _isDisposed;
     private bool _showOwnStreamingDetails;
     private Tab _activeTab = Tab.Inbound;
@@ -970,8 +982,15 @@
             if (presentRate.ValueKind == JsonValueKind.Object
                 && presentRate.TryGetProperty("presentsPerSec", out var presentsEl)
                 && presentRate.TryGetProperty("slotsPerSec", out var slotsEl)
-                && presentRate.TryGetProperty("videoCount", out var videosEl))
+                && presentRate.TryGetProperty("videoCount", out var videosEl)) {
                 _presentRate = (presentsEl.GetDouble(), slotsEl.GetDouble(), videosEl.GetInt32());
+                _displayRateByStream.Clear();
+                if (presentRate.TryGetProperty("slotsPerSecByStream", out var byStreamEl)
+                    && byStreamEl.ValueKind == JsonValueKind.Object)
+                    foreach (var prop in byStreamEl.EnumerateObject())
+                        if (prop.Value.ValueKind == JsonValueKind.Number)
+                            _displayRateByStream[prop.Name] = prop.Value.GetDouble();
+            }
 
             // Poll every active outbound source kind — both camera and
             // screencast streams can be live simultaneously, each with its

@@ -23,8 +23,16 @@ const MAX_DURATION_MS = 1000 / MIN_FPS;
 // phase lead, not a rate change (no drift). ~quarter of a 60 Hz refresh.
 export const PRESENT_LEAD_MS = 4;
 
-// Beyond this backlog the MAX_FPS cap alone can't drain it; switch to skip-mode.
+// Beyond this backlog the bounded catch-up can't drain it; switch to skip-mode.
 const CATCHUP_BUDGET_MS = 4_000;
+
+// Catch-up is a bounded overspeed, not a burst: presents stay evenly spaced at
+// natural/rate, with the rate ramping 1→MAX_CATCHUP_RATE as the backlog grows
+// (rate = 1 + extra/GAIN). The old MAX_FPS collapse drained faster but landed
+// several frames in one vsync and then waited — the display coalesced the burst,
+// reading as ~12fps judder while the write counter said 30.
+const MAX_CATCHUP_RATE = 2;
+const CATCHUP_RATE_GAIN_MS = 500;
 
 // One rendered frame. Returns true on success; may throw to abort the pipe
 // (mstg write failure / canvas draw failure). The pacer bumps
@@ -68,7 +76,8 @@ const AUDIO_MASTER_LEAD_MS = 50;
 // Per frame: extra = max(0, bufferSpan - targetSpan).
 // Skip (extra > CATCHUP_BUDGET_MS && now - lastWriteAt < MIN_DURATION_MS):
 //   leave lastWriteAt untouched so the next frame still hits its slot.
-// Catch-up (extra > 0): duration = MIN_DURATION_MS, present at MAX_FPS.
+// Catch-up (extra ≥ one source frame): duration = natural / catchUpRate —
+//   an evenly-spaced overspeed bounded by MAX_CATCHUP_RATE, never a burst.
 // Steady (extra == 0): duration = clamp(naturalDelta, MIN, MAX) — schedule
 //   advances by exactly the source delta, so it tracks capture time without
 //   anchor drift across the run.
@@ -146,18 +155,21 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                         durationMs = 0;
                     } else {
                         const natural = decoded.capturedAt.timeMs - prevCapturedAt;
-                        // Sprint (compress to MAX_FPS) only when the backlog is at least
-                        // one SOURCE frame beyond target. A sub-one-frame excess is the
-                        // normal steady-state buffer; for a low-fps source (e.g. 10fps,
-                        // 100ms frames) the 30fps-based targetSpanMs sits ~one frame below
-                        // the natural buffer, so the old `extraMs > 0` trigger sprinted
-                        // every frame → burst-present then freeze (~0-1fps). Scaling the
-                        // threshold to the actual frame interval keeps catch-up for genuine
-                        // backlogs while letting a steady low-fps source play at 1x.
-                        const sprintThresholdMs = Math.max(MIN_DURATION_MS, natural);
-                        durationMs = extraMs >= sprintThresholdMs && mayCatchUp
-                            ? MIN_DURATION_MS
-                            : Math.max(MIN_DURATION_MS, Math.min(MAX_DURATION_MS, natural));
+                        // Catch up only when the backlog is at least one SOURCE frame
+                        // beyond target. A sub-one-frame excess is the normal
+                        // steady-state buffer; for a low-fps source (e.g. 10fps, 100ms
+                        // frames) the 30fps-based targetSpanMs sits ~one frame below
+                        // the natural buffer, so an `extraMs > 0` trigger would speed up
+                        // every frame. Scaling the threshold to the actual frame
+                        // interval keeps catch-up for genuine backlogs while letting a
+                        // steady low-fps source play at 1x.
+                        const catchUpThresholdMs = Math.max(MIN_DURATION_MS, natural);
+                        if (extraMs >= catchUpThresholdMs && mayCatchUp) {
+                            const catchUpRate = Math.min(MAX_CATCHUP_RATE, 1 + extraMs / CATCHUP_RATE_GAIN_MS);
+                            durationMs = Math.max(MIN_DURATION_MS, natural / catchUpRate);
+                        } else {
+                            durationMs = Math.max(MIN_DURATION_MS, Math.min(MAX_DURATION_MS, natural));
+                        }
                     }
 
                     const baseAt: number = lastWriteAt ?? now;

@@ -18,12 +18,12 @@ import {
 
 class MockVideoFrame {
     closed = false;
-    constructor(public id = 0) {}
-    close(): void { this.closed = true; }
     codedWidth = 320;
     codedHeight = 180;
     displayWidth = 320;
     displayHeight = 180;
+    constructor(public id = 0) {}
+    close(): void { this.closed = true; }
 }
 
 type SinkMode = 'ok' | 'fail' | 'throw';
@@ -33,8 +33,12 @@ class MockSink implements PresentSink {
     public disposed = false;
     constructor(public mode: SinkMode = 'ok') {}
     present(frame: VideoFrame): Promise<boolean> {
-        if (this.mode === 'throw') return Promise.reject(new Error('sink boom'));
-        if (this.mode === 'fail') return Promise.resolve(false);
+        if (this.mode === 'throw')
+            return Promise.reject(new Error('sink boom'));
+
+        if (this.mode === 'fail')
+            return Promise.resolve(false);
+
         this.presented.push(frame);
         return Promise.resolve(true);
     }
@@ -60,12 +64,20 @@ function makeEnvelope(stats: PlayerStats, id: number, capturedAtMs: number, fram
 function staticSource(items: DecodedFrame[]): AsyncIterable<DecodedFrame> {
     return (async function* () {
         await Promise.resolve();
-        for (const item of items) yield item;
+        for (const item of items)
+            yield item;
     })();
 }
 
+interface PacerDefaults {
+    getBufferSpanMs: () => number;
+    targetSpanMs: number;
+    nowFn: () => number;
+    delayFn: () => Promise<void>;
+}
+
 // nowFn auto-advances 1 s per call so natural-delta pacing never sleeps.
-function defaults(): { getBufferSpanMs: () => number; targetSpanMs: number; nowFn: () => number; delayFn: () => Promise<void> } {
+function defaults(): PacerDefaults {
     let t = 0;
     return {
         getBufferSpanMs: (): number => 0,
@@ -154,14 +166,14 @@ describe('presentPacer', () => {
         expect(stats.presentSkipRatio).toBe(initialSkipRatio);
     });
 
-    it('audio-master gate: a frame past the audio capture-point paces 1x, not MAX_FPS', async () => {
+    it('audio-master gate: a frame past the audio capture-point paces 1x, not catch-up', async () => {
         const stats = createEmptyPlayerStats();
-        // Two frames 1 s apart, with a steady 1 s of excess buffer (1333 - 333):
+        // Two 30fps frames with a steady 1 s of excess buffer (1333 - 333):
         // catch-up regime, below the 4 s skip budget. Fixed now so the scheduled
         // delay equals the chosen frame duration.
         async function lastDelay(getAudioCaptureOffsetMs?: () => number | null): Promise<number> {
             const delays: number[] = [];
-            const items = [0, 1000].map((c, i) => makeEnvelope(stats, i, c));
+            const items = [0, 33].map((c, i) => makeEnvelope(stats, i, c));
             await count(pipe(staticSource(items), presentPacer({
                 createSink: () => new MockSink(),
                 getBufferSpanMs: (): number => 1333,
@@ -173,11 +185,35 @@ describe('presentPacer', () => {
             return delays[delays.length - 1];
         }
 
-        // No audio pairing: video sprints the backlog at MAX_FPS. Single delay =
-        // first frame, so it carries the one-time PRESENT_LEAD_MS phase lead.
-        expect(await lastDelay()).toBeCloseTo(1000 / 120 - PRESENT_LEAD_MS, 1);
-        // Audio at 500 ms: the second frame (capturedAt 1000) is past audio, so it
-        // paces at natural 1x (clamped to MAX_DURATION) instead of sprinting.
-        expect(await lastDelay(() => 500)).toBe(1000 / 10 - PRESENT_LEAD_MS);
+        // No audio pairing: 1s of excess drains at the max 2x overspeed —
+        // natural 33ms compresses to 16.5ms, evenly spaced (no burst).
+        expect(await lastDelay()).toBeCloseTo(33 / 2 - PRESENT_LEAD_MS, 1);
+        // Audio at capture-point 0: the second frame (capturedAt 33) is past
+        // audio, so it paces at natural 1x instead of catching up.
+        expect(await lastDelay(() => 0)).toBeCloseTo(33 - PRESENT_LEAD_MS, 1);
+    });
+
+    it('catch-up is an evenly spaced bounded overspeed, ramping with backlog', async () => {
+        // arrange: 30fps frames; scheduled delay per frame reveals the chosen pace.
+        async function delayFor(extraMs: number): Promise<number> {
+            const stats = createEmptyPlayerStats();
+            const delays: number[] = [];
+            const items = [0, 33].map((c, i) => makeEnvelope(stats, i, c));
+            await count(pipe(staticSource(items), presentPacer({
+                createSink: () => new MockSink(),
+                getBufferSpanMs: (): number => 333 + extraMs,
+                targetSpanMs: 333,
+                nowFn: (): number => 0,
+                delayFn: (ms: number): Promise<void> => { delays.push(ms); return Promise.resolve(); },
+            })));
+            return delays[delays.length - 1] + PRESENT_LEAD_MS;
+        }
+
+        // act + assert: below one source frame of excess → natural 1x pace.
+        expect(await delayFor(20)).toBeCloseTo(33, 1);
+        // 100ms excess → rate 1.2 → ~27.5ms spacing, far from a MAX_FPS burst.
+        expect(await delayFor(100)).toBeCloseTo(33 / 1.2, 1);
+        // Deep backlog clamps at 2x — never collapses to back-to-back writes.
+        expect(await delayFor(3000)).toBeCloseTo(33 / 2, 1);
     });
 });

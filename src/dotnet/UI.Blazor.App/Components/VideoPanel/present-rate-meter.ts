@@ -15,6 +15,10 @@ export interface PresentRateSnapshot {
     presentsPerSec: number;
     slotsPerSec: number;
     videoCount: number;
+    // Per-stream display rate (distinct display slots/sec) for <video> elements
+    // carrying data-stream-id — the honest "what the eye sees" number, unlike
+    // the per-stream throughput counter which is the MSTG write rate.
+    slotsPerSecByStream: Record<string, number>;
 }
 
 class PresentRateMeter {
@@ -33,19 +37,28 @@ class PresentRateMeter {
         const from = now - WINDOW_MS;
         const windowSec = WINDOW_MS / 1000;
         const slots = new Set<number>();
+        const slotsPerSecByStream: Record<string, number> = {};
         let total = 0;
         for (const [video, times] of this.presentsByVideo) {
             const kept = times.filter(t => t >= from);
             this.presentsByVideo.set(video, kept);
             total += kept.length;
-            for (const t of kept)
-                slots.add(Math.floor(t / SLOT_BIN_MS));
+            const streamSlots = new Set<number>();
+            for (const t of kept) {
+                const slot = Math.floor(t / SLOT_BIN_MS);
+                slots.add(slot);
+                streamSlots.add(slot);
+            }
+            const streamId = video.dataset.streamId;
+            if (streamId)
+                slotsPerSecByStream[streamId] = streamSlots.size / windowSec;
         }
 
         return {
             presentsPerSec: total / windowSec,
             slotsPerSec: slots.size / windowSec,
             videoCount: this.watched.size,
+            slotsPerSecByStream,
         };
     }
 
