@@ -401,8 +401,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var state = await SafeGet(chatId).ConfigureAwait(false);
         if (state is null)
             return;
-        if (!state.IsClosing && await HasParticipant(chatId).ConfigureAwait(false))
-            return; // a participant rejoined during the final pass - keep the session live
+        if (await HasParticipant(chatId).ConfigureAwait(false))
+            return; // someone (re)joined during the final pass - keep the session live
 
         await CloseWithFinal(state, cancellationToken).ConfigureAwait(false);
     }

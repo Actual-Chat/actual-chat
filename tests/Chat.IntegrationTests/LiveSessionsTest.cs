@@ -159,8 +159,11 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // act — the last participant leaves too
         await backend.SetParticipation(chatId, bobAuthor!.Id, ParticipationKind.Record, false, default);
 
-        // assert — now the empty call closes
-        (await backend.GetState(chatId, default)).Should().BeNull();
+        // assert — a latched transcription session doesn't vanish on empty: it's marked closing and
+        // LiveConversationSummaryFlow owns the final pass, then calls FinalizeSession
+        live = await backend.GetState(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeTrue();
     }
 
     [Fact]
@@ -397,9 +400,11 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // act — a second distinct peer latches the session
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_031), null, true, default);
 
-        // assert — the live block is now present
+        // assert — the live block is now present, re-keyed by the latch to the chat end (VisibleStartLid)
+        var latched = await backend.GetState(chatId, default);
+        latched.Should().NotBeNull();
         var tileAfter = await conversations.GetTile(chatId, tileRange, default);
-        tileAfter.Should().Contain(c => c.Id == live.ConversationId);
+        tileAfter.Should().Contain(c => c.Id == latched!.ConversationId);
     }
 
     [Fact]
