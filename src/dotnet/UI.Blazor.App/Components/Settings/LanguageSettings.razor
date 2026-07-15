@@ -12,7 +12,7 @@
                 class="c-language-select"
                 Value="_formModel.Language"
                 ValueExpression="@(() => _formModel.Language)"
-                ValueChanged="@((string language) => OnLanguageChanged(language))">
+                ValueChanged="@(OnLanguageChanged)">
                 @foreach (var language in SupportedLanguages) {
                     <option value="@language.Code">@language.Name</option>
                 }
@@ -40,7 +40,7 @@
     private LanguageUI LanguageUI => field ??= Hub.Services.GetRequiredService<LanguageUI>();
 
     protected override void OnInitialized()
-        => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageUI.UILanguage.Value };
+        => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageUI.ToCode(LanguageUI.UILanguage.Value) };
 
     private async Task OnLanguageChanged(string language) {
         await LanguageUI.SetUILanguage(language);
@@ -51,7 +51,7 @@
     {
         private string FormId { get; }
         public string LanguageFormId { get; }
-        public string Language { get; set; } = LanguageUI.DefaultUILanguage;
+        public string Language { get; set; } = LanguageUI.ToCode(LanguageUI.DefaultUILanguage);
 
         public FormModel(ComponentIdGenerator componentIdGenerator)
         {

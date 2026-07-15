@@ -11,7 +11,7 @@ namespace ActualChat.UI.Blazor.App.Resources;
 /// </summary>
 public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocalizer<Strings>
 {
-    private static readonly Dictionary<string, Dictionary<string, string>> Translations = LoadAll();
+    private static readonly Dictionary<Language, Dictionary<string, string>> Translations = LoadAll();
 
     private LanguageUI LanguageUI => field ??= services.GetRequiredService<LanguageUI>();
 
@@ -55,11 +55,11 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
         return name;
     }
 
-    private static Dictionary<string, Dictionary<string, string>> LoadAll() {
-        var result = new Dictionary<string, Dictionary<string, string>>();
+    private static Dictionary<Language, Dictionary<string, string>> LoadAll() {
+        var result = new Dictionary<Language, Dictionary<string, string>>();
         var assembly = typeof(AppStringLocalizer).Assembly;
         foreach (var lang in LanguageUI.SupportedUILanguages) {
-            using var stream = assembly.GetManifestResourceStream($"Strings.{lang}.json");
+            using var stream = assembly.GetManifestResourceStream($"Strings.{LanguageUI.ToCode(lang)}.json");
             if (stream == null)
                 continue;
 

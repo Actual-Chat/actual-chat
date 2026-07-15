@@ -11,16 +11,13 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
-    // TODO: it must be Language type, not string
-    public static readonly string[] SupportedUILanguages = ["en", "es", "fr", "it", "ru", "de"];
-    // TODO: it must be Language type, not string
-    public static readonly string DefaultUILanguage = Languages.Main.ShortTitle.ToLowerInvariant();
-    // TODO: it must be Language type, not string
-    private static readonly HashSet<string> SupportedUILanguageSet = [..SupportedUILanguages];
+    public static readonly Language[] SupportedUILanguages =
+        [Languages.English, Languages.Spanish, Languages.French, Languages.Italian, Languages.Russian, Languages.German];
+    public static readonly Language DefaultUILanguage = Languages.Main;
+    private static readonly HashSet<Language> SupportedUILanguageSet = [..SupportedUILanguages];
 
     public SyncedState<UserLanguageSettings> Settings { get; init; }
-    // TODO: it must be Language type, not string
-    public SyncedState<string> UILanguage { get; init; }
+    public SyncedState<Language> UILanguage { get; init; }
     public Task WhenReady => Settings.WhenFirstTimeRead;
 
     public LanguageUI(AppUIHub hub) : base(hub)
@@ -32,9 +29,9 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
             updateDelayer: FixedDelayer.NextTick,
             missingValueFactory: CreateLanguageSettings,
             category: StateCategories.Get(GetType(), nameof(Settings)));
-        UILanguage = StateFactory.NewKvasSynced<string>(
+        UILanguage = StateFactory.NewKvasSynced<Language>(
             new(hub.LocalSettings, nameof(UILanguage)) {
-                InitialValue = "",
+                InitialValue = DefaultUILanguage,
                 Category = StateCategories.Get(GetType(), nameof(UILanguage)),
                 MissingValueFactory = DetectUILanguage,
             });
@@ -110,6 +107,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         Settings.Set(updater.Invoke(Settings.Value));
     }
 
+    // TODO: accept Language, not string
     public async Task SetUILanguage(string? language, CancellationToken cancellationToken = default)
     {
         await UILanguage.WhenFirstTimeRead.ConfigureAwait(false);
@@ -118,22 +116,26 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         await UILanguage.WhenWritten(cancellationToken).ConfigureAwait(false);
     }
 
+    public static string ToCode(Language language)
+        => language.Value.Split('-')[0].ToLowerInvariant();
+
     // Private methods
 
-    private static bool IsSupportedUILanguage(string? language)
-        => language != null && Languages.ById.ContainsKey(language) && SupportedUILanguageSet.Contains(language);
+    private static Language? ToSupportedUILanguage(Language? language)
+        => language != null && Languages.ById.TryGetValue(ToCode(language), out var uiLanguage)
+            && SupportedUILanguageSet.Contains(uiLanguage)
+                ? uiLanguage
+                : null;
 
-    private static string NormalizeUILanguage(string? language)
-        => IsSupportedUILanguage(language) ? language! : DefaultUILanguage;
+    private static Language NormalizeUILanguage(string? language)
+        => ToSupportedUILanguage(Language.TryParse(language, true)) ?? DefaultUILanguage;
 
-    private async ValueTask<string> DetectUILanguage(CancellationToken cancellationToken)
+    private async ValueTask<Language> DetectUILanguage(CancellationToken cancellationToken)
     {
         var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
-        foreach (var language in languages) {
-            var code = language.Value.Split('-')[0].ToLower();
-            if (IsSupportedUILanguage(code))
-                return code;
-        }
+        foreach (var language in languages)
+            if (ToSupportedUILanguage(language) is { } uiLanguage)
+                return uiLanguage;
         return DefaultUILanguage;
     }
 
