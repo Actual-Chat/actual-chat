@@ -80,7 +80,9 @@ class PresentRateMeter {
     private rescan(): void {
         const live = new Set<HTMLVideoElement>();
         let unobservable = 0;
-        for (const el of document.querySelectorAll('video')) {
+        // Live tiles only (remote players + self-preview) — a plain document-wide
+        // 'video' query counted attachment/content videos as unobservable tiles.
+        for (const el of document.querySelectorAll<HTMLVideoElement>('video.live-stream-video')) {
             const video = el;
             if (video.srcObject instanceof MediaStream
                 && typeof video.requestVideoFrameCallback === 'function')

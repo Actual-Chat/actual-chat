@@ -342,10 +342,12 @@ public class LiveVideoStreams : ILiveVideoStreams
         if (info is { StallNote.Length: > 0 })
             // Warning, not DebugLog: this is the only record of a receiver-side
             // stall that survives — the client console isn't collectable.
+            // Client-supplied string: bound + flatten it before it hits the logs.
             Log.LogWarning(
                 "ChangePlaybackQuality: playback stall reported: session={Session}, stall=[{StallNote}], "
                 + "capacity={CapacityBps}bps, health={Health:F2}, streams={Count}",
-                session, info.StallNote, info.EstimatedCapacityBytesPerSec, info.AggregateHealth,
+                session, info.StallNote.Truncate(500).Replace('\n', ' ').Replace('\r', ' '),
+                info.EstimatedCapacityBytesPerSec, info.AggregateHealth,
                 qualityByStream.Count);
 
         if (info is not null) {

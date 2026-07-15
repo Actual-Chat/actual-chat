@@ -66,8 +66,10 @@ public sealed partial class VideoQualityUI
     private readonly Dictionary<StreamId, DecoderHealth> _lastDecoderHealthByStream = new();
     // Demand actually asked for, surfaced in the panel. Without it there's no way
     // to tell a correct low layer (small tile) from a demand bug — the dump shows
-    // the received tier but never the size that asked for it.
-    private readonly Dictionary<StreamId, InboundDemand> _lastInboundDemandByStream = new();
+    // the received tier but never the size that asked for it. Replaced by
+    // reference swap: the panel reads it from the render thread, so it must
+    // never observe a half-rebuilt map.
+    private Dictionary<StreamId, InboundDemand> _lastInboundDemandByStream = new();
     // Previous tick's demand, to spot a demand increase — prior probe failures at
     // a lower requested rate don't predict the newly-requested one.
     private readonly Dictionary<StreamId, int> _prevDemandLayerCountByStream = new();
@@ -154,6 +156,21 @@ public sealed partial class VideoQualityUI
             _pendingStallNotes[streamId] = reason;
         }
         return RecomputePlaybackQuality(PlaybackQualityReason.Stalled, cancellationToken);
+    }
+
+    public Task OnPlaybackEnded(StreamId streamId, CancellationToken cancellationToken)
+    {
+        // Normal teardown (player disposed, stream ended) — without this, the
+        // TTL prune is the only removal path and reports every ended stream as
+        // a "stats-silent" stall.
+        lock (_playbackLock) {
+            if (!_playbackByStream.Remove(streamId))
+                return Task.CompletedTask;
+
+            _playbackStartedAt.Remove(streamId);
+            _playbackLastEvalAt.Remove(streamId);
+        }
+        return RecomputePlaybackQuality(PlaybackQualityReason.ActiveSetChanged, cancellationToken);
     }
 
     public Task OnPlaybackViewportChanged(
@@ -248,14 +265,9 @@ public sealed partial class VideoQualityUI
     {
         while (!cancellationToken.IsCancellationRequested) {
             await Task.Delay(PlaybackQualityKeepAlivePeriod, cancellationToken).ConfigureAwait(false);
-            var entries = GetFreshPlaybackEntries();
-            if (entries.Count == 0) {
-                // Pruning happens above, so this is where an all-streams-silent
-                // stall surfaces when nothing else is ticking to notice it.
-                ReportStallWithoutFreshStreams(cancellationToken);
-                continue;
-            }
-
+            // The gated recompute owns the zero-fresh-entries case too (prune +
+            // ReportStallWithoutFreshStreams) — an all-streams-silent stall
+            // surfaces here when nothing else is ticking to notice it.
             await RecomputePlaybackQuality(PlaybackQualityReason.Stable, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -336,7 +348,6 @@ public sealed partial class VideoQualityUI
             _lastDownlinkHealthByStream.Remove(sid);
             _lastDecoderHealthByStream.Remove(sid);
             _lastKeyFrameRequestAt.Remove(sid);
-            _lastStallReportAt.Remove(sid);
             _prevDemandLayerCountByStream.Remove(sid);
         }
         _decoderCapState.PruneStaleStreams(liveStreamIdStrings);
@@ -372,9 +383,13 @@ public sealed partial class VideoQualityUI
         // the user just enlarged isn't held at a stale ceiling for up to
         // MaxProbeCooldownSec. The calm-streak gate still applies — that one
         // tracks current health, which a demand change says nothing about.
+        // First sight only seeds: a new (or prune-flapped) stream adding demand
+        // says nothing about link health, and treating it as growth would
+        // collapse the back-off exactly while a congested link keeps flapping.
         var demandGrew = false;
         foreach (var (streamId, state) in entries) {
-            if (state.RequestedLayerCount > _prevDemandLayerCountByStream.GetValueOrDefault(streamId))
+            if (_prevDemandLayerCountByStream.TryGetValue(streamId, out var prevLayerCount)
+                && state.RequestedLayerCount > prevLayerCount)
                 demandGrew = true;
             _prevDemandLayerCountByStream[streamId] = state.RequestedLayerCount;
         }
@@ -469,16 +484,17 @@ public sealed partial class VideoQualityUI
             requestedMap,
             cancellationToken).ConfigureAwait(false);
 
-        _lastInboundDemandByStream.Clear();
+        var inboundDemandByStream = new Dictionary<StreamId, InboundDemand>();
         foreach (var (streamId, state) in entries) {
             var layerId = requestedMap.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest).LayerId;
-            _lastInboundDemandByStream[streamId] = new InboundDemand(
+            inboundDemandByStream[streamId] = new InboundDemand(
                 state.DesiredVideoSize,
                 state.RequestedLayerCount,
                 state.Snapshot.RenderCssLongSide,
                 state.Snapshot.RenderDevicePixelRatio,
                 GetLayerCapTag(streamId.Value, layerId, entries));
         }
+        _lastInboundDemandByStream = inboundDemandByStream;
 
         // Cap-change detection: compare requested layer + decoder cap maps
         // with the previous tick's snapshot. Pick the first changed stream
@@ -797,6 +813,16 @@ public sealed partial class VideoQualityUI
     private List<KeyValuePair<StreamId, PlaybackStatsState>> GetFreshPlaybackEntries()
     {
         lock (_playbackLock) {
+            // Expired-stamp sweep, age-based rather than tied to entry liveness:
+            // a pruned stream's stamp must outlive its entry, or the very stall
+            // that armed the cooldown erases it and the note re-fires every prune.
+            // The lock also matters — every other _lastStallReportAt access holds it.
+            var expiredStallReportIds = _lastStallReportAt
+                .Where(x => x.Value.Elapsed > StallReportCooldown)
+                .Select(x => x.Key)
+                .ToArray();
+            foreach (var streamId in expiredStallReportIds)
+                _lastStallReportAt.Remove(streamId);
             var isPaused = _isBackground
                 || _currentPanelMode is VideoPanelMode.Hidden or VideoPanelMode.Collapsed;
             if (!isPaused) {
@@ -872,9 +898,14 @@ public sealed partial class VideoQualityUI
         // that would otherwise strand its note: the normal push needs fresh
         // entries to build from. Replay the last demand verbatim — pruning means
         // "stats stopped", not "stop sending", and an empty map would tell the
-        // server to stop, making the stall permanent.
+        // server to stop, making the stall permanent. Check the map before
+        // taking the notes: taking is destructive, and with no map yet the notes
+        // must stay pending for a later push.
+        if (_lastRequestedMap is not { } lastMap)
+            return;
+
         var note = TakePendingStallNotes();
-        if (note.IsNullOrEmpty() || _lastRequestedMap is not { } lastMap)
+        if (note.IsNullOrEmpty())
             return;
 
         var info = new PlaybackQualityInfo(

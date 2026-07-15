@@ -14,9 +14,9 @@ public sealed partial record VideoStreamInfo(
     // Source's claimed wall-clock at stream start, never overridden by the server.
     // Used by the client A/V catch-up policy. Falls back to StartedAt when default.
     [property: DataMember, MemoryPackOrder(6), Key(6)] Moment SourceStartedAt = default,
-    // Server time minus SourceStartedAt, measured once at registration. The only
-    // real skew signal: StartedAt equals SourceStartedAt unless the server's
-    // gross-skew guard trips, so their difference can't reveal ordinary skew.
-    // Includes the PushStream upload leg, so it's an upper bound.
-    [property: DataMember, MemoryPackOrder(7), Key(7)] double SourceClockDeltaMs = 0
+    // Server time minus SourceStartedAt, measured once at registration; includes
+    // the PushStream upload leg, so it's an upper bound. The only real skew
+    // signal: StartedAt equals SourceStartedAt unless the server's gross-skew
+    // guard trips. Null (not 0) when the registering server didn't measure it.
+    [property: DataMember, MemoryPackOrder(7), Key(7)] double? SourceClockDeltaMs = null
 );

@@ -331,6 +331,10 @@
         try {
             await _disposeCts.CancelAsync().ConfigureAwait(false);
 
+            _ = Hub.VideoQualityUI
+                .OnPlaybackEnded(StreamInfo.StreamId, CancellationToken.None)
+                .SuppressExceptions();
+
             if (_viewerHeartbeatTimer != null)
                 await _viewerHeartbeatTimer.DisposeAsync().ConfigureAwait(false);
 

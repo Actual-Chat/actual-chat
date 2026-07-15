@@ -366,10 +366,12 @@
                         <span class="diag-value">@rate.SlotsPerSec.ToString("0.#")/s</span>
                     }
                 </div>
-                <div class="diag-row diag-sub">
-                    <span class="diag-label">frames presented</span>
-                    <span class="diag-value diag-dim">@rate.PresentsPerSec.ToString("0.#")/s across @rate.VideoCount video(s)</span>
-                </div>
+                @if (rate.VideoCount > 0) {
+                    <div class="diag-row diag-sub">
+                        <span class="diag-label">frames presented</span>
+                        <span class="diag-value diag-dim">@rate.PresentsPerSec.ToString("0.#")/s across @rate.VideoCount video(s)</span>
+                    </div>
+                }
                 @if (rate.UnobservableCount > 0) {
                     <div class="diag-row diag-sub">
                         <span class="diag-label">not measurable</span>
@@ -1245,8 +1247,10 @@
         // small enough to still poison the lag numbers.
         if (info.SourceStartedAt == default || info.StartedAt == default)
             return "—";
+        if (info.SourceClockDeltaMs is not { } deltaMs)
+            return "—";
 
-        return $"≤ {info.SourceClockDeltaMs:+0;-0;0} ms";
+        return $"≤ {deltaMs:+0;-0;0} ms";
     }
 
     // Drift with the uncontrollable output-device latencies removed from both
