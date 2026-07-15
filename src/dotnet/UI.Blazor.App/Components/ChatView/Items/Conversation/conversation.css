@@ -3,12 +3,16 @@
     @apply rounded-lg;
     @apply border-none;
     @apply overflow-hidden;
-    /* mt: a conversation block otherwise runs straight into the message above it. */
-    @apply mt-4 mb-2;
+    @apply mb-2;
     background: linear-gradient(5deg, var(--conversation-gradient-01) -96.64%, var(--conversation-gradient-02) 39.02%, var(--conversation-gradient-01) 182.11%)
 }
 .conversation-message.live {
     @apply rounded-2xl;
+}
+/* The gap goes on the data-key item, the only box the list measures, and as padding, which
+   getBoundingClientRect counts - a margin here escapes that box and drifts the list's geometry. */
+.virtual-list .c-virtual-container .item:has(> .conversation-message) {
+    @apply pt-4;
 }
 .conversation-message.live:not(.joined) {
     @apply border-none;
@@ -103,16 +107,11 @@ body.hoverable .conversation-message .c-join-row:hover {
     @apply flex-y;
 }
 
-/* An expanded conversation leads with its header, not a .conversation-message, so the card's own top
-   margin can't space it, and the header is sticky, so margining it would move where it pins.
-   Padding, not margin: the list measures these li's with getBoundingClientRect, which counts padding
-   but not margin - a margin here silently shortens its geometry and the end drifts out of reach. */
-.virtual-list .c-virtual-container .group:has(> .item > .conversation-header) {
-    @apply pt-4;
-}
-
 .conversation-header {
-    @apply mb-2;
+    /* Own padding, not spacing on any ancestor: only elements carrying data-key are measured, so a
+       group li's own box is invisible to the list and any gap there drifts its geometry. bg-01 is the
+       chat's own ground, so this reads as blank space. */
+    @apply pt-4;
     @apply rounded-t-lg;
     @apply bg-01;
     @apply min-h-15;
