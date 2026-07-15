@@ -71,6 +71,9 @@ public sealed partial class VideoQualityUI
     // Previous tick's demand, to spot a demand increase — prior probe failures at
     // a lower requested rate don't predict the newly-requested one.
     private readonly Dictionary<StreamId, int> _prevDemandLayerCountByStream = new();
+    // Last demand actually sent, replayed verbatim when a stall report has to go
+    // out with no fresh streams left to rebuild it from.
+    private ApiMap<string, ReceiveQuality>? _lastRequestedMap;
     // Sticky decoder cap with edge-triggered demote. Set on Good→Bad
     // transition, cleared on =Good. Marginal holds the last value.
     private readonly DecoderCapState _decoderCapState = new();
@@ -246,8 +249,12 @@ public sealed partial class VideoQualityUI
         while (!cancellationToken.IsCancellationRequested) {
             await Task.Delay(PlaybackQualityKeepAlivePeriod, cancellationToken).ConfigureAwait(false);
             var entries = GetFreshPlaybackEntries();
-            if (entries.Count == 0)
+            if (entries.Count == 0) {
+                // Pruning happens above, so this is where an all-streams-silent
+                // stall surfaces when nothing else is ticking to notice it.
+                ReportStallWithoutFreshStreams(cancellationToken);
                 continue;
+            }
 
             await RecomputePlaybackQuality(PlaybackQualityReason.Stable, cancellationToken).ConfigureAwait(false);
         }
@@ -273,6 +280,7 @@ public sealed partial class VideoQualityUI
         var entries = GetFreshPlaybackEntries();
         if (entries.Count == 0) {
             _playbackSnapshot = PlaybackQualitySnapshot.Empty;
+            ReportStallWithoutFreshStreams(cancellationToken);
             return;
         }
 
@@ -440,6 +448,7 @@ public sealed partial class VideoQualityUI
                 state.Snapshot.Priority,
                 state.Verdict);
         }
+        _lastRequestedMap = requestedMap;
         var stallNote = TakePendingStallNotes();
         var info = new PlaybackQualityInfo(
             estimatedCapacity,
@@ -855,6 +864,29 @@ public sealed partial class VideoQualityUI
             return "thermal";
 
         return "demand";
+    }
+
+    private void ReportStallWithoutFreshStreams(CancellationToken cancellationToken)
+    {
+        // Every stream going silent is the case most worth reporting, and the one
+        // that would otherwise strand its note: the normal push needs fresh
+        // entries to build from. Replay the last demand verbatim — pruning means
+        // "stats stopped", not "stop sending", and an empty map would tell the
+        // server to stop, making the stall permanent.
+        var note = TakePendingStallNotes();
+        if (note.IsNullOrEmpty() || _lastRequestedMap is not { } lastMap)
+            return;
+
+        var info = new PlaybackQualityInfo(
+            _inboundBwEstimator.CeilingBps,
+            AggregateHealth: 0,
+            PlaybackQualityReason.Stalled,
+            IsColdStart: false,
+            new ApiMap<string, PlaybackStreamInfo>(),
+            note);
+        _ = LiveVideoStreams
+            .ChangePlaybackQuality(Session, lastMap, info, cancellationToken)
+            .SuppressExceptions();
     }
 
     private bool TryStartStallReportLocked(StreamId streamId)

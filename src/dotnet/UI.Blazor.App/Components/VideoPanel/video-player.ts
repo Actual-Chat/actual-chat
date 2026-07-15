@@ -507,6 +507,10 @@ export class VideoPlayer {
                     },
                     onError: (streamId: string, error: string) => {
                         warnLog?.log(`Worker reported error for stream ${streamId}: ${error}`);
+                        // Terminal for this attempt (StreamStallTimer included), so the
+                        // tile stops moving — beacon it, or the only record is this console.
+                        void this.blazorRef.invokeMethodAsync('OnPlaybackStalled', `player-error: ${error}`)
+                            .catch((e: unknown) => warnLog?.log('OnPlaybackStalled error:', e));
                         this.settleCurrentAttempt({
                             kind: 'error',
                             error: new Error(error),
