@@ -19,7 +19,7 @@
 //   - Handshake exchange — run() sends $sys.Handshake on connect, waits for the
 //     server's response.  RpcServerPeer._onHandshakeReceived() auto-replies.
 //     Like .NET's OnRun() handshake sequence.
-//   - Peer change detection — run() compares RemoteHubId from successive
+//   - Peer change detection — run() compares RemotePeerId from successive
 //     handshakes to detect server restarts, triggering peerChanged + inbound.clear().
 //     Like .NET's RpcHandshake.GetPeerChangeKind().
 //   - Outbound call cancellation via AbortSignal — call(signal) registers an
@@ -75,7 +75,8 @@
 //     yet propagate cancellation to the service handler (would require AbortSignal
 //     threading through RpcServiceHost.dispatch).
 
-import { EventHandlerSet, PromiseSource, TimeoutError, withTimeout } from '../actuallab-core/index.js';
+import { EventHandlerSet, PromiseSource, TimeoutError, cancellationError, withTimeout } from '../actuallab-core/index.js';
+import type { RpcCallTimeouts } from './rpc-call-timeouts.js';
 import { getLogs } from './logging.js';
 import {
     RpcWebSocketConnection,
@@ -171,6 +172,8 @@ export interface RpcCallOptions {
     signal?: AbortSignal;
     /** Bitfield of RpcRemoteExecutionMode flags (default: 7 = Default). */
     remoteExecutionMode?: number;
+    /** Per-call connect/run timeouts (R12). Default: unbounded. */
+    timeouts?: RpcCallTimeouts;
 }
 
 /** Data extracted from an inbound $sys.Handshake message. */
@@ -199,6 +202,10 @@ export abstract class RpcPeer {
      *  entered only after the handshake has succeeded. */
     readonly connectionStateChanged = new EventHandlerSet<RpcConnectionState>();
 
+    /** Index of the handshake THIS peer most recently sent. Used to reject a
+     *  stale `$sys.Reconnect` that references an older connection generation
+     *  (C# `RpcSystemCalls.Reconnect`'s `ownHandshake.Index` check). */
+    protected _ownHandshakeIndex = 0;
     protected _connection: RpcConnection | undefined;
     /** Mirror of `_connectionState === Connected`. True only after the
      *  handshake round-trip completes; outbound `call()` checks this to
@@ -210,6 +217,7 @@ export abstract class RpcPeer {
     protected _connectionState: RpcConnectionState = RpcConnectionState.Disconnected;
     private _keepAliveTimer: ReturnType<typeof setInterval> | undefined;
     private _keepAliveWatchdog: ReturnType<typeof setTimeout> | undefined;
+    private _maintainTimer: ReturnType<typeof setInterval> | undefined;
     /** Wall-clock time of the last inbound `$sys.KeepAlive`, or 0 if none yet
      *  for the current connection. Useful for diagnostics. */
     private _lastKeepAliveAt = 0;
@@ -225,6 +233,48 @@ export abstract class RpcPeer {
         this.ref = ref;
         this.keepAlivePeriodMs = hub.limits.keepAlivePeriodMs;
         this.keepAliveTimeoutMs = hub.limits.keepAliveTimeoutMs;
+        this.inboundCalls.completedCallsLimit = hub.limits.completedInboundCallsLimit;
+        const checkPeriod = hub.limits.callTimeoutCheckPeriodMs;
+        if (checkPeriod > 0 && Number.isFinite(checkPeriod)) {
+            this._maintainTimer = setInterval(() => this._maintainOutboundCalls(), checkPeriod);
+            // Don't keep a Node process alive just for the maintenance timer.
+            (this._maintainTimer as { unref?: () => void }).unref?.();
+        }
+    }
+
+    /** Fail outbound calls whose per-call {@link RpcCallTimeouts} elapsed —
+     *  the connect timeout while a call still awaits the wire, the run timeout
+     *  once it has been sent. Mirrors .NET `RpcOutboundCallTracker.Maintain`
+     *  (RpcCallTrackers.cs:108-207). Calls without timeouts (queries) never
+     *  time out here. */
+    private _maintainOutboundCalls(): void {
+        const now = Date.now();
+        // Run timeouts apply only while the link looks alive: .NET's Maintain
+        // loop is per-connection (RpcPeer.cs:363-367) and skips timeout checks
+        // when keep-alive is stale (RpcCallTrackers.cs:122-127) — otherwise
+        // calls sent before a disconnect/stall would be failed instead of
+        // being resent on reconnect. Connect timeouts always apply, matching
+        // .NET's ConnectTimeout on the connection wait (RpcOutboundCall.cs:103-115).
+        const canRunTimeout = this._isConnected
+            && (this._lastKeepAliveAt === 0 || now - this._lastKeepAliveAt <= this.keepAliveTimeoutMs);
+        for (const call of [...this.outboundCalls.values()]) {
+            const timeouts = call.timeouts;
+            if (timeouts === undefined || call.result.isCompleted)
+                continue;
+
+            let timedOut: string | undefined;
+            if (call.sentAt === 0) {
+                if (now - call.startedAt >= timeouts.connectTimeoutMs)
+                    timedOut = `connect timeout (${timeouts.connectTimeoutMs}ms)`;
+            } else if (canRunTimeout && now - call.sentAt >= timeouts.runTimeoutMs)
+                timedOut = `run timeout (${timeouts.runTimeoutMs}ms)`;
+            if (timedOut === undefined)
+                continue;
+
+            this.outboundCalls.remove(call.callId);
+            call.result.reject(new TimeoutError(`'${this.ref}': call ${call.method}#${call.callId} timed out — ${timedOut}`));
+            call.onDisconnect();
+        }
     }
 
     get connection(): RpcConnection | undefined {
@@ -237,6 +287,10 @@ export abstract class RpcPeer {
 
     get isConnected(): boolean {
         return this._isConnected;
+    }
+
+    get ownHandshakeIndex(): number {
+        return this._ownHandshakeIndex;
     }
 
     protected _setConnectionState(value: RpcConnectionState): void {
@@ -347,12 +401,14 @@ export abstract class RpcPeer {
             this._connection?.encoder,
             this.hub.registry
         );
+        outboundCall.timeouts = options?.timeouts;
 
         // Mirror .NET `RpcOutboundCall.SendAsync`: register the call up front,
         // then either send now (fast path) or wait for `Connected` and send.
         // No central "pending" queue — each call self-manages its wait.
         this.outboundCalls.register(outboundCall);
         if (this._isConnected) {
+            outboundCall.sentAt = Date.now();
             this._sendWireData(outboundCall.serializedWireData);
         } else {
             // Defer: send when the peer transitions to `Connected`. If the
@@ -362,6 +418,7 @@ export abstract class RpcPeer {
                 if (state !== RpcConnectionState.Connected) return;
                 this.connectionStateChanged.remove(stateHandler);
                 if (outboundCall.result.isCompleted) return;
+                outboundCall.sentAt = Date.now();
                 this._sendWireData(outboundCall.serializedWireData);
             };
             this.connectionStateChanged.add(stateHandler);
@@ -377,9 +434,14 @@ export abstract class RpcPeer {
         if (signal !== undefined) {
             const onAbort = () => {
                 if (this.outboundCalls.remove(callId) !== undefined) {
-                    outboundCall.result.reject(new Error('Call cancelled.'));
+                    outboundCall.result.reject(cancellationError('Call cancelled.'));
                     outboundCall.onDisconnect();
-                    if (this._connection !== undefined)
+                    // Only send $sys.Cancel once the handshake has completed
+                    // (`_isConnected`). Sends are gated on `_isConnected`, so a
+                    // call aborted before then was never put on the wire — a
+                    // pre-handshake Cancel would corrupt the remote handshake
+                    // (C#'s null-Transport-until-handshake, RpcPeer.cs:29-52).
+                    if (this._isConnected && this._connection !== undefined)
                         this.hub.systemCallSender.cancel(this._connection, this.serializationFormat, callId);
                 }
             };
@@ -422,10 +484,15 @@ export abstract class RpcPeer {
         // `_setConnectionState(Disconnected)` below will tear down the keep-alive
         // watchdog + send timer. Calls deferred via `whenConnected` self-detach
         // when their result rejects (see `call()`).
+        if (this._maintainTimer !== undefined) {
+            clearInterval(this._maintainTimer);
+            this._maintainTimer = undefined;
+        }
         this.remoteObjects.disconnectAll();
         this.sharedObjects.disconnectAll();
-        this.outboundCalls.rejectAll(new Error('Peer closed.'));
+        this.outboundCalls.rejectAll(cancellationError('Peer closed.'));
         this.outboundCalls.invalidateAll();
+        this.inboundCalls.clear();
         this._connection?.close();
         this.hub.peers.delete(this.ref);
         this._setConnectionState(RpcConnectionState.Disconnected);
@@ -474,17 +541,23 @@ export abstract class RpcPeer {
         if (method === RpcSystemCalls.handshake) {
             const raw = args[0];
             if (raw !== undefined) {
-                // .NET's RpcHandshake is [MessagePackObject(Key)] — serialized
-                // as a 5-element array in msgpack. In JSON it's an object with
-                // named properties. Normalize both shapes here.
-                const handshake = Array.isArray(raw)
+                // .NET sends a positional array over MessagePack, but a
+                // System.Text.Json object (Web defaults → camelCase keys) over the
+                // text transport. Accept the array, PascalCase, and camelCase.
+                const obj = (raw ?? {}) as Record<string, unknown>;
+                const handshake: RemoteHandshake = Array.isArray(raw)
                     ? {
                         RemotePeerId: raw[0] as string | undefined,
                         RemoteHubId: raw[2] as string | undefined,
                         ProtocolVersion: raw[3] as number | undefined,
                         Index: raw[4] as number | undefined,
                     }
-                    : raw as RemoteHandshake;
+                    : {
+                        RemotePeerId: (obj.RemotePeerId ?? obj.remotePeerId) as string | undefined,
+                        RemoteHubId: (obj.RemoteHubId ?? obj.remoteHubId) as string | undefined,
+                        ProtocolVersion: (obj.ProtocolVersion ?? obj.protocolVersion) as number | undefined,
+                        Index: (obj.Index ?? obj.index) as number | undefined,
+                    };
                 this._onHandshakeReceived(handshake);
             }
             return;
@@ -503,72 +576,89 @@ export abstract class RpcPeer {
     private _handleInbound(message: RpcMessage, args: unknown[]): void {
         const method = message.Method ?? '';
         const relatedId = message.RelatedId ?? 0;
-
-        const call = new RpcInboundCall(relatedId, method, args);
         const methodDef = this.hub.serviceHost.getMethodDef(method);
-
-        // For noWait calls: don't register in tracker, don't send response
         const isNoWait = methodDef?.noWait === true;
-        if (!isNoWait) {
-            this.inboundCalls.register(call);
-        }
-
-        // Dispatch to the hub's service host
         const serviceHost = this.hub.serviceHost;
-        void (async () => {
+
+        const dispatch = async (call: RpcInboundCall | undefined): Promise<void> => {
             try {
                 const context =
                     this._connection !== undefined
                         ? {
                             __rpcDispatch: true as const,
                             callId: relatedId,
+                            callType: message.CallType ?? 0,
                             connection: this._connection,
+                            signal: call?.signal,
+                            peer: this,
                         }
                         : undefined;
-                const result = await serviceHost.dispatch(
-                    method,
-                    args,
-                    context
-                );
-                if (
-                    methodDef?.stream === true &&
-                    this._connection !== undefined
-                ) {
-                    // Stream method — wrap result in RpcStream if needed,
-                    // then let toRef() create the sender, register it, and start pumping.
-                    const stream = result instanceof RpcStream
-                        ? result as RpcStream<unknown>
-                        : new RpcStream<unknown>(result as AsyncIterable<unknown>);
-                    this.hub.systemCallSender.ok(
-                        this._connection,
-                        this.serializationFormat,
-                        relatedId,
-                        stream.toRef(this)
-                    );
-                } else if (!isNoWait && this._connection !== undefined) {
-                    this.hub.systemCallSender.ok(
-                        this._connection,
-                        this.serializationFormat,
-                        relatedId,
-                        result
-                    );
+                const result = await serviceHost.dispatch(method, args, context);
+                if (methodDef?.stream === true) {
+                    if (this._connection !== undefined) {
+                        // Stream method — wrap result in RpcStream if needed, then let
+                        // toRef() create the sender, register it, and start pumping.
+                        const stream = result instanceof RpcStream
+                            ? result as RpcStream<unknown>
+                            : new RpcStream<unknown>(result as AsyncIterable<unknown>);
+                        const ref = stream.toRef(this);
+                        const send = (): void => {
+                            // R17: a cancelled call sends no response, even though
+                            // it may still be registered for R9 dedup.
+                            if (call?.isCancelled === true) return;
+                            if (this._connection !== undefined)
+                                this.hub.systemCallSender.ok(
+                                    this._connection, this.serializationFormat, relatedId, ref);
+                        };
+                        if (call !== undefined) {
+                            call.setResult(send);
+                            this.inboundCalls.markCompleted(call);
+                        }
+                        send();
+                    }
+                } else if (call !== undefined) {
+                    const send = (): void => {
+                        if (call.isCancelled) return;
+                        if (this._connection !== undefined)
+                            this.hub.systemCallSender.ok(
+                                this._connection, this.serializationFormat, relatedId, result);
+                    };
+                    call.setResult(send);
+                    this.inboundCalls.markCompleted(call);
+                    send();
                 }
             } catch (e) {
-                if (!isNoWait && this._connection !== undefined) {
-                    this.hub.systemCallSender.error(
-                        this._connection,
-                        this.serializationFormat,
-                        relatedId,
-                        e
-                    );
+                if (call !== undefined) {
+                    const send = (): void => {
+                        if (call.isCancelled) return;
+                        if (this._connection !== undefined)
+                            this.hub.systemCallSender.error(
+                                this._connection, this.serializationFormat, relatedId, e);
+                    };
+                    call.setResult(send);
+                    this.inboundCalls.markCompleted(call);
+                    send();
                 }
                 debugLog?.log(`'${this.ref}': Inbound call failed: ${method}#${relatedId}`, e);
-            } finally {
-                if (!isNoWait) {
-                    this.inboundCalls.remove(relatedId);
-                }
             }
-        })();
+        };
+
+        // For noWait calls: don't track, don't respond.
+        if (isNoWait) {
+            void dispatch(undefined);
+            return;
+        }
+
+        // Dedup resent frames: a known call id attaches to the existing dispatch
+        // and re-sends its result once computed, instead of re-invoking the
+        // handler. Mirrors .NET GetOrRegister + RpcInboundCall.TryReprocess.
+        const call = new RpcInboundCall(relatedId, method, args);
+        const existing = this.inboundCalls.getOrRegister(call);
+        if (existing !== call) {
+            existing.resendResult();
+            return;
+        }
+        void dispatch(call);
     }
 
     /** Start sending `$sys.KeepAlive` pings and arm the silence watchdog.
@@ -640,15 +730,17 @@ export const enum RpcConnectionState {
 /** Client-side RPC peer — initiates WebSocket connection. ref = URL. */
 export class RpcClientPeer extends RpcPeer {
     private _disposed = false;
+    /** Aborted when the peer is stopped/disposed — threaded into the reconnect
+     *  delay so a pending delay rejects promptly instead of parking. */
+    private readonly _stopController = new AbortController();
     private _tryIndex = 0;
-    private _handshakeIndex = 0;
     /** Index from the MOST RECENTLY RECEIVED server handshake — sent back
      *  to the server in `$sys.Reconnect:3` so the server can verify we're
      *  talking about the current connection. Mirrors .NET's
      *  `connectionState.Handshake.Index` path in
      *  `RpcOutboundCallTracker.TryReconnect`. */
     private _remoteHandshakeIndex = 0;
-    private _lastRemoteHubId: string | undefined;
+    private _lastRemotePeerId: string | undefined;
     private _pendingHandshake: PromiseSource<RemoteHandshake> | undefined;
     private _reconnectsAt = 0;
 
@@ -671,6 +763,10 @@ export class RpcClientPeer extends RpcPeer {
      *  the connection attempt. Initialized from `hub.limits` at construction;
      *  set directly to override on a single peer. */
     handshakeTimeoutMs: number;
+    /** A connection that lived less than this before dropping does NOT reset
+     *  `_tryIndex`, so a crash-looping server sees growing reconnect delays.
+     *  Initialized from `hub.limits` at construction; override per peer. */
+    prematureDisconnectTimeoutMs: number;
     readonly peerChanged = new EventHandlerSet<void>();
     /** Fired when the server rejects the connection due to an unsupported serialization format (close code 4010). */
     readonly unsupportedFormat = new EventHandlerSet<{ reason: string }>();
@@ -707,6 +803,7 @@ export class RpcClientPeer extends RpcPeer {
         super(hub, url);
         this.connectTimeoutMs = hub.limits.connectTimeoutMs;
         this.handshakeTimeoutMs = hub.limits.handshakeTimeoutMs;
+        this.prematureDisconnectTimeoutMs = hub.limits.prematureDisconnectTimeoutMs;
         this.clientId = guidToBase64Url(this.id);
         const resolver = RpcSerializationFormatResolver.Default;
         this.serializationFormat = resolver.get(parseFormatFromUrl(url) ?? resolver.defaultFormatKey);
@@ -763,7 +860,7 @@ export class RpcClientPeer extends RpcPeer {
                 // Apply retry delay (no-op on first iteration where tryIndex === 0).
                 // The ApiReconnectDelayer may park indefinitely here while
                 // `Api.canConnect === false`.
-                const retryDelay = this.hub.reconnectDelayer.getDelay(this._tryIndex);
+                const retryDelay = this.hub.reconnectDelayer.getDelay(this._tryIndex, this._stopController.signal);
                 if (retryDelay.isLimitExceeded) {
                     warnLog?.log(`'${this.ref}': Reconnect limit exceeded - shutting down`);
                     this._disposed = true;
@@ -772,6 +869,9 @@ export class RpcClientPeer extends RpcPeer {
                 this._setReconnectsAt(retryDelay.endsAt);
                 try {
                     await retryDelay.promise;
+                } catch {
+                    // Stop signal (or an externally cancelled delay) — the
+                    // `_disposed` check below exits the loop cleanly.
                 } finally {
                     this._setReconnectsAt(0);
                 }
@@ -780,6 +880,9 @@ export class RpcClientPeer extends RpcPeer {
 
                 let lastCloseCode = 0;
                 let lastCloseReason = '';
+                // 0 until this iteration reaches `Connected`; used by the R13
+                // premature-disconnect check below.
+                let connectedAt = 0;
                 try {
                     const connUrl = await this.connectionUrlResolver(this);
                     // Mirrors RpcClientPeer.cs:45 — "Connecting...".
@@ -861,7 +964,7 @@ export class RpcClientPeer extends RpcPeer {
                             this.serializationFormat,
                             this.id,
                             this.hub.hubId,
-                            ++this._handshakeIndex
+                            ++this._ownHandshakeIndex
                         );
                     }
                     catch (e) {
@@ -897,28 +1000,14 @@ export class RpcClientPeer extends RpcPeer {
                     this._remoteHandshakeIndex = remoteHandshake.Index ?? 0;
 
                     // Peer change detection (like .NET's RpcHandshake.GetPeerChangeKind)
-                    const remoteHubId = remoteHandshake.RemoteHubId;
-                    let isPeerChanged = false;
-                    if (remoteHubId !== undefined) {
-                        isPeerChanged =
-                        this._lastRemoteHubId !== undefined &&
-                        this._lastRemoteHubId !== remoteHubId;
-                        if (isPeerChanged) {
-                        // Server identity changed — clear inbound state
-                            this.inboundCalls.clear();
-                            // Mirrors RpcPeer.cs:439 (Peer changed branch).
-                            infoLog?.log(`'${this.ref}': Peer changed`);
-                            this.peerChanged.trigger();
-                        }
-                        this._lastRemoteHubId = remoteHubId;
-                    }
+                    const isPeerChanged = this._detectPeerChange(remoteHandshake);
                     // Mirrors RpcPeer.cs:316 — "Handshake succeeded".
                     infoLog?.log(`'${this.ref}': Handshake succeeded, peerChanged=${isPeerChanged}`);
 
                     // Activate the connection and re-send outbound calls.
                     // All of this happens AFTER the handshake, so the server is ready to process calls.
                     this._setConnectionState(RpcConnectionState.Connected);
-                    this._tryIndex = 0;
+                    connectedAt = Date.now();
                     // Pass the close signal so `_reconcileReconnect`'s inner
                     // `$sys.Reconnect` call cancels cleanly if the socket dies
                     // mid-reconcile — otherwise its pending result.promise would
@@ -948,6 +1037,15 @@ export class RpcClientPeer extends RpcPeer {
                     this._disposed = true;
                     break;
                 }
+
+                // R13: reset the reconnect backoff only when the connection
+                // lived at least `prematureDisconnectTimeoutMs`. A premature
+                // disconnect (e.g. a crash-looping server) leaves `_tryIndex`
+                // growing so `RetryDelaySeq` backs off. Mirrors .NET's
+                // PrematureDisconnect handling (RpcPeer.cs:402-405).
+                if (connectedAt !== 0
+                    && Date.now() - connectedAt >= this.prematureDisconnectTimeoutMs)
+                    this._tryIndex = 0;
 
                 this._tryIndex++;
             }
@@ -1013,6 +1111,12 @@ export class RpcClientPeer extends RpcPeer {
                 continue;
             }
             eligible.push(call);
+            // Restart the run-timeout clock — mirrors .NET's StartedAt reset in
+            // GetReconnectStage (RpcOutboundCall.cs:343). Without it, a call kept
+            // (server still knows it) or resent after a long outage would be
+            // timed out from its stale pre-disconnect send time.
+            if (call.sentAt !== 0)
+                call.sentAt = Date.now();
         }
 
         // Reconcile with the server on same-peer reconnects. On peer change
@@ -1049,6 +1153,7 @@ export class RpcClientPeer extends RpcPeer {
                 // await the original call's $sys.Ok.
                 continue;
             }
+            call.sentAt = Date.now();
             this._sendWireData(call.serializedWireData);
             resentSinceYield++;
             if (resentSinceYield >= YIELD_BATCH) {
@@ -1125,26 +1230,60 @@ export class RpcClientPeer extends RpcPeer {
         }
     }
 
+    /** Detects a server-peer identity change by comparing the incoming
+     *  handshake's `RemotePeerId` with the last one — C#
+     *  `RpcHandshake.GetPeerChangeKind` keys off `RemotePeerId`, not
+     *  `RemoteHubId` (an idle server peer can be replaced while keeping the
+     *  same hub id). On a change it clears the inbound tracker and fires
+     *  `peerChanged`; the very first handshake is never a change. */
+    private _detectPeerChange(handshake: RemoteHandshake): boolean {
+        const remotePeerId = handshake.RemotePeerId;
+        if (remotePeerId === undefined)
+            return false;
+
+        const isPeerChanged =
+            this._lastRemotePeerId !== undefined &&
+            this._lastRemotePeerId !== remotePeerId;
+        this._lastRemotePeerId = remotePeerId;
+        if (isPeerChanged) {
+            this.inboundCalls.clear();
+            // Mirrors RpcPeer.cs:439 (Peer changed branch).
+            infoLog?.log(`'${this.ref}': Peer changed`);
+            this.peerChanged.trigger();
+        }
+        return isPeerChanged;
+    }
+
     protected override _onHandshakeReceived(handshake: RemoteHandshake): void {
         this._pendingHandshake?.resolve(handshake);
     }
 
     override close(): void {
         this._disposed = true;
+        this._stopController.abort();
         super.close();
     }
 }
 
 /** Server-side RPC peer — wraps an accepted connection. ref = "server://{uuid}". */
 export class RpcServerPeer extends RpcPeer {
-    // Needed to widen the base `protected constructor` to public.
-    // eslint-disable-next-line @typescript-eslint/no-useless-constructor
+    /** Grace period before an idle (disconnected) server peer is stopped and
+     *  removed from `hub.peers`; a re-`accept()` within it cancels removal.
+     *  Snapshotted from `hub.limits` at construction (F11). */
+    serverPeerCloseTimeoutMs: number;
+    private _closeTimer: ReturnType<typeof setTimeout> | undefined;
+    private _isClosed = false;
+
     constructor(hub: RpcHub, ref: string) {
         super(hub, ref);
+        this.serverPeerCloseTimeoutMs = hub.limits.serverPeerCloseTimeoutMs;
     }
 
     /** Accept an incoming connection — sets up message handling and handshake response. */
     accept(conn: RpcConnection): void {
+        // A re-accept within the close window keeps this peer (and its trackers)
+        // alive for a same-peer reconnect — cancel any pending auto-removal.
+        this._clearCloseTimer();
         this._setConnectionState(RpcConnectionState.Connecting);
         this.setupConnection(conn);
         // Server starts in Handshaking immediately on accept — there's no
@@ -1161,18 +1300,52 @@ export class RpcServerPeer extends RpcPeer {
             // disconnect shared objects that belong to the live session.
             if (this._connection !== conn && this._connection !== undefined) return;
             this.sharedObjects.disconnectAll();
+            this._armCloseTimer();
         });
+    }
+
+    override close(): void {
+        this._isClosed = true;
+        this._clearCloseTimer();
+        super.close();
+    }
+
+    private _armCloseTimer(): void {
+        this._clearCloseTimer();
+        // `close()` on a connected peer triggers `conn.closed` (possibly after
+        // `close()` returns on async transports), which lands here — never
+        // re-arm on a closed peer, or the stale timer's `close()` would later
+        // evict a successor peer registered under the same ref from `hub.peers`.
+        if (this._isClosed) return;
+        const timeout = this.serverPeerCloseTimeoutMs;
+        if (!(timeout > 0) || !Number.isFinite(timeout)) return;
+        this._closeTimer = setTimeout(() => {
+            this._closeTimer = undefined;
+            // Not re-accepted within the window — stop and remove from hub.peers.
+            if (this._connection === undefined)
+                this.close();
+        }, timeout);
+        (this._closeTimer as { unref?: () => void }).unref?.();
+    }
+
+    private _clearCloseTimer(): void {
+        if (this._closeTimer !== undefined) {
+            clearTimeout(this._closeTimer);
+            this._closeTimer = undefined;
+        }
     }
 
     protected override _onHandshakeReceived(_handshake: RemoteHandshake): void {
         // Client sent its handshake → respond with our own and transition to Connected.
         if (this._connection !== undefined) {
+            // Bump our own handshake index each generation so a stale
+            // $sys.Reconnect referencing an older one is rejected (R16).
             this.hub.systemCallSender.handshake(
                 this._connection,
                 this.serializationFormat,
                 this.id,
                 this.hub.hubId,
-                0
+                ++this._ownHandshakeIndex
             );
             this._setConnectionState(RpcConnectionState.Connected);
         }

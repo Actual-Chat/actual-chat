@@ -48,6 +48,11 @@ export class RpcSystemCallHandler {
         case RpcSystemCalls.ok: {
             const call = peer.outboundCalls.get(relatedId);
             if (call !== undefined) {
+                if (args.length > 1) {
+                    peer.outboundCalls.remove(relatedId);
+                    call.result.reject(polymorphicPayloadError(method, args.length, 1));
+                    break;
+                }
                 call.completedStage |= RpcCallStage.ResultReady;
                 if (call.removeOnOk) {
                     peer.outboundCalls.remove(relatedId);
@@ -62,35 +67,33 @@ export class RpcSystemCallHandler {
             // byte[] result via $sys.Ok. Mirrors .NET `RpcSystemCalls.Reconnect`
             // at src/ActualLab.Rpc/Infrastructure/RpcSystemCalls.cs:51-85.
             //
-            // Limitations vs .NET: does not validate `handshakeIndex` against
-            // this peer's own handshake, and does not perform per-stage
-            // re-processing of compute calls (TS has no compute-invalidation
-            // tracking on the inbound side). A call ID is reported as
-            // "known" iff it is still in the inbound tracker.
+            // Validates `handshakeIndex` against this peer's own handshake
+            // (stale generation → TooLateToReconnect error). Does not perform
+            // per-stage re-processing of compute calls (TS has no compute-
+            // invalidation tracking on the inbound side); a known call id is
+            // re-sent its result if already computed, else reported "unknown".
             this._handleReconnect(relatedId, args, peer);
             break;
         }
         case RpcSystemCalls.error: {
-            const call = peer.outboundCalls.remove(relatedId);
+            const call = peer.outboundCalls.get(relatedId);
             if (call !== undefined) {
+                // Honor removeOnOk like the Ok case: an errored compute call
+                // stays tracked so its error computed still observes
+                // $sys-c.Invalidate — C# RpcOutboundComputeCall.SetError
+                // (CompleteKeepRegistered). Local invalidation or reconnect
+                // cleans it up.
+                call.completedStage |= RpcCallStage.ResultReady;
+                if (call.removeOnOk) {
+                    peer.outboundCalls.remove(relatedId);
+                }
                 const errorInfo = args[0] as
                         | Record<string, unknown>
                         | undefined;
                 const msg = (errorInfo?.Message ??
                         errorInfo?.message ??
                         'RPC error') as string;
-                const errorType = errorInfo?.TypeRef ?? errorInfo?.typeRef;
-                let typeName: string | undefined;
-                if (typeof errorType === 'string') {
-                    // .NET TypeRef is serialized as the assembly-qualified name string,
-                    // e.g. "System.InvalidOperationException, System.Private.CoreLib".
-                    // Mirrors .NET TypeRef.TypeName: substring before the first ','.
-                    const commaIdx = errorType.indexOf(',');
-                    typeName = commaIdx >= 0 ? errorType.slice(0, commaIdx) : errorType;
-                } else if (errorType !== null && typeof errorType === 'object') {
-                    const t = errorType as Record<string, unknown>;
-                    typeName = (t.TypeName ?? t.typeName) as string | undefined;
-                }
+                const typeName = extractTypeName(errorInfo?.TypeRef ?? errorInfo?.typeRef);
                 // Mirrors RpcSystemCalls.cs:102 — surface RpcRerouteException.
                 if (typeName === 'ActualLab.Rpc.RpcRerouteException')
                     warnLog?.log('Got RpcRerouteException from remote peer:', msg);
@@ -99,11 +102,14 @@ export class RpcSystemCallHandler {
             break;
         }
         case RpcSystemCalls.cancel: {
-            // Remote peer is cancelling a call it asked us to process — remove
-            // from the inbound tracker.  Full cancellation propagation (aborting
-            // the running service handler) is not yet implemented; this just
-            // unregisters the call so we don't send a response for it.
-            peer.inboundCalls.remove(relatedId);
+            // Remote peer is cancelling a call it asked us to process. Abort the
+            // call's signal (so the running handler can bail) and unregister it;
+            // the dispatch's result send is gated on `isCancelled`, so no
+            // response goes out. Mirrors RpcInboundCall.Cancel + the
+            // "!CallCancelToken.IsCancellationRequested" guard on SendResult
+            // (RpcInboundCall.cs:209-210, 246-247).
+            const call = peer.inboundCalls.remove(relatedId);
+            call?.cancel();
             break;
         }
         case RpcSystemCalls.keepAlive: {
@@ -111,6 +117,20 @@ export class RpcSystemCallHandler {
             // watchdog doesn't force-close the connection. Mirrors .NET
             // `RpcObjectTrackers.KeepAlive` which sets `LastKeepAliveAt`.
             peer.notifyKeepAliveReceived();
+            // The id list advertises the remote peer's remote objects, which
+            // map to our shared objects. Any id we no longer track is stale on
+            // its side — reply with $sys.Disconnect so it stops advertising it.
+            // Mirrors RpcObjectTrackers.KeepAlive (RpcObjectTrackers.cs:300-317).
+            const keepAliveIds = args[0] as number[] | undefined;
+            if (Array.isArray(keepAliveIds) && keepAliveIds.length > 0 && peer.connection !== undefined) {
+                const unknownIds: number[] = [];
+                for (const id of keepAliveIds)
+                    if (peer.sharedObjects.get(id) === undefined)
+                        unknownIds.push(id);
+
+                if (unknownIds.length > 0)
+                    peer.hub.systemCallSender.disconnect(peer.connection, peer.serializationFormat, unknownIds);
+            }
             break;
         }
         case RpcSystemCalls.item: {
@@ -122,6 +142,8 @@ export class RpcSystemCallHandler {
             // streams the client has already disposed.
             if (!stream)
                 debugLog?.log(`$sys.I: no stream for relatedId=${relatedId}`);
+            else if (args.length > 2)
+                stream.onEnd(args[0] as number, polymorphicPayloadError(method, args.length, 2));
             else
                 stream.onItem(
                         args[0] as number,
@@ -135,6 +157,8 @@ export class RpcSystemCallHandler {
                     | undefined;
             if (!stream)
                 debugLog?.log(`$sys.B: no stream for relatedId=${relatedId}`);
+            else if (args.length > 2)
+                stream.onEnd(args[0] as number, polymorphicPayloadError(method, args.length, 2));
             else if (Array.isArray(args[1])) {
                 const items = args[1] as unknown[];
                 for (let i = 0; i < items.length; i++)
@@ -150,14 +174,21 @@ export class RpcSystemCallHandler {
             if (!stream) {
                 debugLog?.log(`$sys.End: no stream for relatedId=${relatedId}`);
             } else {
-                // .NET ExceptionInfo is a struct — even for normal completion, it serializes
-                // as a non-null object with empty fields (e.g. { "message": "", "typeRef": {...} }).
-                // Check both PascalCase and camelCase, and treat empty messages as no error.
+                // .NET ExceptionInfo is a struct — even for normal completion it serializes
+                // as a non-null object with empty fields. C# keys "is this an error?" on
+                // TypeRef presence (ExceptionInfo.IsNone); we mirror that and fall back to a
+                // non-empty Message. The TypeRef's type name becomes the Error's name.
                 const errorInfo = args[1] as Record<string, unknown> | null;
+                const typeName = extractTypeName(errorInfo?.TypeRef ?? errorInfo?.typeRef);
                 const msg = (errorInfo?.Message ?? errorInfo?.message) as
                         | string
                         | undefined;
-                const error = msg ? new Error(msg) : null;
+                let error: Error | null = null;
+                if (typeName || msg) {
+                    error = new Error(msg ?? typeName ?? 'RPC stream error');
+                    if (typeName)
+                        error.name = typeName;
+                }
                 stream.onEnd(args[0] as number, error);
             }
             break;
@@ -166,14 +197,23 @@ export class RpcSystemCallHandler {
             const sender = peer.sharedObjects.get(relatedId) as
                     | RpcStreamSender<unknown>
                     | undefined;
-            sender?.onAck(args[0] as number, args[1] as string);
+            // Unknown shared object — reply with $sys.Disconnect so the remote
+            // stream fails fast (RpcStreamNotFoundException analog) instead of
+            // hanging. Mirrors RpcSystemCalls.Ack (RpcSystemCalls.cs:149-159).
+            if (sender)
+                sender.onAck(args[0] as number, args[1] as string);
+            else if (peer.connection !== undefined)
+                peer.hub.systemCallSender.disconnect(peer.connection, peer.serializationFormat, [relatedId]);
             break;
         }
         case RpcSystemCalls.ackEnd: {
             const sender = peer.sharedObjects.get(relatedId) as
                     | RpcStreamSender<unknown>
                     | undefined;
-            sender?.onAckEnd(args[0] as string);
+            if (sender)
+                sender.onAckEnd(args[0] as string);
+            else if (peer.connection !== undefined)
+                peer.hub.systemCallSender.disconnect(peer.connection, peer.serializationFormat, [relatedId]);
             break;
         }
         case RpcSystemCalls.disconnect: {
@@ -221,7 +261,20 @@ export class RpcSystemCallHandler {
     private _handleReconnect(relatedId: number, args: unknown[], peer: RpcPeer): void {
         if (peer.connection === undefined) return;
 
-        // args[0]: handshakeIndex (number) — not validated in TS, see class comment.
+        // args[0]: handshakeIndex — the server's OWN handshake index as the
+        // client last saw it. If it no longer matches, this $sys.Reconnect
+        // targets a stale connection generation; reject it so the caller falls
+        // back to blind resend (absorbed by the inbound-call dedup). Mirrors
+        // C# RpcSystemCalls.Reconnect's ownHandshake check (RpcSystemCalls.cs:59-62).
+        const handshakeIndex = args[0];
+        if (typeof handshakeIndex === 'number' && handshakeIndex !== peer.ownHandshakeIndex) {
+            peer.hub.systemCallSender.error(
+                peer.connection, peer.serializationFormat, relatedId,
+                new Error(
+                    `TooLateToReconnect: own handshake index ${peer.ownHandshakeIndex} != ${handshakeIndex}`));
+            return;
+        }
+
         // args[1]: completedStagesData — shape depends on wire format.
         //    JSON:    { [stage: string]: base64-string }
         //    msgpack: Map-like with int keys and Uint8Array values (unsupported in TS).
@@ -230,14 +283,22 @@ export class RpcSystemCallHandler {
             const stagesRaw = args[1];
             if (stagesRaw && typeof stagesRaw === 'object' && !Array.isArray(stagesRaw)) {
                 const unknownSet = new Set<number>();
-                for (const [, rawValue] of Object.entries(stagesRaw as Record<string, unknown>)) {
+                for (const [stageKey, rawValue] of Object.entries(stagesRaw as Record<string, unknown>)) {
                     const bytes = _toBytes(rawValue);
                     if (bytes === null) continue;
+                    const completedStage = parseInt(stageKey, 10) || 0;
                     const callIds = IncreasingSeqCompressor.deserialize(bytes);
                     for (const callId of callIds) {
-                        if (peer.inboundCalls.get(callId) === undefined) {
+                        const call = peer.inboundCalls.get(callId);
+                        if (call === undefined)
                             unknownSet.add(callId);
-                        }
+                        else if (completedStage < 1)
+                            // Known call the client has no result for — re-send it
+                            // if already computed (an in-flight call sends on
+                            // completion). At stage >= 1 the client already has
+                            // the result, so nothing is re-sent. Mirrors C#
+                            // RpcInboundCall.TryReprocess.
+                            call.resendResult();
                     }
                 }
                 unknownIds = [...unknownSet].sort((a, b) => a - b);
@@ -252,6 +313,39 @@ export class RpcSystemCallHandler {
         const responseValue = peer.serializationFormat.isBinary ? responseBytes : base64Encode(responseBytes);
         peer.hub.systemCallSender.ok(peer.connection, peer.serializationFormat, relatedId, responseValue);
     }
+}
+
+// A polymorphic .NET payload ($sys.Ok/I/B with needsPolymorphism) prefixes the
+// value with a type marker whose bytes decode as extra msgpack values — see
+// readPolymorphismMarker. Detected by arity: these calls carry a fixed value count.
+function polymorphicPayloadError(method: string, got: number, expected: number): Error {
+    return new Error(
+        `${method}: expected ${expected} value(s), got ${got} — ` +
+        'polymorphic payloads are not supported by the TS client');
+}
+
+// Extracts the .NET type name from a serialized TypeRef. TypeRef is serialized
+// as its assembly-qualified name string (e.g.
+// "System.InvalidOperationException, System.Private.CoreLib"); the type name is
+// the substring before the first ','. Some binary shapes send it as an object.
+function extractTypeName(typeRef: unknown): string | undefined {
+    if (typeof typeRef === 'string') {
+        if (typeRef.length === 0)
+            return undefined;
+
+        const commaIdx = typeRef.indexOf(',');
+        return commaIdx >= 0 ? typeRef.slice(0, commaIdx) : typeRef;
+    }
+    if (typeRef !== null && typeof typeRef === 'object') {
+        const t = typeRef as Record<string, unknown>;
+        const aqn = (t.AssemblyQualifiedName ?? t.assemblyQualifiedName) as string | undefined;
+        if (typeof aqn === 'string' && aqn.length > 0) {
+            const commaIdx = aqn.indexOf(',');
+            return commaIdx >= 0 ? aqn.slice(0, commaIdx) : aqn;
+        }
+        return (t.TypeName ?? t.typeName) as string | undefined;
+    }
+    return undefined;
 }
 
 /**

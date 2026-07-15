@@ -53,6 +53,7 @@ async function runPublishSim(options: SimOptions): Promise<SimResult> {
                     _index: number, items: TestFrame[],
                 ) => items.forEach(onItem),
                 end: () => undefined,
+                disconnect: () => undefined,
             },
         },
         sharedObjects: {
@@ -100,7 +101,9 @@ async function runPublishSim(options: SimOptions): Promise<SimResult> {
         }
     })();
     const pump = sender.writeFrom(source);
-    sender.onAck(0, '');
+    // Initial connect ack carries a non-empty hostId (Ack(0, hostId)) — an
+    // empty-hostId ack on a not-yet-started stream is rejected as invalid.
+    sender.onAck(0, 'test-host');
     const totalMs = options.frameCount * options.frameDurationMs + 40 * options.rttMs + 5000;
     await vi.advanceTimersByTimeAsync(totalMs);
     sender.disconnect();

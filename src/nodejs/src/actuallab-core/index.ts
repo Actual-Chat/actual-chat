@@ -29,14 +29,17 @@ export { AsyncLock } from './async-lock.js';
 
 // Event handling, primises
 export { EventHandlerSet } from './events.js';
-export { PromiseSource, resolvedVoidPromise } from './promise-source.js';
 export { AsyncSignal } from './async-signal.js';
+export { PromiseSource, resolvedVoidPromise } from './promise-source.js';
 export { PromiseSourceWithTimeout } from './promise-source-with-timeout.js';
 export { ResolvedPromise } from './resolved-promise.js';
 export { TimedOut } from './timed-out.js';
 export { TimeoutError, withTimeout } from './withTimeout.js';
 export { delayAsync, delayAsyncWith } from './delay.js';
 export { abortPromise } from './abort-promise.js';
+export { isCancellation, cancellationError } from './cancellation.js';
+export type { AbortOutcome } from './await-with-cleanup.js';
+export { awaitWithCleanup } from './await-with-cleanup.js';
 
 // Higher-order async operators
 export type { ResettableFunc, ThrottleMode } from './throttle.js';
@@ -56,3 +59,6 @@ export {
 } from './retry-delayer.js';
 export type { RetryDelaySchedule } from './retry.js';
 export { retry, catchErrors } from './retry.js';
+
+// Decorator helpers
+export { ownMetadata, resolveArgCount } from './decorators.js';

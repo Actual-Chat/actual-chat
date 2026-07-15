@@ -49,6 +49,7 @@
 import { PromiseSource } from '../actuallab-core/index.js';
 import { RpcCallStage } from './rpc-call-stage.js';
 import { RpcRemoteExecutionMode } from './rpc-service-def.js';
+import type { RpcCallTimeouts } from './rpc-call-timeouts.js';
 
 /** Tracks a pending outbound RPC call. */
 export class RpcOutboundCall {
@@ -64,6 +65,17 @@ export class RpcOutboundCall {
 
     /** The serialized wire data — stored for re-sending on reconnect. */
     serializedWireData: string | Uint8Array = '';
+
+    /** Per-call connect/run timeouts enforced by the peer's maintenance loop
+     *  (R12). `undefined` means unbounded (the query default). */
+    timeouts: RpcCallTimeouts | undefined;
+
+    /** `Date.now()` when this call was created (used for the connect timeout). */
+    readonly startedAt = Date.now();
+
+    /** `Date.now()` when this call was last put on the wire, or 0 if it hasn't
+     *  been sent yet (used for the run timeout). */
+    sentAt = 0;
 
     /**
      * Bitfield of {@link RpcCallStage} flags indicating how far this call
@@ -173,17 +185,57 @@ export class RpcInboundCall {
     readonly callId: number;
     readonly method: string;
     readonly args: unknown[];
+    /** 0 = still processing, 1 = result computed and sent at least once. */
+    completedStage = 0;
+    private _resend: (() => void) | undefined;
+    private readonly _abortController = new AbortController();
 
     constructor(callId: number, method: string, args: unknown[]) {
         this.callId = callId;
         this.method = method;
         this.args = args;
     }
+
+    /** Aborted when the remote peer cancels this call via `$sys.Cancel` (R17).
+     *  Threaded into the service handler so it can abort in-flight work. */
+    get signal(): AbortSignal {
+        return this._abortController.signal;
+    }
+
+    /** True once the remote peer cancelled this call — the response is then
+     *  suppressed even though the call may still be registered (R9 dedup). */
+    get isCancelled(): boolean {
+        return this._abortController.signal.aborted;
+    }
+
+    cancel(): void {
+        this._abortController.abort();
+    }
+
+    // Records the closure that re-sends this call's already-computed result;
+    // marks the call as completed. Mirrors .NET's post-`ProcessStage1Plus` state.
+    setResult(resend: () => void): void {
+        this._resend = resend;
+        this.completedStage = 1;
+    }
+
+    // Re-sends the result to the remote peer if it was already computed.
+    // A resent frame for an in-flight call is a no-op — the original dispatch
+    // will send the result when it completes. Mirrors .NET
+    // `RpcInboundCall.TryReprocess`.
+    resendResult(): void {
+        if (this.completedStage >= 1)
+            this._resend?.();
+    }
 }
 
 /** Manages inbound calls by their RelatedId. */
 export class RpcInboundCallTracker {
     private _calls = new Map<number, RpcInboundCall>();
+    private _completedIds: number[] = [];
+
+    /** Cap on retained completed calls — see `RpcLimits.completedInboundCallsLimit`. */
+    completedCallsLimit = 1000;
 
     get size(): number {
         return this._calls.size;
@@ -191,6 +243,33 @@ export class RpcInboundCallTracker {
 
     register(call: RpcInboundCall): void {
         this._calls.set(call.callId, call);
+    }
+
+    // Registers `call` unless its id is already tracked, in which case the
+    // existing call is returned. Mirrors .NET `RpcInboundCallTracker.GetOrRegister`.
+    getOrRegister(call: RpcInboundCall): RpcInboundCall {
+        const existing = this._calls.get(call.callId);
+        if (existing !== undefined)
+            return existing;
+
+        this._calls.set(call.callId, call);
+        return call;
+    }
+
+    // Keeps the completed `call` registered for duplicate-frame dedup, evicting
+    // the oldest completed calls beyond `completedCallsLimit`. Deviation from
+    // .NET (which unregisters a call once its result is sent): TS peers
+    // blind-resend after reconnect, so a completed call must stay resolvable
+    // to avoid re-executing the handler — but only within a bounded window.
+    markCompleted(call: RpcInboundCall): void {
+        if (this._calls.get(call.callId) !== call)
+            return;
+
+        this._completedIds.push(call.callId);
+        while (this._completedIds.length > this.completedCallsLimit) {
+            const id = this._completedIds.shift()!;
+            this._calls.delete(id);
+        }
     }
 
     get(callId: number): RpcInboundCall | undefined {
@@ -205,5 +284,6 @@ export class RpcInboundCallTracker {
 
     clear(): void {
         this._calls.clear();
+        this._completedIds.length = 0;
     }
 }

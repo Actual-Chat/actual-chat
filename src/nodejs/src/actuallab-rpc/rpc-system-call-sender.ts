@@ -10,8 +10,6 @@
 //   - Match() — sends $sys.M when the response hash matches a cached entry,
 //     avoiding re-sending the full payload.  TS has no response caching.
 //   - NotFound() — TS sends "Service not found" / "Method not found" as $sys.Error.
-//   - Disconnect() — sends $sys.Disconnect with object IDs for shared-object
-//     lifetime management.  TS has no shared-object tracker.
 //   - Ack() / AckEnd() / Item<T>() / Batch<T>() / End() — stream control
 //     messages for RpcStream.  TS has no streaming support yet.
 //   - RpcOutboundContext / PrepareCallForSendNoWait pipeline — .NET creates a full
@@ -25,6 +23,7 @@
 //     mode concept.
 
 import { getLogs } from './logging.js';
+import { toExceptionInfo } from './rpc-error.js';
 import { RpcSystemCalls, type RpcMessage } from './rpc-message.js';
 import type { RpcConnection } from './rpc-connection.js';
 import type { RpcSerializationFormat } from './rpc-serialization-format.js';
@@ -87,7 +86,7 @@ export class RpcSystemCallSender {
 
     registry?: RpcMethodRegistry;
 
-    private _send(
+    protected _send(
         conn: RpcConnection,
         format: RpcSerializationFormat,
         envelope: RpcMessage,
@@ -155,12 +154,14 @@ export class RpcSystemCallSender {
         relatedId: number,
         error: unknown
     ): void {
-        const message = error instanceof Error ? error.message : String(error);
+        // A TypeRef-less ExceptionInfo makes .NET's ExceptionInfo.ToException()
+        // return null → the caller's task hangs. Send RemoteException instead
+        // (decision D3).
         this._send(
             conn,
             format,
             { Method: RpcSystemCalls.error, RelatedId: relatedId },
-            [{ Message: message }]
+            [toExceptionInfo(error)]
         );
     }
 
@@ -182,6 +183,19 @@ export class RpcSystemCallSender {
     ): void {
         this._send(conn, format, { Method: RpcSystemCalls.keepAlive }, [
             activeCallIds,
+        ]);
+    }
+
+    // Tells the remote peer the listed shared-object ids are gone on our side,
+    // so its matching remote objects (e.g. RpcStream consumers) fail fast
+    // instead of hanging. Mirrors .NET RpcSystemCallSender.Disconnect.
+    disconnect(
+        conn: RpcConnection,
+        format: RpcSerializationFormat,
+        localIds: number[]
+    ): void {
+        this._send(conn, format, { Method: RpcSystemCalls.disconnect }, [
+            localIds,
         ]);
     }
 

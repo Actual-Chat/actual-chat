@@ -1,5 +1,6 @@
 import { PromiseSource, RingBuffer } from '../actuallab-core/index.js';
 import { getLogs } from './logging.js';
+import { toExceptionInfo } from './rpc-error.js';
 import type { RpcObjectId, IRpcObject } from './rpc-object.js';
 import { RpcObjectKind } from './rpc-object.js';
 import type { RpcPeer } from './rpc-peer.js';
@@ -85,6 +86,10 @@ export class RpcStreamSender<T> implements IRpcObject {
     private _abortController = new AbortController();
     private _iterator: AsyncIterator<T> | null = null;
 
+    // -- RTT sampling (send → matching ack round trips, windowed minimum) --
+    private _pendingSendTimes: { index: number; sentAtMs: number }[] = [];
+    private _rttSamples: { atMs: number; rttMs: number }[] = [];
+
     // -- Recorder-controller metrics (Step 9.1) --
     /** Total items skipped via real-time `canSkipTo` compaction. */
     private _skipCount = 0;
@@ -100,10 +105,6 @@ export class RpcStreamSender<T> implements IRpcObject {
      *  When `bufferedCount === bufferSize`, the source pull is paused
      *  until the next ACK frees space. Listener errors are swallowed. */
     onBuffered?: (bufferedCount: number) => void;
-
-    // -- RTT sampling (send → matching ack round trips, windowed minimum) --
-    private _pendingSendTimes: { index: number; sentAtMs: number }[] = [];
-    private _rttSamples: { atMs: number; rttMs: number }[] = [];
 
     get nextIndex(): number {
         return this._nextIndex;
@@ -180,13 +181,48 @@ export class RpcStreamSender<T> implements IRpcObject {
      */
     onAck(nextIndex: number, hostId: string): void {
         const mustReset = hostId !== '' && hostId !== RpcStreamSender._emptyGuid;
-        if (!this._started.isCompleted) this._started.resolve();
+
+        // Host mismatch — the consumer reconnected to a different server
+        // instance, so our stream can never satisfy its acks (RpcSharedStream.cs:82-86).
+        if (mustReset && hostId !== this.id.hostId) {
+            this._sendDisconnect();
+            return;
+        }
+
+        if (!this._started.isCompleted) {
+            // A not-yet-started stream only accepts the initial connect ack.
+            if (mustReset && nextIndex === 0)
+                this._started.resolve();
+            else {
+                this._sendDisconnect();
+                return;
+            }
+        } else if (this._ended) {
+            // Ack for an already-completed stream — nothing left to serve.
+            this._sendDisconnect();
+            return;
+        } else if (mustReset && !this.allowReconnect) {
+            // Reset (reconnect) ack on a non-reconnectable stream — reject.
+            this._sendDisconnect();
+            return;
+        }
+
         this._sampleRtt(nextIndex, mustReset);
         this._acks.push({ nextIndex, mustReset });
         if (this._whenAckReady) {
             this._whenAckReady.resolve();
             this._whenAckReady = null;
         }
+    }
+
+    // Tells the consumer this shared stream is gone, then disposes it —
+    // mirrors RpcSharedStream.SendDisconnect (RpcSharedStream.cs:284-289).
+    private _sendDisconnect(): void {
+        const conn = this.peer.connection;
+        if (conn)
+            this.peer.hub.systemCallSender.disconnect(conn, this.peer.serializationFormat, [this.id.localId]);
+
+        this.disconnect();
     }
 
     /** Called by system call handler when $sys.AckEnd is received from the client. */
@@ -236,7 +272,7 @@ export class RpcStreamSender<T> implements IRpcObject {
         // .NET ExceptionInfo is a non-nullable value type, so we must always
         // emit a valid map shape (empty TypeRef+Message for the "no error" case).
         const errorInfo = error
-            ? { TypeRef: 'System.Exception', Message: error.message }
+            ? toExceptionInfo(error)
             : { TypeRef: '', Message: '' };
         this.peer.hub.systemCallSender.end(
             conn, this.peer.serializationFormat, this.id.localId, this._nextIndex, errorInfo,
@@ -479,6 +515,14 @@ export class RpcStreamSender<T> implements IRpcObject {
         return last;
     }
 
+    /** Wait for the ACK queue to have at least one entry (or `_ended`). */
+    private async _waitAckReady(): Promise<void> {
+        if (this._acks.length > 0 || this._ended) return;
+        this._whenAckReady = new PromiseSource<void>();
+        await this._whenAckReady;
+        this._whenAckReady = null;
+    }
+
     // One RTT sample per ack: time from sending the newest acked item to the
     // ack's arrival (a slight upper bound — includes the server's ack cadence).
     private _sampleRtt(ackNextIndex: number, mustReset: boolean): void {
@@ -500,14 +544,6 @@ export class RpcStreamSender<T> implements IRpcObject {
         while (this._rttSamples.length > 0 && this._rttSamples[0].atMs < cutoffMs)
             this._rttSamples.shift();
         this._rttSamples.push({ atMs: nowMs, rttMs: nowMs - sentAtMs });
-    }
-
-    /** Wait for the ACK queue to have at least one entry (or `_ended`). */
-    private async _waitAckReady(): Promise<void> {
-        if (this._acks.length > 0 || this._ended) return;
-        this._whenAckReady = new PromiseSource<void>();
-        await this._whenAckReady;
-        this._whenAckReady = null;
     }
 
     // -- IRpcObject --
