@@ -40,7 +40,7 @@
     private LanguageUI LanguageUI => field ??= Hub.Services.GetRequiredService<LanguageUI>();
 
     protected override void OnInitialized()
-        => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageUI.UILanguage };
+        => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageUI.UILanguage.Value };
 
     private async Task OnLanguageChanged(string language) {
         await LanguageUI.SetUILanguage(language);

@@ -31,7 +31,7 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
     }
 
     public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) {
-        var dict = Translations.GetValueOrDefault(LanguageUI.UILanguage)
+        var dict = Translations.GetValueOrDefault(LanguageUI.UILanguage.Value)
             ?? Translations.GetValueOrDefault(LanguageUI.DefaultUILanguage);
         return dict?.Select(kv => new LocalizedString(kv.Key, kv.Value)) ?? [];
     }
@@ -39,7 +39,7 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
     // Private methods
 
     private string GetString(string name, out bool found) {
-        var lang = LanguageUI.UILanguage;
+        var lang = LanguageUI.UILanguage.Value;
         if (Translations.TryGetValue(lang, out var dict) && dict.TryGetValue(name, out var value)) {
             // TODO: log warning
             found = true;

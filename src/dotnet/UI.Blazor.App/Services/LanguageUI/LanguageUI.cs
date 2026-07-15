@@ -11,11 +11,15 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
+    // TODO: it must be Language type, not string
     public static readonly string[] SupportedUILanguages = ["en", "es", "fr", "it", "ru", "de"];
+    // TODO: it must be Language type, not string
     public static readonly string DefaultUILanguage = Languages.Main.ShortTitle.ToLowerInvariant();
+    // TODO: it must be Language type, not string
     private static readonly HashSet<string> SupportedUILanguageSet = [..SupportedUILanguages];
 
     public SyncedState<UserLanguageSettings> Settings { get; init; }
+    // TODO: it must be Language type, not string
     public SyncedState<string> UILanguage { get; init; }
     public Task WhenReady => Settings.WhenFirstTimeRead;
 
@@ -32,10 +36,9 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
             new(hub.LocalSettings, nameof(UILanguage)) {
                 InitialValue = "",
                 Category = StateCategories.Get(GetType(), nameof(UILanguage)),
-                // TODO: missingvaluefactory
+                MissingValueFactory = DetectUILanguage,
             });
         _ = EnsureUserLanguageSettingsPersisted();
-        _ = DetectUILanguage();
     }
 
     private async Task EnsureUserLanguageSettingsPersisted(CancellationToken cancellationToken = default)
@@ -123,17 +126,15 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     private static string NormalizeUILanguage(string? language)
         => IsSupportedUILanguage(language) ? language! : DefaultUILanguage;
 
-    private async Task DetectUILanguage()
+    private async ValueTask<string> DetectUILanguage(CancellationToken cancellationToken)
     {
-        await Hub.Services.GetRequiredService<BrowserInfo>().WhenReady.ConfigureAwait(false);
-        var languages = await GetClientLanguages(default).ConfigureAwait(false);
+        var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
         foreach (var language in languages) {
             var code = language.Value.Split('-')[0].ToLower();
-            if (IsSupportedUILanguage(code)) {
-                _detectedUILanguage = code;
-                return;
-            }
+            if (IsSupportedUILanguage(code))
+                return code;
         }
+        return DefaultUILanguage;
     }
 
     private async ValueTask<UserLanguageSettings> CreateLanguageSettings(CancellationToken cancellationToken)
