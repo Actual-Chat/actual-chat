@@ -206,6 +206,7 @@ public partial class ChatUI
         var hasVeryFirstItem = idTiles.Count > 0 && idTiles[0].Start <= chatLidRange.Start;
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
+        var alreadyAddedConversationCards = new HashSet<ConversationId>();
         // The single tail tile merging optimistic "sending"/new/audio-recording messages - picked once so a
         // live session's beyond-end conversation tiles can't become a second tail (duplicate @key crash).
         var tailTileIndex = idTiles.FindIndex(t => t.Contains(chatLidRange.End - 1));
@@ -247,6 +248,16 @@ public partial class ChatUI
                 if (tile.Items[0] is ConversationHeader conversationHeader
                     && alreadyAddedConversationHeaders.Contains(conversationHeader.Conversation!.Id))
                     tile = tile with { Items = tile.Items.Skip(1).ToList() };
+            if (tile.Items.Count == 0)
+                continue;
+
+            // Every tile a conversation spans re-emits its card, and the duplicate @key kills the circuit.
+            var dedupedItems = tile.Items
+                .Where(chatMessage => chatMessage is not ConversationMessage conversationMessage
+                    || alreadyAddedConversationCards.Add(conversationMessage.Conversation!.Id))
+                .ToList();
+            if (dedupedItems.Count != tile.Items.Count)
+                tile = tile with { Items = dedupedItems };
             if (tile.Items.Count == 0)
                 continue;
 

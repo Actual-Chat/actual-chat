@@ -1,7 +1,9 @@
+using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -51,5 +53,54 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         items.Items.OfType<ConversationMessage>()
             .Select(m => m.Conversation!.Id)
             .Should().Contain(live.ConversationId);
+    }
+
+    [Fact]
+    public async Task ShouldNotDuplicateJoinedLiveCardAcrossTiles()
+    {
+        // A landed summary stretches the card's range across tiles, and each re-emits it under one @key.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "live-dup-key-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_080);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live!.SessionStartedAt.Should().NotBeNull();
+
+        var tileSize = (int)ChatUI.IdTileStack.FirstLayer.TileSize;
+        ChatEntry lastEntry = null!;
+        for (var i = 0; i < tileSize * 3; i++)
+            lastEntry = await Tester.CreateTextEntry(chat.Id, $"live-{i}");
+        var summary = new LiveSessionSummary {
+            Title = "Recap",
+            Description = "d",
+            Summary = "s",
+            EndEntryLid = lastEntry.LocalId,
+            MessageCount = tileSize * 3,
+            IsExpandedByDefault = true,
+        };
+        await liveBackend.UpdateSummary(chat.Id, summary, CancellationToken.None);
+
+        // act
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+
+        // assert
+        items.Items.OfType<ExpandedConversationMessage>().Should().NotBeEmpty("the viewer must be joined");
+        items.Items
+            .Select(i => ((IVirtualListItem)i).RenderKey)
+            .Should().OnlyHaveUniqueItems();
+        foreach (var block in items.Items.OfType<ExpandedConversationMessage>())
+            block.Items
+                .Select(i => ((IVirtualListItem)i).RenderKey)
+                .Should().OnlyHaveUniqueItems();
     }
 }
