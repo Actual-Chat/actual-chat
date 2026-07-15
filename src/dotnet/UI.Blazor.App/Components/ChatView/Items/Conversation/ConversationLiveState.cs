@@ -14,4 +14,4 @@ public sealed record ConversationLiveState(
     string ParticipantsText = "",
     bool HasFoldedEntries = false,
     bool IsExpanded = false,
-    IReadOnlyList<(ChatEntry Entry, Markup Markup)>? TailPreview = null);
+    IReadOnlyList<PreviewEntry>? TailPreview = null);

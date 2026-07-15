@@ -4,7 +4,7 @@
     @if (IsLoading) {
         <chat-list-skeleton count="@SkeletonCount" messageCls="thread-skeleton"/>
     } else {
-        foreach (var (chatEntry, markup) in Entries) {
+        foreach (var (chatEntry, markup, streamingText) in Entries) {
             <div class="c-message-wrapper">
                 <AuthorCircle
                     AuthorId="@chatEntry.AuthorId"
@@ -15,9 +15,9 @@
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@chatEntry.BeginsAt"/>
                     </div>
                     <span class="c-message">
-                        @* An entry with no text and no attachments is one still being transcribed;
-                           without this guard the plug below reports "0 media attached". *@
-                        @if (markup.ToReadableText().IsNullOrEmpty() && chatEntry.Attachments.Length > 0) {
+                        @if (!streamingText.IsNullOrEmpty()) {
+                            @streamingText
+                        } else if (markup.ToReadableText().IsNullOrEmpty() && chatEntry.Attachments.Length > 0) {
                             var (mediaList, fileList) = SplitByKind(chatEntry.Attachments);
                             var mediaCount = mediaList.Length;
                             var fileCount = fileList.Length;
@@ -66,7 +66,7 @@
 </div>
 
 @code {
-    [Parameter] public IReadOnlyList<(ChatEntry Entry, Markup Markup)> Entries { get; set; } = [];
+    [Parameter] public IReadOnlyList<PreviewEntry> Entries { get; set; } = [];
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public int SkeletonCount { get; set; } = 2;
 

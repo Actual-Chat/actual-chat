@@ -4,8 +4,34 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
+    private readonly IThreadSafeLruCache<ChatEntryId, TranscriptStreamReader> _previewReaders
+        = new ThreadSafeLruCache<ChatEntryId, TranscriptStreamReader>(32);
+
     private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
+
+    [ComputeMethod]
+    public virtual async Task<string> GetStreamingText(ChatEntryId id, CancellationToken cancellationToken)
+    {
+        // A streaming entry's persisted Content is empty - its text exists only in the stream.
+        var entry = await ChatUI.GetEntry(id, cancellationToken).ConfigureAwait(false);
+        if (entry is not { IsContentStreaming: true }) {
+            // GetEntry invalidates when the entry finalizes, so this is where a finished reader is retired.
+            if (_previewReaders.TryGetValue(id, out var finished)) {
+                _previewReaders.Remove(id);
+                _ = finished.DisposeSilentlyAsync();
+            }
+            return "";
+        }
+
+        var reader = _previewReaders.GetOrAdd(id, entryId => {
+            var newReader = new TranscriptStreamReader(entryId, Hub);
+            newReader.Start();
+            return newReader;
+        });
+        var state = await reader.State.Use(cancellationToken).ConfigureAwait(false);
+        return state.RetainedText + state.ChangedText + state.AnimatedText;
+    }
 
     [ComputeMethod]
     public virtual async Task<StreamingState?> GetStreamingState(ChatEntryId id, CancellationToken cancellationToken)
