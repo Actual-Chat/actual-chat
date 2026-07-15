@@ -37,26 +37,8 @@ public sealed class RedisScope<TValue>(RedisDb redisDb, string? keyPrefix = null
         return await db.KeyDeleteAsync(key).ConfigureAwait(false);
     }
 
-    public async IAsyncEnumerable<string> ListKeys(
+    public IAsyncEnumerable<string> ListKeys(
         string keyPattern = "*",
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var (multiplexer, _) = await RedisDb.Connector.GetMultiplexer(cancellationToken).ConfigureAwait(false);
-        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        var fullPrefix = RedisDb.FullKey("");
-        var fullPattern = fullPrefix + keyPattern;
-
-        foreach (var endpoint in multiplexer.GetEndPoints()) {
-            var server = multiplexer.GetServer(endpoint);
-            if (!server.IsConnected || server.IsReplica)
-                continue;
-
-            await foreach (var fullKey in server.KeysAsync(db.Database, fullPattern)
-                .WithCancellation(cancellationToken)
-                .ConfigureAwait(false)) {
-                var fullKeyStr = (string)fullKey!;
-                yield return fullPrefix.Length == 0 ? fullKeyStr : fullKeyStr[fullPrefix.Length..];
-            }
-        }
-    }
+        CancellationToken cancellationToken = default)
+        => RedisDb.ScanKeys(keyPattern, cancellationToken);
 }

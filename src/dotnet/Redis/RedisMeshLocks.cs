@@ -164,21 +164,8 @@ public class RedisMeshLocks : MeshLocksBase
         return new RedisSubscription<string>(queue, _changeMessageMapper, goneToken);
     }
 
-    public override async Task<List<string>> ListKeys(string prefix, CancellationToken cancellationToken = default)
-    {
-        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        var r = await database
-            .ExecuteAsync("KEYS", [(RedisKey)(prefix + "*")], CommandFlags.DemandMaster)
-            .ConfigureAwait(false);
-
-        var keys = new List<string>(r.Length);
-        for (var index = 0; index < r.Length; index++) {
-            var key = (string?)r[index] ?? "";
-            key = key.Length >= _fullKeyPrefix.Length ? key[_fullKeyPrefix.Length..] : "";
-            keys.Add(key);
-        }
-        return keys;
-    }
+    public override Task<List<string>> ListKeys(string prefix, CancellationToken cancellationToken = default)
+        => RedisDb.ScanKeys(prefix + "*", cancellationToken).ToListAsync(cancellationToken).AsTask();
 
     public async Task<long> RemoveKeys(string pattern, CancellationToken cancellationToken = default)
     {
