@@ -98,10 +98,12 @@
         // Both fields reflect the user's actual streaming state regardless of
         // SourceKind: the camera tile needs to know whether the user is also
         // screencasting in order to render dual icons in its label.
-        var isOwnCameraRecording = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnCameraRecording = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken)
+            .ConfigureAwait(false);
         var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-        var lastError = await ChatVideoUI.GetLastVideoRecorderError(SourceKind, cancellationToken).ConfigureAwait(false);
+        var lastError = await ChatVideoUI.GetLastVideoRecorderError(SourceKind, cancellationToken)
+            .ConfigureAwait(false);
         var isMirrored = await CameraUI.GetIsMirrored(cancellationToken).ConfigureAwait(false);
         return new Model(isOwnCameraRecording, isOwnScreenCasting, !hasRemoteStreams, lastError, isMirrored);
     }
@@ -117,11 +119,11 @@
             await SyncNativePreview();
     }
 
-    // Run the native capture-backed preview exactly while the local camera is
-    // recording and the surface isn't suspended (a JoinVideoCallModal is not
-    // taking over). Starting it opens a second AVCaptureSession on the same
-    // camera the publisher uses — macOS shares the device across sessions.
     private async Task SyncNativePreview() {
+        // Run the native capture-backed preview exactly while the local camera is
+        // recording and the surface isn't suspended (a JoinVideoCallModal is not
+        // taking over). Starting it opens a second AVCaptureSession on the same
+        // camera the publisher uses — macOS shares the device across sessions.
         var shouldRun = !_isSuspended && State.Value.IsOwnCameraRecording;
         if (shouldRun && _nativePreview is null) {
             _nativePreview = Hub.Services.GetService<INativeCameraPreviewFactory>()?.Create(Hub);
@@ -133,9 +135,9 @@
         }
     }
 
-    // Runs on the capture thread; marshal to the Blazor dispatcher before
-    // touching JSRef and let the returned task gate the native side.
     private ValueTask OnNativePreviewFrame(byte[] jpeg) {
+        // Runs on the capture thread; marshal to the Blazor dispatcher before
+        // touching JSRef and let the returned task gate the native side.
         var base64 = Convert.ToBase64String(jpeg);
         return new ValueTask(InvokeAsync(async () => {
             var jsRef = JSRef;
@@ -161,6 +163,7 @@
         _ = State.Recompute();
         if (JSRef is null)
             return;
+
         _ = JSRef.InvokeVoidAsync("setPaused", suspended);
     }
 

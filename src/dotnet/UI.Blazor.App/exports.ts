@@ -78,6 +78,7 @@ export * from './Components/VideoPanel/video-recorder';
 export * from './Components/VideoPanel/screen-share-gesture';
 export * from './Components/VideoPanel/video-streaming-preview';
 export * from './Components/VideoPanel/video-player';
+export * from './Components/VideoPanel/video-track-player-native';
 export * from './Components/VideoPanel/video-diagnostics';
 export * from './Components/VideoPanel/fps-overlay';
 export * from './Services/audio-context-source';

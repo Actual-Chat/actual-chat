@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Services.Video
 @using ActualChat.Video
 @inherits ComponentBase<AppUIHub>
 @implements IVideoPlayerBackend
@@ -53,15 +54,25 @@
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPlayer.create";
+    private static readonly string JSNativeCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoTrackPlayerNative.create";
+
+    // Mac Catalyst has no WebCodecs VideoDecoder, so remote streams are decoded
+    // natively (VideoToolbox) and painted as JPEG frames instead of running the JS
+    // worker player. Advertise only H.264 — the native decoder is H.264-only for now.
+    private static readonly string[] NativeDecoderCodecs = ["h264"];
 
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly TaskCompletionSource _whenCompletedSource = new();
 
     private IJSObjectReference? _jsPlayerRef;
+    private INativeVideoPlayer? _nativePlayer;
+    private IJSObjectReference? _jsNativeRef;
     private Task? _playTask;
     private Timer? _viewerHeartbeatTimer;
     private bool _isDisposed;
     private bool _isViewerRegistered;
+
+    private bool UseNativePlayer => OperatingSystem.IsMacCatalyst();
 
     private ILogger Log => field ??= Services.LogFor<VideoTrackPlayer>();
     private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
@@ -103,6 +114,11 @@
                 null,
                 TimeSpan.FromSeconds(30),
                 TimeSpan.FromSeconds(30));
+
+            if (UseNativePlayer) {
+                await StartNativePlayer();
+                return;
+            }
 
             // Ensure server clock is synced before JS compares its clock to the stream origin.
             // ServerTimeSync is only registered on client platforms (WASM/MAUI), not on Server
@@ -341,6 +357,21 @@
             if (_playTask != null)
                 await _playTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 
+            if (_nativePlayer is not null) {
+                await _nativePlayer.DisposeAsync().ConfigureAwait(true);
+                _nativePlayer = null;
+            }
+            if (_jsNativeRef is {} nativeRef) {
+                try {
+                    await nativeRef.InvokeVoidAsync("dispose");
+                }
+                catch {
+                    // Ignore JS errors during disposal
+                }
+                await nativeRef.DisposeSilentlyAsync();
+                _jsNativeRef = null;
+            }
+
             // Don't unregister viewer on dispose — the server has 90s stale member cleanup.
             // Unregistering here causes codec oscillation when ComputeState re-renders
             // rapidly (e.g., isRecording changes), which cycles AV1↔HEVC endlessly.
@@ -396,14 +427,48 @@
         }
     }
 
+    private async Task StartNativePlayer()
+    {
+        var factory = Services.GetService<INativeVideoPlayerFactory>();
+        if (factory is null) {
+            Log.LogWarning("[VideoTrackPlayer #{StreamId}] No INativeVideoPlayerFactory registered", StreamInfo.StreamId);
+            return;
+        }
+
+        _jsNativeRef = await JS.InvokeAsync<IJSObjectReference>(JSNativeCreateMethod, _disposeCts.Token, CanvasRef);
+        _nativePlayer = factory.Create(Hub, StreamInfo);
+        _nativePlayer.Start(OnNativeFrame);
+    }
+
+    private ValueTask OnNativeFrame(byte[] jpeg)
+    {
+        var base64 = Convert.ToBase64String(jpeg);
+        return new ValueTask(InvokeAsync(async () => {
+            var jsRef = _jsNativeRef;
+            if (jsRef is null)
+                return;
+
+            try {
+                await jsRef.InvokeVoidAsync("renderRemoteFrame", base64);
+            }
+            catch {
+                // The tile can unmount mid-flight — a dropped frame is harmless.
+            }
+        }));
+    }
+
+    private async Task<string[]> GetSupportedDecoderCodecs()
+        => UseNativePlayer
+            ? NativeDecoderCodecs
+            : await JS.InvokeAsync<string[]>($"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+
     private async Task RegisterViewer()
     {
         if (_isViewerRegistered)
             return;
 
         try {
-            var decoderCodecs = await JS.InvokeAsync<string[]>(
-                $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+            var decoderCodecs = await GetSupportedDecoderCodecs();
             await LiveVideoStreams.RegisterMember(
                 Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), CancellationToken.None);
             _isViewerRegistered = true;
@@ -421,8 +486,7 @@
             return;
 
         try {
-            var decoderCodecs = await JS.InvokeAsync<string[]>(
-                $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+            var decoderCodecs = await GetSupportedDecoderCodecs();
             await LiveVideoStreams.RegisterMember(
                 Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), CancellationToken.None);
         }

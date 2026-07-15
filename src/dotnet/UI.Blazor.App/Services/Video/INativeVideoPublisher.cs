@@ -1,6 +1,7 @@
 using ActualChat.Media;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.Video;
 
 namespace ActualChat.UI.Blazor.App.Services.Video;
 
@@ -77,4 +78,21 @@ public interface INativeCameraPreview : IAsyncDisposable
 public interface INativeCameraPreviewFactory
 {
     INativeCameraPreview Create(AppUIHub hub);
+}
+
+/// <summary>
+/// Native inbound video playback for platforms where WebCodecs <c>VideoDecoder</c> is
+/// unavailable (Mac Catalyst WKWebView). Subscribes to a remote stream, decodes it with
+/// VideoToolbox, and pushes downscaled JPEG frames to <paramref name="onFrame"/>; the
+/// caller renders them to the remote tile's canvas. Mirrors <see cref="INativeCameraPreview"/>.
+/// </summary>
+public interface INativeVideoPlayer : IAsyncDisposable
+{
+    void Start(Func<byte[], ValueTask> onFrame);
+    void Stop();
+}
+
+public interface INativeVideoPlayerFactory
+{
+    INativeVideoPlayer Create(AppUIHub hub, VideoStreamInfo streamInfo);
 }

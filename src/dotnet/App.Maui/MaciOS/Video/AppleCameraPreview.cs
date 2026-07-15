@@ -1,17 +1,16 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Video;
-using CoreGraphics;
-using CoreImage;
 using CoreMedia;
 using CoreVideo;
-using UIKit;
 
 namespace ActualChat.App.Maui.Video;
 
 /// <summary>
-/// Native camera preview for Mac Catalyst, where the WKWebView's getUserMedia
-/// delivers no frames. Captures via <see cref="AppleVideoCapture"/> and pushes
-/// throttled, downscaled JPEG frames to the caller for canvas rendering.
+/// Native camera preview for Mac Catalyst (WKWebView getUserMedia delivers no frames):
+/// throttled, downscaled JPEG frames pushed to the caller for canvas rendering.
+/// Taps <see cref="AppleCameraFrameTap"/> while the publisher's capture is live; opens an
+/// own <see cref="AppleVideoCapture"/> only pre-publish (JoinVideoCallModal) — a second
+/// AVCaptureSession on the same camera starves the publisher's session on macOS.
 /// </summary>
 public sealed class AppleCameraPreview : INativeCameraPreview
 {
@@ -19,19 +18,23 @@ public sealed class AppleCameraPreview : INativeCameraPreview
     private const double MinFrameIntervalSeconds = 1.0 / 15;
 
     private readonly ILogger _log;
-    private readonly AppleVideoCapture _capture;
-    private readonly CIContext _ciContext = CIContext.Create();
+    private readonly AppleCameraFrameTap? _tap;
+    private readonly AppleJpegEncoder _jpegEncoder = new();
     private readonly Lock _sync = new();
 
+    private AppleVideoCapture? _ownCapture;
     private Func<byte[], ValueTask>? _onFrame;
     private double _lastEmitSeconds;
     private int _emitInFlight;
 
-    public AppleCameraPreview(ILogger log)
+    public AppleCameraPreview(AppleCameraFrameTap? tap, ILogger log)
     {
         _log = log;
-        _capture = new AppleVideoCapture(log);
-        _capture.FrameCaptured += OnFrameCaptured;
+        _tap = tap;
+        if (_tap is not null) {
+            _tap.FrameCaptured += OnFrameCaptured;
+            _tap.SourceChanged += OnTapSourceChanged;
+        }
     }
 
     public bool Start(string? deviceId, Func<byte[], ValueTask> onFrame)
@@ -39,30 +42,71 @@ public sealed class AppleCameraPreview : INativeCameraPreview
         lock (_sync) {
             _onFrame = onFrame;
             _lastEmitSeconds = 0;
+            if (_tap?.HasSource == true)
+                return true;
+
+            if (_ownCapture is null) {
+                _ownCapture = new AppleVideoCapture(_log);
+                _ownCapture.FrameCaptured += OnFrameCaptured;
+            }
+            return _ownCapture.Start(deviceId);
         }
-        return _capture.Start(deviceId);
     }
 
     public bool SwitchTo(string? deviceId)
-        => _capture.SwitchTo(deviceId);
+    {
+        lock (_sync)
+            return _ownCapture?.SwitchTo(deviceId) ?? false;
+    }
 
     public void Stop()
     {
-        lock (_sync)
+        AppleVideoCapture? ownCapture;
+        lock (_sync) {
             _onFrame = null;
-        _capture.Stop();
+            ownCapture = _ownCapture;
+            _ownCapture = null;
+        }
+        DisposeOwnCapture(ownCapture);
     }
 
     public ValueTask DisposeAsync()
     {
+        if (_tap is not null) {
+            _tap.FrameCaptured -= OnFrameCaptured;
+            _tap.SourceChanged -= OnTapSourceChanged;
+        }
         Stop();
-        _capture.FrameCaptured -= OnFrameCaptured;
-        _capture.Dispose();
-        _ciContext.Dispose();
+        _jpegEncoder.Dispose();
         return ValueTask.CompletedTask;
     }
 
     // Private methods
+
+    private void OnTapSourceChanged(bool hasSource)
+    {
+        // The publisher's capture came up — release the own session so the two never
+        // contend for the camera. Not restarted on source loss: the self-tile unmounts
+        // right after recording stops, and reopening would contend on the next start.
+        if (!hasSource)
+            return;
+
+        AppleVideoCapture? ownCapture;
+        lock (_sync) {
+            ownCapture = _ownCapture;
+            _ownCapture = null;
+        }
+        DisposeOwnCapture(ownCapture);
+    }
+
+    private void DisposeOwnCapture(AppleVideoCapture? ownCapture)
+    {
+        if (ownCapture is null)
+            return;
+
+        ownCapture.FrameCaptured -= OnFrameCaptured;
+        ownCapture.Dispose();
+    }
 
     private void OnFrameCaptured(CMSampleBuffer sampleBuffer, CMTime pts)
     {
@@ -71,9 +115,11 @@ public sealed class AppleCameraPreview : INativeCameraPreview
             onFrame = _onFrame;
             if (onFrame is null)
                 return;
+
             var seconds = pts.Seconds;
             if (_lastEmitSeconds != 0 && seconds - _lastEmitSeconds < MinFrameIntervalSeconds)
                 return;
+
             _lastEmitSeconds = seconds;
         }
 
@@ -88,7 +134,7 @@ public sealed class AppleCameraPreview : INativeCameraPreview
         byte[]? jpeg = null;
         try {
             if (sampleBuffer.GetImageBuffer() is CVPixelBuffer pixelBuffer)
-                jpeg = EncodeJpeg(pixelBuffer);
+                jpeg = _jpegEncoder.EncodeJpeg(pixelBuffer, TargetWidth, 0.6f);
         }
         catch (Exception e) {
             _log.LogWarning(e, "AppleCameraPreview: frame encode failed");
@@ -106,28 +152,12 @@ public sealed class AppleCameraPreview : INativeCameraPreview
                 _ => Interlocked.Exchange(ref _emitInFlight, 0),
                 CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
-
-    private byte[]? EncodeJpeg(CVPixelBuffer pixelBuffer)
-    {
-        using var ciImage = new CIImage(pixelBuffer);
-        var extent = ciImage.Extent;
-        if (extent.Width <= 0 || extent.Height <= 0)
-            return null;
-
-        var scale = TargetWidth / extent.Width;
-        using var scaled = ciImage.ImageByApplyingTransform(CGAffineTransform.MakeScale(scale, scale));
-        using var cgImage = _ciContext.CreateCGImage(scaled, scaled.Extent);
-        if (cgImage is null)
-            return null;
-
-        using var uiImage = new UIImage(cgImage);
-        using var jpeg = uiImage.AsJPEG(0.6f);
-        return jpeg?.ToArray();
-    }
 }
 
 public sealed class AppleCameraPreviewFactory : INativeCameraPreviewFactory
 {
     public INativeCameraPreview Create(AppUIHub hub)
-        => new AppleCameraPreview(hub.Services.LogFor<AppleCameraPreview>());
+        => new AppleCameraPreview(
+            hub.Services.GetService<AppleCameraFrameTap>(),
+            hub.Services.LogFor<AppleCameraPreview>());
 }

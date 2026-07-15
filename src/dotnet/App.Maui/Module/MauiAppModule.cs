@@ -39,7 +39,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         fusion.AddService<AccountUI, MauiAccountUI>(ServiceLifetime.Scoped);
 
         // UI
-        services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null); // Scoped in WASM/SSB, singleton in MAUI
+        // Scoped in WASM/SSB, singleton in MAUI
+        services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null);
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c.UIHub()));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c.UIHub()));
         services.AddScoped<KeepWebViewAliveUI>(c => new (c.UIHub()));
@@ -48,7 +49,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
         services.AddScoped<IMediaMetadataUI>(c => new MediaMetadataUI(c.AppUIHub()));
         services.AddSingleton<ReloadUI>(c => new MauiReloadUI(c)); // Replaces scoped ReloadUI
-        services.AddSingleton<BackgroundStateTracker>(_ => new MauiBackgroundStateTracker()); // Replaces scoped WebBackgroundStateTracker
+        // Replaces scoped WebBackgroundStateTracker
+        services.AddSingleton<BackgroundStateTracker>(_ => new MauiBackgroundStateTracker());
         services.AddSingleton<ThermalTracker>(c => new MauiThermalTracker(c)); // Replaces scoped WebThermalTracker
         services.AddSingleton<MauiTestPage.IMauiTestPageBackend>(_ => new MauiTestPageBackend());
 
@@ -109,12 +111,16 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // there has no WebCodecs encoder); iOS keeps the working JS recorder until the
         // native path is validated on-device.
         if (OperatingSystem.IsMacCatalyst()) {
+            services.AddScoped<ActualChat.App.Maui.Video.AppleCameraFrameTap>(
+                _ => new ActualChat.App.Maui.Video.AppleCameraFrameTap());
             services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeVideoPublisherFactory>(
                 _ => new ActualChat.App.Maui.Video.MauiVideoPublisherFactory());
             services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeCameraDevices>(
                 _ => new ActualChat.App.Maui.Video.MauiCameraDevices());
             services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeCameraPreviewFactory>(
                 _ => new ActualChat.App.Maui.Video.AppleCameraPreviewFactory());
+            services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeVideoPlayerFactory>(
+                _ => new ActualChat.App.Maui.Video.MauiVideoPlayerFactory());
         }
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
