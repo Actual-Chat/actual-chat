@@ -103,6 +103,13 @@ body.hoverable .conversation-message .c-join-row:hover {
     @apply flex-y;
 }
 
+/* An expanded conversation leads with its header, not a .conversation-message, so the card's own top
+   margin can't space it; and the header is sticky, so margining it would move where it pins. Space the
+   whole block from the outside instead. */
+.virtual-list .c-virtual-container .group:has(> .item > .conversation-header) {
+    @apply mt-4;
+}
+
 .conversation-header {
     @apply mb-2;
     @apply rounded-t-lg;
