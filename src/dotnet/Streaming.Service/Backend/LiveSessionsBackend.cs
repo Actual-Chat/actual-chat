@@ -242,8 +242,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var authorIds = state.AuthorIds.Contains(authorId)
                 ? state.AuthorIds
                 : [..state.AuthorIds, authorId];
-            if (ReferenceEquals(authorIds, state.AuthorIds) && !state.IsClosing)
+            if (ReferenceEquals(authorIds, state.AuthorIds) && !state.IsClosing) {
+                // Nothing to write, but a re-registering stream is proof of life: keep the key alive.
+                await _redisScope.Refresh(chatId.Value).ConfigureAwait(false);
                 return;
+            }
 
             state = state with {
                 AuthorIds = authorIds,
@@ -289,6 +292,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
                     existing?.MicMuted ?? false);
                 await _participants.Set(chatId.Value, authorId.Value, info).ConfigureAwait(false);
+                // The participants hash refreshes its own TTL on write, but the session state key only
+                // does so on Set - which a steady-state session never reaches. Without this the state
+                // silently expires mid-call and the next stream rebuilds it as a brand-new session.
+                await _redisScope.Refresh(chatId.Value).ConfigureAwait(false);
             }
             else
                 await _participants.Remove(chatId.Value, authorId.Value).ConfigureAwait(false);

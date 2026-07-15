@@ -31,6 +31,16 @@ public sealed class RedisScope<TValue>(RedisDb redisDb, string? keyPrefix = null
         return Serializer.Read<TValue>(raw);
     }
 
+    public async Task<bool> Refresh(string key, TimeSpan? ttl = null)
+    {
+        // A keepalive for a live but rarely-rewritten value; no-op if the key already expired.
+        if ((ttl ?? DefaultTtl) is not { } effectiveTtl)
+            return false;
+
+        var db = await RedisDb.Database.Get().ConfigureAwait(false);
+        return await db.KeyExpireAsync(key, effectiveTtl).ConfigureAwait(false);
+    }
+
     public async Task<bool> Remove(string key)
     {
         var db = await RedisDb.Database.Get().ConfigureAwait(false);
