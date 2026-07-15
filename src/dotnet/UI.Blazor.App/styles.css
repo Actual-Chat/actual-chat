@@ -20,6 +20,7 @@
 @import './Components/ChatView/Items/Attachment/attachment.css';
 @import './Components/ChatView/Items/ChatMessageSendingStatus/chat-message-sending-status.css';
 @import './Components/ChatView/Items/Conversation/conversation.css';
+@import './Components/ChatView/Items/last-entries-preview.css';
 @import './Components/ChatView/Items/LinkPreview/link-preview.css';
 @import './Components/ChatView/Items/StreamingEntryBadge/streaming-entry-badge.css';
 @import './Components/ChatView/Items/Reactions/reaction-badge.css';
