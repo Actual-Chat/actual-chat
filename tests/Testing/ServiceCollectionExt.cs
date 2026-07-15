@@ -67,8 +67,10 @@ public static class ServiceCollectionExt
     private static void AddTestLoggingProviders(this ILoggingBuilder logging, TestOutputHelperAccessor outputAccessor)
     {
         logging.AddDebug();
-        if (!TestRunnerInfo.IsBuildAgent())
-            logging.AddSeq();
+        if (!TestRunnerInfo.IsBuildAgent()) {
+            // Not "localhost": connects to ::1-mapped Docker ports may hang on Windows
+            logging.AddSeq("http://127.0.0.1:5341");
+        }
 
         // "Agent mode" - adds console logging so logs are visible in terminal
         // Useful for debugging tests via Claude Code or when running tests manually

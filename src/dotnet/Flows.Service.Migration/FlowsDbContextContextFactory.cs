@@ -7,7 +7,7 @@ namespace ActualChat.Flows;
 public class FlowsDbContextContextFactory : IDesignTimeDbContextFactory<FlowsDbContext>
 {
     public string ConnectionString =
-        "Server=localhost;Database=ac_dev_flows;Port=5432;User Id=postgres;Password=postgres;Include Error Detail=True";
+        "Server=127.0.0.1;Database=ac_dev_flows;Port=5432;User Id=postgres;Password=postgres;Include Error Detail=True";
 
     public FlowsDbContext CreateDbContext(string[] args)
     {

@@ -7,7 +7,7 @@ namespace ActualChat.Media;
 public class MediaDbContextContextFactory : IDesignTimeDbContextFactory<MediaDbContext>
 {
     public string ConnectionString =
-        "Server=localhost;Database=ac_dev_media;Port=5432;User Id=postgres;Password=postgres;Include Error Detail=True";
+        "Server=127.0.0.1;Database=ac_dev_media;Port=5432;User Id=postgres;Password=postgres;Include Error Detail=True";
 
     public MediaDbContext CreateDbContext(string[] args)
     {

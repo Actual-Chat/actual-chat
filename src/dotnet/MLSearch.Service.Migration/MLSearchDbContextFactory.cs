@@ -7,7 +7,7 @@ namespace ActualChat.MLSearch;
 public class MLSearchDbContextContextFactory : IDesignTimeDbContextFactory<MLSearchDbContext>
 {
     public string ConnectionString =
-        "Server=localhost;Database=ac_dev_mlsearch;Port=5432;User Id=postgres;Password=postgres;Include Error Detail=True";
+        "Server=127.0.0.1;Database=ac_dev_mlsearch;Port=5432;User Id=postgres;Password=postgres;Include Error Detail=True";
 
     public MLSearchDbContext CreateDbContext(string[] args)
     {
