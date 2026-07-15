@@ -67,12 +67,14 @@ public partial class ChatUI
         var hiddenLiveTailRange = liveConversation is { } liveConv && !amInLiveConversation
             ? new Range<long>(liveConv.EndEntryLid + 1, long.MaxValue)
             : default;
-        // Joined viewers fold only the summarized range [V, EndEntryLid]; it is empty until the first
-        // summary advances EndEntryLid past V, so nothing folds (and entry V isn't hidden) pre-summary.
+        // Joined viewers fold only the summarized range [V, EndEntryLid]. Gate on LastSummaryAt: until the
+        // first summary lands, EndEntryLid still holds its session-creation value, which equals V whenever
+        // nothing was posted between creation and latch - folding entry V away as if it were summarized.
         var rawLive = await Hub.LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        var liveFoldRange = rawLive is { SessionStartedAt: not null } && rawLive.EndEntryLid >= rawLive.EffectiveVisibleStartLid
-            ? new Range<long>(rawLive.EffectiveVisibleStartLid, rawLive.EndEntryLid + 1)
-            : default;
+        var liveFoldRange = rawLive is { SessionStartedAt: not null, LastSummaryAt.EpochOffsetTicks: > 0 }
+            && rawLive.EndEntryLid >= rawLive.EffectiveVisibleStartLid
+                ? new Range<long>(rawLive.EffectiveVisibleStartLid, rawLive.EndEntryLid + 1)
+                : default;
 
         var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
@@ -176,6 +178,14 @@ public partial class ChatUI
             if (nextChatRangeMeta != null!)
                 chatRangeMetaList.Add(nextChatRangeMeta);
         }
+
+        // The live block is keyed by the chat end at latch - a lid with no entry yet. When that lid starts
+        // its own view tile, no entry ever pulls the tile in (a video-only session never writes one), so
+        // the block would never render. Only fires when the block sits past the last loaded tile, which
+        // also makes the added tile adjacent - never leaving a hole in idTiles.
+        if (liveConversation != null && !hasMoreAfter && idTiles.Count > 0
+            && liveConversation.Id.StartEntryLid >= idTiles[^1].End)
+            idTiles.Add(IdTileStack.FirstLayer.GetTile(liveConversation.Id.StartEntryLid).Range);
 
         // Prefetch tiles for the loaded id ranges
         {
