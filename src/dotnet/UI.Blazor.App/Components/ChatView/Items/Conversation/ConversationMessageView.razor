@@ -14,7 +14,7 @@
     var cls = $"conversation-message message-wrapper {openClass} {liveClass}";
     var attachments = conversation.Attachments;
     var canExpand = !state.IsLive || state.IsJoined;
-    var liveTitle = m.Title.Text.IsNullOrEmpty() ? state.ParticipantsText : m.Title.Text;
+    var hasLiveTitle = !m.Title.Text.IsNullOrEmpty();
 }
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
@@ -23,26 +23,28 @@
         var startedAt = $"Started at {startsAt:HH:mm}";
         var hasSummary = state.HasFoldedEntries;
         <div class="c-live-card">
-            <div class="c-lc-title">
-                <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
-                <span class="c-lc-name">@liveTitle</span>
+            @if (hasLiveTitle) {
+                <div class="c-lc-title">
+                    <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
+                    <span class="c-lc-name">@m.Title.Text</span>
+                    @if (hasSummary) {
+                        <HeaderButton Class="c-lc-expand" Click="@ToggleShowMessage">
+                            <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
+                        </HeaderButton>
+                    }
+                </div>
                 @if (hasSummary) {
-                    <HeaderButton Class="c-lc-expand" Click="@ToggleShowMessage">
-                        <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
-                    </HeaderButton>
+                    <CascadingValue Value="@_fakeEntry" IsFixed="true">
+                        <div class="c-lc-summary">
+                            <MarkupView Markup="@m.Description.Markup"/>
+                        </div>
+                    </CascadingValue>
                 }
-            </div>
-            @if (state.IsJoined) {
-                <div class="c-lc-oncall">You on the call</div>
-            }
-            @if (hasSummary) {
-                <CascadingValue Value="@_fakeEntry" IsFixed="true">
-                    <div class="c-lc-summary">
-                        <MarkupView Markup="@m.Description.Markup"/>
-                    </div>
-                </CascadingValue>
             }
             <div class="c-lc-meta-row">
+                @if (!hasLiveTitle) {
+                    <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
+                }
                 <AuthorCircleGroup
                     Class="c-lc-authors"
                     AuthorIds="@conversation.AuthorIds"
@@ -50,9 +52,16 @@
                     MaxCount="4"
                     ShowRing="false"/>
                 <div class="c-lc-meta">
-                    <div class="c-lc-started">@startedAt</div>
-                    <div class="c-lc-second">@secondLine</div>
+                    @if (!hasLiveTitle) {
+                        <div class="c-lc-roster">@state.ParticipantsText</div>
+                    }
+                    <div class="c-lc-started">@startedAt · @secondLine</div>
                 </div>
+                @if (!hasLiveTitle && hasSummary) {
+                    <HeaderButton Class="c-lc-expand" Click="@ToggleShowMessage">
+                        <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
+                    </HeaderButton>
+                }
                 <HeaderButton Class="c-lc-copy" Click="@OnCopyToClipboardRequested">
                     <i class="icon-copy"></i>
                 </HeaderButton>

@@ -14,13 +14,17 @@
     background: linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%);
 }
 .conversation-message.live.joined {
-    @apply border border-solid;
-    border-color: var(--violet-60);
-    /* The bg-01 base is opaque so the tail tint can rise behind the card without bleeding through;
-       it composites identically, as the chat view's own ground is bg-01. */
+    @apply border border-solid border-transparent;
+    /* The outline is a border-box layer, not border-image, which would drop the rounded corners. It
+       decays into the tail's own tint, so the card merges downward instead of closing. The opaque
+       bg-01 base lets that tint rise behind the card, and must be an image - a bare color is only
+       legal in the final background layer, and would silently void the whole declaration here. */
     background:
-        linear-gradient(249deg, rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%),
-        var(--background-01);
+        linear-gradient(249deg,
+            rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%) padding-box,
+        linear-gradient(var(--background-01), var(--background-01)) padding-box,
+        linear-gradient(to bottom,
+            var(--violet-60) 0%, var(--violet-60) 50%, var(--c-live-tint, rgba(166, 53, 255, 0.1)) 100%) border-box;
 }
 .c-live-card {
     @apply flex-y gap-y-2 w-full;
@@ -43,9 +47,9 @@
 .c-live-card .c-lc-expand {
     @apply flex-none;
 }
-.c-live-card .c-lc-oncall {
-    @apply text-caption-1 font-medium;
-    color: var(--violet-60);
+.c-live-card .c-lc-roster {
+    @apply flex-1 min-w-0 truncate;
+    @apply text-01 text-base font-medium leading-5;
 }
 .c-live-card .c-lc-summary {
     @apply text-01 text-caption-4 leading-4;
@@ -64,12 +68,8 @@
     @apply flex-y flex-1 min-w-0 gap-y-0.5;
 }
 .c-live-card .c-lc-started {
+    @apply truncate;
     @apply text-03 font-semibold;
-    font-size: 10px;
-    line-height: 10px;
-}
-.c-live-card .c-lc-second {
-    @apply text-03 font-medium;
     font-size: 10px;
     line-height: 10px;
 }
