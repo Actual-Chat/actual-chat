@@ -3,14 +3,19 @@ using Android.App;
 using Android.Content;
 using Android.Media;
 using AndroidX.Core.App;
+using AndroidX.Core.Graphics.Drawable;
 using Application = Android.App.Application;
+using Person = AndroidX.Core.App.Person;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
 
 public static class IncomingCallNotifications
 {
-    public const string ChannelId = "incoming_calls";
+    public const string ChannelId = "incoming_calls_v2";
+    // The v1 channel had its own ringtone; it's deleted so the ring plays from a single source
+    // (the in-app looping ringer) instead of doubling with the channel sound.
+    private const string LegacyChannelId = "incoming_calls";
     // Mirrors the server's LiveSessionsBackend.RingTimeout: the banner self-destructs
     // at ring expiry even when the dismissal push never arrives (offline device).
     private static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(40);
@@ -22,9 +27,14 @@ public static class IncomingCallNotifications
     public static string DeclineAction => Context.PackageName + ".IncomingCall.Decline";
     public static string AcceptExtraKey => Context.PackageName + ".IncomingCall.Accept";
     public static string ChatIdExtraKey => Context.PackageName + ".IncomingCall.ChatId";
+    public static string FullScreenExtraKey => Context.PackageName + ".IncomingCall.FullScreen";
 
     public static string CallTag(ChatId chatId)
         => Constants.Notification.CallTagPrefix + chatId.Value;
+
+    // The single ring melody, shared by the notification channel (background/killed) and the
+    // in-app looping ringer (foreground) so both play the same sound: the system default ringtone.
+    public static Android.Net.Uri? RingtoneUri => RingtoneManager.GetDefaultUri(RingtoneType.Ringtone);
 
     public static void Show(NotificationData data)
     {
@@ -58,25 +68,39 @@ public static class IncomingCallNotifications
             NotificationHelper.RequestCodeProvider.IncrementAndGet(),
             declineIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
+        var fullScreenIntent = NotificationHelper.CreateViewIntent(Context, link)!;
+        fullScreenIntent.PutExtra(ChatIdExtraKey, chatId.Value);
+        fullScreenIntent.PutExtra(FullScreenExtraKey, true);
+        var fullScreenPendingIntent = PendingIntent.GetActivity(Context,
+            NotificationHelper.RequestCodeProvider.IncrementAndGet(),
+            fullScreenIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
+
+        var callerBuilder = new Person.Builder()
+            .SetName(data.Title ?? "Incoming call")!
+            .SetImportant(true)!;
+        var largeImage = data.ImageUrl.IsNullOrEmpty() ? null : NotificationHelper.GetImage(data.ImageUrl!);
+        if (largeImage != null)
+            callerBuilder.SetIcon(IconCompat.CreateWithBitmap(largeImage));
+        var caller = callerBuilder.Build()!;
+
+        // Native call notification: caller avatar/name, an "Incoming call" label, and prominent
+        // Answer/Decline buttons the style builds from the intents (so no manual AddAction).
+        var callStyle = NotificationCompat.CallStyle.ForIncomingCall(caller, declinePendingIntent, acceptPendingIntent)!;
+
         var builder = new NotificationCompat.Builder(Context, ChannelId)
             // ReSharper disable once AccessToStaticMemberViaDerivedType
             .SetSmallIcon(Microsoft.Maui.Resource.Drawable.notification_app_icon)!
             .SetColor(0x0036A3)!
-            .SetContentTitle(data.Title ?? "Incoming call")!
-            .SetContentText(data.Body ?? "Incoming call")!
             .SetContentIntent(contentPendingIntent)!
             .SetCategory(Android.App.Notification.CategoryCall)!
             .SetPriority((int)NotificationPriority.High)!
-            .SetAutoCancel(true)!
-            .SetTimeoutAfter((long)RingTimeout.TotalMilliseconds)!;
-        builder.AddAction(0, "Decline", declinePendingIntent);
-        builder.AddAction(0, "Accept", acceptPendingIntent);
-        var imageUrl = data.ImageUrl;
-        if (!imageUrl.IsNullOrEmpty()) {
-            var largeImage = NotificationHelper.GetImage(imageUrl!);
-            if (largeImage != null)
-                builder.SetLargeIcon(largeImage);
-        }
+            .SetVisibility(NotificationCompat.VisibilityPublic)!
+            .SetOngoing(true)!
+            // Surfaces the ring over the lock screen / when the screen is off, and launches the
+            // app's call UI there; on an unlocked screen it degrades to a heads-up banner.
+            .SetFullScreenIntent(fullScreenPendingIntent, true)!
+            .SetTimeoutAfter((long)RingTimeout.TotalMilliseconds)!
+            .SetStyle(callStyle)!;
         NotificationManagerCompat.From(Context)!.Notify(tag, 0, builder.Build());
     }
 
@@ -85,19 +109,25 @@ public static class IncomingCallNotifications
 
     public static void HandleViewIntent(Intent intent)
     {
-        if (!intent.GetBooleanExtra(AcceptExtraKey, false))
-            return;
-
         var chatId = ChatId.TryParse(intent.GetStringExtra(ChatIdExtraKey), allowNull: true);
         if (chatId is null)
             return;
 
-        Dismiss(chatId);
-        // Accept re-verifies the ring against LiveSessionUI.Get once Blazor is up —
-        // a stale tap yields a "Call ended" toast, not a phantom join.
+        if (intent.GetBooleanExtra(AcceptExtraKey, false)) {
+            Dismiss(chatId);
+            // Accept re-verifies the ring against LiveSessionUI.Get once Blazor is up —
+            // a stale tap yields a "Call ended" toast, not a phantom join.
+            _ = AppServicesAccessor.DispatchToBlazor(
+                c => c.GetRequiredService<IncomingCallUI>().Accept(chatId),
+                "IncomingCallUI.Accept", whenRendered: true);
+            return;
+        }
+
+        // Opened from the call notification (tap or full-screen intent): register the ring so the
+        // in-app banner + looping ringer take over once the app is up.
         _ = AppServicesAccessor.DispatchToBlazor(
-            c => c.GetRequiredService<IncomingCallUI>().Accept(chatId),
-            "IncomingCallUI.Accept", whenRendered: true);
+            c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId),
+            "IncomingCallUI.OnRing", whenRendered: true);
     }
 
     public static ChatId[] ListActiveCallChatIds()
@@ -121,20 +151,17 @@ public static class IncomingCallNotifications
     private static void EnsureChannelExists()
     {
         var notificationManager = (NotificationManager)Context.GetSystemService(Context.NotificationService)!;
+        notificationManager.DeleteNotificationChannel(LegacyChannelId);
         var channel = notificationManager.GetNotificationChannel(ChannelId);
         if (channel != null)
             return;
 
+        // Silent, non-vibrating channel: the in-app ringer is the sole sound/vibration source, so
+        // the channel must not ring on top of it. HIGH importance still drives the heads-up and
+        // the full-screen intent that surfaces the call over the lock screen.
         channel = new NotificationChannel(ChannelId, "Incoming calls", NotificationImportance.High);
-        var attrs = new AudioAttributes.Builder()
-            .SetUsage(AudioUsageKind.NotificationRingtone)!
-            .SetContentType(AudioContentType.Music)!
-            .Build();
-        var ringtoneUri = Android.Net.Uri.Parse($"android.resource://{Context.PackageName}/"
-            // ReSharper disable once AccessToStaticMemberViaDerivedType
-            + Microsoft.Maui.Resource.Raw.attention_ringtone);
-        channel.SetSound(ringtoneUri, attrs);
-        channel.SetVibrationPattern([0, 700, 500, 700, 500, 500]);
+        channel.SetSound(null, null);
+        channel.EnableVibration(false);
         notificationManager.CreateNotificationChannel(channel);
     }
 }

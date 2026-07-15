@@ -47,6 +47,27 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
         }
     }
 
+    public Task<bool> OnCallHandled(bool accepted)
+    {
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        AppServicesAccessor.BeginDispatchToMainThread(() => {
+            try {
+                if (accepted)
+                    MainActivity.Current.DismissKeyguardForCall(ready => tcs.TrySetResult(ready));
+                else {
+                    MainActivity.Current.DisableShowWhenLocked();
+                    tcs.TrySetResult(false);
+                }
+            }
+            catch (Exception e) {
+                Log.LogDebug(e, "OnCallHandled skipped");
+                // No activity to gate on: proceed best-effort on accept.
+                tcs.TrySetResult(accepted);
+            }
+        });
+        return tcs.Task;
+    }
+
     public Task<ChatId[]> ListActiveCallChatIds(CancellationToken cancellationToken)
         => Task.FromResult(IncomingCallNotifications.ListActiveCallChatIds());
 
@@ -63,8 +84,7 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
         if (_ringtone is not null)
             return;
 
-        var uri = RingtoneManager.GetDefaultUri(RingtoneType.Ringtone);
-        var ringtone = RingtoneManager.GetRingtone(Context, uri);
+        var ringtone = RingtoneManager.GetRingtone(Context, IncomingCallNotifications.RingtoneUri);
         if (ringtone is null)
             return;
 
