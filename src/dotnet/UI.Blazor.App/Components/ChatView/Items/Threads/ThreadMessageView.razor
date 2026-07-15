@@ -21,6 +21,7 @@
                         : createdAt.ToString("MMM dd"); // this year
     var attachments = m is null ? [] : m.Attachments;
     var messageCount = m?.MessageCount ?? 0;
+    var previewEntries = m?.Entries.Select(x => new PreviewEntry(x.Item1, x.Item2)).ToList() ?? [];
 }
 
 <div class="thread-message"
@@ -47,7 +48,7 @@
         @TranslationFragments.TranslationMark(description.State)
     </div>
     <Divider/>
-    <LastEntriesPreview Entries="@(m?.Entries ?? [])" IsLoading="@isLoading"/>
+    <LastEntriesPreview Entries="@previewEntries" IsLoading="@isLoading"/>
     @if (attachments.Length > 0) {
         var (mediaList, fileList) = GetOrderedAttachmentList(attachments);
         <div class="message-attachments">

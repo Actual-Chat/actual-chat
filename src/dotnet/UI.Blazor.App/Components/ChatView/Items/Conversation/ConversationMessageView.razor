@@ -143,6 +143,7 @@
     private IAuthors Authors => Hub.Authors;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private TranscriptUI TranscriptUI => Hub.TranscriptUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private ClipboardUI ClipboardUI => ChatContext.Hub.ClipboardUI;
     private ConversationUI ConversationUI => Hub.ConversationUI;
@@ -207,7 +208,7 @@
             translated, isLive, isJoined, isVoiceOnly, participantsText, hasFoldedEntries, isExpanded, tailPreview);
     }
 
-    private async Task<IReadOnlyList<(ChatEntry Entry, Markup Markup)>> GetTailPreview(
+    private async Task<IReadOnlyList<PreviewEntry>> GetTailPreview(
         ChatId chatId, CancellationToken cancellationToken) {
         var entries = await ChatUI.GetThreadPreviewEntries(chatId, cancellationToken).ConfigureAwait(true);
         var markupHub = Hub.ChatMarkupHubFactory[chatId];
@@ -215,7 +216,13 @@
             .Select(e => markupHub.GetMarkup(e, MarkupConsumer.MessageView, cancellationToken).AsTask())
             .Collect(cancellationToken)
             .ConfigureAwait(true);
-        return entries.Zip(markups).ToList();
+        var streamingTexts = await entries
+            .Select(e => TranscriptUI.GetStreamingText(e.Id, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(true);
+        return entries
+            .Select((e, i) => new PreviewEntry(e, markups[i], streamingTexts[i]))
+            .ToList();
     }
 
     private async Task<string> GetParticipantsText(
