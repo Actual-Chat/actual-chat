@@ -179,14 +179,6 @@ public partial class ChatUI
                 chatRangeMetaList.Add(nextChatRangeMeta);
         }
 
-        // The live block is keyed by the chat end at latch - a lid with no entry yet. When that lid starts
-        // its own view tile, no entry ever pulls the tile in (a video-only session never writes one), so
-        // the block would never render. Only fires when the block sits past the last loaded tile, which
-        // also makes the added tile adjacent - never leaving a hole in idTiles.
-        if (liveConversation != null && !hasMoreAfter && idTiles.Count > 0
-            && liveConversation.Id.StartEntryLid >= idTiles[^1].End)
-            idTiles.Add(IdTileStack.FirstLayer.GetTile(liveConversation.Id.StartEntryLid).Range);
-
         // Prefetch tiles for the loaded id ranges
         {
             await Task.Run(async () => {
