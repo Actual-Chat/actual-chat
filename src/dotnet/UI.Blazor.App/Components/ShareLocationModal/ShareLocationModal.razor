@@ -2,6 +2,7 @@
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<ShareLocationModal.Model>
 
+@* TODO: computed state component *@
 <DialogFrame
     Class="share-location-modal modal-sm"
     HasHeader="false">
@@ -9,6 +10,7 @@
         <div class="c-map-area">
             @if (_ownPoint is { } ownPoint) {
                 <MapView
+                    @ref="_mapView"
                     Class="c-map"
                     Center="@ownPoint"
                     Zoom="15"
@@ -21,7 +23,7 @@
                 <button type="button" class="c-map-menu-item">
                     <i class="icon-map"></i>
                 </button>
-                <button type="button" class="c-map-menu-item">
+                <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
                     <i class="icon-navigation-pointer"></i>
                 </button>
             </div>
@@ -50,6 +52,7 @@
 
 @code {
     private GeoPoint? _ownPoint;
+    private MapView? _mapView;
 
     private ILocationTracker Tracker => Hub.LocationTracker;
 
@@ -65,6 +68,15 @@
 
     private void OnClose()
         => Modal.Close();
+
+    private async Task OnLocate() {
+        if (await Tracker.Get(CancellationToken.None).ConfigureAwait(true) is not { } point)
+            return;
+
+        _ownPoint = point;
+        if (_mapView is { } mapView)
+            await mapView.FlyTo(point).ConfigureAwait(false);
+    }
 
     // Nested types
 
