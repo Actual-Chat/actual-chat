@@ -15,6 +15,10 @@
     var attachments = conversation.Attachments;
     var canExpand = !state.IsLive || state.IsJoined;
     var hasLiveTitle = !m.Title.Text.IsNullOrEmpty();
+    // Exactly what GetClipboardText concatenates - with none of it there, copying yields blank lines.
+    var hasCopyText = hasLiveTitle
+        || !m.Description.Markup.ToReadableText().IsNullOrEmpty()
+        || !m.Summary.Markup.ToReadableText().IsNullOrEmpty();
 }
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
@@ -62,9 +66,11 @@
                         <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
                     </HeaderButton>
                 }
-                <HeaderButton Class="c-lc-copy" Click="@OnCopyToClipboardRequested">
-                    <i class="icon-copy"></i>
-                </HeaderButton>
+                @if (hasCopyText) {
+                    <HeaderButton Class="c-lc-copy" Click="@OnCopyToClipboardRequested">
+                        <i class="icon-copy"></i>
+                    </HeaderButton>
+                }
             </div>
             @if (state.TailPreview is { Count: > 0 } tailPreview) {
                 <Divider/>
