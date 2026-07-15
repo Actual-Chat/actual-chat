@@ -56,6 +56,49 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ShouldFlagFirstEntryOfAnExpandedConversation()
+    {
+        // The header already spaces the block off, so its first entry drops the block-start padding.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(true, "conv-first-entry-test");
+        var first = await Tester.CreateTextEntry(chat.Id, "opens the conversation");
+        ChatEntry last = first;
+        for (var i = 0; i < 4; i++)
+            last = await Tester.CreateTextEntry(chat.Id, $"body-{i}");
+        var conversationId = ConversationId.New(chat.Id, first.LocalId);
+        var conversation = new Conversation(conversationId) {
+            Title = "Recap",
+            Summary = "s",
+            Description = "d",
+            EndEntryLid = last.LocalId,
+            MessageCount = 5,
+            IsExpandedByDefault = true,
+        };
+        await Tester.Commander.Call(new ConversationBackend_Materialize(conversation), CancellationToken.None);
+
+        // act
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+        var entries = items.Items.SelectMany(i => i.GetLeafMessages())
+            .OfType<ChatEntryMessage>()
+            .Where(m => m.Kind == ChatMessageKind.None)
+            .ToList();
+
+        // assert
+        items.Items.SelectMany(i => i.GetLeafMessages()).OfType<ConversationHeader>()
+            .Should().NotBeEmpty("the conversation must render expanded");
+        var opener = entries.Single(m => m.Id == first.LocalId);
+        opener.Flags.Should().HaveFlag(ChatMessageFlags.BlockStart, "it still shows its author");
+        opener.Flags.Should().HaveFlag(ChatMessageFlags.FirstInConversation);
+        entries.Where(m => m.Id != first.LocalId)
+            .Should().NotContain(m => m.Flags.HasFlag(ChatMessageFlags.FirstInConversation));
+    }
+
+    [Fact]
     public async Task ShouldNotDuplicateJoinedLiveCardAcrossTiles()
     {
         // A landed summary stretches the card's range across tiles, and each re-emits it under one @key.
