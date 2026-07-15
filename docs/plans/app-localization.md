@@ -4,12 +4,17 @@
 **Branch:** `feat/3721-app-localization`
 **Status:** Draft — supersedes the earlier `.resx`-based draft (see §8)
 
-> **Amendment (2026-07-13):** the standalone `UILanguageUI` service described below was
-> folded into the existing `LanguageUI` (`Services/LanguageUI/LanguageUI.cs`). The
-> UI-language logic now lives there as `InitializeUILanguage` / `SetUILanguage` and reuses
-> `LanguageUI.GetClientLanguages()` for default detection. `UILanguageState` (the scoped
-> holder the localizer reads) is unchanged. Read "`UILanguageUI`" below as "the UI-language
-> members of `LanguageUI`".
+> **Amendment (2026-07-13):** the design below evolved. `UILanguageUI` and `UILanguageState`
+> no longer exist — everything lives on the existing `LanguageUI`
+> (`Services/LanguageUI/LanguageUI.cs`). The UI language is **device-local** (like theme), so
+> the chosen value persists in local settings via a `StoredState<string>` (KVAS key
+> `"UILanguage"`), **not** the synced `UserLanguageSettings`. `AppStringLocalizer` reads
+> `LanguageUI.UILanguage` directly — a synchronous property returning the chosen language
+> when set, else the browser-detected default (`_detectedUILanguage`), mirroring theme's
+> `currentTheme = theme ?? defaultTheme`. The default is detected once at startup by reusing
+> `LanguageUI.GetClientLanguages()` (gated on `BrowserInfo.WhenReady`); `SetUILanguage` writes
+> the local store and awaits its persistence before the picker reloads. Read "`UILanguageUI`" /
+> "`UILanguageState`" below as "the UI-language members of `LanguageUI`".
 
 ## 0. TL;DR
 

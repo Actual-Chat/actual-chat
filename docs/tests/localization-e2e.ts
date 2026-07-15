@@ -1,15 +1,17 @@
 /**
  * E2E test: App localization — language selection UI (feat/3721-app-localization)
  *
- * Model: UI language is a client-only preference stored in local settings (KVAS /
- * localStorage) — there is NO culture cookie and NO ?culture= URL param. Changing it
- * persists the choice and reloads so strings re-resolve.
+ * Model: UI language is a device-local preference (like theme), stored in local settings
+ * (KVAS, key "UILanguage") — NOT the server-synced UserLanguageSettings, and there is NO
+ * culture cookie and NO ?culture= URL param. When unset it defaults to the browser-detected
+ * language. Changing it persists the choice (and waits for it to persist) then reloads so
+ * strings re-resolve.
  *
  * Covers:
  * 1. Language picker renders correctly (6 options, native names, values).
  * 2. English baseline — Settings strings are English.
  * 3. Switch to Spanish — Settings strings become Spanish; dropdown reflects it.
- * 4. Persist across reload (local settings, not cookie).
+ * 4. Persist across reload (device-local settings, not cookie).
  * 5. Switch to Russian.
  * 6. Switch back to English (cleanup).
  *

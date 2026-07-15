@@ -37,11 +37,10 @@
     [Inject] private UIHub Hub { get; init; } = null!;
     private History History => Hub.History;
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private UILanguageState LanguageState => field ??= Hub.Services.GetRequiredService<UILanguageState>();
     private LanguageUI LanguageUI => field ??= Hub.Services.GetRequiredService<LanguageUI>();
 
     protected override void OnInitialized()
-        => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageState.Language };
+        => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageUI.UILanguage };
 
     private async Task OnLanguageChanged(string language) {
         await LanguageUI.SetUILanguage(language);
@@ -52,7 +51,7 @@
     {
         private string FormId { get; }
         public string LanguageFormId { get; }
-        public string Language { get; set; } = UILanguageState.DefaultLanguage;
+        public string Language { get; set; } = LanguageUI.DefaultUILanguage;
 
         public FormModel(ComponentIdGenerator componentIdGenerator)
         {
