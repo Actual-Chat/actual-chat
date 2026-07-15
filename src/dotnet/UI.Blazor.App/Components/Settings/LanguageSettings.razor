@@ -45,7 +45,8 @@
 
     private async Task OnLanguageChanged(string code) {
         _formModel.LanguageCode = code;
-        await LanguageUI.SetUILanguage(_formModel.Language);
+        LanguageUI.UILanguage.Value = _formModel.Language;
+        await LanguageUI.UILanguage.WhenWritten();
         await History.ForceReload("Language changed", History.Uri);
     }
 

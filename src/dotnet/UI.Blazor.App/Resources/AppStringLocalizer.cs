@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ActualChat.UI.Blazor.App.Services;
 using Microsoft.Extensions.Localization;
 
@@ -41,7 +40,6 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
     private string GetString(string name, out bool found) {
         var lang = LanguageUI.UILanguage.Value;
         if (Translations.TryGetValue(lang, out var dict) && dict.TryGetValue(name, out var value)) {
-            // TODO: log warning
             found = true;
             return value;
         }

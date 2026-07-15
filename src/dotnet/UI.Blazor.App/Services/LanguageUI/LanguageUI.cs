@@ -107,15 +107,6 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         Settings.Set(updater.Invoke(Settings.Value));
     }
 
-    // TODO: why so complicated, not just setting state.value?
-    public async Task SetUILanguage(Language language, CancellationToken cancellationToken = default)
-    {
-        await UILanguage.WhenFirstTimeRead.ConfigureAwait(false);
-        UILanguage.Value = SupportedUILanguageSet.Contains(language) ? language : DefaultUILanguage;
-        // The setter only schedules the write; wait for it to persist so it survives the reload the caller triggers next.
-        await UILanguage.WhenWritten(cancellationToken).ConfigureAwait(false);
-    }
-
     // Private methods
 
     private async ValueTask<Language> DetectUILanguage(CancellationToken cancellationToken)
