@@ -4,6 +4,7 @@
 
 import { rpcClientServer } from 'rpc';
 import { getLogs } from 'logging';
+import { ServerClock } from 'clocks';
 import { initAppConstants, type AppConstants } from 'app-constants';
 import { SharedSettings } from 'shared-settings';
 import { AsyncVideoEncoder } from '../adapters';
@@ -189,7 +190,10 @@ function createEncoder(
 // the legacy "recreate stream on every dim change" rebuild path.
 function createSender(chatId: string, floodGate: FloodGate): StreamSenderLike {
     streamingContext.chatId = chatId;
-    const sourceStartedAtMs = Date.now();
+    // Server-synced clock, not Date.now(): this anchor is the base for every
+    // downstream latency measurement, so a de-synced machine clock would show
+    // up as phantom uplink lag. Matches the audio recorder's anchor.
+    const sourceStartedAtMs = ServerClock.now();
     let inner: DisposableStreamSender | null = null;
     let buffered: VideoStreamFrameBundle[] | null = null;
     let resolveWhenDisposed: (p: Promise<void>) => void = () => { /* set below */ };
