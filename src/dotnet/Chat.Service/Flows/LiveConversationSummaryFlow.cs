@@ -21,8 +21,8 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     // Resume throttle: the flow re-checks this often so entries maturing during silence (and the close/finalize
     // once nobody is talking) get handled without a new audio entry to trigger it; resummary itself is
-    // additionally gated on Settings.Summarization.ResummarizationDelay. Keep DelayQuanta (see [Flow]) <= Throttle
-    // so overlapping self-resumes coalesce without the loop stalling.
+    // additionally gated on Settings.Summarization.LiveResummarizationDelay. Keep DelayQuanta (see [Flow])
+    // <= Throttle so overlapping self-resumes coalesce without the loop stalling.
     private static readonly TimeSpan Throttle = TimeSpan.FromSeconds(15);
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
@@ -58,22 +58,16 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         var contextStartLid = await EnsureContextStart(live, cancellationToken).ConfigureAwait(false);
 
         var neverSummarized = LastSummaryEndLid == 0;
-        // The first summary lands early (low gates, short maturity) so short calls still get a title; re-summaries
-        // keep the higher split-flow gates and cadence.
+        // Live gates throughout: the materialized 1200-word one doesn't open until ~11 minutes of speech.
         var maturity = neverSummarized
             ? Settings.Summarization.FirstLiveSummaryDelay
-            : Settings.Summarization.ChatEntrySummarizationDelay;
-        var minEntries = neverSummarized
-            ? Settings.Summarization.MinLiveConversationEntries
-            : Settings.Summarization.MinConversationEntries;
-        var minWords = neverSummarized
-            ? Settings.Summarization.MinLiveConversationWords
-            : Settings.Summarization.MinConversationWords;
+            : Settings.Summarization.LiveSummaryMaturity;
 
         var entries = await GetEntries(contextStartLid, maturity, cancellationToken).ConfigureAwait(false);
-        var enoughData = entries.Count >= minEntries && entries.Sum(WordCount) >= minWords;
+        var enoughData = entries.Count >= Settings.Summarization.MinLiveConversationEntries
+            && entries.Sum(WordCount) >= Settings.Summarization.MinLiveConversationWords;
         var hasNew = entries.Count > 0 && entries[^1].LocalId > LastSummaryEndLid;
-        var dueForResummary = ResumedAt - live.LastSummaryAt >= Settings.Summarization.ResummarizationDelay;
+        var dueForResummary = ResumedAt - live.LastSummaryAt >= Settings.Summarization.LiveResummarizationDelay;
         if (enoughData && hasNew && (neverSummarized || dueForResummary)) {
             var result = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
             if (result.Summary is { } summary) {
