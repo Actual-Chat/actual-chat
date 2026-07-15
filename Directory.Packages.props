@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>13.0.12</ActualLabFusionVersion>
+    <ActualLabFusionVersion>13.0.126</ActualLabFusionVersion>
     <AspNetCoreVersion>10.0.8</AspNetCoreVersion>
     <MicrosoftAspNetCoreVersion>2.3.10</MicrosoftAspNetCoreVersion> <!-- Weird, they have the second version -->
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
@@ -14,7 +14,7 @@
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <MicrosoftExtensionsVersion>10.0.8</MicrosoftExtensionsVersion>
     <NpgsqlVersion>10.0.1</NpgsqlVersion>
-    <RedisVersion>2.12.14</RedisVersion>
+    <RedisVersion>3.0.17</RedisVersion>
     <SignalRVersion>10.0.8</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.15.3</OpenTelemetryVersion>
