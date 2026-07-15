@@ -104,10 +104,11 @@ body.hoverable .conversation-message .c-join-row:hover {
 }
 
 /* An expanded conversation leads with its header, not a .conversation-message, so the card's own top
-   margin can't space it; and the header is sticky, so margining it would move where it pins. Space the
-   whole block from the outside instead. */
+   margin can't space it, and the header is sticky, so margining it would move where it pins.
+   Padding, not margin: the list measures these li's with getBoundingClientRect, which counts padding
+   but not margin - a margin here silently shortens its geometry and the end drifts out of reach. */
 .virtual-list .c-virtual-container .group:has(> .item > .conversation-header) {
-    @apply mt-4;
+    @apply pt-4;
 }
 
 .conversation-header {
