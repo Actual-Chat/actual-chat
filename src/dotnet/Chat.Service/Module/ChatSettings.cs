@@ -53,6 +53,9 @@ public class SummarizationSettings
     public int MinLiveConversationWords { get; set; } = 150;
     public int MinLiveConversationEntries { get; set; } = 3;
     public TimeSpan FirstLiveSummaryDelay { get; set; } = TimeSpan.FromMinutes(1);
+    // Live summaries are provisional - each pass rewrites the last - so they gate tighter than the one-shot pair below.
+    public TimeSpan LiveSummaryMaturity { get; set; } = TimeSpan.FromSeconds(45);
+    public TimeSpan LiveResummarizationDelay { get; set; } = TimeSpan.FromMinutes(2);
     public TimeSpan ChatEntrySummarizationDelay { get; set; } = TimeSpan.FromMinutes(3);
     public TimeSpan ResummarizationDelay { get; set; } = TimeSpan.FromMinutes(5);
     public TimeSpan ChatEntrySummarizationDelayQuanta { get; set; } = TimeSpan.FromMinutes(1);
