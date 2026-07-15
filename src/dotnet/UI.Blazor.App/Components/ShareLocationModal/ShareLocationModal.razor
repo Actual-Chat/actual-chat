@@ -1,26 +1,29 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, ShareLocationModal.ComputedModel>
 @implements IModalView<ShareLocationModal.Model>
+@{
+    var m = State.Value;
+}
 
-@* TODO: computed state component *@
 <DialogFrame
     Class="share-location-modal modal-sm"
     HasHeader="false">
     <Body>
         <div class="c-map-area">
-            @if (_ownPoint is { } ownPoint) {
+            @if (m.OwnPoint is { } ownPoint) {
                 <MapView
                     @ref="_mapView"
                     Class="c-map"
                     Center="@ownPoint"
                     Zoom="15"
-                    Markers="@(new MapMarker[] { new("own-location", ownPoint, IsOwnLocation: true) })"/>
+                    StyleName="@m.MapStyleName"
+                    Markers="@([new("own-location", ownPoint, IsOwnLocation: true)])"/>
             }
             <ButtonRound Class="c-close" Click="@OnClose">
                 <i class="icon-close"></i>
             </ButtonRound>
             <div class="c-map-menu">
-                <button type="button" class="c-map-menu-item">
+                <button type="button" class="c-map-menu-item" @onclick="@OnSwitchMapStyle">
                     <i class="icon-map"></i>
                 </button>
                 <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
@@ -51,7 +54,11 @@
 </DialogFrame>
 
 @code {
-    private GeoPoint? _ownPoint;
+    // "" = the current theme's default style
+    private static readonly string[] MapStyles = ["", "bright", "positron", "fiord", "dark"];
+
+    private MutableState<GeoPoint?> _currentLocation = null!;
+    private MutableState<int> _mapStyleIndex = null!;
     private MapView? _mapView;
 
     private ILocationTracker Tracker => Hub.LocationTracker;
@@ -59,26 +66,58 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() {
-        if (await Tracker.Get(CancellationToken.None).ConfigureAwait(true) is { } point)
-            _ownPoint = point;
+    protected override void OnInitialized() {
+        _currentLocation = StateFactory.NewMutable(
+            (GeoPoint?)null,
+            StateCategories.Get(GetType(), nameof(_currentLocation)));
+        _mapStyleIndex = StateFactory.NewMutable(
+            0,
+            StateCategories.Get(GetType(), nameof(_mapStyleIndex)));
+        _ = FetchCurrentLocation();
+    }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
+        var currentPoint = await _currentLocation.Use(cancellationToken).ConfigureAwait(false);
+        var mapStyleIndex = await _mapStyleIndex.Use(cancellationToken).ConfigureAwait(false);
+        return new ComputedModel(livePoint ?? currentPoint, MapStyles[mapStyleIndex]);
     }
 
     // Private methods
 
+    private async Task FetchCurrentLocation() {
+        if (await Tracker.Get(default).ConfigureAwait(false) is { } point)
+            _currentLocation.Value = point;
+    }
+
     private void OnClose()
         => Modal.Close();
+
+    private void OnSwitchMapStyle()
+        => _mapStyleIndex.Value = (_mapStyleIndex.Value + 1) % MapStyles.Length;
 
     private async Task OnLocate() {
         if (await Tracker.Get(CancellationToken.None).ConfigureAwait(true) is not { } point)
             return;
 
-        _ownPoint = point;
+        _currentLocation.Value = point;
         if (_mapView is { } mapView)
             await mapView.FlyTo(point).ConfigureAwait(false);
     }
 
     // Nested types
+
+    public sealed record ComputedModel(GeoPoint? OwnPoint, string MapStyleName = "") {
+        public static readonly ComputedModel None = new((GeoPoint?)null);
+    }
 
     public sealed class Model {
         public bool IsSharing { get; init; }
