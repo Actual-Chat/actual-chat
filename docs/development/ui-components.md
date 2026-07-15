@@ -519,6 +519,47 @@ This doesn't break the enter/exit animation — `max-height` in the keyframes wi
 
 Real usage: `Components/AudioSubHeader/`.
 
+## Icons
+
+UI icons are font glyphs generated from per-icon SVG sources. Use them in
+markup via `<i class="icon-<name>"></i>`; the glyph takes `currentColor`,
+so color and size are controlled with the usual text utilities
+(`text-primary`, `text-2xl`, ...).
+
+### Where icons live
+
+| What | Where |
+|---|---|
+| SVG sources, one file per icon | `src/nodejs/icons/<name>.svg` |
+| Generated font + CSS (never edit by hand) | `src/nodejs/fonts/svgtofont/` |
+
+Both the sources **and** the generated output are committed to git. The CSS
+class is derived from the file name: `marker-pin.svg` → `.icon-marker-pin`.
+
+### Adding a new icon
+
+1. Export the icon from Figma as SVG (24x24 viewBox is the norm). Before
+   drawing a new one, check `src/nodejs/icons/` for an existing glyph that
+   already matches.
+2. **Fills only — no strokes.** The font generator fills path interiors and
+   drops stroke geometry, so a stroke-based icon comes out as a solid
+   silhouette. Convert strokes to outlined paths first, e.g.
+   `npx oslllo-svg-fixer -s <src-dir> -d <out-dir>`. The fill color in the
+   source is irrelevant — glyphs are monochrome.
+3. Name the file in kebab-case after what the icon **depicts**, not the
+   feature using it (`map.svg`, `navigation-pointer.svg`); drop design-system
+   suffixes like `-01`.
+4. Save it to `src/nodejs/icons/` and run `./icons-to-font.cmd`
+   (= `npm run font`) to regenerate `src/nodejs/fonts/svgtofont/`.
+5. Commit the new source together with **all** regenerated files. Codepoints
+   of existing icons shift when a new name sorts in between (assignment is
+   alphabetical) — that's expected and safe, since the CSS and fonts are
+   regenerated in the same run and always stay in sync.
+
+Note: `prepare-system-icons.cmd` is a different pipeline — it rasterizes
+`src/dotnet/Media.Service/Resources/*.svg` (system chat avatars) to PNGs and
+has nothing to do with the icon font.
+
 ## TypeScript Interop
 
 ### Class Structure

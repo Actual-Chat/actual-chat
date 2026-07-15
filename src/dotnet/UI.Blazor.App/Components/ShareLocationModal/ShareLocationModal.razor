@@ -1,110 +1,70 @@
-@using ActualChat.Hosting
-@using ActualChat.UI
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<ShareLocationModal.Model>
-@implements IDisposable
 
 <DialogFrame
     Class="share-location-modal modal-sm"
-    Title="Share location"
-    HasCloseButton="true">
+    HasHeader="false">
     <Body>
-        <div class="c-content">
-            @if (_isGranted != true) {
-                <div class="c-permission-block">
-                    <i class="icon-map-point"></i>
-                    @if (_isGranted == false) {
-                        <div class="c-text">Location access is blocked.</div>
-                        <div class="c-hint">
-                            @if (HostInfo.HostKind.IsMauiApp()) {
-                                <text>Open settings below and allow location access for @CoreConstants.AppName.</text>
-                            } else {
-                                <text>Click the location or lock icon in your browser's address bar and set Location to Allow.</text>
-                            }
-                        </div>
-                    } else {
-                        <div class="c-text">@CoreConstants.AppName needs access to your location.</div>
-                        <div class="c-hint">
-                            Your location is visible only to members of this chat, only for the duration you choose,
-                            and you can stop sharing at any time.
-                        </div>
-                    }
-                </div>
-                @if (_isGranted == false && HostInfo.HostKind.IsMauiApp()) {
-                    <Button Class="btn-modal c-settings" Click="@OnOpenSettings">Open settings</Button>
-                }
+        <div class="c-map-area">
+            @if (_ownPoint is { } ownPoint) {
+                <MapView
+                    Class="c-map"
+                    Center="@ownPoint"
+                    Zoom="15"
+                    Markers="@(new MapMarker[] { new("own-location", ownPoint, IsOwnLocation: true) })"/>
             }
-            <Button Class="btn-modal c-send-current" Click="@OnSendCurrent">Send current location</Button>
-            <div class="c-hint">Or share your live location with everyone in this chat for:</div>
-            @foreach (var (duration, label) in Constants.Location.Durations) {
-                <Button Class="btn-modal c-duration" Click="@(() => OnPick(duration))">@label</Button>
-            }
-            @if (ModalModel.IsSharing) {
-                <Button Class="btn-modal btn-danger c-stop" Click="@OnStop">Stop sharing</Button>
-            }
+            <ButtonRound Class="c-close" Click="@OnClose">
+                <i class="icon-close"></i>
+            </ButtonRound>
+            <div class="c-map-menu">
+                <button type="button" class="c-map-menu-item">
+                    <i class="icon-map"></i>
+                </button>
+                <button type="button" class="c-map-menu-item">
+                    <i class="icon-navigation-pointer"></i>
+                </button>
+            </div>
+            <ButtonRound Class="c-search">
+                <i class="icon-search"></i>
+            </ButtonRound>
+        </div>
+        <div class="c-actions">
+            <ButtonTile Class="c-send-current">
+                <Icon><i class="icon-marker-pin"></i></Icon>
+                <Content>
+                    <div class="c-text">Send my current location</div>
+                    <div class="c-caption">Accurate to 10m</div>
+                </Content>
+            </ButtonTile>
+            <ButtonTile Class="c-share-live">
+                <Icon><i class="icon-marker-pin-live"></i></Icon>
+                <Content>
+                    <div class="c-text">Share my location for..</div>
+                    <div class="c-caption">Updated in real time as you move</div>
+                </Content>
+            </ButtonTile>
         </div>
     </Body>
 </DialogFrame>
 
 @code {
-    private bool? _isGranted;
-    private readonly CancellationTokenSource _disposeCts = new();
+    private GeoPoint? _ownPoint;
 
-    private LocationPermissionHandler LocationPermission
-        => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
-    private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
-    private ILogger Log => field ??= Hub.LogFor(GetType());
+    private ILocationTracker Tracker => Hub.LocationTracker;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        _isGranted = await LocationPermission.Check(_disposeCts.Token);
-        if (_isGranted != true)
-            _ = BackgroundTask.Run(PollPermissionWhileNotGranted, Log,
-                "ShareLocationModal permission poller failed", CancellationToken.None);
+        if (await Tracker.Get(CancellationToken.None).ConfigureAwait(true) is { } point)
+            _ownPoint = point;
     }
-
-    public void Dispose()
-        => _disposeCts.CancelAndDisposeSilently();
 
     // Private methods
 
-    private void OnSendCurrent() {
-        ModalModel.SendCurrentRequested = true;
-        Modal.Close();
-    }
-
-    private void OnPick(TimeSpan duration) {
-        ModalModel.SelectedDuration = duration;
-        Modal.Close();
-    }
-
-    private void OnStop() {
-        ModalModel.StopRequested = true;
-        Modal.Close();
-    }
-
-    private Task OnOpenSettings()
-        => SystemSettingsUI.Open();
-
-    private async Task PollPermissionWhileNotGranted() {
-        // Neither browsers nor the OS signal external permission changes (address-bar
-        // toggle, app settings), so re-query every few seconds until granted.
-        try {
-            while (!_disposeCts.IsCancellationRequested && _isGranted != true) {
-                await Task.Delay(TimeSpan.FromSeconds(3), _disposeCts.Token).ConfigureAwait(false);
-                var next = await LocationPermission.Check(_disposeCts.Token).ConfigureAwait(false);
-                if (next == _isGranted)
-                    continue;
-
-                _isGranted = next;
-                await InvokeAsync(StateHasChanged).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException) { }
-    }
+    private void OnClose()
+        => Modal.Close();
 
     // Nested types
 
