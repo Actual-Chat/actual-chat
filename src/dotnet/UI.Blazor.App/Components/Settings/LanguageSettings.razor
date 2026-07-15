@@ -3,18 +3,19 @@
 <Form Model="@_formModel">
     <FormBlock>
         <FormSection
-            For="() => _formModel.Language"
+            For="() => _formModel.LanguageCode"
             InputId="@_formModel.LanguageFormId"
             IsLabelInsideInput="true"
             IsRequired="true"
             Label="@L["Settings_Language"].Value">
             <InputSelect
+                TValue="string"
                 class="c-language-select"
-                Value="_formModel.Language"
-                ValueExpression="@(() => _formModel.Language)"
+                Value="_formModel.LanguageCode"
+                ValueExpression="@(() => _formModel.LanguageCode)"
                 ValueChanged="@(OnLanguageChanged)">
-                @foreach (var language in SupportedLanguages) {
-                    <option value="@language.Code">@language.Name</option>
+                @foreach (var language in LanguageUI.SupportedUILanguages) {
+                    <option value="@language.Value">@NativeNames[language]</option>
                 }
             </InputSelect>
         </FormSection>
@@ -23,14 +24,14 @@
 
 @code {
     // TODO: support most of languages supported by transcription
-    private static readonly (string Code, string Name)[] SupportedLanguages = [
-        ("en", "English"),
-        ("es", "Español"),
-        ("fr", "Français"),
-        ("it", "Italiano"),
-        ("ru", "Русский"),
-        ("de", "Deutsch"),
-    ];
+    private static readonly Dictionary<Language, string> NativeNames = new() {
+        [Languages.English] = "English",
+        [Languages.Spanish] = "Español",
+        [Languages.French] = "Français",
+        [Languages.Italian] = "Italiano",
+        [Languages.Russian] = "Русский",
+        [Languages.German] = "Deutsch",
+    };
 
     private FormModel _formModel = null!;
 
@@ -40,10 +41,11 @@
     private LanguageUI LanguageUI => field ??= Hub.Services.GetRequiredService<LanguageUI>();
 
     protected override void OnInitialized()
-        => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageUI.ToCode(LanguageUI.UILanguage.Value) };
+        => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageUI.UILanguage.Value };
 
-    private async Task OnLanguageChanged(string language) {
-        await LanguageUI.SetUILanguage(language);
+    private async Task OnLanguageChanged(string code) {
+        _formModel.LanguageCode = code;
+        await LanguageUI.SetUILanguage(_formModel.Language);
         await History.ForceReload("Language changed", History.Uri);
     }
 
@@ -51,7 +53,11 @@
     {
         private string FormId { get; }
         public string LanguageFormId { get; }
-        public string Language { get; set; } = LanguageUI.ToCode(LanguageUI.DefaultUILanguage);
+        public Language Language { get; set; } = LanguageUI.DefaultUILanguage;
+        public string LanguageCode {
+            get => Language.Value;
+            set => Language = Language.Parse(value);
+        }
 
         public FormModel(ComponentIdGenerator componentIdGenerator)
         {

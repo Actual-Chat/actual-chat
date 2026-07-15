@@ -107,36 +107,21 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         Settings.Set(updater.Invoke(Settings.Value));
     }
 
-    // TODO: accept Language, not string
-    public async Task SetUILanguage(string? language, CancellationToken cancellationToken = default)
+    // TODO: why so complicated, not just setting state.value?
+    public async Task SetUILanguage(Language language, CancellationToken cancellationToken = default)
     {
         await UILanguage.WhenFirstTimeRead.ConfigureAwait(false);
-        UILanguage.Value = NormalizeUILanguage(language);
+        UILanguage.Value = SupportedUILanguageSet.Contains(language) ? language : DefaultUILanguage;
         // The setter only schedules the write; wait for it to persist so it survives the reload the caller triggers next.
         await UILanguage.WhenWritten(cancellationToken).ConfigureAwait(false);
     }
 
-    public static string ToCode(Language language)
-        => language.Value.Split('-')[0].ToLowerInvariant();
-
     // Private methods
-
-    private static Language? ToSupportedUILanguage(Language? language)
-        => language != null && Languages.ById.TryGetValue(ToCode(language), out var uiLanguage)
-            && SupportedUILanguageSet.Contains(uiLanguage)
-                ? uiLanguage
-                : null;
-
-    private static Language NormalizeUILanguage(string? language)
-        => ToSupportedUILanguage(Language.TryParse(language, true)) ?? DefaultUILanguage;
 
     private async ValueTask<Language> DetectUILanguage(CancellationToken cancellationToken)
     {
         var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
-        foreach (var language in languages)
-            if (ToSupportedUILanguage(language) is { } uiLanguage)
-                return uiLanguage;
-        return DefaultUILanguage;
+        return languages.FirstOrDefault(SupportedUILanguageSet.Contains) ?? DefaultUILanguage;
     }
 
     private async ValueTask<UserLanguageSettings> CreateLanguageSettings(CancellationToken cancellationToken)
