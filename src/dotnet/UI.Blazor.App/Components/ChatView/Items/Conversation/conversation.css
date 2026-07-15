@@ -3,7 +3,8 @@
     @apply rounded-lg;
     @apply border-none;
     @apply overflow-hidden;
-    @apply mb-2;
+    /* mt: a conversation block otherwise runs straight into the message above it. */
+    @apply mt-4 mb-2;
     background: linear-gradient(5deg, var(--conversation-gradient-01) -96.64%, var(--conversation-gradient-02) 39.02%, var(--conversation-gradient-01) 182.11%)
 }
 .conversation-message.live {
@@ -292,6 +293,9 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 .virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live.joined) {
     /* Without isolation the tint's z-index resolves against the root and paints under the chat bg. */
     isolation: isolate;
+    /* The tint is a fixed-height box, so it would spill past the last entry into whatever follows;
+       clipping it to the block both stops that and gives it the block's rounded bottom. */
+    @apply overflow-hidden rounded-2xl;
     /* The card's mb-2 (0.5rem) + its rounded-2xl radius (1rem): the tint rises by this much to meet
        the border with no gap and to reach the wedges the rounded corners leave uncovered. */
     --c-live-rise: 1.5rem;

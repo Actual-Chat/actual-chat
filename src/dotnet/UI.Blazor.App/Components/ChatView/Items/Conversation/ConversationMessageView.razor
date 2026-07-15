@@ -41,10 +41,6 @@
                     </CascadingValue>
                 }
             }
-            @if (state.TailPreview is { Count: > 0 } tailPreview) {
-                <Divider/>
-                <LastEntriesPreview Entries="@tailPreview"/>
-            }
             <div class="c-lc-meta-row">
                 @if (!hasLiveTitle) {
                     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
@@ -70,6 +66,10 @@
                     <i class="icon-copy"></i>
                 </HeaderButton>
             </div>
+            @if (state.TailPreview is { Count: > 0 } tailPreview) {
+                <Divider/>
+                <LastEntriesPreview Entries="@tailPreview"/>
+            }
             @if (!state.IsJoined) {
                 <button type="button" class="c-join-row" @onclick="@OnJoin">Tap to join</button>
             }
@@ -202,8 +202,7 @@
     }
 
     private async Task<IReadOnlyList<(ChatEntry Entry, Markup Markup)>> GetTailPreview(
-        ChatId chatId, CancellationToken cancellationToken)
-    {
+        ChatId chatId, CancellationToken cancellationToken) {
         var entries = await ChatUI.GetThreadPreviewEntries(chatId, cancellationToken).ConfigureAwait(true);
         var markupHub = Hub.ChatMarkupHubFactory[chatId];
         var markups = await entries
