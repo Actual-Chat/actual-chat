@@ -72,6 +72,16 @@ public sealed class BandwidthEstimator(BandwidthEstimatorConfig config)
         CalmTicks = 0;
     }
 
+    public void ResetProbeBackoff()
+    {
+        // Clears the probe back-off without touching the ceiling or the streaks.
+        // Call when something invalidates the prior probe evidence rather than
+        // the health picture — e.g. demand grew, so earlier failures at a lower
+        // requested rate say nothing about the rate now being asked for.
+        ProbeFailures = 0;
+        LastCeilingDownAt = null;
+    }
+
     public void Tick(RpcConnectionInfo? connection, Moment now, long currentBandwidthBps, double signalLevel)
     {
         if (connection is null)

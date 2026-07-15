@@ -491,6 +491,17 @@
                             </div>
                         }
 
+                        @if (Hub.VideoQualityUI.InboundDemandByStream.TryGetValue(s.Info.StreamId, out var demand)) {
+                            <div class="diag-row">
+                                <span class="diag-label">Demand</span>
+                                <span class="diag-value">@FormatInboundDemand(demand)</span>
+                            </div>
+                            <div class="diag-row diag-sub">
+                                <span class="diag-label">cap binding</span>
+                                <span class="diag-value diag-dim">@demand.CapTag</span>
+                            </div>
+                        }
+
                         @if (peekBitrate > 0) {
                             <div class="diag-row">
                                 <span class="diag-label">Incoming bitrate</span>
@@ -1211,6 +1222,20 @@
         => clock.SyncCount == 0
             ? "never"
             : $"{(Hub.Clocks.CpuClock.Now - clock.LastSyncAt).TotalSeconds:0}s ago";
+
+    private static string FormatInboundDemand(VideoQualityUI.InboundDemand demand)
+    {
+        // The render size is what picks the layer, so it's the first thing to
+        // check when a stream sits lower than expected: a small tile asking for
+        // L0 is correct, a large one asking for L0 is the bug.
+        var layer = Math.Max(0, demand.RequestedLayerCount - 1);
+        if (demand.RenderCssLongSide <= 0)
+            return $"L{layer} ({demand.DesiredSize}, no render size yet)";
+
+        var devicePx = demand.RenderCssLongSide * Math.Max(1, demand.RenderDevicePixelRatio);
+        return $"L{layer} ({demand.DesiredSize}) ← tile {demand.RenderCssLongSide:0}css"
+            + $" @{Math.Max(1, demand.RenderDevicePixelRatio):0.#}x = {devicePx:0}px";
+    }
 
     private static string FormatPeerSkew(VideoStreamInfo info)
     {

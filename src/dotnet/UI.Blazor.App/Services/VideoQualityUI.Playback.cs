@@ -64,6 +64,13 @@ public sealed partial class VideoQualityUI
     private readonly Dictionary<StreamId, ReceiverHealthClassifier> _receiverHealthByStream = new();
     private readonly Dictionary<StreamId, DownlinkHealth> _lastDownlinkHealthByStream = new();
     private readonly Dictionary<StreamId, DecoderHealth> _lastDecoderHealthByStream = new();
+    // Demand actually asked for, surfaced in the panel. Without it there's no way
+    // to tell a correct low layer (small tile) from a demand bug — the dump shows
+    // the received tier but never the size that asked for it.
+    private readonly Dictionary<StreamId, InboundDemand> _lastInboundDemandByStream = new();
+    // Previous tick's demand, to spot a demand increase — prior probe failures at
+    // a lower requested rate don't predict the newly-requested one.
+    private readonly Dictionary<StreamId, int> _prevDemandLayerCountByStream = new();
     // Sticky decoder cap with edge-triggered demote. Set on Good→Bad
     // transition, cleared on =Good. Marginal holds the last value.
     private readonly DecoderCapState _decoderCapState = new();
@@ -82,6 +89,8 @@ public sealed partial class VideoQualityUI
         => _lastDownlinkHealthByStream;
     public IReadOnlyDictionary<StreamId, DecoderHealth> InboundDecoderHealthByStream
         => _lastDecoderHealthByStream;
+    public IReadOnlyDictionary<StreamId, InboundDemand> InboundDemandByStream
+        => _lastInboundDemandByStream;
     public int InboundDecoderCapStreamCount => _decoderCapState.Caps.Count;
 
     public Task OnPlaybackStats(
@@ -320,6 +329,7 @@ public sealed partial class VideoQualityUI
             _lastDecoderHealthByStream.Remove(sid);
             _lastKeyFrameRequestAt.Remove(sid);
             _lastStallReportAt.Remove(sid);
+            _prevDemandLayerCountByStream.Remove(sid);
         }
         _decoderCapState.PruneStaleStreams(liveStreamIdStrings);
 
@@ -349,6 +359,20 @@ public sealed partial class VideoQualityUI
                     || dec.Verdict != HealthVerdict.Bad))
             .Select(x => x.Key.Value)
             .ToHashSet();
+        // A demand increase is new information the back-off can't speak to: the
+        // cooldown was earned by probes that asked for less. Clear it so a tile
+        // the user just enlarged isn't held at a stale ceiling for up to
+        // MaxProbeCooldownSec. The calm-streak gate still applies — that one
+        // tracks current health, which a demand change says nothing about.
+        var demandGrew = false;
+        foreach (var (streamId, state) in entries) {
+            if (state.RequestedLayerCount > _prevDemandLayerCountByStream.GetValueOrDefault(streamId))
+                demandGrew = true;
+            _prevDemandLayerCountByStream[streamId] = state.RequestedLayerCount;
+        }
+        if (demandGrew)
+            _inboundBwEstimator.ResetProbeBackoff();
+
         var capacity = GetAllocationCapacity(
             estimatedCapacity, primaries, secondaries, healthyStreamIds,
             aggregateDownlinkVerdict, aggregateDecoderVerdict, SystemClock.Now);
@@ -435,6 +459,17 @@ public sealed partial class VideoQualityUI
                 .ToArray(),
             requestedMap,
             cancellationToken).ConfigureAwait(false);
+
+        _lastInboundDemandByStream.Clear();
+        foreach (var (streamId, state) in entries) {
+            var layerId = requestedMap.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest).LayerId;
+            _lastInboundDemandByStream[streamId] = new InboundDemand(
+                state.DesiredVideoSize,
+                state.RequestedLayerCount,
+                state.Snapshot.RenderCssLongSide,
+                state.Snapshot.RenderDevicePixelRatio,
+                GetLayerCapTag(streamId.Value, layerId, entries));
+        }
 
         // Cap-change detection: compare requested layer + decoder cap maps
         // with the previous tick's snapshot. Pick the first changed stream
@@ -897,6 +932,16 @@ public sealed partial class VideoQualityUI
         => maxLayerCount is { } max ? Math.Clamp(layerCount, 1, max) : layerCount;
 
     // Nested types
+
+    /// <summary>
+    /// What the receiver asked for, and which cap ended up binding the layer.
+    /// </summary>
+    public readonly record struct InboundDemand(
+        VideoSize DesiredSize,
+        int RequestedLayerCount,
+        double RenderCssLongSide,
+        double RenderDevicePixelRatio,
+        string CapTag);
 
     public sealed record PlaybackQualitySnapshot(
         long EstimatedCapacityBytesPerSec,

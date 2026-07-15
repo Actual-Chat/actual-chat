@@ -1,5 +1,7 @@
 using ActualChat.Bandwidth;
 using ActualChat.Rpc;
+using ActualChat.Streaming;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
@@ -32,6 +34,57 @@ public class BandwidthEstimatorTest
         e.ProbeFailures.Should().Be(0);
         e.LastCeilingDownAt.Should().BeNull();
         e.History.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ResetProbeBackoff_ClearsBackoffButKeepsCeilingAndStreaks()
+    {
+        // arrange
+        var e = NewEstimator();
+        var conn = Conn();
+        // Two bad ticks: ratchets the ceiling down and anchors the back-off.
+        e.Tick(conn, At(1), currentBandwidthBps: 200_000, signalLevel: 0.2);
+        e.Tick(conn, At(2), currentBandwidthBps: 200_000, signalLevel: 0.2);
+        e.LastCeilingDownAt.Should().NotBeNull();
+        var ceilingBefore = e.CeilingBps;
+        var negativeStreakBefore = e.NegativeStreak;
+
+        // act
+        e.ResetProbeBackoff();
+
+        // assert
+        e.LastCeilingDownAt.Should().BeNull();
+        e.ProbeFailures.Should().Be(0);
+        e.CeilingBps.Should().Be(ceilingBefore, "the back-off reset must not move the ceiling");
+        e.NegativeStreak.Should().Be(negativeStreakBefore, "health streaks track health, not probe evidence");
+    }
+
+    // A demand increase clears the back-off, so the reprobe gate — which would
+    // otherwise stay shut for up to MaxProbeCooldownSec — opens on the next
+    // calm tick instead of holding a just-enlarged tile at a stale ceiling.
+    [Fact]
+    public void ResetProbeBackoff_ReopensTheReprobeGate()
+    {
+        // arrange
+        var config = Cfg();
+        var e = NewEstimator(config);
+        var conn = Conn();
+        e.Tick(conn, At(1), currentBandwidthBps: 200_000, signalLevel: 0.2);
+        var downAt = e.LastCeilingDownAt;
+        downAt.Should().NotBeNull();
+        VideoQualityUI.ShouldReprobe(
+                HealthVerdict.Good, HealthVerdict.Good, calmTicks: 3, reprobeCalmStreak: 3,
+                downAt, e.ProbeFailures, At(2), config)
+            .Should().BeFalse("the cooldown is still running");
+
+        // act
+        e.ResetProbeBackoff();
+
+        // assert
+        VideoQualityUI.ShouldReprobe(
+                HealthVerdict.Good, HealthVerdict.Good, calmTicks: 3, reprobeCalmStreak: 3,
+                e.LastCeilingDownAt, e.ProbeFailures, At(2), config)
+            .Should().BeTrue();
     }
 
     [Fact]
