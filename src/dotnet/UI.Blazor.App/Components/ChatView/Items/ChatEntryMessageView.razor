@@ -28,7 +28,7 @@
     var systemClass = isSystem ? "system-entry" : "";
     var forwardedClass = isForward ? "forwarded-message" : "";
     var forwardedBorderClass = isForward && !showAuthor ? "forwarded-border" : "";
-    var paddingClass = isBlockStart ? "pt-2" : "";
+    var paddingClass = isBlockStart && !message.Flags.HasFlag(ChatMessageFlags.FirstInConversation) ? "pt-2" : "";
     var unreadBlockClass = m.IsUnreadByOthersBlockStart ? "unread-block" : "";
     var ownMessageClass = m.IsOwnMessage ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";

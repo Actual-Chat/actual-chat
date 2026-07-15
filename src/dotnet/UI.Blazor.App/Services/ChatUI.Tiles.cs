@@ -687,6 +687,9 @@ public partial class ChatUI
                             prevMessage.NextMessage = conversationHeaderMessage;
                         messages.Add(conversationHeaderMessage);
                         prevMessage = conversationHeaderMessage;
+                        // This entry opens the conversation - the header already spaces it off. A date line
+                        // can land in between, so the entry can't tell from its own PreviousMessage.
+                        flags |= ChatMessageFlags.FirstInConversation;
                     }
                     if (date != prevDate) {
                         var dateLineMessage = new ChatEntryMessage(entry) {
