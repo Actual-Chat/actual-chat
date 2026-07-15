@@ -193,16 +193,15 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             return;
         }
 
-        // Foreground with a live Blazor scope: the in-app banner + ringer own the ring,
-        // no system notification — otherwise both would ring at once.
-        if ((AndroidUtils.IsAppForeground() ?? false) && TryGetScopedServices(out _)) {
+        // The system notification (silent channel) is always shown; it also fires a full-screen
+        // intent to surface the ring over the lock screen. The in-app looping ringer is the single
+        // sound source: whenever the Blazor scope is alive we register the ring so it plays. If the
+        // app is killed, the full-screen intent brings it up and HandleViewIntent registers the ring.
+        IncomingCallNotifications.Show(data);
+        if (TryGetScopedServices(out _))
             _ = DispatchToBlazor(
                 c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId),
                 "IncomingCallUI.OnRing");
-            return;
-        }
-
-        IncomingCallNotifications.Show(data);
     }
 
     private static bool ShowGetAttentionNotification(

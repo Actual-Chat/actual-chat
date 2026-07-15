@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Streaming;
+using ActualChat.UI.Blazor.App.Services;
 using Android.Content;
 
 namespace ActualChat.App.Maui;
@@ -19,6 +20,18 @@ public class CallActionReceiver : BroadcastReceiver
             return;
 
         IncomingCallNotifications.Dismiss(chatId);
+
+        // App alive: decline through the live Blazor scope — the same RPC client (and connection)
+        // the in-app banner uses. It also ends the in-app ring. The root container this receiver
+        // resolves from may lack the Fusion client stack, so it can't be relied on while alive.
+        if (AppServicesAccessor.TryGetScopedServices(out _)) {
+            _ = AppServicesAccessor.DispatchToBlazor(
+                c => c.GetRequiredService<IncomingCallUI>().Decline(chatId),
+                "IncomingCallUI.Decline");
+            return;
+        }
+
+        // App killed: no Blazor scope — resolve the RPC client from the root container.
         // The RPC call needs async work the receiver's 10s budget must survive.
         var pendingResult = GoAsync();
         _ = BackgroundTask.Run(async () => {

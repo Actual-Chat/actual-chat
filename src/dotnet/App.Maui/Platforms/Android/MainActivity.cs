@@ -102,6 +102,10 @@ public partial class MainActivity : MauiAppCompatActivity
         using(Tracer.Region("Calling base.OnCreate"))
             base.OnCreate(Bundle.Empty);
 
+        // A full-screen incoming-call launch must surface over the lock screen.
+        if (Intent?.GetBooleanExtra(IncomingCallNotifications.FullScreenExtraKey, false) == true)
+            EnableShowWhenLocked();
+
         // base.OnCreate call hides native splash screen. Set NavigationBar color the same as web splash screen
         // background color to make it look like web splash screen covers the entire screen.
         var splashColor = MauiSettings.SplashBackgroundColor.ToArgbHex();
@@ -146,6 +150,57 @@ public partial class MainActivity : MauiAppCompatActivity
     {
         base.OnDestroy();
         Interlocked.CompareExchange(ref _current, null, this);
+    }
+
+    // Shows the activity over the lock screen and wakes the screen for an incoming call.
+    public void EnableShowWhenLocked()
+    {
+        SetShowWhenLocked(true);
+        SetTurnScreenOn(true);
+    }
+
+    // Reverts the lock-screen behavior once the ring ends, so the app doesn't linger over the
+    // keyguard on later locks.
+    public void DisableShowWhenLocked()
+    {
+        SetShowWhenLocked(false);
+        SetTurnScreenOn(false);
+    }
+
+    // On accept: if the screen is locked, ask the user to unlock so they land in the app instead
+    // of being dropped back to the lock screen when the over-keyguard flag is cleared. Reports back
+    // whether the screen ended up unlocked (foreground-ready), so audio capture waits for it.
+    public void DismissKeyguardForCall(Action<bool> onResult)
+    {
+        var keyguardManager = (KeyguardManager?)GetSystemService(KeyguardService);
+        if (keyguardManager is null || !keyguardManager.IsKeyguardLocked) {
+            DisableShowWhenLocked();
+            onResult(true);
+            return;
+        }
+        keyguardManager.RequestDismissKeyguard(this, new CallKeyguardDismissCallback(this, onResult));
+    }
+
+    private sealed class CallKeyguardDismissCallback(MainActivity activity, Action<bool> onResult)
+        : KeyguardManager.KeyguardDismissCallback
+    {
+        public override void OnDismissSucceeded()
+        {
+            activity.DisableShowWhenLocked();
+            onResult(true);
+        }
+
+        public override void OnDismissError()
+        {
+            activity.DisableShowWhenLocked();
+            onResult(false);
+        }
+
+        public override void OnDismissCancelled()
+        {
+            activity.DisableShowWhenLocked();
+            onResult(false);
+        }
     }
 
     public override void OnTrimMemory(TrimMemory level)

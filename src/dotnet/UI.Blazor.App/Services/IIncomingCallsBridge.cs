@@ -11,4 +11,10 @@ public interface IIncomingCallsBridge
     void StopRinging();
     Task<ChatId[]> ListActiveCallChatIds(CancellationToken cancellationToken);
     void DismissCallNotification(ChatId chatId);
+    // Resolves the over-lock-screen call UI. On accept it dismisses the keyguard so the user lands
+    // in the app; the returned task completes once the screen is unlocked (or immediately if it
+    // wasn't locked) and its result says whether the app is now foreground-ready to start the audio
+    // foreground service — false when the user cancelled unlocking, so the caller must not start it
+    // from a background state. On a non-accept end it releases the app from over the lock screen.
+    Task<bool> OnCallHandled(bool accepted);
 }

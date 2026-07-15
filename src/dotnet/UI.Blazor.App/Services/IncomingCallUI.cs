@@ -51,6 +51,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
 
         EndRing(chatId);
+        _ = Bridge?.OnCallHandled(false);
     }
 
     [ComputeMethod]
@@ -95,6 +96,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var call = await GetRingingCall(chatId, default).ConfigureAwait(true);
         EndRing(chatId);
         if (call is null) {
+            _ = Bridge?.OnCallHandled(false);
             Hub.ToastUI.Show("Call ended", "icon-phone", ToastDismissDelay.Short);
             return;
         }
@@ -103,23 +105,30 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             await LiveSessionUI.AcceptCall(chatId, default).ConfigureAwait(true);
         }
         catch (Exception e) {
+            _ = Bridge?.OnCallHandled(false);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             Hub.ToastUI.Show("Call ended", "icon-phone", ToastDismissDelay.Short);
             return;
         }
 
+        // Dismisses the lock screen first: the audio foreground service can't be started from a
+        // background state, so recording waits until the screen is actually unlocked.
+        var canStartAudio = Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
         await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
-        if (await Hub.AudioRecorder.MicrophonePermission.CheckOrRequest(CancellationToken.None).ConfigureAwait(true))
-            await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
-        else
-            // Mic denied: still join the call as a listener.
-            await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
+        if (canStartAudio) {
+            if (await Hub.AudioRecorder.MicrophonePermission.CheckOrRequest(CancellationToken.None).ConfigureAwait(true))
+                await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
+            else
+                // Mic denied: still join the call as a listener.
+                await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
+        }
         _ = withCamera; // Camera-on accept is wired in the camera-preview task.
     }
 
     public async Task Decline(ChatId chatId)
     {
         EndRing(chatId);
+        _ = Bridge?.OnCallHandled(false);
         try {
             await LiveSessionUI.DeclineCall(chatId, default).ConfigureAwait(false);
         }
