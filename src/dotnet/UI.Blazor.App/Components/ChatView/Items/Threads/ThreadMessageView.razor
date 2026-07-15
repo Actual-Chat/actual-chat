@@ -47,68 +47,7 @@
         @TranslationFragments.TranslationMark(description.State)
     </div>
     <Divider/>
-    <div class="c-last-messages">
-        @if (isLoading) {
-            <chat-list-skeleton count="2" messageCls="thread-skeleton"/>
-        } else {
-            foreach (var (chatEntry, markup) in m!.Entries) {
-                <div class="c-message-wrapper">
-                    <AuthorCircle
-                        AuthorId="@chatEntry.AuthorId"
-                        Size="SquareSize.Size8"/>
-                    <div class="c-content">
-                        <div class="c-info">
-                            <AuthorName AuthorId="@chatEntry.AuthorId" Class="chat-message-author-name"/>
-                            <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@chatEntry.BeginsAt"/>
-                        </div>
-                        <span class="c-message">
-                            @if (markup.ToReadableText().IsNullOrEmpty()) {
-                                var (mediaList, fileList) = GetOrderedAttachmentList(chatEntry.Attachments);
-                                var mediaCount = mediaList.Length;
-                                var fileCount = fileList.Length;
-                                if (fileCount == 0) {
-                                    if (mediaCount == 1) {
-                                        <span class="attachment-plug">
-                                            <i class="icon-image-2"></i>
-                                            <span>@mediaList[0].Media.FileName</span>
-                                        </span>
-                                    } else {
-                                        <span class="attachment-plug">
-                                            <i class="icon-image-2"></i>
-                                            <span>@($"{mediaList.Length} media attached")</span>
-                                        </span>
-                                    }
-                                } else {
-                                    if (mediaCount == 0) {
-                                        if (fileCount == 1) {
-                                            <span class="attachment-plug">
-                                                <i class="icon-attach-2"></i>
-                                                <span>@fileList[0].Media.FileName</span>
-                                            </span>
-                                        } else {
-                                            <span class="attachment-plug">
-                                                <i class="icon-attach-2"></i>
-                                                <span>@($"{fileList.Length} files attached")</span>
-                                            </span>
-                                        }
-                                    } else {
-                                        <span class="attachment-plug">
-                                            <i class="icon-attach-2"></i>
-                                            <span>@($"{fileList.Length + mediaList.Length} files and media attached")</span>
-                                        </span>
-                                    }
-                                }
-                            } else {
-                                <CascadingValue Value="@chatEntry" IsFixed="true">
-                                    <MarkupView Markup="@markup"></MarkupView>
-                                </CascadingValue>
-                            }
-                        </span>
-                    </div>
-                </div>
-            }
-        }
-    </div>
+    <LastEntriesPreview Entries="@(m?.Entries ?? [])" IsLoading="@isLoading"/>
     @if (attachments.Length > 0) {
         var (mediaList, fileList) = GetOrderedAttachmentList(attachments);
         <div class="message-attachments">

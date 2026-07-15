@@ -27,35 +27,6 @@
     @apply h-px w-full;
     @apply border-[var(--ash-90)];
 }
-.thread-message .c-last-messages {
-    @apply flex-y gap-y-2;
-}
-.thread-message .c-last-messages .c-message-wrapper {
-    @apply flex-x gap-x-4 items-start;
-    @apply h-10;
-}
-.thread-message .c-last-messages .c-message-wrapper .avatar-circle {
-    @apply self-start;
-}
-.thread-message .c-last-messages .c-message-wrapper .c-content {
-    @apply flex-y;
-    @apply w-full;
-    @apply overflow-hidden;
-}
-.thread-message .c-last-messages .c-message-wrapper .c-content .c-info {
-    @apply flex-x items-center gap-x-2;
-    @apply w-full;
-    @apply overflow-hidden;
-}
-.thread-message .c-last-messages .c-message-wrapper .c-content .c-message {
-    @apply text-caption-4 text-02;
-    @apply line-clamp-1;
-}
-.thread-message .attachment-plug {
-    @apply flex-x items-center gap-x-1;
-    @apply h-4.5;
-}
-
 .thread-message .c-footer {
     @apply flex-x items-center gap-x-4;
     @apply mt-4;
