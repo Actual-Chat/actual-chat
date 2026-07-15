@@ -219,6 +219,23 @@
     }
 
     [JSInvokable]
+    public async Task OnPlaybackStalled(string reason)
+    {
+        if (_isDisposed)
+            return;
+
+        Log.LogWarning("[VideoTrackPlayer #{StreamId}] OnPlaybackStalled: {Reason}", StreamInfo.StreamId, reason);
+        try {
+            await Hub.VideoQualityUI
+                .OnPlaybackStalled(StreamInfo.StreamId, reason, CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "[VideoTrackPlayer #{StreamId}] OnPlaybackStalled failed", StreamInfo.StreamId);
+        }
+    }
+
+    [JSInvokable]
     public async Task OnPlaybackViewportChanged(
         double renderCssLongSide,
         double renderDevicePixelRatio,

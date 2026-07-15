@@ -217,7 +217,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             record.Format,
             beginsAt,
             record.SourceKind,
-            sourceStartedAt);
+            sourceStartedAt,
+            clockDelta.TotalMilliseconds);
 
         // Cross-service RPC call — properly shard-routed via ILiveVideoBackend
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)

@@ -360,12 +360,22 @@
             @if (_presentRate is { } rate) {
                 <div class="diag-row">
                     <span class="diag-label">Union display slots</span>
-                    <span class="diag-value">@rate.SlotsPerSec.ToString("0.#")/s</span>
+                    @if (rate.VideoCount == 0 && rate.UnobservableCount > 0) {
+                        <span class="diag-value diag-dim">n/a</span>
+                    } else {
+                        <span class="diag-value">@rate.SlotsPerSec.ToString("0.#")/s</span>
+                    }
                 </div>
                 <div class="diag-row diag-sub">
                     <span class="diag-label">frames presented</span>
                     <span class="diag-value diag-dim">@rate.PresentsPerSec.ToString("0.#")/s across @rate.VideoCount video(s)</span>
                 </div>
+                @if (rate.UnobservableCount > 0) {
+                    <div class="diag-row diag-sub">
+                        <span class="diag-label">not measurable</span>
+                        <span class="diag-value diag-dim">@rate.UnobservableCount video(s) — canvas backend or no rVFC</span>
+                    </div>
+                }
             } else {
                 <div class="diag-row">
                     <span class="diag-label">Union display slots</span>
@@ -731,7 +741,7 @@
     private readonly Dictionary<VideoSourceKind, StreamDemandStats> _demandStatsByKind = new();
     private readonly Dictionary<string, JsonElement> _streamDiags = new();
     private double? _jsServerClockOffsetMs;
-    private (double PresentsPerSec, double SlotsPerSec, int VideoCount)? _presentRate;
+    private (double PresentsPerSec, double SlotsPerSec, int VideoCount, int UnobservableCount)? _presentRate;
     private readonly Dictionary<string, double> _displayRateByStream = new();
     private bool _isDisposed;
     private bool _showOwnStreamingDetails;
@@ -983,7 +993,11 @@
                 && presentRate.TryGetProperty("presentsPerSec", out var presentsEl)
                 && presentRate.TryGetProperty("slotsPerSec", out var slotsEl)
                 && presentRate.TryGetProperty("videoCount", out var videosEl)) {
-                _presentRate = (presentsEl.GetDouble(), slotsEl.GetDouble(), videosEl.GetInt32());
+                var unobservable = presentRate.TryGetProperty("unobservableCount", out var unobservedEl)
+                    && unobservedEl.ValueKind == JsonValueKind.Number
+                    ? unobservedEl.GetInt32()
+                    : 0;
+                _presentRate = (presentsEl.GetDouble(), slotsEl.GetDouble(), videosEl.GetInt32(), unobservable);
                 _displayRateByStream.Clear();
                 if (presentRate.TryGetProperty("slotsPerSecByStream", out var byStreamEl)
                     && byStreamEl.ValueKind == JsonValueKind.Object)
@@ -1198,14 +1212,16 @@
             ? "never"
             : $"{(Hub.Clocks.CpuClock.Now - clock.LastSyncAt).TotalSeconds:0}s ago";
 
-    // SourceStartedAt is the sender's claimed wall-clock at start (never server-overridden),
-    // so its gap from the server-stamped StartedAt approximates the peer's clock skew.
     private static string FormatPeerSkew(VideoStreamInfo info)
     {
+        // Server-measured at registration. Don't derive this from
+        // SourceStartedAt - StartedAt: those are equal unless the server's
+        // gross-skew guard trips, so that difference reads 0 for every skew
+        // small enough to still poison the lag numbers.
         if (info.SourceStartedAt == default || info.StartedAt == default)
             return "—";
-        var skewMs = (info.SourceStartedAt - info.StartedAt).TotalMilliseconds;
-        return $"≈ {skewMs:+0;-0;0} ms";
+
+        return $"≤ {info.SourceClockDeltaMs:+0;-0;0} ms";
     }
 
     // Drift with the uncontrollable output-device latencies removed from both

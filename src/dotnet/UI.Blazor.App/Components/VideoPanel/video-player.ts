@@ -571,9 +571,12 @@ export class VideoPlayer {
                 const mstgBackend = this.renderBackend as OffThreadRenderBackend;
                 mstgBackend.onFocusedChange = (focused: boolean) => { void focused; };
                 mstgBackend.onPlaybackStalled = report => {
-                    this.fallbackFromMstgToCanvas(
+                    const details =
                         `watchdog:${report.reason}, readyState=${report.readyState}, ` +
-                        `videoWH=${report.videoWidth}x${report.videoHeight}, tracks=[${report.tracks}]`);
+                        `videoWH=${report.videoWidth}x${report.videoHeight}, tracks=[${report.tracks}]`;
+                    void this.blazorRef.invokeMethodAsync('OnPlaybackStalled', details)
+                        .catch((e: unknown) => warnLog?.log('OnPlaybackStalled error:', e));
+                    this.fallbackFromMstgToCanvas(details);
                 };
             }
 

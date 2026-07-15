@@ -339,6 +339,14 @@ public class LiveVideoStreams : ILiveVideoStreams
             .ConfigureAwait(false);
         DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
             session, qualityByStream.Count, info);
+        if (info is { StallNote.Length: > 0 })
+            // Warning, not DebugLog: this is the only record of a receiver-side
+            // stall that survives — the client console isn't collectable.
+            Log.LogWarning(
+                "ChangePlaybackQuality: playback stall reported: session={Session}, stall=[{StallNote}], "
+                + "capacity={CapacityBps}bps, health={Health:F2}, streams={Count}",
+                session, info.StallNote, info.EstimatedCapacityBytesPerSec, info.AggregateHealth,
+                qualityByStream.Count);
 
         if (info is not null) {
             AppMeters.VideoReceiveCapacityBps.Record(info.EstimatedCapacityBytesPerSec);

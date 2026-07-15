@@ -9,4 +9,5 @@ public enum PlaybackQualityReason
     ActiveSetChanged,
     ReconnectPush,
     ColdStartTick,
+    Stalled,
 }

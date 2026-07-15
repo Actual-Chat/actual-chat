@@ -33,6 +33,14 @@ public sealed partial class VideoQualityUI
     private static readonly TimeSpan KeyFrameRequestCooldown = TimeSpan.FromSeconds(1);
     private readonly Dictionary<StreamId, CpuTimestamp> _lastKeyFrameRequestAt = new();
 
+    // Stall notes ride the next quality push so a stall reaches the server logs:
+    // the receiver's own console isn't collectable from users in the field.
+    // Same per-stream cooldown shape as _lastKeyFrameRequestAt — a stalling
+    // stream can re-trigger every tick otherwise.
+    private static readonly TimeSpan StallReportCooldown = TimeSpan.FromSeconds(15);
+    private readonly Dictionary<StreamId, CpuTimestamp> _lastStallReportAt = new();
+    private readonly Dictionary<StreamId, string> _pendingStallNotes = new();
+
     // Stream-age-aware throttle on QC decisions: cooldown for the first
     // StartupCooldown, then evaluate at SettlingInterval until SettlingDuration
     // of stream age, then SteadyInterval. Prevents premature thrash and keeps
@@ -120,6 +128,20 @@ public sealed partial class VideoQualityUI
             _ => PlaybackQualityReason.Stable,
         };
         return RecomputePlaybackQuality(reason, cancellationToken);
+    }
+
+    public Task OnPlaybackStalled(
+        StreamId streamId,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        lock (_playbackLock) {
+            if (!TryStartStallReportLocked(streamId))
+                return Task.CompletedTask;
+
+            _pendingStallNotes[streamId] = reason;
+        }
+        return RecomputePlaybackQuality(PlaybackQualityReason.Stalled, cancellationToken);
     }
 
     public Task OnPlaybackViewportChanged(
@@ -297,6 +319,7 @@ public sealed partial class VideoQualityUI
             _lastDownlinkHealthByStream.Remove(sid);
             _lastDecoderHealthByStream.Remove(sid);
             _lastKeyFrameRequestAt.Remove(sid);
+            _lastStallReportAt.Remove(sid);
         }
         _decoderCapState.PruneStaleStreams(liveStreamIdStrings);
 
@@ -393,12 +416,14 @@ public sealed partial class VideoQualityUI
                 state.Snapshot.Priority,
                 state.Verdict);
         }
+        var stallNote = TakePendingStallNotes();
         var info = new PlaybackQualityInfo(
             estimatedCapacity,
             aggregateHealth,
-            reason,
+            stallNote.IsNullOrEmpty() ? reason : PlaybackQualityReason.Stalled,
             IsColdStart: false,
-            streamInfoMap);
+            streamInfoMap,
+            stallNote);
         _ = LiveVideoStreams.ChangePlaybackQuality(
             Session,
             requestedMap,
@@ -421,8 +446,7 @@ public sealed partial class VideoQualityUI
             // events, not QC decisions, and would produce nonsensical L→-1 rows.
             if (prevLayer < 0 || q.LayerId < 0) continue;
             if (prevLayer != q.LayerId) {
-                var capTag = _decoderCapState.Caps.ContainsKey(sid) ? "decoder" : "bw";
-                capChange = $"{ShortStreamId(sid)} L{prevLayer}→L{q.LayerId} ({capTag})";
+                capChange = $"{ShortStreamId(sid)} L{prevLayer}→L{q.LayerId} ({GetLayerCapTag(sid, q.LayerId, entries)})";
                 break;
             }
         }
@@ -737,12 +761,85 @@ public sealed partial class VideoQualityUI
                     .Select(x => x.Key)
                     .ToArray();
                 foreach (var streamId in staleStreamIds) {
+                    // A player that goes silent while its stream is still being
+                    // delivered is a stall: pruning it here also drops its bytes
+                    // from the estimator's input, so the ceiling stops tracking
+                    // reality. Report before the evidence is gone.
+                    if (TryStartStallReportLocked(streamId))
+                        _pendingStallNotes[streamId] = "stats-silent";
                     _playbackByStream.Remove(streamId);
                     _playbackStartedAt.Remove(streamId);
                     _playbackLastEvalAt.Remove(streamId);
                 }
             }
             return _playbackByStream.ToList();
+        }
+    }
+
+    private string GetLayerCapTag(
+        string streamId,
+        int layerId,
+        IReadOnlyList<KeyValuePair<StreamId, PlaybackStatsState>> entries)
+    {
+        PlaybackStatsState? state = null;
+        foreach (var (sid, s) in entries) {
+            if (sid.Value == streamId) {
+                state = s;
+                break;
+            }
+        }
+        return GetLayerCapTag(
+            _decoderCapState.Caps.ContainsKey(streamId),
+            layerId,
+            state?.RequestedLayerCount ?? int.MaxValue,
+            _thermalCap.MaxPlaybackLayerCount,
+            _debugMaxPlaybackLayerCount ?? int.MaxValue);
+    }
+
+    internal static string GetLayerCapTag(
+        bool hasDecoderCap,
+        int layerId,
+        int demandCap,
+        int thermalCap,
+        int debugCap)
+    {
+        // Names whichever cap actually bound the layer. This used to collapse to
+        // "decoder" vs "bw", so a render-demand or thermal clamp read as a
+        // bandwidth shortfall and pointed triage at the wrong subsystem.
+        if (hasDecoderCap)
+            return "decoder";
+
+        // Below the clamp means the allocator ran out of capacity; at the clamp
+        // means the clamp itself is what's holding the layer down.
+        var layerCountCap = Math.Min(Math.Min(demandCap, thermalCap), debugCap);
+        if (layerId < layerCountCap - 1)
+            return "bw";
+        if (debugCap < Math.Min(demandCap, thermalCap))
+            return "debug";
+        if (thermalCap < demandCap)
+            return "thermal";
+
+        return "demand";
+    }
+
+    private bool TryStartStallReportLocked(StreamId streamId)
+    {
+        if (_lastStallReportAt.TryGetValue(streamId, out var last) && last.Elapsed < StallReportCooldown)
+            return false;
+
+        _lastStallReportAt[streamId] = CpuTimestamp.Now;
+        return true;
+    }
+
+    private string TakePendingStallNotes()
+    {
+        lock (_playbackLock) {
+            if (_pendingStallNotes.Count == 0)
+                return "";
+
+            var note = string.Join(", ", _pendingStallNotes.Select(x => $"{ShortStreamId(x.Key.Value)}:{x.Value}"));
+            _pendingStallNotes.Clear();
+            return note;
         }
     }
 

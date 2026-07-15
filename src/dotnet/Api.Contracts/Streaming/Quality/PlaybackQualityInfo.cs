@@ -11,4 +11,7 @@ public sealed partial record PlaybackQualityInfo(
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double AggregateHealth,
     [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] PlaybackQualityReason Reason,
     [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] bool IsColdStart,
-    [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] ApiMap<string, PlaybackStreamInfo> Streams);
+    [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] ApiMap<string, PlaybackStreamInfo> Streams,
+    // Non-empty only when the receiver detected a playback stall. Carries the
+    // stalled stream ids + trigger, since the client console isn't collectable.
+    [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] string StallNote = "");

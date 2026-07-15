@@ -15,6 +15,8 @@ export interface PresentRateSnapshot {
     presentsPerSec: number;
     slotsPerSec: number;
     videoCount: number;
+    // Unobservable (canvas backend / no rVFC) tiles: if this is nonzero, a 0 rate means "unknown", not "stalled".
+    unobservableCount: number;
     // Per-stream display rate (distinct display slots/sec) for <video> elements
     // carrying data-stream-id — the honest "what the eye sees" number, unlike
     // the per-stream throughput counter which is the MSTG write rate.
@@ -26,6 +28,7 @@ class PresentRateMeter {
     private readonly presentsByVideo = new Map<HTMLVideoElement, number[]>();
     private rescanTimer: ReturnType<typeof setInterval> | null = null;
     private lastCollectAt = 0;
+    private unobservableCount = 0;
 
     collect(): PresentRateSnapshot {
         this.lastCollectAt = performance.now();
@@ -58,6 +61,7 @@ class PresentRateMeter {
             presentsPerSec: total / windowSec,
             slotsPerSec: slots.size / windowSec,
             videoCount: this.watched.size,
+            unobservableCount: this.unobservableCount,
             slotsPerSecByStream,
         };
     }
@@ -75,12 +79,16 @@ class PresentRateMeter {
 
     private rescan(): void {
         const live = new Set<HTMLVideoElement>();
+        let unobservable = 0;
         for (const el of document.querySelectorAll('video')) {
             const video = el;
             if (video.srcObject instanceof MediaStream
                 && typeof video.requestVideoFrameCallback === 'function')
                 live.add(video);
+            else
+                unobservable++;
         }
+        this.unobservableCount = unobservable;
         for (const [video, handle] of this.watched) {
             if (!live.has(video)) {
                 try { video.cancelVideoFrameCallback(handle); } catch { /* ignore */ }
@@ -112,6 +120,7 @@ class PresentRateMeter {
         }
         this.watched.clear();
         this.presentsByVideo.clear();
+        this.unobservableCount = 0;
         if (this.rescanTimer !== null) {
             clearInterval(this.rescanTimer);
             this.rescanTimer = null;
