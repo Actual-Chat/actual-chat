@@ -42,14 +42,31 @@
                     <div class="c-caption">Accurate to 10m</div>
                 </Content>
             </ButtonTile>
-            <ButtonTile Class="c-share-live">
+            <ButtonTile Class="c-share-live" Click="@OnShareLive">
                 <Icon><i class="icon-marker-pin-live"></i></Icon>
                 <Content>
-                    <div class="c-text">Share my location for..</div>
+                    <div class="c-text">Share my location for…</div>
                     <div class="c-caption">Updated in real time as you move</div>
                 </Content>
             </ButtonTile>
         </div>
+        @if (m.IsDurationMenuOpen) {
+            <div class="c-duration-backdrop" @onclick="@OnCloseDurationMenu"></div>
+            <div class="c-duration-menu">
+                @foreach (var (duration, label) in Constants.Location.Durations) {
+                    <button type="button" class="c-duration-item" @onclick="@(() => OnPickDuration(duration))">
+                        <i class="icon-clock"></i>
+                        <span>for @label</span>
+                    </button>
+                }
+                <button type="button"
+                        class="c-duration-item"
+                        @onclick="@(() => OnPickDuration(Constants.Location.UnlimitedDuration))">
+                    <i class="icon-clock"></i>
+                    <span>Until I turn it off</span>
+                </button>
+            </div>
+        }
     </Body>
 </DialogFrame>
 
@@ -59,6 +76,7 @@
 
     private MutableState<GeoPoint?> _currentLocation = null!;
     private MutableState<int> _mapStyleIndex = null!;
+    private MutableState<bool> _isDurationMenuOpen = null!;
     private MapView? _mapView;
 
     private ILocationTracker Tracker => Hub.LocationTracker;
@@ -73,6 +91,9 @@
         _mapStyleIndex = StateFactory.NewMutable(
             0,
             StateCategories.Get(GetType(), nameof(_mapStyleIndex)));
+        _isDurationMenuOpen = StateFactory.NewMutable(
+            false,
+            StateCategories.Get(GetType(), nameof(_isDurationMenuOpen)));
         _ = FetchCurrentLocation();
     }
 
@@ -88,11 +109,12 @@
         var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
         var currentPoint = await _currentLocation.Use(cancellationToken).ConfigureAwait(false);
         var mapStyleIndex = await _mapStyleIndex.Use(cancellationToken).ConfigureAwait(false);
+        var isDurationMenuOpen = await _isDurationMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var ownPoint = livePoint ?? currentPoint;
         var ownMarker = ownPoint is not null
             ? new MapMarker("own-location", ownPoint, IsOwnLocation: true)
             : null;
-        return new ComputedModel(ownMarker, MapStyles[mapStyleIndex]);
+        return new ComputedModel(ownMarker, MapStyles[mapStyleIndex], isDurationMenuOpen);
     }
 
     // Private methods
@@ -110,6 +132,17 @@
         Modal.Close();
     }
 
+    private void OnShareLive()
+        => _isDurationMenuOpen.Value = true;
+
+    private void OnCloseDurationMenu()
+        => _isDurationMenuOpen.Value = false;
+
+    private void OnPickDuration(TimeSpan duration) {
+        ModalModel.SelectedDuration = duration;
+        Modal.Close();
+    }
+
     private void OnSwitchMapStyle()
         => _mapStyleIndex.Value = (_mapStyleIndex.Value + 1) % MapStyles.Length;
 
@@ -124,7 +157,11 @@
 
     // Nested types
 
-    public sealed record ComputedModel(MapMarker? OwnMarker, string MapStyleName = "") {
+    public sealed record ComputedModel(
+        MapMarker? OwnMarker,
+        string MapStyleName = "",
+        bool IsDurationMenuOpen = false
+    ) {
         public static readonly ComputedModel None = new((MapMarker?)null);
     }
 

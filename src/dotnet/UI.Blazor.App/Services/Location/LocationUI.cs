@@ -98,10 +98,11 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         CancellationToken cancellationToken)
     {
         var location = await GetLive(authorId, cancellationToken).ConfigureAwait(false);
-        return location is null
-            ? ""
-            : await LiveTime.GetRemainingText(location.LiveUntil, RemainingTextUpdatePeriod, cancellationToken)
-                .ConfigureAwait(false);
+        if (location is null || location.Duration >= Constants.Location.UnlimitedDuration)
+            return "";
+
+        return await LiveTime.GetRemainingText(location.LiveUntil, RemainingTextUpdatePeriod, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     [ComputeMethod]
