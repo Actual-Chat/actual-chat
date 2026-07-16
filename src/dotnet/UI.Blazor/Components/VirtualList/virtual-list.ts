@@ -1168,6 +1168,13 @@ export class VirtualList {
         let shouldUseSmoothScroll = false;
         let reason: ScrollToEdgeReason = 'unknown';
         let scrollFunc: (() => void) | undefined = undefined;
+        // An interactive pivot means the user just clicked an item (expand/collapse a conversation, tap a
+        // row): its cornerstone must hold that item's screen position across the render it triggers. A
+        // sticky-edge re-pin would win over it — reason 'sticky-edge' disables the interactive layout anchor
+        // in syncLayoutAfterRender — and drag the clicked header toward the edge. So the sticky-edge re-pin
+        // is limited to non-interactive renders. Any user scroll clears pivots, so a genuine scroll-triggered
+        // load-above render carries no interactive pivot and still re-pins the End edge as before.
+        const hasInteractivePivot = this.state.pivots.some(p => p.isInteractive);
 
         if (scrollToItemRef != null) {
             // Server-side scroll request
@@ -1199,7 +1206,8 @@ export class VirtualList {
                 // Keep position of visible item
                 scrollFunc = () => this.scrollTo(scrollToItemRef, false, 'end');
             }
-        } else if (this.state.stickyEdge != null
+        } else if (!hasInteractivePivot
+            && this.state.stickyEdge != null
             && (this.state.query.isNone
                 || (this.state.stickyEdge.edge === VirtualListEdge.End && this.state.isEndAnchorVisible))) {
             // The End case also covers query renders: a load-above render used to have no scroll intent
@@ -1578,6 +1586,16 @@ export class VirtualList {
                 return null;
             const r = li.getBoundingClientRect();
             return r.height > 0 ? { key, top: r.top - viewRect.top } : null;
+        }
+        // Prefer the interactive pivot's item: an interactive render (expand/collapse a conversation, tap a
+        // row) intentionally holds THAT item's position while items below it shift with the content change,
+        // so anchoring on a below item would false-flag their legitimate move. Non-interactive renders fall
+        // back to the viewport-centre item below.
+        const interactiveKey = this.state.pivots.find(p => p.isInteractive)?.itemKey;
+        if (interactiveKey != null) {
+            const anchor = this.captureViewportAnchor(interactiveKey);
+            if (anchor != null)
+                return anchor;
         }
         const centre = viewRect.height / 2;
         let best: { key: string; top: number } | null = null;
