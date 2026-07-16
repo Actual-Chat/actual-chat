@@ -98,7 +98,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         CancellationToken cancellationToken)
     {
         var location = await GetLive(authorId, cancellationToken).ConfigureAwait(false);
-        if (location is null || location.Duration >= Constants.Location.UnlimitedDuration)
+        if (location is null || location.IsUnlimited)
             return "";
 
         return await LiveTime.GetRemainingText(location.LiveUntil, RemainingTextUpdatePeriod, cancellationToken)

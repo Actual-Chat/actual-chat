@@ -56,15 +56,9 @@
                 @foreach (var (duration, label) in Constants.Location.Durations) {
                     <button type="button" class="c-duration-item" @onclick="@(() => OnPickDuration(duration))">
                         <i class="icon-clock"></i>
-                        <span>for @label</span>
+                        <span>@label</span>
                     </button>
                 }
-                <button type="button"
-                        class="c-duration-item"
-                        @onclick="@(() => OnPickDuration(Constants.Location.UnlimitedDuration))">
-                    <i class="icon-clock"></i>
-                    <span>Until I turn it off</span>
-                </button>
             </div>
         }
     </Body>

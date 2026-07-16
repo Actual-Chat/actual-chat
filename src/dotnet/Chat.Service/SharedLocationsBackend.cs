@@ -20,7 +20,7 @@ public class SharedLocationsBackend(IServiceProvider services)
             return null;
 
         var now = Clocks.SystemClock.Now;
-        if (sharedLocation.IsLive(now))
+        if (sharedLocation.IsLive(now) && !sharedLocation.IsUnlimited)
             Computed.GetCurrent().Invalidate(sharedLocation.LiveUntil - now);
         return sharedLocation;
     }
@@ -45,7 +45,7 @@ public class SharedLocationsBackend(IServiceProvider services)
                 continue;
 
             result.Add(model);
-            if (soonestExpiry is not { } value || model.LiveUntil < value)
+            if (!model.IsUnlimited && (soonestExpiry is not { } value || model.LiveUntil < value))
                 soonestExpiry = model.LiveUntil;
         }
         if (soonestExpiry is { } expiry)
@@ -87,8 +87,11 @@ public class SharedLocationsBackend(IServiceProvider services)
         var sharedLocation = dbSharedLocation?.ToModel();
 
         if (change.IsCreate(out var createDiff)) {
-            var duration = createDiff.LiveDuration?.Clamp(TimeSpan.Zero, Constants.Location.UnlimitedDuration)
-                ?? TimeSpan.Zero;
+            // Anything past MaxDuration means "until I turn it off"
+            var duration = createDiff.LiveDuration ?? TimeSpan.Zero;
+            duration = duration > Constants.Location.MaxDuration
+                ? Constants.Location.UnlimitedDuration
+                : duration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration);
             if (duration > TimeSpan.Zero) {
                 // One live share per author: hand back the running one instead of starting a second.
                 var live = await GetOwnLiveShare(dbContext, authorId, now, cancellationToken).ConfigureAwait(false);
