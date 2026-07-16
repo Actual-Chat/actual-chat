@@ -257,6 +257,40 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void SpoilerTest()
+    {
+        var p = Parse<ParagraphMarkup>("||spoiler text||", out var text);
+        var m = p.Content.Should().BeOfType<StylizedMarkup>().Subject;
+        m.Style.Should().Be(TextStyle.Spoiler);
+        var m1 = m.Content.Should().BeOfType<PlainTextMarkup>().Subject;
+        m1.Text.Should().Be(text[2..^2]);
+    }
+
+    [Fact]
+    public void SpoilerWithBoldInsideTest()
+    {
+        var p = Parse<ParagraphMarkup>("||**bold** hidden||", out _);
+        var m = p.Content.Should().BeOfType<StylizedMarkup>().Subject;
+        m.Style.Should().Be(TextStyle.Spoiler);
+        var seq = m.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items[0].Should().BeOfType<StylizedMarkup>().Which.Style.Should().Be(TextStyle.Bold);
+    }
+
+    [Fact]
+    public void SinglePipeIsLiteralTest()
+    {
+        var m = MarkupParser.ParseRaw("a | b").Simplify();
+        m.ToReadableText().Should().Be("a | b");
+    }
+
+    [Fact]
+    public void UnterminatedSpoilerIsLiteralTest()
+    {
+        var m = MarkupParser.ParseRaw("a ||b c").Simplify();
+        m.ToReadableText().Should().Be("a ||b c");
+    }
+
+    [Fact]
     public void PreformattedTest()
     {
         var p = Parse<ParagraphMarkup>("`a``b`");

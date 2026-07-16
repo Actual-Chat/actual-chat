@@ -168,6 +168,14 @@ public sealed record MarkupFormatter(
 
     protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
     {
+        if (markup.Style == TextStyle.Spoiler && !ShowStyleTokens) {
+            // No reveal affordance in flattened text (notifications, chat-list & quote previews),
+            // so the content is replaced with a mask instead of leaking through.
+            var inner = ActualLab.Text.StringBuilderExt.Acquire();
+            Visit(markup.Content, ref inner);
+            state.Append(StylizedMarkup.Mask(inner.ToStringAndRelease()));
+            return;
+        }
         if (ShowStyleTokens)
             state.Append(markup.StyleToken);
         Visit(markup.Content, ref state);

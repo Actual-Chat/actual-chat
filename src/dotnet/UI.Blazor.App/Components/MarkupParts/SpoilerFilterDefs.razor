@@ -1,0 +1,15 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@* Global SVG filter backing .spoiler-markup — blur → alpha threshold → re-blur turns
+   the text into an unreadable frosted stencil. Rendered once via AlwaysVisibleComponents.
+   flood-color is themed through the --spoiler-fill CSS variable (see markup-parts.css). *@
+
+<svg class="spoiler-filter-defs" aria-hidden="true" focusable="false">
+    <filter id="spoiler-stencil" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="pre"/>
+        <feColorMatrix in="pre" type="matrix"
+            values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 26 -4.5" result="thresh"/>
+        <feFlood class="c-flood" result="flood"/>
+        <feComposite in="flood" in2="thresh" operator="in" result="shape"/>
+        <feGaussianBlur in="shape" stdDeviation="2.5"/>
+    </filter>
+</svg>

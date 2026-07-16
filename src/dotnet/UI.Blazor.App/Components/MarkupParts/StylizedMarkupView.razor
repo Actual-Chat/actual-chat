@@ -7,6 +7,9 @@ case TextStyle.Bold:
 case TextStyle.Italic:
     <em class="stylized-text-markup"><MarkupView Markup="@Markup.Content"/></em>
     break;
+case TextStyle.Spoiler:
+    <SpoilerMarkupView Markup="@Markup"/>
+    break;
 default:
     <MarkupView Markup="@Markup.Content"/>
     break;

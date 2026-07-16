@@ -62,6 +62,36 @@
     @apply cursor-pointer no-underline hover:underline text-primary;
 }
 
+/* Spoiler (masked) text: an SVG stencil (blur → alpha threshold → re-blur, see SpoilerFilterDefs)
+   turns the text into an unreadable frosted blob until tapped; auto-hides later, tap again to hide. */
+:root, .theme-light {
+    --spoiler-fill: #b9bdc6;
+}
+.theme-dark {
+    --spoiler-fill: #cdced3;
+}
+.spoiler-filter-defs {
+    @apply absolute;
+    width: 0;
+    height: 0;
+}
+#spoiler-stencil .c-flood {
+    flood-color: var(--spoiler-fill);
+}
+.spoiler-markup {
+    @apply px-1;
+    @apply rounded;
+    @apply cursor-pointer select-none;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    filter: url(#spoiler-stencil);
+}
+.spoiler-markup.revealed {
+    @apply bg-02;
+    @apply select-text;
+    filter: none;
+}
+
 /* GIF image in message */
 .gif-message-wrapper {
     @apply relative;

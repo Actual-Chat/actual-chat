@@ -21,6 +21,11 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
 
     protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
     {
+        if (markup.Style == TextStyle.Spoiler) {
+            // Server-rendered HTML has no reveal affordance, so the content is masked.
+            AddText(StylizedMarkup.Mask(markup.Content.ToReadableText()), ref state);
+            return;
+        }
         var startTag = markup.Style switch {
             TextStyle.Italic => "<em>",
             TextStyle.Bold => "<strong>",

@@ -46,15 +46,16 @@ public partial class MarkupParser : IMarkupParser
         Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or ':' or '.' or '%' or '~')
             .Labelled("letter, digit, '_', '-', ':', '.', '%', or '~'");
     private static readonly Parser<char, char> SpecialChar =
-        Token(c => c is '*' or '`' or '@').Labelled("'*', '`', or '@'");
+        Token(c => c is '*' or '`' or '@' or '|').Labelled("'*', '`', '@', or '|'");
     private static readonly Parser<char, char> NotSpecialOrWhitespaceChar =
-        Token(c => !(char.IsWhiteSpace(c) || c is '*' or '`' or '@'))
-            .Labelled("not whitespace, line separator, '_', '*', '`', or '@'");
+        Token(c => !(char.IsWhiteSpace(c) || c is '*' or '`' or '@' or '|'))
+            .Labelled("not whitespace, line separator, '_', '*', '`', '@', or '|'");
 
     // Tokens
 
     private static readonly Parser<char, TextStyle> BoldToken = String("**").WithResult(TextStyle.Bold);
     private static readonly Parser<char, TextStyle> ItalicToken = Char('*').WithResult(TextStyle.Italic);
+    private static readonly Parser<char, TextStyle> SpoilerToken = String("||").WithResult(TextStyle.Spoiler);
     private static readonly Parser<char, char> PreToken = Char('`');
     private static readonly Parser<char, char> NotPreToken = Token(c => c != '`');
     private static readonly Parser<char, char> DoublePreToken = Try(PreToken.Then(PreToken));
@@ -203,6 +204,10 @@ public partial class MarkupParser : IMarkupParser
         Rec(() => TextBlock!).Between(ItalicToken)
             .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Italic))
             .Debug("*");
+    private static readonly Parser<char, Markup> SpoilerMarkup =
+        Rec(() => TextBlock!).Between(Try(SpoilerToken))
+            .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Spoiler))
+            .Debug("||");
 
     // Fallback for single-line content: consume a run of stray '*'/'`'/'@' as plain text when no
     // styled/preformatted/mention/url markup matches. Without it, an unmatched '**' (e.g. the
@@ -212,13 +217,13 @@ public partial class MarkupParser : IMarkupParser
 
     // Text block for single-line content (list items) - no newlines allowed
     private static readonly Parser<char, Markup> TextBlockSingleLine =
-        SafeTryOneOf(BoldMarkup, ItalicMarkup, NonStylizedMarkup, StraySpecialText)
+        SafeTryOneOf(BoldMarkup, ItalicMarkup, SpoilerMarkup, NonStylizedMarkup, StraySpecialText)
             .AtLeastOnceSingleLineMarkup()
             .Debug("<TextSingleLine>");
 
     // Text block (includes inline newlines for multi-line styled text in paragraphs)
     private static readonly Parser<char, Markup> TextBlock =
-        SafeTryOneOf(BoldMarkup, ItalicMarkup, NonStylizedMarkup, InlineNewLine)
+        SafeTryOneOf(BoldMarkup, ItalicMarkup, SpoilerMarkup, NonStylizedMarkup, InlineNewLine)
             .AtLeastOnceInlineMarkup()
             .Debug("<Text>");
 

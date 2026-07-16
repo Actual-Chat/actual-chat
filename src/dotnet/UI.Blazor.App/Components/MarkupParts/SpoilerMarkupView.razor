@@ -1,0 +1,50 @@
+@inherits MarkupViewBase<StylizedMarkup>
+@implements IDisposable
+@{
+    var cssClass = _revealed ? "spoiler-markup revealed" : "spoiler-markup";
+}
+
+<span class="@cssClass" @onclick="OnClick" @onclick:stopPropagation="true">
+    <MarkupView Markup="@Markup.Content"/>
+</span>
+
+@code {
+    private static readonly TimeSpan RevealDuration = TimeSpan.FromSeconds(30);
+
+    private bool _revealed;
+    private CancellationTokenSource? _autoHideCts;
+
+    private void OnClick()
+    {
+        _autoHideCts.CancelAndDisposeSilently();
+        _autoHideCts = null;
+        if (_revealed) {
+            _revealed = false;
+            return;
+        }
+        _revealed = true;
+        var cts = _autoHideCts = new CancellationTokenSource();
+        _ = AutoHide(cts);
+    }
+
+    private async Task AutoHide(CancellationTokenSource cts)
+    {
+        try {
+            await Task.Delay(RevealDuration, cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            return;
+        }
+        await InvokeAsync(() => {
+            if (cts.IsCancellationRequested)
+                return;
+
+            _revealed = false;
+            _autoHideCts = null;
+            StateHasChanged();
+        }).ConfigureAwait(false);
+    }
+
+    public void Dispose()
+        => _autoHideCts.CancelAndDisposeSilently();
+}
