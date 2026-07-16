@@ -57,7 +57,7 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
         var result = new Dictionary<Language, Dictionary<string, string>>();
         var assembly = typeof(AppStringLocalizer).Assembly;
         foreach (var lang in LanguageUI.SupportedUILanguages) {
-            using var stream = assembly.GetManifestResourceStream($"Strings.{lang.Value}.json");
+            using var stream = assembly.GetManifestResourceStream($"Strings.{lang.PrimarySubtag}.json");
             if (stream == null)
                 continue;
 

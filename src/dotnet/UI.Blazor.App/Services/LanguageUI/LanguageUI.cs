@@ -11,8 +11,11 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
-    public static readonly Language[] SupportedUILanguages =
-        [Languages.English, Languages.Spanish, Languages.French, Languages.Italian, Languages.Russian, Languages.German];
+    public static readonly Language[] SupportedUILanguages = [
+        Languages.English, Languages.Spanish, Languages.French, Languages.Italian, Languages.Russian, Languages.German,
+        Languages.Chinese, Languages.Hindi, Languages.Japanese, Languages.Korean, Languages.Portuguese, Languages.Turkish,
+        Languages.Ukrainian, Languages.Vietnamese,
+    ];
     public static readonly Language DefaultUILanguage = Languages.Main;
     private static readonly HashSet<Language> SupportedUILanguageSet = [..SupportedUILanguages];
 
