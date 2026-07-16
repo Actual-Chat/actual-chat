@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Resources;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
@@ -69,6 +70,22 @@ public class AppLocalizationTest
         // assert
         missingBySubtag.Should().BeEmpty(
             "every shipped translation must translate all English keys:\n{0}", string.Join("\n", missingBySubtag));
+    }
+
+    [Fact]
+    public void EverySupportedUILanguageShouldShipTranslation()
+    {
+        // arrange
+        var shipped = ShippedSubtags().ToHashSet();
+
+        // act
+        var missing = LanguageUI.SupportedUILanguages
+            .Where(l => !shipped.Contains(l.PrimarySubtag))
+            .Select(l => l.PrimarySubtag)
+            .ToList();
+
+        // assert
+        missing.Should().BeEmpty("every supported UI language must ship a '{0}<subtag>{1}' resource", Prefix, Suffix);
     }
 
     // Private methods

@@ -12,8 +12,11 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
     public static readonly Language DefaultUILanguage = Languages.Main;
-    // TODO: explicitly list languages in the correct order used usually to sort languages for such case
-    public static readonly Language[] SupportedUILanguages = { Languages.Main };
+    public static readonly Language[] SupportedUILanguages = [
+        Languages.English, Languages.Spanish, Languages.French, Languages.Italian, Languages.Russian, Languages.German,
+        Languages.Chinese, Languages.Hindi, Languages.Japanese, Languages.Korean, Languages.Portuguese, Languages.Turkish,
+        Languages.Ukrainian, Languages.Vietnamese,
+    ];
 
     public SyncedState<UserLanguageSettings> Settings { get; init; }
     public SyncedState<Language> UILanguage { get; init; }
@@ -124,7 +127,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     {
         var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
         foreach (var language in languages)
-            if (Languages.All.FirstOrDefault(l => l.PrimarySubtag == language.PrimarySubtag) is { } uiLanguage)
+            if (SupportedUILanguages.FirstOrDefault(l => l.PrimarySubtag == language.PrimarySubtag) is { } uiLanguage)
                 return uiLanguage;
         return DefaultUILanguage;
     }

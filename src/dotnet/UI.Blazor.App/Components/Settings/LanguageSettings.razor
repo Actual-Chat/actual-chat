@@ -14,7 +14,7 @@
                 Value="_formModel.LanguageCode"
                 ValueExpression="@(() => _formModel.LanguageCode)"
                 ValueChanged="@(OnLanguageChanged)">
-                @foreach (var language in Languages.All.DistinctBy(l => l.IsoCode)) {
+                @foreach (var language in UILanguages) {
                     <option value="@language.Value">@language.NativeName</option>
                 }
             </InputSelect>
@@ -23,6 +23,9 @@
 </Form>
 
 @code {
+    private static IReadOnlyList<Language> UILanguages
+        => global::ActualChat.UI.Blazor.App.Services.LanguageUI.SupportedUILanguages;
+
     private FormModel _formModel = null!;
 
     [Inject] private UIHub Hub { get; init; } = null!;
