@@ -9,31 +9,31 @@
     Class="share-location-modal modal-sm"
     HasHeader="false">
     <Body>
-    <div class="c-map-area">
-        @if (m.OwnPoint is { } ownPoint) {
-            <MapView
-                @ref="_mapView"
-                Class="c-map"
-                Center="@ownPoint"
-                Zoom="15"
-                StyleName="@m.MapStyleName"
-                Markers="@m.OwnMarkers"/>
-        }
-        <ButtonRound Class="c-close" Click="@OnClose">
-            <i class="icon-close"></i>
-        </ButtonRound>
-        <div class="c-map-menu">
-            <button type="button" class="c-map-menu-item" @onclick="@OnSwitchMapStyle">
-                <i class="icon-map"></i>
-            </button>
-            <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
-                <i class="icon-navigation-pointer"></i>
-            </button>
+        <div class="c-map-area">
+            @if (m.OwnMarker is not null) {
+                <MapView
+                    @ref="_mapView"
+                    Class="c-map"
+                    Center="@m.OwnMarker.Point"
+                    Zoom="15"
+                    StyleName="@m.MapStyleName"
+                    Markers="@([m.OwnMarker])"/>
+            }
+            <ButtonRound Class="c-close" Click="@OnClose">
+                <i class="icon-close"></i>
+            </ButtonRound>
+            <div class="c-map-menu">
+                <button type="button" class="c-map-menu-item" @onclick="@OnSwitchMapStyle">
+                    <i class="icon-map"></i>
+                </button>
+                <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
+                    <i class="icon-navigation-pointer"></i>
+                </button>
+            </div>
+            <ButtonRound Class="c-search">
+                <i class="icon-search"></i>
+            </ButtonRound>
         </div>
-        <ButtonRound Class="c-search">
-            <i class="icon-search"></i>
-        </ButtonRound>
-    </div>
         <div class="c-actions">
             <ButtonTile Class="c-send-current" Click="@OnSendCurrent">
                 <Icon><i class="icon-marker-pin"></i></Icon>
@@ -88,7 +88,11 @@
         var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
         var currentPoint = await _currentLocation.Use(cancellationToken).ConfigureAwait(false);
         var mapStyleIndex = await _mapStyleIndex.Use(cancellationToken).ConfigureAwait(false);
-        return new ComputedModel(livePoint ?? currentPoint, MapStyles[mapStyleIndex]);
+        var ownPoint = livePoint ?? currentPoint;
+        var ownMarker = ownPoint is not null
+            ? new MapMarker("own-location", ownPoint, IsOwnLocation: true)
+            : null;
+        return new ComputedModel(ownMarker, MapStyles[mapStyleIndex]);
     }
 
     // Private methods
@@ -120,12 +124,8 @@
 
     // Nested types
 
-    public sealed record ComputedModel(GeoPoint? OwnPoint, string MapStyleName = "") {
-        public static readonly ComputedModel None = new((GeoPoint?)null);
-
-        public MapMarker[] OwnMarkers => OwnPoint is { } ownPoint
-            ? [new MapMarker("own-location", ownPoint, IsOwnLocation: true)]
-            : [];
+    public sealed record ComputedModel(MapMarker? OwnMarker, string MapStyleName = "") {
+        public static readonly ComputedModel None = new((MapMarker?)null);
     }
 
     public sealed class Model {
