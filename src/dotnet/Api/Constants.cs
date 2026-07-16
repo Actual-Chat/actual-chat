@@ -195,6 +195,9 @@ public static partial class Constants
         };
         public static readonly TimeSpan MinDuration = Durations.Keys.Min();
         public static readonly TimeSpan MaxDuration = Durations.Keys.Max();
+        // "Until I turn it off". Finite on purpose: Moment + TimeSpan.MaxValue silently
+        // wraps negative, which would make the share expire the moment it starts.
+        public static readonly TimeSpan UnlimitedDuration = TimeSpan.FromDays(365 * 100);
         public const int MaxSharingAuthorsPerChat = 100;
     }
 

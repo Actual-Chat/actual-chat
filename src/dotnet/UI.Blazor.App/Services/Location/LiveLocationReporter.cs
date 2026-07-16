@@ -12,6 +12,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 {
     private static readonly TimeSpan TroubleshooterDelay = TimeSpan.FromSeconds(7.5);
+    // CancellationTokenSource.CancelAfter rejects delays over ~49.7 days
+    private static readonly TimeSpan MaxReportLoopTimeout = TimeSpan.FromDays(49);
 
     private readonly Lock _lock = new();
     private readonly StoredState<ActiveShare[]> _shares;
@@ -138,7 +140,9 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     {
         await Clocks.CpuClock.Delay(TroubleshooterDelay, cancellationToken).ConfigureAwait(false);
         await Dispatcher.InvokeAsync(async () => {
-            var modalRef = await ModalUI.Show(new LocationTroubleshooterModal.Model(), cancellationToken).ConfigureAwait(true);
+            var modalRef = await ModalUI
+                .Show(new LocationTroubleshooterModal.Model(), cancellationToken)
+                .ConfigureAwait(true);
             try {
                 await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(true);
             }
@@ -164,8 +168,8 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     private async Task ReportLoop(ActiveShare[] activeShares, CancellationToken cancellationToken)
     {
         await Tracker.Start(cancellationToken).ConfigureAwait(false);
-        using var cts = cancellationToken.CreateLinkedTokenSource(
-            activeShares.Max(x => x.ExpiresAt) - ServerNow);
+        var timeout = activeShares.Max(x => x.ExpiresAt) - ServerNow;
+        using var cts = cancellationToken.CreateLinkedTokenSource(timeout < MaxReportLoopTimeout ? timeout : null);
         await Tracker.LastKnown.Computed.When(x => x is not null, cts.Token).ConfigureAwait(false);
         await AsyncChain.From(ReportForChats)
             .Log(LogLevel.Debug, Log)
@@ -203,7 +207,12 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             if (point is null)
                 return;
 
-            var diff = new SharedLocationDiff { Point = point, LiveDuration = share.ExpiresAt - ServerNow };
+            // Anything past MaxDuration can only be the "Until I turn it off" share,
+            // so send the exact sentinel — GetTimeLeftText matches on it.
+            var liveDuration = share.ExpiresAt - ServerNow;
+            if (liveDuration > Constants.Location.MaxDuration)
+                liveDuration = Constants.Location.UnlimitedDuration;
+            var diff = new SharedLocationDiff { Point = point, LiveDuration = liveDuration };
             var change = Change.Upsert(diff, share.LocationId);
             var shared = await Commander.Call(
                     new SharedLocations_Change(Session, share.ChatId, share.LocationId, change),

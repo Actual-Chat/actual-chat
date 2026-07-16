@@ -54,7 +54,9 @@ public class SharedLocationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task<SharedLocation?> OnChange(SharedLocationsBackend_Change command, CancellationToken cancellationToken)
+    public virtual async Task<SharedLocation?> OnChange(
+        SharedLocationsBackend_Change command,
+        CancellationToken cancellationToken)
     {
         var (id, authorId, change) = command;
         var chatId = authorId.ChatId;
@@ -85,7 +87,7 @@ public class SharedLocationsBackend(IServiceProvider services)
         var sharedLocation = dbSharedLocation?.ToModel();
 
         if (change.IsCreate(out var createDiff)) {
-            var duration = createDiff.LiveDuration?.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration)
+            var duration = createDiff.LiveDuration?.Clamp(TimeSpan.Zero, Constants.Location.UnlimitedDuration)
                 ?? TimeSpan.Zero;
             if (duration > TimeSpan.Zero) {
                 // One live share per author: hand back the running one instead of starting a second.
