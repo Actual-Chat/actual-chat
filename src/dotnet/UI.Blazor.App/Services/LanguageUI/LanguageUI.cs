@@ -34,8 +34,10 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
                 InitialValue = DefaultUILanguage,
                 Category = StateCategories.Get(GetType(), nameof(UILanguage)),
                 MissingValueFactory = DetectUILanguage,
+                UpdateDelayer = FixedDelayer.NextTick,
             });
         _ = EnsureUserLanguageSettingsPersisted();
+        _ = EnsureUILanguagePersisted();
     }
 
     private async Task EnsureUserLanguageSettingsPersisted(CancellationToken cancellationToken = default)
@@ -46,6 +48,16 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
             return;
 
         await UserSettingsUI.Set(UserLanguageSettings.KvasKey, Settings.Value, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task EnsureUILanguagePersisted(CancellationToken cancellationToken = default)
+    {
+        await UILanguage.WhenFirstTimeRead.ConfigureAwait(false);
+        var storedValue = await Hub.LocalSettings.Get<Language>(nameof(UILanguage), cancellationToken).ConfigureAwait(false);
+        if (storedValue is not null)
+            return;
+
+        await Hub.LocalSettings.Set(nameof(UILanguage), UILanguage.Value, cancellationToken).ConfigureAwait(false);
     }
 
     public void Dispose()
@@ -129,9 +141,11 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     {
         try {
             var languages = await JS.InvokeAsync<string[]>(JSGetLanguagesMethod, CancellationToken.None)
-                .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+                .AsTask()
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
             return languages
-                .Select(s => Language.TryParse(s, true))
+                .Select(Language.ParseNullable)
                 .SkipNullItems()
                 .Distinct()
                 .ToList();
