@@ -68,7 +68,9 @@
     }
 </Tile>
 
-<LocationAccuracySelector/>
+@if (m is { IsAdmin: true, IsIncompleteUIEnabled: true }) {
+    <LocationAccuracySelector/>
+}
 
 @code {
     private AppServerInstanceSelector? ServerInstanceSelector { get; set; }
