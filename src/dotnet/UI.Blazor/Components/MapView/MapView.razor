@@ -19,7 +19,6 @@
     [Parameter] public GeoPoint Center { get; set; } = new(0, 0);
     [Parameter] public double Zoom { get; set; } = 12;
     [Parameter] public bool Interactive { get; set; } = true;
-    [Parameter] public string StyleName { get; set; } = "";
     [Parameter] public IReadOnlyList<MapMarker> Markers { get; set; } = [];
 
     protected override ComputedState<Model?>.Options GetStateOptions()
@@ -37,7 +36,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            _appliedStyleUrl = GetEffectiveStyleUrl(GetStyleUrl(BrowserInfo.ThemeInfo.Value.CurrentTheme));
+            _appliedStyleUrl = GetStyleUrl(BrowserInfo.ThemeInfo.Value.CurrentTheme);
             var options = new {
                 styleUrl = _appliedStyleUrl,
                 centerLatitude = Center.Latitude,
@@ -50,12 +49,9 @@
             return;
         }
 
-        if (_jsRef is { } jsRef && State.Value is { } m) {
-            var styleUrl = GetEffectiveStyleUrl(m.StyleUrl);
-            if (styleUrl != _appliedStyleUrl) {
-                _appliedStyleUrl = styleUrl;
-                await jsRef.InvokeVoidAsync("setStyle", styleUrl).ConfigureAwait(true);
-            }
+        if (_jsRef is { } jsRef && State.Value is { } m && m.StyleUrl != _appliedStyleUrl) {
+            _appliedStyleUrl = m.StyleUrl;
+            await jsRef.InvokeVoidAsync("setStyle", m.StyleUrl).ConfigureAwait(true);
         }
     }
 
@@ -74,11 +70,6 @@
     }
 
     // Private methods
-
-    private string GetEffectiveStyleUrl(string themeStyleUrl)
-        => StyleName.IsNullOrEmpty()
-            ? themeStyleUrl
-            : $"{UrlMapper.MapTilesBaseUrl}styles/{StyleName}";
 
     private string GetStyleUrl(Theme theme) {
         var styleName = theme switch {

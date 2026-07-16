@@ -48,31 +48,45 @@
 .share-location-modal .c-actions .btn-tile i {
     @apply text-2xl text-primary;
 }
-.share-location-modal .c-duration-backdrop {
+.share-location-modal .c-menu-backdrop {
     @apply fixed inset-0 z-10;
 }
-.share-location-modal .c-duration-menu {
-    @apply absolute right-2 bottom-2 z-20;
+.share-location-modal .c-menu {
+    @apply absolute z-20;
     @apply flex-y;
-    @apply w-52;
     @apply p-1;
     @apply rounded-xl border border-separator;
     @apply bg-01;
     box-shadow: 0 2px 6px var(--black-05);
 }
-.share-location-modal .c-duration-menu .c-duration-item {
-    @apply flex-x items-center gap-x-3;
+.share-location-modal .c-duration-menu {
+    @apply right-2 bottom-2;
+    @apply w-52;
+}
+.share-location-modal .c-map-type-menu {
+    @apply right-2 top-[62px];
+    @apply w-40;
+}
+.share-location-modal .c-menu .c-menu-item {
+    @apply flex-x items-center gap-x-4;
     @apply h-12 shrink-0;
-    @apply pl-3;
+    @apply px-3;
     @apply rounded-lg;
 }
-body.hoverable .share-location-modal .c-duration-menu .c-duration-item:hover,
-.touch-capable .share-location-modal .c-duration-menu .c-duration-item:active {
+.share-location-modal .c-menu .c-menu-item:disabled {
+    @apply opacity-40;
+}
+body.hoverable .share-location-modal .c-menu .c-menu-item:hover:not(:disabled),
+.touch-capable .share-location-modal .c-menu .c-menu-item:active:not(:disabled) {
     @apply bg-hover;
 }
-.share-location-modal .c-duration-menu .c-duration-item i {
+.share-location-modal .c-menu .c-menu-item i {
     @apply text-2xl text-03;
 }
-.share-location-modal .c-duration-menu .c-duration-item span {
+.share-location-modal .c-menu .c-menu-item span {
+    @apply grow text-left;
     @apply text-headline-1 text-01;
+}
+.share-location-modal .c-menu .c-menu-item .c-check {
+    @apply text-xl text-primary;
 }
