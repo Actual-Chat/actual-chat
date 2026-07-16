@@ -65,7 +65,7 @@
 /* Spoiler (masked) text: an SVG stencil (blur → alpha threshold → re-blur, see SpoilerFilterDefs)
    turns the text into an unreadable frosted blob until tapped; auto-hides later, tap again to hide. */
 :root, .theme-light {
-    --spoiler-fill: #b9bdc6;
+    --spoiler-fill: #6f7480;
 }
 .theme-dark {
     --spoiler-fill: #cdced3;
