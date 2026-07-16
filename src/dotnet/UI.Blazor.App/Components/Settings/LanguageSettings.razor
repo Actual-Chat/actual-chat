@@ -14,8 +14,8 @@
                 Value="_formModel.LanguageCode"
                 ValueExpression="@(() => _formModel.LanguageCode)"
                 ValueChanged="@(OnLanguageChanged)">
-                @foreach (var language in LanguageUI.SupportedUILanguages) {
-                    <option value="@language.Value">@NativeNames[language]</option>
+                @foreach (var language in Languages.All.DistinctBy(l => l.IsoCode)) {
+                    <option value="@language.Value">@language.NativeName</option>
                 }
             </InputSelect>
         </FormSection>
@@ -23,16 +23,6 @@
 </Form>
 
 @code {
-    // TODO: support most of languages supported by transcription
-    private static readonly Dictionary<Language, string> NativeNames = new() {
-        [Languages.English] = "English",
-        [Languages.Spanish] = "Español",
-        [Languages.French] = "Français",
-        [Languages.Italian] = "Italiano",
-        [Languages.Russian] = "Русский",
-        [Languages.German] = "Deutsch",
-    };
-
     private FormModel _formModel = null!;
 
     [Inject] private UIHub Hub { get; init; } = null!;
