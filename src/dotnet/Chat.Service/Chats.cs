@@ -1075,9 +1075,8 @@ public partial class Chats(IServiceProvider services) : IChats
     private static string BuildLocationFallbackContent(SharedLocation location)
     {
         var label = location.Duration > TimeSpan.Zero ? "📍 Live location" : "📍 Location";
-        var (latitude, longitude, _, _) = location.Point;
         return
-            $"{label}: https://www.openstreetmap.org/?mlat={latitude:0.######}&mlon={longitude:0.######}#map=15/{latitude:0.######}/{longitude:0.######}\n\n"
+            $"{label}: {location.Point.ToOpenStreetMapUrl()}\n\n"
             + $"Update {CoreConstants.AppName} to the latest version to see it on the map.";
     }
 
