@@ -61,7 +61,9 @@ public sealed class AppleVideoCapture : IDisposable
 
                 var input = AVCaptureDeviceInput.FromDevice(device, out var inputError);
                 if (input is null || inputError is not null) {
-                    _log.LogWarning("AppleVideoCapture: cannot open device input: {Error}", inputError?.LocalizedDescription);
+                    _log.LogWarning(
+                        "AppleVideoCapture: cannot open device input: {Error}",
+                        inputError?.LocalizedDescription);
                     session.CommitConfiguration();
                     return false;
                 }
@@ -118,7 +120,9 @@ public sealed class AppleVideoCapture : IDisposable
 
             var input = AVCaptureDeviceInput.FromDevice(device, out var inputError);
             if (input is null || inputError is not null) {
-                _log.LogWarning("AppleVideoCapture: cannot open device input on switch: {Error}", inputError?.LocalizedDescription);
+                _log.LogWarning(
+                    "AppleVideoCapture: cannot open device input on switch: {Error}",
+                    inputError?.LocalizedDescription);
                 return false;
             }
 
@@ -143,9 +147,6 @@ public sealed class AppleVideoCapture : IDisposable
             return true;
         }
     }
-
-    public IReadOnlyList<(string DeviceId, string Label)> ListDevices()
-        => AppleVideoDevices.All().Select(d => (d.UniqueID, d.LocalizedName)).ToArray();
 
     public void Stop()
     {
@@ -179,7 +180,7 @@ public sealed class AppleVideoCapture : IDisposable
 
     // Private methods
 
-    private AVCaptureDevice? ResolveDevice(string? deviceId)
+    private static AVCaptureDevice? ResolveDevice(string? deviceId)
     {
         var devices = AppleVideoDevices.All();
         if (devices.Length == 0)

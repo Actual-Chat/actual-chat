@@ -1,13 +1,6 @@
 import { RecorderPreviewView } from '../../Services/Video/services/recorder-preview-view';
 import { isBgBlurOff } from '../../Services/Video/playback/bg-blur-override';
-
-function base64ToBytes(base64: string): Uint8Array {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++)
-        bytes[i] = binary.charCodeAt(i);
-    return bytes;
-}
+import { renderJpegFrame } from '../../Services/Video/services/jpeg-frame-renderer';
 
 export class VideoStreamingPreview {
     private readonly element: HTMLElement;
@@ -59,24 +52,12 @@ export class VideoStreamingPreview {
     // canvas. Mirroring/fit are handled by the element's CSS classes, same as
     // the RecorderPreviewView canvas path.
     public async renderPreviewFrame(base64Jpeg: string): Promise<void> {
-        if (this.disposed) return;
-        try {
-            const bytes = base64ToBytes(base64Jpeg);
-            const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'image/jpeg' });
-            const bitmap = await createImageBitmap(blob);
-            // dispose() can flip `disposed` during the await above.
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            if (this.disposed) { bitmap.close(); return; }
+        if (this.disposed)
+            return;
 
-            const ctx = this.canvas.getContext('2d');
-            if (!ctx) { bitmap.close(); return; }
-            if (this.canvas.width !== bitmap.width || this.canvas.height !== bitmap.height) {
-                this.canvas.width = bitmap.width;
-                this.canvas.height = bitmap.height;
-            }
-            ctx.drawImage(bitmap, 0, 0);
-            bitmap.close();
-            this.element.classList.add('has-video');
+        try {
+            if (await renderJpegFrame(this.canvas, base64Jpeg, () => this.disposed))
+                this.element.classList.add('has-video');
         } catch {
             // A dropped preview frame is harmless.
         }
@@ -91,7 +72,9 @@ export class VideoStreamingPreview {
     }
 
     public dispose(): void {
-        if (this.disposed) return;
+        if (this.disposed)
+            return;
+
         this.disposed = true;
         this.view?.dispose();
     }

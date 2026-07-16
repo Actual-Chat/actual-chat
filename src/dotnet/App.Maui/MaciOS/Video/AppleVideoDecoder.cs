@@ -25,10 +25,10 @@ public sealed class AppleVideoDecoder : IDisposable
     public AppleVideoDecoder(ILogger log)
         => _log = log;
 
-    public void Decode(byte[] annexB, bool isKeyFrame)
+    public void Decode(ReadOnlyMemory<byte> annexB, bool isKeyFrame)
     {
         try {
-            if (isKeyFrame && !TryConfigure(annexB))
+            if (isKeyFrame && !TryConfigure(annexB.Span))
                 return;
 
             var session = _session;
@@ -36,7 +36,7 @@ public sealed class AppleVideoDecoder : IDisposable
             if (session is null || format is null)
                 return; // no keyframe seen yet
 
-            var avcc = ToAvcc(annexB);
+            var avcc = ToAvcc(annexB.Span);
             if (avcc.Length == 0)
                 return;
 
@@ -59,15 +59,15 @@ public sealed class AppleVideoDecoder : IDisposable
 
     // Private methods
 
-    private bool TryConfigure(byte[] annexB)
+    private bool TryConfigure(ReadOnlySpan<byte> annexB)
     {
         byte[]? sps = null, pps = null;
         foreach (var (offset, length) in EnumerateNals(annexB)) {
             var nalType = annexB[offset] & 0x1F;
             if (nalType == 7)
-                sps = annexB.AsSpan(offset, length).ToArray();
+                sps = annexB.Slice(offset, length).ToArray();
             else if (nalType == 8)
-                pps = annexB.AsSpan(offset, length).ToArray();
+                pps = annexB.Slice(offset, length).ToArray();
         }
         if (sps is null || pps is null)
             return _session is not null; // keyframe without inline params: reuse the live session
@@ -105,7 +105,8 @@ public sealed class AppleVideoDecoder : IDisposable
 
     private void DecodeAvcc(VTDecompressionSession session, CMVideoFormatDescription format, byte[] avcc)
     {
-        using var blockBuffer = CMBlockBuffer.FromMemoryBlock(avcc, 0, CMBlockBufferFlags.AssureMemoryNow, out var bbError);
+        using var blockBuffer = CMBlockBuffer.FromMemoryBlock(
+            avcc, 0, CMBlockBufferFlags.AssureMemoryNow, out var bbError);
         if (blockBuffer is null || bbError != CMBlockBufferError.None) {
             _log.LogWarning("AppleVideoDecoder: CMBlockBuffer creation failed: {Error}", bbError);
             return;
@@ -133,28 +134,29 @@ public sealed class AppleVideoDecoder : IDisposable
         Decoded?.Invoke(pixelBuffer);
     }
 
-    // Length-prefixes every VCL NAL (dropping the parameter sets that went into the
-    // format description) — the inverse of AppleVideoEncoder.ToAnnexB.
-    private static byte[] ToAvcc(byte[] annexB)
+    private static byte[] ToAvcc(ReadOnlySpan<byte> annexB)
     {
+        // Length-prefixes every VCL NAL (dropping the parameter sets that went into
+        // the format description) — the inverse of AppleVideoEncoder.ToAnnexB.
         using var stream = new MemoryStream(annexB.Length + 16);
         foreach (var (offset, length) in EnumerateNals(annexB)) {
             var nalType = annexB[offset] & 0x1F;
             if (nalType == 7 || nalType == 8)
                 continue;
+
             stream.WriteByte((byte)((length >> 24) & 0xFF));
             stream.WriteByte((byte)((length >> 16) & 0xFF));
             stream.WriteByte((byte)((length >> 8) & 0xFF));
             stream.WriteByte((byte)(length & 0xFF));
-            stream.Write(annexB, offset, length);
+            stream.Write(annexB.Slice(offset, length));
         }
         return stream.ToArray();
     }
 
-    // Yields (payloadOffset, payloadLength) for each Annex-B NAL, handling both 3- and
-    // 4-byte start codes.
-    private static List<(int Offset, int Length)> EnumerateNals(byte[] data)
+    private static List<(int Offset, int Length)> EnumerateNals(ReadOnlySpan<byte> data)
     {
+        // Yields (payloadOffset, payloadLength) for each Annex-B NAL, handling both
+        // 3- and 4-byte start codes.
         var marks = new List<(int StartCode, int Payload)>();
         var n = data.Length;
         var i = 0;

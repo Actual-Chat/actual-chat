@@ -21,22 +21,22 @@ public sealed class MauiVideoPlayer : INativeVideoPlayer
     private readonly AppUIHub _hub;
     private readonly VideoStreamInfo _streamInfo;
     private readonly Lock _sync = new();
-    private readonly AppleJpegEncoder _jpegEncoder = new();
+    private readonly JpegFrameEmitter _emitter;
     private readonly AppleVideoDecoder _decoder;
 
     private Func<byte[], ValueTask>? _onFrame;
-    private int _emitInFlight;
     private CancellationTokenSource? _cts;
     private Task? _pullTask;
 
     private ILiveVideoStreams LiveVideoStreams => field ??= _hub.Services.GetRequiredService<ILiveVideoStreams>();
     private ConnectivityUI ConnectivityUI => field ??= _hub.Services.GetRequiredService<ConnectivityUI>();
-    private ILogger Log => field ??= _hub.Services.LogFor<MauiVideoPlayer>();
+    private ILogger Log => field ??= _hub.Services.LogFor(GetType());
 
     public MauiVideoPlayer(AppUIHub hub, VideoStreamInfo streamInfo)
     {
         _hub = hub;
         _streamInfo = streamInfo;
+        _emitter = new JpegFrameEmitter(TargetWidth, JpegQuality, hub.Services.LogFor(GetType()));
         _decoder = new AppleVideoDecoder(hub.Services.LogFor<AppleVideoDecoder>());
         _decoder.Decoded += OnDecoded;
     }
@@ -72,7 +72,7 @@ public sealed class MauiVideoPlayer : INativeVideoPlayer
             await pullTask.SilentAwait(false);
         _decoder.Decoded -= OnDecoded;
         _decoder.Dispose();
-        _jpegEncoder.Dispose();
+        _emitter.Dispose();
     }
 
     // Private methods
@@ -84,7 +84,8 @@ public sealed class MauiVideoPlayer : INativeVideoPlayer
         while (!cancellationToken.IsCancellationRequested) {
             try {
                 await ConnectivityUI.WhenConnected(cancellationToken).ConfigureAwait(false);
-                var rpcStream = await LiveVideoStreams.GetStream(session, streamId, cancellationToken).ConfigureAwait(false);
+                var rpcStream = await LiveVideoStreams.GetStream(session, streamId, cancellationToken)
+                    .ConfigureAwait(false);
                 if (rpcStream is null) {
                     await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken).ConfigureAwait(false);
                     continue;
@@ -92,7 +93,8 @@ public sealed class MauiVideoPlayer : INativeVideoPlayer
                 // Subscription may start mid-GOP; ask the sender for a keyframe so the
                 // decoder can (re)configure immediately instead of freezing until the
                 // next natural one.
-                await LiveVideoStreams.RequestKeyFrame(session, streamId.Value, cancellationToken).ConfigureAwait(false);
+                await LiveVideoStreams.RequestKeyFrame(session, streamId.Value, cancellationToken)
+                    .ConfigureAwait(false);
                 await foreach (var frame in rpcStream.WithCancellation(cancellationToken).ConfigureAwait(false))
                     Feed(frame);
             }
@@ -112,40 +114,16 @@ public sealed class MauiVideoPlayer : INativeVideoPlayer
         // time and can switch which one dynamically; the decoder reconfigures at the
         // keyframe that accompanies each switch. Filtering by a latched LayerId would
         // drop every frame after a switch and freeze the tile.
-        _decoder.Decode(frame.Data.ToArray(), frame.IsKeyFrame);
+        _decoder.Decode(frame.Data, frame.IsKeyFrame);
     }
 
     private void OnDecoded(CVPixelBuffer pixelBuffer)
     {
-        // Best-effort: drop the frame if a prior JPEG emit is still crossing the JS
-        // interop hop, so decoded frames never queue behind a slow render.
-        if (Interlocked.CompareExchange(ref _emitInFlight, 1, 0) != 0)
-            return;
-
         Func<byte[], ValueTask>? onFrame;
         lock (_sync)
             onFrame = _onFrame;
-
-        byte[]? jpeg = null;
-        try {
-            if (onFrame is not null)
-                jpeg = _jpegEncoder.EncodeJpeg(pixelBuffer, TargetWidth, JpegQuality);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "MauiVideoPlayer: frame encode failed");
-        }
-        if (onFrame is null || jpeg is null) {
-            Interlocked.Exchange(ref _emitInFlight, 0);
-            return;
-        }
-
-        var emit = onFrame(jpeg);
-        if (emit.IsCompleted)
-            Interlocked.Exchange(ref _emitInFlight, 0);
-        else
-            _ = emit.AsTask().ContinueWith(
-                _ => Interlocked.Exchange(ref _emitInFlight, 0),
-                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        if (onFrame is not null)
+            _emitter.TryEmit(pixelBuffer, onFrame);
     }
 }
 

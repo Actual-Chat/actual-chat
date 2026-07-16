@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using CoreFoundation;
 using CoreMedia;
 using CoreVideo;
@@ -9,14 +8,12 @@ namespace ActualChat.App.Maui.Video;
 
 /// <summary>
 /// One encoded per-layer frame produced by <see cref="AppleVideoEncoder"/>.
-/// <see cref="Data"/> is AVCC/HVCC length-prefixed NAL units (VideoToolbox default);
-/// <see cref="Description"/> is the avcC/hvcC atom, present on keyframes only.
+/// <see cref="Data"/> is Annex-B framed, with SPS/PPS inlined on keyframes.
 /// </summary>
 public sealed record NativeEncodedFrame
 {
     public required byte[] Data { get; init; }
     public required bool IsKeyFrame { get; init; }
-    public byte[]? Description { get; init; }
     public required int Width { get; init; }
     public required int Height { get; init; }
     public required CMTime Pts { get; init; }
@@ -47,7 +44,9 @@ public sealed class AppleVideoEncoder : IDisposable
     public int Width { get; }
     public int Height { get; }
 
-    public AppleVideoEncoder(byte layerId, int width, int height, int bitrate, double frameRate, string codec, ILogger log)
+    public AppleVideoEncoder(
+        byte layerId, int width, int height, int bitrate,
+        double frameRate, string codec, ILogger log)
     {
         _log = log;
         _layerId = layerId;
@@ -73,7 +72,8 @@ public sealed class AppleVideoEncoder : IDisposable
             new VTVideoEncoderSpecification(encoderSpec),
             (NSDictionary?)null);
         if (session is null)
-            throw StandardError.External($"Failed to create VTCompressionSession for layer {layerId} ({width}x{height}).");
+            throw StandardError.External(
+                $"Failed to create VTCompressionSession for layer {layerId} ({width}x{height}).");
 
         var properties = new VTCompressionProperties {
             RealTime = true,
@@ -124,7 +124,8 @@ public sealed class AppleVideoEncoder : IDisposable
 
     // Private methods
 
-    private void OnEncodedFrame(IntPtr sourceFrame, VTStatus status, VTEncodeInfoFlags flags, CMSampleBuffer? sampleBuffer)
+    private void OnEncodedFrame(
+        IntPtr sourceFrame, VTStatus status, VTEncodeInfoFlags flags, CMSampleBuffer? sampleBuffer)
     {
         if (status != VTStatus.Ok || sampleBuffer is null)
             return;
@@ -150,7 +151,6 @@ public sealed class AppleVideoEncoder : IDisposable
             var frame = new NativeEncodedFrame {
                 Data = data,
                 IsKeyFrame = isKeyFrame,
-                Description = null,
                 Width = Width,
                 Height = Height,
                 Pts = sampleBuffer.PresentationTimeStamp,
@@ -170,10 +170,10 @@ public sealed class AppleVideoEncoder : IDisposable
             return true;
 
         // NotSync == true → this sample depends on others (not a keyframe).
-        return attachments[0].NotSync != true;
+        return attachments[0]?.NotSync != true;
     }
 
-    private byte[]? CopyData(CMSampleBuffer sampleBuffer)
+    private static byte[]? CopyData(CMSampleBuffer sampleBuffer)
     {
         using var block = sampleBuffer.GetDataBuffer();
         if (block is null)
@@ -202,19 +202,21 @@ public sealed class AppleVideoEncoder : IDisposable
         return atoms[key] is NSData atom ? atom.ToArray() : null;
     }
 
-    // Rewrites AVCC (4-byte big-endian length prefixes) to Annex-B (00 00 00 01
-    // start codes), optionally prepending the cached parameter sets on keyframes.
     private static byte[] ToAnnexB(byte[] avcc, byte[]? parameterSetsPrefix)
     {
+        // Rewrites AVCC (4-byte big-endian length prefixes) to Annex-B (00 00 00 01
+        // start codes), optionally prepending the cached parameter sets on keyframes.
         using var stream = new MemoryStream(avcc.Length + (parameterSetsPrefix?.Length ?? 0) + 16);
         if (parameterSetsPrefix is not null)
             stream.Write(parameterSetsPrefix, 0, parameterSetsPrefix.Length);
         var offset = 0;
         while (offset + 4 <= avcc.Length) {
-            var nalLength = (avcc[offset] << 24) | (avcc[offset + 1] << 16) | (avcc[offset + 2] << 8) | avcc[offset + 3];
+            var nalLength = (avcc[offset] << 24) | (avcc[offset + 1] << 16)
+                | (avcc[offset + 2] << 8) | avcc[offset + 3];
             offset += 4;
             if (nalLength <= 0 || offset + nalLength > avcc.Length)
                 break;
+
             stream.Write(StartCode, 0, StartCode.Length);
             stream.Write(avcc, offset, nalLength);
             offset += nalLength;
@@ -222,9 +224,9 @@ public sealed class AppleVideoEncoder : IDisposable
         return stream.ToArray();
     }
 
-    // Parses the avcC box's SPS/PPS NAL units and returns them Annex-B framed.
     private static byte[]? BuildParameterSetsAnnexB(byte[] avcC)
     {
+        // Parses the avcC box's SPS/PPS NAL units and returns them Annex-B framed.
         // avcC: [0]=version, [1..3]=profile/compat/level, [4]=lengthSizeMinusOne,
         // [5]=(0xE0 | numSPS), then per SPS: uint16 length + bytes; then numPPS + per PPS.
         if (avcC.Length < 6)
@@ -235,24 +237,28 @@ public sealed class AppleVideoEncoder : IDisposable
         // SPS: offset is at the (0xE0 | numSPS) byte; WriteParameterSets skips it.
         if (!WriteParameterSets(avcC, ref offset, avcC[offset] & 0x1F, stream))
             return null;
+
         // PPS: offset now points at the numPPS byte.
         if (offset >= avcC.Length || !WriteParameterSets(avcC, ref offset, avcC[offset], stream))
             return null;
+
         return stream.ToArray();
     }
 
-    // On entry offset points at the count byte (skipped here); on exit it points
-    // at the byte following the last parameter set.
     private static bool WriteParameterSets(byte[] avcC, ref int offset, int count, MemoryStream stream)
     {
+        // On entry offset points at the count byte (skipped here); on exit it points
+        // at the byte following the last parameter set.
         offset++;
         for (var i = 0; i < count; i++) {
             if (offset + 2 > avcC.Length)
                 return false;
+
             var length = (avcC[offset] << 8) | avcC[offset + 1];
             offset += 2;
             if (length <= 0 || offset + length > avcC.Length)
                 return false;
+
             stream.Write(StartCode, 0, StartCode.Length);
             stream.Write(avcC, offset, length);
             offset += length;

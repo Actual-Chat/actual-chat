@@ -2,6 +2,10 @@ using ActualChat.App.Maui.Audio;
 #if ANDROID || IOS || MACCATALYST
 using ActualChat.App.Maui.Location;
 #endif
+#if IOS || MACCATALYST
+using ActualChat.App.Maui.Video;
+using ActualChat.UI.Blazor.App.Services.Video;
+#endif
 using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
@@ -111,16 +115,11 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // there has no WebCodecs encoder); iOS keeps the working JS recorder until the
         // native path is validated on-device.
         if (OperatingSystem.IsMacCatalyst()) {
-            services.AddScoped<ActualChat.App.Maui.Video.AppleCameraFrameTap>(
-                _ => new ActualChat.App.Maui.Video.AppleCameraFrameTap());
-            services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeVideoPublisherFactory>(
-                _ => new ActualChat.App.Maui.Video.MauiVideoPublisherFactory());
-            services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeCameraDevices>(
-                _ => new ActualChat.App.Maui.Video.MauiCameraDevices());
-            services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeCameraPreviewFactory>(
-                _ => new ActualChat.App.Maui.Video.AppleCameraPreviewFactory());
-            services.AddScoped<ActualChat.UI.Blazor.App.Services.Video.INativeVideoPlayerFactory>(
-                _ => new ActualChat.App.Maui.Video.MauiVideoPlayerFactory());
+            services.AddScoped<AppleCameraFrameTap>(_ => new AppleCameraFrameTap());
+            services.AddScoped<INativeVideoPublisherFactory>(_ => new MauiVideoPublisherFactory());
+            services.AddScoped<INativeCameraDevices>(_ => new MauiCameraDevices());
+            services.AddScoped<INativeCameraPreviewFactory>(_ => new AppleCameraPreviewFactory());
+            services.AddScoped<INativeVideoPlayerFactory>(_ => new MauiVideoPlayerFactory());
         }
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());

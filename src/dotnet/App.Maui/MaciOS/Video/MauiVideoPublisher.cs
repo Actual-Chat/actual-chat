@@ -1,5 +1,3 @@
-using System.Threading.Channels;
-using ActualChat.Media;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Video;
@@ -19,6 +17,7 @@ namespace ActualChat.App.Maui.Video;
 public sealed class MauiVideoPublisher : INativeVideoPublisher
 {
     private const double FrameRate = 30;
+    private const long KeyFrameIntervalMs = 3000;
     private const int FloodClose = 15;
     private const int FloodOpen = 6;
     private const string DefaultCodec = "avc1.640028"; // H.264 High 4.0
@@ -33,13 +32,12 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
     private readonly AppleCameraFrameTap? _tap;
     private readonly List<AppleVideoEncoder> _encoders = new();
     private readonly Dictionary<long, BundleAccumulator> _pending = new();
-    private readonly Dictionary<long, (int Index, int Expected)> _ptsInfo = new();
 
     private VideoLayerDef[] _ladder = [];
     private int[] _lastKeyFrameIndexByLayer = [];
     private string _codec = DefaultCodec;
     private string _deviceId = "";
-    private ChatId _chatId;
+    private ChatId _chatId = null!;
     private IReadOnlyList<string> _warmCodecs = [];
 
     private Channel<VideoFrameBundle>? _outbound;
@@ -48,10 +46,8 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
     private bool _gateOpen;
     private bool _capturing;
     private int _pendingForceKeyFrame;
-    private int _frameCounter;
     private long _lastKeyFrameAtMs;
     private int _sourceIndex;
-    private bool _loggedFirstCapture;
     private double? _firstPtsSeconds;
     private double _sourceStartedAtSeconds;
     private CancellationTokenSource? _sendCts;
@@ -59,7 +55,7 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
 
     private ILiveVideoStreams LiveVideoStreams => field ??= _hub.Services.GetRequiredService<ILiveVideoStreams>();
     private ConnectivityUI ConnectivityUI => field ??= _hub.Services.GetRequiredService<ConnectivityUI>();
-    private ILogger Log => field ??= _hub.Services.LogFor<MauiVideoPublisher>();
+    private ILogger Log => field ??= _hub.Services.LogFor(GetType());
 
     public MauiVideoPublisher(AppUIHub hub, VideoSourceKind kind, INativeVideoPublisherCallbacks callbacks)
     {
@@ -82,7 +78,9 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
         return Task.CompletedTask;
     }
 
-    public Task StartRecording(ChatId chatId, IReadOnlyList<string> supportedCodecs, int maxLayerCount, CancellationToken cancellationToken)
+    public Task StartRecording(
+        ChatId chatId, IReadOnlyList<string> supportedCodecs, int maxLayerCount,
+        CancellationToken cancellationToken)
     {
         _chatId = chatId;
         StartCapture(supportedCodecs, maxLayerCount);
@@ -109,8 +107,11 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
         return Task.CompletedTask;
     }
 
-    public Task StartScreenCast(ChatId chatId, IReadOnlyList<string> supportedCodecs, int maxLayerCount, CancellationToken cancellationToken)
-        => throw StandardError.NotSupported("Native screen capture is not implemented; ScreenCast stays on the JS recorder.");
+    public Task StartScreenCast(
+        ChatId chatId, IReadOnlyList<string> supportedCodecs, int maxLayerCount,
+        CancellationToken cancellationToken)
+        => throw StandardError.NotSupported(
+            "Native screen capture is not implemented; ScreenCast stays on the JS recorder.");
 
     public Task SetSelectedCamera(string deviceId, CancellationToken cancellationToken)
     {
@@ -202,7 +203,6 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
                 AllowSynchronousContinuations = false,
             });
             _outboundCount = 0;
-            _frameCounter = 0;
             _sourceIndex = -1;
             _firstPtsSeconds = null;
             _lastKeyFrameAtMs = 0;
@@ -255,10 +255,8 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
             encoder.Encoded -= OnEncoded;
             encoder.Dispose();
         }
-        lock (_bundleLock) {
+        lock (_bundleLock)
             _pending.Clear();
-            _ptsInfo.Clear();
-        }
         if (raiseStopped)
             _callbacks.OnRecordingStopped();
     }
@@ -266,33 +264,21 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
     private void OnCaptured(CMSampleBuffer sampleBuffer, CMTime pts)
     {
         _tap?.Publish(sampleBuffer, pts);
-        if (!_capturing)
+        if (!_capturing || !_gateOpen)
             return;
 
         var imageBuffer = sampleBuffer.GetImageBuffer();
         if (imageBuffer is null)
             return;
 
-        if (!_loggedFirstCapture) {
-            _loggedFirstCapture = true;
-            NativeVideoTrace.Log($"publisher: first captured frame (gateOpen={_gateOpen})");
-        }
-        var duration = new CMTime((long)(FrameRate == 0 ? 0 : 1), (int)FrameRate);
-        if (!_gateOpen) {
-            // Keep encoders warm while the wire gate is closed.
-            foreach (var encoder in _encoders)
-                encoder.Encode(imageBuffer, pts, duration, false);
-            return;
-        }
-
         if (ShouldSkipForFloodGate())
             return;
 
         var forceKeyFrame = ComputeForceKeyFrame();
         var index = Interlocked.Increment(ref _sourceIndex);
-        lock (_bundleLock) {
-            _ptsInfo[pts.Value] = (index, _encoders.Count);
-        }
+        lock (_bundleLock)
+            _pending[pts.Value] = new BundleAccumulator(index, _encoders.Count, pts);
+        var duration = new CMTime(1, (int)FrameRate);
         foreach (var encoder in _encoders)
             encoder.Encode(imageBuffer, pts, duration, forceKeyFrame);
     }
@@ -303,20 +289,15 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
         lock (_bundleLock) {
             if (!_gateOpen)
                 return;
-            if (!_ptsInfo.TryGetValue(frame.Pts.Value, out var info))
+            if (!_pending.TryGetValue(frame.Pts.Value, out var accumulator))
                 return;
 
-            if (!_pending.TryGetValue(frame.Pts.Value, out var accumulator)) {
-                accumulator = new BundleAccumulator(info.Index, info.Expected, frame.Pts);
-                _pending[frame.Pts.Value] = accumulator;
-            }
             accumulator.Layers.Add(frame);
             if (accumulator.Layers.Count < accumulator.Expected)
                 return;
 
             bundle = BuildBundle(accumulator);
             _pending.Remove(frame.Pts.Value);
-            _ptsInfo.Remove(frame.Pts.Value);
             PruneOlderThan(accumulator.Index);
         }
 
@@ -352,7 +333,6 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
                 Width = f.IsKeyFrame ? f.Width : 0,
                 Height = f.IsKeyFrame ? f.Height : 0,
                 Codec = f.IsKeyFrame ? _codec : null,
-                Description = f.IsKeyFrame && f.Description is not null ? f.Description : default,
                 LayerId = f.LayerId,
                 LayerCount = layerCount,
                 LayerMask = (byte)layerMask,
@@ -367,10 +347,8 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
             return;
 
         var stale = _pending.Where(kv => kv.Value.Index < index).Select(kv => kv.Key).ToArray();
-        foreach (var key in stale) {
+        foreach (var key in stale)
             _pending.Remove(key);
-            _ptsInfo.Remove(key);
-        }
     }
 
     private void Enqueue(VideoFrameBundle bundle)
@@ -402,12 +380,8 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
     private bool ComputeForceKeyFrame()
     {
         var force = Interlocked.Exchange(ref _pendingForceKeyFrame, 0) == 1;
-        _frameCounter++;
-        var keyframeIntervalFrames = (int)(FrameRate * 3);
-        if (keyframeIntervalFrames > 0 && _frameCounter % keyframeIntervalFrames == 0)
-            force = true;
         var nowMs = Environment.TickCount64;
-        if (_lastKeyFrameAtMs != 0 && nowMs - _lastKeyFrameAtMs >= 5000)
+        if (nowMs - _lastKeyFrameAtMs >= KeyFrameIntervalMs)
             force = true;
         if (force)
             _lastKeyFrameAtMs = nowMs;
@@ -417,34 +391,28 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
     private async Task SendLoop(CancellationToken cancellationToken)
     {
         var session = _hub.Session;
-        NativeVideoTrace.Log("publisher: SendLoop started");
         while (!cancellationToken.IsCancellationRequested) {
             await ConnectivityUI.WhenConnected(cancellationToken).ConfigureAwait(false);
             Interlocked.Exchange(ref _pendingForceKeyFrame, 1);
-            NativeVideoTrace.Log("publisher: connected, waiting for first keyframe bundle");
 
             var firstBundle = await ReadUntilKeyframe(cancellationToken).ConfigureAwait(false);
-            if (firstBundle is null) {
-                NativeVideoTrace.Log("publisher: ReadUntilKeyframe returned null (channel closed)");
+            if (firstBundle is null)
                 return;
-            }
 
             var format = BuildFormat(firstBundle);
-            NativeVideoTrace.Log($"publisher: got keyframe → PushStream {format.Codec} {format.Size.Width}x{format.Size.Height}");
             var frameStream = BuildFrames(firstBundle, cancellationToken).SuppressCancellation(cancellationToken);
             try {
                 var rpcStream = RpcStream.New(frameStream);
                 await LiveVideoStreams.PushStream(
-                        session, _chatId.Value, _sourceStartedAtSeconds, format, _kind, rpcStream, cancellationToken)
+                        session, _chatId.Value, _sourceStartedAtSeconds, format, _kind,
+                        rpcStream, cancellationToken)
                     .ConfigureAwait(false);
-                NativeVideoTrace.Log("publisher: PushStream returned normally");
                 return;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
             catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
-                NativeVideoTrace.Log($"publisher: PushStream FAILED {e.GetType().Name}: {e.Message}");
                 Log.LogWarning(e, "PushStream ended, retrying with a new call");
                 await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
             }
@@ -472,8 +440,6 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         yield return first;
-        NativeVideoTrace.Log("publisher: yielded first bundle into RPC stream");
-        var sent = 1;
 
         var outbound = _outbound;
         if (outbound is null)
@@ -482,9 +448,6 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
         while (await outbound.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false)) {
             while (outbound.Reader.TryRead(out var bundle)) {
                 Interlocked.Decrement(ref _outboundCount);
-                sent++;
-                if (sent % 60 == 0)
-                    NativeVideoTrace.Log($"publisher: yielded {sent} bundles into RPC stream");
                 yield return bundle;
             }
         }
@@ -495,7 +458,7 @@ public sealed class MauiVideoPublisher : INativeVideoPublisher
         var top = bundle.TopLayer;
         return new VideoFormat {
             Codec = top.Codec ?? _codec,
-            CodecSettings = top.Description.IsEmpty ? "" : Convert.ToBase64String(top.Description.Span),
+            CodecSettings = "", // SPS/PPS travel inline in the Annex-B keyframes
             LayerId = top.LayerId,
             Size = new Size2D(top.Width, top.Height),
             SourceSize = new Size2D(_capture.SourceWidth, _capture.SourceHeight),

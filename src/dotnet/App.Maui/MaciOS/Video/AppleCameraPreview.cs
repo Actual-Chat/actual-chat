@@ -15,22 +15,23 @@ namespace ActualChat.App.Maui.Video;
 public sealed class AppleCameraPreview : INativeCameraPreview
 {
     private const int TargetWidth = 360;
+    private const float JpegQuality = 0.6f;
     private const double MinFrameIntervalSeconds = 1.0 / 15;
 
     private readonly ILogger _log;
     private readonly AppleCameraFrameTap? _tap;
-    private readonly AppleJpegEncoder _jpegEncoder = new();
+    private readonly JpegFrameEmitter _emitter;
     private readonly Lock _sync = new();
 
     private AppleVideoCapture? _ownCapture;
     private Func<byte[], ValueTask>? _onFrame;
     private double _lastEmitSeconds;
-    private int _emitInFlight;
 
     public AppleCameraPreview(AppleCameraFrameTap? tap, ILogger log)
     {
         _log = log;
         _tap = tap;
+        _emitter = new JpegFrameEmitter(TargetWidth, JpegQuality, log);
         if (_tap is not null) {
             _tap.FrameCaptured += OnFrameCaptured;
             _tap.SourceChanged += OnTapSourceChanged;
@@ -77,7 +78,7 @@ public sealed class AppleCameraPreview : INativeCameraPreview
             _tap.SourceChanged -= OnTapSourceChanged;
         }
         Stop();
-        _jpegEncoder.Dispose();
+        _emitter.Dispose();
         return ValueTask.CompletedTask;
     }
 
@@ -123,34 +124,8 @@ public sealed class AppleCameraPreview : INativeCameraPreview
             _lastEmitSeconds = seconds;
         }
 
-        // Drop the frame if a previous emit is still in flight — preview is
-        // best-effort and must not queue frames behind a slow JS interop hop.
-        if (Interlocked.CompareExchange(ref _emitInFlight, 1, 0) != 0)
-            return;
-
-        // EncodeJpeg copies the pixels into a standalone byte[] synchronously, so the
-        // capture delegate can dispose sampleBuffer as soon as this returns; the emit
-        // task below only touches that byte[]. The in-flight flag clears when it ends.
-        byte[]? jpeg = null;
-        try {
-            if (sampleBuffer.GetImageBuffer() is CVPixelBuffer pixelBuffer)
-                jpeg = _jpegEncoder.EncodeJpeg(pixelBuffer, TargetWidth, 0.6f);
-        }
-        catch (Exception e) {
-            _log.LogWarning(e, "AppleCameraPreview: frame encode failed");
-        }
-        if (jpeg is null) {
-            Interlocked.Exchange(ref _emitInFlight, 0);
-            return;
-        }
-
-        var emit = onFrame(jpeg);
-        if (emit.IsCompleted)
-            Interlocked.Exchange(ref _emitInFlight, 0);
-        else
-            _ = emit.AsTask().ContinueWith(
-                _ => Interlocked.Exchange(ref _emitInFlight, 0),
-                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        if (sampleBuffer.GetImageBuffer() is CVPixelBuffer pixelBuffer)
+            _emitter.TryEmit(pixelBuffer, onFrame);
     }
 }
 
