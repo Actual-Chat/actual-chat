@@ -3,26 +3,26 @@
 @{
     var m = State.Value;
     var experimentalFeatureStatus = m.AreExperimentalFeaturesEnabled
-        ? L["DevTools_EarlyAccessEnabled"].Value
-        : L["Common_Disabled"].Value;
+        ? L.DevTools_EarlyAccessEnabled
+        : L.Common_Disabled;
     var incompleteUIStatus = m.IsIncompleteUIEnabled
-        ? L["DevTools_EarlyAccessUIEnabled"].Value
-        : L["Common_Disabled"].Value;
+        ? L.DevTools_EarlyAccessUIEnabled
+        : L.Common_Disabled;
 }
 
 @if (m.IsAdmin) {
     if (ServerInstanceSelector != null) {
-        <TileTopic Topic="@L["DevTools_Host"].Value"/>
+        <TileTopic Topic="@L.DevTools_Host"/>
         <Tile Class="host-switcher-tile">
             <ServerInstanceSelector Selector="@ServerInstanceSelector" />
         </Tile>
     }
 
-    <TileTopic Topic="@L["DevTools_EarlyAccess"].Value"/>
+    <TileTopic Topic="@L.DevTools_EarlyAccess"/>
     <Tile Class="early-access-features">
         <TileItem Click="@OnExperimentalFeatureEnabledClick">
             <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>@L["DevTools_EarlyAccessFeatures"]</Content>
+            <Content>@L.DevTools_EarlyAccessFeatures</Content>
             <Caption>@experimentalFeatureStatus</Caption>
             <Right>
                 <Toggle IsChecked="@m.AreExperimentalFeaturesEnabled"/>
@@ -30,7 +30,7 @@
         </TileItem>
         <TileItem Click="@OnIncompleteUIEnabledClick">
             <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>@L["DevTools_EarlyAccessUI"]</Content>
+            <Content>@L.DevTools_EarlyAccessUI</Content>
             <Caption>@incompleteUIStatus</Caption>
             <Right>
                 <Toggle IsChecked="@m.IsIncompleteUIEnabled"/>
@@ -39,10 +39,10 @@
     </Tile>
 }
 
-<TileTopic Topic="@L["DevTools_Troubleshooting"].Value"/>
+<TileTopic Topic="@L.DevTools_Troubleshooting"/>
 <Tile>
     <TileItem Click="@OnLogUIEnabledClick">
-        <Content>@L["DevTools_EnableLogViewer"]</Content>
+        <Content>@L.DevTools_EnableLogViewer</Content>
         <Right>
             <Toggle IsChecked="@m.IsLogUIEnabled"/>
         </Right>

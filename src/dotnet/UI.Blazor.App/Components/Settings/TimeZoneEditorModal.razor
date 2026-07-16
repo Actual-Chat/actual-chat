@@ -4,7 +4,7 @@
 
 <DialogFrame
     Class="time-zone-editor-modal"
-    Title="@L["TimeZone_SelectTitle"].Value"
+    Title="@L.TimeZone_SelectTitle"
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
@@ -43,7 +43,7 @@
         if (error != null)
             return;
 
-        Hub.ToastUI.Show(L["TimeZone_Updated"].Value, "icon-checkmark-circle", ToastDismissDelay.Short);
+        Hub.ToastUI.Show(L.TimeZone_Updated, "icon-checkmark-circle", ToastDismissDelay.Short);
         Modal.Close();
     }
 

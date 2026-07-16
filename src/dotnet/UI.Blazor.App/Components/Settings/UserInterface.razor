@@ -3,19 +3,19 @@
     var m = State.Value;
 }
 
-<TileTopic Topic="@L["Settings_UILanguage"].Value"/>
+<TileTopic Topic="@L.Settings_UILanguage"/>
 <Tile>
     <LanguageSettings/>
 </Tile>
 
-<TileTopic Topic="@L["UserInterface_Font"].Value"/>
+<TileTopic Topic="@L.UserInterface_Font"/>
 <Tile Class="font-size-tile">
     <div class="ui-settings">
         <FontSizeSlider/>
     </div>
 </Tile>
 
-<TileTopic Topic="@L["UserInterface_Theme"].Value"/>
+<TileTopic Topic="@L.UserInterface_Theme"/>
 <Tile Class="theme-tile">
     <ThemeSettings/>
 </Tile>
@@ -56,12 +56,12 @@
 
     private async Task OnRestartWalkThrough() {
         await BubbleUI.ResetSettings();
-        ToastUI.Show(L["UserInterface_WalkThroughRestarted"].Value, "icon-checkmark-circle", ToastDismissDelay.Short);
+        ToastUI.Show(L.UserInterface_WalkThroughRestarted, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     private void OnRestartOnboarding() {
         OnboardingUI.ResetSettings();
-        ToastUI.Show(L["UserInterface_OnboardingRestarted"].Value, "icon-checkmark-circle", ToastDismissDelay.Short);
+        ToastUI.Show(L.UserInterface_OnboardingRestarted, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     // Nested types

@@ -7,7 +7,7 @@
 }
 
 @if (currentSession != null) {
-    <TileTopic Topic="@L["Sessions_CurrentSession"].Value"/>
+    <TileTopic Topic="@L.Sessions_CurrentSession"/>
 
     <Tile>
         <TileItem IsHoverable="false" Class="sessions-tile-item">
@@ -15,7 +15,7 @@
                 <span class="c-description">@currentSession.Description</span>
             </Content>
             <Caption>
-                <span>@L["Sessions_Current"]</span>
+                <span>@L.Sessions_Current</span>
             </Caption>
             <Right>
                 <span class="flex items-center justify-center w-8">
@@ -26,28 +26,28 @@
     </Tile>
 }
 
-<TileTopic Topic="@L["Sessions_Sessions"].Value"/>
+<TileTopic Topic="@L.Sessions_Sessions"/>
 
 <Tile>
     @foreach (var session in otherSessions) {
         var activeDaysAgo = (int)(now - session.LastSeenAt).Positive().TotalDays;
         var sActiveDaysAgo = activeDaysAgo == 0
-            ? L["Sessions_Today"].Value
+            ? L.Sessions_Today
             : (activeDaysAgo == 1
-                ? L["Sessions_DaysAgo_One", activeDaysAgo].Value
-                : L["Sessions_DaysAgo_Other", activeDaysAgo].Value);
+                ? L.Sessions_DaysAgo_One(activeDaysAgo)
+                : L.Sessions_DaysAgo_Other(activeDaysAgo));
 
         <TileItem IsHoverable="false" Class="sessions-tile-item">
             <Content>
                 <span class="c-description">@session.Description</span>
             </Content>
             <Caption>
-                <span>@L["Sessions_LastActive_Format", sActiveDaysAgo]</span>
+                <span>@L.Sessions_LastActive_Format(sActiveDaysAgo)</span>
             </Caption>
             <Right>
                 <ButtonRound
                     Class="btn-xs btn-danger"
-                    Tooltip="@L["Sessions_SignOut"].Value"
+                    Tooltip="@L.Sessions_SignOut"
                     Click="@(() => OnSignOutClick(session.IdPrefix))">
                     <i class="icon-log-out text-xl"></i>
                 </ButtonRound>
@@ -60,14 +60,14 @@
 
     @if (otherSessions.Count == 0) {
         <TileItem IsHoverable="false">
-            <Content>@L["Sessions_NoOtherSessions"]</Content>
+            <Content>@L.Sessions_NoOtherSessions</Content>
         </TileItem>
     }
 </Tile>
 
 @if (otherSessions.Count > 0) {
     <Button Class="btn-outline btn-danger-light btn-w-full" Click="@OnSignOutAllClick">
-        @L["Sessions_SignOutAll"]
+        @L.Sessions_SignOutAll
     </Button>
 }
 
@@ -96,10 +96,10 @@
     {
         var confirmed = false;
         var model = new ConfirmModal.Model(false,
-            L["Sessions_SignOutAllConfirm"].Value,
+            L.Sessions_SignOutAllConfirm,
             () => { confirmed = true; }) {
-            Title = L["Sessions_SignOutAllTitle"].Value,
-            ConfirmButtonText = L["Common_Yes"].Value,
+            Title = L.Sessions_SignOutAllTitle,
+            ConfirmButtonText = L.Common_Yes,
         };
         var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
         await modalRef.WhenClosed.ConfigureAwait(false);

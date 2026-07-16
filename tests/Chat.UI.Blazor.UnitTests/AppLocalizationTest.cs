@@ -88,7 +88,35 @@ public class AppLocalizationTest
         missing.Should().BeEmpty("every supported UI language must ship a '{0}<subtag>{1}' resource", Prefix, Suffix);
     }
 
+    [Fact]
+    public void AppStringsMembersMatchEnglishKeysExactly()
+    {
+        // AppStrings exposes one typed member per English key and vice-versa:
+        // an unknown member is a typo/stale entry; a missing member is an untyped key.
+
+        // arrange
+        var enKeys = Load(Languages.English.PrimarySubtag)!.Keys.ToHashSet();
+
+        // act
+        var members = AppStringsMembers().ToHashSet();
+
+        // assert
+        members.Should().BeEquivalentTo(enKeys, "every English key must have exactly one AppStrings member and vice-versa");
+    }
+
     // Private methods
+
+    private static IEnumerable<string> AppStringsMembers()
+    {
+        const BindingFlags bf = BindingFlags.Public | BindingFlags.NonPublic
+            | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+        foreach (var nested in typeof(AppStrings).GetNestedTypes(bf).Where(n => n.IsSpecialName)) {
+            foreach (var p in nested.GetProperties(bf))
+                yield return p.Name;
+            foreach (var m in nested.GetMethods(bf).Where(m => !m.IsSpecialName))
+                yield return m.Name;
+        }
+    }
 
     private static IEnumerable<string> ShippedSubtags()
         => Assembly.GetManifestResourceNames()

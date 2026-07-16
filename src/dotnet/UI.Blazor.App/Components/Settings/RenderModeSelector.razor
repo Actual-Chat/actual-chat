@@ -2,7 +2,7 @@
 @inherits ComponentBase<AppUIHub>
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are expected to be untrimmed.")]
 
-<TileTopic Topic="@L["RenderMode_Title"].Value"/>
+<TileTopic Topic="@L.RenderMode_Title"/>
 <Tile Class="render-mode-tile">
     <Form Model="@_formModel">
         <DataAnnotationsValidator/>
@@ -11,7 +11,7 @@
             <InputRadioGroup
                 TValue="@RenderModeKey"
                 Name="render-mode"
-                DisplayName="@L["RenderMode_Title"].Value"
+                DisplayName="@L.RenderMode_Title"
                 @bind-Value="_formModel.ModeKey">
 
                 <TileItem
@@ -21,10 +21,10 @@
                         <FormRadio TValue="@RenderModeKey" Id="@_formModel.AutoModeFormId" Value="@RenderModeKey.Auto"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.AutoModeFormId" Text="@L["RenderMode_Auto"].Value" IsRequired="true"></Label>
+                        <Label InputId="@_formModel.AutoModeFormId" Text="@L.RenderMode_Auto" IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        @L["RenderMode_AutoDescription"]
+                        @L.RenderMode_AutoDescription
                     </Caption>
                 </TileItem>
 
@@ -35,10 +35,10 @@
                         <FormRadio TValue="@RenderModeKey" Id="@_formModel.ServerModeFormId" Value="@RenderModeKey.Server"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.ServerModeFormId" Text="@L["RenderMode_Server"].Value" IsRequired="true"></Label>
+                        <Label InputId="@_formModel.ServerModeFormId" Text="@L.RenderMode_Server" IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        @L["RenderMode_ServerDescription"]
+                        @L.RenderMode_ServerDescription
                     </Caption>
                 </TileItem>
 
@@ -49,10 +49,10 @@
                         <FormRadio TValue="@RenderModeKey" Id="@_formModel.WasmModeFormId" Value="@RenderModeKey.Wasm"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.WasmModeFormId" Text="@L["RenderMode_Wasm"].Value" IsRequired="true"></Label>
+                        <Label InputId="@_formModel.WasmModeFormId" Text="@L.RenderMode_Wasm" IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        @L["RenderMode_WasmDescription"]
+                        @L.RenderMode_WasmDescription
                     </Caption>
                 </TileItem>
 

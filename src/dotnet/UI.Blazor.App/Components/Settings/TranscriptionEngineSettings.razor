@@ -14,7 +14,7 @@
     <FormBlock>
         <InputRadioGroup
             Name="transcriber"
-            DisplayName="@L["Transcription_Engines"].Value"
+            DisplayName="@L.Transcription_Engines"
             @bind-Value="_formModel.SelectedId">
 
             @foreach (var option in Options) {

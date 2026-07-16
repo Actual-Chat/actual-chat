@@ -4,14 +4,14 @@
     var keys = m.ApiKeys.OrderByDescending(x => x.CreatedAt).ToList();
 }
 
-<TileTopic Topic="@L["ApiKeys_CreateApiKey"].Value"/>
+<TileTopic Topic="@L.ApiKeys_CreateApiKey"/>
 
 <Button Class="btn-primary btn-outline btn-w-full" Click="@OnCreateClick">
-    @L["ApiKeys_CreateApiKey"]
+    @L.ApiKeys_CreateApiKey
 </Button>
 
 @if (m.ApiKeys.Count > 0) {
-    <TileTopic Topic="@L["ApiKeys_YourApiKeys"].Value"/>
+    <TileTopic Topic="@L.ApiKeys_YourApiKeys"/>
 
     <Tile Class="api-key-tile">
         @foreach (var key in keys) {
@@ -19,16 +19,16 @@
                 <Content>
                     <div class="c-key-info">
                         @if (!key.IsActive) {
-                            <span class="c-deactivated">@L["ApiKeys_Deactivated"]</span>
+                            <span class="c-deactivated">@L.ApiKeys_Deactivated</span>
                         }
-                        <span class="c-key-name">@(key.Description.IsNullOrEmpty() ? L["ApiKeys_UnnamedKey"].Value : key.Description)</span>
+                        <span class="c-key-name">@(key.Description.IsNullOrEmpty() ? L.ApiKeys_UnnamedKey : key.Description)</span>
                         <span class="c-key-prefix">@key.IdPrefix...</span>
                     </div>
                     @if (key.IsActive) {
                         <div class="c-deactivate">
                             <ButtonRound
                                 Class="btn-sm btn-danger"
-                                Tooltip="@L["ApiKeys_Deactivate"].Value"
+                                Tooltip="@L.ApiKeys_Deactivate"
                                 Click="@(() => OnDeactivateClick(key.IdPrefix))">
                                 <i class="icon-trash03 text-xl"></i>
                             </ButtonRound>
@@ -36,7 +36,7 @@
                     }
                 </Content>
                 <Caption>
-                    <span class="c-key-expires">@L["ApiKeys_Expires_Format", DateTimeConverter.ToLocalTime(key.ExpiresAt.ToDateTime()).ToString("g")]</span>
+                    <span class="c-key-expires">@L.ApiKeys_Expires_Format(DateTimeConverter.ToLocalTime(key.ExpiresAt.ToDateTime()).ToString("g"))</span>
                 </Caption>
             </TileItem>
             @if (key != keys[^1]) {
@@ -48,7 +48,7 @@
 
 @if (keys.Any(k => k.IsActive)) {
     <Button Class="btn-outline btn-danger-light btn-w-full" Click="@OnDeactivateAllClick">
-        @L["ApiKeys_DeactivateAll"]
+        @L.ApiKeys_DeactivateAll
     </Button>
 }
 
@@ -78,10 +78,10 @@
     {
         var confirmed = false;
         var model = new ConfirmModal.Model(false,
-            L["ApiKeys_DeactivateAllConfirm"].Value,
+            L.ApiKeys_DeactivateAllConfirm,
             () => { confirmed = true; }) {
-            Title = L["ApiKeys_DeactivateAllTitle"].Value,
-            ConfirmButtonText = L["Common_Yes"].Value,
+            Title = L.ApiKeys_DeactivateAllTitle,
+            ConfirmButtonText = L.Common_Yes,
         };
         var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
         await modalRef.WhenClosed.ConfigureAwait(false);

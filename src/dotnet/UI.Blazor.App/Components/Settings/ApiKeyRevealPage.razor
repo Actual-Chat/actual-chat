@@ -1,7 +1,7 @@
 @inherits ComponentBase<AppUIHub>
 
 <FormBlock>
-    <p class="c-title">@L["ApiKeyReveal_CopyWarning"]</p>
+    <p class="c-title">@L.ApiKeyReveal_CopyWarning</p>
     <div class="api-key-container">
         <code>@_model.ApiKey</code>
         <CopyToClipboard
@@ -19,8 +19,8 @@
 
     protected override void OnInitialized() {
         _model = Context.GetModel<Model>();
-        Context.Title = L["ApiKeyReveal_Title"].Value;
-        Context.Buttons = [DialogButtonInfo.CreateSubmitButton(L["Common_Close"].Value, OnClose)];
+        Context.Title = L.ApiKeyReveal_Title;
+        Context.Buttons = [DialogButtonInfo.CreateSubmitButton(L.Common_Close, OnClose)];
     }
 
     private void OnClose()
