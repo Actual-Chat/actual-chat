@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
+    computeCaptureFps,
     computeTargetFps,
+    CAPTURE_SHED_FPS,
     THUMBNAIL_FPS,
     type TargetFpsInputs,
 } from '../../../src/dotnet/UI.Blazor.App/Components/VideoPanel/fps-policy';
@@ -47,5 +49,29 @@ describe('computeTargetFps', () => {
     it('never raises above the capture rate', () => {
         expect(computeTargetFps({ ...base, isSpeaking: true, captureFps: 8 })).toBe(8);
         expect(computeTargetFps({ ...base, captureFps: 8 })).toBe(8);
+    });
+});
+
+describe('computeCaptureFps', () => {
+    it('sheds capture on the thumbnail target', () => {
+        expect(computeCaptureFps(THUMBNAIL_FPS, 24)).toBe(CAPTURE_SHED_FPS);
+    });
+
+    it('sheds capture on thermal ceilings (Serious=15, Critical=10)', () => {
+        expect(computeCaptureFps(15, 24)).toBe(CAPTURE_SHED_FPS);
+        expect(computeCaptureFps(10, 30)).toBe(CAPTURE_SHED_FPS);
+    });
+
+    it('never undershoots a target between the shed floor and the requested rate', () => {
+        expect(computeCaptureFps(20, 24)).toBe(24);
+    });
+
+    it('keeps the requested rate at full target', () => {
+        expect(computeCaptureFps(24, 24)).toBe(24);
+        expect(computeCaptureFps(30, 30)).toBe(30);
+    });
+
+    it('never raises above the requested rate', () => {
+        expect(computeCaptureFps(10, 12)).toBe(12);
     });
 });

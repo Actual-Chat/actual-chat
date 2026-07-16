@@ -1,4 +1,7 @@
 export const THUMBNAIL_FPS = 10;
+// Capture floor while the encode target is shed: the camera ISP burns more than
+// encode+render combined. 15, not THUMBNAIL_FPS — Android modes are 15/30.
+export const CAPTURE_SHED_FPS = 15;
 
 export interface TargetFpsInputs {
     captureFps: number;
@@ -24,4 +27,13 @@ export function computeTargetFps(inputs: TargetFpsInputs): number {
         && !inputs.isScreencast
         && inputs.remoteStreamCount > 0;
     return shed ? Math.min(fps, THUMBNAIL_FPS) : fps;
+}
+
+// Capture-fps follower policy: renegotiate the camera down to CAPTURE_SHED_FPS
+// whenever the encode target sits at or below it (thumbnail shed, thermal
+// ceiling), so the vendor ISP pipeline sheds too; never undershoots the target.
+export function computeCaptureFps(targetFps: number, requestedFps: number): number {
+    return targetFps <= CAPTURE_SHED_FPS
+        ? Math.min(CAPTURE_SHED_FPS, requestedFps)
+        : requestedFps;
 }

@@ -15,6 +15,7 @@ import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trac
 import { ScreenOrientation, DeviceOrientation } from 'orientation';
 import { SenderSession } from './session';
 import { getCodecCategory } from '../codec-support';
+import { MediaCapture } from '../services/media-capture';
 import {
     createWorkerVideoTrackGenerator,
     type WorkerVideoTrackGenerator,
@@ -98,7 +99,9 @@ let state: WorkerState | null = null;
 // Idempotent: subsequent calls reuse the existing session so the
 // capture clock survives across runs.
 export function initRecorderWorker(deps: RecorderWorkerDeps): void {
-    if (state) return;
+    if (state)
+        return;
+
     const session = (deps.createSession ?? (() => new SenderSession()))();
     session.setPreviewFrameReporter(deps.reportPreviewFrame);
     session.setPreviewFramePresentationReporter(deps.reportPreviewFramePresentation);
@@ -117,7 +120,9 @@ export function initRecorderWorker(deps: RecorderWorkerDeps): void {
 // underlying source so the generator's writable can be released.
 function disposeWorkerPreviewGenerator(s: WorkerState): void {
     const generator = s.workerPreviewGenerator;
-    if (!generator) return;
+    if (!generator)
+        return;
+
     s.workerPreviewGenerator = null;
     try { generator.track.stop(); } catch { /* ignore */ }
 }
@@ -126,13 +131,17 @@ function disposeWorkerPreviewGenerator(s: WorkerState): void {
 // MSTP, and clears the ref.
 function disposeWorkerSourceTrack(s: WorkerState): void {
     const track = s.workerSourceTrack;
-    if (!track) return;
+    if (!track)
+        return;
+
     s.workerSourceTrack = null;
     try { track.stop(); } catch { /* ignore */ }
 }
 
 export function disposeRecorderWorker(): void {
-    if (!state) return;
+    if (!state)
+        return;
+
     state.recorder.stop();
     disposeWorkerPreviewGenerator(state);
     disposeWorkerSourceTrack(state);
@@ -189,6 +198,7 @@ export const recorderWorkerImpl: RecorderWorker = {
             try { track.stop(); } catch { /* ignore */ }
             return Promise.resolve(false);
         }
+
         try {
             const processor = new Ctor({ track });
             s.deps.setSource?.(processor.readable);
@@ -200,6 +210,15 @@ export const recorderWorkerImpl: RecorderWorker = {
             try { track.stop(); } catch { /* ignore */ }
             return Promise.resolve(false);
         }
+    },
+
+    async setCaptureFrameRate(fps: number): Promise<boolean> {
+        const s = requireState();
+        const track = s.workerSourceTrack;
+        if (track?.readyState !== 'live')
+            return false;
+
+        return MediaCapture.applyFrameRate(track, fps);
     },
 
     pushFrame(frame: VideoFrame): Promise<void> {
@@ -339,7 +358,8 @@ export const recorderWorkerImpl: RecorderWorker = {
             session.setPreviewGenerator(undefined);
             disposeWorkerPreviewGenerator(s);
             disposeWorkerSourceTrack(s);
-            if (s.whenDone === whenDone) s.whenDone = null;
+            if (s.whenDone === whenDone)
+                s.whenDone = null;
         });
         await Promise.resolve();
     },

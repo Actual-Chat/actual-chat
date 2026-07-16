@@ -63,7 +63,7 @@ import {
     buildLadder,
     type LayerConfig,
 } from './layer-ladder';
-import { computeTargetFps, THUMBNAIL_FPS } from './fps-policy';
+import { computeCaptureFps, computeTargetFps } from './fps-policy';
 import { getCaptureFpsOverride } from '../../Services/Video/capture-fps-override';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 import {
@@ -90,12 +90,6 @@ const VAD_FPS_HOLD_MS = 2000;
 // The thumbnail shed arms only after the server aggregate holds this long
 // (focus flips shouldn't flap the rate); any large viewer disarms instantly.
 const THUMBNAIL_SHED_DELAY_MS = 4000;
-// Capture renegotiation target while the thumbnail shed holds: the camera
-// ISP/stabilization pipeline burns more than encode+render combined (worst on
-// mobile, still real on desktop — every captured frame is copied and shuffled
-// through the worker before temporalPace discards it). 15, not THUMBNAIL_FPS:
-// Android modes are 15/30, and the temporalPace decimates the rest anyway.
-const CAPTURE_SHED_FPS = 15;
 // No viewer wants any tier (all subscribers gone or paused) this long → collapse
 // the encoder to the bottom tier only. Held to ride out momentary demand gaps;
 // any demand restores instantly. fps is left alone so the self-preview stays smooth.
@@ -534,8 +528,9 @@ export class VideoRecorder {
     private captureFpsBusy = false;
     private captureFpsUnsupported = false;
     // True when the worker consumes a transferred CLONE of `inputTrack`
-    // (Safari path): the source serves both tracks, so constraining the
-    // main-side original would not downshift the shared capture.
+    // (Safari path): the source captures at the max of its consumers' rates,
+    // so paceCaptureFps must constrain the worker's clone in tandem with the
+    // main-side original (via setCaptureFrameRate).
     private workerSourceUsesClone = false;
 
     // Listeners.
@@ -926,7 +921,7 @@ export class VideoRecorder {
                 width: requestSize.width,
                 height: requestSize.height,
             });
-            this.inputTrack = track;
+            this.setFreshInputTrack(track);
             this.previewTrack = track;
 
             const trackSettings = track.getSettings();
@@ -1284,7 +1279,7 @@ export class VideoRecorder {
                 width: captureWidth,
                 height: captureHeight,
             });
-            this.inputTrack = track;
+            this.setFreshInputTrack(track);
             this.previewTrack = track;
 
             const trackSettings = track.getSettings();
@@ -1391,7 +1386,7 @@ export class VideoRecorder {
             // Blazor server round-trip to here has already consumed). captureScreenCast
             // returns that gesture-acquired track.
             const screenTrack = await MediaCapture.captureScreenCast();
-            this.inputTrack = screenTrack;
+            this.setFreshInputTrack(screenTrack);
             this.previewTrack = screenTrack;
 
             const trackSettings = screenTrack.getSettings();
@@ -1641,35 +1636,37 @@ export class VideoRecorder {
         this.paceCaptureFps(fps);
     }
 
-    // Capture-fps follower: while the encode target sits at thumbnail rate,
-    // renegotiate the camera itself down to CAPTURE_SHED_FPS so the vendor
+    // Capture-fps follower: while the encode target is shed (thumbnail rate or
+    // a thermal ceiling), renegotiate the camera itself down so the vendor
     // ISP/stabilization pipeline sheds too; restore on any higher demand.
     // All camera platforms: applyFrameRate uses an `ideal` constraint (never
     // rejects) and temporalPace stays the instant authority, so a driver that
     // ignores the request just keeps feeding frames temporalPace discards.
-    // Screencast tracks are paced by the source, and the Safari clone path
-    // can't be constrained from here (see workerSourceUsesClone). The
+    // Screencast tracks are paced by the source. On the Safari clone path the
+    // worker's clone is constrained in tandem (see workerSourceUsesClone). The
     // diagnostics override pins the rate, bypassing demand.
     private paceCaptureFps(targetFps: number): void {
         const override = getCaptureFpsOverride();
         if (this.currentMode !== 'camera'
             || this.captureFpsUnsupported
-            || this.captureFpsBusy
-            || this.workerSourceUsesClone)
+            || this.captureFpsBusy)
             return;
         const track = this.inputTrack;
         if (track?.readyState !== 'live')
             return;
         const requested = this.requestedFramerate
             ?? (DeviceInfo.isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate);
-        const fps = override
-            ?? (targetFps <= THUMBNAIL_FPS ? CAPTURE_SHED_FPS : requested);
+        const fps = override ?? computeCaptureFps(targetFps, requested);
         if (fps === (this.captureFpsApplied ?? requested))
             return;
         this.captureFpsBusy = true;
-        void MediaCapture.applyFrameRate(track, fps).then(ok => {
+        const applyToClone = this.workerSourceUsesClone
+            ? (this.worker?.setCaptureFrameRate(fps) ?? Promise.resolve(false))
+                .catch(() => false)
+            : Promise.resolve(true);
+        void Promise.all([MediaCapture.applyFrameRate(track, fps), applyToClone]).then(([mainOk, cloneOk]) => {
             this.captureFpsBusy = false;
-            if (!ok) {
+            if (!mainOk || !cloneOk) {
                 this.captureFpsUnsupported = true;
                 return;
             }
@@ -1693,6 +1690,15 @@ export class VideoRecorder {
     public refreshCaptureFps(): void {
         this.captureFpsUnsupported = false;
         this.paceCaptureFps(this.lastKnownTargetFps());
+    }
+
+    // The follower's applied rate and sticky rejection belong to the track:
+    // a fresh capture starts at its negotiated rate, while worker restarts
+    // reuse the (possibly shed-constrained) track and must keep this state.
+    private setFreshInputTrack(track: MediaStreamTrack): void {
+        this.inputTrack = track;
+        this.captureFpsApplied = null;
+        this.captureFpsUnsupported = false;
     }
 
     public setFpsCeiling(maxFps: number): void {
@@ -1963,12 +1969,12 @@ export class VideoRecorder {
         }
         // Recovery may call this while a prior MSTP readable / rVFC pump is still alive.
         this.tearDownWorkerSource();
-        // Fresh source negotiation: the capture-fps follower state belongs
-        // to the (track, source-path) pair chosen below.
+        // The source path is re-chosen below; captureFpsApplied/Unsupported are
+        // NOT reset — they belong to the track (see setFreshInputTrack), which
+        // keeps its applied constraints across worker restarts (clones inherit
+        // them too), and resetting here would skip the shed-rate restore.
         this.workerSourceUsesClone = false;
-        this.captureFpsApplied = null;
         this.captureFpsBusy = false;
-        this.captureFpsUnsupported = false;
 
         // Frame source — two-tier strategy.
         //
@@ -2024,6 +2030,11 @@ export class VideoRecorder {
                     this.workerSourceCancelled = false;
                     this.workerSourceUsesClone = true;
                     useMstp = true;
+                    // A restart-time clone may not inherit an already-applied
+                    // shed rate — re-assert it on the worker's fresh clone.
+                    if (this.captureFpsApplied !== null)
+                        void this.worker.setCaptureFrameRate(this.captureFpsApplied)
+                            .catch(() => undefined);
                     infoLog?.log('startWorker: capture path = worker MSTP (transferred clone)');
                 } else {
                     warnLog?.log('startWorker: worker has no MSTP, falling back to rVFC pump');

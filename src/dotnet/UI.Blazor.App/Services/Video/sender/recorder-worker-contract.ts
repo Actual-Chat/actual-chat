@@ -79,6 +79,11 @@ export interface RecorderWorker extends SharedSettingsWorker {
     // stops it on run end); false ⇒ no worker MSTP, main falls back to rVFC and
     // the (already-stopped) clone is discarded.
     setSourceTrack(track: MediaStreamTrack): Promise<boolean>;
+    // Renegotiates the worker-owned capture clone's frame rate (Safari path).
+    // The clone and main's original share one source, which captures at the max
+    // of its consumers' rates — main must constrain its original in tandem.
+    // False ⇒ no worker-owned track or the constraint was rejected.
+    setCaptureFrameRate(fps: number): Promise<boolean>;
     // Callers MUST keep at most one push in flight; otherwise transferred
     // VideoFrames pile up in the message queue ahead of the slot that closes them.
     pushFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
