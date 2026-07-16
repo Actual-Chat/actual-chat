@@ -61,16 +61,7 @@
 }
 .location-message .c-footer .c-copy {
     @apply flex shrink-0;
-    @apply p-1;
-    @apply rounded-full;
     @apply text-03;
-}
-body.hoverable .location-message .c-footer .c-copy:hover,
-.touch-capable .location-message .c-footer .c-copy:active {
-    @apply bg-hover;
-}
-.location-message .c-footer .c-copy i {
-    @apply text-xl;
 }
 @keyframes pulseLiveDot {
     0%, 100% { opacity: 1; }
