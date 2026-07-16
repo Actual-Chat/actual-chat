@@ -15,6 +15,22 @@
     <ThemeSettings/>
 </Tile>
 
+<TileTopic Topic="Chats"/>
+<Tile>
+    <TileItem Click="@OnToggleAuthorColors">
+        <Icon><i class="icon-people-2 text-2xl"></i></Icon>
+        <Content>Colorize author names</Content>
+        <Caption>@(m.IsAuthorColorsEnabled ? "On" : "Off")</Caption>
+        <Right>
+            <Toggle IsChecked="@m.IsAuthorColorsEnabled"/>
+        </Right>
+    </TileItem>
+    <p class="c-description">
+        Show each author's name in a distinct color in group chats to make it easier
+        to tell messages apart.
+    </p>
+</Tile>
+
 @code {
     private ILogger<UserInterface> Log => field ??= Hub.LogFor<UserInterface>();
 
@@ -28,8 +44,14 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        return new(account.IsAdmin);
+        var appSettings = await UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        return new(account.IsAdmin, appSettings.IsAuthorColorsEnabled ?? true);
     }
+
+    private Task OnToggleAuthorColors()
+        => UserSettingsUI.UserAppSettings().Update(x => x with {
+            IsAuthorColorsEnabled = !(x.IsAuthorColorsEnabled ?? true),
+        });
 
     private async Task OnRestartWalkThrough() {
         await BubbleUI.ResetSettings();
@@ -43,8 +65,8 @@
 
     // Nested types
 
-    public record Model(bool IsAdmin)
+    public record Model(bool IsAdmin, bool IsAuthorColorsEnabled)
     {
-        public static readonly Model None = new(false);
+        public static readonly Model None = new(false, true);
     }
 }

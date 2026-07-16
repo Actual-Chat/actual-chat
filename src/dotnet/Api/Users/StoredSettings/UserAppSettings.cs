@@ -13,4 +13,5 @@ public sealed partial record UserAppSettings : StoredSettings, IHasOrigin, IHasK
     [DataMember, MemoryPackOrder(2), Key(2)] public bool? AreExperimentalFeaturesEnabled{ get; init; }
     [DataMember, MemoryPackOrder(3), Key(3)] public bool? IsIncompleteUIEnabled{ get; init; }
     // MemoryPackOrder(4) reserved (was IsVideoStreamingEnabled) — do not reuse.
+    [DataMember, MemoryPackOrder(5), Key(5)] public bool? IsAuthorColorsEnabled{ get; init; }
 }
