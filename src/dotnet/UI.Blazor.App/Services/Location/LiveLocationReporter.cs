@@ -37,7 +37,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         var expiresAt = duration == Constants.Location.UnlimitedDuration
             ? Moment.MaxValue
             : ServerNow + duration;
-        var share = new ActiveShare(chatId, null, expiresAt);
+        var share = new ActiveShare(chatId, null, expiresAt, duration);
         lock (_lock)
             _shares.Value = _shares.Value.Where(x => x.ChatId != chatId).Append(share).ToArray();
         return Task.CompletedTask;
@@ -76,6 +76,19 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             ).RunIsolated(cancellationToken);
     }
 
+    // Protected/internal methods
+
+    [ComputeMethod]
+    protected virtual async Task<bool> MustTroubleshoot(CancellationToken cancellationToken)
+    {
+        // ReSharper disable once InconsistentlySynchronizedField
+        var shares = await _shares.Use(cancellationToken).ConfigureAwait(false);
+        if (shares.Length == 0)
+            return false;
+
+        return await Tracker.Error.Use(cancellationToken).ConfigureAwait(false) is GeoTrackingError.PermissionDenied;
+    }
+
     // Private methods
 
     private async Task DispatchShares(CancellationToken cancellationToken)
@@ -98,17 +111,6 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         finally {
             await worker.DisposeSilentlyAsync().ConfigureAwait(false);
         }
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<bool> MustTroubleshoot(CancellationToken cancellationToken)
-    {
-        // ReSharper disable once InconsistentlySynchronizedField
-        var shares = await _shares.Use(cancellationToken).ConfigureAwait(false);
-        if (shares.Length == 0)
-            return false;
-
-        return await Tracker.Error.Use(cancellationToken).ConfigureAwait(false) is GeoTrackingError.PermissionDenied;
     }
 
     private async Task TroubleshootTracking(CancellationToken cancellationToken)
@@ -211,12 +213,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             if (point is null)
                 return;
 
-            // Anything past MaxDuration can only be the "Until I turn it off" share,
-            // so send the exact sentinel — GetTimeLeftText matches on it.
-            var liveDuration = share.ExpiresAt - ServerNow;
-            if (liveDuration > Constants.Location.MaxDuration)
-                liveDuration = Constants.Location.UnlimitedDuration;
-            var diff = new SharedLocationDiff { Point = point, LiveDuration = liveDuration };
+            var diff = new SharedLocationDiff { Point = point, LiveDuration = share.Duration };
             var change = Change.Upsert(diff, share.LocationId);
             var shared = await Commander.Call(
                     new SharedLocations_Change(Session, share.ChatId, share.LocationId, change),

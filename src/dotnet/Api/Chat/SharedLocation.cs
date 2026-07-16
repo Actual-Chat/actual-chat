@@ -28,7 +28,7 @@ public sealed partial record SharedLocation(
     // so TimeSpan.MaxValue doesn't round-trip bit-exactly.
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool IsUnlimited => Duration > Constants.Location.MaxDuration;
+    public bool IsUnlimited => Duration > Constants.Location.MaxFiniteDuration;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -44,6 +44,13 @@ public sealed partial record SharedLocation(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record SharedLocationDiff : RecordDiff
 {
+    public static readonly Requirement<SharedLocationDiff> MustHaveCorrectDuration = Requirement.New(
+        (SharedLocationDiff? d) => {
+            var duration = d?.LiveDuration ?? TimeSpan.Zero;
+            return duration == TimeSpan.Zero || Constants.Location.Durations.ContainsKey(duration);
+        },
+        new (() => StandardError.Constraint<SharedLocationDiff>("Invalid live duration")));
+
     [DataMember, MemoryPackOrder(0)] public GeoPoint? Point { get; init; }
     [DataMember, MemoryPackOrder(1)] public TimeSpan? LiveDuration { get; init; }
 }
