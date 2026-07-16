@@ -1,20 +1,23 @@
 .location-message {
-    @apply relative;
-    @apply flex-x;
-    @apply w-80 max-w-full h-44;
+    @apply flex-y;
+    @apply w-80 max-w-full h-[194px];
     @apply mt-1;
+    @apply rounded-lg border border-separator;
+    @apply bg-01;
+    @apply overflow-hidden;
     @apply cursor-pointer;
 }
-.location-message .c-map {
-    @apply flex-1;
-    @apply rounded-xl;
+.location-message .c-map-area {
+    @apply relative flex-1;
     @apply overflow-hidden;
+}
+.location-message .c-map {
+    @apply w-full h-full;
 }
 .location-message .c-live-caption {
     @apply absolute bottom-0 left-0 right-0;
     @apply flex-y gap-0.5;
     @apply px-3 pt-8 pb-2;
-    @apply rounded-b-xl;
     background: linear-gradient(to top, var(--black-70), transparent);
     @apply text-white;
     @apply pointer-events-none;
@@ -37,6 +40,37 @@
 .location-message .c-live-caption .c-updated {
     @apply text-caption-2;
     @apply opacity-90;
+}
+.location-message .c-footer {
+    @apply flex-x items-center gap-x-2;
+    @apply p-2;
+}
+.location-message .c-footer > i {
+    @apply text-2xl text-03;
+}
+.location-message .c-footer .c-info {
+    @apply flex-y grow min-w-0;
+}
+.location-message .c-footer .c-title {
+    @apply text-headline-1 text-01;
+    @apply truncate;
+}
+.location-message .c-footer .c-caption {
+    @apply text-xs text-03;
+    @apply truncate;
+}
+.location-message .c-footer .c-copy {
+    @apply flex shrink-0;
+    @apply p-1;
+    @apply rounded-full;
+    @apply text-03;
+}
+body.hoverable .location-message .c-footer .c-copy:hover,
+.touch-capable .location-message .c-footer .c-copy:active {
+    @apply bg-hover;
+}
+.location-message .c-footer .c-copy i {
+    @apply text-xl;
 }
 @keyframes pulseLiveDot {
     0%, 100% { opacity: 1; }
