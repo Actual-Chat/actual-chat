@@ -4,8 +4,9 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
+    // This cache is the reader's only owner, so an eviction that doesn't dispose orphans a running worker.
     private readonly IThreadSafeLruCache<ChatEntryId, TranscriptStreamReader> _previewReaders
-        = new ThreadSafeLruCache<ChatEntryId, TranscriptStreamReader>(32);
+        = new ThreadSafeLruCache<ChatEntryId, TranscriptStreamReader>(32, evictionHandler: DisposeEvictedReader);
 
     private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
@@ -63,6 +64,11 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
         var streamId = StreamId.New(sourceStreamId, translationLanguage);
         return new StreamingState(streamId, entry.Content, IsTranslation: true); // We can start ad-hoc translation stream.
     }
+
+    // Private methods
+
+    private static void DisposeEvictedReader(ChatEntryId id, TranscriptStreamReader reader)
+        => _ = reader.DisposeSilentlyAsync();
 
     // Nested types
 
