@@ -40,13 +40,9 @@
                 <div class="c-title">@(m.IsLive ? "Live location" : "Location")</div>
                 <div class="c-caption">@m.Center.ToDisplayText()</div>
             </div>
-            <button
-                type="button"
-                class="c-copy"
-                @onclick="@OnCopyLink"
-                @onclick:stopPropagation="true">
-                <i class="icon-copy"></i>
-            </button>
+            <div class="c-copy" @onclick:stopPropagation="true">
+                <CopyToClipboard ButtonClass="btn-xs btn-transparent" Text="@m.Center.ToOpenStreetMapUrl()"/>
+            </div>
         </div>
     }
 </div>
@@ -54,7 +50,6 @@
 @code {
     private ISharedLocations SharedLocations => Hub.SharedLocations;
     private LocationUI LocationUI => Hub.LocationUI;
-    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
 
@@ -87,12 +82,6 @@
 
     private Task OnOpenMap()
         => ModalUI.Show(new LocationMapModal.Model(Entry.ChatId, Entry.LocationId));
-
-    // TODO: use <CopyToClipboard instead to avoid safari security context issues
-    private async Task OnCopyLink() {
-        if (State.Value is { } m)
-            await ClipboardUI.WriteText(m.Center.ToOpenStreetMapUrl()).ConfigureAwait(false);
-    }
 
     // Nested types
 
