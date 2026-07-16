@@ -188,16 +188,17 @@ public static partial class Constants
     {
         public static readonly TimeSpan UpdatePeriod = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan GetTimeout = TimeSpan.FromSeconds(15);
+        public static readonly TimeSpan UnlimitedDuration = TimeSpan.MaxValue;
         public static readonly IReadOnlyDictionary<TimeSpan, string> Durations = new Dictionary<TimeSpan, string> {
-            [TimeSpan.FromMinutes(15)] = "15 minutes",
-            [TimeSpan.FromHours(1)] = "1 hour",
-            [TimeSpan.FromHours(8)] = "8 hours",
+            [TimeSpan.FromMinutes(15)] = "for 15 minutes",
+            [TimeSpan.FromHours(1)] = "for 1 hour",
+            [TimeSpan.FromHours(8)] = "for 8 hours",
+            [UnlimitedDuration] = "Until I turn it off",
         };
+        // TODO: MinDuration and MaxDuration seem redundant
         public static readonly TimeSpan MinDuration = Durations.Keys.Min();
-        public static readonly TimeSpan MaxDuration = Durations.Keys.Max();
-        // "Until I turn it off". Finite on purpose: Moment + TimeSpan.MaxValue silently
-        // wraps negative, which would make the share expire the moment it starts.
-        public static readonly TimeSpan UnlimitedDuration = TimeSpan.FromDays(365 * 100);
+        // The longest finite duration; also the threshold past which a duration means "unlimited"
+        public static readonly TimeSpan MaxDuration = Durations.Keys.Where(x => x != UnlimitedDuration).Max();
         public const int MaxSharingAuthorsPerChat = 100;
     }
 
