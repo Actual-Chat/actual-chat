@@ -5,6 +5,43 @@
 > 30-second version. Everything after a one-liner is depth for whoever
 > implements that part.
 
+## Implementation status (2026-07-16)
+
+**Phases 1–2 built and compiling; off by default; needs on-device bring-up.**
+The remote-tile path is implemented end-to-end and gated behind
+`MauiSettings.UseNativeVideoOverlay` (default `false`). Flip it to `true` and
+rebuild for on-device testing — nothing changes while it's off (the JPEG path
+stays the default). New/changed pieces:
+
+- `H264SampleBufferBuilder` — Annex-B → AVCC + format latch extracted from
+  `AppleVideoDecoder` (which now reuses it); builds the `CMSampleBuffer`s both
+  the decode path and the layer path consume.
+- `SampleBufferDisplayView` — `UIView` backed by `AVSampleBufferDisplayLayer`;
+  enqueue / flush / decoder-failure recovery.
+- `NativeVideoOverlayHost` (+ `INativeVideoOverlayHost`) — pins layer views over
+  the WKWebView by id; `UpdateRect` from JS. **Placement defaults to
+  AboveWebView (overlay-on-top)** — chosen for bring-up because it shows pixels
+  regardless of DOM/webview transparency; the participant label is covered until
+  we switch to underlay. (`WKWebView.Opaque` is already `false`, so underlay is
+  viable — flip `NativeVideoOverlayHost.OverlayPlacement`.)
+- `MauiVideoLayerPlayer` — `INativeOverlayVideoPlayer`; same pull loop as
+  `MauiVideoPlayer`, enqueues to its display view instead of emitting JPEG.
+  `MauiVideoPlayerFactory` picks it when the host is registered.
+- `native-video-overlay.ts` — rAF rect tracker (getBoundingClientRect →
+  `OnOverlayRect` on the component → host), IntersectionObserver for visibility.
+- `VideoTrackPlayer.razor` + `video-panel.css` — overlay branch, `OnOverlayRect`
+  JSInvokable, `.native-video-overlay` tile class (canvas kept in layout as the
+  rect anchor, backgrounds made transparent).
+
+**Still to do on-device (Phase 0 decision + Phases 3–4):**
+1. Turn the flag on, confirm a remote tile renders, and **calibrate placement**:
+   verify the CSS-px rect maps 1:1 to the container view frame (webview pinned at
+   offset 0 → CSS px == points; confirm no inset/scale surprise).
+2. Decide **AboveWebView vs BelowWebView** (underlay) per the trade-offs below;
+   if underlay, audit `.video-track-player` ancestor backgrounds for opacity.
+3. Phase 3 (self-preview on capture-fed layers) and Phase 4 (polish + deleting
+   the JPEG path) are not started.
+
 ## TL;DR
 
 Today every displayed video frame on Mac Catalyst crosses from native code

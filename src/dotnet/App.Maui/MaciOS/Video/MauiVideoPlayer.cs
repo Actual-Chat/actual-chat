@@ -130,5 +130,9 @@ public sealed class MauiVideoPlayer : INativeVideoPlayer
 public sealed class MauiVideoPlayerFactory : INativeVideoPlayerFactory
 {
     public INativeVideoPlayer Create(AppUIHub hub, VideoStreamInfo streamInfo)
-        => new MauiVideoPlayer(hub, streamInfo);
+        // The native-overlay renderer (AVSampleBufferDisplayLayer) is used when its host is
+        // registered; otherwise fall back to the JPEG-over-interop canvas player.
+        => hub.Services.GetService<NativeVideoOverlayHost>() is { } overlayHost
+            ? new MauiVideoLayerPlayer(hub, streamInfo, overlayHost)
+            : new MauiVideoPlayer(hub, streamInfo);
 }

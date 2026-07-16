@@ -96,3 +96,26 @@ public interface INativeVideoPlayerFactory
 {
     INativeVideoPlayer Create(AppUIHub hub, VideoStreamInfo streamInfo);
 }
+
+/// <summary>
+/// A native player that renders directly into a native overlay layer positioned over the
+/// WKWebView (VideoToolbox → <c>AVSampleBufferDisplayLayer</c>) instead of pushing JPEG
+/// frames to a canvas. <see cref="OverlayId"/> ties the native layer to the DOM tile whose
+/// rect the JS side reports back via <see cref="INativeVideoOverlayHost"/>.
+/// </summary>
+public interface INativeOverlayVideoPlayer : INativeVideoPlayer
+{
+    string OverlayId { get; }
+}
+
+/// <summary>
+/// Positions native video overlay layers over the WKWebView to match DOM tiles. The JS
+/// rect tracker reports each tile's viewport rect (in CSS px) through the owning component,
+/// which forwards it here by <c>id</c>. Registered only when the native-overlay renderer is
+/// enabled; its presence is the platform gate <see cref="INativeOverlayVideoPlayer"/> keys on.
+/// </summary>
+public interface INativeVideoOverlayHost
+{
+    void UpdateRect(string id, double x, double y, double width, double height, bool visible, double cornerRadius);
+    void Remove(string id);
+}

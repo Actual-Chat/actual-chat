@@ -120,6 +120,14 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
             services.AddScoped<INativeCameraDevices>(_ => new MauiCameraDevices());
             services.AddScoped<INativeCameraPreviewFactory>(_ => new AppleCameraPreviewFactory());
             services.AddScoped<INativeVideoPlayerFactory>(_ => new MauiVideoPlayerFactory());
+            // Native remote-tile rendering via AVSampleBufferDisplayLayer overlays. Registering
+            // the host switches MauiVideoPlayerFactory + VideoTrackPlayer to the overlay path;
+            // gated off until on-device placement calibration (see the plan doc).
+            if (MauiSettings.UseNativeVideoOverlay) {
+                services.AddScoped<NativeVideoOverlayHost>(c =>
+                    new NativeVideoOverlayHost(c.LogFor<NativeVideoOverlayHost>()));
+                services.AddScoped<INativeVideoOverlayHost>(c => c.GetRequiredService<NativeVideoOverlayHost>());
+            }
         }
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());

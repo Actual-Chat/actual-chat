@@ -8,6 +8,10 @@ public static class MauiSettings
     public static readonly string LocalHost = "0.0.0.1";
     // NOTE: UseLocalhost is used only for development purposes. Do not commit it to the repo.
     public const bool UseLocalhost = false;
+    // Mac Catalyst: render remote video tiles with native AVSampleBufferDisplayLayer overlays
+    // instead of the JPEG-over-interop canvas path. Off until validated on-device (placement
+    // calibration — see docs/plans/maccatalyst-native-video-overlay.md).
+    public const bool UseNativeVideoOverlay = false;
 #if IS_DEV_MAUI
     public const bool IsDevApp = true;
     public const bool AreDevToolsEnabled = true;
