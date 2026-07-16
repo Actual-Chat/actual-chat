@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, ShareLocationModal.ComputedModel>
+@* TODO: is ShareLocationModal still reflecting the purpose of the modal? *@
 @implements IModalView<ShareLocationModal.Model>
 @{
     var m = State.Value;
@@ -16,14 +17,13 @@
                     Class="c-map"
                     Center="@m.OwnMarker.Point"
                     Zoom="15"
-                    StyleName="@m.MapStyleName"
                     Markers="@([m.OwnMarker])"/>
             }
             <ButtonRound Class="c-close" Click="@OnClose">
                 <i class="icon-close"></i>
             </ButtonRound>
             <div class="c-map-menu">
-                <button type="button" class="c-map-menu-item" @onclick="@OnSwitchMapStyle">
+                <button type="button" class="c-map-menu-item" @onclick="@OnOpenMapTypeMenu">
                     <i class="icon-map"></i>
                 </button>
                 <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
@@ -51,12 +51,30 @@
             </ButtonTile>
         </div>
         @if (m.IsDurationMenuOpen) {
-            <div class="c-duration-backdrop" @onclick="@OnCloseDurationMenu"></div>
-            <div class="c-duration-menu">
+            <div class="c-menu-backdrop" @onclick="@OnCloseDurationMenu"></div>
+            <div class="c-menu c-duration-menu">
                 @foreach (var (duration, label) in Constants.Location.Durations) {
-                    <button type="button" class="c-duration-item" @onclick="@(() => OnPickDuration(duration))">
+                    <button type="button" class="c-menu-item" @onclick="@(() => OnPickDuration(duration))">
                         <i class="icon-clock"></i>
                         <span>@label</span>
+                    </button>
+                }
+            </div>
+        }
+        @if (m.IsMapTypeMenuOpen) {
+            <div class="c-menu-backdrop" @onclick="@OnCloseMapTypeMenu"></div>
+            <div class="c-menu c-map-type-menu">
+                @foreach (var (type, label, icon, isSupported) in MapTypes) {
+                    <button
+                        type="button"
+                        class="c-menu-item"
+                        disabled="@(!isSupported)"
+                        @onclick="@(() => OnPickMapType(type))">
+                        <i class="@icon"></i>
+                        <span>@label</span>
+                        @if (type == m.MapType) {
+                            <i class="c-check icon-checkmark-simple"></i>
+                        }
                     </button>
                 }
             </div>
@@ -65,11 +83,16 @@
 </DialogFrame>
 
 @code {
-    // "" = the current theme's default style
-    private static readonly string[] MapStyles = ["", "bright", "positron", "fiord", "dark"];
+    // TODO: enable Satellite/Hybrid once the tile source has satellite imagery (openfreemap.org doesn't)
+    private static readonly (string Type, string Label, string Icon, bool IsSupported)[] MapTypes = [
+        ("map", "Map", "icon-map", true),
+        ("satellite", "Satellite", "icon-globe", false),
+        ("hybrid", "Hybrid", "icon-grid", false),
+    ];
 
     private MutableState<GeoPoint?> _currentLocation = null!;
-    private MutableState<int> _mapStyleIndex = null!;
+    private MutableState<string> _mapType = null!;
+    private MutableState<bool> _isMapTypeMenuOpen = null!;
     private MutableState<bool> _isDurationMenuOpen = null!;
     private MapView? _mapView;
 
@@ -82,9 +105,12 @@
         _currentLocation = StateFactory.NewMutable(
             (GeoPoint?)null,
             StateCategories.Get(GetType(), nameof(_currentLocation)));
-        _mapStyleIndex = StateFactory.NewMutable(
-            0,
-            StateCategories.Get(GetType(), nameof(_mapStyleIndex)));
+        _mapType = StateFactory.NewMutable(
+            MapTypes[0].Type,
+            StateCategories.Get(GetType(), nameof(_mapType)));
+        _isMapTypeMenuOpen = StateFactory.NewMutable(
+            false,
+            StateCategories.Get(GetType(), nameof(_isMapTypeMenuOpen)));
         _isDurationMenuOpen = StateFactory.NewMutable(
             false,
             StateCategories.Get(GetType(), nameof(_isDurationMenuOpen)));
@@ -102,13 +128,14 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
         var currentPoint = await _currentLocation.Use(cancellationToken).ConfigureAwait(false);
-        var mapStyleIndex = await _mapStyleIndex.Use(cancellationToken).ConfigureAwait(false);
+        var mapType = await _mapType.Use(cancellationToken).ConfigureAwait(false);
+        var isMapTypeMenuOpen = await _isMapTypeMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var isDurationMenuOpen = await _isDurationMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var ownPoint = livePoint ?? currentPoint;
         var ownMarker = ownPoint is not null
             ? new MapMarker("own-location", ownPoint, IsOwnLocation: true)
             : null;
-        return new ComputedModel(ownMarker, MapStyles[mapStyleIndex], isDurationMenuOpen);
+        return new ComputedModel(ownMarker, mapType, isMapTypeMenuOpen, isDurationMenuOpen);
     }
 
     // Private methods
@@ -137,8 +164,16 @@
         Modal.Close();
     }
 
-    private void OnSwitchMapStyle()
-        => _mapStyleIndex.Value = (_mapStyleIndex.Value + 1) % MapStyles.Length;
+    private void OnOpenMapTypeMenu()
+        => _isMapTypeMenuOpen.Value = true;
+
+    private void OnCloseMapTypeMenu()
+        => _isMapTypeMenuOpen.Value = false;
+
+    private void OnPickMapType(string type) {
+        _mapType.Value = type;
+        _isMapTypeMenuOpen.Value = false;
+    }
 
     private async Task OnLocate() {
         if (await Tracker.Get(CancellationToken.None).ConfigureAwait(true) is not { } point)
@@ -153,7 +188,8 @@
 
     public sealed record ComputedModel(
         MapMarker? OwnMarker,
-        string MapStyleName = "",
+        string MapType = "map",
+        bool IsMapTypeMenuOpen = false,
         bool IsDurationMenuOpen = false
     ) {
         public static readonly ComputedModel None = new((MapMarker?)null);
