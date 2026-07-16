@@ -141,9 +141,14 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var cList = await Computed.Capture(() => sharedLocations.ListLive(session, chatId, ct), ct);
 
-        // act - share for a short window
-        var entry = await Alice.CreateLocationEntry(chatId, new GeoPoint(10, 20), TimeSpan.FromSeconds(2), ct);
-        var locationId = entry.LocationId!;
+        // act - share for a short window via the backend command: the front-end accepts only menu durations
+        var author = await Alice.GetOwnAuthor(chatId).Require();
+        var change = Change.Create(new SharedLocationDiff {
+            Point = new GeoPoint(10, 20),
+            LiveDuration = TimeSpan.FromSeconds(2),
+        });
+        var location = await Alice.Commander.Call(new SharedLocationsBackend_Change(null, author.Id, change), ct);
+        var locationId = location!.Id;
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
 
         // assert - it drops out of the live list on its own once expired (no stop command)
@@ -152,6 +157,19 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         // assert - the frozen record is still readable as the message's history backing
         var frozen = await sharedLocations.Get(session, chatId, locationId, ct);
         frozen.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task NonMenuDurationIsRejected()
+    {
+        // arrange
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Bad duration" });
+
+        // act & assert - only Constants.Location.Durations options are accepted
+        await FluentActions
+            .Awaiting(() => Alice.ReportLocation(chatId, new GeoPoint(1, 2), TimeSpan.FromSeconds(30)))
+            .Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*duration*");
     }
 
     [Fact]

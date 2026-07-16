@@ -195,10 +195,7 @@ public static partial class Constants
             [TimeSpan.FromHours(8)] = "for 8 hours",
             [UnlimitedDuration] = "Until I turn it off",
         };
-        // TODO: MinDuration and MaxDuration seem redundant
-        public static readonly TimeSpan MinDuration = Durations.Keys.Min();
-        // The longest finite duration; also the threshold past which a duration means "unlimited"
-        public static readonly TimeSpan MaxDuration = Durations.Keys.Where(x => x != UnlimitedDuration).Max();
+        public static readonly TimeSpan MaxFiniteDuration = Durations.Keys.Where(x => x != UnlimitedDuration).Max();
         public const int MaxSharingAuthorsPerChat = 100;
     }
 

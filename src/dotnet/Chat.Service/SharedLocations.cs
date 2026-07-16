@@ -4,7 +4,6 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
 {
     private ISharedLocationsBackend Backend { get; } = services.GetRequiredService<ISharedLocationsBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
-    private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
@@ -45,6 +44,8 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
         if (author is not { HasLeft: false })
             throw StandardError.Constraint("Please join the chat before sharing your location.");
         chatRules.Require(ChatPermissions.Write);
+        if (change.IsCreate(out var createDiff))
+            createDiff.Require(SharedLocationDiff.MustHaveCorrectDuration);
 
         var changeCommand = new SharedLocationsBackend_Change(id, author.Id, change);
         return await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);

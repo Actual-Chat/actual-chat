@@ -87,11 +87,8 @@ public class SharedLocationsBackend(IServiceProvider services)
         var sharedLocation = dbSharedLocation?.ToModel();
 
         if (change.IsCreate(out var createDiff)) {
-            // Anything past MaxDuration means "until I turn it off"
+            // The front-end OnChange restricts the duration to the menu options; backend callers are trusted
             var duration = createDiff.LiveDuration ?? TimeSpan.Zero;
-            duration = duration > Constants.Location.MaxDuration
-                ? Constants.Location.UnlimitedDuration
-                : duration.Clamp(TimeSpan.Zero, Constants.Location.MaxDuration);
             if (duration > TimeSpan.Zero) {
                 // One live share per author: hand back the running one instead of starting a second.
                 var live = await GetOwnLiveShare(dbContext, authorId, now, cancellationToken).ConfigureAwait(false);
