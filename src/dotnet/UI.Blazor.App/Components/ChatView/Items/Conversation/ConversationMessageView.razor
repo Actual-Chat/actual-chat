@@ -15,9 +15,10 @@
     var attachments = conversation.Attachments;
     var canExpand = !state.IsLive || state.IsJoined;
     var hasLiveTitle = !m.Title.Text.IsNullOrEmpty();
+    var hasDescription = !m.Description.Markup.ToReadableText().IsNullOrEmpty();
     // Exactly what GetClipboardText concatenates - with none of it there, copying yields blank lines.
     var hasCopyText = hasLiveTitle
-        || !m.Description.Markup.ToReadableText().IsNullOrEmpty()
+        || hasDescription
         || !m.Summary.Markup.ToReadableText().IsNullOrEmpty();
 }
 <div class="@cls"
@@ -37,13 +38,14 @@
                         </HeaderButton>
                     }
                 </div>
-                @if (hasSummary) {
-                    <CascadingValue Value="@_fakeEntry" IsFixed="true">
-                        <div class="c-lc-summary">
-                            <MarkupView Markup="@m.Description.Markup"/>
-                        </div>
-                    </CascadingValue>
-                }
+            }
+            @* Gated on the text, not hasSummary: a fold can outlive an empty description. *@
+            @if (hasDescription) {
+                <CascadingValue Value="@_fakeEntry" IsFixed="true">
+                    <div class="c-lc-summary">
+                        <MarkupView Markup="@m.Description.Markup"/>
+                    </div>
+                </CascadingValue>
             }
             <div class="c-lc-meta-row">
                 @if (!hasLiveTitle) {
