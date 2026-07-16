@@ -1,5 +1,4 @@
 @inherits ComputedStateComponent<AppUIHub, ApiKeySettings.Model>
-@inject IStringLocalizer<Strings> L
 @{
     var m = State.Value;
     var keys = m.ApiKeys.OrderByDescending(x => x.CreatedAt).ToList();

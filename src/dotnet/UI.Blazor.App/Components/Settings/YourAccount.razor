@@ -2,7 +2,6 @@
 @using AccountField = ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal.AccountField
 @inherits ComputedStateComponent<AppUIHub, AccountFull>
 @implements IDisposable
-@inject IStringLocalizer<Strings> L
 @{
     var account = State.Value;
     var readablePhone = account.Phone?.ToReadable() ?? "";

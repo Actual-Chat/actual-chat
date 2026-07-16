@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.Extensions.Localization" />
     <PackageReference Include="OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="ActualLab.Fusion.Blazor" />

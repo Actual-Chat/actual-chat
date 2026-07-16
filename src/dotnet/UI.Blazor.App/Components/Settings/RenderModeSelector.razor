@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inject IStringLocalizer<Strings> L
+@inherits ComponentBase<AppUIHub>
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are expected to be untrimmed.")]
 
 <TileTopic Topic="@L["RenderMode_Title"].Value"/>
@@ -65,10 +65,7 @@
     private RenderModeKey _modeKey;
     private FormModel _formModel = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private RenderModeHelper RenderModeHelper => Hub.Services.GetRequiredService<RenderModeHelper>();
-
+    private RenderModeHelper RenderModeHelper => Services.GetRequiredService<RenderModeHelper>();
 
     protected override void OnInitialized() {
         _modeKey = (RenderModeHelper.CurrentMode?.Key[0] ?? 'a') switch {

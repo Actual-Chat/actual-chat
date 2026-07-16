@@ -1,6 +1,5 @@
 @using ActualChat.UI.App.Services
 @inherits ComputedStateComponent<AppUIHub, DeveloperTools.Model>
-@inject IStringLocalizer<Strings> L
 @{
     var m = State.Value;
     var experimentalFeatureStatus = m.AreExperimentalFeaturesEnabled

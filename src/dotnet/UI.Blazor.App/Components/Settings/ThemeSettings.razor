@@ -1,4 +1,4 @@
-@inject IStringLocalizer<Strings> L
+@inherits ComponentBase<AppUIHub>
 @{
 #pragma warning disable IL2091
 }
@@ -70,9 +70,7 @@
 @code {
     private FormModel _formModel = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
     private ThemeUI ThemeUI => Hub.ThemeUI;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     private ILogger Log => field ??= Hub.LogFor(GetType());
 

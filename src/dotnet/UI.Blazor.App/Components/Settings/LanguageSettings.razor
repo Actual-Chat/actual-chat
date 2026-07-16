@@ -1,4 +1,4 @@
-@inject IStringLocalizer<Strings> L
+@inherits ComponentBase<AppUIHub>
 
 <Form Model="@_formModel">
     <FormBlock>
@@ -14,7 +14,7 @@
                 Value="_formModel.LanguageCode"
                 ValueExpression="@(() => _formModel.LanguageCode)"
                 ValueChanged="@(OnLanguageChanged)">
-                @foreach (var language in UILanguages) {
+                @foreach (var language in LanguageUI.SupportedUILanguages) {
                     <option value="@language.Value">@language.NativeName</option>
                 }
             </InputSelect>
@@ -23,15 +23,9 @@
 </Form>
 
 @code {
-    private static IReadOnlyList<Language> UILanguages
-        => global::ActualChat.UI.Blazor.App.Services.LanguageUI.SupportedUILanguages;
-
     private FormModel _formModel = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private History History => Hub.History;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private LanguageUI LanguageUI => field ??= Hub.Services.GetRequiredService<LanguageUI>();
+    private LanguageUI LanguageUI => field ??= Hub.LanguageUI;
 
     protected override void OnInitialized()
         => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageUI.UILanguage.Value };

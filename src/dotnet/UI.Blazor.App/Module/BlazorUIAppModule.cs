@@ -29,6 +29,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
     {
         // Localization: custom JSON-based localizer (InvariantGlobalization rules out the standard .resx one)
         services.AddScoped<IStringLocalizer<Strings>, AppStringLocalizer>();
+        services.AddScoped<IStringLocalizer>(c => c.GetRequiredService<IStringLocalizer<Strings>>());
 
         var fusion = services.AddFusion();
 
