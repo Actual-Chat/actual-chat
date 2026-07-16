@@ -11,13 +11,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
-    public static readonly Language[] SupportedUILanguages = [
-        Languages.English, Languages.Spanish, Languages.French, Languages.Italian, Languages.Russian, Languages.German,
-        Languages.Chinese, Languages.Hindi, Languages.Japanese, Languages.Korean, Languages.Portuguese, Languages.Turkish,
-        Languages.Ukrainian, Languages.Vietnamese,
-    ];
     public static readonly Language DefaultUILanguage = Languages.Main;
-    private static readonly HashSet<Language> SupportedUILanguageSet = [..SupportedUILanguages];
+    // TODO: explicitly list languages in the correct order used usually to sort languages for such case
+    public static readonly Language[] SupportedUILanguages = { Languages.Main };
 
     public SyncedState<UserLanguageSettings> Settings { get; init; }
     public SyncedState<Language> UILanguage { get; init; }
@@ -127,7 +123,10 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     private async ValueTask<Language> DetectUILanguage(CancellationToken cancellationToken)
     {
         var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
-        return languages.FirstOrDefault(SupportedUILanguageSet.Contains) ?? DefaultUILanguage;
+        foreach (var language in languages)
+            if (Languages.All.FirstOrDefault(l => l.PrimarySubtag == language.PrimarySubtag) is { } uiLanguage)
+                return uiLanguage;
+        return DefaultUILanguage;
     }
 
     private async ValueTask<UserLanguageSettings> CreateLanguageSettings(CancellationToken cancellationToken)

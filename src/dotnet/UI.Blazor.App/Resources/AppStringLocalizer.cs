@@ -56,8 +56,12 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
     private static Dictionary<Language, Dictionary<string, string>> LoadAll() {
         var result = new Dictionary<Language, Dictionary<string, string>>();
         var assembly = typeof(AppStringLocalizer).Assembly;
-        foreach (var lang in LanguageUI.SupportedUILanguages) {
-            using var stream = assembly.GetManifestResourceStream($"Strings.{lang.PrimarySubtag}.json");
+        // TODO: when LanguageUI.SupportedUILanguages is added, use it to get all languages that must be present in resources
+        foreach (var resourceName in assembly.GetManifestResourceNames()) {
+            if (ParseLanguage(resourceName) is not { } lang)
+                continue;
+
+            using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream == null)
                 continue;
 
@@ -66,5 +70,15 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
                 result[lang] = dict;
         }
         return result;
+    }
+
+    private static Language? ParseLanguage(string resourceName) {
+        const string prefix = "Strings.";
+        const string suffix = ".json";
+        if (!resourceName.StartsWith(prefix, StringComparison.Ordinal) || !resourceName.EndsWith(suffix, StringComparison.Ordinal))
+            return null;
+
+        var subtag = resourceName[prefix.Length..^suffix.Length];
+        return Languages.All.FirstOrDefault(l => l.PrimarySubtag == subtag);
     }
 }

@@ -829,8 +829,20 @@ cutoff, unions, constructor attributes, and the test helpers that catch shape di
 #### Test Method Naming
 - **Use PascalCase without underscores** for test method names
 - Test names should clearly describe the scenario being tested
-- Good: `ReportShouldScaleToFullRange`, `ForkEqualPartsShouldDivideRangeEqually`
+- **Prefer the `Should` phrasing** — name the test after the expected
+  behavior, embedding `Should` (or `ShouldNot`) in the name: `<Subject>Should<ExpectedBehavior>`.
+- Good: `ReportShouldScaleToFullRange`, `ForkEqualPartsShouldDivideRangeEqually`,
+  `EveryShippedTranslationShouldTranslateEveryEnglishKey`
 - Bad: `Report_Should_Scale_To_Full_Range`, `Fork_EqualParts_ShouldDivideRangeEqually`
+  (underscores), `EnglishFallbackIsComplete` (states a fact instead of the
+  expected behavior — prefer `EnglishFallbackShouldBeComplete`)
+
+#### Assertions
+- **Use FluentAssertions** — assert with the `.Should()` API
+  (`actual.Should().Be(expected)`, `collection.Should().BeEquivalentTo(...)`),
+  not raw xUnit `Assert.*`.
+- Always pass the `because` reason argument when the failure isn't
+  self-explanatory, so a red test names what invariant broke.
 
 #### AAA Pattern (Arrange-Act-Assert)
 All tests must use the AAA (Arrange-Act-Assert) pattern with lowercase comments:
