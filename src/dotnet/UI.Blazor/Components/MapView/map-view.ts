@@ -68,7 +68,12 @@ export class MapView {
                 continue;
             }
 
-            const marker = new maplibregl.Marker({ element: MapView.createMarkerElement(m) })
+            // Own location is a centered dot; other markers are a bubble-above-dot pin
+            // anchored so the dot center (8px above the element bottom) hits the point.
+            const options: maplibregl.MarkerOptions = m.isOwnLocation
+                ? { element: MapView.createMarkerElement(m) }
+                : { element: MapView.createMarkerElement(m), anchor: 'bottom', offset: [0, 8] };
+            const marker = new maplibregl.Marker(options)
                 .setLngLat([m.point.longitude, m.point.latitude]);
             marker.addTo(this.map);
             this.markers.set(m.id, marker);
@@ -94,9 +99,9 @@ export class MapView {
 
     // Private methods
 
-    // Three marker styles: the viewer's own live position (blue dot + heading fan), a plain
-    // dot when there's no avatar (in-chat preview), or an author avatar in a white-bordered
-    // circle (the map modal) — Telegram-style.
+    // Two marker styles: the viewer's own live position (blue dot + heading fan), or a
+    // bubble (circle + tail, holding the author avatar or a pin glyph) floating above
+    // a ringed dot that sits on the geo point.
     private static createMarkerElement(m: MapMarker): HTMLElement {
         const el = document.createElement('div');
         el.className = 'map-marker';
@@ -105,11 +110,14 @@ export class MapView {
             return el;
         }
 
-        const avatar = MapView.createAvatarElement(m);
         const pin = document.createElement('div');
-        pin.className = avatar != null ? 'c-pin c-pin-avatar' : 'c-pin c-pin-dot';
-        if (avatar != null)
-            pin.appendChild(avatar);
+        pin.className = 'c-pin';
+        const dot = document.createElement('map-marker-dot');
+        dot.className = 'c-dot';
+        const bubble = document.createElement('map-marker-bubble');
+        bubble.className = 'c-bubble';
+        bubble.appendChild(MapView.createAvatarElement(m) ?? document.createElement('map-marker-pin'));
+        pin.append(dot, bubble);
         el.appendChild(pin);
         return el;
     }
@@ -139,6 +147,7 @@ export class MapView {
             heading.style.display = 'none';
             return;
         }
+
         heading.style.display = '';
         heading.style.transform = `rotate(${bearing}deg)`;
     }
