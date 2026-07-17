@@ -7,23 +7,19 @@
     @apply relative;
     @apply flex items-center justify-center;
 }
-.map-view .map-marker .c-pin-dot {
-    @apply w-4 h-4;
-    @apply rounded-full border-[3px] border-white;
-    @apply bg-primary;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-}
-.map-view .map-marker .c-pin-avatar {
+.map-view .map-marker .c-pin {
     @apply relative;
-    @apply flex items-center justify-center;
-    @apply w-9 h-9;
-    @apply rounded-full border-2 border-white;
-    @apply bg-01;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    @apply w-8 h-[50px];
+}
+.map-view .map-marker .c-bubble {
+    @apply absolute top-0 left-0;
+}
+.map-view .map-marker .c-dot {
+    @apply absolute bottom-0 left-1/2 -ml-2;
 }
 .map-view .map-marker .c-avatar {
     @apply block;
-    @apply w-full h-full;
+    @apply w-7 h-7;
     @apply rounded-full;
     @apply object-cover;
 }
