@@ -1,6 +1,6 @@
 .location-message {
     @apply flex-y;
-    @apply w-80 max-w-full h-[194px];
+    @apply w-80 max-w-full h-[12.125rem];
     @apply mt-1;
     @apply rounded-lg border border-separator;
     @apply bg-01;

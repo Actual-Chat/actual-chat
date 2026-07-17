@@ -99,9 +99,9 @@ export class MapView {
 
     // Private methods
 
-    // Two marker styles: the viewer's own live position (blue dot + heading fan), or a
-    // bubble (circle + tail, holding the author avatar or a pin glyph) floating above
-    // a ringed dot that sits on the geo point.
+    // Three marker styles: the viewer's own live position (blue dot + heading fan),
+    // the complete <map-marker-pin> when there's no avatar, or the avatar in a
+    // <map-marker-bubble> floating above a <map-marker-dot> on the geo point.
     private static createMarkerElement(m: MapMarker): HTMLElement {
         const el = document.createElement('div');
         el.className = 'map-marker';
@@ -112,12 +112,17 @@ export class MapView {
 
         const pin = document.createElement('div');
         pin.className = 'c-pin';
-        const dot = document.createElement('map-marker-dot');
-        dot.className = 'c-dot';
-        const bubble = document.createElement('map-marker-bubble');
-        bubble.className = 'c-bubble';
-        bubble.appendChild(MapView.createAvatarElement(m) ?? document.createElement('map-marker-pin'));
-        pin.append(dot, bubble);
+        const avatar = MapView.createAvatarElement(m);
+        if (avatar == null)
+            pin.appendChild(document.createElement('map-marker-pin'));
+        else {
+            const dot = document.createElement('map-marker-dot');
+            dot.className = 'c-dot';
+            const bubble = document.createElement('map-marker-bubble');
+            bubble.className = 'c-bubble';
+            bubble.appendChild(avatar);
+            pin.append(dot, bubble);
+        }
         el.appendChild(pin);
         return el;
     }
