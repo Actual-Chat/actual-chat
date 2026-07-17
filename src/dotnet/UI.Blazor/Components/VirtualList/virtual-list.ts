@@ -1391,7 +1391,7 @@ export class VirtualList {
                 const prevScrollTop = prevViewport.start;
                 if (scrollTop !== prevScrollTop) {
                     this.userScrollDirection = scrollTop < prevScrollTop ? 'up' : 'down';
-                    warnLog?.log(`User scroll: +${this.userScrollDirection}`);
+                    warnLog?.log(`User scroll: +${this.userScrollDirection} ${this.renderedWindowInfo()}`);
                 }
             }
         }
@@ -1522,7 +1522,7 @@ export class VirtualList {
 
     private turnOffIsScrolling() {
         if (this.userScrollDirection !== 'none') {
-            warnLog?.log(`User scroll: -${this.userScrollDirection}`);
+            warnLog?.log(`User scroll: -${this.userScrollDirection} ${this.renderedWindowInfo()}`);
             this.userScrollDirection = 'none';
         }
         this.updateState('turnOffIsScrolling', this.state, { isScrolling: false, scrollDirection: 'none' as const });
@@ -1543,6 +1543,19 @@ export class VirtualList {
         void this.updateViewport();
         this.updateVisibleKeysThrottled();
         this.repinIfViewportStrandedDebounced();
+    }
+
+    private renderedWindowInfo(): string {
+        const { orderedItems, viewport, itemRange } = this.state;
+        const count = orderedItems.length;
+        if (!viewport || !itemRange || viewport.size <= 0)
+            return `items=${count}`;
+
+        const vp = viewport.size;
+        const toVp = (px: number): string => (px / vp).toFixed(1);
+        const above = viewport.start - itemRange.start;
+        const below = itemRange.end - viewport.end;
+        return `items=${count} loaded=${toVp(itemRange.size)}vp ↑${toVp(above)}vp ↓${toVp(below)}vp`;
     }
 
     private repinIfViewportStrandedDebounced = debounce(() => this.repinIfViewportStranded(), ScrollDebounce);
@@ -2525,6 +2538,7 @@ export class VirtualList {
 
         debugLog?.log(`requestData: query:`, query, query.virtualRange, this.state.itemRange);
         this.updateState('requestData: sending', this.state, { lastQueryTime: Date.now(), lastQuery: this.state.query });
+        warnLog?.log(`Data request: ${this.renderedWindowInfo()} query.expected=${query.expectedCount ?? '?'}`);
         if (VirtualList.debugDataLoadDelayMs > 0)
             await delayMs(Math.random() * VirtualList.debugDataLoadDelayMs);
         this.debug?.onRequestData();
