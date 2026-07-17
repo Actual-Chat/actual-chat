@@ -45,6 +45,7 @@
 
 @code {
     private MapView? _mapView;
+    // TODO: remove and use Get(bool force = false) instead as described below
     private MutableState<GeoPoint?> _currentLocation = null!;
 
     private ILocationTracker Tracker => Hub.LocationTracker;
@@ -54,7 +55,9 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized() {
-        _currentLocation = StateFactory.NewMutable((GeoPoint?)null, StateCategories.Get(GetType(), nameof(_currentLocation)));
+        _currentLocation = StateFactory.NewMutable(
+            (GeoPoint?)null,
+            StateCategories.Get(GetType(), nameof(_currentLocation)));
         _ = FetchCurrentLocation();
     }
 
@@ -68,7 +71,8 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ModalModel.ChatId;
-        var participants = await LocationUI.ListParticipants(chatId, ModalModel.LocationId, cancellationToken).ConfigureAwait(false);
+        var participants = await LocationUI.ListParticipants(chatId, ModalModel.LocationId, cancellationToken)
+            .ConfigureAwait(false);
         if (participants.Count == 0)
             return ComputedModel.None;
 
@@ -82,6 +86,7 @@
     }
 
     private async Task FetchCurrentLocation() {
+        // TODO: maybe Get could accept bool force? Then we could omit _currentLocation state field at all, we could use ComputeState
         if (await Tracker.Get(default).ConfigureAwait(false) is { } point)
             _currentLocation.Value = point;
     }
@@ -89,18 +94,12 @@
     private Task OnParticipantClick(LocationParticipant participant)
         => _mapView?.FlyTo(participant.Location.Point).AsTask() ?? Task.CompletedTask;
 
-    private MapMarker ToMapMarker(LocationParticipant participant) {
-        var pictureUrl = participant.Author.Avatar.Picture is { } picture ? UrlMapper.PicturePreview128Url(picture) : "";
-        var avatarKey = pictureUrl.IsNullOrEmpty()
-            ? (participant.Author.Avatar.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(participant.Author.Id.Value)
-            : "";
-        return new MapMarker(
+    private MapMarker ToMapMarker(LocationParticipant participant)
+        => MapMarker.ForAuthor(
             participant.Location.Id.Value,
             participant.Location.Point,
-            participant.Author.Avatar.Name,
-            pictureUrl.NullIfEmpty(),
-            avatarKey.NullIfEmpty());
-    }
+            participant.Author,
+            UrlMapper);
 
     private static MapMarker ToOwnMarker(GeoPoint point)
         => new("own-location", point, IsOwnLocation: true);
