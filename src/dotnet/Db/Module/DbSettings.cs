@@ -10,4 +10,5 @@ public sealed class DbSettings
     public bool ShouldMigrateDb { get; set; } = true;
     public bool ShouldRepairDb { get; set; } = true;
     public bool ShouldVerifyDb { get; set; } = true;
+    public bool UseRedisNotifications { get; set; } = false;
 }
