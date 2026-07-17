@@ -64,7 +64,7 @@
     @apply w-52;
 }
 .share-location-modal .c-map-type-menu {
-    @apply right-2 top-[62px];
+    @apply right-2 top-[3.875rem];
     @apply w-40;
 }
 .share-location-modal .c-menu .c-menu-item {

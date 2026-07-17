@@ -9,7 +9,7 @@
 }
 .map-view .map-marker .c-pin {
     @apply relative;
-    @apply w-8 h-[50px];
+    @apply w-9 h-[3.25rem];
 }
 .map-view .map-marker .c-bubble {
     @apply absolute top-0 left-0;
@@ -19,7 +19,7 @@
 }
 .map-view .map-marker .c-avatar {
     @apply block;
-    @apply w-7 h-7;
+    @apply w-8 h-8;
     @apply rounded-full;
     @apply object-cover;
 }

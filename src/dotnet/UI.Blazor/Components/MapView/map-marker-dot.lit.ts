@@ -6,8 +6,8 @@ export class MapMarkerDot extends LitElement {
     static styles = css`
         :host {
             display: block;
-            width: 16px;
-            height: 16px;
+            width: 1rem;
+            height: 1rem;
         }
         svg {
             display: block;
