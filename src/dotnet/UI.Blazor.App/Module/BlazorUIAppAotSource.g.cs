@@ -242,7 +242,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.PlainTextMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.PlayableTextMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.PreformattedTextMarkupView>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.SpoilerMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.StylizedMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.UnknownMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.UrlMarkupView>();
@@ -375,7 +374,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareLinkBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareLocationModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SpoilerFilterDefs>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StatusBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StopListeningCountdownButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StreamingEntryBadge>();
@@ -952,7 +950,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.PlainTextMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.PlayableTextMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.PreformattedTextMarkupView), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.SpoilerMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.StylizedMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.UnknownMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.UrlMarkupView), AotTypeKind.Component),
@@ -1085,7 +1082,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareLinkBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareLocationModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.SpoilerFilterDefs), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StatusBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StopListeningCountdownButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StreamingEntryBadge), AotTypeKind.Component),
