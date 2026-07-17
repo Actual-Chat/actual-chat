@@ -54,10 +54,11 @@ async function openChat(page: Page) {
 
 async function startShare(page: Page, label: string) {
     await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
-    await page.locator('text=Share location').first().click({ force: true });
+    await page.locator('.ac-menu-item:has-text("Location")').first().click({ force: true });
     const modal = page.locator('.share-location-modal').first();
     await modal.waitFor({ state: 'visible', timeout: 10_000 });
-    await modal.locator(`button:has-text("${label}")`).first().click();
+    await modal.locator('.c-share-live').first().click();
+    await modal.locator(`.c-duration-menu .c-menu-item:has-text("${label}")`).first().click();
 }
 
 describe('multi-user location sharing', () => {
