@@ -119,11 +119,14 @@ public sealed class DbModule(IServiceProvider moduleServices)
                 operations.ConfigureOperationLogTrimmer(_ => new() {
                     MaxEntryAge = TimeSpan.FromMinutes(30),
                 });
-                // operations.AddNpgsqlOperationLogChangeTracking();
-                operations.AddRedisOperationLogWatcher();
+                if (Settings.UseRedisNotifications)
+                    operations.AddRedisOperationLogWatcher();
+                else if (dbKind == DbKind.PostgreSql)
+                    operations.AddNpgsqlOperationLogWatcher();
                 // NOTE(DF):
                 // During tests execution for entire test fixture I often bump into a situation when tests fail.
-                // Usually this happens on awaiting that computed value will match the condition with using `ComputedTest.When`.
+                // Usually this happens on awaiting that computed value will match the condition
+                // with using `ComputedTest.When`.
                 // But it fails when the default timeout is used.
                 // After examining log files, I found that events processing can be delayed for more than 5 seconds.
                 // So it seems that sometimes event log reader doesn't kick in on time sometimes,
