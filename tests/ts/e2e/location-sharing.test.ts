@@ -17,7 +17,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding, screenshot,
+    BASE_URL, clearBrowserCache, connectBrowser, ensureSignedIn, skipOnboarding, screenshot,
     waitForChatReady, waitForEditor, type BrowserConnection,
 } from './helpers';
 
@@ -42,6 +42,7 @@ describe('location sharing', () => {
         await conn.context.grantPermissions(['geolocation'], { origin: BASE_URL });
         await conn.context.setGeolocation(START);
         page = await conn.context.newPage();
+        await clearBrowserCache(page);
         page.on('pageerror', e => console.log('PAGEERROR:', e.message));
         page.on('console', m => {
             if (m.type() === 'error')
@@ -74,12 +75,13 @@ describe('location sharing', () => {
 
         // act — open the "+" menu and start a share
         await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
-        await page.locator('text=Share location').first().click({ force: true });
+        await page.locator('.ac-menu-item:has-text("Location")').first().click({ force: true });
 
         const modal = page.locator('.share-location-modal').first();
         await modal.waitFor({ state: 'visible', timeout: 10_000 });
         await page.screenshot({ path: shot('loc-modal') });
-        await modal.locator('button:has-text("15 min")').first().click();
+        await modal.locator('.c-share-live').first().click();
+        await modal.locator('.c-duration-menu .c-menu-item:has-text("15 minutes")').first().click();
 
         // assert — the chat banner reflects the active share
         const banner = page.locator('.live-location-banner').first();
@@ -156,7 +158,7 @@ describe('location sharing', () => {
 
         // act — open the "+" menu and send the current location once
         await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
-        await page.locator('text=Share location').first().click({ force: true });
+        await page.locator('.ac-menu-item:has-text("Location")').first().click({ force: true });
 
         const modal = page.locator('.share-location-modal').first();
         await modal.waitFor({ state: 'visible', timeout: 10_000 });
@@ -165,13 +167,19 @@ describe('location sharing', () => {
         const tileLoaded = page.waitForResponse(
             r => TILE_URL_RE.test(r.url()) && r.ok(),
             { timeout: 20_000 });
-        await modal.locator('button:has-text("Send current location")').first().click();
+        await modal.locator('.c-send-current').first().click();
 
         // assert — a one-shot location message appears in the chat stream with an inline map marker
         const locationMessage = page.locator('.location-message').last();
         await locationMessage.waitFor({ state: 'visible', timeout: 20_000 });
         const marker = locationMessage.locator('.maplibregl-marker').first();
         await marker.waitFor({ state: 'visible', timeout: 15_000 });
+
+        // assert — the marker is the avatar bubble (sender's avatar inside the circle),
+        // not the generic no-avatar pin (#4057)
+        await marker.locator('map-marker-bubble .c-avatar').first()
+            .waitFor({ state: 'visible', timeout: 15_000 });
+        expect(await marker.locator('map-marker-pin').count()).toBe(0);
 
         // assert — the inline map actually paints real tiles (not blank)
         const tileResp = await tileLoaded;
@@ -232,11 +240,12 @@ describe('location sharing', () => {
             await conn.context.setGeolocation(START);
 
             await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
-            await page.locator('text=Share location').first().click({ force: true });
+            await page.locator('.ac-menu-item:has-text("Location")').first().click({ force: true });
 
             const modal = page.locator('.share-location-modal').first();
             await modal.waitFor({ state: 'visible', timeout: 10_000 });
-            await modal.locator(`button:has-text("${label}")`).first().click();
+            await modal.locator('.c-share-live').first().click();
+            await modal.locator(`.c-duration-menu .c-menu-item:has-text("${label}")`).first().click();
 
             // assert — the banner reflects the active share for this duration, and appears promptly.
             // The report loop must wait for the tracker's first fix before its first cycle; if it runs

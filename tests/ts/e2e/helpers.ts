@@ -9,11 +9,14 @@ export const TEST_OTP = '111111';
 
 export function loadBaseUrl(): string {
     const fromEnv = process.env.HostSettings__BaseUri;
-    if (fromEnv) return fromEnv;
+    if (fromEnv)
+        return fromEnv;
+
     const envPath = path.resolve(process.cwd(), '.env');
     if (fs.existsSync(envPath)) {
         const match = /^HostSettings__BaseUri=(.+)$/m.exec(fs.readFileSync(envPath, 'utf-8'));
-        if (match) return match[1].trim();
+        if (match)
+            return match[1].trim();
     }
     return 'https://local.voxt.ai';
 }
@@ -44,12 +47,16 @@ export async function connectBrowser(): Promise<BrowserConnection> {
 
     if (mode === 'cdp') {
         const conn = await tryCdp();
-        if (!conn) throw new Error('AC_E2E_BROWSER=cdp but Chrome CDP is not reachable');
+        if (!conn)
+            throw new Error('AC_E2E_BROWSER=cdp but Chrome CDP is not reachable');
+
         return conn;
     }
 
     const conn = await tryCdp();
-    if (conn) return conn;
+    if (conn)
+        return conn;
+
     console.log('CDP not available, falling back to headless Chromium');
     return launchHeadless();
 }
@@ -106,6 +113,16 @@ async function launchHeadless(): Promise<BrowserConnection> {
         }
         throw e;
     }
+}
+
+// Chrome may cache broken asset responses (empty MIME type) from a server-down window,
+// which then break every page load until the cache is cleared. No-op on non-CDP browsers.
+export async function clearBrowserCache(page: Page) {
+    try {
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send('Network.clearBrowserCache');
+        await cdp.detach();
+    } catch { /* non-Chromium or CDP unavailable */ }
 }
 
 /** Wait past the #web-splash overlay until any Blazor landmark is visible. */
@@ -178,6 +195,7 @@ export async function dismissCookieConsent(page: Page, timeout = 10_000) {
     } catch {
         return;
     }
+
     await btn.click();
     // Wait for the banner to disappear before returning so it doesn't intercept
     // the next click (cookies-accepted entry points have no .cookie-settings wrapper).
@@ -188,7 +206,8 @@ export async function dismissCookieConsent(page: Page, timeout = 10_000) {
 
 export async function skipOnboarding(page: Page) {
     await page.evaluate(() => {
-        /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+        /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment,
+           @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
         const debugUI = (window as any).debugUI;
         if (debugUI) {
             debugUI.resetOnboarding(false);
@@ -199,12 +218,15 @@ export async function skipOnboarding(page: Page) {
             (el as HTMLElement).style.display = 'none';
             (el as HTMLElement).style.pointerEvents = 'none';
         });
-        /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+        /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment,
+           @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
     });
     // Reset is async — modal/bubbles may still render briefly; footer text varies per step.
     for (let i = 0; i < 20; i++) {
         const onboardingModal = page.locator('[id^="Modal-OnboardingModal"]').first();
-        const bubbleBtn = page.locator('.bubble-buttons button:has-text("Skip"), .bubble-buttons button:has-text("Ok")').first();
+        const bubbleBtn = page
+            .locator('.bubble-buttons button:has-text("Skip"), .bubble-buttons button:has-text("Ok")')
+            .first();
 
         if (await onboardingModal.isVisible().catch(() => false)) {
             const footerBtn = onboardingModal.locator(
@@ -244,7 +266,8 @@ export async function skipOnboarding(page: Page) {
                 break;
             }
         }
-        if (!reappeared) return;
+        if (!reappeared)
+            return;
     }
 }
 
