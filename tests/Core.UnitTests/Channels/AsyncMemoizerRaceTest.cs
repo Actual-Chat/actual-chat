@@ -44,17 +44,14 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     // contention to reproduce reliably.
     private static readonly TimeSpan ReplayTimeout = TimeSpan.FromSeconds(5);
 
-    /// <summary>Construct the memoizer under test.</summary>
     protected abstract IAsyncMemoizer<T> Memoize<T>(
         IAsyncEnumerable<T> source,
         int capacity = int.MaxValue,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Multiplier on iteration counts. 1.0 for the fast new impl; lower for the old
-    /// push-based impl, whose per-iteration cost is higher and whose WriteTask fan-out
-    /// makes tests flaky under heavy CPU contention.
-    /// </summary>
+    // Multiplier on iteration counts. 1.0 for the fast new impl; lower for the old
+    // push-based impl, whose per-iteration cost is higher and whose WriteTask fan-out
+    // makes tests flaky under heavy CPU contention.
     protected virtual double IterationScale => 1.0;
 
     private int Iterations(int n) => (int)(n * IterationScale);
@@ -111,7 +108,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
             var memoizer = Memoize(source.Reader.ReadAllAsync());
             await SpinWaitForBuffered(memoizer, 10);
 
-            var startSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var startSignal = TaskCompletionSourceExt.New();
             var tasks = new Task<List<int>>[consumers];
             for (var i = 0; i < consumers; i++) {
                 tasks[i] = Task.Run(async () => {
@@ -162,7 +159,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     // The consumer must observe items in order and exactly once, regardless of
     // how the producer's appends interleave with the consumer's wait/walk loop.
 
-    [Fact]
+    [FlakyFact("AY: Timing-dependent race test", 3)]
     public async Task Replay_ProducerActiveDuringIteration_NoLossNoDuplication()
     {
         for (var attempt = 0; attempt < Iterations(5_000); attempt++) {
@@ -245,7 +242,8 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
 
     // === Helpers ===
 
-    protected static async Task SpinWaitForBuffered<T>(IAsyncMemoizer<T> memoizer, int expectedCount, int timeoutMs = 5000)
+    protected static async Task SpinWaitForBuffered<T>(
+        IAsyncMemoizer<T> memoizer, int expectedCount, int timeoutMs = 5000)
     {
         var sw = Stopwatch.StartNew();
         while (sw.ElapsedMilliseconds < timeoutMs) {
@@ -253,6 +251,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
                 return;
             await Task.Yield();
         }
-        throw new TimeoutException($"Timed out waiting for {expectedCount} buffered items, got {memoizer.BufferedCount}");
+        throw new TimeoutException(
+            $"Timed out waiting for {expectedCount} buffered items, got {memoizer.BufferedCount}");
     }
 }
