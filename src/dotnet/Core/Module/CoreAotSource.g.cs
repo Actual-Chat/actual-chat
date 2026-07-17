@@ -36,6 +36,7 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchMatchPart>();
         CodeKeeper.KeepSerializable<global::ActualChat.Security.DecryptedSecureToken>();
         CodeKeeper.KeepSerializable<global::ActualChat.Security.SecureToken>();
+        CodeKeeper.KeepSerializable<global::ActualChat.ShardKey>();
 
         // Framework types referenced by BCL / runtime code paths
         CodeKeeper.Keep<global::System.ArraySegment<byte>>();
@@ -112,6 +113,9 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Security.SecureToken>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Security.SecureToken>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Security.SecureToken>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ShardKey>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ShardKey>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ShardKey>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Fusion.Session>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Fusion.Session>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Fusion.Session>>>>();
@@ -217,6 +221,7 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Media_Size2DFormatter1, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_ShardKeyFormatter2, MessagePack.Resolvers.DynamicObjectResolver");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Search.SearchMatchPart, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.Type, System.Private.CoreLib]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.ValueTuple`2[[System.String, System.Private.CoreLib],[System.Byte[], System.Private.CoreLib]], System.Private.CoreLib]], MessagePack");
@@ -280,5 +285,6 @@ internal partial class CoreAotSource : IAotSource
             (typeof(global::ActualChat.Search.SearchMatchPart), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Security.DecryptedSecureToken), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Security.SecureToken), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.ShardKey), AotTypeKind.Serializable),
         ];
 }
