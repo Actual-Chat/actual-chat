@@ -6,7 +6,7 @@
     var showOwnDot = m.OwnPoint is not null;
     var markers = m.Participants
         .Where(p => !(showOwnDot && p.IsOwn))
-        .Select(ToMapMarker)
+        .Select(p => p.MapMarker)
         .ToList();
     if (m.OwnPoint is { } ownPoint)
         markers.Add(ToOwnMarker(ownPoint));
@@ -81,9 +81,6 @@
 
     private Task OnParticipantClick(LocationParticipant participant)
         => _mapView?.FlyTo(participant.Location.Point).AsTask() ?? Task.CompletedTask;
-
-    private MapMarker ToMapMarker(LocationParticipant participant)
-        => LocationUI.ToMapMarker(participant.Location, participant.Author);
 
     private static MapMarker ToOwnMarker(GeoPoint point)
         => new("own-location", point, IsOwnLocation: true);
