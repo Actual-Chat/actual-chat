@@ -1,6 +1,8 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
+public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService, ILiveLocalizer
 {
     private readonly ILruCache<ChatId, Unit> _mustSuggestTranslationCache;
 
@@ -8,9 +10,26 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
         => _mustSuggestTranslationCache = new ThreadSafeLruCache<ChatId, Unit>(50, evictionHandler: InvalidateMustSuggestCache);
 
     private ThrottledTranslations Translations => field ??= Hub.Services.GetRequiredService<ThrottledTranslations>();
+    private ITranslations Translator => Hub.Translations;
     private ChatUI ChatUI => Hub.ChatUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private AuthorUI AuthorUI => Hub.AuthorUI;
+
+    public async Task<string> Localize(string message, CancellationToken cancellationToken = default)
+    {
+        // Localizes server-composed message text (error/exception messages that cross RPC) into the
+        // device UI language via AI translation; dedup/caching handled by the compute cache behind
+        // ITranslations.TranslateText.
+        if (message.IsNullOrWhiteSpace())
+            return message;
+
+        var language = await LanguageUI.UILanguage.Use(cancellationToken).ConfigureAwait(false);
+        if (language.IsAnyEnglish)
+            return message;
+
+        var translated = await Translator.TranslateText(Session, message, language, cancellationToken).ConfigureAwait(false);
+        return translated.NullIfEmpty() ?? message;
+    }
 
     [ComputeMethod]
     public virtual async Task<bool> IsSubHeaderVisible(ChatId chatId, CancellationToken cancellationToken = default)
