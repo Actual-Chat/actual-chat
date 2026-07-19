@@ -49,7 +49,6 @@
 
 @code {
     private ISharedLocations SharedLocations => Hub.SharedLocations;
-    private IAuthors Authors => Hub.Authors;
     private LocationUI LocationUI => Hub.LocationUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
@@ -63,7 +62,6 @@
             });
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        // TODO: extract LocationUI.GetMapMarker(locationId)
         if (Entry.LocationId is not { } locationId)
             return null;
 
@@ -72,10 +70,8 @@
         if (location is null)
             return null;
 
-        var author = await Authors.Get(Session, Entry.ChatId, Entry.AuthorId, cancellationToken).ConfigureAwait(false);
-        var marker = author is null
-            ? new MapMarker(location.Id.Value, location.Point)
-            : MapMarker.ForAuthor(location.Id.Value, location.Point, author, UrlMapper);
+        var marker = await LocationUI.GetMapMarker(Entry.ChatId, locationId, cancellationToken).ConfigureAwait(false)
+            ?? new MapMarker(location.Id.Value, location.Point);
         var trackingError = await LocationUI.GetTrackingError(Entry.ChatId, cancellationToken).ConfigureAwait(false);
         return new Model(
             location.Point,

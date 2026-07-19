@@ -19,7 +19,7 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
             StateCategories.Get(GetType(), nameof(Error)));
     }
 
-    public abstract Task<GeoPoint?> Get(CancellationToken cancellationToken);
+    public abstract Task<GeoPoint?> Get(bool force = false, CancellationToken cancellationToken = default);
     public abstract Task Start(CancellationToken cancellationToken);
     public abstract Task Stop(CancellationToken cancellationToken);
 

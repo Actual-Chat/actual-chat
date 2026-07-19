@@ -27,7 +27,10 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         => ListParticipants(chatId, null, cancellationToken);
 
     [ComputeMethod]
-    public virtual async Task<IReadOnlyList<LocationParticipant>> ListParticipants(ChatId chatId, SharedLocationId? locationId, CancellationToken cancellationToken)
+    public virtual async Task<IReadOnlyList<LocationParticipant>> ListParticipants(
+        ChatId chatId,
+        SharedLocationId? locationId,
+        CancellationToken cancellationToken)
     {
         var locations = await GetLocations().ConfigureAwait(false);
         if (locations.Count == 0)
@@ -47,21 +50,24 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             if (locationId is null)
                 return await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
 
-            var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken).ConfigureAwait(false);
+            var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken)
+                .ConfigureAwait(false);
             if (location is null)
                 return [];
 
             if (location.Duration == TimeSpan.Zero)
                 return [location];
 
-            var liveLocations = await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+            var liveLocations = await SharedLocations.ListLive(Session, chatId, cancellationToken)
+                .ConfigureAwait(false);
             return liveLocations.Any(x => x.Id == locationId)
                 ? liveLocations
                 : [location, ..liveLocations];
         }
 
         async Task<LocationParticipant?> GetParticipant(SharedLocation sharedLocation) {
-            var author = await Authors.Get(Session, sharedLocation.ChatId, sharedLocation.AuthorId, cancellationToken).ConfigureAwait(false);
+            var author = await Authors.Get(Session, sharedLocation.ChatId, sharedLocation.AuthorId, cancellationToken)
+                .ConfigureAwait(false);
             if (author is null)
                 return null;
 
@@ -119,8 +125,40 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        var locations = await SharedLocations.ListLive(Session, authorId.ChatId, cancellationToken).ConfigureAwait(false);
+        var locations = await SharedLocations.ListLive(Session, authorId.ChatId, cancellationToken)
+            .ConfigureAwait(false);
         return locations.FirstOrDefault(x => x.AuthorId == authorId);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<MapMarker?> GetMapMarker(
+        ChatId chatId,
+        SharedLocationId locationId,
+        CancellationToken cancellationToken)
+    {
+        var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken)
+            .ConfigureAwait(false);
+        if (location is null)
+            return null;
+
+        var author = await Authors.Get(Session, chatId, location.AuthorId, cancellationToken).ConfigureAwait(false);
+        return author is null
+            ? new MapMarker(location.Id.Value, location.Point)
+            : ToMapMarker(location, author);
+    }
+
+    public MapMarker ToMapMarker(SharedLocation location, Author author)
+    {
+        var pictureUrl = author.Avatar.Picture is { } picture ? UrlMapper.PicturePreview128Url(picture) : "";
+        var avatarKey = pictureUrl.IsNullOrEmpty()
+            ? (author.Avatar.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(author.Id.Value)
+            : "";
+        return new MapMarker(
+            location.Id.Value,
+            location.Point,
+            author.Avatar.Name,
+            pictureUrl.NullIfEmpty(),
+            avatarKey.NullIfEmpty());
     }
 
     [ComputeMethod]
@@ -147,7 +185,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
     public async Task SendCurrentLocation(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (await Tracker.Get(cancellationToken).ConfigureAwait(false) is not { } point)
+        if (await Tracker.Get(force: true, cancellationToken).ConfigureAwait(false) is not { } point)
             return;
 
         var change = Change.Create(new SharedLocationDiff { Point = point, LiveDuration = TimeSpan.Zero });
@@ -163,4 +201,5 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 }
 
+// TODO: add MapMarker
 public sealed record LocationParticipant(SharedLocation Location, Author Author, bool IsOwn);
