@@ -72,7 +72,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
                 return null;
 
             var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
-            return new LocationParticipant(sharedLocation, author, isOwn);
+            return new LocationParticipant(sharedLocation, author, isOwn, ToMapMarker(sharedLocation, author));
         }
     }
 
@@ -147,20 +147,6 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             : ToMapMarker(location, author);
     }
 
-    public MapMarker ToMapMarker(SharedLocation location, Author author)
-    {
-        var pictureUrl = author.Avatar.Picture is { } picture ? UrlMapper.PicturePreview128Url(picture) : "";
-        var avatarKey = pictureUrl.IsNullOrEmpty()
-            ? (author.Avatar.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(author.Id.Value)
-            : "";
-        return new MapMarker(
-            location.Id.Value,
-            location.Point,
-            author.Avatar.Name,
-            pictureUrl.NullIfEmpty(),
-            avatarKey.NullIfEmpty());
-    }
-
     [ComputeMethod]
     public virtual async Task<GeoTrackingError?> GetTrackingError(
         ChatId chatId,
@@ -199,7 +185,22 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         var command = new Chats_UpsertEntry(Session, chatId, null) { LocationId = shared.Id };
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
+
+    // Private methods
+
+    private MapMarker ToMapMarker(SharedLocation location, Author author)
+    {
+        var pictureUrl = author.Avatar.Picture is { } picture ? UrlMapper.PicturePreview128Url(picture) : "";
+        var avatarKey = pictureUrl.IsNullOrEmpty()
+            ? (author.Avatar.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(author.Id.Value)
+            : "";
+        return new MapMarker(
+            location.Id.Value,
+            location.Point,
+            author.Avatar.Name,
+            pictureUrl.NullIfEmpty(),
+            avatarKey.NullIfEmpty());
+    }
 }
 
-// TODO: add MapMarker
-public sealed record LocationParticipant(SharedLocation Location, Author Author, bool IsOwn);
+public sealed record LocationParticipant(SharedLocation Location, Author Author, bool IsOwn, MapMarker MapMarker);
