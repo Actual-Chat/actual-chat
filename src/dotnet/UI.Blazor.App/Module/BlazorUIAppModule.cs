@@ -15,6 +15,7 @@ using ActualChat.UI.Blazor.App.Testing;
 using ActualChat.UI.Blazor.App.Resources;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Fusion.UI;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
 
@@ -30,6 +31,12 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // Localization: custom JSON-based localizer (InvariantGlobalization rules out the standard .resx one)
         services.AddScoped<IStringLocalizer<Strings>, AppStringLocalizer>();
         services.AddScoped<IStringLocalizer>(c => c.GetRequiredService<IStringLocalizer<Strings>>());
+        services.AddScoped<ILiveLocalizer>(c => new LiveLocalizer(c.AppUIHub()));
+        // Replaces the base UIActionFailureTracker (registered by fusion.AddBlazor) with one that
+        // localizes failure messages before publishing them.
+        services.AddScoped<UIActionFailureTracker>(c => new
+            LocalizingUIActionFailureTracker(
+            c.GetRequiredService<UIActionFailureTracker.Options>(), c));
 
         var fusion = services.AddFusion();
 

@@ -57,6 +57,21 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return translation;
     }
 
+    // [ComputeMethod]
+    public virtual async Task<string?> GetTextTranslation(string text, Language language, CancellationToken cancellationToken)
+    {
+        // The translation runs inline; the Fusion compute cache (this method is sharded by text, so each
+        // distinct string is owned by a single node) dedups it globally at runtime. No persistence: a
+        // restart re-translates, which is cheap for this small set of short strings.
+        if (!Settings.IsTranslationEnabled || text.IsNullOrWhiteSpace() || language.IsAnyEnglish)
+            return null;
+        if (text.Length > Constants.Translation.MaxTextTranslationLength)
+            return null;
+
+        var translated = await Translator.Translate(text, language, [], cancellationToken).ConfigureAwait(false);
+        return translated.NullIfEmpty();
+    }
+
     // Not a [ComputeMethod]!
     public virtual async Task<ApiArray<Translation>> ListHanging(ThisNodeRef nodeRef, int limit, CancellationToken cancellationToken)
     {

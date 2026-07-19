@@ -436,6 +436,7 @@ public static partial class Constants
         public const string ServiceKey = nameof(Translation);
         public const string RealtimeServiceKey = $"{nameof(Translation)}Realtime";
         public const string NoTranslationNeededText = "NO_TRANSLATION_NEEDED";
+        public const int MaxTextTranslationLength = 1024;
     }
 
     public static class LanguageDetection
