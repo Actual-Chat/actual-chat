@@ -43,6 +43,11 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
         await DisposeWatch().ConfigureAwait(false);
     }
 
+    public override Task<GeoPoint?> Get(bool force = false, CancellationToken cancellationToken = default)
+        => _hub.JS
+            .InvokeAsync<GeoPoint?>(JSGetCurrentMethod, cancellationToken, force)
+            .AsTask();
+
     [JSInvokable]
     public void OnLocation(double latitude, double longitude, double? accuracy, double? heading)
         => SetLocation(new GeoPoint(latitude, longitude, (float?)accuracy, (float?)heading));
@@ -58,6 +63,8 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
         SetError(error);
     }
 
+    // Private methods
+
     private async Task DisposeWatch()
     {
         IsTracking = false;
@@ -68,9 +75,4 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
         _blazorRef.DisposeSilently();
         _blazorRef = null;
     }
-
-    public override Task<GeoPoint?> Get(CancellationToken cancellationToken)
-        => _hub.JS
-            .InvokeAsync<GeoPoint?>(JSGetCurrentMethod, cancellationToken)
-            .AsTask();
 }

@@ -45,21 +45,12 @@
 
 @code {
     private MapView? _mapView;
-    // TODO: remove and use Get(bool force = false) instead as described below
-    private MutableState<GeoPoint?> _currentLocation = null!;
 
     private ILocationTracker Tracker => Hub.LocationTracker;
     private LocationUI LocationUI => Hub.LocationUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    protected override void OnInitialized() {
-        _currentLocation = StateFactory.NewMutable(
-            (GeoPoint?)null,
-            StateCategories.Get(GetType(), nameof(_currentLocation)));
-        _ = FetchCurrentLocation();
-    }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -78,28 +69,21 @@
 
         var ownLocation = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
         var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
-        var currentPoint = await _currentLocation.Use(cancellationToken).ConfigureAwait(false);
-        var ownPoint = livePoint ?? ownLocation?.Point ?? currentPoint;
+        var ownPoint = livePoint
+            ?? ownLocation?.Point
+            ?? await Tracker.Get(cancellationToken: cancellationToken).ConfigureAwait(false);
         var clicked = ModalModel.LocationId is { } id ? participants.FirstOrDefault(x => x.Location.Id == id) : null;
         var center = clicked?.Location ?? ownLocation ?? participants[0].Location;
         return new ComputedModel(participants, ownPoint, center.Point);
     }
 
-    private async Task FetchCurrentLocation() {
-        // TODO: maybe Get could accept bool force? Then we could omit _currentLocation state field at all, we could use ComputeState
-        if (await Tracker.Get(default).ConfigureAwait(false) is { } point)
-            _currentLocation.Value = point;
-    }
+    // Private methods
 
     private Task OnParticipantClick(LocationParticipant participant)
         => _mapView?.FlyTo(participant.Location.Point).AsTask() ?? Task.CompletedTask;
 
     private MapMarker ToMapMarker(LocationParticipant participant)
-        => MapMarker.ForAuthor(
-            participant.Location.Id.Value,
-            participant.Location.Point,
-            participant.Author,
-            UrlMapper);
+        => LocationUI.ToMapMarker(participant.Location, participant.Author);
 
     private static MapMarker ToOwnMarker(GeoPoint point)
         => new("own-location", point, IsOwnLocation: true);

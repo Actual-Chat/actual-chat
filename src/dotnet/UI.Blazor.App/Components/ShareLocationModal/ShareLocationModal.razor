@@ -141,7 +141,7 @@
     // Private methods
 
     private async Task FetchCurrentLocation() {
-        if (await Tracker.Get(default).ConfigureAwait(false) is { } point)
+        if (await Tracker.Get(force: true).ConfigureAwait(false) is { } point)
             _currentLocation.Value = point;
     }
 
@@ -176,7 +176,7 @@
     }
 
     private async Task OnLocate() {
-        if (await Tracker.Get(CancellationToken.None).ConfigureAwait(true) is not { } point)
+        if (await Tracker.Get(force: true).ConfigureAwait(true) is not { } point)
             return;
 
         _currentLocation.Value = point;

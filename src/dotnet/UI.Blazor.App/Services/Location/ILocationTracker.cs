@@ -10,7 +10,7 @@ public interface ILocationTracker
     IState<GeoPoint?> LastKnown { get; }
     IState<GeoTrackingError?> Error { get; }
 
-    Task<GeoPoint?> Get(CancellationToken cancellationToken);
+    Task<GeoPoint?> Get(bool force = false, CancellationToken cancellationToken = default);
     Task Start(CancellationToken cancellationToken);
     Task Stop(CancellationToken cancellationToken);
 }
