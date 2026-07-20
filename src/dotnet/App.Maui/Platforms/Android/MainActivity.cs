@@ -102,10 +102,6 @@ public partial class MainActivity : MauiAppCompatActivity
         using(Tracer.Region("Calling base.OnCreate"))
             base.OnCreate(Bundle.Empty);
 
-        // A full-screen incoming-call launch must surface over the lock screen.
-        if (Intent?.GetBooleanExtra(IncomingCallNotifications.FullScreenExtraKey, false) == true)
-            EnableShowWhenLocked();
-
         // base.OnCreate call hides native splash screen. Set NavigationBar color the same as web splash screen
         // background color to make it look like web splash screen covers the entire screen.
         var splashColor = MauiSettings.SplashBackgroundColor.ToArgbHex();
@@ -152,15 +148,8 @@ public partial class MainActivity : MauiAppCompatActivity
         Interlocked.CompareExchange(ref _current, null, this);
     }
 
-    // Shows the activity over the lock screen and wakes the screen for an incoming call.
-    public void EnableShowWhenLocked()
-    {
-        SetShowWhenLocked(true);
-        SetTurnScreenOn(true);
-    }
-
-    // Reverts the lock-screen behavior once the ring ends, so the app doesn't linger over the
-    // keyguard on later locks.
+    // Reverts any over-lock-screen behavior once the ring ends, so the app doesn't linger over the
+    // keyguard on later locks (e.g. after answering from the notification while locked).
     public void DisableShowWhenLocked()
     {
         SetShowWhenLocked(false);

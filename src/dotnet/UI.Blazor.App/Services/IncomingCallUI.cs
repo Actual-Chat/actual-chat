@@ -91,12 +91,13 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return new IncomingCall(live.ChatId, live.Host, live.Rules.VideoAllowed);
     }
 
-    public async Task Accept(ChatId chatId, bool withCamera = false)
+    public async Task Accept(ChatId chatId, bool withCamera = false, bool keepOverLockScreen = false)
     {
         var call = await GetRingingCall(chatId, default).ConfigureAwait(true);
         EndRing(chatId);
         if (call is null) {
-            _ = Bridge?.OnCallHandled(false);
+            if (!keepOverLockScreen)
+                _ = Bridge?.OnCallHandled(false);
             Hub.ToastUI.Show("Call ended", "icon-phone", ToastDismissDelay.Short);
             return;
         }
@@ -105,15 +106,17 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             await LiveSessionUI.AcceptCall(chatId, default).ConfigureAwait(true);
         }
         catch (Exception e) {
-            _ = Bridge?.OnCallHandled(false);
+            if (!keepOverLockScreen)
+                _ = Bridge?.OnCallHandled(false);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             Hub.ToastUI.Show("Call ended", "icon-phone", ToastDismissDelay.Short);
             return;
         }
 
-        // Dismisses the lock screen first: the audio foreground service can't be started from a
-        // background state, so recording waits until the screen is actually unlocked.
-        var canStartAudio = Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+        // keepOverLockScreen (hypothesis-3 test): don't dismiss the keyguard — start the audio while
+        // a call activity is visible over the lock screen and see whether the mic FGS is allowed.
+        // Otherwise dismiss first: normally the FGS can't start from a background state.
+        var canStartAudio = keepOverLockScreen || Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
         await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
         if (canStartAudio) {
             if (await Hub.AudioRecorder.MicrophonePermission.CheckOrRequest(CancellationToken.None).ConfigureAwait(true))

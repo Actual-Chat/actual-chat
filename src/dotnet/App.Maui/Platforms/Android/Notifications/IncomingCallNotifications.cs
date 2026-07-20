@@ -27,7 +27,9 @@ public static class IncomingCallNotifications
     public static string DeclineAction => Context.PackageName + ".IncomingCall.Decline";
     public static string AcceptExtraKey => Context.PackageName + ".IncomingCall.Accept";
     public static string ChatIdExtraKey => Context.PackageName + ".IncomingCall.ChatId";
-    public static string FullScreenExtraKey => Context.PackageName + ".IncomingCall.FullScreen";
+    public static string CallerNameExtraKey => Context.PackageName + ".IncomingCall.CallerName";
+    public static string CallTextExtraKey => Context.PackageName + ".IncomingCall.CallText";
+    public static string ImageUrlExtraKey => Context.PackageName + ".IncomingCall.ImageUrl";
 
     public static string CallTag(ChatId chatId)
         => Constants.Notification.CallTagPrefix + chatId.Value;
@@ -68,9 +70,15 @@ public static class IncomingCallNotifications
             NotificationHelper.RequestCodeProvider.IncrementAndGet(),
             declineIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
-        var fullScreenIntent = NotificationHelper.CreateViewIntent(Context, link)!;
+        // The full-screen intent opens a minimal native call screen (over the lock screen / when
+        // the screen is off) instead of booting the whole Blazor app; on an unlocked screen it
+        // degrades to a heads-up banner.
+        var fullScreenIntent = new Intent(Context, typeof(IncomingCallActivity));
+        fullScreenIntent.AddFlags(ActivityFlags.NewTask | ActivityFlags.NoUserAction);
         fullScreenIntent.PutExtra(ChatIdExtraKey, chatId.Value);
-        fullScreenIntent.PutExtra(FullScreenExtraKey, true);
+        fullScreenIntent.PutExtra(CallerNameExtraKey, data.Title ?? "");
+        fullScreenIntent.PutExtra(CallTextExtraKey, data.Body ?? "");
+        fullScreenIntent.PutExtra(ImageUrlExtraKey, data.ImageUrl ?? "");
         var fullScreenPendingIntent = PendingIntent.GetActivity(Context,
             NotificationHelper.RequestCodeProvider.IncrementAndGet(),
             fullScreenIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);

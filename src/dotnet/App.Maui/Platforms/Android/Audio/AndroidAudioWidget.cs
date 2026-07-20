@@ -8,7 +8,9 @@ public class AndroidAudioWidget : AudioWidget
 {
     private static volatile AndroidAudioWidget? _instance;
     private static volatile bool _isShown;
+    private static ILogger? _log;
 
+    private static ILogger Log => _log ??= StaticLog.For(typeof(AndroidAudioWidget));
     private static Context Context => Platform.AppContext;
 
     public AndroidAudioWidget(AppUIHub hub) : base(hub)
@@ -52,9 +54,15 @@ public class AndroidAudioWidget : AudioWidget
         intent.PutExtra(IntentExtras.ChatPicUri, state.Chat.PicUrl);
         intent.PutExtra(IntentExtras.ExtraChatCount, state.Chat.ExtraChatCount);
         intent.PutExtra(IntentExtras.IsPaused, state.IsPaused);
-        context.StartForegroundService(intent);
-        AndroidAudioWidgetForegroundService.OnStartRequested();
-        _isShown = true;
+        try {
+            context.StartForegroundService(intent);
+            AndroidAudioWidgetForegroundService.OnStartRequested();
+            _isShown = true;
+            Log.LogWarning("AudioWidget: StartForegroundService requested OK (mode={Mode})", state.Mode);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "AudioWidget: StartForegroundService FAILED (locked-FGS test, mode={Mode})", state.Mode);
+        }
     }
 
     private static void HideImpl()
