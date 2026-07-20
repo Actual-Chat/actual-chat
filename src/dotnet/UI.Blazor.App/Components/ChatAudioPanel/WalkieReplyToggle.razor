@@ -10,10 +10,14 @@
 </ButtonRound>
 
 @code {
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+
     private WalkieTalkieReplyUI WalkieTalkieReplyUI => Hub.WalkieTalkieReplyUI;
 
     [Parameter] public string Class { get; set; } = "";
 
     private void OnClick()
-        => _ = WalkieTalkieReplyUI.RequestReply(CancellationToken.None);
+        => _ = BackgroundTask.Run(
+            () => WalkieTalkieReplyUI.RequestReply(CancellationToken.None),
+            Log, "RequestReply failed", CancellationToken.None);
 }
