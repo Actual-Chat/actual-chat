@@ -1,11 +1,13 @@
 .location-map-modal .dialog-body {
+    @apply relative;
     @apply flex-y;
     @apply p-0;
 }
 .location-map-modal .c-map-host {
     @apply relative;
-    @apply w-full h-128 max-h-[55vh];
+    @apply w-full h-128 max-h-[70vh];
     @apply overflow-hidden;
+    @apply bg-03;
 }
 body.narrow .location-map-modal .c-map-host {
     @apply flex-1;
@@ -20,14 +22,38 @@ body.narrow .location-map-modal .c-map-host {
     @apply p-6;
     @apply text-center text-02;
 }
+.location-map-modal .c-map-host .btn.btn-round.c-close {
+    @apply absolute top-2 left-2;
+    @apply w-10 h-10;
+    background: var(--white-60);
+    color: var(--gray-05);
+}
+.location-map-modal .c-map-host .btn.btn-round.c-close i {
+    @apply text-2xl;
+}
+.location-map-modal .c-map-menu {
+    @apply absolute top-2 right-2;
+    @apply flex-x items-center gap-x-3;
+    @apply px-3 py-2;
+    @apply rounded-full;
+    background: var(--white-60);
+}
+.location-map-modal .c-map-menu .c-map-menu-item {
+    @apply flex;
+    color: var(--gray-05);
+}
+.location-map-modal .c-map-menu .c-map-menu-item i {
+    @apply text-2xl;
+}
 .location-map-modal .c-participants {
+    @apply absolute bottom-2 left-2 right-2 z-10;
     @apply flex-y;
     @apply max-h-60;
     @apply py-1;
+    @apply rounded-2xl;
     @apply overflow-y-auto;
-}
-body.narrow .location-map-modal .c-participants {
-    @apply shrink-0;
+    @apply bg-01;
+    box-shadow: 0 2px 6px var(--black-05);
 }
 .location-map-modal .c-participant {
     @apply flex-x items-center gap-x-3;
@@ -39,7 +65,7 @@ body.hoverable .location-map-modal .c-participant:hover,
     @apply bg-hover;
 }
 .location-map-modal .c-participant .c-info {
-    @apply flex-y;
+    @apply flex-y grow;
     @apply overflow-hidden;
 }
 .location-map-modal .c-participant .c-name {
@@ -53,4 +79,49 @@ body.hoverable .location-map-modal .c-participant:hover,
 .location-map-modal .c-participant .c-status {
     @apply truncate;
     @apply text-02 text-sm;
+}
+.location-map-modal .c-participant .c-menu-btn {
+    @apply flex;
+    @apply shrink-0;
+}
+.location-map-modal .c-participant .c-menu-btn i {
+    @apply text-xl text-03;
+}
+.location-map-modal .c-menu-backdrop {
+    @apply fixed inset-0 z-10;
+}
+.location-map-modal .c-menu {
+    @apply absolute z-20;
+    @apply flex-y;
+    @apply p-1;
+    @apply rounded-xl border border-separator;
+    @apply bg-01;
+    box-shadow: 0 2px 6px var(--black-05);
+}
+.location-map-modal .c-map-type-menu {
+    @apply right-2 top-[3.875rem];
+    @apply w-40;
+}
+.location-map-modal .c-menu .c-menu-item {
+    @apply flex-x items-center gap-x-4;
+    @apply h-12 shrink-0;
+    @apply px-3;
+    @apply rounded-lg;
+}
+.location-map-modal .c-menu .c-menu-item:disabled {
+    @apply opacity-40;
+}
+body.hoverable .location-map-modal .c-menu .c-menu-item:hover:not(:disabled),
+.touch-capable .location-map-modal .c-menu .c-menu-item:active:not(:disabled) {
+    @apply bg-hover;
+}
+.location-map-modal .c-menu .c-menu-item i {
+    @apply text-2xl text-03;
+}
+.location-map-modal .c-menu .c-menu-item span {
+    @apply grow text-left;
+    @apply text-headline-1 text-01;
+}
+.location-map-modal .c-menu .c-menu-item .c-check {
+    @apply text-xl text-primary;
 }

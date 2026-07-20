@@ -63,7 +63,7 @@
         @if (m.IsMapTypeMenuOpen) {
             <div class="c-menu-backdrop" @onclick="@OnCloseMapTypeMenu"></div>
             <div class="c-menu c-map-type-menu">
-                @foreach (var (type, label, icon, isSupported) in MapTypes) {
+                @foreach (var (type, label, icon, isSupported) in MapTypes.All) {
                     <button
                         type="button"
                         class="c-menu-item"
@@ -82,13 +82,6 @@
 </DialogFrame>
 
 @code {
-    // TODO: enable Satellite/Hybrid once the tile source has satellite imagery (openfreemap.org doesn't)
-    private static readonly (string Type, string Label, string Icon, bool IsSupported)[] MapTypes = [
-        ("map", "Map", "icon-map", true),
-        ("satellite", "Satellite", "icon-globe", false),
-        ("hybrid", "Hybrid", "icon-grid", false),
-    ];
-
     private MutableState<GeoPoint?> _currentLocation = null!;
     private MutableState<string> _mapType = null!;
     private MutableState<bool> _isMapTypeMenuOpen = null!;
@@ -106,7 +99,7 @@
             (GeoPoint?)null,
             StateCategories.Get(GetType(), nameof(_currentLocation)));
         _mapType = StateFactory.NewMutable(
-            MapTypes[0].Type,
+            MapTypes.All[0].Type,
             StateCategories.Get(GetType(), nameof(_mapType)));
         _isMapTypeMenuOpen = StateFactory.NewMutable(
             false,
