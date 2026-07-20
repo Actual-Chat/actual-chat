@@ -36,6 +36,8 @@ export enum Tune {
     DragStart,
     ChangeToggle,
     ClickButton,
+    WalkieReplyEnded,
+    WalkieReplyNothingHeard,
 }
 
 export type TuneName = keyof typeof Tune;
