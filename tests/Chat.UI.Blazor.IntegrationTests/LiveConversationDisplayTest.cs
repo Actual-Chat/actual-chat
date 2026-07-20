@@ -146,4 +146,38 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 .Select(i => ((IVirtualListItem)i).RenderKey)
                 .Should().OnlyHaveUniqueItems();
     }
+
+    [Fact]
+    public async Task GovernorLatchesInitialFoldBoundary()
+    {
+        // The first observation of a chat must latch to the raw fold end as-is - a fresh render
+        // starts fully folded, and only later advances go through the lag + viewport governor.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "Governor latch");
+        for (var i = 0; i < 5; i++)
+            await Tester.CreateTextEntry(chat.Id, $"entry {i}");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_090);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Latch", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3,
+            }, CancellationToken.None);
+
+        // act
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        var blockState = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
+
+        // assert
+        blockState.FoldBoundaryLid.Should().Be(v + 3);
+        blockState.Overlay.Should().BeNull();
+    }
 }

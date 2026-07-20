@@ -356,6 +356,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public void ToggleExpandConversation(ConversationId conversationId)
     {
+        // A closed live-block overlay intercepts its own toggle: collapsing it is "dismiss the
+        // frozen view", not an expansion override on the overlay's render id.
+        if (Hub.LiveBlockUI.TryCollapseOverlay(conversationId))
+            return;
+
         // Membership here flips a conversation's expansion away from its IsExpandedByDefault, so the
         // toggle works regardless of which default (expanded/collapsed) the conversation carries.
         var overrides = _conversationExpansionOverrides.Value;
@@ -368,6 +373,14 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public bool IsConversationExpanded(Conversation conversation)
         => conversation.IsExpandedByDefault ^ _conversationExpansionOverrides.Value.Contains(conversation.Id);
+
+    internal void EnsureConversationCollapsed(ConversationId conversationId, bool isExpandedByDefault)
+    {
+        var overrides = _conversationExpansionOverrides.Value;
+        _conversationExpansionOverrides.Value = isExpandedByDefault
+            ? overrides.Add(conversationId)
+            : overrides.Remove(conversationId);
+    }
 
     // Helpers
 
