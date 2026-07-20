@@ -1091,20 +1091,8 @@ public class NotificationsBackend(IServiceProvider services)
         }
     }
 
-    private async Task<bool> IsArmedForWalkieTalkie(UserId userId, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var kvas = ServerKvasBackend.ForUser(userId);
-        var alwaysListened = await kvas.UserListeningSettings()
-            .Get(x => x.AlwaysListenedChatIds, cancellationToken)
-            .ConfigureAwait(false);
-        if (alwaysListened.Contains(chatId))
-            return true;
-
-        var listeningMode = await kvas.ChatUserSettings(chatId)
-            .Get(x => x.ListeningMode, cancellationToken)
-            .ConfigureAwait(false);
-        return listeningMode == ListeningMode.Forever;
-    }
+    private Task<bool> IsArmedForWalkieTalkie(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+        => ServerKvasBackend.IsWalkieTalkieArmed(userId, chatId, cancellationToken);
 
     private static (ChatId? ChatId, long EntryLid) GetReadAnchor(Notification notification)
         => notification switch {
