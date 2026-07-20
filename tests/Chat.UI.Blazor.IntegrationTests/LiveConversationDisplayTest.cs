@@ -180,4 +180,396 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         blockState.FoldBoundaryLid.Should().Be(v + 3);
         blockState.Overlay.Should().BeNull();
     }
+
+    [Fact]
+    public async Task LeaveKeepsRenderedTailVisible()
+    {
+        // Hanging up must freeze the render, not collapse it - a reader mid-scroll must not jump.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "leave-freeze-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_100);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3,
+            }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        List<long> joinedLeafLids = null!;
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+            joinedLeafLids = LeafEntryLids(items);
+        }, TimeSpan.FromSeconds(10));
+
+        // act
+        await chatAudioUI.SetListeningState(chat.Id, false);
+        InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+
+        // assert - wait for the governor to actually latch the leave overlay, not just for a render
+        // that still coincidentally looks unchanged before the leave propagates
+        await ComputedTest.When(async ct => {
+            var blockState = await liveBlockUI.GetBlockState(chat.Id, ct);
+            blockState.Overlay.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(10));
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            LeafEntryLids(items).Should().Equal(joinedLeafLids);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task NewEntriesAfterLeaveStayHidden()
+    {
+        // The freeze must hold going forward too - a message posted after hang-up can't sneak in.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "leave-freeze-new-entries-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_110);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3,
+            }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+        await chatAudioUI.SetListeningState(chat.Id, false);
+        InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        // Wait for the governor to actually latch the leave overlay - a render that still
+        // coincidentally looks unchanged before the leave propagates would snapshot too early.
+        await ComputedTest.When(async ct => {
+            var blockState = await liveBlockUI.GetBlockState(chat.Id, ct);
+            blockState.Overlay.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(10));
+        List<long> frozenLeafLids = null!;
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+            frozenLeafLids = LeafEntryLids(items);
+        }, TimeSpan.FromSeconds(10));
+
+        // act
+        await Tester.CreateTextEntry(chat.Id, "posted after leave");
+
+        // assert (sustained - the new entry's lid must never surface)
+        await Task.Delay(1000);
+        var items2 = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+        LeafEntryLids(items2).Should().Equal(frozenLeafLids);
+    }
+
+    [Fact]
+    public async Task CloseKeepsRenderedItemsAndKey()
+    {
+        // Closing the call must not disturb a viewer who was watching it live - same rows, same @key.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "close-freeze-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_120);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        List<long> frozenLeafLids = null!;
+        string frozenRenderKey = null!;
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Single();
+            frozenLeafLids = LeafEntryLids(items);
+            frozenRenderKey = ((IVirtualListItem)block).RenderKey;
+        }, TimeSpan.FromSeconds(10));
+
+        // The two stream participants hang up - this only marks the session closing.
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+
+        // act
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var liveState = await liveBackend.GetState(chat.Id, ct);
+            liveState.Should().BeNull();
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            LeafEntryLids(items).Should().Equal(frozenLeafLids);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Single();
+            ((IVirtualListItem)block).RenderKey.Should().Be(frozenRenderKey);
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public async Task ToggleAfterCloseCollapsesBlock()
+    {
+        // Once closed, the reader can still manually collapse the frozen block - it just dismisses
+        // the overlay rather than acting as an ordinary expand/collapse toggle.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "close-toggle-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_130);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+        ConversationId blockConversationId = null!;
+        await ComputedTest.When(async ct => {
+            var liveState = await liveBackend.GetState(chat.Id, ct);
+            liveState.Should().BeNull();
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Single();
+            blockConversationId = block.Conversation!.Id;
+        }, TimeSpan.FromSeconds(15));
+
+        // act
+        chatUI.ToggleExpandConversation(blockConversationId);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().BeEmpty();
+            items.Items.OfType<ConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task FoldLagDefersMidCallFold()
+    {
+        // A fold must not land the instant its summary does - the lag gives the reader a beat
+        // before the entries it just covered disappear behind the card.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "fold-lag-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_140);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Latch", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3,
+            }, CancellationToken.None);
+        await Tester.CreateTextEntry(chat.Id, "extra-1");
+        await Tester.CreateTextEntry(chat.Id, "extra-2");
+
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        liveBlockUI.FoldLag = TimeSpan.FromSeconds(2);
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        List<long> beforeLids = null!;
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var lids = LeafEntryLids(items);
+            lids.Should().Contain(v + 3);
+            lids.Should().Contain(v + 4);
+            beforeLids = lids;
+        }, TimeSpan.FromSeconds(10));
+
+        // act - a summary pass advances coverage over the two new entries
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Latch", Description = "d2", Summary = "s2",
+                EndEntryLid = v + 4, MessageCount = 5,
+            }, CancellationToken.None);
+
+        // assert (sustained - nothing folds within the lag window)
+        await Task.Delay(700);
+        LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None)).Should().Equal(beforeLids);
+
+        // assert - after the lag the two newly covered entries fold
+        await ComputedTest.When(async ct => {
+            var lids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
+            lids.Should().NotContain(v + 3);
+            lids.Should().NotContain(v + 4);
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task ViewportGuardDefersFoldWhileVisible()
+    {
+        // The fold must defer while its entries are on screen and complete once they scroll away -
+        // even with zero lag, a visible entry can't vanish out from under the reader.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "viewport-guard-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_150);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Latch", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3,
+            }, CancellationToken.None);
+        await Tester.CreateTextEntry(chat.Id, "extra-1");
+        await Tester.CreateTextEntry(chat.Id, "extra-2");
+
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        liveBlockUI.FoldLag = TimeSpan.Zero;
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        List<long> beforeLids = null!;
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var lids = LeafEntryLids(items);
+            lids.Should().Contain(v + 3);
+            lids.Should().Contain(v + 4);
+            beforeLids = lids;
+        }, TimeSpan.FromSeconds(10));
+        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+            chat.Id,
+            new HashSet<ChatMessageKey> {
+                ChatMessageKey.New(ChatMessageKind.None, v + 3),
+                ChatMessageKey.New(ChatMessageKind.None, v + 4),
+            },
+            false);
+
+        // act 1 - a summary pass covers the visible entries, but the guard holds the fold
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Latch", Description = "d2", Summary = "s2",
+                EndEntryLid = v + 4, MessageCount = 5,
+            }, CancellationToken.None);
+        await Task.Delay(700);
+        LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None)).Should().Equal(beforeLids);
+
+        // act 2 - the entries scroll out of view, so the fold completes
+        chatUI.ItemVisibility.Value = ChatViewItemVisibility.Empty;
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var lids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
+            lids.Should().NotContain(v + 3);
+            lids.Should().NotContain(v + 4);
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    // Private methods
+
+    private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)
+    {
+        // ChatAudioUI.GetState reads ActiveChatsUI.ActiveChats.Value directly rather than reactively,
+        // so it only stays in sync via its own background worker (InvalidateActiveChatDependencies)
+        // explicitly invalidating it after a listening-state change - mirror that invalidation here so
+        // AmIInLiveConversation (and therefore the governor) reflects SetListeningState immediately,
+        // without depending on that worker's timing within this test's lifetime.
+        using (Invalidation.Begin())
+            _ = chatAudioUI.GetState(chatId);
+    }
+
+    private static List<long> LeafEntryLids(ChatItems items)
+        => items.Items
+            .SelectMany(i => i.GetLeafMessages())
+            .OfType<ChatEntryMessage>()
+            .Where(m => m.Kind == ChatMessageKind.None)
+            .Select(m => m.Id)
+            .ToList();
 }

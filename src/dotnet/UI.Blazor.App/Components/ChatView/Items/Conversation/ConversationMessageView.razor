@@ -145,6 +145,7 @@
     private IAuthors Authors => Hub.Authors;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private LiveBlockUI LiveBlockUI => Hub.LiveBlockUI;
     private TranscriptUI TranscriptUI => Hub.TranscriptUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private ClipboardUI ClipboardUI => ChatContext.Hub.ClipboardUI;
@@ -194,11 +195,11 @@
         var participantsText = isLive
             ? await GetParticipantsText(chatId, conversation.AuthorIds, cancellationToken).ConfigureAwait(true)
             : "";
-        // Pre-summary EndEntryLid still holds its session-creation value, so only LastSummaryAt proves a fold.
         var rawLive = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(true);
+        var blockState = await LiveBlockUI.GetBlockState(chatId, cancellationToken).ConfigureAwait(true);
         var hasFoldedEntries = isLive && !isVoiceOnly
-            && rawLive is { SessionStartedAt: not null, LastSummaryAt.EpochOffsetTicks: > 0 }
-            && rawLive.EndEntryLid >= rawLive.EffectiveVisibleStartLid;
+            && rawLive is { SessionStartedAt: not null }
+            && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
         var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
         var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
         // A joined viewer already reads the live tail below the card; an unjoined one has it hidden, so the
