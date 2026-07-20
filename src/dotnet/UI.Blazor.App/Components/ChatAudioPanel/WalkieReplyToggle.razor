@@ -1,0 +1,19 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+
+<ButtonRound
+    Class="@($"walkie-reply-btn {Class}")"
+    Click="@OnClick"
+    Tooltip="Walkie reply"
+    TooltipPosition="FloatingPosition.Top">
+    <i class="icon-talking text-2xl"></i>
+</ButtonRound>
+
+@code {
+    private WalkieTalkieReplyUI WalkieTalkieReplyUI => Hub.WalkieTalkieReplyUI;
+
+    [Parameter] public string Class { get; set; } = "";
+
+    private void OnClick()
+        => _ = WalkieTalkieReplyUI.RequestReply(CancellationToken.None);
+}
