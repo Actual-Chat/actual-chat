@@ -13,6 +13,8 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
     private LiveLocationReporter Reporter => field ??= Hub.Services.GetRequiredService<LiveLocationReporter>();
+    private LocationPermissionHandler LocationPermission
+        => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
     private IAuthors Authors => Hub.Authors;
     private ISharedLocations SharedLocations => Hub.SharedLocations;
     private LiveTime LiveTime => Hub.LiveTime;
@@ -113,6 +115,27 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
+    public virtual async Task<LocationCountdown?> GetCountdown(
+        ChatId chatId,
+        SharedLocationId locationId,
+        CancellationToken cancellationToken)
+    {
+        var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken)
+            .ConfigureAwait(false);
+        var now = Hub.Clocks.ServerClock.Now;
+        if (location is null || location.Duration == TimeSpan.Zero || !location.IsLive(now))
+            return null;
+
+        if (location.IsUnlimited)
+            return LocationCountdown.Unlimited;
+
+        var remaining = location.LiveUntil - now;
+        var delay = TimeSpanExt.Min(RemainingTextUpdatePeriod, remaining) + TimeSpan.FromMilliseconds(250);
+        Computed.GetCurrent().Invalidate(delay, false);
+        return new LocationCountdown(remaining, location.Duration);
+    }
+
+    [ComputeMethod]
     public virtual async Task<SharedLocation?> GetOwnLive(ChatId chatId, CancellationToken cancellationToken)
     {
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -172,6 +195,35 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         return await Tracker.Error.Use(cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task ShowShareModal(ChatId chatId)
+    {
+        var isSharing = await GetOwnLive(chatId, CancellationToken.None).ConfigureAwait(true) is not null;
+        var model = new ShareLocationModal.Model { ChatId = chatId, IsSharing = isSharing };
+        var modalRef = await Hub.ModalUI.Show(model).ConfigureAwait(true);
+        await modalRef.WhenClosed.ConfigureAwait(true);
+
+        if (model.StopRequested) {
+            await StopSharing(chatId, CancellationToken.None).ConfigureAwait(true);
+            return;
+        }
+
+        if (model.SendCurrentRequested) {
+            if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
+                return;
+
+            await SendCurrentLocation(chatId, CancellationToken.None).ConfigureAwait(true);
+            return;
+        }
+
+        if (model.SelectedDuration is not { } duration)
+            return;
+
+        if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
+            return;
+
+        await StartSharing(chatId, duration, CancellationToken.None).ConfigureAwait(true);
+    }
+
     public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
         => Reporter.StartSharing(chatId, duration, cancellationToken);
 
@@ -217,3 +269,27 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 }
 
 public sealed record LocationParticipant(SharedLocation Location, Author Author, bool IsOwn, MapMarker MapMarker);
+
+/// <summary>
+/// Remaining/total time of a live location share; <see cref="Unlimited"/> for shares with no expiration.
+/// </summary>
+public sealed record LocationCountdown(TimeSpan Remaining, TimeSpan Duration)
+{
+    public static readonly LocationCountdown Unlimited = new(TimeSpan.MaxValue, TimeSpan.MaxValue);
+    private static readonly TimeSpan RoundingTolerance = TimeSpan.FromSeconds(2);
+
+    public bool IsUnlimited => Duration == TimeSpan.MaxValue;
+    public double Fraction => IsUnlimited ? 1 : Math.Clamp(Remaining / Duration, 0, 1);
+    public string Text {
+        get {
+            if (IsUnlimited)
+                return "";
+
+            if (Remaining.TotalHours >= 1)
+                return $"{(int)Math.Ceiling(Remaining.TotalHours)}h";
+
+            var minutes = (int)Math.Ceiling((Remaining - RoundingTolerance).TotalMinutes);
+            return Math.Max(1, minutes).ToString();
+        }
+    }
+}

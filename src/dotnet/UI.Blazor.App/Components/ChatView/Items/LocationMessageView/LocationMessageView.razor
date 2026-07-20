@@ -2,10 +2,11 @@
 @inherits ComputedStateComponent<AppUIHub, LocationMessageView.Model?>
 @{
     var m = State.Value;
+    var liveCls = m?.IsLive == true ? "live" : "";
 }
 @* Fixed-height container reserved on first render (before ComputeState resolves) so the
    virtual list's total height stays stable and doesn't scroll-jump when the map fills in. *@
-<div class="location-message" @onclick="@OnOpenMap">
+<div class="location-message @liveCls" @onclick="@OnOpenMap">
     @if (m is not null) {
         <div class="c-map-area">
             <MapView
@@ -14,27 +15,41 @@
                 Interactive="false"
                 Center="@m.Center"
                 Markers="@m.Markers"/>
-            @if (m.IsLive) {
-                <div class="c-live-caption">
-                    <div class="c-title">
-                        @if (m.TrackingError is not null) {
-                            <i class="icon-alert-circle c-broken-icon"></i>
-                            <span>Location tracking is off</span>
-                        } else {
-                            <span class="c-live-dot"></span>
-                            <span>Live Location</span>
-                        }
-                    </div>
-                    @if (m.TrackingError is null) {
-                        <div class="c-updated">
-                            @("Updated ")<LiveTimeDeltaText Moment="@m.ModifiedAt" NullText=""/>
-                        </div>
+            @if (m.Countdown is { } countdown) {
+                var circumference = 2 * Math.PI * CountdownArcRadius;
+                var offset = circumference * (1 - countdown.Fraction);
+                <div class="c-countdown">
+                    <svg viewBox="0 0 32 32">
+                        <circle
+                            r="@CountdownArcRadius"
+                            cx="16"
+                            cy="16"
+                            stroke-dasharray="@circumference.ToString("F2")"
+                            stroke-dashoffset="@offset.ToString("F2")"
+                            transform="rotate(-90,16,16)"/>
+                    </svg>
+                    @if (countdown.IsUnlimited) {
+                        <i class="icon-infinity"></i>
+                    } else {
+                        <span>@countdown.Text</span>
                     }
+                </div>
+            }
+            @if (m.IsOwnLive) {
+                <ButtonRound Class="btn-stop-sharing" Click="@OnStopSharing" StopPropagation="true"
+                             Tooltip="Stop sharing" TooltipPosition="FloatingPosition.Top">
+                    <i class="icon-marker-pin-off"></i>
+                </ButtonRound>
+            }
+            @if (m.IsOwnLive && m.TrackingError is not null) {
+                <div class="c-tracking-error">
+                    <i class="icon-alert-circle"></i>
+                    <span>Location tracking is off</span>
                 </div>
             }
         </div>
         <div class="c-footer">
-            <i class="icon-location-pin"></i>
+            <i class="@(m.IsLive ? "icon-marker-pin-live" : "icon-marker-pin")"></i>
             <div class="c-info">
                 <div class="c-title">@(m.IsLive ? "Live location" : "Location")</div>
                 <div class="c-caption">@m.Center.ToDisplayText()</div>
@@ -47,6 +62,8 @@
 </div>
 
 @code {
+    private const double CountdownArcRadius = 14.5;
+
     private ISharedLocations SharedLocations => Hub.SharedLocations;
     private LocationUI LocationUI => Hub.LocationUI;
 
@@ -64,31 +81,45 @@
         if (Entry.LocationId is not { } locationId)
             return null;
 
-        var location = await SharedLocations.Get(Session, Entry.ChatId, locationId, cancellationToken)
+        var chatId = Entry.ChatId;
+        var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken)
             .ConfigureAwait(false);
         if (location is null)
             return null;
 
-        var marker = await LocationUI.GetMapMarker(Entry.ChatId, locationId, cancellationToken).ConfigureAwait(false)
+        var marker = await LocationUI.GetMapMarker(chatId, locationId, cancellationToken).ConfigureAwait(false)
             ?? new MapMarker(location.Id.Value, location.Point);
-        var trackingError = await LocationUI.GetTrackingError(Entry.ChatId, cancellationToken).ConfigureAwait(false);
+        var countdown = await LocationUI.GetCountdown(chatId, locationId, cancellationToken).ConfigureAwait(false);
+        var isOwnLive = false;
+        var trackingError = (GeoTrackingError?)null;
+        if (countdown is not null) {
+            var ownLive = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
+            isOwnLive = ownLive?.Id == locationId;
+            if (isOwnLive)
+                trackingError = await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false);
+        }
         return new Model(
             location.Point,
             [marker],
-            location.IsLive(Clocks.ServerClock.Now),
-            location.ModifiedAt,
+            countdown,
+            isOwnLive,
             trackingError);
     }
 
     private Task OnOpenMap()
         => ModalUI.Show(new LocationMapModal.Model(Entry.ChatId, Entry.LocationId));
 
+    private Task OnStopSharing()
+        => LocationUI.StopSharing(Entry.ChatId, CancellationToken.None);
+
     // Nested types
 
     public sealed record Model(
         GeoPoint Center,
         IReadOnlyList<MapMarker> Markers,
-        bool IsLive,
-        Moment ModifiedAt,
-        GeoTrackingError? TrackingError = null);
+        LocationCountdown? Countdown,
+        bool IsOwnLive,
+        GeoTrackingError? TrackingError = null) {
+        public bool IsLive => Countdown is not null;
+    }
 }

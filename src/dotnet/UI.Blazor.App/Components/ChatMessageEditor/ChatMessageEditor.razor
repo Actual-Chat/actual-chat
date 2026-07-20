@@ -119,8 +119,6 @@
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private SendingMessages SendingMessages => Hub.SendingMessages;
     private LocationUI LocationUI => Hub.LocationUI;
-    private LocationPermissionHandler LocationPermission
-        => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
     private RecentMentionsUI RecentMentionsUI => Hub.Services.GetRequiredService<RecentMentionsUI>();
     private FileAttachments FileAttachments { get; set; } = null!;
     private IAttachmentFilePicker? AttachmentFilePicker { get; set; }
@@ -396,36 +394,8 @@
 
     private Task OnShareLocationButtonClickEvent(ShareLocationButtonClickEvent @event, CancellationToken cancellationToken)
         => @event.EditorId == _editorId
-            ? OnShareLocationClick()
+            ? LocationUI.ShowShareModal(Chat.Id)
             : Task.CompletedTask;
-
-    private async Task OnShareLocationClick() {
-        var chatId = Chat.Id;
-        var isSharing = await Hub.LocationUI
-            .GetOwnLive(chatId, CancellationToken.None)
-            .ConfigureAwait(true) is not null;
-        var model = new ShareLocationModal.Model { ChatId = chatId, IsSharing = isSharing };
-        await (await ModalUI.Show(model).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
-
-        if (model.StopRequested) {
-            await LocationUI.StopSharing(chatId, CancellationToken.None).ConfigureAwait(true);
-            return;
-        }
-        if (model.SendCurrentRequested) {
-            if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
-                return;
-
-            await LocationUI.SendCurrentLocation(chatId, CancellationToken.None).ConfigureAwait(true);
-            return;
-        }
-        if (model.SelectedDuration is not { } duration)
-            return;
-
-        if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
-            return;
-
-        await LocationUI.StartSharing(chatId, duration, CancellationToken.None).ConfigureAwait(true);
-    }
 
     private async Task OnEmojiButtonClick(string tabId = "emoji") {
         var model = new EmojiModal.Model { InitialTabId = tabId };
