@@ -1,7 +1,7 @@
 # Walkie-Talkie: Heard Receipts (Sub-Project D)
 
 Date: 2026-07-20
-Status: Draft design, pending review
+Status: Implemented
 
 ## Background
 
