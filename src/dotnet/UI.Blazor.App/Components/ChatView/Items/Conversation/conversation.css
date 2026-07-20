@@ -56,8 +56,23 @@
     @apply flex-1 min-w-0 truncate;
     @apply text-01 text-base font-medium leading-5;
 }
+.c-live-card .c-lc-summary-box {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 200ms ease;
+}
+@starting-style {
+    .c-live-card .c-lc-summary-box {
+        grid-template-rows: 0fr;
+    }
+}
 .c-live-card .c-lc-summary {
     @apply text-01 text-caption-4 leading-4;
+    overflow: hidden;
+    animation: lc-fade-in 200ms ease;
+}
+@keyframes lc-fade-in {
+    from { opacity: 0; }
 }
 .c-live-card .c-lc-summary ul {
     @apply ml-4;
