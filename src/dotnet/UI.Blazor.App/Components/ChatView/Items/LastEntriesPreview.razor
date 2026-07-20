@@ -5,7 +5,7 @@
         <chat-list-skeleton count="@SkeletonCount" messageCls="thread-skeleton"/>
     } else {
         foreach (var (chatEntry, markup, streamingText) in Entries) {
-            <div class="c-message-wrapper">
+            <div class="c-message-wrapper" @key="@chatEntry.Id">
                 <AuthorCircle
                     AuthorId="@chatEntry.AuthorId"
                     Size="SquareSize.Size8"/>

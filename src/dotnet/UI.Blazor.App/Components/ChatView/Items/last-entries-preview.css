@@ -28,3 +28,9 @@
     @apply flex-x items-center gap-x-1;
     @apply h-4.5;
 }
+.last-entries-preview > * {
+    animation: lc-fade-in 200ms ease;
+}
+@keyframes lc-fade-in {
+    from { opacity: 0; }
+}

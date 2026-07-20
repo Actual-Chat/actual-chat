@@ -41,11 +41,13 @@
             }
             @* Gated on the text, not hasSummary: a fold can outlive an empty description. *@
             @if (hasDescription) {
-                <CascadingValue Value="@_fakeEntry" IsFixed="true">
-                    <div class="c-lc-summary">
-                        <MarkupView Markup="@m.Description.Markup"/>
+                <div class="c-lc-summary-box">
+                    <div class="c-lc-summary" @key="@m.Description.Markup.ToReadableText()">
+                        <CascadingValue Value="@_fakeEntry" IsFixed="true">
+                            <MarkupView Markup="@m.Description.Markup"/>
+                        </CascadingValue>
                     </div>
-                </CascadingValue>
+                </div>
             }
             <div class="c-lc-meta-row">
                 @if (!hasLiveTitle) {
