@@ -677,15 +677,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var _ = dbContext.ConfigureAwait(false);
 
         var sid = await dbContext.ChatEntries
-            .Where(e => e.Kind == 0 && e.AudioId == audioStreamId)
+            .Where(e => e.ChatId == chatId.Value && e.Kind == 0 && e.AudioId == audioStreamId)
             .Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         if (sid == null)
             return default;
 
-        var entryId = ChatEntryId.Parse(sid);
-        return entryId.ChatId == chatId ? entryId : default;
+        return ChatEntryId.Parse(sid);
     }
 
     // [ComputeMethod]
