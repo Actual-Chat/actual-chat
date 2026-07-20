@@ -205,7 +205,7 @@ git commit -m "refactor(users): promote walkie-talkie armed predicate to shared 
 
 **Interfaces:**
 - Consumes: `DbChatEntry.AudioId` (holds `ChatEntryAudio.StreamId` while an entry is streaming, a `MediaId` after finalize — `src/dotnet/Chat.Service/Db/DbChatEntry.cs:238`), `ChatsBackend_ChangeEntry` + `ChatEntryDiff.Audio` for test setup (pattern: `AudioStreamingBackend.ProcessAudio.cs:535-559`).
-- Produces: `Task<ChatEntryId> FindEntryIdByAudioStreamId(ChatId chatId, string audioStreamId, CancellationToken cancellationToken)` on `IChatsBackend` — plain (non-`[ComputeMethod]`) method; returns `default` (`IsNone`) when no live entry matches. Task 4 calls it with retry.
+- Produces: `Task<ChatEntryId?> FindEntryIdByAudioStreamId(ChatId chatId, string audioStreamId, CancellationToken cancellationToken)` on `IChatsBackend` — plain (non-`[ComputeMethod]`) method; returns `null` when no live entry matches (`ChatEntryId` is a reference type; `null` is its none-idiom). Task 4 calls it with retry.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -512,10 +512,9 @@ and the methods (non-virtual, next to `ReportAudioLatency`):
         if (!await ServerKvasBackend.IsWalkieTalkieArmed(account.Id, chatId, cancellationToken).ConfigureAwait(false))
             return;
 
-        var resolvedEntryId = entryId is { IsNone: false } eid
-            ? eid
-            : await ResolveEntryId(chatId, streamId, cancellationToken).ConfigureAwait(false);
-        if (resolvedEntryId.IsNone || resolvedEntryId.ChatId != chatId)
+        var resolvedEntryId = entryId
+            ?? await ResolveEntryId(chatId, streamId, cancellationToken).ConfigureAwait(false);
+        if (resolvedEntryId == null || resolvedEntryId.ChatId != chatId)
             return;
 
         var command = new ChatPositionsBackend_Set(
@@ -523,16 +522,16 @@ and the methods (non-virtual, next to `ReportAudioLatency`):
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<ChatEntryId> ResolveEntryId(
+    private async Task<ChatEntryId?> ResolveEntryId(
         ChatId chatId, string streamId, CancellationToken cancellationToken)
     {
         if (streamId.IsNullOrEmpty())
-            return default;
+            return null;
 
         for (var attempt = 0;; attempt++) {
             var entryId = await ChatsBackend.FindEntryIdByAudioStreamId(chatId, streamId, cancellationToken)
                 .ConfigureAwait(false);
-            if (!entryId.IsNone || attempt >= 5)
+            if (entryId != null || attempt >= 5)
                 return entryId;
 
             // Live acks can arrive before the transcriber creates the text entry
