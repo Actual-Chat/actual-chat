@@ -404,7 +404,7 @@
         var isSharing = await Hub.LocationUI
             .GetOwnLive(chatId, CancellationToken.None)
             .ConfigureAwait(true) is not null;
-        var model = new ShareLocationModal.Model { IsSharing = isSharing };
+        var model = new ShareLocationModal.Model { ChatId = chatId, IsSharing = isSharing };
         await (await ModalUI.Show(model).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
 
         if (model.StopRequested) {

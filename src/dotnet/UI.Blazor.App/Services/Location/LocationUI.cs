@@ -8,6 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
+    private const string OwnMarkerId = "own-location";
     private static readonly TimeSpan RemainingTextUpdatePeriod = TimeSpan.FromSeconds(60);
 
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
@@ -147,6 +148,14 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             : ToMapMarker(location, author);
     }
 
+    public async Task<MapMarker> GetOwnMarker(ChatId chatId, GeoPoint point, CancellationToken cancellationToken)
+    {
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return ownAuthor is null
+            ? new MapMarker(OwnMarkerId, point, IsOwnLocation: true)
+            : ToMapMarker(OwnMarkerId, point, ownAuthor, isOwnLocation: true);
+    }
+
     [ComputeMethod]
     public virtual async Task<GeoTrackingError?> GetTrackingError(
         ChatId chatId,
@@ -189,17 +198,21 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     // Private methods
 
     private MapMarker ToMapMarker(SharedLocation location, Author author)
+        => ToMapMarker(location.Id.Value, location.Point, author);
+
+    private MapMarker ToMapMarker(string id, GeoPoint point, Author author, bool isOwnLocation = false)
     {
         var pictureUrl = author.Avatar.Picture is { } picture ? UrlMapper.PicturePreview128Url(picture) : "";
         var avatarKey = pictureUrl.IsNullOrEmpty()
             ? (author.Avatar.Picture?.AvatarKey).NullIfEmpty() ?? DefaultUserPicture.GetAvatarKey(author.Id.Value)
             : "";
         return new MapMarker(
-            location.Id.Value,
-            location.Point,
+            id,
+            point,
             author.Avatar.Name,
             pictureUrl.NullIfEmpty(),
-            avatarKey.NullIfEmpty());
+            avatarKey.NullIfEmpty(),
+            isOwnLocation);
     }
 }
 

@@ -60,7 +60,14 @@ export class MapView {
         const seen = new Set<string>();
         for (const m of markers) {
             seen.add(m.id);
-            const existing = this.markers.get(m.id);
+            let existing = this.markers.get(m.id);
+            // MapLibre markers can't swap their element, so recreate the marker when its
+            // visual shape changed (e.g. the avatar loaded after the first render).
+            if (existing != null && existing.getElement().dataset.key !== MapView.markerKey(m)) {
+                existing.remove();
+                this.markers.delete(m.id);
+                existing = undefined;
+            }
             if (existing != null) {
                 existing.setLngLat([m.point.longitude, m.point.latitude]);
                 if (m.isOwnLocation)
@@ -68,9 +75,10 @@ export class MapView {
                 continue;
             }
 
-            // Own location is a centered dot; other markers are a bubble-above-dot pin
-            // anchored so the dot center (8px above the element bottom) hits the point.
-            const options: maplibregl.MarkerOptions = m.isOwnLocation
+            // Avatar-less own location is a centered dot; other markers are a bubble-above-dot
+            // pin anchored so the dot center (8px above the element bottom) hits the point.
+            const isCenteredDot = m.isOwnLocation && !MapView.hasAvatar(m);
+            const options: maplibregl.MarkerOptions = isCenteredDot
                 ? { element: MapView.createMarkerElement(m) }
                 : { element: MapView.createMarkerElement(m), anchor: 'bottom', offset: [0, 8] };
             const marker = new maplibregl.Marker(options)
@@ -99,25 +107,28 @@ export class MapView {
 
     // Private methods
 
-    // Three marker styles: the viewer's own live position (blue dot + heading fan),
-    // the complete <map-marker-pin> when there's no avatar, or the avatar in a
-    // <map-marker-bubble> floating above a <map-marker-dot> on the geo point.
+    // Marker styles: the avatar-less own position is a lone blue dot (+ heading fan),
+    // avatar-less others are the complete <map-marker-pin>, and any marker with an
+    // avatar is a <map-marker-bubble> floating above its dot — the own blue dot or
+    // a <map-marker-dot> — on the geo point.
     private static createMarkerElement(m: MapMarker): HTMLElement {
         const el = document.createElement('div');
         el.className = 'map-marker';
-        if (m.isOwnLocation) {
+        el.dataset.key = MapView.markerKey(m);
+        const avatar = MapView.createAvatarElement(m);
+        if (m.isOwnLocation && avatar == null) {
             el.appendChild(MapView.createOwnLocationElement(m));
             return el;
         }
 
         const pin = document.createElement('div');
         pin.className = 'c-pin';
-        const avatar = MapView.createAvatarElement(m);
         if (avatar == null)
             pin.appendChild(document.createElement('map-marker-pin'));
         else {
-            const dot = document.createElement('map-marker-dot');
-            dot.className = 'c-dot';
+            const dot = m.isOwnLocation
+                ? MapView.createOwnLocationElement(m)
+                : MapView.createDotElement();
             const bubble = document.createElement('map-marker-bubble');
             bubble.className = 'c-bubble';
             bubble.appendChild(avatar);
@@ -125,6 +136,20 @@ export class MapView {
         }
         el.appendChild(pin);
         return el;
+    }
+
+    private static createDotElement(): HTMLElement {
+        const dot = document.createElement('map-marker-dot');
+        dot.className = 'c-dot';
+        return dot;
+    }
+
+    private static hasAvatar(m: MapMarker): boolean {
+        return (m.avatarUrl != null && m.avatarUrl !== '') || (m.avatarKey != null && m.avatarKey !== '');
+    }
+
+    private static markerKey(m: MapMarker): string {
+        return `${m.isOwnLocation ? 1 : 0}|${m.avatarUrl ?? ''}|${m.avatarKey ?? ''}`;
     }
 
     private static createOwnLocationElement(m: MapMarker): HTMLElement {

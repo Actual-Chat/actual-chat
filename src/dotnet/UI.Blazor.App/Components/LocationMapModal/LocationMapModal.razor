@@ -3,13 +3,12 @@
 @implements IModalView<LocationMapModal.Model>
 @{
     var m = State.Value;
-    var showOwnDot = m.OwnPoint is not null;
     var markers = m.Participants
-        .Where(p => !(showOwnDot && p.IsOwn))
+        .Where(p => !(m.OwnMarker is not null && p.IsOwn))
         .Select(p => p.MapMarker)
         .ToList();
-    if (m.OwnPoint is { } ownPoint)
-        markers.Add(ToOwnMarker(ownPoint));
+    if (m.OwnMarker is { } ownMarker)
+        markers.Add(ownMarker);
 }
 
 <DialogFrame
@@ -72,9 +71,12 @@
         var ownPoint = livePoint
             ?? ownLocation?.Point
             ?? await Tracker.Get(cancellationToken: cancellationToken).ConfigureAwait(false);
+        var ownMarker = ownPoint is not null
+            ? await LocationUI.GetOwnMarker(chatId, ownPoint, cancellationToken).ConfigureAwait(false)
+            : null;
         var clicked = ModalModel.LocationId is { } id ? participants.FirstOrDefault(x => x.Location.Id == id) : null;
         var center = clicked?.Location ?? ownLocation ?? participants[0].Location;
-        return new ComputedModel(participants, ownPoint, center.Point);
+        return new ComputedModel(participants, ownPoint, ownMarker, center.Point);
     }
 
     // Private methods
@@ -82,16 +84,14 @@
     private Task OnParticipantClick(LocationParticipant participant)
         => _mapView?.FlyTo(participant.Location.Point).AsTask() ?? Task.CompletedTask;
 
-    private static MapMarker ToOwnMarker(GeoPoint point)
-        => new("own-location", point, IsOwnLocation: true);
-
     // Nested types
 
     public sealed record ComputedModel(
         IReadOnlyList<LocationParticipant> Participants,
         GeoPoint? OwnPoint,
+        MapMarker? OwnMarker,
         GeoPoint Center) {
-        public static readonly ComputedModel None = new([], null, new GeoPoint(0, 0));
+        public static readonly ComputedModel None = new([], null, null, new GeoPoint(0, 0));
     }
 
     public sealed record Model(ChatId ChatId, SharedLocationId? LocationId = null);
