@@ -96,6 +96,7 @@
     private MapView? _mapView;
 
     private ILocationTracker Tracker => Hub.LocationTracker;
+    private LocationUI LocationUI => Hub.LocationUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -132,7 +133,7 @@
         var isDurationMenuOpen = await _isDurationMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var ownPoint = livePoint ?? currentPoint;
         var ownMarker = ownPoint is not null
-            ? new MapMarker("own-location", ownPoint, IsOwnLocation: true)
+            ? await LocationUI.GetOwnMarker(ModalModel.ChatId, ownPoint, cancellationToken).ConfigureAwait(false)
             : null;
         return new ComputedModel(ownMarker, mapType, isMapTypeMenuOpen, isDurationMenuOpen);
     }
@@ -195,6 +196,7 @@
     }
 
     public sealed class Model {
+        public ChatId ChatId { get; init; }
         public bool IsSharing { get; init; }
         public bool SendCurrentRequested { get; set; }
         public TimeSpan? SelectedDuration { get; set; }

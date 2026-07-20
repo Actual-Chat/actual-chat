@@ -28,6 +28,9 @@
     @apply flex items-center justify-center;
     @apply w-4 h-4;
 }
+.map-view .map-marker .c-pin .c-own-location {
+    @apply absolute bottom-0 left-1/2 -ml-2;
+}
 .map-view .map-marker .c-own-dot {
     @apply relative z-10;
     @apply w-4 h-4;
