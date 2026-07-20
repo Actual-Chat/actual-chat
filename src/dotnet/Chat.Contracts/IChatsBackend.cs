@@ -136,6 +136,9 @@ public interface IChatsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ReadPositionsStatBackend?> GetReadPositionsStat(ChatId chatId, CancellationToken cancellationToken);
 
+    // Not a [ComputeMethod]: results flip as streaming entries appear/finalize, so the caller retries
+    Task<ChatEntryId?> FindEntryIdByAudioStreamId(ChatId chatId, string audioStreamId, CancellationToken cancellationToken);
+
     [ComputeMethod]
     Task<PlaceChatId?> GetPlaceChatIdByAlias(PlaceId placeId, AliasId aliasId, CancellationToken cancellationToken);
 

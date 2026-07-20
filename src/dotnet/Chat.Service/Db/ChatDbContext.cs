@@ -58,6 +58,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         chatEntry.Property(e => e.ForwardedAuthorId).UseCollation("C");
         chatEntry.Property(e => e.LinkPreviewIds).UseCollation("C");
         chatEntry.HasIndex(e => e.ContentStreamId).HasFilter("\"kind\" = 0 AND \"content_stream_id\" IS NOT NULL");
+        chatEntry.HasIndex(e => e.AudioId).HasFilter("\"kind\" = 0 AND \"audio_id\" IS NOT NULL");
 
         var chatEntryLanguage = model.Entity<DbChatEntryLanguage>();
         chatEntryLanguage.Property(e => e.Id).UseCollation("C");
