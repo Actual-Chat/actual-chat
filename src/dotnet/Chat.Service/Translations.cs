@@ -32,16 +32,16 @@ public class Translations(IServiceProvider services) : ITranslations
     }
 
     // [ComputeMethod]
-    public virtual async Task<string?> TranslateText(Session session, string text, Language language, CancellationToken cancellationToken)
+    public virtual async Task<string?> GetTranslatedText(Session session, string text, Language language, CancellationToken cancellationToken)
     {
         // This endpoint translates arbitrary caller-supplied text by design. Guardrails: max length
-        // here, global completion rate limiting behind Translator, and a global (text, language) DB
-        // cache. TODO: add a per-user rate limit (see docs/plans/server-strings-localization.md §4.1).
+        // here, global completion rate limiting behind Translator, and the compute cache behind the
+        // backend. TODO: add a per-user rate limit (see docs/plans/server-strings-localization.md §4.1).
         if (text.IsNullOrWhiteSpace() || language.IsAnyEnglish)
             return text;
         if (text.Length > Constants.Translation.MaxTextTranslationLength)
             return null;
 
-        return await Backend.GetTextTranslation(text, language, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetTranslatedText(text, language, cancellationToken).ConfigureAwait(false);
     }
 }
