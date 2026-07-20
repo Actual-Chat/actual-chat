@@ -98,12 +98,14 @@ describe('multi-user location sharing', () => {
         // assert — Alice sees her own share (with a Stop button)
         await aliceBanner.waitFor({ state: 'visible', timeout: 20_000 });
         expect((await aliceBanner.innerText()).toLowerCase()).toContain('you are sharing your location');
-        expect(await aliceBanner.locator('button:has-text("Stop")').count()).toBe(1);
+        expect(await aliceBanner.locator('.btn-stop-sharing').count()).toBe(1);
 
-        // assert — Bob (a viewer) sees Alice's share described as someone else's, with no Stop button
+        // assert — Bob (a viewer) sees Alice's share described as someone else's, with no stop button,
+        // and gets a "Share your location" call-to-action instead (#4057)
         await bobBanner.waitFor({ state: 'visible', timeout: 20_000 });
         expect((await bobBanner.innerText()).toLowerCase()).toContain('1 person is sharing location');
-        expect(await bobBanner.locator('button:has-text("Stop")').count()).toBe(0);
+        expect(await bobBanner.locator('.btn-stop-sharing').count()).toBe(0);
+        expect(await bobBanner.locator('.btn-share-location').count()).toBe(1);
         await bob.screenshot({ path: shot('bob-sees-alice') });
 
         // act — Bob opens the map from the banner
@@ -182,7 +184,7 @@ describe('multi-user location sharing', () => {
         await aliceMap.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
 
         // act — Alice stops her share
-        await aliceBanner.locator('button:has-text("Stop")').first().click();
+        await aliceBanner.locator('.btn-stop-sharing').first().click();
 
         // assert — Alice's banner clears (she no longer shares and is the only one she tracked... )
         // Bob is still sharing, so from Bob's side the banner stays but is now "you are sharing".
@@ -198,7 +200,7 @@ describe('multi-user location sharing', () => {
         ).toContain('1 person is sharing location');
 
         // act — Bob stops too
-        await bobBanner.locator('button:has-text("Stop")').first().click();
+        await bobBanner.locator('.btn-stop-sharing').first().click();
 
         // assert — both banners disappear once no one is sharing
         await aliceBanner.waitFor({ state: 'hidden', timeout: 20_000 });

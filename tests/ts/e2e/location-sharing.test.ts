@@ -134,7 +134,7 @@ describe('location sharing', () => {
         // act — close the map, then stop sharing from the banner
         await page.keyboard.press('Escape');
         await mapModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
-        await banner.locator('button:has-text("Stop")').first().click();
+        await banner.locator('.btn-stop-sharing').first().click();
 
         // assert — the banner disappears once the share is stopped
         await banner.waitFor({ state: 'hidden', timeout: 20_000 });
@@ -260,7 +260,7 @@ describe('location sharing', () => {
                 expect((await banner.innerText()).toLowerCase()).toContain('15m left');
 
             // cleanup — stop the share so the next duration starts clean
-            await banner.locator('button:has-text("Stop")').first().click();
+            await banner.locator('.btn-stop-sharing').first().click();
             await banner.waitFor({ state: 'hidden', timeout: 20_000 });
         }, 120_000);
     }
