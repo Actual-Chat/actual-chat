@@ -2,6 +2,7 @@ using ActualChat.Audio;
 using ActualChat.Diagnostics;
 using ActualChat.Live;
 using ActualChat.Transcription;
+using ActualChat.Users;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming.Services;
@@ -16,6 +17,10 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private LiveStreamAccess Access { get; } = services.GetRequiredService<LiveStreamAccess>();
+    private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
+    private ICommander Commander => field ??= Services.Commander();
     private IAudioStreamingBackend Backend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private RemoteAudioStreamCache RemoteAudioCache => field ??= Services.GetRequiredService<RemoteAudioStreamCache>();
@@ -114,6 +119,28 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         return Task.CompletedTask;
     }
 
+    public async Task ReportPlayback(
+        Session session, ChatId chatId, string streamId, ChatEntryId? entryId,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null || !chat.Rules.Has(ChatPermissions.ReadAudio))
+            return;
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (!await ServerKvasBackend.IsWalkieTalkieArmed(account.Id, chatId, cancellationToken).ConfigureAwait(false))
+            return;
+
+        var resolvedEntryId = entryId
+            ?? await ResolveEntryId(chatId, streamId, cancellationToken).ConfigureAwait(false);
+        if (resolvedEntryId == null || resolvedEntryId.ChatId != chatId)
+            return;
+
+        var command = new ChatPositionsBackend_Set(
+            account.Id, chatId, ChatPositionKind.Heard, new ChatPosition(resolvedEntryId.LocalId));
+        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
         Session session,
         ChatId chatId,
@@ -166,6 +193,23 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
 
         var streams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
         return streams.Any(x => x.StreamId == streamId.Value && x.IsTextOnly);
+    }
+
+    private async Task<ChatEntryId?> ResolveEntryId(
+        ChatId chatId, string streamId, CancellationToken cancellationToken)
+    {
+        if (streamId.IsNullOrEmpty())
+            return null;
+
+        for (var attempt = 0;; attempt++) {
+            var entryId = await ChatsBackend.FindEntryIdByAudioStreamId(chatId, streamId, cancellationToken)
+                .ConfigureAwait(false);
+            if (entryId != null || attempt >= 5)
+                return entryId;
+
+            // Live acks can arrive before the transcriber creates the text entry
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private async Task<IAsyncEnumerable<AudioFrame>?> GetOrFetchRemoteAudio(

@@ -50,6 +50,10 @@ public interface ILiveAudioStreams : IComputeService
 
     Task ReportAudioLatency(Session session, TimeSpan latency, CancellationToken cancellationToken);
 
+    Task ReportPlayback(
+        Session session, ChatId chatId, string streamId, ChatEntryId? entryId,
+        CancellationToken cancellationToken);
+
     // Legacy methods
 
     [LegacyName("ChangeSettings", "2.9.9999")]
