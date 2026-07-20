@@ -67,7 +67,7 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
             dbContext.Add(dbChatPosition);
             hasChanges = true;
         }
-        else if (force || kind != ChatPositionKind.Read || position.EntryLid > dbChatPosition.EntryLid) {
+        else if (force || kind == ChatPositionKind.View || position.EntryLid > dbChatPosition.EntryLid) {
             dbChatPosition.UpdateFrom(position);
             hasChanges = true;
         }
@@ -76,18 +76,14 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.KeylessSet(hasChanges);
 
-        if (kind == ChatPositionKind.Read && hasChanges) {
-            // Let the notifications backend reconcile this user's read notifications instead of
-            // waiting for their next notification event (cross-device read dismissal). Read
-            // advances are frequent, so collapse them to one event per (user, chat) per window
-            // via a delay-bucketed uuid (later advances in the window are skipped on conflict).
-            context.Operation
-                .AddEvent(new ReadPositionChangedEvent(userId, chatId, position.EntryLid))
-                .SetDelayBy(TimeSpan.Zero, Constants.Notification.ReadReconcileWindow, $"ReadPosChanged:{userId.Value}:{chatId.Value}");
+        if (hasChanges && kind is ChatPositionKind.Read or ChatPositionKind.Heard) {
+            if (kind == ChatPositionKind.Read)
+                context.Operation
+                    .AddEvent(new ReadPositionChangedEvent(userId, chatId, position.EntryLid))
+                    .SetDelayBy(TimeSpan.Zero, Constants.Notification.ReadReconcileWindow, $"ReadPosChanged:{userId.Value}:{chatId.Value}");
 
             var stat = await ChatsBackend.GetReadPositionsStat(chatId, cancellationToken).ConfigureAwait(false);
             var needUpdateStat = stat is null || MightUpdateStat(stat, userId, position.EntryLid);
-            // Do not send update stat command if we know a priori it won't affect stat.
             if (needUpdateStat)
                 await Queues.Enqueue(new ChatsBackend_UpdateReadPositionsStat(chatId, userId, position.EntryLid), cancellationToken).ConfigureAwait(false);
         }
