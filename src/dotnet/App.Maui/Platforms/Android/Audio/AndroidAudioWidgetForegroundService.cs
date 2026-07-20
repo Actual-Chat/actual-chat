@@ -171,14 +171,20 @@ public class AndroidAudioWidgetForegroundService : Service
 
         void StartForeground1(Android.App.Notification notification)
         {
-            if (Build.VERSION.SdkInt >= BuildVersionCodes.Q) {
-                var serviceType = mode is AudioWidgetMode.Recording
-                    ? ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback
-                    : ForegroundService.TypeMediaPlayback;
-                StartForeground(NotificationId, notification, serviceType);
+            try {
+                if (Build.VERSION.SdkInt >= BuildVersionCodes.Q) {
+                    var serviceType = mode is AudioWidgetMode.Recording
+                        ? ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback
+                        : ForegroundService.TypeMediaPlayback;
+                    StartForeground(NotificationId, notification, serviceType);
+                }
+                else
+                    StartForeground(NotificationId, notification);
+                Log.LogWarning("AudioWidget FGS: StartForeground OK (mode={Mode})", mode);
             }
-            else
-                StartForeground(NotificationId, notification);
+            catch (Exception e) {
+                Log.LogError(e, "AudioWidget FGS: StartForeground FAILED (locked-FGS test, mode={Mode})", mode);
+            }
         }
     }
 
