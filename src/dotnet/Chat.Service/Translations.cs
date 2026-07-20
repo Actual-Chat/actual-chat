@@ -32,7 +32,7 @@ public class Translations(IServiceProvider services) : ITranslations
     }
 
     // [ComputeMethod]
-    public virtual async Task<string?> GetTranslatedText(Session session, string text, Language language, CancellationToken cancellationToken)
+    public virtual async Task<string?> GetTranslatedUIText(Session session, string text, Language language, CancellationToken cancellationToken)
     {
         // This endpoint translates arbitrary caller-supplied text by design. Guardrails: max length
         // here, global completion rate limiting behind Translator, and the compute cache behind the
@@ -42,6 +42,6 @@ public class Translations(IServiceProvider services) : ITranslations
         if (text.Length > Constants.Translation.MaxTextTranslationLength)
             return null;
 
-        return await Backend.GetTranslatedText(text, language, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetTranslatedUIText(text, language, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -58,7 +58,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     }
 
     // [ComputeMethod]
-    public virtual async Task<string?> GetTranslatedText(string text, Language language, CancellationToken cancellationToken)
+    public virtual async Task<string?> GetTranslatedUIText(string text, Language language, CancellationToken cancellationToken)
     {
         // The translation runs inline; the Fusion compute cache (this method is sharded by text, so each
         // distinct string is owned by a single node) dedups it globally at runtime. No persistence: a

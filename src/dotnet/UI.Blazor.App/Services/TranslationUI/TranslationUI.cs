@@ -19,7 +19,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService, ILiveLoca
     {
         // Localizes server-composed message text (error/exception messages that cross RPC) into the
         // device UI language via AI translation; dedup/caching handled by the compute cache behind
-        // ITranslations.GetTranslatedText.
+        // ITranslations.GetTranslatedUIText.
         if (message.IsNullOrWhiteSpace())
             return message;
 
@@ -27,7 +27,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService, ILiveLoca
         if (language.IsAnyEnglish)
             return message;
 
-        var translated = await Translator.GetTranslatedText(Session, message, language, cancellationToken).ConfigureAwait(false);
+        var translated = await Translator.GetTranslatedUIText(Session, message, language, cancellationToken).ConfigureAwait(false);
         return translated.NullIfEmpty() ?? message;
     }
 
