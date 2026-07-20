@@ -403,10 +403,16 @@ public partial class ChatUI
             // The live block is the exception: its governed fold range can be narrower than its raw
             // range (lag/viewport hold entries back), so only the governed range is excluded here too -
             // otherwise the id tiles past the fold would never load, and the still-visible tail would
-            // have nothing to render.
+            // have nothing to render. Once closed, the persisted conversation's range starts at
+            // ContextStartLid (its materialized id), not V (the live-era render id) - both identities
+            // must resolve to the same governed range, or a session with pre-latch context would lose
+            // its frozen tail's id-tiles after close.
             var excludedRanges = conversationIdRanges
                 .Where(r => !expandedConversations.Contains(ConversationId.New(chatId, r.Start)))
-                .Select(r => ConversationId.New(chatId, r.Start) == liveBlockId ? liveBlockFoldRange : r)
+                .Select(r => {
+                    var rangeId = ConversationId.New(chatId, r.Start);
+                    return rangeId == liveBlockId || rangeId == materializedBlockId ? liveBlockFoldRange : r;
+                })
                 .Where(r => !r.IsEmpty)
                 .ToList();
             if (!hiddenLiveTailRange.IsEmpty)

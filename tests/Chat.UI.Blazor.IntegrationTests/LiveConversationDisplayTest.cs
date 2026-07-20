@@ -339,6 +339,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             frozenLeafLids = LeafEntryLids(items);
             frozenRenderKey = ((IVirtualListItem)block).RenderKey;
         }, TimeSpan.FromSeconds(10));
+        // The render key is keyed by V (the live-era render id), not by whatever the persisted
+        // conversation ends up starting at - confirm it's the actual ConversationBlock-at-V format,
+        // not just some captured-before value that happens to stay stable.
+        frozenRenderKey.Should().Be(ChatMessageKey.New(ChatMessageKind.ConversationBlock, v).Value);
 
         // The two stream participants hang up - this only marks the session closing.
         await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
@@ -355,6 +359,91 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             LeafEntryLids(items).Should().Equal(frozenLeafLids);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             ((IVirtualListItem)block).RenderKey.Should().Be(frozenRenderKey);
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public async Task CloseWithPreLatchContextKeepsFrozenTailVisible()
+    {
+        // When the summary's context reaches back before V, the persisted (materialized) conversation
+        // starts at ContextStartLid, not V - id-tile loading must resolve that identity to the same
+        // governed fold range GetTile uses, or the block's frozen (unfolded) tail loses its id-tiles
+        // and goes missing after close. A second, un-lagged summary widens the raw range past the
+        // governed fold boundary so the fold and the persisted range genuinely diverge - the exact
+        // condition that exposed the bug.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "close-context-test");
+        var context0 = await Tester.CreateTextEntry(chat.Id, "context-0");
+        await Tester.CreateTextEntry(chat.Id, "context-1");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_160);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
+        List<long> preCloseLeafLids = null!;
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var lids = LeafEntryLids(items);
+            lids.Should().Contain(v + 3);
+            lids.Should().Contain(v + 4);
+            lids.Should().Contain(v + 5);
+            preCloseLeafLids = lids;
+        }, TimeSpan.FromSeconds(10));
+        preCloseLeafLids.Should().Contain(context0.LocalId, "the pre-latch context entry must already be visible");
+
+        // A second summary widens EndEntryLid to cover the tail, but the default (un-shrunk) FoldLag
+        // keeps the governed fold boundary at V+3 - so at close, the fold range [V, V+3) is genuinely
+        // narrower than the persisted range [ContextStartLid, V+6).
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d2", Summary = "s2",
+                EndEntryLid = v + 5, MessageCount = 6, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+
+        // The context reaches back to the first pre-latch entry - before FinalizeSession so it lands
+        // on the materialized conversation (see LiveSessionsTest's finalize choreography).
+        await liveBackend.SetContextStart(chat.Id, context0.LocalId, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+
+        // act
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+
+        // assert - same leaf lids (context + fold + tail), one block, same live-era render key
+        await ComputedTest.When(async ct => {
+            var liveState = await liveBackend.GetState(chat.Id, ct);
+            liveState.Should().BeNull();
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            LeafEntryLids(items).Should().Equal(preCloseLeafLids);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Single();
+            var expectedRenderKey = ChatMessageKey.New(ChatMessageKind.ConversationBlock, v).Value;
+            ((IVirtualListItem)block).RenderKey.Should().Be(expectedRenderKey);
         }, TimeSpan.FromSeconds(15));
     }
 
