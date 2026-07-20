@@ -91,10 +91,17 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 return existing;
 
         // Isolated read: the initial latch must not make GetBlockState reactive to the raw live
-        // state - only subsequent advances go through the lag + viewport governor.
+        // state - only subsequent advances go through the lag + viewport governor. WasJoined is
+        // seeded here too - whichever caller creates the state first (this read path or the
+        // governor loop) must agree on it, or a join immediately followed by a leave (no governor
+        // iteration lands in between) would never latch a leave overlay.
         LiveSessionState? raw;
-        using (Computed.BeginIsolation())
+        bool isJoined;
+        using (Computed.BeginIsolation()) {
             raw = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+            isJoined = raw != null
+                && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        }
         var foldEndLid = GetRawFoldEndLid(raw);
         lock (Lock) {
             if (_chatStates.TryGetValue(chatId, out var existing))
@@ -106,6 +113,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                     StateCategories.Get(GetType(), nameof(GetBlockState), "[*]")),
                 LastObservedFoldEndLid = foldEndLid,
                 LastRaw = raw,
+                WasJoined = isJoined,
             };
             _chatStates.Add(chatId, chatState);
             return chatState;
