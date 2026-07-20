@@ -18,4 +18,7 @@ public sealed partial record GeoPoint(
     public string ToOpenStreetMapUrl()
         => $"https://www.openstreetmap.org/?mlat={Latitude:0.######}&mlon={Longitude:0.######}"
             + $"#map=15/{Latitude:0.######}/{Longitude:0.######}";
+
+    public string ToGoogleMapsUrl()
+        => $"https://www.google.com/maps?q={Latitude:0.######},{Longitude:0.######}";
 }

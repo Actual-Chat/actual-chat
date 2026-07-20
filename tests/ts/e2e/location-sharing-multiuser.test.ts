@@ -112,15 +112,15 @@ describe('multi-user location sharing', () => {
         const bobMap = bob.locator('.location-map-modal').first();
         await bobMap.waitFor({ state: 'visible', timeout: 10_000 });
 
-        // assert — exactly Alice's single marker renders, on real tiles
+        // assert — Alice's marker plus Bob's own-location marker render, on real tiles
         await bobMap.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
         expect((await bobTiles).ok()).toBe(true);
         await bob.waitForTimeout(1_000);
-        expect(await bobMap.locator('.maplibregl-marker').count()).toBe(1);
+        expect(await bobMap.locator('.maplibregl-marker').count()).toBe(2);
 
         // assert — the participants list shows exactly Alice: not marked "(you)", with an
-        // "Updated ..." status and her share's countdown; no distance since Bob (not sharing)
-        // has no known location
+        // "Updated ..." status and her share's countdown; Bob (not sharing) gets no row,
+        // only his own map marker
         const bobRow = bobMap.locator('.c-participant').first();
         await bobRow.waitFor({ state: 'visible', timeout: 10_000 });
         expect(await bobMap.locator('.c-participant').count()).toBe(1);
@@ -130,10 +130,10 @@ describe('multi-user location sharing', () => {
         expect(bobRowText).not.toContain('(you)');
         await bob.screenshot({ path: shot('bob-map-1-marker') });
 
-        // act — Alice moves; Bob's view should still show exactly one marker (it tracks, not duplicates)
+        // act — Alice moves; Bob's view should still show the same two markers (it tracks, not duplicates)
         await aliceCtx.setGeolocation(ALICE_MOVED);
         await bob.waitForTimeout(2_500);
-        expect(await bobMap.locator('.maplibregl-marker').count()).toBe(1);
+        expect(await bobMap.locator('.maplibregl-marker').count()).toBe(2);
 
         // act — Bob closes the map and starts his own share too
         await bob.keyboard.press('Escape');

@@ -1,0 +1,50 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Menu<AppUIHub>
+
+<div class="location-participant-menu">
+    <MenuEntry
+        Icon="icon-map-point"
+        Text="Open in Google Maps"
+        Click="@OnOpenInGoogleMaps"/>
+    <MenuEntry
+        Icon="icon-copy"
+        Text="Copy location link"
+        Click="@OnCopyLink"/>
+</div>
+
+@code {
+    private ChatId _chatId;
+    private SharedLocationId _locationId;
+
+    private ISharedLocations SharedLocations => Hub.SharedLocations;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [var sChatId, var sLocationId])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _chatId = ChatId.Parse(sChatId);
+        _locationId = SharedLocationId.Parse(sLocationId);
+    }
+
+    private async Task OnOpenInGoogleMaps() {
+        if (await GetPoint().ConfigureAwait(true) is not { } point)
+            return;
+
+        await WhenClosed;
+        await JS.InvokeVoidAsync("window.open", point.ToGoogleMapsUrl(), "_blank", "noopener");
+    }
+
+    private async Task OnCopyLink() {
+        if (await GetPoint().ConfigureAwait(true) is not { } point)
+            return;
+
+        await WhenClosed;
+        await ClipboardUI.WriteText(point.ToOpenStreetMapUrl());
+    }
+
+    private async Task<GeoPoint?> GetPoint() {
+        var location = await SharedLocations.Get(Session, _chatId, _locationId, default).ConfigureAwait(true);
+        return location?.Point;
+    }
+}

@@ -2,6 +2,8 @@
 @inherits ComputedStateComponent<AppUIHub, LocationParticipantView.Model>
 @{
     var m = State.Value;
+    var location = Participant.Location;
+    var menuRef = MenuRef.New<LocationParticipantMenu>(location.AuthorId.ChatId.Value, location.Id.Value).ToString();
 }
 
 <div class="c-participant" @onclick="@Click">
@@ -23,6 +25,15 @@
             }
         </div>
     </div>
+    <div class="c-menu-btn" @onclick:stopPropagation="true">
+        <ButtonRound
+            Class="btn-sm btn-transparent"
+            data-menu="@menuRef"
+            data-menu-trigger="@MenuTrigger.Primary"
+            data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">
+            <i class="icon-more-vertical"></i>
+        </ButtonRound>
+    </div>
 </div>
 
 @code {
@@ -42,7 +53,8 @@
         var distanceText = !Participant.IsOwn && OwnPoint is { } ownPoint
             ? ToDistanceText(ownPoint.DistanceTo(Participant.Location.Point))
             : "";
-        var remainingText = await LocationUI.GetTimeLeftText(Participant.Location.AuthorId, cancellationToken).ConfigureAwait(false);
+        var remainingText = await LocationUI.GetTimeLeftText(Participant.Location.AuthorId, cancellationToken)
+            .ConfigureAwait(false);
         return new Model(distanceText, remainingText);
     }
 

@@ -13,8 +13,7 @@
 
 <DialogFrame
     Class="location-map-modal"
-    Title="Location"
-    HasCloseButton="true"
+    HasHeader="false"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
     <Body>
         <div class="c-map-host">
@@ -26,16 +25,45 @@
                     Class="c-map"
                     Markers="@markers"
                     Center="@m.Center"/>
+                <div class="c-map-menu">
+                    <button type="button" class="c-map-menu-item" @onclick="@OnOpenMapTypeMenu">
+                        <i class="icon-map"></i>
+                    </button>
+                    <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
+                        <i class="icon-navigation-pointer"></i>
+                    </button>
+                </div>
+            }
+            <ButtonRound Class="c-close" Click="@OnClose">
+                <i class="icon-close"></i>
+            </ButtonRound>
+            @if (m.Participants.Count > 0) {
+                <div class="c-participants custom-scrollbar">
+                    @foreach (var p in m.Participants) {
+                        <LocationParticipantView
+                            @key="@p.Location.Id"
+                            Participant="@p"
+                            OwnPoint="@m.OwnPoint"
+                            Click="@(() => OnParticipantClick(p))"/>
+                    }
+                </div>
             }
         </div>
-        @if (m.Participants.Count > 0) {
-            <div class="c-participants custom-scrollbar">
-                @foreach (var p in m.Participants) {
-                    <LocationParticipantView
-                        @key="@p.Location.Id"
-                        Participant="@p"
-                        OwnPoint="@m.OwnPoint"
-                        Click="@(() => OnParticipantClick(p))"/>
+        @if (m.IsMapTypeMenuOpen) {
+            <div class="c-menu-backdrop" @onclick="@OnCloseMapTypeMenu"></div>
+            <div class="c-menu c-map-type-menu">
+                @foreach (var (type, label, icon, isSupported) in MapTypes.All) {
+                    <button
+                        type="button"
+                        class="c-menu-item"
+                        disabled="@(!isSupported)"
+                        @onclick="@(() => OnPickMapType(type))">
+                        <i class="@icon"></i>
+                        <span>@label</span>
+                        @if (type == m.MapType) {
+                            <i class="c-check icon-checkmark-simple"></i>
+                        }
+                    </button>
                 }
             </div>
         }
@@ -43,6 +71,8 @@
 </DialogFrame>
 
 @code {
+    private MutableState<string> _mapType = null!;
+    private MutableState<bool> _isMapTypeMenuOpen = null!;
     private MapView? _mapView;
 
     private ILocationTracker Tracker => Hub.LocationTracker;
@@ -50,6 +80,15 @@
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _mapType = StateFactory.NewMutable(
+            MapTypes.All[0].Type,
+            StateCategories.Get(GetType(), nameof(_mapType)));
+        _isMapTypeMenuOpen = StateFactory.NewMutable(
+            false,
+            StateCategories.Get(GetType(), nameof(_isMapTypeMenuOpen)));
+    }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -60,11 +99,13 @@
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var mapType = await _mapType.Use(cancellationToken).ConfigureAwait(false);
+        var isMapTypeMenuOpen = await _isMapTypeMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var chatId = ModalModel.ChatId;
         var participants = await LocationUI.ListParticipants(chatId, ModalModel.LocationId, cancellationToken)
             .ConfigureAwait(false);
         if (participants.Count == 0)
-            return ComputedModel.None;
+            return ComputedModel.None with { MapType = mapType };
 
         var ownLocation = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
         var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
@@ -76,13 +117,35 @@
             : null;
         var clicked = ModalModel.LocationId is { } id ? participants.FirstOrDefault(x => x.Location.Id == id) : null;
         var center = clicked?.Location ?? ownLocation ?? participants[0].Location;
-        return new ComputedModel(participants, ownPoint, ownMarker, center.Point);
+        return new ComputedModel(participants, ownPoint, ownMarker, center.Point, mapType, isMapTypeMenuOpen);
     }
 
     // Private methods
 
+    private void OnClose()
+        => Modal.Close();
+
     private Task OnParticipantClick(LocationParticipant participant)
         => _mapView?.FlyTo(participant.Location.Point).AsTask() ?? Task.CompletedTask;
+
+    private void OnOpenMapTypeMenu()
+        => _isMapTypeMenuOpen.Value = true;
+
+    private void OnCloseMapTypeMenu()
+        => _isMapTypeMenuOpen.Value = false;
+
+    private void OnPickMapType(string type) {
+        _mapType.Value = type;
+        _isMapTypeMenuOpen.Value = false;
+    }
+
+    private async Task OnLocate() {
+        if (await Tracker.Get(force: true).ConfigureAwait(true) is not { } point)
+            return;
+
+        if (_mapView is { } mapView)
+            await mapView.FlyTo(point).ConfigureAwait(false);
+    }
 
     // Nested types
 
@@ -90,7 +153,10 @@
         IReadOnlyList<LocationParticipant> Participants,
         GeoPoint? OwnPoint,
         MapMarker? OwnMarker,
-        GeoPoint Center) {
+        GeoPoint Center,
+        string MapType = "map",
+        bool IsMapTypeMenuOpen = false
+    ) {
         public static readonly ComputedModel None = new([], null, null, new GeoPoint(0, 0));
     }
 
