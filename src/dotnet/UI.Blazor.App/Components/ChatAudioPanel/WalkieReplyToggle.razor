@@ -1,20 +1,40 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, bool>
+@{
+    var isArmed = State.Value;
+}
 
-<ButtonRound
-    Class="@($"walkie-reply-btn {Class}")"
-    Click="@OnClick"
-    Tooltip="Walkie reply"
-    TooltipPosition="FloatingPosition.Top">
-    <i class="icon-talking text-2xl"></i>
-</ButtonRound>
+@if (isArmed) {
+    <ButtonRound
+        Class="@($"walkie-reply-btn {Class}")"
+        Click="@OnClick"
+        Tooltip="Walkie reply"
+        TooltipPosition="FloatingPosition.Top">
+        <i class="icon-talking text-2xl"></i>
+    </ButtonRound>
+}
 
 @code {
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private WalkieTalkieReplyUI WalkieTalkieReplyUI => Hub.WalkieTalkieReplyUI;
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options {
+                InitialValue = false,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var armedChatIds = await ChatAudioUI.GetChatsYouNeedToKeepListeningTo(cancellationToken).ConfigureAwait(false);
+        return armedChatIds.Contains(Chat.Id);
+    }
 
     private void OnClick()
         => _ = BackgroundTask.Run(
