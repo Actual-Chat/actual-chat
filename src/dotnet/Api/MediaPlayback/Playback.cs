@@ -27,6 +27,7 @@ public sealed class Playback : ProcessorBase
     public IState<TimeSpan> TotalPauseDuration => _totalPauseDuration;
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
+    public event Action<TrackInfo, PlayerState>? OnTrackStarted;
 
     internal Playback(
         StateFactory stateFactory,
@@ -179,11 +180,18 @@ public sealed class Playback : ProcessorBase
                 return; // Nothing else to do here
             }
 
-        if (!prev.IsStarted && state.IsStarted)
+        if (!prev.IsStarted && state.IsStarted) {
             lock (_stateUpdateLock) {
                 _playingTracks.Value = _playingTracks.Value.Insert(0, (trackInfo, state));
                 _isPlaying.Value = true;
             }
+            try {
+                OnTrackStarted?.Invoke(trackInfo, state);
+            }
+            catch (Exception ex) {
+                _log.LogError(ex, $"Unhandled exception in {nameof(OnTrackStarted)}");
+            }
+        }
 
         var isPaused = state.IsPaused;
         if (prev.IsPaused != isPaused)

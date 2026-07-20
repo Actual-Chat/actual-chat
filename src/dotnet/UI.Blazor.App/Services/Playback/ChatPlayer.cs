@@ -1,5 +1,6 @@
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -28,6 +29,7 @@ public abstract class ChatPlayer : ProcessorBase
     protected IChats Chats => Hub.Chats;
     protected IAuthors Authors => Hub.Authors;
     protected ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    protected UserSettingsUI UserSettingsUI => field ??= Hub.Services.GetRequiredService<UserSettingsUI>();
     protected InteractiveUI InteractiveUI => Hub.InteractiveUI;
     protected MomentClockSet Clocks => Hub.Clocks;
 
@@ -49,6 +51,7 @@ public abstract class ChatPlayer : ProcessorBase
         Log = Hub.LogFor(GetType());
 
         Playback = Hub.PlaybackFactory.Create();
+        Playback.OnTrackStarted += OnPlaybackTrackStarted;
         SleepDuration = Hub.DeviceAwakeUI.TotalSleepDuration;
         PauseDuration = Playback.TotalPauseDuration;
     }
@@ -170,4 +173,37 @@ public abstract class ChatPlayer : ProcessorBase
 
     protected abstract Task Play(
         Playback playback, Moment startAt, CancellationToken cancellationToken);
+
+    // Private methods
+
+    private void OnPlaybackTrackStarted(TrackInfo trackInfo, PlayerState state)
+    {
+        if (trackInfo is not ChatAudioTrackInfo info)
+            return;
+        if (info.StreamId.IsNullOrEmpty() && info.EntryId == null)
+            return;
+
+        _ = ReportPlayback(info, StopToken);
+    }
+
+    private async Task ReportPlayback(ChatAudioTrackInfo info, CancellationToken cancellationToken)
+    {
+        try {
+            var alwaysListenedChatIds = await ChatAudioUI.GetChatsYouNeedToKeepListeningTo(cancellationToken)
+                .ConfigureAwait(false);
+            if (!alwaysListenedChatIds.Contains(ChatId)) {
+                var listeningMode = await UserSettingsUI.ChatUserSettings(ChatId)
+                    .Get(x => x.ListeningMode, cancellationToken)
+                    .ConfigureAwait(false);
+                if (listeningMode != ListeningMode.Forever)
+                    return;
+            }
+            await Hub.LiveAudioStreams
+                .ReportPlayback(Session, ChatId, info.StreamId, info.EntryId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "ReportPlayback failed in chat #{ChatId}", ChatId);
+        }
+    }
 }
