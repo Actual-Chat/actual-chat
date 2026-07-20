@@ -130,6 +130,7 @@ public sealed class AppScopedServiceStarter
             _ = Hub.TuneUI; // Touch. Auto-starts on construction
             _ = Hub.AudioWidget; // Touch. Auto-starts on construction
             _ = Hub.VideoQualityUI; // Touch. Constructor calls Start(); chains gate on first video activity.
+            _ = Hub.IncomingVoiceActivityUI; // Touch. Auto-starts the incoming-voice tracker
             Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
             if (!HostInfo.IsProductionInstance)
                 Hub.Services.GetRequiredService<DebugUI>();
