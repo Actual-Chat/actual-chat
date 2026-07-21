@@ -4,8 +4,9 @@
 @{
     var s = State.Value;
     var title = s.Title.IsNullOrEmpty() ? s.ParticipantsText : s.Title;
+    var cls = s.IsDissolving ? "live-conversation-header dissolving" : "live-conversation-header";
 }
-<div class="live-conversation-header">
+<div class="@cls">
     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
     <span class="c-lc-name">@title</span>
     @if (s.HasFoldedEntries) {
@@ -54,7 +55,9 @@
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
         var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
         var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
-        return new LiveConversationHeaderState(translated.Title.Text, participantsText, hasFoldedEntries, isExpanded);
+        return new LiveConversationHeaderState(
+            translated.Title.Text, participantsText, hasFoldedEntries, isExpanded,
+            blockState.Overlay?.IsDissolving ?? false);
     }
 
     private void Toggle()

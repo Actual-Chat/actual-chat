@@ -370,3 +370,23 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 .live-conversation-footer {
     @apply h-3 rounded-b-2xl;
 }
+
+/* Tier-1 dissolve: a too-short session leaves no card, so its block fades + collapses its chrome
+   (border, tint, header, card, footer) out while the entries stay put, then it's removed and they
+   drop to plain messages. Duration is kept in sync with LiveBlockUI.DissolveDuration (300ms). */
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header.dissolving) {
+    animation: lc-dissolve-frame 300ms ease forwards;
+}
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header.dissolving) > .item.expanded,
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header.dissolving) > .item:has(> .conversation-message.live),
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header.dissolving) > .item:has(> .live-conversation-footer) {
+    overflow: hidden;
+    animation: lc-dissolve-chrome 300ms ease forwards;
+}
+@keyframes lc-dissolve-frame {
+    to { border-color: transparent; }
+}
+@keyframes lc-dissolve-chrome {
+    from { max-height: 200px; opacity: 1; }
+    to { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; }
+}

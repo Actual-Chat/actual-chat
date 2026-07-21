@@ -4,4 +4,5 @@ public sealed record LiveConversationHeaderState(
     string Title,
     string ParticipantsText,
     bool HasFoldedEntries,
-    bool IsExpanded);
+    bool IsExpanded,
+    bool IsDissolving = false);
