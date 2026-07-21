@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Flows;
 using ActualChat.Live;
 using ActualChat.Notifications;
 using ActualChat.Queues;
@@ -43,6 +44,17 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private ILiveVideoBackend LiveVideoBackend { get; }
     private VersionGenerator<long> VersionGenerator { get; }
     private ICommander Commander => field ??= Services.Commander();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
+
+    // Wake the summary flow so it runs its final pass at once instead of on its next throttled resume -
+    // that's what makes a closing block finalize (and dissolve) promptly. By FlowId string name so the
+    // streaming backend needn't reference the Chat.Service flow type. WithDelay(0, 0) is immediate AND
+    // un-quantized - without the zero quantum the resume inherits the flow's 15s DelayQuanta and rounds
+    // up to the next 15s boundary, coalescing with the throttle (defeating the whole point).
+    private Task WakeSummaryFlow(ChatId chatId)
+        => FlowHub.NewResumeEvent(new FlowId(LiveFlows.SummaryFlowName, chatId.Value))
+            .WithDelay(TimeSpan.Zero, TimeSpan.Zero)
+            .Schedule(CancellationToken.None);
 
     public LiveSessionsBackend(IServiceProvider services)
         : base(services, ShardScheme.LiveBackend)
@@ -303,6 +315,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         CancellationToken cancellationToken)
     {
         bool emptiedByLeave;
+        var startedClosing = false;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             if (isActive) {
@@ -324,12 +337,19 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             emptiedByLeave = !isActive && !await IsSessionLive(chatId).ConfigureAwait(false);
             // A join/heartbeat, or a leave with someone still streaming, just re-evaluates liveness; the
             // grace there is the safety net for crashed/stale clients. A leave that stops the last stream
-            // closes it outright below - no waiting on the grace or on a UI observer.
+            // closes it outright below - no waiting on the grace or on a UI observer. EvaluateLiveness only
+            // marks a still-populated session closing (recoverable if a recorder returns), so a transient
+            // not-live blip never tears down a live recording - unlike an unconditional CloseNow here would.
             if (!emptiedByLeave)
-                await EvaluateLiveness(chatId).ConfigureAwait(false);
+                startedClosing = await EvaluateLiveness(chatId).ConfigureAwait(false);
         }
         if (emptiedByLeave)
             await CloseNow(chatId).ConfigureAwait(false);
+        else if (startedClosing)
+            // The last recorder stayed on as a listener: no stream left to trip CloseNow, but the session is
+            // no longer live. Wake the summary flow to finalize the just-closing session now, rather than
+            // leaving the block and Call tab up until the 90s SelfClose backstop fires.
+            await WakeSummaryFlow(chatId).ConfigureAwait(false);
     }
 
     public virtual async Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
@@ -750,35 +770,42 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // Caller must hold the change lock + Computed.BeginIsolation().
-    private async Task EvaluateLiveness(ChatId chatId)
+    // Returns true iff this call just transitioned the session into IsClosing.
+    private async Task<bool> EvaluateLiveness(ChatId chatId)
     {
         var state = await SafeGet(chatId).ConfigureAwait(false);
         if (state is null)
-            return;
+            return false;
 
         // A streamer (recording audio or video) keeps the session alive; it closes once nobody is
         // streaming, even if listeners/watchers remain.
         var isActive = await IsSessionLive(chatId).ConfigureAwait(false);
         if (isActive == !state.IsClosing)
-            return; // already active+open or inactive+closing
+            return false; // already active+open or inactive+closing
 
         state = isActive
             ? state with { IsClosing = false, ClosingAt = null, Version = VersionGenerator.NextVersion(state.Version) }
             : state with { IsClosing = true, ClosingAt = Clocks.SystemClock.Now, Version = VersionGenerator.NextVersion(state.Version) };
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
         InvalidateState(chatId);
+        return !isActive;
     }
 
     private async Task StartClosingGrace(ChatId chatId)
     {
+        bool startedClosing;
         try {
             using var _ = Computed.BeginIsolation();
             using var lockHolder = await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false);
-            await EvaluateLiveness(chatId).ConfigureAwait(false);
+            startedClosing = await EvaluateLiveness(chatId).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "StartClosingGrace failed for chat #{ChatId}", chatId);
+            return;
         }
+        // Outside the lock: wake the summary flow so it finalizes the just-closing session at once.
+        if (startedClosing)
+            await WakeSummaryFlow(chatId).ConfigureAwait(false);
     }
 
     // Immediate close: the last participant left explicitly, so wind the call down now rather than

@@ -200,6 +200,65 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
+    public async Task RecorderDowngradingToListenerMarksSessionClosing()
+    {
+        // Stopping recording while staying on as a listener empties the session of streamers - a lone
+        // listener can't keep it live - so it's marked closing (recoverable if a recorder returns), just
+        // like an explicit leave that stops the last stream.
+
+        // arrange — a solo streamer records
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        (await backend.GetState(chatId, default))!.IsClosing.Should().BeFalse();
+
+        // act — recording stops but the same author stays on as a listener (mic off, still listening)
+        await backend.SetParticipation(chatId, author!.Id, ParticipationKind.AudioListen, true, default);
+
+        // assert — no recorder is left, so the session is marked closing
+        var live = await backend.GetState(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeTrue("a lone listener can't keep the session live");
+    }
+
+    [Fact]
+    public async Task LastRecorderDowngradingToListenerClosesSession()
+    {
+        // The user-reported case: both peers stop recording but keep listening. Neither leaves, yet with no
+        // recorder left the latched session must close (marked closing, then finalized by the summary flow).
+
+        // arrange — two streamers latch the session
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(true);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, bobAuthor!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, aliceAuthor!.Id, null, true, default);
+
+        // act — alice stops recording but keeps listening; bob is still recording, so it stays live
+        await backend.SetParticipation(chatId, aliceAuthor!.Id, ParticipationKind.AudioListen, true, default);
+        var live = await backend.GetState(chatId, default);
+        live!.IsClosing.Should().BeFalse("bob is still recording");
+
+        // act — bob stops recording but also stays on as a listener: no recorder remains
+        await backend.SetParticipation(chatId, bobAuthor!.Id, ParticipationKind.AudioListen, true, default);
+
+        // assert — two listeners can't keep the session live, so it's closing
+        live = await backend.GetState(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeTrue("nobody is streaming anymore, so listeners alone can't keep it live");
+    }
+
+    [Fact]
     public async Task LiveSessionExposesHostAndMembers()
     {
         // arrange
@@ -856,5 +915,15 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
 
         // assert — the pre-latch conversation's exact range survives; the live range no longer swallows it
         meta.ConversationLidRanges.Should().Contain(new Range<long>(e0.LocalId, e2.LocalId + 1));
+    }
+
+    [Fact]
+    public void SummaryFlowNameMatchesConstant()
+    {
+        // The streaming backend wakes the flow by this string name (it can't reference the flow type);
+        // if the flow is renamed, this guards that LiveFlows.SummaryFlowName is updated with it.
+        var flowHub = AppHost.Services.GetRequiredService<ActualChat.Flows.FlowHub>();
+        var name = flowHub.NewId<ActualChat.Chat.Flows.LiveConversationSummaryFlow>("x").Name.Value;
+        name.Should().Be(LiveFlows.SummaryFlowName);
     }
 }
