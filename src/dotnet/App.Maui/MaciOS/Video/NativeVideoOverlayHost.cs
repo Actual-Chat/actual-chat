@@ -18,7 +18,7 @@ public sealed class NativeVideoOverlayHost : INativeVideoOverlayHost
     // backgrounds are confirmed transparent on Mac Catalyst, so DOM chrome (labels, menus,
     // modals) composites correctly on top. See docs/plans/maccatalyst-native-video-overlay.md.
     private enum Placement { AboveWebView, BelowWebView }
-    private static readonly Placement OverlayPlacement = Placement.AboveWebView;
+    private static readonly Placement OverlayPlacement = Placement.BelowWebView;
 
     private readonly ILogger _log;
     private readonly Dictionary<string, SampleBufferDisplayView> _views = new();

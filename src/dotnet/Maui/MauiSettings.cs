@@ -11,7 +11,7 @@ public static class MauiSettings
     // Mac Catalyst: render remote video tiles with native AVSampleBufferDisplayLayer overlays
     // instead of the JPEG-over-interop canvas path. Off until validated on-device (placement
     // calibration — see docs/plans/maccatalyst-native-video-overlay.md).
-    public const bool UseNativeVideoOverlay = false;
+    public const bool UseNativeVideoOverlay = true;
 #if IS_DEV_MAUI
     public const bool IsDevApp = true;
     public const bool AreDevToolsEnabled = true;
