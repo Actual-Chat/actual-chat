@@ -9,7 +9,10 @@
     @apply overflow-hidden;
     @apply bg-03;
 }
-body.narrow .location-map-modal .c-map-host {
+/* device-ios/android force .modal-frame to full viewport height even when wide (tablets, landscape) */
+body.narrow .location-map-modal .c-map-host,
+body.device-ios .location-map-modal .c-map-host,
+body.device-android .location-map-modal .c-map-host {
     @apply flex-1;
     @apply h-auto max-h-none;
 }
