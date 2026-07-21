@@ -37,20 +37,16 @@ public class SharedLocationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
 
         var now = Clocks.SystemClock.Now;
-        var result = new List<SharedLocation>();
-        Moment? soonestExpiry = null;
-        foreach (var dbSharedLocation in dbSharedLocations) {
-            var model = dbSharedLocation.ToModel();
-            if (!model.IsLive(now))
-                continue;
-
-            result.Add(model);
-            if (!model.IsUnlimited && (soonestExpiry is not { } value || model.LiveUntil < value))
-                soonestExpiry = model.LiveUntil;
-        }
+        var result = dbSharedLocations
+            .Select(x => x.ToModel())
+            .Where(x => x.IsLive(now))
+            .ToApiArray();
+        var soonestExpiry = result
+            .Where(x => !x.IsUnlimited)
+            .Min(x => (Moment?)x.LiveUntil);
         if (soonestExpiry is { } expiry)
             Computed.GetCurrent().Invalidate(expiry - now);
-        return result.ToApiArray();
+        return result;
     }
 
     // [CommandHandler]

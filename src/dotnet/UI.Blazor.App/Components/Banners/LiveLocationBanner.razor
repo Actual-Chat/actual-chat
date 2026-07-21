@@ -8,7 +8,7 @@
     IsVisible="@(m.Count > 0)"
     Severity="@(m.IsTrackingBroken ? BannerSeverity.Error : BannerSeverity.Default)"
     Class="live-location-banner">
-    <Icon></Icon>
+    <Icon>@*Empty on purpose: a null Icon would render the default SeverityIcon; the icon lives in Body*@</Icon>
     <Body>
         <div class="c-body" @onclick="@OnClick">
             @if (m.IsTrackingBroken) {
@@ -71,6 +71,8 @@
 
         return new Model(participants, remaining, trackingError);
     }
+
+    // Private methods
 
     private Task OnClick() {
         var m = State.Value;
