@@ -58,7 +58,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         lock (Lock)
             return baseState with {
-                Overlay = DeriveOverlay(chatState, baseState.FoldBoundaryLid, raw, amInLive, baseState.IsDissolving),
+                Overlay = DeriveOverlay(chatState, baseState.FoldBoundaryLid, raw, amInLive),
             };
     }
 
@@ -81,22 +81,23 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
     }
 
     private static LiveBlockOverlay? DeriveOverlay(
-        ChatFoldState chatState, long foldBoundaryLid, LiveSessionState? raw, bool amInLive, bool isDissolving)
+        ChatFoldState chatState, long foldBoundaryLid, LiveSessionState? raw, bool amInLive)
     {
         if (!chatState.WasAttending || chatState.Template is not { } t)
             return null;
 
         if (raw == null)
             // Close: freeze the block under its live-era render id and hand over to the materialized
-            // conversation. Tier-1 (never summarized) has no card - keep the frozen block briefly with
-            // IsDissolving so it can fade + collapse out, then drop it and the entries just stay.
+            // conversation. Tier-1 (never summarized) has no card - it dissolves immediately here (no
+            // wait on the governor, or the block would be gone before the animation starts), then the
+            // governor flips DissolveDone once the window passes and it drops to plain messages.
             return t.HadSummary
                 ? new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
                     default, t.BlockEndLid, t.MaterializedId, t.IsExpandedByDefault)
-                : isDissolving
-                    ? new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
-                        new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false, IsDissolving: true)
-                    : null;
+                : chatState.DissolveDone
+                    ? null
+                    : new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
+                        new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false, IsDissolving: true);
 
         if (!amInLive)
             // Leave (session still live): freeze what the viewer was rendering; entries that arrive
@@ -245,20 +246,22 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             var state = chatState.State.Value with { WasAttending = chatState.WasAttending };
             Moment? wakeAt = null;
 
-            // A tier-1 (never-summarized) close leaves no card behind. Hold the block briefly as
-            // "dissolving" so it can fade + collapse out, then release it so the entries drop to plain
-            // messages. DissolveEndsAt is latched once; IsDissolving falls false when the window passes.
+            // A tier-1 (never-summarized) close leaves no card behind. DeriveOverlay dissolves the
+            // block immediately (synchronously) so the animation actually starts; the governor only
+            // arms the window and flips DissolveDone once it passes, dropping the block to plain
+            // messages. The state's IsDissolving mirror is just the signal that re-invalidates
+            // GetBlockState when the window ends.
             var isTierOneClose = raw == null && chatState.WasAttending
                 && chatState.Template is { HadSummary: false };
-            var isDissolving = false;
             if (isTierOneClose) {
                 if (chatState.DissolveEndsAt == default)
                     chatState.DissolveEndsAt = Clocks.ServerClock.Now + DissolveDuration;
-                isDissolving = Clocks.ServerClock.Now < chatState.DissolveEndsAt;
-                if (isDissolving)
+                if (!chatState.DissolveDone && Clocks.ServerClock.Now >= chatState.DissolveEndsAt)
+                    chatState.DissolveDone = true;
+                if (!chatState.DissolveDone)
                     wakeAt = chatState.DissolveEndsAt;
             }
-            state = state with { IsDissolving = isDissolving };
+            state = state with { IsDissolving = isTierOneClose && !chatState.DissolveDone };
 
             if (raw is { SessionStartedAt: not null }) {
                 var v = raw.EffectiveVisibleStartLid;
@@ -311,6 +314,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         public bool WasAttending;
         public bool IsClosed;
         public Moment DissolveEndsAt;
+        public bool DissolveDone;
         public FrozenTemplate? Template;
     }
 
