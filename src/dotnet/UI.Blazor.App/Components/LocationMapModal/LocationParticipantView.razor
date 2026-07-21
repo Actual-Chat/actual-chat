@@ -20,9 +20,6 @@
             @if (!m.DistanceText.IsNullOrEmpty()) {
                 <span> · @m.DistanceText from you</span>
             }
-            @if (!m.RemainingText.IsNullOrEmpty()) {
-                <span> · @m.RemainingText left</span>
-            }
         </div>
     </div>
     <div class="c-menu-btn" @onclick:stopPropagation="true">
@@ -37,8 +34,6 @@
 </div>
 
 @code {
-    private LocationUI LocationUI => Hub.LocationUI;
-
     [Parameter, EditorRequired] public LocationParticipant Participant { get; set; } = null!;
     [Parameter] public GeoPoint? OwnPoint { get; set; }
     [Parameter] public EventCallback Click { get; set; }
@@ -53,14 +48,12 @@
         var distanceText = !Participant.IsOwn && OwnPoint is { } ownPoint
             ? ownPoint.DistanceTextTo(Participant.Location.Point)
             : "";
-        var remainingText = await LocationUI.GetTimeLeftText(Participant.Location.AuthorId, cancellationToken)
-            .ConfigureAwait(false);
-        return new Model(distanceText, remainingText);
+        return new Model(distanceText);
     }
 
     // Nested types
 
-    public sealed record Model(string DistanceText, string RemainingText) {
-        public static readonly Model None = new ("", "");
+    public sealed record Model(string DistanceText) {
+        public static readonly Model None = new ("");
     }
 }

@@ -17,7 +17,6 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
     private IAuthors Authors => Hub.Authors;
     private ISharedLocations SharedLocations => Hub.SharedLocations;
-    private LiveTime LiveTime => Hub.LiveTime;
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<Author>> ListAuthors(ChatId chatId, CancellationToken cancellationToken)
@@ -90,28 +89,6 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
                 .Capture(() => SharedLocations.Get(Session, chatId, id, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
         return cLocation.Value is { Duration.Ticks: > 0 };
-    }
-
-    [ComputeMethod]
-    public virtual async Task<string> GetOwnTimeLeftText(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return ownAuthor is null
-            ? ""
-            : await GetTimeLeftText(ownAuthor.Id, cancellationToken).ConfigureAwait(false);
-    }
-
-    [ComputeMethod]
-    public virtual async Task<string> GetTimeLeftText(
-        AuthorId authorId,
-        CancellationToken cancellationToken)
-    {
-        var location = await GetLive(authorId, cancellationToken).ConfigureAwait(false);
-        if (location is null || location.IsUnlimited)
-            return "";
-
-        return await LiveTime.GetRemainingText(location.LiveUntil, RemainingTextUpdatePeriod, cancellationToken)
-            .ConfigureAwait(false);
     }
 
     [ComputeMethod]

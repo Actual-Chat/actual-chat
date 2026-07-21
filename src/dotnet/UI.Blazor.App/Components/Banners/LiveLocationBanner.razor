@@ -26,9 +26,6 @@
                 AuthorIds="@m.AuthorIds"/>
             <div class="c-text">
                 <span class="c-description">@m.GetDescription()</span>
-                @if (!m.RemainingText.IsNullOrEmpty()) {
-                    <span class="c-countdown">@m.RemainingText left</span>
-                }
             </div>
         </div>
     </Body>
@@ -66,10 +63,9 @@
         if (participants.Count == 0)
             return Model.None;
 
-        var remaining = await LocationUI.GetOwnTimeLeftText(chatId, cancellationToken).ConfigureAwait(false);
         var trackingError = await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false);
 
-        return new Model(participants, remaining, trackingError);
+        return new Model(participants, trackingError);
     }
 
     // Private methods
@@ -91,7 +87,6 @@
 
     public sealed record Model(
         IReadOnlyList<LocationParticipant> Participants,
-        string RemainingText = "",
         GeoTrackingError? TrackingError = null) {
         public static readonly Model None = new([]);
 
