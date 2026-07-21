@@ -29,9 +29,13 @@
         {
             <LiveConversationFooterView ChatContext="@chatContext" Footer="@liveConversationFooter" />
         }
+        else if (item is LiveConversationHeader liveConversationHeader)
+        {
+            <LiveConversationHeaderView ChatContext="@chatContext" Header="@liveConversationHeader" />
+        }
         else if (item is ExpandedConversationMessage expandedConversationMessage) {
             foreach (var childItem in expandedConversationMessage.Items) {
-                @if (childItem is ConversationHeader) {
+                @if (childItem is ConversationHeader or LiveConversationHeader) {
                     <div @key="@childItem.Key" class="item expanded" data-key="@childItem.Key" data-skip="true">
                         @RenderChatMessage!((childItem, chatContext))
                     </div>

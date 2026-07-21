@@ -54,6 +54,7 @@ public partial class ChatUI
         CancellationToken cancellationToken)
     {
         // DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, dataQuery, shownReadyEntryLid);
+        var startedAt = CpuTimestamp.Now;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return ChatItems.Empty;
@@ -95,6 +96,7 @@ public partial class ChatUI
             : liveConversation is { } liveConv && !amInLiveConversation
                 ? new Range<long>(liveConv.EndEntryLid + 1, long.MaxValue)
                 : default;
+        var liveAt = CpuTimestamp.Now;
 
         var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
@@ -228,6 +230,7 @@ public partial class ChatUI
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         var alreadyAddedConversationCards = new HashSet<ConversationId>();
+        var alreadyAddedLiveHeaders = new HashSet<ConversationId>();
         // The single tail tile merging optimistic "sending"/new/audio-recording messages - picked once so a
         // live session's beyond-end conversation tiles can't become a second tail (duplicate @key crash).
         var tailTileIndex = idTiles.FindIndex(t => t.Contains(chatLidRange.End - 1));
@@ -281,6 +284,16 @@ public partial class ChatUI
                 .ToList();
             if (dedupedItems.Count != tile.Items.Count)
                 tile = tile with { Items = dedupedItems };
+            if (tile.Items.Count == 0)
+                continue;
+
+            // Same problem for the live block's sticky header, emitted alongside the card.
+            var dedupedHeaders = tile.Items
+                .Where(chatMessage => chatMessage is not LiveConversationHeader liveConversationHeader
+                    || alreadyAddedLiveHeaders.Add(liveConversationHeader.Conversation!.Id))
+                .ToList();
+            if (dedupedHeaders.Count != tile.Items.Count)
+                tile = tile with { Items = dedupedHeaders };
             if (tile.Items.Count == 0)
                 continue;
 
@@ -801,6 +814,17 @@ public partial class ChatUI
 
         void EmitConversationCard(Conversation conversation, DateOnly date)
         {
+            if (conversation.Id == liveBlockId) {
+                var header = new LiveConversationHeader(conversation) {
+                    Kind = ChatMessageKind.LiveConversationHeader,
+                    Date = date,
+                    PreviousMessage = prevMessage,
+                };
+                if (prevMessage != null)
+                    prevMessage.NextMessage = header;
+                messages.Add(header);
+                prevMessage = header;
+            }
             var message = new ConversationMessage(conversation) {
                 Kind = ChatMessageKind.ConversationStart,
                 Date = date,

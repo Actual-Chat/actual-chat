@@ -21,6 +21,7 @@ public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMe
         [ChatMessageKind.ConversationBlock] = "-conversation-block",
         [ChatMessageKind.ConversationStart] = "-conversation",
         [ChatMessageKind.ConversationEnd] = "-conversation-end",
+        [ChatMessageKind.LiveConversationHeader] = "-live-header",
         [ChatMessageKind.Thread] = "-thread",
         [ChatMessageKind.SendingNewMessage] = "-sending-new-msg",
         [ChatMessageKind.AudioRecordingMessage] = "-audio-recording-msg",

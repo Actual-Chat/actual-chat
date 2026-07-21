@@ -28,7 +28,7 @@
         var startedAt = $"Started at {startsAt:HH:mm}";
         var hasSummary = state.HasFoldedEntries;
         <div class="c-live-card">
-            @if (hasLiveTitle) {
+            @if (!state.IsJoined && hasLiveTitle) {
                 <div class="c-lc-title">
                     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
                     <span class="c-lc-name">@m.Title.Text</span>
@@ -195,7 +195,9 @@
         var isVoiceOnly = isLive
             && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(true);
         var participantsText = isLive
-            ? await GetParticipantsText(chatId, conversation.AuthorIds, cancellationToken).ConfigureAwait(true)
+            ? await ConversationParticipantsFormatter
+                .GetText(Authors, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
+                .ConfigureAwait(true)
             : "";
         var rawLive = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(true);
         var blockState = await LiveBlockUI.GetBlockState(chatId, cancellationToken).ConfigureAwait(true);
@@ -228,34 +230,6 @@
         return entries
             .Select((e, i) => new PreviewEntry(e, markups[i], streamingTexts[i]))
             .ToList();
-    }
-
-    private async Task<string> GetParticipantsText(
-        ChatId chatId,
-        IReadOnlyList<AuthorId> authorIds,
-        CancellationToken cancellationToken) {
-        var names = new List<string>();
-        foreach (var authorId in authorIds.Take(3)) {
-            var author = await Authors.Get(Hub.Session, chatId, authorId, cancellationToken).ConfigureAwait(true);
-            if (author?.Avatar.Name is { } name && !name.IsNullOrEmpty())
-                names.Add(Abbreviate(name));
-        }
-        if (names.Count == 0)
-            return "";
-        if (names.Count == 1)
-            return names[0];
-
-        var total = authorIds.Count;
-        if (total > 3)
-            return $"{names[0]}, {names[1]} and {total - 2} {"other".Pluralize(total - 2)}";
-        if (names.Count == 2)
-            return $"{names[0]} and {names[1]}";
-        return $"{names[0]}, {names[1]} and {names[2]}";
-    }
-
-    private static string Abbreviate(string name) {
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length < 2 ? name : $"{parts[0]} {parts[1][0]}.";
     }
 
     private void OnHeaderClick() {

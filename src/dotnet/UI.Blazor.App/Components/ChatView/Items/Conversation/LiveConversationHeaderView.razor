@@ -1,0 +1,62 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, LiveConversationHeaderState>
+
+@{
+    var s = State.Value;
+    var title = s.Title.IsNullOrEmpty() ? s.ParticipantsText : s.Title;
+}
+<div class="live-conversation-header">
+    <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
+    <span class="c-lc-name">@title</span>
+    @if (s.HasFoldedEntries) {
+        <HeaderButton Class="c-lc-expand" Click="@Toggle">
+            <i class="@(s.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
+        </HeaderButton>
+    }
+</div>
+
+@code {
+    private IAuthors Authors => Hub.Authors;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private LiveBlockUI LiveBlockUI => Hub.LiveBlockUI;
+    private ConversationUI ConversationUI => Hub.ConversationUI;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public LiveConversationHeader Header { get; set; } = null!;
+
+    protected override ComputedState<LiveConversationHeaderState>.Options GetStateOptions() {
+        var conversation = Header.Conversation!;
+        return ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<LiveConversationHeaderState>.Options() {
+                InitialValue = new LiveConversationHeaderState(conversation.Title, "", false, false),
+                Category = GetStateCategory(t),
+            });
+    }
+
+    protected override async Task<LiveConversationHeaderState> ComputeState(CancellationToken cancellationToken) {
+        var conversation = Header.Conversation!;
+        var chatId = conversation.Id.ChatId;
+        var translated = await ConversationUI.GetTranslatedConversation(conversation, cancellationToken).ConfigureAwait(true);
+        var live = await LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(true);
+        var isLive = live != null && live.Id == conversation.Id;
+        var isVoiceOnly = isLive
+            && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(true);
+        var participantsText = isLive
+            ? await ConversationParticipantsFormatter
+                .GetText(Authors, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
+                .ConfigureAwait(true)
+            : "";
+        var rawLive = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(true);
+        var blockState = await LiveBlockUI.GetBlockState(chatId, cancellationToken).ConfigureAwait(true);
+        var hasFoldedEntries = isLive && !isVoiceOnly
+            && rawLive is { SessionStartedAt: not null }
+            && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
+        var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
+        var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
+        return new LiveConversationHeaderState(translated.Title.Text, participantsText, hasFoldedEntries, isExpanded);
+    }
+
+    private void Toggle()
+        => ChatUI.ToggleExpandConversation(Header.Conversation!.Id);
+}
