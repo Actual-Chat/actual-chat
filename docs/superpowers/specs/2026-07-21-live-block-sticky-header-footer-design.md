@@ -109,7 +109,10 @@ which renders under the same `liveBlockId` path until it materializes.
   `.avatar-badge` sticky rules (`chat-view.css:731-737`) engage and the
   `top-20/md:top-16` offset clears the band's height.
 
-No server, protocol, DB, or Fusion changes.
+The sticky header/footer work itself needs no server, protocol, DB, or Fusion
+changes. The recorder-driven liveness and immediate close/finalize changes that
+ship in the same PR belong to the companion live-block UX polish work, not to
+this spec.
 
 ### 5. Scope
 
