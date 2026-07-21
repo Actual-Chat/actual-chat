@@ -318,6 +318,12 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     background: linear-gradient(to bottom, rgba(166, 53, 255, 0.10), rgba(166, 53, 255, 0.03));
 }
 
+/* Mirrors virtual-list.css's .item:has(.conversation-header) rule - that one only matches the literal
+   conversation-header class, not this component's own live-conversation-header. */
+.virtual-list .c-virtual-container .item:has(.live-conversation-header) {
+    @apply sticky -top-px z-20;
+}
+
 /* Live conversation header - solid background occludes the scrollable description sliding up behind it. */
 .virtual-list .c-virtual-container .live-conversation-header {
     @apply flex items-center gap-x-2;

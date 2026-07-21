@@ -28,7 +28,7 @@
         var startedAt = $"Started at {startsAt:HH:mm}";
         var hasSummary = state.HasFoldedEntries;
         <div class="c-live-card">
-            @if (!state.IsJoined && hasLiveTitle) {
+            @if (!Message.HasSplitHeader && hasLiveTitle) {
                 <div class="c-lc-title">
                     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
                     <span class="c-lc-name">@m.Title.Text</span>
@@ -50,7 +50,7 @@
                 </div>
             }
             <div class="c-lc-meta-row">
-                @if (!hasLiveTitle) {
+                @if (!hasLiveTitle && !Message.HasSplitHeader) {
                     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
                 }
                 <AuthorCircleGroup
@@ -60,7 +60,7 @@
                     MaxCount="4"
                     ShowRing="false"/>
                 <div class="c-lc-meta">
-                    @if (!hasLiveTitle) {
+                    @if (!hasLiveTitle && !Message.HasSplitHeader) {
                         <div class="c-lc-roster">@state.ParticipantsText</div>
                     }
                     <div class="c-lc-started">@startedAt · @secondLine</div>
@@ -88,12 +88,14 @@
         <CascadingValue Value="@_fakeEntry" IsFixed="true">
         <div class="c-details">
             <div class="c-summary">
-                <ConversationMessageHeader
-                    Conversation="@conversation"
-                    Title="@m.Title"
-                    MessageCount="@messageCount"
-                    StartsAt="@startsAt"
-                    ConversationToggleClick="@OnHeaderClick"/>
+                @if (!Message.HasSplitHeader) {
+                    <ConversationMessageHeader
+                        Conversation="@conversation"
+                        Title="@m.Title"
+                        MessageCount="@messageCount"
+                        StartsAt="@startsAt"
+                        ConversationToggleClick="@OnHeaderClick"/>
+                }
                 <div class="c-short">
                     <MarkupView Markup="@m.Description.Markup"/>
                     @if (!_isOpen && canExpand) {
