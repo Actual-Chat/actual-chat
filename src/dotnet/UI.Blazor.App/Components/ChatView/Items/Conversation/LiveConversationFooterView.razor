@@ -1,0 +1,11 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="live-conversation-footer">
+    <chat-activity-panel-icon-svg size="4" isActive="true" mode="audio"/>
+    <span class="c-live-label">Live</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public LiveConversationFooter Footer { get; set; } = null!;
+}
