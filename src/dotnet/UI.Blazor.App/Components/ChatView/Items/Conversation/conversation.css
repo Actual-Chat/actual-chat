@@ -19,17 +19,10 @@
     background: linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%);
 }
 .conversation-message.live.joined {
-    @apply border border-solid border-transparent;
-    /* The outline is a border-box layer, not border-image, which would drop the rounded corners. It
-       decays into the tail's own tint, so the card merges downward instead of closing. The opaque
-       bg-01 base lets that tint rise behind the card, and must be an image - a bare color is only
-       legal in the final background layer, and would silently void the whole declaration here. */
-    background:
-        linear-gradient(249deg,
-            rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%) padding-box,
-        linear-gradient(var(--background-01), var(--background-01)) padding-box,
-        linear-gradient(to bottom,
-            var(--violet-60) 0%, var(--violet-60) 50%, var(--c-live-tint, rgba(166, 53, 255, 0.1)) 100%) border-box;
+    /* Inside the block the group owns the border, tint, and rounding (see the .group rule below), so
+       the card itself is flush and transparent - a border here would draw a second box inside the block. */
+    @apply border-none rounded-none;
+    background: none;
 }
 .c-live-card {
     @apply flex-y gap-y-2 w-full;
@@ -308,14 +301,21 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply bg-cr-badge-selected;
     @apply text-cr-badge-selected-text;
 }
-/* Joined live block: the card is the sticky header, the entries carry sticky author badges, and a
-   live footer closes the box. The tint is the block's own background (bounded by the footer's rounded
-   bottom), so nothing needs overflow:hidden - which is what lets position:sticky badges work. */
+/* Joined live block: the group is the single container - it owns the purple outline, the tint fill,
+   and the rounding, wrapping the sticky header, the scrollable card, the author entries, and the live
+   footer as one box. The tint is the block's own background (no overflow:hidden needed - which is what
+   lets position:sticky author badges and the sticky header work). The outline is a border-box layer,
+   not border-image, which would drop the rounded corners; the opaque bg-01 base carries the tint. */
 .virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live.joined),
 .virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) {
     isolation: isolate;
-    @apply rounded-2xl;
-    background: linear-gradient(to bottom, rgba(166, 53, 255, 0.10), rgba(166, 53, 255, 0.03));
+    @apply rounded-2xl border border-solid border-transparent;
+    background:
+        linear-gradient(249deg,
+            rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%) padding-box,
+        linear-gradient(var(--background-01), var(--background-01)) padding-box,
+        linear-gradient(to bottom,
+            var(--violet-60) 0%, var(--violet-60) 50%, var(--c-live-tint, rgba(166, 53, 255, 0.1)) 100%) border-box;
 }
 
 /* Mirrors virtual-list.css's .item:has(.conversation-header) rule - that one only matches the literal
@@ -324,12 +324,16 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply sticky -top-px z-20;
 }
 
-/* Live conversation header - solid background occludes the scrollable description sliding up behind it. */
+/* Live conversation header - the block's top row. Carries the same opaque tint fill as the container
+   so it reads as part of the block AND occludes the scrollable card sliding up behind it when pinned. */
 .virtual-list .c-virtual-container .live-conversation-header {
     @apply flex items-center gap-x-2;
     @apply px-4 py-2;
-    @apply bg-01;
     @apply rounded-t-2xl;
+    background:
+        linear-gradient(249deg,
+            rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%),
+        linear-gradient(var(--background-01), var(--background-01));
 }
 .live-conversation-header .c-lc-name {
     @apply flex-1 min-w-0;
@@ -346,12 +350,17 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply text-xl;
 }
 
-/* Live conversation footer */
+/* Live conversation footer - the block's bottom row. A static dot marks it live; the dancing-bars
+   audio animation belongs to the header only, and must not repeat here. */
 .live-conversation-footer {
     @apply flex items-center gap-x-2;
     @apply px-4 py-1.5;
     @apply text-sm text-02;
     @apply rounded-b-2xl;
+}
+.live-conversation-footer .c-live-dot {
+    @apply flex-none w-2 h-2 rounded-full;
+    background: var(--violet-60);
 }
 .live-conversation-footer .c-live-label {
     color: var(--violet-60);
