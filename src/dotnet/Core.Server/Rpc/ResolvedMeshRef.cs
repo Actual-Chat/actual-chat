@@ -8,7 +8,7 @@ namespace ActualChat.Rpc;
 [StructLayout(LayoutKind.Auto)]
 public readonly struct ResolvedMeshRef
 {
-    public readonly MeshRpcPeerRefs Owner;
+    public readonly MeshRpcRefs Owner;
     public readonly ShardRef ShardRef;
     public readonly NodeRef NodeRef;
     public MeshRef MeshRef => ShardRef.IsNone ? NodeRef : ShardRef;
@@ -17,7 +17,7 @@ public readonly struct ResolvedMeshRef
 
     public ResolvedMeshRef Latest => new(Owner, MeshRef);
 
-    public ResolvedMeshRef(MeshRpcPeerRefs owner, MeshRef meshRef)
+    public ResolvedMeshRef(MeshRpcRefs owner, MeshRef meshRef)
     {
         Owner = owner;
         var meshState = owner.MeshState.LastNonErrorValue; // ComputedState.Value may throw OCE once MeshState is disposed

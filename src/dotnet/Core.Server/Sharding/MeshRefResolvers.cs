@@ -22,7 +22,7 @@ public static class MeshRefResolvers
     static MeshRefResolvers()
     {
         // NOTE(AY):Returning MeshRef.None from MeshRefResolver means
-        // MeshRpcPeerRef.Get(MeshRef meshRef) will fail with an exception,
+        // MeshRpcRef.Get(MeshRef meshRef) will fail with an exception,
         // so the call with such an argument will fail too.
         Register<ThisNodeRef>(_ => MeshRef.ThisNodeAlias);
         Register<IRequiresThisNode>(_ => MeshRef.ThisNodeAlias);

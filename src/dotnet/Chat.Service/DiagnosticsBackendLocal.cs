@@ -7,15 +7,15 @@ namespace ActualChat.Chat;
 
 public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeService, IHasDisposeStatus
 {
-    private static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new() { WriteIndented = true };
 
     private IDiagnosticsBackend Backend => field ??= services.GetRequiredService<IDiagnosticsBackend>();
-
     private RpcHub RpcHub { get; } = services.GetRequiredService<RpcHub>();
-    private MeshRpcPeerRefs MeshRpcPeerRefs { get; } = services.GetRequiredService<MeshRpcPeerRefs>();
+    private MeshRpcRefs MeshRpcRefs { get; } = services.GetRequiredService<MeshRpcRefs>();
     private MomentClockSet Clocks => field ??= services.Clocks();
-    private MeshWatcher MeshWatcher => MeshRpcPeerRefs.MeshWatcher;
-    private ILogger Log { get; } = services.LogFor<DiagnosticsBackendLocal>();
+    private MeshWatcher MeshWatcher => MeshRpcRefs.MeshWatcher;
+    private ILogger Log => field ??= services.LogFor(GetType());
+    public bool IsDisposed => false;
 
     [ComputeMethod]
     public virtual async Task<MeshDiagInfo> GetMeshInfo(string tag, int extraLevel, CancellationToken cancellationToken)
@@ -52,19 +52,19 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
     public virtual async Task<MeshDiagInfo> GetMeshInfo(string tag, CancellationToken cancellationToken)
     {
         var meshState = await MeshWatcher.State.Use(cancellationToken).ConfigureAwait(false);
-        var meshRpcPeerRefs = MeshRpcPeerRefs.RpcPeerRefs
+        var meshRpcRefs = MeshRpcRefs.RpcRefs
             .OrderBy(c => c.ShardRef.Scheme.Name)
             .ThenBy(c => c.ShardRef.Key)
-            .Select(c => new MeshRpcPeerRefDiagInfo(
+            .Select(c => new MeshRpcRefDiagInfo(
                 c.MeshRef.ToString(),
-                c.ToString(),
+                c.Route.ToString(),
                 c.Address,
                 c.Resolved.NodeRef.Value,
-                c.Version,
+                c.Route.Version,
                 ""))
             .ToArray();
         var rpcPeers = RpcHub.InternalServices.Peers.Values
-            .Select(c => new  { Ref = c.Ref as MeshRpcPeerRef, Peer = c })
+            .Select(c => new { Ref = c.Ref as MeshRpcRef, Peer = c })
             .Select(c => new {
                 SchemeName = c.Ref?.ShardRef.Scheme.Name ?? "",
                 ShardKey = c.Ref?.ShardRef.Key ?? 0,
@@ -102,14 +102,15 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
             now,
             nodes,
             rpcPeers,
-            meshRpcPeerRefs,
+            meshRpcRefs,
             [],
             "");
     }
 
     // Private methods
 
-    private static string GetConnectionInfo(RpcPeerConnectionState state) {
+    private static string GetConnectionInfo(RpcPeerConnectionState state)
+    {
         var rpcConnection = state.Connection;
         var info = new ConnectionStateDiagInfo(
             state.Handshake,
@@ -120,7 +121,10 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
         if (rpcConnection is not null) {
             var websocket = rpcConnection.Properties.KeylessGet<WebSocket>();
             var uri = rpcConnection.Properties.KeylessGet<Uri>();
-            var connectionInfo = new RpcConnectionDiagInfo(rpcConnection.IsLocal, uri?.ToString() ?? "", websocket is not null ? GetWebSocketInfo(websocket) : null);
+            var connectionInfo = new RpcConnectionDiagInfo(
+                rpcConnection.IsLocal,
+                uri?.ToString() ?? "",
+                websocket is not null ? GetWebSocketInfo(websocket) : null);
             info = info with {
                 Connection = connectionInfo,
             };
@@ -138,25 +142,24 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
 
     // Nested types
 
-    public record ConnectionStateDiagInfo(
+    public sealed record ConnectionStateDiagInfo(
         RpcHandshake? Handshake,
         string? Error,
         int TryIndex,
-        bool IsCancelled) {
+        bool IsCancelled)
+    {
         public RpcConnectionDiagInfo? Connection { get; init; }
     }
 
-    public record RpcConnectionDiagInfo(
+    public sealed record RpcConnectionDiagInfo(
         bool IsLocal,
         string Uri,
         WebSocketDiagInfo? WebSocket);
 
-    public record WebSocketDiagInfo(
+    public sealed record WebSocketDiagInfo(
         string Websocket,
         string State,
         string? SubProtocol,
         string CloseStatus,
         string? CloseStatusDescription);
-
-    public bool IsDisposed => false;
 }

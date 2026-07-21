@@ -6,7 +6,7 @@
 //      identity across their individual connections.
 
 import { randomUUID } from 'node:crypto';
-import { RpcHub, RpcClientPeer, RpcPeerRefBuilder } from '../src/actuallab-rpc/index.js';
+import { RpcHub, RpcClientPeer, RpcRefBuilder } from '../src/actuallab-rpc/index.js';
 
 import { createNodeWsFactory } from './node-ws.js';
 import {
@@ -40,7 +40,7 @@ export async function signIn(opts: SignInOptions): Promise<SignInResult> {
 
     const sessionId = newSessionId();
     const hub = new RpcHub();
-    const url = RpcPeerRefBuilder.forClient(opts.apiUrl, 'msgpack6');
+    const url = RpcRefBuilder.forClient(opts.apiUrl, 'msgpack6');
     // mustStart=false — set the Node-specific webSocketFactory before start.
     const peer = hub.getClientPeer(url, (h, r) => new RpcClientPeer(h, r, false));
     peer.webSocketFactory = createNodeWsFactory({ sessionId });

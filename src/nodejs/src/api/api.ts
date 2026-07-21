@@ -34,7 +34,7 @@
 import { EventHandlerSet } from 'actuallab-core';
 import {
     RpcHub,
-    RpcPeerRefBuilder,
+    RpcRefBuilder,
     RpcSerializationFormat,
     RpcSerializationFormatResolver,
     RpcMessagePackSerializationFormat,
@@ -203,7 +203,7 @@ export class Api {
 
         // Create RpcHub
         const hub = new RpcHub();
-        hub.defaultPeerUrl = RpcPeerRefBuilder.forClient(Api.url, SERIALIZATION_FORMAT);
+        hub.defaultPeerUrl = RpcRefBuilder.forClient(Api.url, SERIALIZATION_FORMAT);
         hub.defaultPeerFactory = (h, r) => {
             const peer = new RpcClientPeer(h, r, false);
             Api.configurePeer(peer);

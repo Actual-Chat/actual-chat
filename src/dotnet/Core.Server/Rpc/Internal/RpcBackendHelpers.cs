@@ -13,9 +13,9 @@ namespace ActualChat.Rpc.Internal;
 
 public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBase(services)
 {
-    private volatile TaskCompletionSource? _whenRoutingStarted = new();
+    private volatile TaskCompletionSource? _whenRoutingStarted = TaskCompletionSourceExt.New();
 
-    private MeshRpcPeerRefs PeerRefs { get; } = services.GetRequiredService<MeshRpcPeerRefs>();
+    private MeshRpcRefs RpcRefs { get; } = services.GetRequiredService<MeshRpcRefs>();
     private BackendServiceDefs BackendServiceDefs { get; } = services.BackendServiceDefs();
 
     public void StartRouting()
@@ -24,7 +24,7 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
         _whenRoutingStarted = null;
     }
 
-    public Func<ArgumentList, RpcPeerRef> RouterFactory(RpcMethodDef methodDef)
+    public Func<ArgumentList, RpcRef> RouterFactory(RpcMethodDef methodDef)
     {
         var serviceDef = methodDef.Service;
         if (!serviceDef.IsBackend)
@@ -38,32 +38,34 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
         var typedRouter = GetTypedRouter(methodDef.Parameters.GetValueOrDefault(0)?.ParameterType);
         return args => {
             if (_whenRoutingStarted is { Task.IsCompleted: false })
-                return RpcPeerRef.Local;
+                return RpcRef.Local;
 
             var meshRef = typedRouter.Invoke(backendServiceDef, methodDef, args);
-            var peerRef = PeerRefs.Get(meshRef).Require(meshRef);
-            return peerRef;
+            var rpcRef = RpcRefs.Get(meshRef).Require(meshRef);
+            return rpcRef;
         };
     }
 
     public Uri? GetConnectionUri(RpcClientPeer peer)
     {
-        if (peer.Ref is not MeshRpcPeerRef peerRef)
-            throw new RpcReconnectFailedException($"Unsupported RpcPeerRef type: {peer.Ref}.");
+        if (peer.Ref is not MeshRpcRef rpcRef)
+            throw new RpcReconnectFailedException($"Unsupported RpcRef type: {peer.Ref}.");
 
-        var node = peerRef.Node;
-        if (peerRef.RouteState is not null) {
-            // MeshRpcPeerRef with RouteState (i.e., with only a NodeRef) can be rerouted.
-            // If its node is dead or doesn't exist, we must await for rerouting.
+        MeshNode? node;
+        if (peer.Route is MeshRpcRoute route) {
+            // Shard-based refs can be rerouted; the peer must keep connecting to the target
+            // of its own route generation. If its node is dead or doesn't exist,
+            // we must await for rerouting.
+            node = route.Resolved.Node;
             if (node is null || node.State is MeshNodeState.Dead)
-                return null; // null Uri = the peer will wait for RouteState.ChangeToken cancellation and reconnect
+                return null; // null Uri = the peer will wait for Route.ChangedToken cancellation and reconnect
         }
         else {
-            // MeshRpcPeerRef without RouteState (i.e., with only a NodeRef) can't be rerouted.
+            // Node refs use a static route, so they can't be rerouted.
             // But since nodes can die, we must handle this scenario here.
-            node = peerRef.Resolved.Latest.Node; // Get the latest node (to see its state)
+            node = rpcRef.Resolved.Node; // Re-resolved on each access (to see the current state)
             if (node is null || node.State is MeshNodeState.Dead) // The latest node is dead
-                throw new RpcReconnectFailedException($"Node {peerRef.NodeRef} is dead."); // Terminate the peer
+                throw new RpcReconnectFailedException($"Node {rpcRef.NodeRef} is dead."); // Terminate the peer
         }
 
         var client = Services.GetRequiredService<RpcWebSocketClient>();

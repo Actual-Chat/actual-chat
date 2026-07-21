@@ -57,9 +57,9 @@ public sealed class CoreModule(IServiceProvider moduleServices)
                 ? LogLevel.Debug
                 : LogLevel.None;
             services.ReplaceFactory<RpcPeerOptions>((_, oldFactory) => oldFactory.Invoke() with {
-                PeerFactory = (hub, peerRef) => peerRef.IsServer
+                PeerFactory = (hub, route) => route.Ref.IsServer
                     ? throw StandardError.Internal("Server peer is requested on the client side!")
-                    : new RpcClientPeer(hub, peerRef) {
+                    : new RpcClientPeer(hub, route) {
                         CallLogLevel = rpcCallLogLevel,
                     },
             });

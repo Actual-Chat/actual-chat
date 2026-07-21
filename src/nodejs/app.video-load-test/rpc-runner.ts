@@ -12,7 +12,7 @@
 // consumer/producer task. Clients are resolved off the same hub so there's
 // exactly one `LiveVideoStreamsClient` shared across the whole run.
 
-import { RpcHub, RpcClientPeer, RpcStream, RpcPeerRefBuilder } from '../src/actuallab-rpc';
+import { RpcHub, RpcClientPeer, RpcStream, RpcRefBuilder } from '../src/actuallab-rpc';
 
 import { createNodeWsFactory } from './node-ws.js';
 import { FrameConfig, generateFrame, paceFrame } from './frame-gen.js';
@@ -46,7 +46,7 @@ export async function createRpcHarnessBundle(
     ctx: Omit<RpcRunContext, 'metrics'>,
 ): Promise<RpcHarnessBundle> {
     const hub = new RpcHub();
-    const url = RpcPeerRefBuilder.forClient(ctx.apiUrl, RPC_SERIALIZATION_FORMAT);
+    const url = RpcRefBuilder.forClient(ctx.apiUrl, RPC_SERIALIZATION_FORMAT);
     // mustStart=false — set the Node-specific webSocketFactory before start.
     const peer = hub.getClientPeer(url, (h, r) => new RpcClientPeer(h, r, false));
     peer.webSocketFactory = createNodeWsFactory({ sessionId: ctx.sessionId });

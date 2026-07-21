@@ -104,8 +104,8 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.Rpc.AddWebSocketClient(c => {
             var options = RpcWebSocketClientOptions.Default with {
                 ConnectionUriResolver = peer => {
-                    if (peer.Ref != RpcPeerRef.Default)
-                        throw StandardError.Internal("Client-side RpcPeer.Ref != RpcPeerRef.Default.");
+                    if (peer.Ref != RpcRef.Default)
+                        throw StandardError.Internal("Client-side RpcPeer.Ref != RpcRef.Default.");
 
                     var client = c.GetRequiredService<RpcWebSocketClient>();
                     var settings = client.Options;
@@ -171,8 +171,8 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         if (useRpcSwitchingClient)
             fusion.Rpc.AddHttpClient(c => RpcHttpClientOptions.Default with {
                 ConnectionUriResolver = peer => {
-                    if (peer.Ref != RpcPeerRef.Default)
-                        throw StandardError.Internal("Client-side RpcPeer.Ref != RpcPeerRef.Default.");
+                    if (peer.Ref != RpcRef.Default)
+                        throw StandardError.Internal("Client-side RpcPeer.Ref != RpcRef.Default.");
 
                     var client = c.GetRequiredService<RpcHttpClient>();
                     var settings = client.Options;

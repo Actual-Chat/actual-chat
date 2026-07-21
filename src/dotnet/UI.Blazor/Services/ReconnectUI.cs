@@ -7,7 +7,7 @@ namespace ActualChat.UI.Blazor.Services;
 /// Monitors RPC connection state and handles reconnection on disconnect or device wake.
 /// </summary>
 public sealed class ReconnectUI(UIHub hub)
-    : RpcPeerStateMonitor(hub.Services, hub.HostInfo.HostKind.IsApp() ? RpcPeerRef.Default : null, false)
+    : RpcPeerStateMonitor(hub.RpcHub, hub.HostInfo.HostKind.IsApp() ? RpcRef.Default : null, false)
 {
     private readonly TimeSpan _maxKeepAliveDelayOnDeviceAwake = hub.RpcHub.Limits.KeepAlivePeriod * 1.5;
     private TimeSpan _lastTotalSleepDuration = TimeSpan.Zero;

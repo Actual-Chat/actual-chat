@@ -17,7 +17,7 @@ public sealed class ShardRoutingMonitor(IServiceProvider services) : WorkerBase
     private static ShardScheme ShardScheme => ShardScheme.DiagnosticsBackend;
 
     private IDiagnosticsBackend Backend { get; } = services.GetRequiredService<IDiagnosticsBackend>();
-    private MeshWatcher MeshWatcher { get; } = services.GetRequiredService<MeshRpcPeerRefs>().MeshWatcher;
+    private MeshWatcher MeshWatcher { get; } = services.GetRequiredService<MeshRpcRefs>().MeshWatcher;
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log => field ??= services.LogFor(GetType());
 

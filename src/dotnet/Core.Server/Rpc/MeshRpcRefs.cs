@@ -1,11 +1,8 @@
-using ActualLab.Rpc;
-
 namespace ActualChat.Rpc;
 
-public sealed class MeshRpcPeerRefs
+public sealed class MeshRpcRefs
 {
-    private readonly ConcurrentDictionary<MeshRef, MeshRpcPeerRef> _peerRefs = new();
-    private readonly Lock _lock = new ();
+    private readonly ConcurrentDictionary<MeshRef, MeshRpcRef> _rpcRefs = new();
 
     internal ILogger Log { get; }
 
@@ -14,8 +11,9 @@ public sealed class MeshRpcPeerRefs
     public IState<MeshState> MeshState { get; }
     public MeshNode ThisNode { get; }
     public ShardOwners ShardOwners => field ??= MeshWatcher.Services.ShardOwners();
+    public IEnumerable<MeshRpcRef> RpcRefs => _rpcRefs.Values;
 
-    public MeshRpcPeerRefs(IServiceProvider services)
+    public MeshRpcRefs(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
         Services = services;
@@ -24,7 +22,7 @@ public sealed class MeshRpcPeerRefs
         ThisNode = MeshWatcher.ThisNode;
     }
 
-    public MeshRpcPeerRef Get(MeshRef meshRef)
+    public MeshRpcRef Get(MeshRef meshRef)
     {
         if (meshRef.IsNone)
             throw new ArgumentOutOfRangeException(nameof(meshRef), "Can't route call to MeshRef.None.");
@@ -38,20 +36,7 @@ public sealed class MeshRpcPeerRefs
         else
             meshRef = shardRef.Normalize();
 
-        // Double-check locking
-        // ReSharper disable once InconsistentlySynchronizedField
-        if (_peerRefs.TryGetValue(meshRef, out var peerRef) && !peerRef.RouteState.IsChanged())
-            return peerRef;
-        lock (_lock) {
-            if (_peerRefs.TryGetValue(meshRef, out peerRef) && !peerRef.RouteState.IsChanged())
-                return peerRef;
-
-            var version = (peerRef?.Version ?? 0) + 1;
-            peerRef = new MeshRpcPeerRef(this, meshRef, version);
-            _peerRefs[meshRef] = peerRef;
-            return peerRef;
-        }
+        // Refs are stable: a topology change resets the ref's route, not the ref itself
+        return _rpcRefs.GetOrAdd(meshRef, static (key, self) => new MeshRpcRef(self, key), this);
     }
-
-    public IEnumerable<MeshRpcPeerRef> RpcPeerRefs => _peerRefs.Values;
 }

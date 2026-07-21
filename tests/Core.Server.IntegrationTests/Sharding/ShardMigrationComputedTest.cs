@@ -98,9 +98,9 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
     // The full prod scenario: node dies -> the survivor temporarily owns all shards
     // -> a new node comes up and takes half of them. Values computed on the survivor
     // (both local ones and replicas of the dead node's shards) must not freeze.
-    // The root cause is the MeshRpcPeerRef ctor race: when a shard's local peer-ref
+    // The root cause is the MeshRpcRoute ctor race: when a shard's local route
     // is created after the mesh maps the shard to this node, but before ShardOwner
-    // sets MustOwn, no LocalExecutionAwaiter is set, so values computed via this ref
+    // sets MustOwn, no LocalExecutionAwaiter is set, so values computed via this route
     // get no ShardState dependency and never get invalidated. Fails in ~1/3 of runs.
     [Fact]
     public async Task TwoWaveRebalanceMustInvalidateComputed()
@@ -171,11 +171,11 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
             bits1.SetBitCount().Should().Be(shardCount);
         }, TimeSpan.FromSeconds(30));
 
-        var peerRefs = h1.Services.GetRequiredService<MeshRpcPeerRefs>();
+        var rpcRefs = h1.Services.GetRequiredService<MeshRpcRefs>();
         for (var shard = 0; shard < shardCount; shard++) {
-            var peerRef = peerRefs.Get(MeshRef.Shard(shardScheme, shard));
-            WriteLine($"After wave 1: shard {shard.Format()}: peerRef={peerRef}, "
-                + $"hasLocalExecutionAwaiter={peerRef.RouteState?.LocalExecutionAwaiter is not null}");
+            var rpcRef = rpcRefs.Get(MeshRef.Shard(shardScheme, shard));
+            WriteLine($"After wave 1: shard {shard.Format()}: route={rpcRef.Route}, "
+                + $"hasLocalExecutionAwaiter={rpcRef.Route.LocalExecutionAwaiter is not null}");
         }
 
         // Wave 2: h3 comes up -> takes half of the shards from h1
@@ -315,16 +315,21 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
                             .WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
                     }
                     catch (TimeoutException) {
+                        var was = survivorShards.Contains(shard)
+                            ? "LOCAL on survivor"
+                            : "a replica of the dead host";
+                        var became = newcomerShards.Contains(shard)
+                            ? "migrated to the new host"
+                            : "stayed on survivor";
                         WriteLine($"Wave {wave.Format()}, shard {shard.Format()} ({keys[shard]}): STALE, "
                             + $"IsConsistent={c.IsConsistent()}, Value={c.Value?.ToString() ?? "null"}, "
-                            + $"was {(survivorShards.Contains(shard) ? "LOCAL on survivor" : "a replica of the dead host")}, "
-                            + $"{(newcomerShards.Contains(shard) ? "migrated to the new host" : "stayed on survivor")}");
+                            + $"was {was}, {became}");
                         frozenShards.Add(shard);
                     }
                 }
                 frozenShards.Should().BeEmpty(
-                    $"wave {wave.Format()}: values of shards [{frozenShards.ToDelimitedString(",")}] must be invalidated "
-                    + $"(migrated: [{newcomerShards.ToDelimitedString(",")}], "
+                    $"wave {wave.Format()}: values of shards [{frozenShards.ToDelimitedString(",")}] "
+                    + $"must be invalidated (migrated: [{newcomerShards.ToDelimitedString(",")}], "
                     + $"survivor-local before wave: [{survivorShards.ToDelimitedString(",")}])");
             }
         }

@@ -24,7 +24,7 @@ public sealed partial record MeshDiagInfo(
     [property: DataMember, MemoryPackOrder(2), Key(2)] Moment Timestamp,
     [property: DataMember, MemoryPackOrder(3), Key(3)] NodeDiagInfo[] Nodes,
     [property: DataMember, MemoryPackOrder(4), Key(4)] RpcPeerDiagInfo[] RpcPeers,
-    [property: DataMember, MemoryPackOrder(5), Key(5)] MeshRpcPeerRefDiagInfo[] MeshRpcPeerRefs,
+    [property: DataMember, MemoryPackOrder(5), Key(5)] MeshRpcRefDiagInfo[] MeshRpcRefs,
     [property: DataMember, MemoryPackOrder(6), Key(6)] MeshDiagInfo[] Others,
     [property: DataMember, MemoryPackOrder(7), Key(7)] string Extra);
 
@@ -47,9 +47,9 @@ public sealed partial record RpcPeerDiagInfo(
     [property: DataMember, MemoryPackOrder(5), Key(5)] string Extra);
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public sealed partial record MeshRpcPeerRefDiagInfo(
+public sealed partial record MeshRpcRefDiagInfo(
     [property: DataMember, MemoryPackOrder(0), Key(0)] string MeshRef,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string PeerRef,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] string Route,
     [property: DataMember, MemoryPackOrder(2), Key(2)] string Address,
     [property: DataMember, MemoryPackOrder(3), Key(3)] string NodeId,
     [property: DataMember, MemoryPackOrder(4), Key(4)] int Version,

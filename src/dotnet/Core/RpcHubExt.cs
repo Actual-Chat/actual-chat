@@ -11,7 +11,7 @@ public static class RpcHubExt
         if (!hostInfo.HostKind.IsApp())
             return Task.CompletedTask;
 
-        var peer = rpcHub.GetClientPeer(RpcPeerRef.Default);
+        var peer = rpcHub.GetClientPeer(RpcRef.Default);
         return peer.WhenConnected(cancellationToken);
     }
 }

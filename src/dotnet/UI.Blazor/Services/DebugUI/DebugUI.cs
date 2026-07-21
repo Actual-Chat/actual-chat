@@ -67,7 +67,7 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
 
         Log.LogInformation("Disconnecting RPC connection...");
         var rpcHub = Services.RpcHub();
-        var clientPeer = rpcHub.GetClientPeer(RpcPeerRef.Default);
+        var clientPeer = rpcHub.GetClientPeer(RpcRef.Default);
         _ = clientPeer.Disconnect();
     }
 

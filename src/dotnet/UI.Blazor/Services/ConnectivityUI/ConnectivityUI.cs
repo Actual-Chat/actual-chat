@@ -31,7 +31,7 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
     public IState<bool> IsConnected => _isConnected;
     public IState<RpcConnectionInfo?> ConnectionInfo => _connectionInfo;
     public abstract IState<bool> IsOnline { get; }
-    public RpcClientPeer? Peer => IsBlazorServer ? null : Hub.RpcHub.GetClientPeer(RpcPeerRef.Default);
+    public RpcClientPeer? Peer => IsBlazorServer ? null : Hub.RpcHub.GetClientPeer(RpcRef.Default);
 
     protected ConnectivityUI(UIHub hub) : base(hub)
     {

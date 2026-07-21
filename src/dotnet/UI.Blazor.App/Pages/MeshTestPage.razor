@@ -75,8 +75,8 @@
             <br>
             <h3>Mesh Rpc Peer Refs:</h3>
             <p>
-                @foreach (var peerRef in nodeInfo.MeshRpcPeerRefs) {
-                    <span>@peerRef.MeshRef ==> @peerRef.PeerRef</span>
+                @foreach (var rpcRef in nodeInfo.MeshRpcRefs) {
+                    <span>@rpcRef.MeshRef ==> @rpcRef.Route</span>
                     <br>
                 }
             </p>

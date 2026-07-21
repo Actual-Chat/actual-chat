@@ -36,7 +36,7 @@ public sealed class TrueSessionResolver(IServiceProvider services) : ISessionRes
                 _sessionSource.TrySetResult(value);
             }
             _tracer.Point($"Session = '{Session}'");
-            _ = Services.RpcHub().GetClientPeer(RpcPeerRef.Default).Disconnect();
+            _ = Services.RpcHub().GetClientPeer(RpcRef.Default).Disconnect();
         }
     }
 
@@ -52,6 +52,6 @@ public sealed class TrueSessionResolver(IServiceProvider services) : ISessionRes
             _session = value;
             _sessionSource = TaskCompletionSourceExt.New<Session>().WithResult(value);
         }
-        _ = Services.RpcHub().GetClientPeer(RpcPeerRef.Default).Disconnect();
+        _ = Services.RpcHub().GetClientPeer(RpcRef.Default).Disconnect();
     }
 }

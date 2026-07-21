@@ -94,7 +94,8 @@ public readonly struct RpcHostBuilder
         if (typeof(IBackendService).IsAssignableFrom(serviceType))
             throw ActualLab.Internal.Errors.MustNotImplement<IBackendService>(serviceType, nameof(serviceType));
         if (!serviceType.IsAssignableFrom(implementationType))
-            throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
+            throw ActualLab.Internal.Errors.MustBeAssignableTo(
+                implementationType, serviceType, nameof(implementationType));
 
         if (IsApiHost)
             AddServer(serviceType, implementationType, name);
@@ -115,7 +116,8 @@ public readonly struct RpcHostBuilder
         if (!typeof(IBackendService).IsAssignableFrom(serviceType))
             throw ActualLab.Internal.Errors.MustImplement<IBackendService>(serviceType, nameof(serviceType));
         if (!serviceType.IsAssignableFrom(implementationType))
-            throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
+            throw ActualLab.Internal.Errors.MustBeAssignableTo(
+                implementationType, serviceType, nameof(implementationType));
 
         var hostRoles = HostInfo.Roles;
         var serviceMode = hostRoles.GetBackendServiceMode(serviceType);
@@ -231,7 +233,7 @@ public readonly struct RpcHostBuilder
             // compression: their payloads are already compressed, and excluding them keeps
             // deflate from wasting CPU on them. DisableServerContextTakeover resets the deflate
             // context per message, so cross-message compression oracles (BREACH-style) don't apply.
-            ConfigureWebSocket = (server, context, peerRef) => new WebSocketAcceptContext() {
+            ConfigureWebSocket = (server, context, rpcRef) => new WebSocketAcceptContext() {
                 DangerousEnableCompression = isApiHost
                     && Constants.Rpc.Compression.IsServerSideEnabled
                     && !context.Request.Query.ContainsKey("kind"),
@@ -275,7 +277,7 @@ public readonly struct RpcHostBuilder
         Rpc.AddWebSocketClient();
 
         // Additional services
-        Services.AddSingleton(c => new MeshRpcPeerRefs(c));
+        Services.AddSingleton(c => new MeshRpcRefs(c));
 
         // Replace RpcOutboundCallOptions
         Services.ReplaceFactory<RpcOutboundCallOptions>((c, oldFactory) => {
@@ -318,11 +320,11 @@ public readonly struct RpcHostBuilder
             ? LogLevel.Debug
             : LogLevel.None;
         Services.ReplaceFactory<RpcPeerOptions>((_, oldFactory) => oldFactory.Invoke() with {
-            PeerFactory = (hub, peerRef) => peerRef.IsServer
-                ? new RpcServerPeer(hub, peerRef) {
-                    CallLogLevel = peerRef.IsBackend ? backendInboundCallLogLevel : serverInboundCallLogLevel,
+            PeerFactory = (hub, route) => route.Ref.IsServer
+                ? new RpcServerPeer(hub, route) {
+                    CallLogLevel = route.Ref.IsBackend ? backendInboundCallLogLevel : serverInboundCallLogLevel,
                 }
-                : new RpcClientPeer(hub, peerRef) {
+                : new RpcClientPeer(hub, route) {
                     CallLogLevel = backendOutboundCallLogLevel,
                 }
         });
