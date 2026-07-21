@@ -227,8 +227,15 @@ public readonly struct RpcHostBuilder
         // Replace RpcWebSocketServerOptions
         Services.ReplaceFactory<RpcWebSocketServerOptions>((_, oldFactory) => oldFactory.Invoke() with {
             ExposeBackend = true,
-            ConfigureWebSocket = () => new WebSocketAcceptContext() {
-                DangerousEnableCompression = isApiHost && Constants.Rpc.Compression.IsServerSideEnabled,
+            // Media stream connections (any "kind" in the query - e.g. kind=video) opt out of
+            // compression: their payloads are already compressed, and excluding them keeps
+            // deflate from wasting CPU on them. DisableServerContextTakeover resets the deflate
+            // context per message, so cross-message compression oracles (BREACH-style) don't apply.
+            ConfigureWebSocket = (server, context, peerRef) => new WebSocketAcceptContext() {
+                DangerousEnableCompression = isApiHost
+                    && Constants.Rpc.Compression.IsServerSideEnabled
+                    && !context.Request.Query.ContainsKey("kind"),
+                DisableServerContextTakeover = true,
             },
         });
 

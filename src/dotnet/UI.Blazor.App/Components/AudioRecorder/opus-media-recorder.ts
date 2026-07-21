@@ -354,7 +354,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
             this.origin = baseUri;
         }
         debugLog?.log(`init(): call create on workers`);
-        const apiUrl = new URL('/rpc/ws', this.origin).toString().replace(/^http/, 'ws');
+        // kind=audio tells the server this connection carries media streams,
+        // so it skips WebSocket compression for it.
+        const apiUrl = new URL('/rpc/ws?kind=audio', this.origin).toString().replace(/^http/, 'ws');
         SharedSettings.update({ apiUrl });
 
         await this.encoderWorker.create(
