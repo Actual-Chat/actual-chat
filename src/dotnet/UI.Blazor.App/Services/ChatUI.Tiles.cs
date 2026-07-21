@@ -941,6 +941,11 @@ public partial class ChatUI
             if (blockConversation == null)
                 return;
 
+            if (blockConversation.Id == liveBlockId)
+                blockItems.Add(new LiveConversationFooter(blockConversation) {
+                    Kind = ChatMessageKind.ConversationEnd,
+                    PreviousMessage = blockItems.Count > 0 ? blockItems[^1] : null,
+                });
             result.Add(new ExpandedConversationMessage(blockConversation, blockItems));
             blockConversation = null;
             blockItems = [];

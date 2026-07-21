@@ -308,36 +308,23 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply bg-cr-badge-selected;
     @apply text-cr-badge-selected-text;
 }
-/* Joined live block: the card keeps its own border, and the live entries below it sit on a tint that
-   fades out - a live block runs to the chat's tail, so a closed box would wrap the whole viewport and
-   read as ended. The tint is anchored to the first entry, not the group, so it stays put as the card
-   grows and as entries arrive. */
-.virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live.joined) {
-    /* Without isolation the tint's z-index resolves against the root and paints under the chat bg. */
+/* Joined live block: the card is the sticky header, the entries carry sticky author badges, and a
+   live footer closes the box. The tint is the block's own background (bounded by the footer's rounded
+   bottom), so nothing needs overflow:hidden - which is what lets position:sticky badges work. */
+.virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live.joined),
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) {
     isolation: isolate;
-    /* The tint is a fixed-height box, so it would spill past the last entry into whatever follows;
-       clipping it to the block both stops that and gives it the block's rounded bottom. */
-    @apply overflow-hidden rounded-2xl;
-    /* The card's mb-2 (0.5rem) + its rounded-2xl radius (1rem): the tint rises by this much to meet
-       the border with no gap and to reach the wedges the rounded corners leave uncovered. */
-    --c-live-rise: 1.5rem;
-    --c-live-depth: 200px;
-    --c-live-tint: rgba(166, 53, 255, 0.1);
+    @apply rounded-2xl;
+    background: linear-gradient(to bottom, rgba(166, 53, 255, 0.10), rgba(166, 53, 255, 0.03));
 }
-/* Not `> .item:nth-child(2)`: an entry that author-grouped renders as .group, not .item, so the
-   first row below the card is either one - match whatever it is. */
-.virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live.joined) > :nth-child(2) {
-    @apply relative;
+
+/* Live conversation footer */
+.live-conversation-footer {
+    @apply flex items-center gap-x-2;
+    @apply px-4 py-1.5;
+    @apply text-sm text-02;
+    @apply rounded-b-2xl;
 }
-.virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live.joined) > :nth-child(2)::before {
-    @apply absolute inset-x-0;
-    @apply pointer-events-none;
-    content: '';
-    top: calc(-1 * var(--c-live-rise));
-    height: calc(var(--c-live-depth) + var(--c-live-rise));
-    background: linear-gradient(to bottom,
-        var(--c-live-tint) 0,
-        var(--c-live-tint) var(--c-live-rise),
-        rgba(166, 53, 255, 0) 100%);
-    z-index: -1;
+.live-conversation-footer .c-live-label {
+    color: var(--violet-60);
 }

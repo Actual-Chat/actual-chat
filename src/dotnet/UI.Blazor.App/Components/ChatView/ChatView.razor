@@ -25,6 +25,10 @@
         {
             <ConversationFooterView ChatContext="@chatContext" Footer="@conversationFooter" />
         }
+        else if (item is LiveConversationFooter liveConversationFooter)
+        {
+            <LiveConversationFooterView ChatContext="@chatContext" Footer="@liveConversationFooter" />
+        }
         else if (item is ExpandedConversationMessage expandedConversationMessage) {
             foreach (var childItem in expandedConversationMessage.Items) {
                 @if (childItem is ConversationHeader) {
