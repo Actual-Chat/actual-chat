@@ -556,6 +556,22 @@ class is derived from the file name: `marker-pin.svg` → `.icon-marker-pin`.
    alphabetical) — that's expected and safe, since the CSS and fonts are
    regenerated in the same run and always stay in sync.
 
+### When the font is the wrong home
+
+The glyph is a single monochrome outline filled with the **nonzero** rule, so
+two kinds of icon must be a `.lit.ts` SVG component instead (see
+`Components/MapView/marker-pin-live-svg.lit.ts` and `marker-pin-off-svg.lit.ts`):
+
+- **Multi-color art** — one glyph, one `currentColor`.
+- **Art built from overlapping contours** with opposing winding, e.g. a
+  strike-through bar laid over a shape. Separate SVG paths render fine, but
+  the font flattens them into one contour set and the overlaps punch holes.
+  Booleaning the source into a single unioned path also works if the icon must
+  stay in the font.
+
+Size such a component with `width: 1em; height: 1em` on `:host` and fill with
+`currentColor`, and it stays a drop-in replacement for `<i class="icon-*">`.
+
 Note: `prepare-system-icons.cmd` is a different pipeline — it rasterizes
 `src/dotnet/Media.Service/Resources/*.svg` (system chat avatars) to PNGs and
 has nothing to do with the icon font.

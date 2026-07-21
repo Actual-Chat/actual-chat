@@ -16,7 +16,7 @@
                    data-tooltip="@m.GetErrorText()"
                    data-tooltip-position="@FloatingPosition.Top.ToPositionString()"></i>
             } else {
-                <i class="icon-marker-pin-live c-pin"></i>
+                <marker-pin-live-svg class="c-pin"></marker-pin-live-svg>
             }
             <AuthorCircleGroup
                 Class="c-avatars"
@@ -33,7 +33,7 @@
         @if (m.IsOwnSharing) {
             <ButtonRound Class="btn-stop-sharing" Click="@OnStop"
                          Tooltip="Stop sharing" TooltipPosition="FloatingPosition.Top">
-                <i class="icon-marker-pin-off"></i>
+                <marker-pin-off-svg></marker-pin-off-svg>
             </ButtonRound>
         } else {
             <Button Class="btn-share-location" Click="@OnShare">Share your location</Button>

@@ -45,7 +45,8 @@
     @apply flex-y;
     @apply py-2;
 }
-.share-location-modal .c-actions .btn-tile i {
+.share-location-modal .c-actions .btn-tile i,
+.share-location-modal .c-actions .btn-tile marker-pin-live-svg {
     @apply text-2xl text-primary;
 }
 .share-location-modal .c-menu-backdrop {

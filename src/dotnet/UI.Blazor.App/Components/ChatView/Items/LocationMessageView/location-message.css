@@ -35,7 +35,7 @@
     background: var(--white-80);
     color: var(--magenta-50);
 }
-.location-message .c-map-area .btn.btn-round.btn-stop-sharing i {
+.location-message .c-map-area .btn.btn-round.btn-stop-sharing marker-pin-off-svg {
     @apply text-xl;
 }
 .location-message .c-tracking-error {
@@ -53,10 +53,10 @@
     @apply flex-x items-center gap-x-2;
     @apply p-2;
 }
-.location-message .c-footer > i {
+.location-message .c-footer .c-pin {
     @apply text-2xl text-03;
 }
-.location-message.live .c-footer > i {
+.location-message.live .c-footer .c-pin {
     color: var(--blue-50);
 }
 .location-message .c-footer .c-info {

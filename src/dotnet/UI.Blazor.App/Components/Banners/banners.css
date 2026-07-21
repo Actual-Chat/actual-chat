@@ -164,7 +164,7 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     @apply bg-transparent;
     color: var(--magenta-50);
 }
-.live-location-banner .banner-buttons .btn.btn-round.btn-stop-sharing i {
+.live-location-banner .banner-buttons .btn.btn-round.btn-stop-sharing marker-pin-off-svg {
     @apply text-2xl;
 }
 .live-location-banner .banner-buttons .btn.btn-share-location {
