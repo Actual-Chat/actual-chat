@@ -38,6 +38,8 @@ export * from './Components/MapView/map-marker-bubble.lit';
 export * from './Components/MapView/map-marker-dot.lit';
 export * from './Components/MapView/map-marker-pin.lit';
 export * from './Components/MapView/map-view';
+export * from './Components/MapView/marker-pin-live-svg.lit';
+export * from './Components/MapView/marker-pin-off-svg.lit';
 export * from './Components/Menu/menu-host';
 export * from './Components/Modal/modal-host';
 export * from './Components/Overlays/loading-cat-svg.lit';

@@ -27,7 +27,7 @@
             @if (m.IsOwnLive) {
                 <ButtonRound Class="btn-stop-sharing" Click="@OnStopSharing" StopPropagation="true"
                              Tooltip="Stop sharing" TooltipPosition="FloatingPosition.Top">
-                    <i class="icon-marker-pin-off"></i>
+                    <marker-pin-off-svg></marker-pin-off-svg>
                 </ButtonRound>
             }
             @if (m.IsOwnLive && m.TrackingError is not null) {
@@ -38,7 +38,11 @@
             }
         </div>
         <div class="c-footer">
-            <i class="@(m.IsLive ? "icon-marker-pin-live" : "icon-marker-pin")"></i>
+            @if (m.IsLive) {
+                <marker-pin-live-svg class="c-pin"></marker-pin-live-svg>
+            } else {
+                <i class="icon-marker-pin c-pin"></i>
+            }
             <div class="c-info">
                 <div class="c-title">@(m.IsLive ? "Live location" : "Location")</div>
                 <div class="c-caption">
