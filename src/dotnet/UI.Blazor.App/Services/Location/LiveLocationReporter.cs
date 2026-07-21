@@ -31,12 +31,11 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
                 Category = StateCategories.Get(GetType(), nameof(_shares)),
             });
 
-    public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
+    public void StartSharing(ChatId chatId, TimeSpan duration)
     {
         var share = new ActiveShare(chatId, null, ServerNow, duration);
         lock (_lock)
             _shares.Value = _shares.Value.Where(x => x.ChatId != chatId).Append(share).ToArray();
-        return Task.CompletedTask;
     }
 
     public async Task StopSharing(ChatId chatId, CancellationToken cancellationToken)

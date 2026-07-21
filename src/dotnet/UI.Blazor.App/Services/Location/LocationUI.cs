@@ -199,7 +199,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     {
         var isSharing = await GetOwnLive(chatId, CancellationToken.None).ConfigureAwait(true) is not null;
         var model = new ShareLocationModal.Model { ChatId = chatId, IsSharing = isSharing };
-        var modalRef = await Hub.ModalUI.Show(model).ConfigureAwait(true);
+        var modalRef = await Hub.ModalUI.Show(model, Hub.StopToken).ConfigureAwait(true);
         await modalRef.WhenClosed.ConfigureAwait(true);
 
         if (model.StopRequested) {
@@ -218,14 +218,14 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         if (model.SelectedDuration is not { } duration)
             return;
 
-        if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
+        if (!await LocationPermission.CheckOrRequest(Hub.StopToken).ConfigureAwait(true))
             return;
 
-        await StartSharing(chatId, duration, CancellationToken.None).ConfigureAwait(true);
+        StartSharing(chatId, duration);
     }
 
-    public Task StartSharing(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
-        => Reporter.StartSharing(chatId, duration, cancellationToken);
+    public void StartSharing(ChatId chatId, TimeSpan duration)
+        => Reporter.StartSharing(chatId, duration);
 
     public Task StopSharing(ChatId chatId, CancellationToken cancellationToken)
         => Reporter.StopSharing(chatId, cancellationToken);
