@@ -167,6 +167,39 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
+    public async Task RecorderLeavingWithOnlyListenerLeftClosesSession()
+    {
+        // The session stays live only while someone is streaming (recording audio or video); a lone
+        // listener does not keep it alive. Once the last recorder leaves, the session closes even
+        // with a listener still present.
+
+        // arrange — two streamers latch the session; then one switches to just listening
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(true);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, bobAuthor!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, aliceAuthor!.Id, null, true, default);
+        await backend.SetParticipation(chatId, aliceAuthor!.Id, ParticipationKind.AudioListen, true, default);
+
+        var live = await backend.GetState(chatId, default);
+        live!.IsClosing.Should().BeFalse("bob is still recording");
+
+        // act — the last recorder (bob) leaves; only the listener (alice) remains
+        await backend.SetParticipation(chatId, bobAuthor!.Id, ParticipationKind.Record, false, default);
+
+        // assert — the session closes despite alice still listening
+        live = await backend.GetState(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeTrue("nobody is streaming anymore, so a lone listener can't keep it live");
+    }
+
+    [Fact]
     public async Task LiveSessionExposesHostAndMembers()
     {
         // arrange
@@ -431,7 +464,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task ListenerKeepsSessionAliveUntilEmpty()
+    public async Task ListenerDoesNotKeepSessionAlive()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -442,13 +475,13 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
-        // act — the participant stops recording but keeps listening: still present, stays alive
+        // act — the participant stops recording but keeps listening: nobody is streaming now
         await backend.SetParticipation(chatId, author!.Id, ParticipationKind.AudioListen, true, default);
 
-        // assert — a listener keeps the session alive
-        (await backend.GetState(chatId, default))!.IsClosing.Should().BeFalse();
+        // assert — a lone listener no longer keeps the session alive; it winds down
+        (await backend.GetState(chatId, default))!.IsClosing.Should().BeTrue();
 
-        // act — the listener leaves entirely: nobody is even listening now
+        // act — the listener leaves entirely
         await backend.SetParticipation(chatId, author!.Id, ParticipationKind.AudioListen, false, default);
 
         // assert — the now-empty call closes outright

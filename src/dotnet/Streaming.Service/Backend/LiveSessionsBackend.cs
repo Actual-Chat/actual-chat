@@ -70,9 +70,21 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // Fusion keeps Computed.Current set only for the synchronous prefix of a compute
         // method, so capture it here — reading it past an await throws "Computed.Current is null".
         var computed = Computed.GetCurrent();
+        var startedAt = CpuTimestamp.Now;
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+        var ownershipWaitMs = (long)startedAt.Elapsed.TotalMilliseconds;
+        if (ownershipWaitMs > 250)
+            Log.LogWarning(
+                "GetState: waited {WaitMs}ms for shard ownership of chat #{ChatId}",
+                ownershipWaitMs, chatId);
 
+        var redisReadAt = CpuTimestamp.Now;
         var state = await SafeGet(chatId).ConfigureAwait(false);
+        var redisReadMs = (long)redisReadAt.Elapsed.TotalMilliseconds;
+        if (redisReadMs > 250)
+            Log.LogWarning(
+                "GetState: Redis read took {ReadMs}ms for chat #{ChatId}",
+                redisReadMs, chatId);
         if (state is null)
             return null;
 
@@ -85,8 +97,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             return null;
         }
 
-        // Liveness is participant-driven: once nobody is even listening, begin the close grace.
-        if (!state.IsClosing && !await HasParticipant(chatId).ConfigureAwait(false))
+        // Liveness is streaming-driven: once nobody is recording audio or video, begin the close grace.
+        if (!state.IsClosing && !await IsSessionLive(chatId).ConfigureAwait(false))
             _ = StartClosingGrace(chatId);
 
         // Prompt ring timeout while this session is observed (the self-heal below re-runs GetState);
@@ -309,10 +321,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             InvalidateListParticipants(chatId);
             InvalidateHasRecorder(chatId);
             InvalidateGet(chatId);
-            emptiedByLeave = !isActive && !await HasParticipant(chatId).ConfigureAwait(false);
-            // A join/heartbeat or a leave with others still present just re-evaluates liveness; the
-            // grace there is the safety net for crashed/stale clients. An explicit leave that empties
-            // the call closes it outright below - no waiting on the grace or on a UI observer.
+            emptiedByLeave = !isActive && !await IsSessionLive(chatId).ConfigureAwait(false);
+            // A join/heartbeat, or a leave with someone still streaming, just re-evaluates liveness; the
+            // grace there is the safety net for crashed/stale clients. A leave that stops the last stream
+            // closes it outright below - no waiting on the grace or on a UI observer.
             if (!emptiedByLeave)
                 await EvaluateLiveness(chatId).ConfigureAwait(false);
         }
@@ -415,8 +427,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var state = await SafeGet(chatId).ConfigureAwait(false);
         if (state is null)
             return;
-        if (await HasParticipant(chatId).ConfigureAwait(false))
-            return; // someone (re)joined during the final pass - keep the session live
+        if (await IsSessionLive(chatId).ConfigureAwait(false))
+            return; // someone is streaming again - keep the session live
 
         await CloseWithFinal(state, cancellationToken).ConfigureAwait(false);
     }
@@ -700,6 +712,25 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return participants.Values.Any(p => IsFreshParticipant(p, cutoff));
     }
 
+    private async Task<bool> HasFreshRecorder(ChatId chatId)
+    {
+        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        return participants.Values.Any(p => IsFreshRecorder(p, cutoff));
+    }
+
+    // The session is live only while someone is streaming - recording audio or video (a Record
+    // participant; OnStreamRegistered registers every streamer as one). Pure listeners/watchers
+    // don't keep it alive. A still-ringing call is kept alive until it connects or IsCallAbandoned
+    // times it out, so a call that hasn't started streaming yet isn't torn down mid-ring.
+    private async Task<bool> IsSessionLive(ChatId chatId)
+    {
+        if (await HasFreshRecorder(chatId).ConfigureAwait(false))
+            return true;
+        var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
+        return invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing });
+    }
+
     private async Task<int> ParticipantCount(ChatId chatId)
     {
         var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
@@ -725,9 +756,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (state is null)
             return;
 
-        // Any present participant (recording, listening, or watching) keeps the session alive;
-        // it closes only once nobody is even listening.
-        var isActive = await HasParticipant(chatId).ConfigureAwait(false);
+        // A streamer (recording audio or video) keeps the session alive; it closes once nobody is
+        // streaming, even if listeners/watchers remain.
+        var isActive = await IsSessionLive(chatId).ConfigureAwait(false);
         if (isActive == !state.IsClosing)
             return; // already active+open or inactive+closing
 
@@ -758,8 +789,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var state = await SafeGet(chatId).ConfigureAwait(false);
             if (state is null)
                 return;
-            if (await HasParticipant(chatId).ConfigureAwait(false))
-                return; // someone (re)joined before we got here
+            if (await IsSessionLive(chatId).ConfigureAwait(false))
+                return; // someone is (still) streaming - not empty after all
             if (state is { TranscriptionOn: true, SessionStartedAt: not null, Kind: not LiveSessionKind.Call }) {
                 // Hand the close to LiveConversationSummaryFlow: it runs the final summary pass, decides the
                 // tier, materializes, then calls FinalizeSession. StartClosingGrace marks IsClosing; the 90s
