@@ -222,6 +222,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationAccuracySelector>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationMapModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationMessageView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationParticipantMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationParticipantView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationTroubleshooterModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LogItem>();
@@ -347,7 +348,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelSearchTabs>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RoundProgress>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchFilterBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchFilterMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchInput>();
@@ -935,6 +935,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationAccuracySelector), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationMapModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationMessageView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.LocationParticipantMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationParticipantView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationTroubleshooterModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LogItem), AotTypeKind.Component),
@@ -1060,7 +1061,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelSearchTabs), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.RoundProgress), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchFilterBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchFilterMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchInput), AotTypeKind.Component),

@@ -1,0 +1,18 @@
+.round-progress {
+    @apply relative;
+    @apply flex items-center justify-center;
+}
+.round-progress > svg {
+    @apply absolute inset-0;
+    @apply w-full h-full;
+}
+.round-progress .c-track {
+    fill: none;
+    stroke: none;
+}
+.round-progress .c-value {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+}

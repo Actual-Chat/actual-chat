@@ -19,23 +19,12 @@
 }
 .location-message .c-countdown {
     @apply absolute top-2 left-2;
-    @apply flex items-center justify-center;
     @apply w-8 h-8;
     @apply rounded-full;
     background: var(--white-50);
     color: var(--blue-50);
     @apply text-sm font-medium;
     @apply pointer-events-none;
-}
-.location-message .c-countdown svg {
-    @apply absolute inset-0;
-    @apply w-full h-full;
-}
-.location-message .c-countdown svg circle {
-    stroke: var(--blue-50);
-    stroke-width: 2;
-    stroke-linecap: round;
-    fill: transparent;
 }
 .location-message .c-countdown i {
     @apply text-base;
