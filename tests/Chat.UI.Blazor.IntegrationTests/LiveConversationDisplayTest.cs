@@ -641,6 +641,72 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task LeaveFreezesReactivelyWithoutWaitingForGovernor()
+    {
+        // Determinism: the freeze must be a reactive function of "am I still attending this block",
+        // not an async governor write that lands a beat later - otherwise a hang-up can flash a
+        // collapsed frame before the overlay latches. Prove GetBlockState goes stale from the leave
+        // signal alone, before the governor has had a turn to write anything.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "leave-reactive-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_170);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3,
+            }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        // Let the governor latch the joined state and the attending latch first.
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.Overlay.Should().BeNull();
+            s.WasAttending.Should().BeTrue();
+        }, TimeSpan.FromSeconds(10));
+
+        var computed = await Computed.Capture(() => liveBlockUI.GetBlockState(chat.Id, CancellationToken.None));
+        computed.Value.Overlay.Should().BeNull();
+
+        // act - hang up, then invalidate the leave signal source synchronously. The governor loop
+        // reacts to the same invalidation, but only asynchronously; we do NOT yield to it before the
+        // assertion below, so nothing it writes can account for the staleness.
+        await chatAudioUI.SetListeningState(chat.Id, false);
+        using (Invalidation.Begin())
+            _ = chatAudioUI.GetState(chat.Id);
+
+        // assert - GetBlockState is already stale purely from the leave signal (it depends on it
+        // reactively). Checked synchronously: the governor cannot have run yet. This is the actual
+        // determinism guarantee - the freeze reacts to leaving directly, not via the governor's write.
+        computed.IsConsistent().Should().BeFalse(
+            "the freeze must react to leaving directly, not wait for the governor's async write");
+
+        // and the recomputed state carries the freeze overlay (re-invalidate each poll to defeat the
+        // non-reactive ChatAudioUI.GetState lag - see InvalidateAmIInLiveConversation).
+        await ComputedTest.When(async ct => {
+            InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.Overlay.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(10));
+    }
+
     // Private methods
 
     private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)
