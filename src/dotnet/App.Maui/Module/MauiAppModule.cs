@@ -2,6 +2,10 @@ using ActualChat.App.Maui.Audio;
 #if ANDROID || IOS || MACCATALYST
 using ActualChat.App.Maui.Location;
 #endif
+#if IOS || MACCATALYST
+using ActualChat.App.Maui.Video;
+using ActualChat.UI.Blazor.App.Services.Video;
+#endif
 using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
@@ -39,7 +43,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         fusion.AddService<AccountUI, MauiAccountUI>(ServiceLifetime.Scoped);
 
         // UI
-        services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null); // Scoped in WASM/SSB, singleton in MAUI
+        // Scoped in WASM/SSB, singleton in MAUI
+        services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null);
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c.UIHub()));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c.UIHub()));
         services.AddScoped<KeepWebViewAliveUI>(c => new (c.UIHub()));
@@ -48,7 +53,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
         services.AddScoped<IMediaMetadataUI>(c => new MediaMetadataUI(c.AppUIHub()));
         services.AddSingleton<ReloadUI>(c => new MauiReloadUI(c)); // Replaces scoped ReloadUI
-        services.AddSingleton<BackgroundStateTracker>(_ => new MauiBackgroundStateTracker()); // Replaces scoped WebBackgroundStateTracker
+        // Replaces scoped WebBackgroundStateTracker
+        services.AddSingleton<BackgroundStateTracker>(_ => new MauiBackgroundStateTracker());
         services.AddSingleton<ThermalTracker>(c => new MauiThermalTracker(c)); // Replaces scoped WebThermalTracker
         services.AddSingleton<MauiTestPage.IMauiTestPageBackend>(_ => new MauiTestPageBackend());
 
@@ -105,6 +111,24 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
         services.AddScoped<IAudioCapture>(c => new AppleAudioCapture(c.AppUIHub()));
         services.AddScoped<ILocationTracker>(c => new AppleLocationTracker(c.AppUIHub()));
+        // Native camera publish path. Enabled on Mac Catalyst only for now (the WKWebView
+        // there has no WebCodecs encoder); iOS keeps the working JS recorder until the
+        // native path is validated on-device.
+        if (OperatingSystem.IsMacCatalyst()) {
+            services.AddScoped<AppleCameraFrameTap>(_ => new AppleCameraFrameTap());
+            services.AddScoped<INativeVideoPublisherFactory>(_ => new MauiVideoPublisherFactory());
+            services.AddScoped<INativeCameraDevices>(_ => new MauiCameraDevices());
+            services.AddScoped<INativeCameraPreviewFactory>(_ => new AppleCameraPreviewFactory());
+            services.AddScoped<INativeVideoPlayerFactory>(_ => new MauiVideoPlayerFactory());
+            // Native remote-tile rendering via AVSampleBufferDisplayLayer overlays. Registering
+            // the host switches MauiVideoPlayerFactory + VideoTrackPlayer to the overlay path;
+            // gated off until on-device placement calibration (see the plan doc).
+            if (MauiSettings.UseNativeVideoOverlay) {
+                services.AddScoped<NativeVideoOverlayHost>(c =>
+                    new NativeVideoOverlayHost(c.LogFor<NativeVideoOverlayHost>()));
+                services.AddScoped<INativeVideoOverlayHost>(c => c.GetRequiredService<NativeVideoOverlayHost>());
+            }
+        }
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));

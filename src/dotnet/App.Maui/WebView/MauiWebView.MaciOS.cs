@@ -32,6 +32,14 @@ public partial class MauiWebView
         WKWebView.ScrollView.ContentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentBehavior.Never;
         WKWebView.AllowsBackForwardNavigationGestures = false;
 
+        // Native-video underlay experiment: let the WebView composite transparently so a
+        // video layer placed behind it shows through wherever the DOM tile is transparent.
+        // Guarded by the feature flag; no effect on the shipped (overlay-on-top / off) path.
+        if (MauiSettings.UseNativeVideoOverlay) {
+            WKWebView.BackgroundColor = UIColor.Clear;
+            WKWebView.ScrollView.BackgroundColor = UIColor.Clear;
+        }
+
         // Prevent native scrolling so DOM can handle resizing via interactive-widget=resizes-content
         WKWebView.ScrollView.ShowsVerticalScrollIndicator = false;
         WKWebView.ScrollView.ShowsHorizontalScrollIndicator = false;

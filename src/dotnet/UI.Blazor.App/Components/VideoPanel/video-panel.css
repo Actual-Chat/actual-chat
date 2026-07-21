@@ -617,6 +617,18 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply bg-transparent;
 }
 
+/* Mac Catalyst native-overlay renderer: the tile is painted by a native
+   AVSampleBufferDisplayLayer positioned over/under the WKWebView. The canvas stays
+   in layout (it's the rect anchor the native layer tracks) but must not paint black,
+   and the placeholder goes transparent so an underlay layer shows through. Tile chrome
+   (the participant label) is unaffected. */
+.video-track-player.native-video-overlay canvas.remote-video {
+    @apply bg-transparent;
+}
+.video-track-player.native-video-overlay .video-placeholder {
+    @apply bg-transparent;
+}
+
 /* Bound any descendant invalidation (overlays, labels) to the player box. */
 .video-track-player {
     contain: layout paint;

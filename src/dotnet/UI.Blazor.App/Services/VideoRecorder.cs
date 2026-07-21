@@ -1,5 +1,6 @@
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.App.Services.Video;
 using ActualChat.Video;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -19,6 +20,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     private readonly CancellationTokenSource _maintenanceCts = new ();
     private readonly Task _maintenanceTask;
     private IJSObjectReference _jsRef = null!;
+    private INativeVideoPublisher? _native;
     private DotNetObjectReference<RecorderCallbacks> _blazorCallbacksRef = null!;
     private (ChatId, bool)? _startRequest;
     private string _deviceId = "";
@@ -57,6 +59,18 @@ public sealed class VideoRecorder : IAsyncDisposable
     {
         var blazorCallbacks = new RecorderCallbacks(Hub, this, Kind);
         _blazorCallbacksRef = DotNetObjectReference.Create(blazorCallbacks);
+
+        // Apple platforms (Mac Catalyst / iOS) have no WebCodecs encoder in the
+        // WKWebView, so camera capture+encode+publish runs natively instead of
+        // through the JS recorder. ScreenCast stays on JS (getDisplayMedia).
+        var nativeFactory = Kind == VideoSourceKind.Camera
+            ? Hub.Services.GetService<INativeVideoPublisherFactory>()
+            : null;
+        if (nativeFactory is not null) {
+            _native = nativeFactory.Create(Hub, Kind, new NativeCallbacks(this, blazorCallbacks));
+            return;
+        }
+
         var jsMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
         _jsRef = await JS
             .InvokeAsync<IJSObjectReference>(jsMethod, CancellationToken.None, _blazorCallbacksRef, (int)Kind)
@@ -67,8 +81,14 @@ public sealed class VideoRecorder : IAsyncDisposable
     {
         _maintenanceCts.CancelAndDisposeSilently();
         await _maintenanceTask.SilentAwait();
-        await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
-        _jsRef = null!;
+        if (_native is not null) {
+            await _native.DisposeAsync().ConfigureAwait(false);
+            _native = null;
+        }
+        else {
+            await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
+            _jsRef = null!;
+        }
         _blazorCallbacksRef.Dispose();
         _blazorCallbacksRef = null!;
     }
@@ -81,6 +101,10 @@ public sealed class VideoRecorder : IAsyncDisposable
             throw StandardError.Constraint("Start request already set");
         _startRequest = (chatId, true);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
+        if (_native is not null) {
+            await _native.StartRecording(chatId, codecs, maxLayerCount, cancellationToken).ConfigureAwait(false);
+            return;
+        }
         // Always-on simulcast: JS startRecording builds up to a 3-tier ladder
         // (probe-gated to 2-tier on iOS HW-encoder budget exhaustion), clamped
         // by maxLayerCount (mobile = 2 to keep the top output at 640x360 / L1).
@@ -100,6 +124,11 @@ public sealed class VideoRecorder : IAsyncDisposable
             throw StandardError.Constraint("Start request already set");
         _startRequest = (chatId, true);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
+        if (_native is not null) {
+            await _native.Warmup(chatId, codecs, cancellationToken).ConfigureAwait(false);
+            IsWarmedUp = true;
+            return;
+        }
         await _jsRef
             .InvokeVoidAsync("warmup", cancellationToken, chatId.Value, codecs)
             .ConfigureAwait(false);
@@ -116,6 +145,11 @@ public sealed class VideoRecorder : IAsyncDisposable
             Log.LogWarning(nameof(OpenGate) + " called but recorder is not in warmup state");
             return;
         }
+        if (_native is not null) {
+            await _native.OpenGate(maxLayerCount, cancellationToken).ConfigureAwait(false);
+            IsWarmedUp = false;
+            return;
+        }
         await _jsRef
             .InvokeVoidAsync("openGate", cancellationToken, maxLayerCount)
             .ConfigureAwait(false);
@@ -129,6 +163,11 @@ public sealed class VideoRecorder : IAsyncDisposable
     {
         if (!IsWarmedUp)
             return;
+        if (_native is not null) {
+            await _native.CancelWarmup(cancellationToken).ConfigureAwait(false);
+            IsWarmedUp = false;
+            return;
+        }
         await _jsRef
             .InvokeVoidAsync("cancelWarmup", cancellationToken)
             .ConfigureAwait(false);
@@ -147,21 +186,30 @@ public sealed class VideoRecorder : IAsyncDisposable
     }
 
     public Task StopRecording(CancellationToken cancellationToken)
-        => _jsRef.InvokeVoidAsync("stopRecording", cancellationToken).AsTask();
+        => _native is not null
+            ? _native.StopRecording(cancellationToken)
+            : _jsRef.InvokeVoidAsync("stopRecording", cancellationToken).AsTask();
 
     // Camera & blur
 
     public async Task SetSelectedCamera(string deviceId, CancellationToken cancellationToken)
     {
         _deviceId = deviceId;
-        if (!string.IsNullOrEmpty(deviceId))
-            await _jsRef.InvokeVoidAsync("setSelectedCamera", cancellationToken, deviceId).ConfigureAwait(false);
+        if (string.IsNullOrEmpty(deviceId))
+            return;
+        if (_native is not null) {
+            await _native.SetSelectedCamera(deviceId, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+        await _jsRef.InvokeVoidAsync("setSelectedCamera", cancellationToken, deviceId).ConfigureAwait(false);
     }
 
     public Task SetBlurEnabled(bool enabled, CancellationToken cancellationToken)
     {
         _isBlurEnabled = enabled;
-        return _jsRef.InvokeVoidAsync("setBlurEnabled", cancellationToken, enabled).AsTask();
+        return _native is not null
+            ? _native.SetBlurEnabled(enabled, cancellationToken)
+            : _jsRef.InvokeVoidAsync("setBlurEnabled", cancellationToken, enabled).AsTask();
     }
 
     public Task SwitchCamera(string deviceId, CancellationToken cancellationToken)
@@ -170,7 +218,9 @@ public sealed class VideoRecorder : IAsyncDisposable
             return Task.CompletedTask;
 
         _deviceId = deviceId;
-        return _jsRef.InvokeVoidAsync("switchCamera", cancellationToken, deviceId).AsTask();
+        return _native is not null
+            ? _native.SwitchCamera(deviceId, cancellationToken)
+            : _jsRef.InvokeVoidAsync("switchCamera", cancellationToken, deviceId).AsTask();
     }
 
     public Task ToggleBlur(bool enabled, CancellationToken cancellationToken)
@@ -179,7 +229,9 @@ public sealed class VideoRecorder : IAsyncDisposable
             return Task.CompletedTask;
 
         _isBlurEnabled = enabled;
-        return _jsRef.InvokeVoidAsync("toggleBlur", cancellationToken, enabled).AsTask();
+        return _native is not null
+            ? _native.ToggleBlur(enabled, cancellationToken)
+            : _jsRef.InvokeVoidAsync("toggleBlur", cancellationToken, enabled).AsTask();
     }
 
     // Pushes a layer ladder to the JS VideoRecorder. Hot-applied to a
@@ -195,6 +247,8 @@ public sealed class VideoRecorder : IAsyncDisposable
                 baseBitrateKbps = x.BaseBitrateKbps,
             }).ToArray()
             : null;
+        if (_native is not null)
+            return _native.SetLayers(layers, cancellationToken);
         return _jsRef.InvokeVoidAsync("setLayers", cancellationToken, (object?)arg).AsTask();
     }
 
@@ -210,7 +264,9 @@ public sealed class VideoRecorder : IAsyncDisposable
 
     // Thermal fps ceiling; 0 = no ceiling.
     public Task SetFpsCeiling(int maxFps, CancellationToken cancellationToken)
-        => _jsRef.InvokeVoidAsync("setFpsCeiling", cancellationToken, maxFps).AsTask();
+        => _native is not null
+            ? _native.SetFpsCeiling(maxFps, cancellationToken)
+            : _jsRef.InvokeVoidAsync("setFpsCeiling", cancellationToken, maxFps).AsTask();
 
     // Private methods
 
@@ -254,6 +310,32 @@ public sealed class VideoRecorder : IAsyncDisposable
         return Hub.VideoQualityUI.OnRecorderStats(Kind, effectiveStats, this, CancellationToken.None);
     }
 
+    // Control-signal forwarding — routes to the native publisher (Apple) or JS recorder.
+    private ValueTask RecorderForceKeyFrame(CancellationToken cancellationToken)
+        => _native is not null
+            ? new ValueTask(_native.ForceKeyFrame(cancellationToken))
+            : _jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken);
+    private ValueTask RecorderSetDemandedLayers(int mask, CancellationToken cancellationToken)
+        => _native is not null
+            ? new ValueTask(_native.SetDemandedLayers(mask, cancellationToken))
+            : _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask);
+    private ValueTask RecorderSetThumbnailOnly(bool thumbnailOnly, CancellationToken cancellationToken)
+        => _native is not null
+            ? new ValueTask(_native.SetThumbnailOnly(thumbnailOnly, cancellationToken))
+            : _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, thumbnailOnly);
+    private ValueTask RecorderSetSpeaking(bool speaking, CancellationToken cancellationToken)
+        => _native is not null
+            ? new ValueTask(_native.SetSpeaking(speaking, cancellationToken))
+            : _jsRef.InvokeVoidAsync("setSpeaking", cancellationToken, speaking);
+    private ValueTask RecorderUpdateSupportedDecoderCodecs(string[] codecs, CancellationToken cancellationToken)
+        => _native is not null
+            ? new ValueTask(_native.UpdateSupportedDecoderCodecs(codecs, cancellationToken))
+            : _jsRef.InvokeVoidAsync("updateSupportedDecoderCodecs", cancellationToken, (object)codecs);
+    private ValueTask RecorderSetRemoteStreamCount(int count, CancellationToken cancellationToken)
+        => _native is not null
+            ? new ValueTask(_native.SetRemoteStreamCount(count, cancellationToken))
+            : _jsRef.InvokeVoidAsync("setRemoteStreamCount", cancellationToken, count);
+
     private async Task SubscribeToKeyFrameRequests(ChatId chatId, CancellationToken cancellationToken) {
         await RunPerOwnStreamSubscription(
             chatId, nameof(SubscribeToKeyFrameRequests), SubscribeToKeyFrameRequestsCore, cancellationToken)
@@ -273,7 +355,7 @@ public sealed class VideoRecorder : IAsyncDisposable
             Log.LogInformation(
                 "Keyframe request: invoking forceKeyFrame interop for stream {StreamId}, requestAt={RequestAt}",
                 ownStreamId, requestAt);
-            await _jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken).ConfigureAwait(false);
+            await RecorderForceKeyFrame(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -304,8 +386,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                         if (info.Mask != lastMask) {
                             Log.LogInformation(
                                 "DemandInfo: stream {StreamId} → mask {Mask:b}", ownStreamId, info.Mask);
-                            await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, info.Mask)
-                                .ConfigureAwait(false);
+                            await RecorderSetDemandedLayers(info.Mask, cancellationToken).ConfigureAwait(false);
                             lastMask = info.Mask;
                         }
                         // Camera only: screencast never sheds fps.
@@ -313,8 +394,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                             Log.LogInformation(
                                 "DemandInfo: stream {StreamId} → thumbnailOnly {Value}",
                                 ownStreamId, info.ThumbnailViewersOnly);
-                            await _jsRef
-                                .InvokeVoidAsync("setThumbnailOnly", cancellationToken, info.ThumbnailViewersOnly)
+                            await RecorderSetThumbnailOnly(info.ThumbnailViewersOnly, cancellationToken)
                                 .ConfigureAwait(false);
                             lastThumbnailOnly = info.ThumbnailViewersOnly;
                         }
@@ -382,7 +462,7 @@ public sealed class VideoRecorder : IAsyncDisposable
 
                     Log.LogInformation(
                         "RequestedLayersMask (legacy): stream {StreamId} → {Mask:b}", ownStreamId, mask);
-                    await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
+                    await RecorderSetDemandedLayers(mask, cancellationToken).ConfigureAwait(false);
                     lastMask = mask;
                 }
                 return;
@@ -418,7 +498,7 @@ public sealed class VideoRecorder : IAsyncDisposable
             var mask = maxLayerId < 0 ? 0 : (1 << (maxLayerId + 1)) - 1;
             Log.LogInformation(
                 "MaxRequestedLayerId (fallback): stream {StreamId} → {MaxLayerId}", ownStreamId, maxLayerId);
-            await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
+            await RecorderSetDemandedLayers(mask, cancellationToken).ConfigureAwait(false);
             lastMax = maxLayerId;
         }
     }
@@ -515,8 +595,7 @@ public sealed class VideoRecorder : IAsyncDisposable
 
                     Log.LogInformation(
                         "ThumbnailViewersOnly (legacy): stream {StreamId} → {Value}", ownStreamId, thumbnailOnly);
-                    await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, thumbnailOnly)
-                        .ConfigureAwait(false);
+                    await RecorderSetThumbnailOnly(thumbnailOnly, cancellationToken).ConfigureAwait(false);
                     lastValue = thumbnailOnly;
                 }
                 return;
@@ -530,8 +609,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                 failures++;
                 if (!everWorked && failures >= 3) {
                     Log.LogWarning(e, "SubscribeToThumbnailOnlyLegacy: unavailable, fps shed disabled");
-                    await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, false)
-                        .ConfigureAwait(false);
+                    await RecorderSetThumbnailOnly(false, cancellationToken).ConfigureAwait(false);
                     return;
                 }
                 Log.LogWarning(e,
@@ -553,7 +631,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                 if (speaking == lastSpeaking)
                     continue;
                 lastSpeaking = speaking;
-                await _jsRef.InvokeVoidAsync("setSpeaking", cancellationToken, speaking).ConfigureAwait(false);
+                await RecorderSetSpeaking(speaking, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -570,7 +648,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                 cancellationToken).ConfigureAwait(false);
             await foreach (var (codecs, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
                 Log.LogInformation("SubscribeToSupportedDecoderCodecs: received codecs=[{Codecs}]", string.Join(", ", codecs));
-                await _jsRef.InvokeVoidAsync("updateSupportedDecoderCodecs", cancellationToken, (object)codecs.ToArray()).ConfigureAwait(false);
+                await RecorderUpdateSupportedDecoderCodecs(codecs.ToArray(), cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -595,8 +673,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                     continue;
 
                 lastCount = count;
-                await _jsRef.InvokeVoidAsync("setRemoteStreamCount", cancellationToken, count)
-                    .ConfigureAwait(false);
+                await RecorderSetRemoteStreamCount(count, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -722,5 +799,16 @@ public sealed class VideoRecorder : IAsyncDisposable
                 WireMinRttMs: wireMinRttMs,
                 WireRingDepthEma: wireRingDepthEma));
         }
+    }
+
+    // Bridges native-publisher callbacks to the same fan-out the JS recorder uses.
+    private sealed class NativeCallbacks(VideoRecorder videoRecorder, RecorderCallbacks inner)
+        : INativeVideoPublisherCallbacks
+    {
+        public void OnRecordingStarted() => inner.OnRecordingStarted();
+        public void OnRecordingStopped() => inner.OnRecordingStopped();
+        public void OnRecordingError(string error) => inner.OnRecordingError(error);
+        public void OnTrackSettings(string? deviceId, string? facingMode) => inner.OnTrackSettings(deviceId, facingMode);
+        public void OnRecorderStats(RecorderStats stats) => _ = videoRecorder.OnRecorderStats(stats);
     }
 }

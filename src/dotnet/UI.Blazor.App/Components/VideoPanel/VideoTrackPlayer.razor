@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Services.Video
 @using ActualChat.Video
 @inherits ComponentBase<AppUIHub>
 @implements IVideoPlayerBackend
@@ -24,7 +25,7 @@
         _                                                   => "",
     };
 }
-<div class="video-track-player remote-video-container has-source-aspect @FocusedClass @sourceKindCls" style="@aspectRatioStyle"
+<div class="video-track-player remote-video-container has-source-aspect @FocusedClass @sourceKindCls @NativeOverlayClass" style="@aspectRatioStyle"
      @onclick="@OnClick" @onclick:stopPropagation="true">
     @* Low-res intrinsic resolution: WebGPU renders to a 64×64 swap chain
        and CSS `object-cover` upscales to fill the focused tile. The heavy
@@ -53,15 +54,35 @@
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPlayer.create";
+    private static readonly string JSNativeCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoTrackPlayerNative.create";
+    private static readonly string JSNativeOverlayCreateMethod = $"{BlazorUIAppModule.ImportName}.NativeVideoOverlay.create";
+
+    // Mac Catalyst has no WebCodecs VideoDecoder, so remote streams are decoded
+    // natively (VideoToolbox) and painted as JPEG frames instead of running the JS
+    // worker player. Advertise only H.264 — the native decoder is H.264-only for now.
+    private static readonly string[] NativeDecoderCodecs = ["h264"];
 
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly TaskCompletionSource _whenCompletedSource = new();
 
     private IJSObjectReference? _jsPlayerRef;
+    private INativeVideoPlayer? _nativePlayer;
+    private INativeOverlayVideoPlayer? _overlayPlayer;
+    private IJSObjectReference? _jsNativeRef;
+    private IJSObjectReference? _jsOverlayRef;
     private Task? _playTask;
     private Timer? _viewerHeartbeatTimer;
     private bool _isDisposed;
     private bool _isViewerRegistered;
+    private bool? _useNativeOverlay;
+
+    private bool UseNativePlayer => OperatingSystem.IsMacCatalyst();
+
+    // The native-overlay renderer (AVSampleBufferDisplayLayer over the WKWebView) is used
+    // when its host service is registered; otherwise the native player is the JPEG-to-canvas one.
+    private bool UseNativeOverlay => _useNativeOverlay ??=
+        UseNativePlayer && Services.GetService<INativeVideoOverlayHost>() is not null;
+    private string NativeOverlayClass => UseNativeOverlay ? "native-video-overlay" : "";
 
     private ILogger Log => field ??= Services.LogFor<VideoTrackPlayer>();
     private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
@@ -103,6 +124,11 @@
                 null,
                 TimeSpan.FromSeconds(30),
                 TimeSpan.FromSeconds(30));
+
+            if (UseNativePlayer) {
+                await StartNativePlayer();
+                return;
+            }
 
             // Ensure server clock is synced before JS compares its clock to the stream origin.
             // ServerTimeSync is only registered on client platforms (WASM/MAUI), not on Server
@@ -341,6 +367,32 @@
             if (_playTask != null)
                 await _playTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 
+            if (_jsOverlayRef is {} overlayRef) {
+                try {
+                    await overlayRef.InvokeVoidAsync("dispose");
+                }
+                catch {
+                    // Ignore JS errors during disposal
+                }
+                await overlayRef.DisposeSilentlyAsync();
+                _jsOverlayRef = null;
+            }
+            if (_nativePlayer is not null) {
+                await _nativePlayer.DisposeAsync().ConfigureAwait(true);
+                _nativePlayer = null;
+                _overlayPlayer = null;
+            }
+            if (_jsNativeRef is {} nativeRef) {
+                try {
+                    await nativeRef.InvokeVoidAsync("dispose");
+                }
+                catch {
+                    // Ignore JS errors during disposal
+                }
+                await nativeRef.DisposeSilentlyAsync();
+                _jsNativeRef = null;
+            }
+
             // Don't unregister viewer on dispose — the server has 90s stale member cleanup.
             // Unregistering here causes codec oscillation when ComputeState re-renders
             // rapidly (e.g., isRecording changes), which cycles AV1↔HEVC endlessly.
@@ -396,14 +448,68 @@
         }
     }
 
+    private async Task StartNativePlayer()
+    {
+        var factory = Services.GetService<INativeVideoPlayerFactory>();
+        if (factory is null) {
+            Log.LogWarning("[VideoTrackPlayer #{StreamId}] No INativeVideoPlayerFactory registered", StreamInfo.StreamId);
+            return;
+        }
+
+        _nativePlayer = factory.Create(Hub, StreamInfo);
+        if (_nativePlayer is INativeOverlayVideoPlayer overlayPlayer) {
+            // Native-overlay renderer: no JS canvas player. Track the tile's rect and feed
+            // it to the overlay host so the native layer follows the DOM tile.
+            _overlayPlayer = overlayPlayer;
+            _jsOverlayRef = await JS.InvokeAsync<IJSObjectReference>(
+                JSNativeOverlayCreateMethod, _disposeCts.Token, CanvasRef, BlazorRef);
+            _nativePlayer.Start(static _ => ValueTask.CompletedTask);
+            return;
+        }
+
+        _jsNativeRef = await JS.InvokeAsync<IJSObjectReference>(JSNativeCreateMethod, _disposeCts.Token, CanvasRef);
+        _nativePlayer.Start(OnNativeFrame);
+    }
+
+    [JSInvokable]
+    public void OnOverlayRect(double x, double y, double width, double height, bool visible, double cornerRadius)
+    {
+        if (_isDisposed || _overlayPlayer is null)
+            return;
+
+        Services.GetService<INativeVideoOverlayHost>()
+            ?.UpdateRect(_overlayPlayer.OverlayId, x, y, width, height, visible, cornerRadius);
+    }
+
+    private ValueTask OnNativeFrame(byte[] jpeg)
+    {
+        var base64 = Convert.ToBase64String(jpeg);
+        return new ValueTask(InvokeAsync(async () => {
+            var jsRef = _jsNativeRef;
+            if (jsRef is null)
+                return;
+
+            try {
+                await jsRef.InvokeVoidAsync("renderRemoteFrame", base64);
+            }
+            catch {
+                // The tile can unmount mid-flight — a dropped frame is harmless.
+            }
+        }));
+    }
+
+    private async Task<string[]> GetSupportedDecoderCodecs()
+        => UseNativePlayer
+            ? NativeDecoderCodecs
+            : await JS.InvokeAsync<string[]>($"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+
     private async Task RegisterViewer()
     {
         if (_isViewerRegistered)
             return;
 
         try {
-            var decoderCodecs = await JS.InvokeAsync<string[]>(
-                $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+            var decoderCodecs = await GetSupportedDecoderCodecs();
             await LiveVideoStreams.RegisterMember(
                 Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), CancellationToken.None);
             _isViewerRegistered = true;
@@ -421,8 +527,7 @@
             return;
 
         try {
-            var decoderCodecs = await JS.InvokeAsync<string[]>(
-                $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+            var decoderCodecs = await GetSupportedDecoderCodecs();
             await LiveVideoStreams.RegisterMember(
                 Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), CancellationToken.None);
         }

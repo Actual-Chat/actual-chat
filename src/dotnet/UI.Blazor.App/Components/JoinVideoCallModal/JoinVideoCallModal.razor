@@ -5,6 +5,7 @@
 @using ActualChat.UI
 @using ActualChat.UI.Blazor.App.Events
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Services.Video
 @{
     var m = State.Value;
 }
@@ -167,6 +168,7 @@
     private DotNetObjectReference<JoinVideoCallModal>? _blazorRef;
     private IJSObjectReference? _jsRef;
     private IVideoSession? _session;
+    private INativeCameraPreview? _nativePreview;
     private readonly CancellationTokenSource _disposeCts = new();
 
     private bool _isInitialized;
@@ -288,6 +290,11 @@
         // first one when nothing is saved (or the saved id no longer exists).
         _selectedDevice ??= _videoDevices.FirstOrDefault();
 
+        // Mac Catalyst getUserMedia yields no frames, so the modal renders a
+        // native preview (JPEG frames pushed to the canvas) instead of a <video>.
+        if (OperatingSystem.IsMacCatalyst())
+            _nativePreview = Hub.Services.GetService<INativeCameraPreviewFactory>()?.Create(Hub);
+
         _blazorRef = DotNetObjectReference.Create(this);
         _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _containerRef, _blazorRef);
         _session = CreateSession(_jsRef);
@@ -353,7 +360,7 @@
         };
 
     private Task OnOpenSettingsClick()
-        => SystemSettingsUI.Open();
+        => SystemSettingsUI.Open(SystemSettingsSection.Camera);
 
     private async Task OnAllowCameraClick() {
         // CheckOrRequest will prompt only when state is Prompt; for Denied the
@@ -397,13 +404,42 @@
                 () => _isVideoOn,
                 () => _selectedDevice?.DeviceId,
                 () => _isBlurEnabled,
+                // Mac Catalyst publishes the live stream natively and its WKWebView
+                // getUserMedia yields no frames, so the preview is driven by native
+                // JPEG frames (via _nativePreview) rendered to the canvas instead of
+                // a <video> element.
+                OperatingSystem.IsMacCatalyst(),
+                _nativePreview,
+                _nativePreview is not null ? OnNativePreviewFrame : null,
                 _disposeCts.Token);
+
+    // Runs on the capture thread; marshal to the Blazor dispatcher before touching
+    // _jsRef, and let the returned task gate the native side so frames don't queue.
+    private ValueTask OnNativePreviewFrame(byte[] jpeg) {
+        var base64 = Convert.ToBase64String(jpeg);
+        return new ValueTask(InvokeAsync(async () => {
+            var jsRef = _jsRef;
+            if (jsRef is null)
+                return;
+            try {
+                await jsRef.InvokeVoidAsync("renderPreviewFrame", base64);
+            }
+            catch {
+                // The renderer/JS ref can go away while a modal closes — a dropped
+                // preview frame is harmless.
+            }
+        }));
+    }
 
     public override async ValueTask DisposeAsync() {
         _disposeCts.CancelAndDisposeSilently();
         if (_session is not null) {
             _session.StateChanged -= OnSessionStateChanged;
             _session = null;
+        }
+        if (_nativePreview is not null) {
+            await _nativePreview.DisposeAsync().ConfigureAwait(false);
+            _nativePreview = null;
         }
         if (_jsRef is not null) {
             await _jsRef.DisposeSilentlyAsync("dispose");
@@ -685,6 +721,9 @@
         Func<bool> getIsVideoOn,
         Func<string?> getSelectedDeviceId,
         Func<bool> getIsBlurEnabled,
+        bool useOwnPreview,
+        INativeCameraPreview? nativePreview,
+        Func<byte[], ValueTask>? onPreviewFrame,
         CancellationToken disposeCt) : VideoSessionBase
     {
         public override async Task Start()
@@ -704,7 +743,21 @@
                 SetState(CameraState.Unavailable);
                 return;
             }
-            await jsRef.InvokeVoidAsync("attachToRecorder");
+            if (useOwnPreview) {
+                // Mac Catalyst: the native publisher owns the live capture and opens
+                // the camera at OpenGate (Join). Until then, drive the preview from a
+                // separate native capture that pushes JPEG frames to the canvas.
+                if (nativePreview is not null && onPreviewFrame is not null) {
+                    var started = nativePreview.Start(getSelectedDeviceId(), onPreviewFrame);
+                    SetState(started ? CameraState.On : CameraState.Unavailable);
+                }
+                else {
+                    _ = jsRef.InvokeVoidAsync("startPreview", getSelectedDeviceId());
+                    SetState(CameraState.On);
+                }
+            }
+            else
+                await jsRef.InvokeVoidAsync("attachToRecorder");
         }
 
         public override async Task ChangeCamera(string deviceId)
@@ -712,8 +765,17 @@
             SetState(CameraState.Starting);
             var ok = await chatVideoUI.UpdateCameraWarmupSettings(
                 chatId, deviceId, getIsBlurEnabled(), disposeCt);
-            if (!ok)
+            if (!ok) {
                 SetState(CameraState.Unavailable);
+                return;
+            }
+            if (useOwnPreview) {
+                if (nativePreview is not null)
+                    nativePreview.SwitchTo(deviceId);
+                else
+                    _ = jsRef.InvokeVoidAsync("switchCamera", deviceId);
+                SetState(CameraState.On);
+            }
         }
 
         public override Task SetBlurEnabled(bool enabled)
@@ -726,6 +788,7 @@
                 await Start();
             }
             else {
+                nativePreview?.Stop();
                 SetState(CameraState.Off);
                 await chatVideoUI.CancelCameraWarmup(chatId);
             }

@@ -1,6 +1,7 @@
 import { getLogs } from 'logging';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 import { RecorderPreviewView } from '../../Services/Video/services/recorder-preview-view';
+import { renderJpegFrame } from '../../Services/Video/services/jpeg-frame-renderer';
 
 const { infoLog, warnLog, errorLog } = getLogs('JoinVideoCallModal');
 
@@ -120,6 +121,27 @@ export class JoinVideoCallModal {
         this.videoFrame.classList.remove('has-video', 'shows-video', 'shows-canvas');
 
         infoLog?.log('Camera preview stopped');
+    }
+
+    // WKWebView getUserMedia delivers no camera frames on Mac Catalyst, so the
+    // native side captures the camera and pushes downscaled JPEG frames here to
+    // be drawn on the canvas.
+    public async renderPreviewFrame(base64Jpeg: string): Promise<void> {
+        if (this.disposed)
+            return;
+
+        try {
+            if (!await renderJpegFrame(this.canvasEl, base64Jpeg, () => this.disposed))
+                return;
+
+            this.videoFrame.classList.add('has-video', 'shows-canvas');
+            if (!this.firstFrameFired) {
+                this.firstFrameFired = true;
+                void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered');
+            }
+        } catch (error) {
+            warnLog?.log('renderPreviewFrame failed:', error);
+        }
     }
 
     public async switchCamera(deviceId: string): Promise<boolean> {

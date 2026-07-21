@@ -17,7 +17,7 @@ public static partial class MauiProgram
         // Push notifications are not wired up on MacCatalyst yet (no Firebase native bindings).
         services.AddTransient<IDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
         services.AddScoped<INotificationsPermission>(_ => new MacNotificationsPermission());
-        services.AddScoped<IRecordingPermissionRequester>(_ => new AppleRecordingPermissionRequester());
+        services.AddScoped<IRecordingPermissionRequester>(c => new AppleRecordingPermissionRequester(c.AppUIHub()));
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMediaSaver>(c => new AppleMediaSaver(c.UIHub()));
