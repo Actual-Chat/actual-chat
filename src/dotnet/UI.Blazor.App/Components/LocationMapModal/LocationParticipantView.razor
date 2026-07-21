@@ -51,20 +51,12 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var distanceText = !Participant.IsOwn && OwnPoint is { } ownPoint
-            ? ToDistanceText(ownPoint.DistanceTo(Participant.Location.Point))
+            ? ownPoint.DistanceTextTo(Participant.Location.Point)
             : "";
         var remainingText = await LocationUI.GetTimeLeftText(Participant.Location.AuthorId, cancellationToken)
             .ConfigureAwait(false);
         return new Model(distanceText, remainingText);
     }
-
-    private static string ToDistanceText(double meters)
-        => meters switch {
-            < 1 => "1 m",
-            < 1000 => $"{meters:F0} m",
-            < 10_000 => $"{meters / 1000:F1} km",
-            _ => $"{meters / 1000:F0} km",
-        };
 
     // Nested types
 
