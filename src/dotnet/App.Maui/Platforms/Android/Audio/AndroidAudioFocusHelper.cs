@@ -75,6 +75,10 @@ public class AndroidAudioFocusHelper : IDisposable
             return; // Already in communication mode, nothing to warm up
         if (_audioManager.IsMusicActive)
             return; // Another app is playing audio, skip warmup to avoid interruption
+        if (IncomingCallRinger.IsPlaying)
+            // Priming the comm pipeline flips the mode to InCommunication, which reroutes the
+            // ringtone (STREAM_RING) speaker->earpiece->speaker — an audible drop mid-ring.
+            return;
 
         _log.LogInformation("WarmUpAudioMode: briefly switching to InCommunication to prime audio HAL");
         _audioManager.Mode = Mode.InCommunication;

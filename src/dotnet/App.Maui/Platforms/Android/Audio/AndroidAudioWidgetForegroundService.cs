@@ -180,10 +180,11 @@ public class AndroidAudioWidgetForegroundService : Service
                 }
                 else
                     StartForeground(NotificationId, notification);
-                Log.LogWarning("AudioWidget FGS: StartForeground OK (mode={Mode})", mode);
             }
             catch (Exception e) {
-                Log.LogError(e, "AudioWidget FGS: StartForeground FAILED (locked-FGS test, mode={Mode})", mode);
+                // A mic FGS started over the keyguard can be rejected (SecurityException /
+                // ForegroundServiceStartNotAllowedException) on some OEMs — log rather than crash.
+                Log.LogError(e, "StartForeground failed (mode={Mode})", mode);
             }
         }
     }

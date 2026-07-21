@@ -16,6 +16,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 {
     private readonly Lock _lock = new();
     private readonly MutableState<ImmutableList<ChatId>> _ringingChatIds;
+    private readonly MutableState<bool> _isOverLockScreen;
+
+    public IState<bool> IsOverLockScreen => _isOverLockScreen;
 
     private IIncomingCallsBridge? Bridge { get; }
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
@@ -28,12 +31,15 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _ringingChatIds = StateFactory.NewMutable(
             ImmutableList<ChatId>.Empty,
             StateCategories.Get(GetType(), "RingingChatIds"));
+        _isOverLockScreen = StateFactory.NewMutable(
+            false,
+            StateCategories.Get(GetType(), "IsOverLockScreen"));
     }
 
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    public void OnRing(ChatId chatId)
+    public void OnRing(ChatId chatId, bool showOverLockScreen = false)
     {
         if (chatId is null || chatId.Value.IsNullOrEmpty())
             return;
@@ -43,6 +49,8 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (!chatIds.Contains(chatId))
                 _ringingChatIds.Value = chatIds.Add(chatId);
         }
+        if (showOverLockScreen)
+            _isOverLockScreen.Value = true;
     }
 
     public void OnCallDismissed(ChatId chatId)
@@ -91,13 +99,13 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return new IncomingCall(live.ChatId, live.Host, live.Rules.VideoAllowed);
     }
 
-    public async Task Accept(ChatId chatId, bool withCamera = false, bool keepOverLockScreen = false)
+    public async Task Accept(ChatId chatId, bool withCamera = false)
     {
+        var overLockScreen = _isOverLockScreen.Value;
         var call = await GetRingingCall(chatId, default).ConfigureAwait(true);
         EndRing(chatId);
         if (call is null) {
-            if (!keepOverLockScreen)
-                _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(false);
             Hub.ToastUI.Show("Call ended", "icon-phone", ToastDismissDelay.Short);
             return;
         }
@@ -106,17 +114,17 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             await LiveSessionUI.AcceptCall(chatId, default).ConfigureAwait(true);
         }
         catch (Exception e) {
-            if (!keepOverLockScreen)
-                _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(false);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             Hub.ToastUI.Show("Call ended", "icon-phone", ToastDismissDelay.Short);
             return;
         }
 
-        // keepOverLockScreen (hypothesis-3 test): don't dismiss the keyguard — start the audio while
-        // a call activity is visible over the lock screen and see whether the mic FGS is allowed.
-        // Otherwise dismiss first: normally the FGS can't start from a background state.
-        var canStartAudio = keepOverLockScreen || Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+        // Accept over the lock screen keeps the call activity visible over the keyguard and starts
+        // audio without unlocking: the mic FGS is allowed because the activity (shown via
+        // SetShowWhenLocked) counts as foreground. Otherwise dismiss the keyguard first, since the
+        // FGS can't start from a background state.
+        var canStartAudio = overLockScreen || Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
         await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
         if (canStartAudio) {
             if (await Hub.AudioRecorder.MicrophonePermission.CheckOrRequest(CancellationToken.None).ConfigureAwait(true))
@@ -167,8 +175,12 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                     isRinging = call is not null;
                     if (isRinging)
                         Bridge?.StartRinging();
-                    else
+                    else {
                         Bridge?.StopRinging();
+                        // All rings ended: drop the over-lock-screen flag so a later foreground
+                        // call shows the banner, not the full-screen screen.
+                        _isOverLockScreen.Value = false;
+                    }
                 }
                 await PruneDeadRings(cancellationToken).ConfigureAwait(false);
 

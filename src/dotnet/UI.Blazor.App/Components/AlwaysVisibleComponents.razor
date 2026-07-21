@@ -5,6 +5,7 @@
 <ModalHost />
 <MenuHost />
 <BubbleHost />
+<IncomingCallFullScreenView />
 <SpoilerFilterDefs />
 <Hotkey Keys="ctrl+k" AriaLabel="Quick chat navigation" OnTrigger="OnQuickNav"/>
 <Hotkey Keys="ctrl+/" AriaLabel="Keyboard shortcuts" OnTrigger="OnShortcutsHelp"/>
@@ -43,7 +44,6 @@
 
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private LoadingUI LoadingUI => Hub.LoadingUI;
-    private ModalUI ModalUI => Hub.ModalUI;
     private ThemeUI ThemeUI => Hub.ThemeUI;
 
     protected override void OnAfterRender(bool firstRender) {
