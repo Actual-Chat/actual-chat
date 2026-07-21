@@ -14,6 +14,11 @@
 .virtual-list .c-virtual-container .item:has(> .conversation-message) {
     @apply pt-4;
 }
+/* ...but inside a joined live block the card follows the sticky header flush - no gap between the
+   header and the description, and both share the block's tint. */
+.virtual-list .c-virtual-container .item:has(> .conversation-message.live.joined) {
+    @apply pt-0;
+}
 .conversation-message.live:not(.joined) {
     @apply border-none;
     background: linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%);
@@ -27,6 +32,11 @@
 .c-live-card {
     @apply flex-y gap-y-2 w-full;
     @apply p-4;
+}
+/* In a joined block the sticky header carries the title, so the description card drops its own top
+   padding and butts right up under the header - one continuous surface, no gap. */
+.conversation-message.live.joined .c-live-card {
+    @apply pt-0;
 }
 .c-live-card .c-lc-title {
     @apply flex-x items-center gap-x-3;
@@ -350,18 +360,8 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply text-xl;
 }
 
-/* Live conversation footer - the block's bottom row. A static dot marks it live; the dancing-bars
-   audio animation belongs to the header only, and must not repeat here. */
+/* Live conversation footer - just the block's rounded bottom edge, giving the last entry a little
+   breathing room from the border. No "Live" label here; the live state reads from the header alone. */
 .live-conversation-footer {
-    @apply flex items-center gap-x-2;
-    @apply px-4 py-1.5;
-    @apply text-sm text-02;
-    @apply rounded-b-2xl;
-}
-.live-conversation-footer .c-live-dot {
-    @apply flex-none w-2 h-2 rounded-full;
-    background: var(--violet-60);
-}
-.live-conversation-footer .c-live-label {
-    color: var(--violet-60);
+    @apply h-3 rounded-b-2xl;
 }
