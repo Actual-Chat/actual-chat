@@ -14,18 +14,20 @@
 .virtual-list .c-virtual-container .item:has(> .conversation-message) {
     @apply pt-4;
 }
-/* ...but inside a joined live block the card follows the sticky header flush - no gap between the
-   header and the description, and both share the block's tint. */
-.virtual-list .c-virtual-container .item:has(> .conversation-message.live.joined) {
+/* ...but inside a block (one carrying the split-out live header) the card follows the header flush -
+   no gap between the header and the description. Covers both the joined block and the frozen/unjoined
+   (left-the-call) block. */
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) .item:has(> .conversation-message.live) {
     @apply pt-0;
 }
+/* Standalone preview card (not inside a block - never joined, no overlay) keeps its own box. */
 .conversation-message.live:not(.joined) {
     @apply border-none;
     background: linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%);
 }
-.conversation-message.live.joined {
-    /* Inside the block the group owns the border, tint, and rounding (see the .group rule below), so
-       the card itself is flush and transparent - a border here would draw a second box inside the block. */
+/* Any live card INSIDE a block is flush and transparent - the group owns the border, tint, and
+   rounding, so a card box here would draw a second box inside the block with the title detached. */
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) .conversation-message.live {
     @apply border-none rounded-none;
     background: none;
 }
@@ -33,9 +35,9 @@
     @apply flex-y gap-y-2 w-full;
     @apply p-4;
 }
-/* In a joined block the sticky header carries the title, so the description card drops its own top
-   padding and butts right up under the header - one continuous surface, no gap. */
-.conversation-message.live.joined .c-live-card {
+/* The split header carries the title, so the description card drops its own top padding and butts
+   right up under the header - one continuous surface, no gap. */
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) .c-live-card {
     @apply pt-0;
 }
 .c-live-card .c-lc-title {
