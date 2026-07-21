@@ -13,7 +13,9 @@ public class LegacyChats(IServiceProvider services) : ILegacyChats
     public virtual async Task<LegacyChatNews?> GetNews(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        var news = await Chats.GetNews(session, chatId, cancellationToken).ConfigureAwait(false);
+#pragma warning disable CS0618 // v2.7- clients expect the full LastTextEntry, so slim GetNews doesn't fit here
+        var news = await Chats.GetFullNews(session, chatId, cancellationToken).ConfigureAwait(false);
+#pragma warning restore CS0618
         return LegacyChatNews.From(news);
     }
 

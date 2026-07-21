@@ -16,8 +16,19 @@ public interface IChats : IComputeService
         ChatId chatId,
         CancellationToken cancellationToken);
 
+    // Returns ChatNews with a slim LastTextEntry (see ChatNews.ToSlim); the LegacyName
+    // aliases below route v2.12- clients calling wire name "GetNews" to GetFullNews.
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(MinCacheDuration = 600)]
+    [LegacyName("GetNews_NewUnused", "2.12.9999")]
     Task<ChatNews?> GetNews(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(MinCacheDuration = 600)]
+    [LegacyName(nameof(GetNews), "2.12.9999")]
+    [Obsolete("2026.07: Use GetNews - it returns a slim LastTextEntry, which is all the UI needs.")]
+    Task<ChatNews?> GetFullNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);

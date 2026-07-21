@@ -192,6 +192,19 @@ public partial class Chats(IServiceProvider services) : IChats
         ChatId chatId,
         CancellationToken cancellationToken)
     {
+#pragma warning disable CS0618 // GetFullNews is the routing point for v2.12- clients, and the data source here
+        var news = await GetFullNews(session, chatId, cancellationToken).ConfigureAwait(false);
+#pragma warning restore CS0618
+        return news?.ToSlim();
+    }
+
+    // [ComputeMethod]
+    [Obsolete("2026.07: Use GetNews - it returns a slim LastTextEntry, which is all the UI needs.")]
+    public virtual async Task<ChatNews?> GetFullNews(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
         if (!await CanRead(session, chatId, cancellationToken).ConfigureAwait(false))
             return null;
 
