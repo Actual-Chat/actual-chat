@@ -318,6 +318,28 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     background: linear-gradient(to bottom, rgba(166, 53, 255, 0.10), rgba(166, 53, 255, 0.03));
 }
 
+/* Live conversation header - solid background occludes the scrollable description sliding up behind it. */
+.virtual-list .c-virtual-container .live-conversation-header {
+    @apply flex items-center gap-x-2;
+    @apply px-4 py-2;
+    @apply bg-01;
+    @apply rounded-t-2xl;
+}
+.live-conversation-header .c-lc-name {
+    @apply flex-1 min-w-0;
+    @apply text-01 text-base font-medium leading-5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.live-conversation-header .c-lc-expand {
+    @apply flex-none;
+}
+.live-conversation-header .c-lc-expand i {
+    @apply text-xl;
+}
+
 /* Live conversation footer */
 .live-conversation-footer {
     @apply flex items-center gap-x-2;

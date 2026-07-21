@@ -10,6 +10,7 @@ public enum ChatMessageKind
     ConversationBlock,
     ConversationStart,
     ConversationEnd,
+    LiveConversationHeader,
     Thread,
     SendingNewMessage,
     AudioRecordingMessage,

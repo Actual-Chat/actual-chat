@@ -285,6 +285,49 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task JoinedLiveBlockSplitsIntoStickyHeaderAndDescription()
+    {
+        // The live card splits into a sticky title-band item (rendered like ConversationHeader) plus a
+        // scrollable description item - so a joiner's summary scrolls out while the title stays pinned.
+
+        // arrange - same joined-block setup with a landed title
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "live-split-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_190);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3,
+            }, CancellationToken.None);
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+
+        // assert - the block leads with a header item then the description card, in that order
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Single();
+            block.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
+            var headerIndex = block.Items.ToList().FindIndex(i => i is LiveConversationHeader);
+            var cardIndex = block.Items.ToList().FindIndex(i => i is ConversationMessage);
+            headerIndex.Should().BeGreaterThanOrEqualTo(0);
+            cardIndex.Should().BeGreaterThan(headerIndex, "the scrollable description card follows the sticky header");
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task NewEntriesAfterLeaveStayHidden()
     {
         // The freeze must hold going forward too - a message posted after hang-up can't sneak in.
