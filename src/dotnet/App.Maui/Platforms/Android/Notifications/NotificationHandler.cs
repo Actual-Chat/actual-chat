@@ -10,6 +10,9 @@ public static class NotificationHandler
         if (NotificationHelper.NotificationViewAction != intent.Action)
             return;
 
+        if (intent.GetBooleanExtra(IncomingCallNotifications.FullScreenExtraKey, false))
+            MainActivity.Current.EnableShowWhenLocked();
+
         AppNavigationQueue.EnqueueOrNavigateToUrl(intent.Data?.ToString(), AutoNavigationReason.Notification);
         IncomingCallNotifications.HandleViewIntent(intent);
     }

@@ -58,10 +58,11 @@ public class AndroidAudioWidget : AudioWidget
             context.StartForegroundService(intent);
             AndroidAudioWidgetForegroundService.OnStartRequested();
             _isShown = true;
-            Log.LogWarning("AudioWidget: StartForegroundService requested OK (mode={Mode})", state.Mode);
         }
         catch (Exception e) {
-            Log.LogError(e, "AudioWidget: StartForegroundService FAILED (locked-FGS test, mode={Mode})", state.Mode);
+            // Starting a mic FGS from the background is blocked (ForegroundServiceStartNotAllowedException):
+            // this surfaces if the accept-over-lock-screen path lacks a foreground-visible activity.
+            Log.LogError(e, "StartForegroundService failed (mode={Mode})", state.Mode);
         }
     }
 

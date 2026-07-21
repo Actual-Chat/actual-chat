@@ -27,9 +27,7 @@ public static class IncomingCallNotifications
     public static string DeclineAction => Context.PackageName + ".IncomingCall.Decline";
     public static string AcceptExtraKey => Context.PackageName + ".IncomingCall.Accept";
     public static string ChatIdExtraKey => Context.PackageName + ".IncomingCall.ChatId";
-    public static string CallerNameExtraKey => Context.PackageName + ".IncomingCall.CallerName";
-    public static string CallTextExtraKey => Context.PackageName + ".IncomingCall.CallText";
-    public static string ImageUrlExtraKey => Context.PackageName + ".IncomingCall.ImageUrl";
+    public static string FullScreenExtraKey => Context.PackageName + ".IncomingCall.FullScreen";
 
     public static string CallTag(ChatId chatId)
         => Constants.Notification.CallTagPrefix + chatId.Value;
@@ -70,15 +68,12 @@ public static class IncomingCallNotifications
             NotificationHelper.RequestCodeProvider.IncrementAndGet(),
             declineIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
-        // The full-screen intent opens a minimal native call screen (over the lock screen / when
-        // the screen is off) instead of booting the whole Blazor app; on an unlocked screen it
-        // degrades to a heads-up banner.
-        var fullScreenIntent = new Intent(Context, typeof(IncomingCallActivity));
-        fullScreenIntent.AddFlags(ActivityFlags.NewTask | ActivityFlags.NoUserAction);
+        // Surfaces the ring over the lock screen / when the screen is off by launching the Blazor
+        // app there (FullScreenExtraKey makes MainActivity show over the keyguard); on an unlocked
+        // screen it degrades to a heads-up banner.
+        var fullScreenIntent = NotificationHelper.CreateViewIntent(Context, link)!;
         fullScreenIntent.PutExtra(ChatIdExtraKey, chatId.Value);
-        fullScreenIntent.PutExtra(CallerNameExtraKey, data.Title ?? "");
-        fullScreenIntent.PutExtra(CallTextExtraKey, data.Body ?? "");
-        fullScreenIntent.PutExtra(ImageUrlExtraKey, data.ImageUrl ?? "");
+        fullScreenIntent.PutExtra(FullScreenExtraKey, true);
         var fullScreenPendingIntent = PendingIntent.GetActivity(Context,
             NotificationHelper.RequestCodeProvider.IncrementAndGet(),
             fullScreenIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
@@ -131,10 +126,12 @@ public static class IncomingCallNotifications
             return;
         }
 
-        // Opened from the call notification (tap or full-screen intent): register the ring so the
-        // in-app banner + looping ringer take over once the app is up.
+        // Opened from the call notification: register the ring so the in-app banner + looping ringer
+        // take over once the app is up. The full-screen-intent path (over the lock screen / screen
+        // off) additionally shows the full-screen call modal; a plain tap only shows the banner.
+        var overLockScreen = intent.GetBooleanExtra(FullScreenExtraKey, false);
         _ = AppServicesAccessor.DispatchToBlazor(
-            c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId),
+            c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId, overLockScreen),
             "IncomingCallUI.OnRing", whenRendered: true);
     }
 

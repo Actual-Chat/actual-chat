@@ -2,3 +2,32 @@
 body.narrow .incoming-call-modal .dialog-buttons {
     @apply flex-x;
 }
+
+/* ── Full-screen incoming call (over the lock screen) ── */
+
+.incoming-call-fullscreen {
+    @apply z-modal-overlay fixed top-0 left-0;
+    @apply flex-y items-center justify-between;
+    @apply w-full h-full;
+    @apply p-8;
+    @apply bg-01;
+}
+.incoming-call-fullscreen .c-body {
+    @apply flex-y items-center gap-4;
+    @apply mt-auto;
+}
+.incoming-call-fullscreen .c-title {
+    @apply text-headline-1 text-01;
+}
+.incoming-call-fullscreen .c-subtitle {
+    @apply text-title-1 text-03;
+}
+.incoming-call-fullscreen .c-buttons {
+    @apply flex-x items-center justify-center gap-16;
+    @apply mt-auto mb-8;
+}
+.incoming-call-fullscreen .c-buttons .btn.btn-decline,
+.incoming-call-fullscreen .c-buttons .btn.btn-accept {
+    @apply w-16 h-16;
+    @apply rounded-full;
+}

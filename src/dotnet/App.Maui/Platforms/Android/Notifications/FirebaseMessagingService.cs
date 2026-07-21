@@ -97,8 +97,6 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             var notificationManager = NotificationManagerCompat.From(this)!;
             foreach (var tag in data.DismissedTags)
                 notificationManager.Cancel(tag, 0);
-            if (data.DismissedTags.Any(t => t.StartsWith(Constants.Notification.CallTagPrefix, StringComparison.Ordinal)))
-                IncomingCallActivity.FinishCurrent();
             ClearForegroundCallRings(data.DismissedTags);
             return;
         }
@@ -195,10 +193,9 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             return;
         }
 
-        // The system notification (silent channel) is always shown; its full-screen intent opens
-        // the native IncomingCallActivity over the lock screen / in the background. Whenever the
-        // Blazor scope is alive we also register the ring so the in-app banner + ringer run. (The
-        // shared IncomingCallRinger is idempotent, so an overlap with the native screen can't double.)
+        // The system notification (silent channel) is always shown; its full-screen intent surfaces
+        // the Blazor app over the lock screen / in the background. Whenever the Blazor scope is alive
+        // we also register the ring so the in-app banner + ringer run.
         IncomingCallNotifications.Show(data);
         if (TryGetScopedServices(out _))
             _ = DispatchToBlazor(

@@ -148,6 +148,13 @@ public partial class MainActivity : MauiAppCompatActivity
         Interlocked.CompareExchange(ref _current, null, this);
     }
 
+    // Shows the activity over the lock screen and wakes the screen for an incoming call.
+    public void EnableShowWhenLocked()
+    {
+        SetShowWhenLocked(true);
+        SetTurnScreenOn(true);
+    }
+
     // Reverts any over-lock-screen behavior once the ring ends, so the app doesn't linger over the
     // keyguard on later locks (e.g. after answering from the notification while locked).
     public void DisableShowWhenLocked()

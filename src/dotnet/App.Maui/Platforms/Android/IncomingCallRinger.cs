@@ -5,10 +5,10 @@ using Application = Android.App.Application;
 
 namespace ActualChat.App.Maui;
 
-// The single ring melody/vibration source, shared by the foreground Blazor path
-// (AndroidIncomingCallsBridge) and the native over-lock-screen IncomingCallActivity.
-// Uses a looping MediaPlayer rather than Ringtone: Ringtone.Play() is unreliable on the first
-// invocation (occasionally silent), while a prepared MediaPlayer plays deterministically.
+// The single ring melody/vibration source, driven by IncomingCallUI via AndroidIncomingCallsBridge
+// in every case (foreground and over the lock screen). Uses a looping MediaPlayer rather than
+// Ringtone: Ringtone.Play() is unreliable on the first invocation (occasionally silent), while a
+// prepared MediaPlayer plays deterministically.
 public static class IncomingCallRinger
 {
     private static readonly Lock Lock = new();
@@ -19,13 +19,19 @@ public static class IncomingCallRinger
     private static ILogger Log => _log ??= StaticLog.For(typeof(IncomingCallRinger));
     private static Context Context => Application.Context;
 
+    public static bool IsPlaying {
+        get {
+            lock (Lock)
+                return _player is not null;
+        }
+    }
+
     public static void Start()
     {
         lock (Lock) {
             try {
                 var audioManager = (AudioManager?)Context.GetSystemService(Context.AudioService);
                 var ringerMode = audioManager?.RingerMode ?? RingerMode.Normal;
-                Log.LogWarning("Ringer.Start: ringerMode={RingerMode}", ringerMode);
                 if (ringerMode != RingerMode.Silent)
                     StartVibration();
                 if (ringerMode == RingerMode.Normal)
@@ -79,7 +85,6 @@ public static class IncomingCallRinger
         player.Prepare();
         player.Start();
         _player = player;
-        Log.LogWarning("Ringer: ringtone started, uri={Uri}", uri);
     }
 
     private static void StartVibration()
