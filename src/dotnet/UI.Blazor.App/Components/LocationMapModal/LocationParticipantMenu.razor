@@ -7,6 +7,10 @@
         Text="Open in Google Maps"
         Click="@OnOpenInGoogleMaps"/>
     <MenuEntry
+        Icon="icon-map"
+        Text="Open in OpenStreetMap"
+        Click="@OnOpenInOpenStreetMap"/>
+    <MenuEntry
         Icon="icon-copy"
         Text="Copy location link"
         Click="@OnCopyLink"/>
@@ -31,20 +35,28 @@
         if (await GetPoint().ConfigureAwait(true) is not { } point)
             return;
 
-        await WhenClosed;
-        await JS.InvokeVoidAsync("window.open", point.ToGoogleMapsUrl(), "_blank", "noopener");
+        await WhenClosed.ConfigureAwait(true);
+        await JS.InvokeVoidAsync("window.open", point.ToGoogleMapsUrl(), "_blank", "noopener").ConfigureAwait(false);
+    }
+
+    private async Task OnOpenInOpenStreetMap() {
+        if (await GetPoint().ConfigureAwait(true) is not { } point)
+            return;
+
+        await WhenClosed.ConfigureAwait(true);
+        await JS.InvokeVoidAsync("window.open", point.ToOpenStreetMapUrl(), "_blank", "noopener").ConfigureAwait(false);
     }
 
     private async Task OnCopyLink() {
         if (await GetPoint().ConfigureAwait(true) is not { } point)
             return;
 
-        await WhenClosed;
-        await ClipboardUI.WriteText(point.ToOpenStreetMapUrl());
+        await WhenClosed.ConfigureAwait(true);
+        await ClipboardUI.WriteText(point.ToOpenStreetMapUrl()).ConfigureAwait(false);
     }
 
     private async Task<GeoPoint?> GetPoint() {
-        var location = await SharedLocations.Get(Session, _chatId, _locationId, default).ConfigureAwait(true);
+        var location = await SharedLocations.Get(Session, _chatId, _locationId, default).ConfigureAwait(false);
         return location?.Point;
     }
 }
