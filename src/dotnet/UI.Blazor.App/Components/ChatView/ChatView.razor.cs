@@ -395,6 +395,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             }
         }
 
+        var buildStartedAt = CpuTimestamp.Now;
         // ReSharper disable once ExplicitCallerInfoArgument
         using var activity = AppUIInstruments.ActivitySource.StartActivity(GetType(), "GetVirtualListData");
 
@@ -548,6 +549,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 scrollToKeyInTheMiddle = true;
             }
         }
+
+        var buildMs = (long)buildStartedAt.Elapsed.TotalMilliseconds;
+        if (buildMs > 1000)
+            Log.LogWarning(
+                "GetData: #{ChatId} took {BuildMs}ms to build ({TotalMs}ms incl. init/pacing)",
+                chatId, buildMs, (long)startedAt.Elapsed.TotalMilliseconds);
 
         var result = new VirtualListData<ChatMessage>(items) {
             Index = renderedData.Index + 1,
