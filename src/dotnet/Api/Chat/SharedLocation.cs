@@ -4,8 +4,10 @@ namespace ActualChat.Chat;
 
 /// <summary>
 /// A location shared into a chat, referenced by <see cref="ChatEntry.LocationId"/>.
-/// Live while <see cref="LiveUntil"/> is in the future (its <see cref="Point"/> keeps
-/// updating); once it passes, the last point is frozen as a static pin.
+/// Live while <see cref="LiveUntil"/> — its expiry or the moment it was stopped, whichever
+/// comes first — is in the future; its <see cref="Point"/> keeps updating until then, after
+/// which the last point is frozen as a static pin. A zero <see cref="Duration"/> means it was
+/// never a live share, just a pin.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record SharedLocation(
@@ -32,9 +34,9 @@ public sealed partial record SharedLocation(
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public Moment LiveUntil => IsUnlimited ? Moment.MaxValue : CreatedAt + Duration;
+    public Moment LiveUntil => StoppedAt ?? (IsUnlimited ? Moment.MaxValue : CreatedAt + Duration);
 
-    public bool IsLive(Moment now) => Duration > TimeSpan.Zero && StoppedAt is null && now < LiveUntil;
+    public bool IsLive(Moment now) => Duration > TimeSpan.Zero && now < LiveUntil;
 }
 
 /// <summary>
