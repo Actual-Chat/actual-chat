@@ -77,3 +77,11 @@
     @apply flex shrink-0;
     @apply text-03;
 }
+.location-message .btn.c-share-back {
+    @apply flex-none;
+    @apply mx-2 mb-2;
+    @apply h-8 min-h-8 max-h-8 w-auto;
+    @apply rounded-md;
+    @apply bg-cancel;
+    @apply text-primary text-caption-1;
+}

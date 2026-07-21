@@ -108,6 +108,15 @@ describe('multi-user location sharing', () => {
         expect(await bobBanner.locator('.btn-share-location').count()).toBe(1);
         await bob.screenshot({ path: shot('bob-sees-alice') });
 
+        // assert — the live card Alice posted offers Bob a share-back button, while Alice's own
+        // copy of the same card doesn't (#4057)
+        const bobCard = bob.locator('.location-message').last();
+        await expect.poll(
+            async () => bobCard.locator('.c-share-back').count(),
+            { timeout: 20_000 },
+        ).toBe(1);
+        expect(await alice.locator('.location-message').last().locator('.c-share-back').count()).toBe(0);
+
         // act — Bob opens the map from the banner
         const bobTiles = tileLoaded(bob);
         await bobBanner.locator('.c-body').first().click();
@@ -202,6 +211,12 @@ describe('multi-user location sharing', () => {
         // assert — both banners disappear once no one is sharing
         await aliceBanner.waitFor({ state: 'hidden', timeout: 20_000 });
         await bobBanner.waitFor({ state: 'hidden', timeout: 20_000 });
+
+        // assert — the share-back button goes away with the share it answered (#4057)
+        await expect.poll(
+            async () => bobCard.locator('.c-share-back').count(),
+            { timeout: 20_000 },
+        ).toBe(0);
         await alice.screenshot({ path: shot('all-stopped') });
     }, 240_000);
 });
