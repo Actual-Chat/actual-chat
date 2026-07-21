@@ -179,6 +179,7 @@ public partial class ChatUI
         if (chatRangeMetaList.Count == 0)
             return ChatItems.Empty;
 
+        var metaAt = CpuTimestamp.Now;
         List<Range<long>> idTiles;
         bool hasMoreBefore, hasMoreAfter;
         while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, out idTiles, out hasMoreBefore, out hasMoreAfter)) {
@@ -222,6 +223,7 @@ public partial class ChatUI
                 await Task.WhenAll(prefetchEntriesTask, prefetchConversationsTask, prefetchChatInfoTask).ConfigureAwait(false);
             }, cancellationToken).ConfigureAwait(false);
         }
+        var loadAt = CpuTimestamp.Now;
 
         var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
         var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
@@ -379,6 +381,26 @@ public partial class ChatUI
         }
 
         var groupedItems = GroupAuthorMessages(items);
+
+        if (!isPrefetch) {
+            var totalMs = (long)startedAt.Elapsed.TotalMilliseconds;
+            var liveMs = (long)(liveAt - startedAt).TotalMilliseconds;
+            var metaMs = (long)(metaAt - liveAt).TotalMilliseconds;
+            var loadMs = (long)(loadAt - metaAt).TotalMilliseconds;
+            var buildMs = totalMs - liveMs - metaMs - loadMs;
+            if (totalMs > 500)
+                Log.LogWarning(
+                    "GetChatItems: {ChatId} took {TotalMs}ms "
+                    + "(live {LiveMs}, meta {MetaMs}, load {LoadMs}, build {BuildMs}) for {DataQuery}",
+                    chatId, totalMs, liveMs, metaMs, loadMs,
+                    buildMs, dataQuery.Format());
+            else
+                DebugLog?.LogDebug(
+                    "GetChatItems: {ChatId} took {TotalMs}ms "
+                    + "(live {LiveMs}, meta {MetaMs}, load {LoadMs}, build {BuildMs}) for {DataQuery}",
+                    chatId, totalMs, liveMs, metaMs, loadMs,
+                    buildMs, dataQuery.Format());
+        }
 
         if (expandedConversations.Count == 0 && liveBlockId == null)
             return new ChatItems(groupedItems, hasMoreBefore, hasMoreAfter);
@@ -814,7 +836,8 @@ public partial class ChatUI
 
         void EmitConversationCard(Conversation conversation, DateOnly date)
         {
-            if (conversation.Id == liveBlockId) {
+            var hasSplitHeader = conversation.Id == liveBlockId;
+            if (hasSplitHeader) {
                 var header = new LiveConversationHeader(conversation) {
                     Kind = ChatMessageKind.LiveConversationHeader,
                     Date = date,
@@ -829,6 +852,7 @@ public partial class ChatUI
                 Kind = ChatMessageKind.ConversationStart,
                 Date = date,
                 PreviousMessage = prevMessage,
+                HasSplitHeader = hasSplitHeader,
             };
             // Can't skip adding a conversation message even if it's the same as previous message
             // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles

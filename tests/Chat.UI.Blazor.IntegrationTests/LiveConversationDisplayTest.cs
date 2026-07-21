@@ -234,7 +234,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await ComputedTest.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             LeafEntryLids(items).Should().Equal(joinedLeafLids);
-            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+            var block = items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle().Subject;
+            // Left-but-still-live still emits the sticky header - the card must keep suppressing its own
+            // title (HasSplitHeader) or leaving reintroduces the duplicate title the header split fixed.
+            block.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
+            block.Items.OfType<ConversationMessage>().Single().HasSplitHeader.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -324,6 +328,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             var cardIndex = block.Items.ToList().FindIndex(i => i is ConversationMessage);
             headerIndex.Should().BeGreaterThanOrEqualTo(0);
             cardIndex.Should().BeGreaterThan(headerIndex, "the scrollable description card follows the sticky header");
+            // HasSplitHeader is the gating signal the card uses to suppress its own title - it must be set
+            // whenever a LiveConversationHeader was emitted for this card, or the card renders a duplicate title.
+            block.Items.OfType<ConversationMessage>().Single().HasSplitHeader.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -448,6 +455,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             LeafEntryLids(items).Should().Equal(frozenLeafLids);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             ((IVirtualListItem)block).RenderKey.Should().Be(frozenRenderKey);
+            // The materialized card falls into the not-live render branch, which renders
+            // ConversationMessageHeader unconditionally unless it's gated on HasSplitHeader - since the
+            // sticky LiveConversationHeader is still emitted for this (frozen) block, the flag must too.
+            block.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
+            block.Items.OfType<ConversationMessage>().Single().HasSplitHeader.Should().BeTrue();
         }, TimeSpan.FromSeconds(15));
     }
 
