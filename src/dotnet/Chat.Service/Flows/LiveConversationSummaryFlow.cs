@@ -24,10 +24,6 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
     // additionally gated on Settings.Summarization.LiveResummarizationDelay. Keep DelayQuanta (see [Flow])
     // <= Throttle so overlapping self-resumes coalesce without the loop stalling.
     private static readonly TimeSpan Throttle = TimeSpan.FromSeconds(15);
-    // Once nobody is streaming the session is about to close, so poll fast (instead of the full
-    // Throttle) to catch IsClosing and run the final pass promptly - that's what makes a too-short
-    // block dissolve right away rather than lingering for up to a Throttle.
-    private static readonly TimeSpan CloseWatchThrottle = TimeSpan.FromSeconds(2);
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
@@ -82,10 +78,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
             }
         }
 
-        // Poll fast once no one is streaming - the session is about to close and we want the final
-        // pass (and the block's dissolve) to land promptly, not after a full Throttle.
-        var hasRecorder = await LiveSessionsBackend.HasRecorder(ChatId, cancellationToken).ConfigureAwait(false);
-        Runtime.StageResumeIn(hasRecorder ? Throttle : CloseWatchThrottle);
+        Runtime.StageResumeIn(Throttle);
     }
 
     // Private methods
