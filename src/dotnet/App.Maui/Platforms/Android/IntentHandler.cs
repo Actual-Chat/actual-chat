@@ -35,7 +35,7 @@ public static class IntentHandler
         }
         else {
             Log.LogDebug("About to handle activity intent");
-            HandleIntent(intent);
+            HandleIntent(intent, isColdStart: false);
         }
     }
 
@@ -43,7 +43,7 @@ public static class IntentHandler
     {
         if (intent is not null) {
             Log.LogDebug("About to handle new intent");
-            HandleIntent(intent);
+            HandleIntent(intent, isColdStart: false);
         }
     }
 
@@ -53,11 +53,11 @@ public static class IntentHandler
         _hasResumedOnce = true;
         if (!hasResumedOnce && _startIntent is not null) {
             Log.LogDebug("About to handle start intent");
-            HandleIntent(_startIntent);
+            HandleIntent(_startIntent, isColdStart: true);
         }
     }
 
-    private static void HandleIntent(Intent intent)
+    private static void HandleIntent(Intent intent, bool isColdStart)
     {
         if (_startIntent is not null) {
             _startIntent = null;
@@ -66,6 +66,6 @@ public static class IntentHandler
 
         AppLinksWorkaround.HandleIntent(intent);
         IncomingShareHandler.HandleIntent(intent);
-        NotificationHandler.HandleIntent(intent);
+        NotificationHandler.HandleIntent(intent, isColdStart);
     }
 }

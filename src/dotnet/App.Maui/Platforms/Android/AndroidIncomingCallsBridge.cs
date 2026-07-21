@@ -15,7 +15,7 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
     public Task<bool> OnCallHandled(bool accepted)
     {
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        AppServicesAccessor.BeginDispatchToMainThread(() => {
+        BeginDispatchToMainThread(() => {
             try {
                 if (accepted)
                     MainActivity.Current.DismissKeyguardForCall(ready => tcs.TrySetResult(ready));
@@ -32,6 +32,33 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
         });
         return tcs.Task;
     }
+
+    public void RevealCallScreen()
+        => BeginDispatchToMainThread(() => {
+            try {
+                var activity = MainActivity.Current;
+                // Warm start: the call screen has now rendered, so bring the app over the keyguard
+                // (it wasn't shown over-lock eagerly to avoid a cover). Cold start: idempotent here,
+                // and the cover is removed to reveal the already-drawn call screen.
+                activity.EnableShowWhenLocked();
+                activity.HideCallCover();
+            }
+            catch (Exception e) {
+                Log.LogDebug(e, "RevealCallScreen skipped");
+            }
+        });
+
+    public void MoveBehindLockScreen()
+        => BeginDispatchToMainThread(() => {
+            try {
+                var activity = MainActivity.Current;
+                activity.DisableShowWhenLocked();
+                activity.MoveTaskToBack(true);
+            }
+            catch (Exception e) {
+                Log.LogDebug(e, "MoveBehindLockScreen skipped");
+            }
+        });
 
     public Task<ChatId[]> ListActiveCallChatIds(CancellationToken cancellationToken)
         => Task.FromResult(IncomingCallNotifications.ListActiveCallChatIds());

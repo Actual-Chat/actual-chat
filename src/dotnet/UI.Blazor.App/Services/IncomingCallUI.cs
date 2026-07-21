@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using ActualChat.Live;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
@@ -19,6 +18,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // The chat whose call surfaced over the lock screen; stays set through Accept (so the in-call
     // screen shows over the keyguard) until the user unlocks (GoToChat), hangs up, or the call ends.
     private readonly MutableState<ChatId?> _overLockChatId;
+    // Held true across the Accept transition (ring ended, audio not yet started) so the over-lock
+    // session doesn't momentarily read as ended and tear the screen down mid-accept.
+    private readonly MutableState<bool> _isAccepting;
     private volatile bool _overLockWasActive;
 
     public IState<ChatId?> OverLockChatId => _overLockChatId;
@@ -37,6 +39,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _overLockChatId = StateFactory.NewMutable(
             (ChatId?)null,
             StateCategories.Get(GetType(), "OverLockChatId"));
+        _isAccepting = StateFactory.NewMutable(
+            false,
+            StateCategories.Get(GetType(), "IsAccepting"));
     }
 
     void INotifyInitialized.Initialized()
@@ -56,6 +61,18 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             _overLockWasActive = false;
             _overLockChatId.Value = chatId;
         }
+    }
+
+    // Called by the over-lock call screen after it has rendered. The render callback fires before the
+    // WebView actually paints, so wait a beat before removing the native cover — otherwise the app's
+    // restored route flashes through for a frame on a cold start.
+    public void OnOverLockScreenRendered()
+        => _ = RevealCallScreenAfterPaint();
+
+    private async Task RevealCallScreenAfterPaint()
+    {
+        await Task.Delay(TimeSpan.FromMilliseconds(200)).ConfigureAwait(false);
+        Bridge?.RevealCallScreen();
     }
 
     public void OnCallDismissed(ChatId chatId)
@@ -115,10 +132,15 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
         }
 
+        // Hold the over-lock session "active" until audio starts, so the transition (ring ended,
+        // recording not yet on) doesn't read as a session end and tear the screen down.
+        if (overLockScreen)
+            _isAccepting.Value = true;
         try {
             await LiveSessionUI.AcceptCall(chatId, default).ConfigureAwait(true);
         }
         catch (Exception e) {
+            _isAccepting.Value = false;
             _ = Bridge?.OnCallHandled(false);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             Hub.ToastUI.Show("Call ended", "icon-phone", ToastDismissDelay.Short);
@@ -130,7 +152,10 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // SetShowWhenLocked) counts as foreground. Otherwise dismiss the keyguard first, since the
         // FGS can't start from a background state.
         var canStartAudio = overLockScreen || Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
-        await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
+        // Over the lock screen the chat opens only on go-to-chat (after PIN); the in-call screen
+        // covers everything until then. Audio doesn't need the chat route — it's state-driven.
+        if (!overLockScreen)
+            await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
         if (canStartAudio) {
             if (await Hub.AudioRecorder.MicrophonePermission.CheckOrRequest(CancellationToken.None).ConfigureAwait(true))
                 await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
@@ -138,14 +163,19 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 // Mic denied: still join the call as a listener.
                 await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
         }
+        _isAccepting.Value = false;
         _ = withCamera; // Camera-on accept is wired in the camera-preview task.
     }
 
     public async Task Decline(ChatId chatId)
     {
+        var overLockScreen = _overLockChatId.Value == chatId;
         ClearOverLock();
         EndRing(chatId);
-        _ = Bridge?.OnCallHandled(false);
+        if (overLockScreen)
+            Bridge?.MoveBehindLockScreen();
+        else
+            _ = Bridge?.OnCallHandled(false);
         try {
             await LiveSessionUI.DeclineCall(chatId, default).ConfigureAwait(false);
         }
@@ -169,9 +199,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public async Task HangUp(ChatId chatId)
     {
         ClearOverLock();
+        Bridge?.MoveBehindLockScreen();
         await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
         await ChatAudioUI.SetListeningState(chatId, false).ConfigureAwait(true);
-        _ = Bridge?.OnCallHandled(false);
         try {
             await LiveSessionUI.LeaveCall(chatId, default).ConfigureAwait(true);
         }
@@ -186,6 +216,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var chatId = await _overLockChatId.Use(cancellationToken).ConfigureAwait(false);
         if (chatId is null)
             return false;
+
+        if (await _isAccepting.Use(cancellationToken).ConfigureAwait(false))
+            return true;
 
         if (await GetRingingCall(chatId, cancellationToken).ConfigureAwait(false) is not null)
             return true;
@@ -257,17 +290,21 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private async Task ResetOverLockScreen(CancellationToken cancellationToken)
     {
-        // Clears the over-lock chat once its session is fully over (cancelled ring, remote hang-up).
-        // Guarded by _overLockWasActive so the initial load window (ring not yet confirmed on a cold
-        // start) doesn't clear the flag before the screen has a chance to show.
+        // Tears down the over-lock screen once its session ends without the user unlocking (cancelled
+        // ring, timeout, remote hang-up): closes the screen and sends the app behind the lock screen.
+        // Guarded by _overLockWasActive so the cold-start load window (ring not yet confirmed) doesn't
+        // fire early. The accept transition can't misfire here because _isAccepting keeps the session
+        // active until audio starts. Direct exits (Decline/HangUp/GoToChat) clear the flag themselves.
         var cActive = await Computed
             .Capture(() => IsOverLockSessionActive(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
             if (cActive.Value)
                 _overLockWasActive = true;
-            else if (_overLockWasActive && _overLockChatId.Value is not null)
+            else if (_overLockWasActive && _overLockChatId.Value is not null) {
                 ClearOverLock();
+                Bridge?.MoveBehindLockScreen();
+            }
 
             await cActive.WhenInvalidated(cancellationToken).ConfigureAwait(false);
             cActive = await cActive.Update(cancellationToken).ConfigureAwait(false);
@@ -287,6 +324,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private void ClearOverLock()
     {
         _overLockWasActive = false;
+        _isAccepting.Value = false;
         _overLockChatId.Value = null;
     }
 }

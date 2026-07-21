@@ -33,8 +33,22 @@
 </div>
 
 @code {
+    private bool _shownOverLock;
+
     private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+
+    protected override void OnAfterRender(bool firstRender) {
+        // Bring the app forward over the keyguard only after the call screen is actually drawn, so
+        // the lock screen never flashes the app's main content before the call screen.
+        var isShowing = State.Value.Chat is not null;
+        if (isShowing && !_shownOverLock) {
+            _shownOverLock = true;
+            IncomingCallUI.OnOverLockScreenRendered();
+        }
+        else if (!isShowing && _shownOverLock)
+            _shownOverLock = false;
+    }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

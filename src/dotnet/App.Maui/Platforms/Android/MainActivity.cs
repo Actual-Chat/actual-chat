@@ -60,6 +60,7 @@ public partial class MainActivity : MauiAppCompatActivity
     private ActivityResultLauncher _pickVisualMediaLauncher = null!;
     private Action<bool>? _onReceivePermissionRequestResult;
     private Action<Uri[]>? _onReceivePickVisualMedialResult;
+    private AView? _callCover;
 
     private ILogger Log { get; } = StaticLog.For<MainActivity>();
 
@@ -161,6 +162,34 @@ public partial class MainActivity : MauiAppCompatActivity
     {
         SetShowWhenLocked(false);
         SetTurnScreenOn(false);
+        HideCallCover();
+    }
+
+    // Opaque cover placed over the WebView the instant the app is brought over the keyguard for a
+    // call, so the app's own content never flashes on the lock screen before the (Blazor) call
+    // screen has rendered. HideCallCover reveals the already-drawn call screen underneath.
+    public void ShowCallCover()
+    {
+        if (_callCover != null)
+            return;
+        if (Window?.DecorView is not ViewGroup decor)
+            return;
+
+        var hex = MauiSettings.SplashBackgroundColor.ToArgbHex();
+        if (!hex.StartsWith('#'))
+            hex = "#" + hex;
+        var cover = new AView(this);
+        cover.SetBackgroundColor(Android.Graphics.Color.ParseColor(hex));
+        decor.AddView(cover, new ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.MatchParent));
+        _callCover = cover;
+    }
+
+    public void HideCallCover()
+    {
+        if (_callCover?.Parent is ViewGroup parent)
+            parent.RemoveView(_callCover);
+        _callCover = null;
     }
 
     // On accept: if the screen is locked, ask the user to unlock so they land in the app instead

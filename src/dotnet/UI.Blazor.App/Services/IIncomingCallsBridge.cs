@@ -17,4 +17,11 @@ public interface IIncomingCallsBridge
     // foreground service — false when the user cancelled unlocking, so the caller must not start it
     // from a background state. On a non-accept end it releases the app from over the lock screen.
     Task<bool> OnCallHandled(bool accepted);
+    // Called once the call screen has actually rendered: brings the app over the keyguard (for a warm
+    // start, where it wasn't shown over-lock eagerly to avoid a cover) and removes the cold-start
+    // cover. So the lock screen reveals the drawn call screen, never the app's content.
+    void RevealCallScreen();
+    // On hang-up from the over-lock-screen call UI: drops the over-keyguard flag and sends the app
+    // behind the lock screen (moveTaskToBack) so the user returns straight to the lock screen.
+    void MoveBehindLockScreen();
 }

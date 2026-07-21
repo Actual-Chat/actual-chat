@@ -82,8 +82,18 @@ public class AndroidAudioFocusHelper : IDisposable
 
         _log.LogInformation("WarmUpAudioMode: briefly switching to InCommunication to prime audio HAL");
         _audioManager.Mode = Mode.InCommunication;
-        // Give the HAL time to load the communication audio pipeline
-        await Task.Delay(300).ConfigureAwait(false);
+        // Give the HAL time to load the communication audio pipeline (~300ms), but poll for an
+        // incoming ring meanwhile: on a cold start the ringtone can start inside this window, and
+        // InCommunication reroutes it (STREAM_RING) to the earpiece. Bail out the instant it does.
+        // There's no active call during warmup (guarded by _hasFocus), so reverting is always safe.
+        for (var i = 0; i < 10; i++) {
+            await Task.Delay(30).ConfigureAwait(false);
+            if (IncomingCallRinger.IsPlaying) {
+                _audioManager.Mode = Mode.Normal;
+                _log.LogInformation("WarmUpAudioMode: aborted (incoming ringtone started)");
+                return;
+            }
+        }
         // Only revert if no real audio focus was acquired during warmup
         if (!_hasFocus) {
             _audioManager.Mode = Mode.Normal;
