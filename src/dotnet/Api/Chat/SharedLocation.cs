@@ -34,7 +34,7 @@ public sealed partial record SharedLocation(
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Moment LiveUntil => IsUnlimited ? Moment.MaxValue : CreatedAt + Duration;
 
-    public bool IsLive(Moment now) => StoppedAt is null && now < LiveUntil;
+    public bool IsLive(Moment now) => Duration > TimeSpan.Zero && StoppedAt is null && now < LiveUntil;
 }
 
 /// <summary>
