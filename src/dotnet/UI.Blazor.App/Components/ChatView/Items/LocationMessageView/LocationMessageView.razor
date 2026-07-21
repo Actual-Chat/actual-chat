@@ -4,8 +4,8 @@
     var m = State.Value;
     var liveCls = m?.IsLive == true ? "live" : "";
 }
-@* Fixed-height container reserved on first render (before ComputeState resolves) so the
-   virtual list's total height stays stable and doesn't scroll-jump when the map fills in. *@
+@* Min-height reserved on first render (before ComputeState resolves) so the virtual list's
+   total height stays stable and doesn't scroll-jump when the map fills in. *@
 <div class="location-message @liveCls" @onclick="@OnOpenMap">
     @if (m is not null) {
         <div class="c-map-area">
@@ -57,8 +57,6 @@
                 <CopyToClipboard ButtonClass="btn-xs btn-transparent" Text="@m.Center.ToOpenStreetMapUrl()"/>
             </div>
         </div>
-        @* The share-back row fits into the fixed card height by shrinking the map area,
-           so appearing on state resolve can't change the height and jump the list. *@
         @if (m is { IsLive: true, IsOwnLive: false }) {
             <Button Class="c-share-back" Click="@OnShareBack" StopPropagation="true">
                 Share your location back
