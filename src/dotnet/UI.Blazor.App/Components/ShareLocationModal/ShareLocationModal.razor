@@ -63,15 +63,15 @@
         @if (m.IsMapTypeMenuOpen) {
             <div class="c-menu-backdrop" @onclick="@OnCloseMapTypeMenu"></div>
             <div class="c-menu c-map-type-menu">
-                @foreach (var (type, label, icon, isSupported) in MapTypes.All) {
+                @foreach (var info in MapTypes.All) {
                     <button
                         type="button"
                         class="c-menu-item"
-                        disabled="@(!isSupported)"
-                        @onclick="@(() => OnPickMapType(type))">
-                        <i class="@icon"></i>
-                        <span>@label</span>
-                        @if (type == m.MapType) {
+                        disabled="@(!info.IsSupported)"
+                        @onclick="@(() => OnPickMapType(info.Type))">
+                        <i class="@info.Icon"></i>
+                        <span>@info.Label</span>
+                        @if (info.Type == m.MapType) {
                             <i class="c-check icon-checkmark-simple"></i>
                         }
                     </button>
@@ -83,7 +83,7 @@
 
 @code {
     private MutableState<GeoPoint?> _currentLocation = null!;
-    private MutableState<string> _mapType = null!;
+    private MutableState<MapType> _mapType = null!;
     private MutableState<bool> _isMapTypeMenuOpen = null!;
     private MutableState<bool> _isDurationMenuOpen = null!;
     private MapView? _mapView;
@@ -99,7 +99,7 @@
             (GeoPoint?)null,
             StateCategories.Get(GetType(), nameof(_currentLocation)));
         _mapType = StateFactory.NewMutable(
-            MapTypes.All[0].Type,
+            MapType.Map,
             StateCategories.Get(GetType(), nameof(_mapType)));
         _isMapTypeMenuOpen = StateFactory.NewMutable(
             false,
@@ -163,7 +163,7 @@
     private void OnCloseMapTypeMenu()
         => _isMapTypeMenuOpen.Value = false;
 
-    private void OnPickMapType(string type) {
+    private void OnPickMapType(MapType type) {
         _mapType.Value = type;
         _isMapTypeMenuOpen.Value = false;
     }
@@ -181,7 +181,7 @@
 
     public sealed record ComputedModel(
         MapMarker? OwnMarker,
-        string MapType = "map",
+        MapType MapType = MapType.Map,
         bool IsMapTypeMenuOpen = false,
         bool IsDurationMenuOpen = false
     ) {
