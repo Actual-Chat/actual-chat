@@ -50,21 +50,21 @@
 
     private async Task OnOpen() {
         if (!_localUrl.IsNullOrEmpty()) {
-            await NavigateTo(_localUrl);
+            await NavigateTo(_localUrl).ConfigureAwait(false);
             return;
         }
-        await WhenClosed;
-        await JS.OpenNewWindow(_url);
+        await WhenClosed.ConfigureAwait(true);
+        await JS.OpenNewWindow(_url).ConfigureAwait(false);
     }
 
     private async Task OnCopy() {
-        await WhenClosed;
-        await ClipboardUI.WriteText(_url);
+        await WhenClosed.ConfigureAwait(true);
+        await ClipboardUI.WriteText(_url).ConfigureAwait(false);
     }
 
     private async Task OnForward() {
-        await WhenClosed;
-        await SelectionUI.Forward(_entryId);
+        await WhenClosed.ConfigureAwait(true);
+        await SelectionUI.Forward(_entryId).ConfigureAwait(false);
     }
 
     // Nested types
