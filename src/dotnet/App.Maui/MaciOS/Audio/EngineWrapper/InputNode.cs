@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using ActualChat.UI.Blazor.App.Services;
 using AVFoundation;
 
@@ -27,6 +28,17 @@ public class InputNode(AVAudioNode node, AppUIHub hub) : AudioNode(node, _ => {}
             Node.SetVoiceProcessingEnabled(value, out var error);
             error.Assert();
         }
+    }
+
+    [SupportedOSPlatform("maccatalyst17.0")]
+    public void DisableOtherAudioDucking()
+    {
+        lock (Lock)
+            Node.VoiceProcessingOtherAudioDuckingConfiguration =
+                new AVAudioVoiceProcessingOtherAudioDuckingConfiguration {
+                    EnableAdvancedDucking = false,
+                    DuckingLevel = AVAudioVoiceProcessingOtherAudioDuckingLevel.Min,
+                };
     }
 
     public void Reset()
