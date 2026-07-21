@@ -100,7 +100,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         var location = await SharedLocations.Get(Session, chatId, locationId, cancellationToken)
             .ConfigureAwait(false);
         var now = Hub.Clocks.ServerClock.Now;
-        if (location is null || location.Duration == TimeSpan.Zero || !location.IsLive(now))
+        if (location?.IsLive(now) != true)
             return null;
 
         if (location.IsUnlimited)
