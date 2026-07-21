@@ -183,7 +183,9 @@ body.hoverable .conversation-message .c-join-row:hover {
     @apply w-full;
 }
 .conversation-footer {
-    @apply mx-2 my-2;
+    /* Full width like .conversation-header (which has no horizontal margin) - an mx here insets the
+       footer narrower than the header and they stop aligning. */
+    @apply my-2;
     @apply rounded-b-lg;
     @apply bg-01;
 }
@@ -335,10 +337,11 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 }
 
 /* Live conversation header - the block's top row. Carries the same opaque tint fill as the container
-   so it reads as part of the block AND occludes the scrollable card sliding up behind it when pinned. */
+   so it reads as part of the block AND occludes the scrollable card sliding up behind it when pinned.
+   Padding matches the regular conversation header (.conversation-header .bg-wrapper: p-4, min-h-14). */
 .virtual-list .c-virtual-container .live-conversation-header {
-    @apply flex items-center gap-x-2;
-    @apply px-4 py-2;
+    @apply flex items-center gap-x-3;
+    @apply p-4 min-h-14;
     @apply rounded-t-2xl;
     background:
         linear-gradient(249deg,
