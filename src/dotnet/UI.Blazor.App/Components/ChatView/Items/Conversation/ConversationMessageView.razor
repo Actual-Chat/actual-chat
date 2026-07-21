@@ -208,9 +208,11 @@
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
         var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
         var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
-        // A joined viewer already reads the live tail below the card; an unjoined one has it hidden, so the
-        // card carries the last entries itself to show the conversation is moving.
-        var tailPreview = isLive && !isJoined && !isVoiceOnly
+        // A joined viewer reads the live tail below the card; a never-attended one has it hidden, so the
+        // card carries the last entries itself to show the conversation is moving. A leaver is the third
+        // case: !isJoined but the freeze overlay keeps the tail on screen, so a preview would double it -
+        // gate on Overlay == null so only the genuinely-hidden case previews.
+        var tailPreview = isLive && !isJoined && !isVoiceOnly && blockState.Overlay == null
             ? await GetTailPreview(chatId, cancellationToken).ConfigureAwait(true)
             : null;
         return new ConversationLiveState(
