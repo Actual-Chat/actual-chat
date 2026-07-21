@@ -1,0 +1,29 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="round-progress @Class" @attributes="@AdditionalAttributes">
+    <svg viewBox="0 0 32 32">
+        <circle class="c-track" r="@Format(Radius)" cx="16" cy="16"/>
+        <circle class="c-value"
+                r="@Format(Radius)" cx="16" cy="16"
+                stroke-dasharray="@Format(Circumference)"
+                stroke-dashoffset="@Format(Offset)"
+                transform="rotate(-90,16,16)"/>
+    </svg>
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public double Fraction { get; set; }
+    [Parameter] public double Radius { get; set; } = 15;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private double Circumference => 2 * Math.PI * Radius;
+    private double Offset => Circumference * (1 - Math.Clamp(Fraction, 0, 1));
+
+    private static string Format(double value)
+        => value.ToString("F2", CultureInfo.InvariantCulture);
+}

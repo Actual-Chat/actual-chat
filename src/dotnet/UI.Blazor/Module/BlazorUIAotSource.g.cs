@@ -122,6 +122,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Requirements.RequirementsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RerenderRegion>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RightPanelSkeleton>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RoundProgress>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ScreenSizeProvider>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.SearchBox>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.SearchBoxNew>();
@@ -314,6 +315,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.Settings.SessionSettings+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.Settings.SettingsModal+ComputedModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.Settings.UserInterface+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
+        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.ShareLocationModal+ComputedModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.StatusBadge+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.ThreadList+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.ThreadListItem+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -610,6 +612,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.Requirements.RequirementsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.RerenderRegion), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.RightPanelSkeleton), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.RoundProgress), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ScreenSizeProvider), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.SearchBox), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.SearchBoxNew), AotTypeKind.Component),

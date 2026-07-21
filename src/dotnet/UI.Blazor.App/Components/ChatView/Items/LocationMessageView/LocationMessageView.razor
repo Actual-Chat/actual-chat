@@ -16,24 +16,13 @@
                 Center="@m.Center"
                 Markers="@m.Markers"/>
             @if (m.Countdown is { } countdown) {
-                var circumference = 2 * Math.PI * CountdownArcRadius;
-                var offset = circumference * (1 - countdown.Fraction);
-                <div class="c-countdown">
-                    <svg viewBox="0 0 32 32">
-                        <circle
-                            r="@CountdownArcRadius"
-                            cx="16"
-                            cy="16"
-                            stroke-dasharray="@circumference.ToString("F2")"
-                            stroke-dashoffset="@offset.ToString("F2")"
-                            transform="rotate(-90,16,16)"/>
-                    </svg>
+                <RoundProgress Class="c-countdown" Radius="14.5" Fraction="@countdown.Fraction">
                     @if (countdown.IsUnlimited) {
                         <i class="icon-infinity"></i>
                     } else {
                         <span>@countdown.Text</span>
                     }
-                </div>
+                </RoundProgress>
             }
             @if (m.IsOwnLive) {
                 <ButtonRound Class="btn-stop-sharing" Click="@OnStopSharing" StopPropagation="true"
@@ -68,8 +57,6 @@
 </div>
 
 @code {
-    private const double CountdownArcRadius = 14.5;
-
     private MutableState<GeoPoint?> _currentLocation = null!;
 
     private ISharedLocations SharedLocations => Hub.SharedLocations;
