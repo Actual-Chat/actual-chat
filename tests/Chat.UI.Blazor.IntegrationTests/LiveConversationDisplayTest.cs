@@ -863,6 +863,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 .Should().BeEmpty("a completed session must not render the live animated header");
             block.Items.OfType<LiveConversationFooter>()
                 .Should().BeEmpty("a completed session must not render the live footer");
+            block.Items.OfType<ConversationFooter>()
+                .Should().ContainSingle("a completed block still closes with its own regular footer band");
+            block.Items[^1].Should().BeOfType<ConversationFooter>(
+                "the regular footer is the block's last child, past the frozen tail");
             var card = block.Items.OfType<ConversationMessage>().Single();
             card.HasSplitHeader.Should().BeFalse("the card renders its own regular header once completed");
         }, TimeSpan.FromSeconds(15));

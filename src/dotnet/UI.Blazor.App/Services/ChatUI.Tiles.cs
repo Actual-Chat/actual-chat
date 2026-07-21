@@ -1014,13 +1014,20 @@ public partial class ChatUI
             if (blockConversation == null)
                 return;
 
-            // Only the ongoing live block closes with the live footer; a completed (materialized)
-            // block renders its own regular conversation footer instead.
-            if (blockConversation.Id == liveBlockId && materializedBlockId == null)
-                blockItems.Add(new LiveConversationFooter(blockConversation) {
-                    Kind = ChatMessageKind.ConversationEnd,
-                    PreviousMessage = blockItems.Count > 0 ? blockItems[^1] : null,
-                });
+            // The ongoing live block closes with the animated live footer; a completed (materialized)
+            // block ends with the same regular conversation footer every expanded conversation gets.
+            // It's appended as the block's last child rather than emitted inline at EndEntryLid (the
+            // GetTile path), because the frozen tail kept inside the block extends past that lid.
+            if (blockConversation.Id == liveBlockId)
+                blockItems.Add(materializedBlockId == null
+                    ? new LiveConversationFooter(blockConversation) {
+                        Kind = ChatMessageKind.ConversationEnd,
+                        PreviousMessage = blockItems.Count > 0 ? blockItems[^1] : null,
+                    }
+                    : new ConversationFooter(blockConversation) {
+                        Kind = ChatMessageKind.ConversationEnd,
+                        PreviousMessage = blockItems.Count > 0 ? blockItems[^1] : null,
+                    });
             result.Add(new ExpandedConversationMessage(blockConversation, blockItems));
             blockConversation = null;
             blockItems = [];
