@@ -15,9 +15,11 @@ public sealed record LiveBlockOverlay(
     Range<long> HiddenTailRange,
     long BlockEndLid,
     ConversationId? MaterializedId,
-    bool IsExpandedByDefault);
+    bool IsExpandedByDefault,
+    bool IsDissolving = false);
 
-public sealed record LiveBlockState(long FoldBoundaryLid, LiveBlockOverlay? Overlay, bool WasAttending = false)
+public sealed record LiveBlockState(
+    long FoldBoundaryLid, LiveBlockOverlay? Overlay, bool WasAttending = false, bool IsDissolving = false)
 {
     public static readonly LiveBlockState None = new(0, null);
 }
@@ -31,6 +33,9 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 {
     private readonly Dictionary<ChatId, ChatFoldState> _chatStates = new();
     internal TimeSpan FoldLag = TimeSpan.FromMinutes(3);
+    // A too-short (tier-1) session leaves nothing behind, so its block is held briefly on close to
+    // fade + collapse out instead of vanishing in one frame.
+    internal TimeSpan DissolveDuration = TimeSpan.FromMilliseconds(300);
 
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private IChats Chats => Hub.Chats;
@@ -52,7 +57,9 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var amInLive = raw != null
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         lock (Lock)
-            return baseState with { Overlay = DeriveOverlay(chatState, baseState.FoldBoundaryLid, raw, amInLive) };
+            return baseState with {
+                Overlay = DeriveOverlay(chatState, baseState.FoldBoundaryLid, raw, amInLive, baseState.IsDissolving),
+            };
     }
 
     public bool TryCollapseOverlay(ConversationId conversationId)
@@ -74,18 +81,22 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
     }
 
     private static LiveBlockOverlay? DeriveOverlay(
-        ChatFoldState chatState, long foldBoundaryLid, LiveSessionState? raw, bool amInLive)
+        ChatFoldState chatState, long foldBoundaryLid, LiveSessionState? raw, bool amInLive, bool isDissolving)
     {
         if (!chatState.WasAttending || chatState.Template is not { } t)
             return null;
 
         if (raw == null)
             // Close: freeze the block under its live-era render id and hand over to the materialized
-            // conversation. Tier-1 (never summarized) has no card - drop it, the entries just stay.
+            // conversation. Tier-1 (never summarized) has no card - keep the frozen block briefly with
+            // IsDissolving so it can fade + collapse out, then drop it and the entries just stay.
             return t.HadSummary
                 ? new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
                     default, t.BlockEndLid, t.MaterializedId, t.IsExpandedByDefault)
-                : null;
+                : isDissolving
+                    ? new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
+                        new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false, IsDissolving: true)
+                    : null;
 
         if (!amInLive)
             // Leave (session still live): freeze what the viewer was rendering; entries that arrive
@@ -234,6 +245,21 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             var state = chatState.State.Value with { WasAttending = chatState.WasAttending };
             Moment? wakeAt = null;
 
+            // A tier-1 (never-summarized) close leaves no card behind. Hold the block briefly as
+            // "dissolving" so it can fade + collapse out, then release it so the entries drop to plain
+            // messages. DissolveEndsAt is latched once; IsDissolving falls false when the window passes.
+            var isTierOneClose = raw == null && chatState.WasAttending
+                && chatState.Template is { HadSummary: false };
+            var isDissolving = false;
+            if (isTierOneClose) {
+                if (chatState.DissolveEndsAt == default)
+                    chatState.DissolveEndsAt = Clocks.ServerClock.Now + DissolveDuration;
+                isDissolving = Clocks.ServerClock.Now < chatState.DissolveEndsAt;
+                if (isDissolving)
+                    wakeAt = chatState.DissolveEndsAt;
+            }
+            state = state with { IsDissolving = isDissolving };
+
             if (raw is { SessionStartedAt: not null }) {
                 var v = raw.EffectiveVisibleStartLid;
                 var foldEndLid = GetRawFoldEndLid(raw);
@@ -284,6 +310,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         public long LastObservedFoldEndLid;
         public bool WasAttending;
         public bool IsClosed;
+        public Moment DissolveEndsAt;
         public FrozenTemplate? Template;
     }
 

@@ -868,6 +868,51 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(15));
     }
 
+    [Fact]
+    public async Task TierOneCloseDissolvesBeforeVanishing()
+    {
+        // A too-short (never-summarized) session leaves no card behind, but it must not vanish in one
+        // frame - the block is held briefly as "dissolving" so it can fade + collapse out.
+
+        // arrange - a joined live session that never gets a summary
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "tier1-dissolve-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_210);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        for (var i = 0; i < 2; i++)
+            await Tester.CreateTextEntry(chat.Id, $"entry-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        liveBlockUI.DissolveDuration = TimeSpan.FromSeconds(10);
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        // Let the governor latch WasAttending + the template (HadSummary == false).
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.WasAttending.Should().BeTrue();
+        }, TimeSpan.FromSeconds(10));
+
+        // act - tier-1 close (never summarized)
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+
+        // assert - the block is held, dissolving, rather than dropping to null immediately
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.Overlay.Should().NotBeNull("a tier-1 close dissolves the block before removing it");
+            s.Overlay!.IsDissolving.Should().BeTrue();
+        }, TimeSpan.FromSeconds(10));
+    }
+
     // Private methods
 
     private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)
