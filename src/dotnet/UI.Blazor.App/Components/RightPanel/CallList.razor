@@ -119,7 +119,8 @@
             return Model.None;
 
         var live = await LiveSessionUI.Get(ChatId, cancellationToken).ConfigureAwait(true);
-        if (live is null)
+        // A closing session can linger with no one left in it - never show the Call tab for an empty call.
+        if (live is null || live.Members.Count == 0)
             return Model.None;
 
         var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(true);
