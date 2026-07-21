@@ -189,7 +189,7 @@
     }
 
     public sealed class Model {
-        public ChatId ChatId { get; init; }
+        public required ChatId ChatId { get; init; }
         public bool IsSharing { get; init; }
         public bool SendCurrentRequested { get; set; }
         public TimeSpan? SelectedDuration { get; set; }

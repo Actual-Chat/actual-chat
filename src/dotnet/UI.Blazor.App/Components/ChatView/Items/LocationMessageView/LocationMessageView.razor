@@ -124,6 +124,8 @@
             trackingError);
     }
 
+    // Private methods
+
     private async Task<string> GetDistanceText(GeoPoint target, CancellationToken cancellationToken) {
         var ownPoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false)
             ?? await _currentLocation.Use(cancellationToken).ConfigureAwait(false);
