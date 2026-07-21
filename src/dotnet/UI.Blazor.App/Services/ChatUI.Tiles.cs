@@ -510,8 +510,16 @@ public partial class ChatUI
                 }
                 else if (hasEntryRange)
                     AddRange(resultIdRanges, entryRange);
-                else if (hasConversationRange)
+                else if (hasConversationRange) {
+                    // A card-only excluded range (e.g. the live block's hidden tail, which has no paired
+                    // entry range) that arrives after an entry range left a pendingRight must flush that
+                    // remainder FIRST. Otherwise its card is appended ahead of pendingRight, and AddRange's
+                    // monotonic guard then silently drops the out-of-order pendingRight - its entries vanish,
+                    // leaving a gap in the loaded tiles (a stale conversation card glued to the live block).
+                    AddRange(resultIdRanges, pendingRight ?? default);
+                    pendingRight = null;
                     AddRange(resultIdRanges, conversationStartRange);
+                }
             }
             AddRange(resultIdRanges, pendingRight ?? default);
 
