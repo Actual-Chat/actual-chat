@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -27,6 +28,14 @@ public partial class ChatUI
 
     private IImmutableSet<ConversationId> LastConversationExpansionOverrides { get; set; } =
         ImmutableHashSet<ConversationId>.Empty;
+
+    // Remembers each conversation's IsExpandedByDefault once its tile has been seen, so a conversation
+    // keeps its expanded/collapsed state when the VirtualList unloads and reloads its tile mid-session -
+    // otherwise defaultExpanded (derived only from currently-loaded tiles) would drop it and flip an
+    // expanded conversation to collapsed, jumping the content height and the scroll position. Concurrent
+    // because GetChatItemsInternal (a compute method) runs re-entrantly - a plain field read-modify-write
+    // would let a stale snapshot clobber accumulated entries.
+    private readonly ConcurrentDictionary<ConversationId, bool> _knownConversationDefaultExpanded = new();
 
     public int HalfLoadLimit => BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2; // 20 for mobile
     public int LoadLimit => BrowserInfo.IsMobile ? SecondTileSize * 2 : SecondTileSize * 4; // 40 for mobile
@@ -122,10 +131,14 @@ public partial class ChatUI
                 .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
-            defaultExpanded = conversationTiles
-                .SelectMany(t => t)
-                .Where(c => c.IsExpandedByDefault)
-                .Select(c => c.Id)
+            // Fold the loaded tiles' IsExpandedByDefault into the persistent cache (loaded tiles are
+            // authoritative), then resolve defaultExpanded from the cache - so a conversation whose tile
+            // isn't currently loaded keeps its last-known state instead of silently collapsing.
+            foreach (var c in conversationTiles.SelectMany(t => t))
+                _knownConversationDefaultExpanded[c.Id] = c.IsExpandedByDefault;
+            defaultExpanded = _knownConversationDefaultExpanded
+                .Where(kv => kv.Value)
+                .Select(kv => kv.Key)
                 .ToImmutableHashSet();
 
             if (dataQuery.Navigation is { ShouldRestoreViewPosition: false, KeepConversationsCollapsed: false }) {
