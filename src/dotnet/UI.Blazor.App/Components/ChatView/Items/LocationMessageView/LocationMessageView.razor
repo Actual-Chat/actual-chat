@@ -52,7 +52,13 @@
             <i class="@(m.IsLive ? "icon-marker-pin-live" : "icon-marker-pin")"></i>
             <div class="c-info">
                 <div class="c-title">@(m.IsLive ? "Live location" : "Location")</div>
-                <div class="c-caption">@m.Center.ToDisplayText()</div>
+                <div class="c-caption">
+                    @if (m.DistanceText.IsNullOrEmpty()) {
+                        @m.Center.ToDisplayText()
+                    } else {
+                        @($"{m.DistanceText} from you")
+                    }
+                </div>
             </div>
             <div class="c-copy" @onclick:stopPropagation="true">
                 <CopyToClipboard ButtonClass="btn-xs btn-transparent" Text="@m.Center.ToOpenStreetMapUrl()"/>
@@ -64,10 +70,22 @@
 @code {
     private const double CountdownArcRadius = 14.5;
 
+    private MutableState<GeoPoint?> _currentLocation = null!;
+
     private ISharedLocations SharedLocations => Hub.SharedLocations;
     private LocationUI LocationUI => Hub.LocationUI;
+    private ILocationTracker Tracker => Hub.LocationTracker;
+    private LocationPermissionHandler LocationPermission
+        => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _currentLocation = StateFactory.NewMutable(
+            (GeoPoint?)null,
+            StateCategories.Get(GetType(), nameof(_currentLocation)));
+        _ = FetchCurrentLocation();
+    }
 
     protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -90,20 +108,36 @@
         var marker = await LocationUI.GetMapMarker(chatId, locationId, cancellationToken).ConfigureAwait(false)
             ?? new MapMarker(location.Id.Value, location.Point);
         var countdown = await LocationUI.GetCountdown(chatId, locationId, cancellationToken).ConfigureAwait(false);
-        var isOwnLive = false;
-        var trackingError = (GeoTrackingError?)null;
-        if (countdown is not null) {
-            var ownLive = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-            isOwnLive = ownLive?.Id == locationId;
-            if (isOwnLive)
-                trackingError = await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false);
-        }
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var isOwn = ownAuthor is not null && location.AuthorId == ownAuthor.Id;
+        var isOwnLive = isOwn && countdown is not null;
+        var trackingError = isOwnLive
+            ? await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false)
+            : null;
+        var distanceText = isOwn ? "" : await GetDistanceText(location.Point, cancellationToken).ConfigureAwait(false);
         return new Model(
             location.Point,
             [marker],
             countdown,
             isOwnLive,
+            distanceText,
             trackingError);
+    }
+
+    private async Task<string> GetDistanceText(GeoPoint target, CancellationToken cancellationToken) {
+        var ownPoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false)
+            ?? await _currentLocation.Use(cancellationToken).ConfigureAwait(false);
+        return ownPoint is { } point ? point.DistanceTextTo(target) : "";
+    }
+
+    private async Task FetchCurrentLocation() {
+        // Never prompts for the location permission: a message card must stay passive,
+        // so it reads a cached fix only when the permission is already granted.
+        if (await LocationPermission.Check(CancellationToken.None).ConfigureAwait(false) != true)
+            return;
+
+        if (await Tracker.Get().ConfigureAwait(false) is { } point)
+            _currentLocation.Value = point;
     }
 
     private Task OnOpenMap()
@@ -119,6 +153,7 @@
         IReadOnlyList<MapMarker> Markers,
         LocationCountdown? Countdown,
         bool IsOwnLive,
+        string DistanceText = "",
         GeoTrackingError? TrackingError = null) {
         public bool IsLive => Countdown is not null;
     }
