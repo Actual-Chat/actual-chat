@@ -17,7 +17,7 @@ public sealed record LiveBlockOverlay(
     ConversationId? MaterializedId,
     bool IsExpandedByDefault);
 
-public sealed record LiveBlockState(long FoldBoundaryLid, LiveBlockOverlay? Overlay)
+public sealed record LiveBlockState(long FoldBoundaryLid, LiveBlockOverlay? Overlay, bool WasAttending = false)
 {
     public static readonly LiveBlockState None = new(0, null);
 }
@@ -41,27 +41,63 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
     [ComputeMethod]
     public virtual async Task<LiveBlockState> GetBlockState(ChatId chatId, CancellationToken cancellationToken = default)
     {
+        // The freeze overlay is derived here, reactively, from "am I still attending this block" -
+        // never latched by the async governor a beat later. That's what keeps a hang-up (or close)
+        // from ever flashing a collapsed frame: the moment AmIInLiveConversation flips, this recomputes
+        // and the overlay is already present. The governor only advances the fold boundary and keeps
+        // the frozen template fresh; it no longer owns whether the overlay exists.
         var chatState = await GetOrCreateChatState(chatId, cancellationToken).ConfigureAwait(false);
-        return await chatState.State.Use(cancellationToken).ConfigureAwait(false);
+        var baseState = await chatState.State.Use(cancellationToken).ConfigureAwait(false);
+        var raw = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        var amInLive = raw != null
+            && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        lock (Lock)
+            return baseState with { Overlay = DeriveOverlay(chatState, baseState.FoldBoundaryLid, raw, amInLive) };
     }
 
     public bool TryCollapseOverlay(ConversationId conversationId)
     {
         lock (Lock) {
             foreach (var chatState in _chatStates.Values) {
-                var overlay = chatState.State.Value.Overlay;
-                if (overlay is not { MaterializedId: { } materializedId })
+                if (!chatState.IsClosed || chatState.Template is not { HadSummary: true } t)
                     continue;
-                if (overlay.RenderId != conversationId && materializedId != conversationId)
+                if (t.LiveRenderId != conversationId && t.MaterializedId != conversationId)
                     continue;
 
-                chatState.State.Value = chatState.State.Value with { Overlay = null };
-                Hub.ChatUI.EnsureConversationCollapsed(materializedId, overlay.IsExpandedByDefault);
+                chatState.WasAttending = false;
+                chatState.State.Value = chatState.State.Value with { WasAttending = false };
+                Hub.ChatUI.EnsureConversationCollapsed(t.MaterializedId, t.IsExpandedByDefault);
                 return true;
             }
         }
         return false;
     }
+
+    private static LiveBlockOverlay? DeriveOverlay(
+        ChatFoldState chatState, long foldBoundaryLid, LiveSessionState? raw, bool amInLive)
+    {
+        if (!chatState.WasAttending || chatState.Template is not { } t)
+            return null;
+
+        if (raw == null)
+            // Close: freeze the block under its live-era render id and hand over to the materialized
+            // conversation. Tier-1 (never summarized) has no card - drop it, the entries just stay.
+            return t.HadSummary
+                ? new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
+                    default, t.BlockEndLid, t.MaterializedId, t.IsExpandedByDefault)
+                : null;
+
+        if (!amInLive)
+            // Leave (session still live): freeze what the viewer was rendering; entries that arrive
+            // after the leave (past the frozen tail start) stay hidden.
+            return new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
+                new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false);
+
+        return null; // still joined and live
+    }
+
+    private static Range<long> FoldRangeOf(long v, long boundaryLid)
+        => boundaryLid > v ? new Range<long>(v, boundaryLid) : default;
 
     // Protected/internal methods
 
@@ -90,17 +126,23 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             if (_chatStates.TryGetValue(chatId, out var existing))
                 return existing;
 
-        // Isolated read: the initial latch must not make GetBlockState reactive to the raw live
-        // state - only subsequent advances go through the lag + viewport governor. WasJoined is
-        // seeded here too - whichever caller creates the state first (this read path or the
-        // governor loop) must agree on it, or a join immediately followed by a leave (no governor
-        // iteration lands in between) would never latch a leave overlay.
+        // Isolated read: the initial latch must not make the governor's boundary state reactive to
+        // the raw live state - only subsequent advances go through the lag + viewport governor. The
+        // attending latch is seeded here too - whichever caller creates the state first (this read
+        // path or the governor loop) must agree on it, or a join immediately followed by a leave (no
+        // governor iteration lands in between) would never mark the viewer as having attended.
         LiveSessionState? raw;
         bool isJoined;
+        FrozenTemplate? template = null;
         using (Computed.BeginIsolation()) {
             raw = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
             isJoined = raw != null
                 && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+            // Seed the template alongside the attending latch: a join immediately followed by a leave
+            // (before the governor's first iteration) must still freeze, so WasAttending never outruns
+            // the template GetBlockState needs to derive the overlay.
+            if (raw is { SessionStartedAt: not null } && isJoined)
+                template = await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false);
         }
         var foldEndLid = GetRawFoldEndLid(raw);
         lock (Lock) {
@@ -109,15 +151,31 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
             var chatState = new ChatFoldState {
                 State = StateFactory.NewMutable(
-                    new LiveBlockState(foldEndLid, null),
+                    new LiveBlockState(foldEndLid, null, isJoined),
                     StateCategories.Get(GetType(), nameof(GetBlockState), "[*]")),
                 LastObservedFoldEndLid = foldEndLid,
-                LastRaw = raw,
-                WasJoined = isJoined,
+                WasAttending = isJoined,
+                Template = template,
             };
             _chatStates.Add(chatId, chatState);
             return chatState;
         }
+    }
+
+    private async Task<FrozenTemplate> BuildTemplate(ChatId chatId, LiveSessionState raw, CancellationToken cancellationToken)
+    {
+        Range<long> chatIdRange;
+        using (Computed.BeginIsolation())
+            chatIdRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var v = raw.EffectiveVisibleStartLid;
+        return new FrozenTemplate(
+            v,
+            chatIdRange.End,
+            raw.EndEntryLid + 1,
+            ConversationId.New(chatId, v),
+            ConversationId.New(chatId, raw.ContextStartLid > 0 ? raw.ContextStartLid : v),
+            raw.IsExpandedByDefault,
+            raw.LastSummaryAt.EpochOffsetTicks > 0);
     }
 
     private static long GetRawFoldEndLid(LiveSessionState? raw)
@@ -159,36 +217,30 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var (_, raw, visibility, isJoined) = inputs;
         var chatState = await GetOrCreateChatState(chatId, cancellationToken).ConfigureAwait(false);
 
-        // The leaver freeze needs the chat's end lid, read outside the lock (isolated, non-reactive).
-        Range<long> chatIdRange = default;
-        var isLeaving = raw is { SessionStartedAt: not null } && chatState.WasJoined && !isJoined
-            && chatState.State.Value.Overlay == null;
-        if (isLeaving)
-            using (Computed.BeginIsolation())
-                chatIdRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
+        // While the viewer is attending a live session, keep a frozen template ready - the exact
+        // descriptor GetBlockState needs to freeze the block the instant they leave or it closes. The
+        // template stops refreshing once !isJoined, so its tail start captures the leave moment.
+        var template = raw is { SessionStartedAt: not null } && isJoined
+            ? await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false)
+            : null;
 
         lock (Lock) {
-            var state = chatState.State.Value;
-            var overlay = state.Overlay;
+            chatState.WasAttending |= isJoined;
+            if (template != null)
+                chatState.Template = template;
+            if (raw == null && chatState.WasAttending)
+                chatState.IsClosed = true;
+
+            var state = chatState.State.Value with { WasAttending = chatState.WasAttending };
             Moment? wakeAt = null;
 
             if (raw is { SessionStartedAt: not null }) {
                 var v = raw.EffectiveVisibleStartLid;
-
                 var foldEndLid = GetRawFoldEndLid(raw);
                 if (foldEndLid > chatState.LastObservedFoldEndLid) {
                     chatState.Pending = [..chatState.Pending, new PendingFold(foldEndLid, raw.LastSummaryAt)];
                     chatState.LastObservedFoldEndLid = foldEndLid;
                 }
-
-                if (isLeaving)
-                    overlay = new LiveBlockOverlay(
-                        ConversationId.New(chatId, v), v,
-                        FoldRangeOf(v, state.FoldBoundaryLid),
-                        new Range<long>(chatIdRange.End, long.MaxValue),
-                        chatIdRange.End, null, false);
-                else if (overlay is { MaterializedId: null } && isJoined)
-                    overlay = null; // Rejoined - the live tail is expected to reappear.
 
                 var minVisibleLid = visibility.ChatId == chatId && !visibility.IsEmpty
                     ? visibility.VisibleMessageLids.Where(lid => lid >= v).DefaultIfEmpty(long.MaxValue).Min()
@@ -198,54 +250,13 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                     minVisibleLid == long.MaxValue ? null : minVisibleLid);
                 chatState.Pending = result.Pending;
                 wakeAt = result.NextWakeAt;
-                if (overlay is { MaterializedId: null })
-                    overlay = overlay with { FoldRange = FoldRangeOf(v, result.BoundaryLid) };
-                state = new LiveBlockState(result.BoundaryLid, overlay);
-            }
-            else if (chatState.LastRaw is { SessionStartedAt: not null } lastRaw) {
-                // Session closed - freeze whatever this viewer was rendering; no live-viewport collapse.
-                if (lastRaw.LastSummaryAt.EpochOffsetTicks <= 0) {
-                    // Tier-1 close (never summarized): nothing materializes, so a kept overlay would
-                    // hide entry V behind a card that no longer renders - drop it entirely.
-                    state = state with { Overlay = null };
-                    if (!Equals(chatState.State.Value, state))
-                        chatState.State.Value = state;
-                    chatState.LastRaw = raw;
-                    chatState.WasJoined = isJoined;
-                    return null;
-                }
-
-                var v = lastRaw.EffectiveVisibleStartLid;
-                var blockEndLid = lastRaw.EndEntryLid + 1;
-                var materializedId = ConversationId.New(chatId,
-                    lastRaw.ContextStartLid > 0 ? lastRaw.ContextStartLid : v);
-                overlay = overlay is { MaterializedId: null } leaverOverlay
-                    ? leaverOverlay with {
-                        HiddenTailRange = leaverOverlay.HiddenTailRange.Start < blockEndLid
-                            ? new Range<long>(leaverOverlay.HiddenTailRange.Start, blockEndLid)
-                            : default,
-                        BlockEndLid = blockEndLid,
-                        MaterializedId = materializedId,
-                        IsExpandedByDefault = lastRaw.IsExpandedByDefault,
-                    }
-                    : overlay ?? new LiveBlockOverlay(
-                        ConversationId.New(chatId, v), v,
-                        chatState.WasJoined
-                            ? FoldRangeOf(v, state.FoldBoundaryLid)
-                            : new Range<long>(v, blockEndLid),
-                        default, blockEndLid, materializedId, lastRaw.IsExpandedByDefault);
-                state = state with { Overlay = overlay };
+                state = new LiveBlockState(result.BoundaryLid, null, chatState.WasAttending);
             }
 
             if (!Equals(chatState.State.Value, state))
                 chatState.State.Value = state;
-            chatState.LastRaw = raw;
-            chatState.WasJoined = isJoined;
             return wakeAt;
         }
-
-        static Range<long> FoldRangeOf(long v, long boundaryLid)
-            => boundaryLid > v ? new Range<long>(v, boundaryLid) : default;
     }
 
     private void CleanupOtherChats(ChatId selectedChatId)
@@ -271,9 +282,19 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         public MutableState<LiveBlockState> State = null!;
         public IReadOnlyList<PendingFold> Pending = [];
         public long LastObservedFoldEndLid;
-        public LiveSessionState? LastRaw;
-        public bool WasJoined;
+        public bool WasAttending;
+        public bool IsClosed;
+        public FrozenTemplate? Template;
     }
+
+    private sealed record FrozenTemplate(
+        long V,
+        long TailStart,
+        long BlockEndLid,
+        ConversationId LiveRenderId,
+        ConversationId MaterializedId,
+        bool IsExpandedByDefault,
+        bool HadSummary);
 
     protected sealed record GovernorInputs(
         ChatId? ChatId,

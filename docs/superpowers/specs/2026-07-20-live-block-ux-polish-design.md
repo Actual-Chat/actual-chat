@@ -95,6 +95,21 @@ When the client is rendering a live block and the session closes:
 This dissolves the observed two-step close: step 2 (messages disappearing)
 no longer happens for a watching viewer.
 
+**Determinism (freeze reacts, not latches).** The freeze must never lag the
+leave/close by even one render, or a hang-up can flash a collapsed frame
+before the overlay lands. So the overlay is a **reactive derivation** inside
+`LiveBlockUI.GetBlockState` from three signals — a per-viewer monotonic
+"was attending this block" latch (set at join), `AmIInLiveConversation`, and
+the raw live state — not an async write from the governor loop. The instant
+`AmIInLiveConversation` flips (or the raw state disappears), `GetBlockState`
+recomputes with the overlay already present. The governor keeps only what is
+not race-sensitive: advancing the fold boundary and refreshing the frozen
+template (V, fold range, materialized id, tail start) while the viewer is
+joined. The "attending" latch and the template are seeded together at state
+creation so a join-then-immediate-leave still freezes. Scope: joined viewers
+only — a never-joined watcher still follows the shipped tiered default at
+close.
+
 ### 3. Card size transitions
 
 In `ConversationMessageView` (including the unjoined in-card tail): animate
