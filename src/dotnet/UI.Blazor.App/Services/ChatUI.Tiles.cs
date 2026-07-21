@@ -408,7 +408,7 @@ public partial class ChatUI
         var liveBlockRange = liveBlockId is { } lbId
             ? new Range<long>(lbId.StartEntryLid, overlay?.BlockEndLid ?? long.MaxValue)
             : default;
-        var groupedTiles = GroupExpandedConversations(groupedItems, liveBlockId, liveBlockRange);
+        var groupedTiles = GroupExpandedConversations(groupedItems, liveBlockId, liveBlockRange, materializedBlockId);
         return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter);
 
         bool TryGetIdTilesToLoad(
@@ -836,7 +836,10 @@ public partial class ChatUI
 
         void EmitConversationCard(Conversation conversation, DateOnly date)
         {
-            var hasSplitHeader = conversation.Id == liveBlockId;
+            // Only the ONGOING live block gets the split-out live (animated) header. Once the session
+            // closes (materializedBlockId set), the block stays frozen but renders as a completed
+            // conversation: the card falls back to its own regular header instead.
+            var hasSplitHeader = conversation.Id == liveBlockId && materializedBlockId == null;
             if (hasSplitHeader) {
                 var header = new LiveConversationHeader(conversation) {
                     Kind = ChatMessageKind.LiveConversationHeader,
@@ -939,7 +942,8 @@ public partial class ChatUI
     }
 
     private static List<ChatMessage> GroupExpandedConversations(
-        IReadOnlyList<ChatMessage> messages, ConversationId? liveBlockId, Range<long> liveBlockRange)
+        IReadOnlyList<ChatMessage> messages, ConversationId? liveBlockId, Range<long> liveBlockRange,
+        ConversationId? materializedBlockId)
     {
         // Wrap every item of one expanded conversation into a single ExpandedConversationMessage in
         // source order - the block is the sticky containing element for the conversation header and
@@ -989,7 +993,9 @@ public partial class ChatUI
             if (blockConversation == null)
                 return;
 
-            if (blockConversation.Id == liveBlockId)
+            // Only the ongoing live block closes with the live footer; a completed (materialized)
+            // block renders its own regular conversation footer instead.
+            if (blockConversation.Id == liveBlockId && materializedBlockId == null)
                 blockItems.Add(new LiveConversationFooter(blockConversation) {
                     Kind = ChatMessageKind.ConversationEnd,
                     PreviousMessage = blockItems.Count > 0 ? blockItems[^1] : null,
