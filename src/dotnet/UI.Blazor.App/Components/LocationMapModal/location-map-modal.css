@@ -3,6 +3,10 @@
     @apply flex-y;
     @apply p-0;
 }
+/* full-bleed map to the bottom edge; narrow keeps the stretch safe-area bottom padding */
+body.wide .location-map-modal {
+    @apply pb-0;
+}
 .location-map-modal .c-map-host {
     @apply relative;
     @apply w-full h-128 max-h-[70vh];
