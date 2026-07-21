@@ -54,7 +54,7 @@
             return;
         }
         await WhenClosed;
-        await JS.InvokeVoidAsync("window.open", _url, "_blank", "noopener");
+        await JS.OpenNewWindow(_url);
     }
 
     private async Task OnCopy() {

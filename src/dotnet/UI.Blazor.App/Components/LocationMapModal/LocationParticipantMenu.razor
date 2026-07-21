@@ -36,7 +36,7 @@
             return;
 
         await WhenClosed.ConfigureAwait(true);
-        await JS.InvokeVoidAsync("window.open", point.ToGoogleMapsUrl(), "_blank", "noopener").ConfigureAwait(false);
+        await JS.OpenNewWindow(point.ToGoogleMapsUrl()).ConfigureAwait(false);
     }
 
     private async Task OnOpenInOpenStreetMap() {
@@ -44,7 +44,7 @@
             return;
 
         await WhenClosed.ConfigureAwait(true);
-        await JS.InvokeVoidAsync("window.open", point.ToOpenStreetMapUrl(), "_blank", "noopener").ConfigureAwait(false);
+        await JS.OpenNewWindow(point.ToOpenStreetMapUrl()).ConfigureAwait(false);
     }
 
     private async Task OnCopyLink() {

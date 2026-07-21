@@ -4,13 +4,11 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor;
 
-/// <summary>
-/// Configures the <see cref="IJSRuntime"/> JSON serializer options
-/// to include our source-generated <see cref="BlazorUIJsonContext"/>
-/// for Native AOT compatibility.
-/// </summary>
 public static class JSRuntimeExt
 {
+    public static ValueTask OpenNewWindow(this IJSRuntime js, string url)
+        => js.InvokeVoidAsync("window.open", url, "_blank", "noopener");
+
     public static void InjectJsonTypeInfoResolvers(this IJSRuntime jsRuntime)
     {
         CodeKeeper.Keep<JSRuntime>();
