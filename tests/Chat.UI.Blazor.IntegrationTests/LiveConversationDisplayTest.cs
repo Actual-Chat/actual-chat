@@ -455,11 +455,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             LeafEntryLids(items).Should().Equal(frozenLeafLids);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             ((IVirtualListItem)block).RenderKey.Should().Be(frozenRenderKey);
-            // The materialized card falls into the not-live render branch, which renders
-            // ConversationMessageHeader unconditionally unless it's gated on HasSplitHeader - since the
-            // sticky LiveConversationHeader is still emitted for this (frozen) block, the flag must too.
-            block.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
-            block.Items.OfType<ConversationMessage>().Single().HasSplitHeader.Should().BeTrue();
+            // Rows and @key are unchanged, but a completed session drops the live header - the card
+            // falls back to its own regular header (HasSplitHeader == false). See
+            // ClosedBlockRendersAsCompletedNotLive for the full completed-render assertions.
+            block.Items.OfType<LiveConversationHeader>().Should().BeEmpty();
+            block.Items.OfType<ConversationMessage>().Single().HasSplitHeader.Should().BeFalse();
         }, TimeSpan.FromSeconds(15));
     }
 
@@ -806,6 +806,66 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             var s = await liveBlockUI.GetBlockState(chat.Id, ct);
             s.Overlay.Should().NotBeNull();
         }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task ClosedBlockRendersAsCompletedNotLive()
+    {
+        // Once the session ends the frozen block must read as a completed conversation - no live
+        // (animated) header, no live footer - even though it stays frozen under its live-era @key.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "closed-completed-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_200);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        // while live the block leads with the live header
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Single();
+            block.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+
+        // act - both participants hang up and the session finalizes
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+
+        // assert - the completed block drops the live header + footer; the card renders its own
+        // regular header (HasSplitHeader == false)
+        await ComputedTest.When(async ct => {
+            var liveState = await liveBackend.GetState(chat.Id, ct);
+            liveState.Should().BeNull();
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Single();
+            block.Items.OfType<LiveConversationHeader>()
+                .Should().BeEmpty("a completed session must not render the live animated header");
+            block.Items.OfType<LiveConversationFooter>()
+                .Should().BeEmpty("a completed session must not render the live footer");
+            var card = block.Items.OfType<ConversationMessage>().Single();
+            card.HasSplitHeader.Should().BeFalse("the card renders its own regular header once completed");
+        }, TimeSpan.FromSeconds(15));
     }
 
     // Private methods
