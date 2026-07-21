@@ -57,6 +57,13 @@
                 <CopyToClipboard ButtonClass="btn-xs btn-transparent" Text="@m.Center.ToOpenStreetMapUrl()"/>
             </div>
         </div>
+        @* The share-back row fits into the fixed card height by shrinking the map area,
+           so appearing on state resolve can't change the height and jump the list. *@
+        @if (m is { IsLive: true, IsOwnLive: false }) {
+            <Button Class="c-share-back" Click="@OnShareBack" StopPropagation="true">
+                Share your location back
+            </Button>
+        }
     }
 </div>
 
@@ -138,6 +145,9 @@
 
     private Task OnStopSharing()
         => LocationUI.StopSharing(Entry.ChatId, CancellationToken.None);
+
+    private Task OnShareBack()
+        => LocationUI.ShowShareModal(Entry.ChatId);
 
     // Nested types
 
