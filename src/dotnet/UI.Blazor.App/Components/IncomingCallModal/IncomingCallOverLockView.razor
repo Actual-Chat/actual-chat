@@ -1,0 +1,94 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, IncomingCallOverLockView.ComputedModel>
+@{
+    var m = State.Value;
+    if (m.Chat is not { } chat)
+        return;
+}
+
+<div class="incoming-call-overlock">
+    <div class="c-body">
+        <ChatIcon Chat="@chat" Size="SquareSize.Size30" IsSquare="@true" HideTitle="@true"/>
+        <div class="c-title">@chat.Title</div>
+        <div class="c-subtitle">@m.StatusText</div>
+    </div>
+    <div class="c-buttons">
+        @if (m.Phase == CallPhase.Ringing) {
+            <Button Class="btn-decline btn-danger" Click="@OnDeclineClick">
+                <i class="icon-close text-2xl"></i>
+            </Button>
+            <Button Class="btn-accept btn-primary" Click="@OnAcceptClick">
+                <i class="icon-phone text-2xl"></i>
+            </Button>
+        }
+        else {
+            <Button Class="btn-to-chat btn-primary" Click="@OnGoToChatClick">
+                <i class="icon-message-ellipse text-2xl"></i>
+            </Button>
+            <Button Class="btn-hangup btn-danger" Click="@OnHangUpClick">
+                <i class="icon-phone-off text-2xl"></i>
+            </Button>
+        }
+    </div>
+</div>
+
+@code {
+    private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var overLockChatId = await IncomingCallUI.OverLockChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (overLockChatId is not { } chatId)
+            return ComputedModel.None;
+
+        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return ComputedModel.None;
+
+        var ringing = await IncomingCallUI.GetRingingCall(chatId, cancellationToken).ConfigureAwait(false);
+        if (ringing is not null)
+            return new() { Chat = chat, Phase = CallPhase.Ringing, HasVideo = ringing.HasVideo };
+
+        var inCall = await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        if (inCall)
+            return new() { Chat = chat, Phase = CallPhase.InCall };
+
+        return ComputedModel.None;
+    }
+
+    private Task OnAcceptClick()
+        => State.Value.Chat is { } chat ? IncomingCallUI.Accept(chat.Id) : Task.CompletedTask;
+
+    private Task OnDeclineClick()
+        => State.Value.Chat is { } chat ? IncomingCallUI.Decline(chat.Id) : Task.CompletedTask;
+
+    private Task OnGoToChatClick()
+        => State.Value.Chat is { } chat ? IncomingCallUI.GoToChat(chat.Id) : Task.CompletedTask;
+
+    private Task OnHangUpClick()
+        => State.Value.Chat is { } chat ? IncomingCallUI.HangUp(chat.Id) : Task.CompletedTask;
+
+    // Nested types
+
+    public enum CallPhase { Ringing, InCall }
+
+    public sealed record ComputedModel {
+        public static readonly ComputedModel None = new();
+
+        public Chat? Chat { get; init; }
+        public CallPhase Phase { get; init; }
+        public bool HasVideo { get; init; }
+
+        public string StatusText => Phase == CallPhase.InCall
+            ? "In call"
+            : HasVideo ? "Incoming video call" : "Incoming call";
+    }
+}

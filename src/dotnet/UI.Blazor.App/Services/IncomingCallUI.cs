@@ -16,9 +16,12 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 {
     private readonly Lock _lock = new();
     private readonly MutableState<ImmutableList<ChatId>> _ringingChatIds;
-    private readonly MutableState<bool> _isOverLockScreen;
+    // The chat whose call surfaced over the lock screen; stays set through Accept (so the in-call
+    // screen shows over the keyguard) until the user unlocks (GoToChat), hangs up, or the call ends.
+    private readonly MutableState<ChatId?> _overLockChatId;
+    private volatile bool _overLockWasActive;
 
-    public IState<bool> IsOverLockScreen => _isOverLockScreen;
+    public IState<ChatId?> OverLockChatId => _overLockChatId;
 
     private IIncomingCallsBridge? Bridge { get; }
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
@@ -31,9 +34,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _ringingChatIds = StateFactory.NewMutable(
             ImmutableList<ChatId>.Empty,
             StateCategories.Get(GetType(), "RingingChatIds"));
-        _isOverLockScreen = StateFactory.NewMutable(
-            false,
-            StateCategories.Get(GetType(), "IsOverLockScreen"));
+        _overLockChatId = StateFactory.NewMutable(
+            (ChatId?)null,
+            StateCategories.Get(GetType(), "OverLockChatId"));
     }
 
     void INotifyInitialized.Initialized()
@@ -49,8 +52,10 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (!chatIds.Contains(chatId))
                 _ringingChatIds.Value = chatIds.Add(chatId);
         }
-        if (showOverLockScreen)
-            _isOverLockScreen.Value = true;
+        if (showOverLockScreen) {
+            _overLockWasActive = false;
+            _overLockChatId.Value = chatId;
+        }
     }
 
     public void OnCallDismissed(ChatId chatId)
@@ -101,7 +106,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public async Task Accept(ChatId chatId, bool withCamera = false)
     {
-        var overLockScreen = _isOverLockScreen.Value;
+        var overLockScreen = _overLockChatId.Value == chatId;
         var call = await GetRingingCall(chatId, default).ConfigureAwait(true);
         EndRing(chatId);
         if (call is null) {
@@ -138,6 +143,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public async Task Decline(ChatId chatId)
     {
+        ClearOverLock();
         EndRing(chatId);
         _ = Bridge?.OnCallHandled(false);
         try {
@@ -148,11 +154,54 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
+    // From the over-lock in-call screen: dismiss the keyguard (PIN) and, once unlocked, close the
+    // in-call screen and open the chat. On a cancelled PIN we stay on the in-call screen.
+    public async Task GoToChat(ChatId chatId)
+    {
+        var unlocked = Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+        if (!unlocked)
+            return;
+
+        ClearOverLock();
+        await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
+    }
+
+    public async Task HangUp(ChatId chatId)
+    {
+        ClearOverLock();
+        await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
+        await ChatAudioUI.SetListeningState(chatId, false).ConfigureAwait(true);
+        _ = Bridge?.OnCallHandled(false);
+        try {
+            await LiveSessionUI.LeaveCall(chatId, default).ConfigureAwait(true);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "LeaveCall failed for chat #{ChatId}", chatId);
+        }
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<bool> IsOverLockSessionActive(CancellationToken cancellationToken)
+    {
+        var chatId = await _overLockChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (chatId is null)
+            return false;
+
+        if (await GetRingingCall(chatId, cancellationToken).ConfigureAwait(false) is not null)
+            return true;
+
+        return await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
     protected override Task OnRun(CancellationToken cancellationToken)
-        => AsyncChain.From(SyncRings)
-            .Log(LogLevel.Debug, Log)
-            .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
-            .Run(cancellationToken);
+    {
+        var retryDelays = RetryDelaySeq.Exp(0.5, 10);
+        return Task.WhenAll(
+            AsyncChain.From(SyncRings)
+                .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken),
+            AsyncChain.From(ResetOverLockScreen)
+                .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken));
+    }
 
     // Private methods
 
@@ -175,12 +224,8 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                     isRinging = call is not null;
                     if (isRinging)
                         Bridge?.StartRinging();
-                    else {
+                    else
                         Bridge?.StopRinging();
-                        // All rings ended: drop the over-lock-screen flag so a later foreground
-                        // call shows the banner, not the full-screen screen.
-                        _isOverLockScreen.Value = false;
-                    }
                 }
                 await PruneDeadRings(cancellationToken).ConfigureAwait(false);
 
@@ -210,6 +255,25 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
+    private async Task ResetOverLockScreen(CancellationToken cancellationToken)
+    {
+        // Clears the over-lock chat once its session is fully over (cancelled ring, remote hang-up).
+        // Guarded by _overLockWasActive so the initial load window (ring not yet confirmed on a cold
+        // start) doesn't clear the flag before the screen has a chance to show.
+        var cActive = await Computed
+            .Capture(() => IsOverLockSessionActive(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        while (!cancellationToken.IsCancellationRequested) {
+            if (cActive.Value)
+                _overLockWasActive = true;
+            else if (_overLockWasActive && _overLockChatId.Value is not null)
+                ClearOverLock();
+
+            await cActive.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            cActive = await cActive.Update(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private void EndRing(ChatId chatId)
     {
         lock (_lock) {
@@ -218,5 +282,11 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 _ringingChatIds.Value = chatIds.Remove(chatId);
         }
         Bridge?.DismissCallNotification(chatId);
+    }
+
+    private void ClearOverLock()
+    {
+        _overLockWasActive = false;
+        _overLockChatId.Value = null;
     }
 }
