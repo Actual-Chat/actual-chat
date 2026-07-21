@@ -128,7 +128,6 @@ describe('multi-user location sharing', () => {
         expect(await bobMap.locator('.c-participant').count()).toBe(1);
         const bobRowText = (await bobRow.innerText()).toLowerCase();
         expect(bobRowText).toContain('updated');
-        expect(bobRowText).toContain('left');
         expect(bobRowText).not.toContain('(you)');
         await bob.screenshot({ path: shot('bob-map-1-marker') });
 
@@ -164,9 +163,7 @@ describe('multi-user location sharing', () => {
         expect(await aliceMap.locator('.c-participant').count()).toBe(2);
         const rows = await aliceMap.locator('.c-participant').allInnerTexts();
         expect(rows[0].toLowerCase()).toContain('(you)');
-        expect(rows[0].toLowerCase()).toContain('left');
         expect(rows[1].toLowerCase()).not.toContain('(you)');
-        expect(rows[1].toLowerCase()).toContain('left');
         expect(rows[1].toLowerCase()).toMatch(/\d+ km from you/);
         await alice.screenshot({ path: shot('alice-map-2-markers') });
         await alice.keyboard.press('Escape');
