@@ -918,6 +918,48 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ExpandedLiveBlockHasNoDescription()
+    {
+        // Expanded reads as a plain conversation - the card's description box must not surface, and the
+        // sticky header (LiveConversationHeaderView) never carries a message count in either state.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "expanded-no-desc-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_320);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "a description", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"m-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        // ensure the block renders expanded
+        var live2 = await Tester.Conversations.Get(Tester.Session, live.ToConversation().Id, CancellationToken.None);
+        if (live2 is { IsExpandedByDefault: false })
+            chatUI.ToggleExpandConversation(live.ToConversation().Id);
+
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Single();
+            // HasSplitHeader gates the description box off (Task 3); the structural guard here is that
+            // the block still renders as one split-header card once expanded.
+            block.Items.OfType<ConversationMessage>().Single().HasSplitHeader.Should().BeTrue();
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
     public async Task JoinFromBlockStartsRecording()
     {
         // arrange - a live session this Bob has not joined

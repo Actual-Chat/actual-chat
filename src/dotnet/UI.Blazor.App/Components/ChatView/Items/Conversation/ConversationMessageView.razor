@@ -39,8 +39,9 @@
                     }
                 </div>
             }
-            @* Gated on the text, not hasSummary: a fold can outlive an empty description. *@
-            @if (hasDescription) {
+            @* Gated on the text, not hasSummary: a fold can outlive an empty description. Also collapsed-only:
+               expanded reads as a plain conversation, so the description box drops out once expanded. *@
+            @if (hasDescription && !state.IsExpanded) {
                 <div class="c-lc-summary-box">
                     <div class="c-lc-summary" @key="@m.Description.Markup.ToReadableText()">
                         <CascadingValue Value="@_fakeEntry" IsFixed="true">
