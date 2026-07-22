@@ -66,6 +66,17 @@ public partial class MainActivity : MauiAppCompatActivity
     {
         using var _1 = Tracer.MethodRegion();
 
+        if (!AndroidUtils.IsWebViewAvailable()) {
+            // Without a WebView provider, BlazorAndroidWebView creation crashes in onStart with
+            // MissingWebViewPackageException. Finish() here skips onStart, so the fragment view
+            // is never created; a native prompt takes over instead.
+            Log.LogWarning("OnCreate: no WebView provider available");
+            base.OnCreate(Bundle.Empty);
+            StartActivity(new Intent(this, typeof(WebViewMissingActivity)));
+            Finish();
+            return;
+        }
+
         BlazorWebViewApp.EnsureStarted();
 
         Interlocked.Exchange(ref _current, this);

@@ -46,6 +46,18 @@ public static class AndroidUtils
     public static bool IsMainThread()
         => Looper.MainLooper!.IsCurrentThread;
 
+    public static bool IsWebViewAvailable()
+    {
+        // Fail-open: only a null provider (WebView missing, disabled, or being updated)
+        // reports unavailability — a broken check must not block startup.
+        try {
+            return Android.Webkit.WebView.CurrentWebViewPackage != null;
+        }
+        catch (System.Exception) {
+            return true;
+        }
+    }
+
     public static IExecutorService NewNetworkIoExecutor()
         => Executors.NewSingleThreadExecutor(new NamedThreadFactory(ThreadNetworkIo))!;
 
