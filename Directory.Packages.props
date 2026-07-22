@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>14.1.3</ActualLabFusionVersion>
+    <ActualLabFusionVersion>14.1.47</ActualLabFusionVersion>
     <AspNetCoreVersion>10.0.8</AspNetCoreVersion>
     <MicrosoftAspNetCoreVersion>2.3.10</MicrosoftAspNetCoreVersion> <!-- Weird, they have the second version -->
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>

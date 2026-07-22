@@ -17,6 +17,7 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.CommandR.Diagnostics;
 using ActualLab.Fusion.Diagnostics;
+using ActualLab.Fusion.EntityFramework.Internal;
 using ActualChat.Authentication;
 using ActualLab.Fusion.Server;
 using ActualLab.IO;
@@ -372,6 +373,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .AddMeter(RpcInstruments.Meter.Name) // ActualLab.Rpc
             .AddMeter(CommanderInstruments.Meter.Name) // ActualLab.Commander
             .AddMeter(FusionInstruments.Meter.Name) // ActualLab.Fusion
+            .AddMeter(FusionEntityFrameworkInstruments.Meter.Name) // ActualLab.Fusion.EntityFramework
             // Our own meters (one per assembly)
             .AddMeter(DbInstruments.Meter.Name)
             .AddMeter(CoreServerInstruments.Meter.Name)
@@ -390,25 +392,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 cfg.Protocol = OtlpExportProtocol.Grpc;
                 cfg.Endpoint = endpointUrl.ToUri();
             })
-            .AddView(instrument => {
-                if (instrument.Meter == RpcInstruments.Meter && instrument.Name.StartsWith("rpc.server.")) {
-                    if (instrument.Unit != "ms")
-                        return MetricStreamConfiguration.Drop; // Drop all non-ms metrics
-
-                    if (!instrument.Name.StartsWith("rpc.server.IConversations/Get")
-                        && !instrument.Name.StartsWith("rpc.server.IAuthors/Get")
-                        && !instrument.Name.StartsWith("rpc.server.IChats/Get")
-                        && !instrument.Name.StartsWith("rpc.server.IContacts/ListIds")
-                        && !instrument.Name.StartsWith("rpc.server.IChats/OnUpsertTextEntry")
-                        && !instrument.Name.StartsWith("rpc.server.IFlowBackend/OnResume")
-                        && !instrument.Name.StartsWith("rpc.server.IFlowBackend/TryGetData")
-                        && !instrument.Name.StartsWith("rpc.server.ITranslations/Get"))
-                        return MetricStreamConfiguration.Drop; // Keep the most relevant metrics
-
-                    return null;
-                }
-                return null;
-            })
         );
         otel.WithTracing(tracer => tracer
             .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(
@@ -417,6 +400,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .AddSource(RpcInstruments.ActivitySource.Name) // ActualLab.Rpc
             .AddSource(CommanderInstruments.ActivitySource.Name) // ActualLab.Commander
             .AddSource(FusionInstruments.ActivitySource.Name) // ActualLab.Fusion
+            .AddSource(FusionEntityFrameworkInstruments.ActivitySource.Name) // ActualLab.Fusion.EntityFramework
             // Our own activity sources (one per assembly)
             .AddSource(DbInstruments.ActivitySource.Name)
             .AddSource(CoreServerInstruments.ActivitySource.Name)
