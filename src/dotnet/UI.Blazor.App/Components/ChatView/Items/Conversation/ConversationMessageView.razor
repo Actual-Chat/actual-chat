@@ -82,9 +82,9 @@
                 <LastEntriesPreview Entries="@tailPreview" Faded="true"/>
             }
             @if (!state.IsExpanded && state.SwallowedCount > 0) {
-                <button type="button" class="c-lc-showmore" @onclick="@OnRevealMore">
+                <button type="button" class="c-lc-showmore" data-anchor="below" @onclick="@OnRevealMore">
                     <i class="icon-chevron-up"></i>
-                    <span>Show @state.RevealBatch earlier message@(state.RevealBatch == 1 ? "" : "s") of @state.SwallowedCount</span>
+                    <span>Show @state.RevealBatch of @state.SwallowedCount</span>
                 </button>
             }
         </div>

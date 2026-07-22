@@ -328,15 +328,13 @@ In `GetBlockState`, carry it onto the returned state (inside the existing `lock 
 
 > Verify `Chats.ReadReverse` yields ascending-local-id-descending order and its signature (`IAsyncEnumerable<ChatEntry>`), matching `GetThreadPreviewEntries` usage in `ChatUI.Tiles.cs`. `ChatEntry.LocalId` and `IsSystemEntry` are the fields used there.
 
-- [ ] **Step 4: Thread the effective boundary into the tile builder.** In `ChatUI.Tiles.cs` (~L80-85), fold to the effective boundary so revealed rows render below the card:
+- [ ] **Step 4: Thread the effective boundary into the tile builder.** In `ChatUI.Tiles.cs` (~L80-85), fold to the effective boundary so revealed rows render below the card. **Do NOT cap at `EndEntryLid + 1`** — `EndEntryLid` only advances on `UpdateSummary`, so capping there would re-defeat §4's un-summarised folding (Phase A already dropped this cap; keep it dropped). `FoldBoundaryLid` is always a real visible lid ≤ the last entry, so `[V, effectiveFoldBoundaryLid)` is safe:
 
 ```csharp
         var effectiveFoldBoundaryLid = Math.Min(blockState.FoldBoundaryLid, blockState.RevealedBoundaryLid);
         var liveFoldRange = rawLive is { SessionStartedAt: not null }
             && effectiveFoldBoundaryLid > rawLive.EffectiveVisibleStartLid
-                ? new Range<long>(
-                    rawLive.EffectiveVisibleStartLid,
-                    Math.Min(effectiveFoldBoundaryLid, rawLive.EndEntryLid + 1))
+                ? new Range<long>(rawLive.EffectiveVisibleStartLid, effectiveFoldBoundaryLid)
                 : default;
 ```
 

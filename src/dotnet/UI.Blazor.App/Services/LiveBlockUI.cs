@@ -126,8 +126,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             }
         }
 
-        lock (Lock)
+        lock (Lock) {
             chatState.RevealedBoundaryLid = Math.Min(chatState.RevealedBoundaryLid, revealed);
+            chatState.RevealScrolledInto = false;
+        }
         using (Invalidation.Begin())
             _ = GetBlockState(chatId, default);
     }
@@ -138,6 +140,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             if (!_chatStates.TryGetValue(chatId, out var chatState) || chatState.RevealedBoundaryLid == long.MaxValue)
                 return;
             chatState.RevealedBoundaryLid = long.MaxValue;
+            chatState.RevealScrolledInto = false;
         }
         using (Invalidation.Begin())
             _ = GetBlockState(chatId, default);
@@ -316,6 +319,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             ? await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false)
             : null;
 
+        var clearedReveal = false;
+        Moment? wakeAt = null;
         lock (Lock) {
             chatState.WasAttending |= isJoined;
             if (template != null)
@@ -324,7 +329,6 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 chatState.IsClosed = true;
 
             var state = chatState.State.Value with { WasAttending = chatState.WasAttending };
-            Moment? wakeAt = null;
 
             // A tier-1 (never-summarized) close leaves no card behind. DeriveOverlay dissolves the
             // block immediately (synchronously) so the animation actually starts; the governor only
@@ -348,15 +352,31 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 var minVisibleLid = visibility.ChatId == chatId && !visibility.IsEmpty
                     ? visibility.VisibleMessageLids.Where(lid => lid >= v).DefaultIfEmpty(long.MaxValue).Min()
                     : long.MaxValue;
+                var oldBoundary = state.FoldBoundaryLid;
                 var boundaryLid = LiveFoldMath.Advance(
-                    state.FoldBoundaryLid, minVisibleLid == long.MaxValue ? null : minVisibleLid);
+                    oldBoundary, minVisibleLid == long.MaxValue ? null : minVisibleLid);
+                // A reveal is a temporary peek. Latch that the viewport entered the revealed region (above
+                // the governed boundary); once the reader scrolls back down so every revealed row is above
+                // the viewport again, re-swallow them - the block re-compacts on return to the live tail.
+                if (chatState.RevealedBoundaryLid != long.MaxValue && minVisibleLid != long.MaxValue) {
+                    if (minVisibleLid < oldBoundary)
+                        chatState.RevealScrolledInto = true;
+                    else if (chatState.RevealScrolledInto) {
+                        chatState.RevealedBoundaryLid = long.MaxValue;
+                        chatState.RevealScrolledInto = false;
+                        clearedReveal = true;
+                    }
+                }
                 state = new LiveBlockState(boundaryLid, null, chatState.WasAttending);
             }
 
             if (!Equals(chatState.State.Value, state))
                 chatState.State.Value = state;
-            return wakeAt;
         }
+        if (clearedReveal)
+            using (Invalidation.Begin())
+                _ = GetBlockState(chatId, default);
+        return wakeAt;
     }
 
     private void CleanupOtherChats(ChatId selectedChatId)
@@ -386,6 +406,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         public bool DissolveDone;
         public FrozenTemplate? Template;
         public long RevealedBoundaryLid = long.MaxValue;
+        public bool RevealScrolledInto;
     }
 
     private sealed record FrozenTemplate(

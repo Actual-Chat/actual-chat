@@ -124,8 +124,8 @@
    c-live-card is the relative anchor. Mirrors navigate-to-end's floating pill (modal surface tokens). */
 .c-lc-showmore {
     @apply absolute left-1/2 bottom-0 z-button;
-    @apply flex-x items-center gap-x-1;
-    @apply px-3 h-7 rounded-full;
+    @apply flex-x items-center gap-x-1 whitespace-nowrap;
+    @apply px-2.5 h-6 rounded-full;
     @apply border border-modal bg-modal shadow-modal-wide;
     @apply text-caption-1 text-[var(--cr-item-badge-selected-text)];
     transform: translate(-50%, 50%);
