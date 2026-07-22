@@ -148,6 +148,18 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             : ToMapMarker(location, author);
     }
 
+    [ComputeMethod]
+    public virtual async Task<GeoPoint?> GetCurrentLocation(CancellationToken cancellationToken)
+    {
+        if (Tracker.LastKnown.ValueOrDefault is { } lastKnown)
+            return lastKnown;
+
+        if (await LocationPermission.Check(cancellationToken).ConfigureAwait(false) != true)
+            return null;
+
+        return await Tracker.Get(false, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<MapMarker> GetOwnMarker(ChatId chatId, GeoPoint point, CancellationToken cancellationToken)
     {
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
