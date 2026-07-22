@@ -318,11 +318,12 @@ body.hoverable .conversation-attachments .image-attachment:hover {
             var(--violet-60) 0%, var(--violet-60) 50%, var(--c-live-tint, rgba(166, 53, 255, 0.1)) 100%) border-box;
 }
 
-/* Unjoined live block: the same unified shell, but painted with the flat unjoined gradient and no
-   violet outline. The extra :has() outranks the joined tint rule above so it wins whenever the block
-   carries a not-yet-joined live card. */
-.virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live:not(.joined)),
-.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header):has(.conversation-message.live:not(.joined)) {
+/* Unjoined (never-attended) live block: the same unified shell, but painted with the flat unjoined
+   gradient and no violet outline. Keyed on the header's Join button - which shows ONLY for the
+   never-attended block - so a leaver's frozen block (which shows the expand chevron, not Join) keeps
+   the joined violet tint. The extra .c-lc-join in the :has() also outranks the joined tint rule above,
+   so this wins whenever it matches. */
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header .c-lc-join) {
     isolation: isolate;
     @apply rounded-2xl;
     background: linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%);
