@@ -108,13 +108,8 @@
             return ComputedModel.None with { MapType = mapType };
 
         var ownLocation = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-        var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
-        var ownPoint = livePoint
-            ?? ownLocation?.Point
-            ?? await Tracker.Get(cancellationToken: cancellationToken).ConfigureAwait(false);
-        var ownMarker = ownPoint is not null
-            ? await LocationUI.GetOwnMarker(chatId, ownPoint, cancellationToken).ConfigureAwait(false)
-            : null;
+        var ownPoint = await LocationUI.GetOwnPoint(chatId, cancellationToken).ConfigureAwait(false);
+        var ownMarker = await LocationUI.GetOwnMarker(chatId, cancellationToken).ConfigureAwait(false);
         var clicked = ModalModel.LocationId is { } id ? participants.FirstOrDefault(x => x.Location.Id == id) : null;
         var center = clicked?.Location ?? ownLocation ?? participants[0].Location;
         return new ComputedModel(participants, ownPoint, ownMarker, center.Point, mapType, isMapTypeMenuOpen);

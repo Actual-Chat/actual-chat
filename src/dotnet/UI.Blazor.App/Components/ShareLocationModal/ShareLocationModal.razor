@@ -82,7 +82,6 @@
 </DialogFrame>
 
 @code {
-    private MutableState<GeoPoint?> _currentLocation = null!;
     private MutableState<MapType> _mapType = null!;
     private MutableState<bool> _isMapTypeMenuOpen = null!;
     private MutableState<bool> _isDurationMenuOpen = null!;
@@ -95,9 +94,6 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized() {
-        _currentLocation = StateFactory.NewMutable(
-            (GeoPoint?)null,
-            StateCategories.Get(GetType(), nameof(_currentLocation)));
         _mapType = StateFactory.NewMutable(
             MapType.Map,
             StateCategories.Get(GetType(), nameof(_mapType)));
@@ -107,7 +103,6 @@
         _isDurationMenuOpen = StateFactory.NewMutable(
             false,
             StateCategories.Get(GetType(), nameof(_isDurationMenuOpen)));
-        _ = FetchCurrentLocation();
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -119,24 +114,14 @@
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
-        var currentPoint = await _currentLocation.Use(cancellationToken).ConfigureAwait(false);
+        var ownMarker = await LocationUI.GetOwnMarker(ModalModel.ChatId, cancellationToken).ConfigureAwait(false);
         var mapType = await _mapType.Use(cancellationToken).ConfigureAwait(false);
         var isMapTypeMenuOpen = await _isMapTypeMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var isDurationMenuOpen = await _isDurationMenuOpen.Use(cancellationToken).ConfigureAwait(false);
-        var ownPoint = livePoint ?? currentPoint;
-        var ownMarker = ownPoint is not null
-            ? await LocationUI.GetOwnMarker(ModalModel.ChatId, ownPoint, cancellationToken).ConfigureAwait(false)
-            : null;
         return new ComputedModel(ownMarker, mapType, isMapTypeMenuOpen, isDurationMenuOpen);
     }
 
     // Private methods
-
-    private async Task FetchCurrentLocation() {
-        if (await Tracker.Get(force: true).ConfigureAwait(false) is { } point)
-            _currentLocation.Value = point;
-    }
 
     private void OnClose()
         => Modal.Close();
@@ -172,7 +157,6 @@
         if (await Tracker.Get(force: true).ConfigureAwait(true) is not { } point)
             return;
 
-        _currentLocation.Value = point;
         if (_mapView is { } mapView)
             await mapView.FlyTo(point).ConfigureAwait(false);
     }
