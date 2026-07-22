@@ -3,9 +3,12 @@
 
 <div class="location-participant-menu">
     <MenuEntry
-        Icon="icon-map-point"
         Text="Open in Google Maps"
-        Click="@OnOpenInGoogleMaps"/>
+        Click="@OnOpenInGoogleMaps">
+        <IconContent>
+            <img class="c-google-maps-icon" src="/dist/images/google-maps-pin.png" alt="" draggable="false"/>
+        </IconContent>
+    </MenuEntry>
     <MenuEntry
         Icon="icon-copy"
         Text="Copy location link"
