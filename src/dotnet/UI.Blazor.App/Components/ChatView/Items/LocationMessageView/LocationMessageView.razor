@@ -89,7 +89,7 @@
         if (location is null)
             return null;
 
-        var marker = await LocationUI.GetMapMarker(chatId, locationId, cancellationToken).ConfigureAwait(false)
+        var marker = await LocationUI.GetMarker(chatId, locationId, cancellationToken).ConfigureAwait(false)
             ?? new MapMarker(location.Id.Value, location.Point);
         var countdown = await LocationUI.GetCountdown(chatId, locationId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
