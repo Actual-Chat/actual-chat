@@ -38,6 +38,7 @@ public static class MentionCandidateFilters
         foreach (var c in candidates) {
             if (!filter.Invoke(c))
                 continue;
+
             if (!searchQuery.IsEmpty && !c.SearchDocument.IsMatch(searchQuery))
                 continue;
 
@@ -45,7 +46,7 @@ public static class MentionCandidateFilters
             matched.Add((c, c.SearchDocument.GetCoverageScore(searchQuery), recency));
         }
 
-        if (searchQuery.IsEmpty)
+        if (searchQuery.IsEmpty) {
             // Default view (just "@"): recents first (most relevant first), then the rest by kind.
             matched.Sort(static (a, b) => {
                 var recencyCmp = b.Recency.CompareTo(a.Recency);
@@ -54,7 +55,8 @@ public static class MentionCandidateFilters
 
                 return CompareByKind(a, b);
             });
-        else
+        }
+        else {
             // Typed query: kind, membership, then coverage with an additive recency boost.
             matched.Sort(static (a, b) => {
                 var kindCmp = GetKindBasedRank(a.Candidate).CompareTo(GetKindBasedRank(b.Candidate));
@@ -72,6 +74,7 @@ public static class MentionCandidateFilters
 
                 return string.CompareOrdinal(a.Candidate.Title, b.Candidate.Title);
             });
+        }
 
         var take = Math.Min(limit, matched.Count);
         var result = new MentionCandidate[take];
@@ -80,22 +83,36 @@ public static class MentionCandidateFilters
         return result.ToApiArray(makeCopy: false);
     }
 
+    public static int CompareByDefaultOrder(MentionCandidate a, MentionCandidate b)
+    {
+        // The empty-query order: kind, membership, then title.
+        var kindCmp = GetKindBasedRank(a).CompareTo(GetKindBasedRank(b));
+        if (kindCmp != 0)
+            return kindCmp;
+
+        var memberCmp = b.IsChatMember.CompareTo(a.IsChatMember);
+        if (memberCmp != 0)
+            return memberCmp;
+
+        return string.CompareOrdinal(a.Title, b.Title);
+    }
+
+    public static List<MentionCandidate> TopByDefaultOrder(
+        this IReadOnlyCollection<MentionCandidate> candidates, int limit)
+    {
+        var sorted = new List<MentionCandidate>(candidates);
+        sorted.Sort(CompareByDefaultOrder);
+        if (sorted.Count > limit)
+            sorted.RemoveRange(limit, sorted.Count - limit);
+        return sorted;
+    }
+
     // Private methods
 
     private static int CompareByKind(
         (MentionCandidate Candidate, double Coverage, double Recency) a,
         (MentionCandidate Candidate, double Coverage, double Recency) b)
-    {
-        var kindCmp = GetKindBasedRank(a.Candidate).CompareTo(GetKindBasedRank(b.Candidate));
-        if (kindCmp != 0)
-            return kindCmp;
-
-        var memberCmp = b.Candidate.IsChatMember.CompareTo(a.Candidate.IsChatMember);
-        if (memberCmp != 0)
-            return memberCmp;
-
-        return string.CompareOrdinal(a.Candidate.Title, b.Candidate.Title);
-    }
+        => CompareByDefaultOrder(a.Candidate, b.Candidate);
 
     private static int GetKindBasedRank(MentionCandidate candidate)
     {

@@ -3,10 +3,8 @@
 @inherits ComputedStateComponent<AppUIHub, FoundMention[]>
 @{
     var mentions = State.Value;
-    var isPickerActive = Filter.Value != null;
+    var isPickerActive = _isOpen;
     var hasNoMatch = !_loading && isPickerActive && mentions.Length == 0;
-    // Hidden only when the picker isn't active; during loading the picker is already active
-    // (Show() sets Filter before the first skeleton render), so isPickerActive covers skeletons too.
     var listCls = isPickerActive ? "" : " non-visible";
     var selection = Selection;
     var categoryFilter = Manager.Filter.Value;
@@ -76,7 +74,11 @@
                             var emoji = Emojis.ById.GetValueOrDefault(emojiRef.Text);
                             <span class="mention-list-emoji">
                                 @if (emoji is not null) {
-                                    <EmojiIcon Emoji="@emoji" Class="mention-list-emoji-icon" HasPreview="false" InlineAnimate="true"/>
+                                    <EmojiIcon
+                                        Emoji="@emoji"
+                                        Class="mention-list-emoji-icon"
+                                        HasPreview="false"
+                                        InlineAnimate="true"/>
                                 }
                             </span>
                         } else {
@@ -123,6 +125,8 @@
     private string? _lastFilter;
     private FoundMention? _selection;
     private bool _loading;
+    private bool _isOpen;
+    private readonly GatedUpdateDelayer _updateDelayer = new(FixedDelayer.NextTick);
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
@@ -135,6 +139,7 @@
         set {
             if (_selection == value)
                 return;
+
             _selection = FixSelection(value, State.Value);
             StateHasChanged();
             _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
@@ -163,12 +168,12 @@
     }
 
     protected override ComputedState<FoundMention[]>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<FoundMention[]>.Options() {
-                InitialValue = [],
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = GetStateCategory(t),
-            });
+        // Per-instance options: the gated delayer pauses recomputation while the list is hidden.
+        => new() {
+            InitialValue = [],
+            UpdateDelayer = _updateDelayer,
+            Category = GetStateCategory(GetType()),
+        };
 
     protected override async Task<FoundMention[]> ComputeState(CancellationToken cancellationToken) {
         var managerLimit = Manager.Limit;
@@ -192,13 +197,23 @@
         return mentions;
     }
 
-    // Shows default-height skeletons on first open so the list appears instantly instead of
-    // after the candidate build. Later keystrokes re-rank the cached candidates fast, so we
-    // keep the current rows rather than flashing skeletons. Cleared at the end of ComputeState.
-    public void BeginLoading(bool isFirstOpen) {
-        if (!isFirstOpen)
-            return;
-        _loading = true;
+    public void Open(bool isFirstOpen) {
+        // Skeletons show only until the first-ever compute in this chat; reopens render the
+        // still-mounted rows instantly, and the opened gate lets a stale value refresh in place.
+        _isOpen = true;
+        _updateDelayer.Open();
+        if (isFirstOpen)
+            _loading = true;
+        StateHasChanged();
+    }
+
+    public void Close() {
+        // Keeps the default view mounted and its Computed<T> referenced, but pauses updates:
+        // invalidations while hidden don't recompute anything until the next Open().
+        _isOpen = false;
+        _updateDelayer.Close();
+        if (Filter.Value != null)
+            Filter.Value = "";
         StateHasChanged();
     }
 
@@ -208,6 +223,7 @@
         var selectionIndex = Array.IndexOf(mentions, selection) + offset;
         if (selectionIndex < 0 || selectionIndex >= mentions.Length)
             return;
+
         _selection = mentions[selectionIndex];
         StateHasChanged();
         _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");

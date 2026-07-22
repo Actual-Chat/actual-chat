@@ -6,10 +6,19 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <summary>
 /// Scoped UI service for in-memory local search over the current user's contacts, chat
 /// authors, places and emojis. Each <c>ListXxx</c> compute method returns its natural type;
-/// the <c>ListMentionCandidates</c> overloads union them into the mention picker's pool.
+/// <c>ListMentionCandidates</c> unions the per-category candidate lists into the mention
+/// picker's pool, and <see cref="ListDefaultMentions"/> precomputes the empty-query view.
 /// </summary>
 public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
+    public const int DefaultViewLimit = 30;
+
+    private static readonly ApiArray<MentionCandidate> EmojiCandidates =
+        Emojis.All.Select(ToEmojiCandidate).ToApiArray();
+    // Keeps the curated catalog order, so no TopByDefaultOrder here.
+    private static readonly ApiArray<MentionCandidate> TopEmojiCandidates =
+        EmojiCandidates.Take(DefaultViewLimit).ToApiArray();
+
     private IAuthors Authors => Hub.Authors;
     private IContacts Contacts => Hub.Contacts;
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
@@ -23,24 +32,26 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         int limit,
         CancellationToken cancellationToken)
     {
+        // The empty-query views are served from the precomputed per-category top lists.
+        if (query.IsNullOrEmpty()) {
+            FoundMention[]? mentions = null;
+            if (ReferenceEquals(filter, MentionCandidateFilters.All))
+                mentions = await ListDefaultMentions(chatId, cancellationToken).ConfigureAwait(false);
+            else if (ReferenceEquals(filter, MentionCandidateFilters.User))
+                mentions = await BuildDefaultView(chatId, true, false, false, cancellationToken).ConfigureAwait(false);
+            else if (ReferenceEquals(filter, MentionCandidateFilters.Chat))
+                mentions = await BuildDefaultView(chatId, false, true, false, cancellationToken).ConfigureAwait(false);
+            else if (ReferenceEquals(filter, MentionCandidateFilters.Emoji))
+                mentions = await BuildDefaultView(chatId, false, false, true, cancellationToken).ConfigureAwait(false);
+            if (mentions != null)
+                return mentions.Length <= limit ? mentions : mentions[..limit];
+        }
+
         var candidates = await ListMentionCandidates(chatId, cancellationToken).ConfigureAwait(false);
         var recencyScores = RecentMentionsUI.GetScores();
         candidates = candidates.FilterAndRank(filter, query, limit, recencyScores);
-
-        var searchQuery = new SearchQuery(query);
         var placeId = (chatId as PlaceChatId)?.PlaceId;
-        var result = new FoundMention[candidates.Count];
-        for (var i = 0; i < candidates.Count; i++) {
-            var c = candidates[i];
-            var picture = c.Picture ?? new Picture(null, null, c.Title);
-            var (description, mentionName) = Describe(c, placeId);
-            result[i] = new FoundMention(c.Id, new SearchMatch(c.Title, searchQuery), picture) {
-                IsChatMember = c.IsChatMember,
-                Description = description,
-                MentionName = mentionName,
-            };
-        }
-        return result;
+        return ToFoundMentions(candidates, query, placeId);
     }
 
     public async Task<IReadOnlyList<FoundContact>> FindContacts(
@@ -67,21 +78,48 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             .ToList();
     }
 
+    [ComputeMethod(MinCacheDuration = 300)]
+    public virtual async Task<FoundMention[]> ListDefaultMentions(ChatId? chatId, CancellationToken cancellationToken)
+        => await BuildDefaultView(chatId, true, true, true, cancellationToken).ConfigureAwait(false);
+
     [ComputeMethod]
     public virtual async Task<ApiArray<MentionCandidate>> ListMentionCandidates(
         ChatId? chatId,
         CancellationToken cancellationToken)
     {
-        if (chatId is null)
-            return await ListMentionCandidatesWithEmoji(cancellationToken).ConfigureAwait(false);
-
-        var ownUserId = await GetOwnUserId(cancellationToken).ConfigureAwait(false);
-        var authors = await ListAuthors(chatId, cancellationToken).ConfigureAwait(false);
-        var rest = await ListMentionCandidatesWithEmoji(cancellationToken).ConfigureAwait(false);
-        var result = new List<MentionCandidate>();
+        var members = chatId is { } memberChatId
+            ? await ListMemberCandidates(memberChatId, cancellationToken).ConfigureAwait(false)
+            : ApiArray<MentionCandidate>.Empty;
+        var users = await ListUserCandidates(cancellationToken).ConfigureAwait(false);
+        var groups = await ListGroupCandidates(cancellationToken).ConfigureAwait(false);
 
         // Each chat member gets a single candidate; its contact-list duplicate is dropped.
         var memberUserIds = new HashSet<UserId>();
+        foreach (var member in members) {
+            if (member.Id.Target is UserId userId)
+                memberUserIds.Add(userId);
+        }
+
+        var result = new List<MentionCandidate>(members.Count + users.Count + groups.Count + EmojiCandidates.Count);
+        result.AddRange(members);
+        foreach (var candidate in users) {
+            if (candidate.Id.Target is UserId userId && memberUserIds.Contains(userId))
+                continue;
+
+            result.Add(candidate);
+        }
+        result.AddRange(groups);
+        result.AddRange(EmojiCandidates);
+        return result.ToApiArray();
+    }
+
+    [ComputeMethod(MinCacheDuration = 300)]
+    public virtual async Task<ApiArray<MentionCandidate>> ListMemberCandidates(
+        ChatId chatId, CancellationToken cancellationToken)
+    {
+        var ownUserId = await GetOwnUserId(cancellationToken).ConfigureAwait(false);
+        var authors = await ListAuthors(chatId, cancellationToken).ConfigureAwait(false);
+        var result = new List<MentionCandidate>();
         foreach (var (author, account) in authors) {
             if (account is null) {
                 // Anonymous author — no account, so it gets an author-scoped mention.
@@ -91,39 +129,17 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             if (account.Id == ownUserId || account.IsGuest)
                 continue;
 
-            memberUserIds.Add(account.Id);
             result.Add(ToMemberCandidate(author, account));
         }
-        foreach (var candidate in rest) {
-            if (candidate.Id.Target is UserId userId && memberUserIds.Contains(userId))
-                continue;
-
-            result.Add(candidate);
-        }
         return result.ToApiArray();
     }
 
-    [ComputeMethod]
-    public virtual async Task<ApiArray<MentionCandidate>> ListMentionCandidatesWithEmoji(
-        CancellationToken cancellationToken)
-    {
-        var candidates = await ListMentionCandidates(cancellationToken).ConfigureAwait(false);
-        var result = new List<MentionCandidate>(candidates);
-        foreach (var emoji in Emojis.All)
-            result.Add(ToEmojiCandidate(emoji));
-        return result.ToApiArray();
-    }
-
-    [ComputeMethod]
-    public virtual async Task<ApiArray<MentionCandidate>> ListMentionCandidates(CancellationToken cancellationToken)
+    [ComputeMethod(MinCacheDuration = 600)]
+    public virtual async Task<ApiArray<MentionCandidate>> ListUserCandidates(CancellationToken cancellationToken)
     {
         var ownUserId = await GetOwnUserId(cancellationToken).ConfigureAwait(false);
         var users = await ListUsers(cancellationToken).ConfigureAwait(false);
-        var chats = await ListChats(cancellationToken).ConfigureAwait(false);
-        var places = await ListPlaces(cancellationToken).ConfigureAwait(false);
         var result = new List<MentionCandidate>();
-
-        // Users
         foreach (var (contact, account) in users) {
             if (account.Id == ownUserId)
                 continue;
@@ -131,19 +147,23 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             var name = contact.PreferredPeerName.NullIfEmpty() ?? account.Avatar.Name;
             result.Add(ToUserCandidate(account.Id, name, account, isChatMember: false));
         }
+        return result.ToApiArray();
+    }
 
-        // Chats
+    [ComputeMethod(MinCacheDuration = 600)]
+    public virtual async Task<ApiArray<MentionCandidate>> ListGroupCandidates(CancellationToken cancellationToken)
+    {
+        var chats = await ListChats(cancellationToken).ConfigureAwait(false);
+        var places = await ListPlaces(cancellationToken).ConfigureAwait(false);
+        var result = new List<MentionCandidate>();
         foreach (var chat in chats)
             result.Add(ToChatCandidate(chat));
-
-        // Place chats
         foreach (var place in places) {
             result.Add(ToPlaceCandidate(place));
             var placeChats = await ListPlaceChats(place.Id, cancellationToken).ConfigureAwait(false);
             foreach (var chat in placeChats)
                 result.Add(ToPlaceChatCandidate(chat, place));
         }
-
         return result.ToApiArray();
     }
 
@@ -298,6 +318,85 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     }
 
     // Private methods
+
+    private async Task<FoundMention[]> BuildDefaultView(
+        ChatId? chatId,
+        bool withUsers,
+        bool withGroups,
+        bool withEmojis,
+        CancellationToken cancellationToken)
+    {
+        // The empty-query view: recents first, then per-category tops merged in the default order.
+        var members = withUsers && chatId is { } memberChatId
+            ? await ListMemberCandidates(memberChatId, cancellationToken).ConfigureAwait(false)
+            : ApiArray<MentionCandidate>.Empty;
+        var users = withUsers
+            ? await ListUserCandidates(cancellationToken).ConfigureAwait(false)
+            : ApiArray<MentionCandidate>.Empty;
+        var groups = withGroups
+            ? await ListGroupCandidates(cancellationToken).ConfigureAwait(false)
+            : ApiArray<MentionCandidate>.Empty;
+        var emojis = withEmojis ? EmojiCandidates : ApiArray<MentionCandidate>.Empty;
+
+        var recentMentions = await RecentMentionsUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        var recencyScores = recentMentions.GetScores(Clocks.SystemClock.Now);
+        var recents = new List<(MentionCandidate Candidate, double Score)>();
+        if (recencyScores.Count != 0) {
+            var seen = new HashSet<MentionRef>();
+            foreach (var list in (ApiArray<MentionCandidate>[])[members, users, groups, emojis]) {
+                foreach (var candidate in list) {
+                    if (recencyScores.TryGetValue(candidate.Id, out var score) && seen.Add(candidate.Id))
+                        recents.Add((candidate, score));
+                }
+            }
+            recents.Sort(static (a, b) => b.Score.CompareTo(a.Score));
+        }
+
+        var result = new List<MentionCandidate>(DefaultViewLimit);
+        var used = new HashSet<MentionRef>();
+        foreach (var (candidate, _) in recents) {
+            if (result.Count >= DefaultViewLimit)
+                break;
+
+            if (used.Add(candidate.Id))
+                result.Add(candidate);
+        }
+        foreach (var top in (IReadOnlyList<MentionCandidate>[])[
+            members.TopByDefaultOrder(DefaultViewLimit),
+            users.TopByDefaultOrder(DefaultViewLimit),
+            groups.TopByDefaultOrder(DefaultViewLimit),
+            withEmojis ? TopEmojiCandidates : ApiArray<MentionCandidate>.Empty,
+        ]) {
+            foreach (var candidate in top) {
+                if (result.Count >= DefaultViewLimit)
+                    break;
+
+                if (used.Add(candidate.Id))
+                    result.Add(candidate);
+            }
+        }
+
+        var placeId = (chatId as PlaceChatId)?.PlaceId;
+        return ToFoundMentions(result, "", placeId);
+    }
+
+    private static FoundMention[] ToFoundMentions(
+        IReadOnlyList<MentionCandidate> candidates, string query, PlaceId? placeId)
+    {
+        var searchQuery = new SearchQuery(query);
+        var result = new FoundMention[candidates.Count];
+        for (var i = 0; i < candidates.Count; i++) {
+            var c = candidates[i];
+            var picture = c.Picture ?? new Picture(null, null, c.Title);
+            var (description, mentionName) = Describe(c, placeId);
+            result[i] = new FoundMention(c.Id, new SearchMatch(c.Title, searchQuery), picture) {
+                IsChatMember = c.IsChatMember,
+                Description = description,
+                MentionName = mentionName,
+            };
+        }
+        return result;
+    }
 
     private async Task<UserId?> GetOwnUserId(CancellationToken cancellationToken)
     {

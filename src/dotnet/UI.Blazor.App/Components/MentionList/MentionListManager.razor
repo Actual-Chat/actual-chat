@@ -7,9 +7,9 @@
     @ChildContent
 </CascadingValue>
 
-
 @code {
     private string _cls = "";
+    private bool _hasOpened;
 
     [Inject] protected StateFactory StateFactory { get; init; } = null!;
     [Inject] protected LocalSearchUI LocalSearchUI { get; init; } = null!;
@@ -33,22 +33,22 @@
     public void SelectMention(FoundMention mention)
         => MentionSelected?.Invoke(mention);
 
-    public void Show(string filter)
-    {
+    public void Show(string filter) {
         if (ListRef != null) {
-            var isFirstOpen = _cls != "show-mention-list";
-            if (isFirstOpen)
+            if (_cls != "show-mention-list")
                 Filter.Value = MentionCandidateFilters.All;
             _cls = "show-mention-list";
-            ListRef.BeginLoading(isFirstOpen);
+            // The filter is set before Open() so the very first visible frame renders with it.
             ListRef.Filter.Value = filter;
+            ListRef.Open(isFirstOpen: !_hasOpened);
+            _hasOpened = true;
             StateHasChanged();
         }
     }
 
     public void Hide() {
         if (ListRef != null) {
-            ListRef.Filter.Value = null;
+            ListRef.Close();
             _cls = "";
             StateHasChanged();
         }

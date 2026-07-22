@@ -133,6 +133,38 @@ public class MentionCandidateFiltersTest(ITestOutputHelper @out) : TestBase(@out
         result.Select(x => x.Title).Take(2).Should().Equal("Cleo", "Anna");
     }
 
+    [Fact]
+    public void TopByDefaultOrderSortsByKindMembershipAndTitle()
+    {
+        // arrange
+        var pool = new[] {
+            Emoji("Smile face"),
+            Chat("Alpha chat"),
+            User("Zoe", UserId.New(), isMember: true),
+            User("Bella", UserId.New()),
+            User("Adam", UserId.New()),
+        };
+
+        // act
+        var top = pool.TopByDefaultOrder(10);
+
+        // assert
+        top.Select(c => c.Title).Should().Equal("Zoe", "Adam", "Bella", "Alpha chat", "Smile face");
+    }
+
+    [Fact]
+    public void TopByDefaultOrderTruncatesToLimit()
+    {
+        // arrange
+        var pool = Enumerable.Range(0, 10).Select(i => User($"User{i:00}", UserId.New())).ToArray();
+
+        // act
+        var top = pool.TopByDefaultOrder(3);
+
+        // assert
+        top.Select(c => c.Title).Should().Equal("User00", "User01", "User02");
+    }
+
     private static MentionCandidate User(string name)
         => new(
             MentionRef.NewUser(AnyUser),
