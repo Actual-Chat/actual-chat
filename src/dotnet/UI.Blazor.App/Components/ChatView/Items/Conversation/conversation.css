@@ -40,6 +40,16 @@
 .virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) .c-live-card {
     @apply pt-0;
 }
+/* When expanded, the split header carries the title so the card renders empty (no .c-live-card child).
+   The item's default min-h-6 would then leave a gap between the header and the first message - collapse
+   the empty card and its item to zero. The :not(:has(.c-live-card)) guard leaves the collapsed card
+   (which still has content) untouched. */
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) .item:has(> .conversation-message.live:empty) {
+    @apply min-h-0;
+}
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) .conversation-message.live:empty {
+    @apply min-h-0 mb-0;
+}
 .c-live-card .c-lc-title {
     @apply flex-x items-center gap-x-3;
 }
@@ -383,6 +393,11 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    breathing room from the border. No "Live" label here; the live state reads from the header alone. */
 .live-conversation-footer {
     @apply h-3 rounded-b-2xl;
+}
+/* The footer band is 0.75rem; without this its item keeps the default min-h-6, leaving ~12px of dead
+   space between the last message and the rounded bottom. Collapse the item so the footer sits flush. */
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) .item:has(> .live-conversation-footer) {
+    @apply min-h-0;
 }
 
 /* Tier-1 dissolve: a too-short session leaves no card, so its block fades + collapses its chrome
