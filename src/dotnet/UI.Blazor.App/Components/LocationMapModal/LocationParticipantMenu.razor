@@ -7,10 +7,6 @@
         Text="Open in Google Maps"
         Click="@OnOpenInGoogleMaps"/>
     <MenuEntry
-        Icon="icon-map"
-        Text="Open in OpenStreetMap"
-        Click="@OnOpenInOpenStreetMap"/>
-    <MenuEntry
         Icon="icon-copy"
         Text="Copy location link"
         Click="@OnCopyLink"/>
@@ -37,14 +33,6 @@
 
         await WhenClosed.ConfigureAwait(true);
         await JS.OpenNewWindow(point.ToGoogleMapsUrl()).ConfigureAwait(false);
-    }
-
-    private async Task OnOpenInOpenStreetMap() {
-        if (await GetPoint().ConfigureAwait(true) is not { } point)
-            return;
-
-        await WhenClosed.ConfigureAwait(true);
-        await JS.OpenNewWindow(point.ToOpenStreetMapUrl()).ConfigureAwait(false);
     }
 
     private async Task OnCopyLink() {
