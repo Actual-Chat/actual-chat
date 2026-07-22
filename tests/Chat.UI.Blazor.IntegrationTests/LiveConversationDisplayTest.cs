@@ -1167,6 +1167,77 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task RevealReSwallowsOnReturnToTail()
+    {
+        // §7: a reveal is a temporary peek - once the reader scrolls back down so every revealed row is
+        // above the viewport again, the governor re-swallows them (clears the reveal). A "scrolled-into"
+        // latch keeps it from re-collapsing before the reader has actually entered the revealed region.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "reveal-reswallow-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_411);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+        for (var i = 0; i < 20; i++)
+            await Tester.CreateTextEntry(chat.Id, $"m-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await chatAudioUI.SetRecordingChatId(chat.Id);
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        void SetViewportTop(long lid)
+            => chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+                chat.Id,
+                new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, lid) },
+                false);
+
+        // drive the fold boundary up to the live tail
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var tailTop = idRange.End - 1;
+        SetViewportTop(tailTop);
+        long boundary = 0;
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.FoldBoundaryLid.Should().BeGreaterThan(v + 5);
+            boundary = s.FoldBoundaryLid;
+        }, TimeSpan.FromSeconds(15));
+
+        // reveal a batch
+        await liveBlockUI.RevealMore(chat.Id);
+        long revealed = 0;
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.RevealedBoundaryLid.Should().BeLessThan(boundary, "reveal retreats below the boundary");
+            revealed = s.RevealedBoundaryLid;
+        }, TimeSpan.FromSeconds(10));
+
+        // scroll UP into the revealed region: the reveal must persist (only the latch flips here)
+        SetViewportTop(revealed);
+        await Task.Delay(500);
+        var whileReading = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
+        whileReading.RevealedBoundaryLid.Should().Be(revealed,
+            "the reveal persists while the reader is inside the revealed region");
+
+        // scroll back DOWN to the live tail: every revealed row is now above the viewport -> re-swallow
+        SetViewportTop(tailTop);
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.RevealedBoundaryLid.Should().Be(long.MaxValue,
+                "returning to the live tail re-swallows the revealed batch");
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task RevealMoreSurvivesLeaveFreeze()
     {
         // §7 cross-task fix: a revealed batch must survive the freeze on leave/close - DeriveOverlay
