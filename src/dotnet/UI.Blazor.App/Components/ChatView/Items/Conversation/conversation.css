@@ -321,8 +321,13 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    so this wins whenever it matches. */
 .virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header .c-lc-join) {
     isolation: isolate;
-    @apply rounded-2xl;
-    background: linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%);
+    @apply rounded-2xl border border-solid border-transparent;
+    background:
+        linear-gradient(249deg,
+            rgba(228, 62, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(228, 62, 255, 0.12) 97%) padding-box,
+        linear-gradient(var(--background-01), var(--background-01)) padding-box,
+        linear-gradient(to bottom,
+            var(--purple-60) 0%, var(--purple-60) 50%, rgba(228, 62, 255, 0.12) 100%) border-box;
 }
 
 /* Mirrors virtual-list.css's .item:has(.conversation-header) rule - that one only matches the literal
@@ -341,6 +346,14 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     background:
         linear-gradient(249deg,
             rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%),
+        linear-gradient(var(--background-01), var(--background-01));
+}
+/* Unjoined header shares the block's magenta tint instead of the joined violet, so the sticky header,
+   body, and faded preview all read as one surface. Keyed on its own Join button. */
+.virtual-list .c-virtual-container .live-conversation-header:has(.c-lc-join) {
+    background:
+        linear-gradient(249deg,
+            rgba(228, 62, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(228, 62, 255, 0.12) 97%),
         linear-gradient(var(--background-01), var(--background-01));
 }
 .live-conversation-header .c-lc-name {

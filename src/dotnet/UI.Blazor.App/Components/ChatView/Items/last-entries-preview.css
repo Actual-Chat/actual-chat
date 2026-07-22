@@ -2,7 +2,6 @@
     @apply flex-y gap-y-2;
 }
 .last-entries-preview.faded {
-    position: relative;
     width: 100%;
     height: 8.25rem;              /* fixed: ~5 lines; incoming messages don't grow the block */
     overflow: hidden;
@@ -11,16 +10,10 @@
     justify-content: flex-end;    /* newest line fully visible at the bottom */
     padding-bottom: 0.375rem;
     gap: 0;
-}
-.last-entries-preview.faded::before {   /* older lines fade out under the card */
-    content: "";
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 3.75rem;
-    z-index: 2;
-    pointer-events: none;
-    /* Fade colour reads over the live tint (pink for unjoined); tune the exact shade in the visual pass. */
-    background: linear-gradient(to bottom, var(--background-01) 0%, transparent 100%);
+    /* Fade the top rows out with a content mask (not a colour overlay), so the block's own tint shows
+       through uniformly - no fade colour to match, works over any tint in either theme. */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 3.75rem);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 3.75rem);
 }
 /* Fixed row height + a one-line clamp: the host block can't change height as entries stream in or
    replace each other, however much anyone says. */
