@@ -369,6 +369,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             ? overrides.Remove(conversationId)
             : overrides.Add(conversationId);
         _conversationExpansionOverrides.Value = overrides;
+        Hub.LiveBlockUI.ResetReveal(conversationId.ChatId);
     }
 
     public bool IsConversationExpanded(Conversation conversation)

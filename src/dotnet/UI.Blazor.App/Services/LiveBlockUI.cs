@@ -19,7 +19,11 @@ public sealed record LiveBlockOverlay(
     bool IsDissolving = false);
 
 public sealed record LiveBlockState(
-    long FoldBoundaryLid, LiveBlockOverlay? Overlay, bool WasAttending = false, bool IsDissolving = false)
+    long FoldBoundaryLid,
+    LiveBlockOverlay? Overlay,
+    bool WasAttending = false,
+    bool IsDissolving = false,
+    long RevealedBoundaryLid = long.MaxValue)
 {
     public static readonly LiveBlockState None = new(0, null);
 }
@@ -58,7 +62,58 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         lock (Lock)
             return baseState with {
                 Overlay = DeriveOverlay(chatState, baseState.FoldBoundaryLid, raw, amInLive),
+                RevealedBoundaryLid = chatState.RevealedBoundaryLid,
             };
+    }
+
+    public async Task RevealMore(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        ChatFoldState chatState;
+        long v, effectiveBoundary;
+        lock (Lock) {
+            if (!_chatStates.TryGetValue(chatId, out var s) || s.Template is not { } t)
+                return;
+            chatState = s;
+            v = t.V;
+            effectiveBoundary = Math.Min(chatState.State.Value.FoldBoundaryLid, chatState.RevealedBoundaryLid);
+        }
+        if (effectiveBoundary <= v)
+            return;
+
+        var visibleCount = Hub.ChatUI.ItemVisibility.Value.VisibleMessageLids.Count;
+        var batch = Math.Max(5, ((visibleCount + 4) / 5) * 5);
+
+        // Walk back `batch` real messages from just below the current effective boundary; the batch-th
+        // one becomes the new revealed boundary (clamped to V when fewer remain).
+        var revealed = v;
+        using (Computed.BeginIsolation()) {
+            var taken = 0;
+            await foreach (var entry in Chats.ReadReverse(Session, chatId, cancellationToken).ConfigureAwait(false)) {
+                if (entry.LocalId >= effectiveBoundary || entry.IsSystemEntry)
+                    continue;
+                if (entry.LocalId < v)
+                    break;
+                revealed = entry.LocalId;
+                if (++taken >= batch)
+                    break;
+            }
+        }
+
+        lock (Lock)
+            chatState.RevealedBoundaryLid = Math.Min(chatState.RevealedBoundaryLid, revealed);
+        using (Invalidation.Begin())
+            _ = GetBlockState(chatId, default);
+    }
+
+    public void ResetReveal(ChatId chatId)
+    {
+        lock (Lock) {
+            if (!_chatStates.TryGetValue(chatId, out var chatState) || chatState.RevealedBoundaryLid == long.MaxValue)
+                return;
+            chatState.RevealedBoundaryLid = long.MaxValue;
+        }
+        using (Invalidation.Begin())
+            _ = GetBlockState(chatId, default);
     }
 
     public bool TryCollapseOverlay(ConversationId conversationId)
@@ -303,6 +358,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         public Moment DissolveEndsAt;
         public bool DissolveDone;
         public FrozenTemplate? Template;
+        public long RevealedBoundaryLid = long.MaxValue;
     }
 
     private sealed record FrozenTemplate(

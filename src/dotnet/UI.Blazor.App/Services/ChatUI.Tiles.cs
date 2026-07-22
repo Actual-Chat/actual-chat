@@ -78,10 +78,13 @@ public partial class ChatUI
         // The governed boundary replaces the raw fold end: it tracks the viewer's viewport top,
         // monotonically, so un-summarised rows above the viewport fold too (LiveBlockUI owns this).
         // No EndEntryLid cap here - FoldBoundaryLid is itself the monotonic max of real visible
-        // message lids, so it never exceeds the loaded entries.
+        // message lids, so it never exceeds the loaded entries. RevealedBoundaryLid pins the
+        // *effective* boundary below the monotonic one once the reader asks for more (§7), so
+        // revealed rows stay visible even as the governor keeps advancing.
+        var effectiveFoldBoundaryLid = Math.Min(blockState.FoldBoundaryLid, blockState.RevealedBoundaryLid);
         var liveFoldRange = rawLive is { SessionStartedAt: not null }
-            && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid
-                ? new Range<long>(rawLive.EffectiveVisibleStartLid, blockState.FoldBoundaryLid)
+            && effectiveFoldBoundaryLid > rawLive.EffectiveVisibleStartLid
+                ? new Range<long>(rawLive.EffectiveVisibleStartLid, effectiveFoldBoundaryLid)
                 : default;
 
         ConversationId? liveBlockId;
