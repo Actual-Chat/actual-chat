@@ -872,7 +872,10 @@ export class VirtualList {
             this.updateState('onResize: windowScrollTop', this.state, { windowScrollTop: window.visualViewport?.offsetTop ?? window.scrollY });
             // Re-pin (don't recreate) the sticky edge on resize. 'viewport-resize' is honored even on the
             // initial render, so panels/keyboard resizing right after open still keep the edge pinned.
-            if (this.state.stickyEdge?.edge === this.defaultEdge && (viewportResized || !itemsWereMeasured))
+            // endAnchorHasChanged too: when the end-anchor headroom grows (e.g. the audio panel appears,
+            // h-12 -> h-20) alongside a last-item resize, the End max shifts by that delta - without re-pinning
+            // here the pin keeps the stale max and leaves that delta as dead space below the last block.
+            if (this.state.stickyEdge?.edge === this.defaultEdge && (viewportResized || endAnchorHasChanged || !itemsWereMeasured))
                 this.scrollToEdge(this.defaultEdge, false, viewportResized ? 'viewport-resize' : 'non-item-resize');
 
             if (DeviceInfo.isIos) {
