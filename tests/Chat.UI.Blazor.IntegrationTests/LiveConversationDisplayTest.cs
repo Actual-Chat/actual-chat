@@ -1166,6 +1166,76 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task CollapsedJoinedBlockReportsSwallowedCount()
+    {
+        // §7: SwallowedCount is the true message count folded in [V, effectiveBoundary) - not a lid
+        // span (lids have gaps) - and it must drop to 0 once RevealMore walks the whole backlog back
+        // into view.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "swallowed-count-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_420);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+        var lids = new List<long>();
+        for (var i = 0; i < 3; i++)
+            lids.Add((await Tester.CreateTextEntry(chat.Id, $"m-{i}")).LocalId);
+        // A system entry sits inside the swallowed range - GetSwallowedCount must skip it (it filters
+        // on IsSystemEntry, same as RevealMore), so the true message count (5) differs from the lid
+        // span across the folded range (6). This guards the "never approximate with a lid span"
+        // invariant: a wrong `effectiveBoundary - v` implementation would report 6, not 5, here.
+        await Tester.Commander.Call(new ChatsBackend_ChangeEntry(
+            ChatEntryId.New(chat.Id, 0),
+            null,
+            Change.Create(new ChatEntryDiff {
+                Kind = ChatEntryKind.MembersChanged,
+                AuthorId = author.Id,
+                TargetAuthorId = peerId,
+                TargetAuthorName = "Peer",
+                HasLeft = false,
+            })));
+        for (var i = 3; i < 8; i++)
+            lids.Add((await Tester.CreateTextEntry(chat.Id, $"m-{i}")).LocalId);
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await chatAudioUI.SetRecordingChatId(chat.Id);
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        // act - viewport top sits at the 6th real entry, folding the 5 real rows above it (plus the
+        // interleaved system entry, which must not count towards SwallowedCount)
+        var viewportTop = lids[5];
+        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+            chat.Id,
+            new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
+            false);
+
+        // assert - the count is the true number of folded messages, not a lid-span approximation
+        await ComputedTest.When(async ct => {
+            var count = await liveBlockUI.GetSwallowedCount(chat.Id, ct);
+            count.Should().Be(5, "exactly the 5 rows above the viewport top are folded");
+        }, TimeSpan.FromSeconds(15));
+
+        // act - reveal the whole backlog in one batch (5 folded rows <= the rounded-up batch size)
+        await liveBlockUI.RevealMore(chat.Id);
+
+        // assert - the count drops to 0 once every folded row has been revealed
+        await ComputedTest.When(async ct => {
+            var count = await liveBlockUI.GetSwallowedCount(chat.Id, ct);
+            count.Should().Be(0, "revealing the whole backlog leaves nothing swallowed");
+        }, TimeSpan.FromSeconds(15));
+    }
+
     // Private methods
 
     private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)

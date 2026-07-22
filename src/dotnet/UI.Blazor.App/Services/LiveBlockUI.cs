@@ -66,6 +66,31 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             };
     }
 
+    [ComputeMethod]
+    public virtual async Task<int> GetSwallowedCount(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        // Cached (this is a [ComputeMethod]) but counts real messages via a full read of the swallowed
+        // range on each recompute - never approximate with a lid span, since lids have gaps.
+        var blockState = await GetBlockState(chatId, cancellationToken).ConfigureAwait(false);
+        var raw = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        if (raw is not { SessionStartedAt: not null })
+            return 0;
+        var v = raw.EffectiveVisibleStartLid;
+        var effectiveBoundary = Math.Min(blockState.FoldBoundaryLid, blockState.RevealedBoundaryLid);
+        if (effectiveBoundary <= v)
+            return 0;
+
+        var count = 0;
+        await foreach (var entry in Chats.ReadReverse(Session, chatId, cancellationToken).ConfigureAwait(false)) {
+            if (entry.LocalId >= effectiveBoundary || entry.IsSystemEntry)
+                continue;
+            if (entry.LocalId < v)
+                break;
+            count++;
+        }
+        return count;
+    }
+
     public async Task RevealMore(ChatId chatId, CancellationToken cancellationToken = default)
     {
         ChatFoldState chatState;
