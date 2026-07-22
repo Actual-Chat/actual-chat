@@ -24,7 +24,7 @@ public static class ChatMarkupHubExt
             markup = await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
             break;
         case { HasAudio: true }:
-        // HasAudio covers all audio/media entries now
+            // HasAudio covers all audio/media entries now
             markup = new PlayableTextMarkup(translation?.Content ?? entry.Content, entry.Audio?.TimeMap ?? default);
             break;
         default:
@@ -47,7 +47,7 @@ public static class ChatMarkupHubExt
             markup = systemEntry.ToMarkup();
             break;
         case { HasAudio: true }:
-        // HasAudio covers all audio/media entries now
+            // HasAudio covers all audio/media entries now
             markup = new PlayableTextMarkup(entry.Content, entry.Audio?.TimeMap ?? default);
             break;
         default:
@@ -73,11 +73,10 @@ public static class ChatMarkupHubExt
 
         var markup = markupHub.Parser.Parse(content);
         var resolved = await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
-        var normalized = EmojiNormalizer.Instance.Apply(resolved);
-        if (ReferenceEquals(resolved, markup) && ReferenceEquals(normalized, resolved))
+        if (ReferenceEquals(resolved, markup))
             return entry.Content;
 
-        return MarkupFormatter.Default.Format(normalized);
+        return MarkupFormatter.Default.Format(resolved);
     }
 
     public static async ValueTask<Markup> Parse(
