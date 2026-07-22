@@ -917,6 +917,29 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task JoinFromBlockStartsRecording()
+    {
+        // arrange - a live session this Bob has not joined
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "join-records-test");
+        var peerId = AuthorId.New(chat.Id, 777_310);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        // act - the block's Join action
+        await chatAudioUI.SetRecordingChatId(chat.Id);
+
+        // assert - Bob is now recording in this chat
+        await ComputedTest.When(async ct => {
+            var s = await chatAudioUI.GetState(chat.Id).ConfigureAwait(true);
+            s.IsRecording.Should().BeTrue("Join from the live block starts recording");
+        }, TimeSpan.FromSeconds(10));
+    }
+
     // Private methods
 
     private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)
