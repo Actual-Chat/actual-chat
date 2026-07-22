@@ -893,7 +893,7 @@ public partial class ChatUI
         CancellationToken cancellationToken = default)
         => await Chats.ReadReverse(Session, chatId, cancellationToken)
             .Where(x => !x.IsSystemEntry)
-            .Take(2)
+            .Take(5)
             .Reverse()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
