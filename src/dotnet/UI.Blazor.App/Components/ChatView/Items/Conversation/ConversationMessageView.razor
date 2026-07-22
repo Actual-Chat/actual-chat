@@ -33,6 +33,7 @@
         var showLiveCard = (!Message.HasSplitHeader && hasLiveTitle)
             || (hasDescription && !state.IsExpanded)
             || (state.HasSummary && !state.IsExpanded)
+            || (!state.IsExpanded && state.SwallowedCount > 0)
             || state.TailPreview is { Count: > 0 };
         if (showLiveCard) {
         <div class="c-live-card">
@@ -79,6 +80,12 @@
             @if (state.TailPreview is { Count: > 0 } tailPreview) {
                 <Divider/>
                 <LastEntriesPreview Entries="@tailPreview" Faded="true"/>
+            }
+            @if (!state.IsExpanded && state.SwallowedCount > 0) {
+                <button type="button" class="c-lc-showmore" @onclick="@OnRevealMore">
+                    <i class="icon-chevron-up"></i>
+                    <span>Show @state.RevealBatch earlier message@(state.RevealBatch == 1 ? "" : "s") of @state.SwallowedCount</span>
+                </button>
             }
         </div>
         }
@@ -214,9 +221,18 @@
             ? await GetTailPreview(chatId, cancellationToken).ConfigureAwait(true)
             : null;
         var hasSummary = !translated.Title.Text.IsNullOrEmpty();
+        var swallowedCount = 0;
+        var revealBatch = 0;
+        if (isJoined && !isExpanded) {
+            swallowedCount = await LiveBlockUI.GetSwallowedCount(chatId, cancellationToken).ConfigureAwait(true);
+            if (swallowedCount > 0) {
+                var visibleCount = ChatUI.ItemVisibility.Value.VisibleMessageLids.Count;
+                revealBatch = Math.Min(Math.Max(5, ((visibleCount + 4) / 5) * 5), swallowedCount);
+            }
+        }
         return new ConversationLiveState(
             translated, isLive, isJoined, isVoiceOnly, participantsText, hasFoldedEntries,
-            isExpanded, tailPreview, hasSummary);
+            isExpanded, tailPreview, hasSummary, swallowedCount, revealBatch);
     }
 
     private async Task<IReadOnlyList<PreviewEntry>> GetTailPreview(
@@ -249,6 +265,11 @@
     private async Task OnJoin() {
         var chatId = Message.Conversation!.Id.ChatId;
         await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
+    }
+
+    private async Task OnRevealMore() {
+        var chatId = Message.Conversation!.Id.ChatId;
+        await LiveBlockUI.RevealMore(chatId).ConfigureAwait(true);
     }
 
     private void ToggleDetails() {

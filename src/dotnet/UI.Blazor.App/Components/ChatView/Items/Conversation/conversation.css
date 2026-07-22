@@ -26,12 +26,16 @@
     background: linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%);
 }
 /* Any live card INSIDE a block is flush and transparent - the group owns the border, tint, and
-   rounding, so a card box here would draw a second box inside the block with the title detached. */
+   rounding, so a card box here would draw a second box inside the block with the title detached.
+   No rounded corners left to clip, so overflow goes visible too - lets the "Show more" pill straddle
+   below the card's bottom edge instead of being cut off by the base .conversation-message rule. */
 .virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) .conversation-message.live {
     @apply border-none rounded-none;
     background: none;
+    overflow: visible;
 }
 .c-live-card {
+    @apply relative;
     @apply flex-y gap-y-2 w-full;
     @apply p-4;
 }
@@ -115,6 +119,26 @@
 .c-live-card .c-lc-expand i,
 .c-live-card .c-lc-copy i {
     @apply text-xl;
+}
+/* Straddles the card's bottom edge (half over the tint, half over the first folded row below) -
+   c-live-card is the relative anchor. Mirrors navigate-to-end's floating pill (modal surface tokens). */
+.c-lc-showmore {
+    @apply absolute left-1/2 bottom-0 z-button;
+    @apply flex-x items-center gap-x-1;
+    @apply px-3 h-7 rounded-full;
+    @apply border border-modal bg-modal shadow-modal-wide;
+    @apply text-caption-1 text-[var(--cr-item-badge-selected-text)];
+    transform: translate(-50%, 50%);
+}
+.c-lc-showmore i {
+    @apply text-lg text-03;
+}
+body.hoverable .c-lc-showmore:hover {
+    @apply cursor-pointer;
+    @apply bg-hover;
+}
+.c-lc-showmore:active {
+    @apply opacity-70;
 }
 .conversation-message .c-details {
     @apply flex-y gap-y-2;
