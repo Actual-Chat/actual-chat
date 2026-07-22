@@ -195,7 +195,6 @@ public static partial class Constants
             [TimeSpan.FromHours(8)] = "for 8 hours",
             [UnlimitedDuration] = "Until I turn it off",
         };
-        public static readonly TimeSpan MaxFiniteDuration = Durations.Keys.Where(x => x != UnlimitedDuration).Max();
         public const int MaxSharingAuthorsPerChat = 100;
     }
 
