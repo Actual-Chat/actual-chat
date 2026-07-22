@@ -178,6 +178,10 @@ body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.listening)) .
 .chat-header-control-panel .translation-btn.on .c-hill {
     @apply bg-primary;
 }
+.chat-header-control-panel .btn-start-call,
+body.hoverable .chat-header-control-panel .btn-start-call:hover {
+    @apply text-[var(--green-40)];
+}
 
 .message-counter-with-time {
     @apply flex-y items-center gap-y-0.5;

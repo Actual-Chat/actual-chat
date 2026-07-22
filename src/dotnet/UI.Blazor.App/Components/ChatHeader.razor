@@ -55,6 +55,9 @@
     </div>
     @if (chat is not null) {
         <div class="chat-header-control-panel hideable">
+            @if (chat.Kind == ChatKind.Peer) {
+                <ChatHeaderCallButton/>
+            }
             <TranslationButton/>
             @if (chat.Id.IsThread(out var threadChatId)) {
                 <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId"/>

@@ -1,0 +1,41 @@
+@inherits ComputedStateComponent<AppUIHub, ChatHeaderCallButton.Model>
+@{
+    if (State.IsInitial(out var m))
+        return;
+    // Admin-only; hidden while a live conversation is active — the ChatActivityPanel owns that state.
+    if (!m.IsAdmin || m.IsActive)
+        return;
+}
+
+<HeaderButton
+    Class="btn-start-call"
+    Tooltip="Start call"
+    TooltipPosition="FloatingPosition.Bottom"
+    Click="OnClick">
+    <i class="icon-phone-call text-2xl"></i>
+</HeaderButton>
+
+@code {
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
+
+    private Chat Chat => ChatContext.Chat;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        if (!account.IsAdmin)
+            return new Model(false, false);
+
+        var activity = await ChatActivityUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
+        return new Model(true, activity.IsActive);
+    }
+
+    private Task OnClick()
+        => LiveSessionUI.StartCall(Chat.Id, default, false, CancellationToken.None);
+
+    // Nested types
+
+    public sealed record Model(bool IsAdmin, bool IsActive);
+}
