@@ -19,6 +19,7 @@ public class BlazorTester : BunitContext, IWebTester
     public IAuthorsBackend AuthorsBackend => field ??= AppServices.GetRequiredService<IAuthorsBackend>();
     public IAccountsBackend AccountsBackend => field ??= AppServices.GetRequiredService<IAccountsBackend>();
     public IChats Chats => field ??= AppServices.GetRequiredService<IChats>();
+    public IConversations Conversations => field ??= AppServices.GetRequiredService<IConversations>();
     public ITranslations Translations => field ??= AppServices.GetRequiredService<ITranslations>();
     public IPlaces Places => field ??= AppServices.GetRequiredService<IPlaces>();
     public ISearch Search => field ??= AppServices.GetRequiredService<ISearch>();
