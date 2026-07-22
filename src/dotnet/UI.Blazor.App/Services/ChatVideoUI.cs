@@ -95,6 +95,13 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<bool> IsWatching(ChatId chatId, CancellationToken cancellationToken = default)
         => await GetWatchingChatId(cancellationToken).ConfigureAwait(false) == chatId;
 
+    // The chat this user is currently publishing video into (camera or screencast), if any - i.e.
+    // actively producing live content, regardless of whether audio is being recorded.
+    [ComputeMethod]
+    public virtual async Task<ChatId?> GetPublishingChatId(CancellationToken cancellationToken = default)
+        => await _recordingChatId.Use(cancellationToken).ConfigureAwait(false)
+            ?? await _screenCastChatId.Use(cancellationToken).ConfigureAwait(false);
+
     [ComputeMethod]
     public virtual async Task<bool> GetIsVideoPanelCollapsed(CancellationToken cancellationToken = default)
         => await _isVideoPanelCollapsed.Use(cancellationToken).ConfigureAwait(false);

@@ -170,6 +170,13 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             else if (chat.IsListening)
                 result[chat.ChatId] = ParticipationKind.AudioListen;
 
+        // A video publisher (camera or screencast) produces live content even when muted / not
+        // audio-recording - report Record so a solo publisher keeps the session live (recorder-driven
+        // liveness would otherwise close it once the initial stream registration goes stale).
+        var publishingChatId = await ChatVideoUI.GetPublishingChatId(cancellationToken).ConfigureAwait(false);
+        if (publishingChatId is { } pubChatId)
+            result[pubChatId] = ParticipationKind.Record;
+
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         if (watchingChatId is { } videoChatId && !result.ContainsKey(videoChatId))
             result[videoChatId] = ParticipationKind.VideoView;
