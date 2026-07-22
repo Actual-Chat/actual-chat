@@ -132,3 +132,9 @@ body.hoverable .location-map-modal .c-menu .c-menu-item:hover:not(:disabled),
 .location-map-modal .c-menu .c-menu-item .c-check {
     @apply text-xl text-primary;
 }
+.location-participant-menu .c-google-maps-icon {
+    @apply h-5 w-auto max-w-none;
+}
+body.narrow .location-participant-menu .c-google-maps-icon {
+    @apply h-6;
+}
