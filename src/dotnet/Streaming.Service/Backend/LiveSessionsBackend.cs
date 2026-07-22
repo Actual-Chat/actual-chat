@@ -595,6 +595,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             InvalidateGet(chatId);
             close = await ParticipantCount(chatId).ConfigureAwait(false) < 2;
             if (!close)
+                // Unlike SetParticipation, the transition result is intentionally not acted on: a Call
+                // finalizes via the SelfClose grace, not the summary flow (which skips Call sessions), so
+                // a closing transition here has no flow to wake.
                 await EvaluateLiveness(chatId).ConfigureAwait(false);
         }
         if (close)

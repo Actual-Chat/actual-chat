@@ -65,7 +65,7 @@
                     }
                     <div class="c-lc-started">@startedAt · @secondLine</div>
                 </div>
-                @if (!hasLiveTitle && hasSummary) {
+                @if (!hasLiveTitle && hasSummary && !Message.HasSplitHeader) {
                     <HeaderButton Class="c-lc-expand" Click="@ToggleShowMessage">
                         <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
                     </HeaderButton>

@@ -29,8 +29,6 @@
     @apply h-4.5;
 }
 .last-entries-preview > * {
+    /* lc-fade-in @keyframes is defined once in conversation.css (both bundle into styles.css). */
     animation: lc-fade-in 200ms ease;
-}
-@keyframes lc-fade-in {
-    from { opacity: 0; }
 }

@@ -34,8 +34,11 @@ public partial class ChatUI
     // otherwise defaultExpanded (derived only from currently-loaded tiles) would drop it and flip an
     // expanded conversation to collapsed, jumping the content height and the scroll position. Concurrent
     // because GetChatItemsInternal (a compute method) runs re-entrantly - a plain field read-modify-write
-    // would let a stale snapshot clobber accumulated entries.
-    private readonly ConcurrentDictionary<ConversationId, bool> _knownConversationDefaultExpanded = new();
+    // would let a stale snapshot clobber accumulated entries. Entries expire so the cache can't grow
+    // without bound across every chat ever viewed in a long session.
+    private static readonly TimeSpan KnownConversationExpirationPeriod = TimeSpan.FromMinutes(10);
+    private readonly ConcurrentDictionary<ConversationId, ExpiringEntry<ConversationId, bool>>
+        _knownConversationDefaultExpanded = new();
 
     public int HalfLoadLimit => BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2; // 20 for mobile
     public int LoadLimit => BrowserInfo.IsMobile ? SecondTileSize * 2 : SecondTileSize * 4; // 40 for mobile
@@ -54,6 +57,26 @@ public partial class ChatUI
         => Chats.GetEntry(Session, id, cancellationToken);
 
     // Private methods
+
+    private void BumpKnownConversationDefaultExpanded(ConversationId id, bool isExpandedByDefault)
+    {
+        while (true) {
+            var entry = _knownConversationDefaultExpanded.GetOrAdd(id, static (key, arg) => {
+                var (self, value) = arg;
+                var e = ExpiringEntry.New(self._knownConversationDefaultExpanded, key, value);
+                e.BumpExpiresAt(KnownConversationExpirationPeriod);
+                e.BeginExpire();
+                return e;
+            }, (this, isExpandedByDefault));
+            if (entry.Value == isExpandedByDefault) {
+                entry.BumpExpiresAt(KnownConversationExpirationPeriod);
+                return;
+            }
+            // IsExpandedByDefault flipped (a re-materialization can land on a different tier) - drop the
+            // stale entry and loop to re-add it with the current value.
+            entry.Dispose();
+        }
+    }
 
     private async Task<ChatItems> GetChatItemsInternal(
         ChatId chatId,
@@ -135,9 +158,11 @@ public partial class ChatUI
             // authoritative), then resolve defaultExpanded from the cache - so a conversation whose tile
             // isn't currently loaded keeps its last-known state instead of silently collapsing.
             foreach (var c in conversationTiles.SelectMany(t => t))
-                _knownConversationDefaultExpanded[c.Id] = c.IsExpandedByDefault;
+                BumpKnownConversationDefaultExpanded(c.Id, c.IsExpandedByDefault);
+            // Only this chat's ids can match a conversation below - filtering here keeps stale entries
+            // from other chats out of defaultExpanded (they'd defeat the empty-set fast-path).
             defaultExpanded = _knownConversationDefaultExpanded
-                .Where(kv => kv.Value)
+                .Where(kv => kv.Key.ChatId == chatId && kv.Value.Value)
                 .Select(kv => kv.Key)
                 .ToImmutableHashSet();
 
