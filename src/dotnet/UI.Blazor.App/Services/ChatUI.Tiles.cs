@@ -899,10 +899,11 @@ public partial class ChatUI
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatEntry>> GetThreadPreviewEntries(
         ChatId chatId,
+        int count = 2,
         CancellationToken cancellationToken = default)
         => await Chats.ReadReverse(Session, chatId, cancellationToken)
             .Where(x => !x.IsSystemEntry)
-            .Take(5)
+            .Take(count)
             .Reverse()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

@@ -26,13 +26,13 @@
     @if (state.IsLive) {
         var secondLine = state.IsVoiceOnly ? "Voice only" : messageCount + " message".Pluralize(messageCount);
         var startedAt = $"Started at {startsAt:HH:mm}";
-        var hasSummary = state.HasFoldedEntries;
+        var hasFoldedEntries = state.HasFoldedEntries;
         <div class="c-live-card">
             @if (!Message.HasSplitHeader && hasLiveTitle) {
                 <div class="c-lc-title">
                     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
                     <span class="c-lc-name">@m.Title.Text</span>
-                    @if (hasSummary) {
+                    @if (hasFoldedEntries) {
                         <HeaderButton Class="c-lc-expand" Click="@ToggleShowMessage">
                             <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
                         </HeaderButton>
@@ -70,7 +70,7 @@
             }
             @if (state.TailPreview is { Count: > 0 } tailPreview) {
                 <Divider/>
-                <LastEntriesPreview Entries="@tailPreview"/>
+                <LastEntriesPreview Entries="@tailPreview" Faded="true"/>
             }
         </div>
     } else {
@@ -212,7 +212,7 @@
 
     private async Task<IReadOnlyList<PreviewEntry>> GetTailPreview(
         ChatId chatId, CancellationToken cancellationToken) {
-        var entries = await ChatUI.GetThreadPreviewEntries(chatId, cancellationToken).ConfigureAwait(true);
+        var entries = await ChatUI.GetThreadPreviewEntries(chatId, 5, cancellationToken).ConfigureAwait(true);
         var markupHub = Hub.ChatMarkupHubFactory[chatId];
         var markups = await entries
             .Select(e => markupHub.GetMarkup(e, MarkupConsumer.MessageView, cancellationToken).AsTask())

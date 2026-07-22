@@ -33,7 +33,9 @@
         var conversation = Header.Conversation!;
         return ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<LiveConversationHeaderState>.Options() {
-                InitialValue = new LiveConversationHeaderState(conversation.Title, "", false, false),
+                // IsJoined defaults true in the placeholder so the clickable Join button doesn't flash
+                // before the first ComputeState resolves the real join state.
+                InitialValue = new LiveConversationHeaderState(conversation.Title, "", false, false, true),
                 Category = GetStateCategory(t),
             });
     }

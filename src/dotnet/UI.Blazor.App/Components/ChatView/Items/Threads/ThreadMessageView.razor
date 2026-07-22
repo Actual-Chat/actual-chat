@@ -131,7 +131,7 @@
         var session = Session;
         var threadCreator = await ChatThreads.GetThreadCreator(session, chatId, cancellationToken).ConfigureAwait(false);
         var ownerName = threadCreator?.Avatar.Name ?? "Unknown";
-        var chatEntries = await ChatUI.GetThreadPreviewEntries(chatId, cancellationToken).ConfigureAwait(false);
+        var chatEntries = await ChatUI.GetThreadPreviewEntries(chatId, cancellationToken: cancellationToken).ConfigureAwait(false);
         var markups = await chatEntries.Select(x => GetMarkup(x, cancellationToken)).Collect(cancellationToken).ConfigureAwait(false);
         var threadStat = await ChatThreads.GetThreadStat(session, chatId, cancellationToken).ConfigureAwait(false);
         var attachments = threadStat.Attachments;

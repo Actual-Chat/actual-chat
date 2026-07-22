@@ -57,10 +57,6 @@
 .c-live-card .c-lc-expand {
     @apply flex-none;
 }
-.c-live-card .c-lc-roster {
-    @apply flex-1 min-w-0 truncate;
-    @apply text-01 text-base font-medium leading-5;
-}
 .c-live-card .c-lc-summary-box {
     display: grid;
     grid-template-rows: 1fr;
