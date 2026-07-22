@@ -71,7 +71,6 @@ public partial class ChatUI
         var liveConversation = await Hub.LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(false);
         var amInLiveConversation = liveConversation != null
             && await Hub.LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
-        var joinedLiveConversation = amInLiveConversation ? liveConversation : null;
         var rawLive = await Hub.LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
         var blockState = await Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken).ConfigureAwait(false);
         var overlay = blockState.Overlay;
@@ -94,7 +93,8 @@ public partial class ChatUI
             materializedBlockId = overlay.MaterializedId;
         }
         else {
-            liveBlockId = joinedLiveConversation?.Id;
+            // The live block uses the same shell joined or not; only the tint + header affordance differ.
+            liveBlockId = liveConversation?.Id;
             liveBlockFoldRange = liveFoldRange;
         }
 

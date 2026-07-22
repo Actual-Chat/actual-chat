@@ -105,20 +105,6 @@
 .c-live-card .c-lc-copy i {
     @apply text-xl;
 }
-.conversation-message .c-join-row {
-    @apply block w-full;
-    @apply px-4 py-1;
-    @apply text-center text-caption-1 font-semibold uppercase;
-    @apply border-0 bg-transparent;
-    color: var(--violet-60);
-    letter-spacing: 0.42px;
-}
-body.hoverable .conversation-message .c-join-row:hover {
-    @apply cursor-pointer;
-}
-.conversation-message .c-join-row:active {
-    @apply opacity-70;
-}
 .conversation-message .c-details {
     @apply flex-y gap-y-2;
     @apply w-full;
@@ -332,6 +318,16 @@ body.hoverable .conversation-attachments .image-attachment:hover {
             var(--violet-60) 0%, var(--violet-60) 50%, var(--c-live-tint, rgba(166, 53, 255, 0.1)) 100%) border-box;
 }
 
+/* Unjoined live block: the same unified shell, but painted with the flat unjoined gradient and no
+   violet outline. The extra :has() outranks the joined tint rule above so it wins whenever the block
+   carries a not-yet-joined live card. */
+.virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live:not(.joined)),
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header):has(.conversation-message.live:not(.joined)) {
+    isolation: isolate;
+    @apply rounded-2xl;
+    background: linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%);
+}
+
 /* Mirrors virtual-list.css's .item:has(.conversation-header) rule - that one only matches the literal
    conversation-header class, not this component's own live-conversation-header. */
 .virtual-list .c-virtual-container .item:has(.live-conversation-header) {
@@ -363,6 +359,12 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 }
 .live-conversation-header .c-lc-expand i {
     @apply text-xl;
+}
+/* Header Join affordance - the activity-panel's transparent button, tinted violet-60. The
+   .virtual-list prefix outranks .btn.btn-transparent's text-primary so the violet colour wins. */
+.virtual-list .c-virtual-container .live-conversation-header .c-lc-join {
+    @apply flex-none;
+    color: var(--violet-60);
 }
 
 /* Live conversation footer - just the block's rounded bottom edge, giving the last entry a little
