@@ -132,23 +132,9 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
-    public virtual async Task<GeoPoint?> GetOwnPoint(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
-        if (livePoint is not null)
-            return livePoint;
-
-        var ownLive = await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-        if (ownLive is not null)
-            return ownLive.Point;
-
-        return await GetCurrentLocation(cancellationToken).ConfigureAwait(false);
-    }
-
-    [ComputeMethod]
     public virtual async Task<MapMarker?> GetOwnMarker(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (await GetOwnPoint(chatId, cancellationToken).ConfigureAwait(false) is not { } point)
+        if (await GetOwnCurrentOrSharedLocation(chatId, cancellationToken).ConfigureAwait(false) is not { } point)
             return null;
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -175,10 +161,22 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
+    public virtual async Task<GeoPoint?> GetOwnCurrentOrSharedLocation(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false) is { } lastKnown)
+            return lastKnown;
+
+        var ownLive = await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
+        if (ownLive is not null)
+            return ownLive.Point;
+
+        return await GetCurrentLocation(cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
     public virtual async Task<GeoPoint?> GetCurrentLocation(CancellationToken cancellationToken)
     {
-        // One-shot device position (non-reactive snapshot); GetOwnPoint is the live, share-aware variant.
-        if (Tracker.LastKnown.ValueOrDefault is { } lastKnown)
+        if (await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false) is { } lastKnown)
             return lastKnown;
 
         if (await LocationPermission.Check(cancellationToken).ConfigureAwait(false) != true)
