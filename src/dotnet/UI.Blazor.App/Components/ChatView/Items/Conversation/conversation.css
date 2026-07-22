@@ -305,7 +305,9 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 .virtual-list .c-virtual-container .group:has(> .item > .conversation-message.live.joined),
 .virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) {
     isolation: isolate;
-    @apply rounded-2xl border border-solid border-transparent;
+    /* mx-1 matches the 4px horizontal padding on regular conversation .item wrappers, so the live
+       block's box lines up with regular conversations and the message hover highlight (same width). */
+    @apply rounded-2xl border border-solid border-transparent mx-1;
     background:
         linear-gradient(249deg,
             rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%) padding-box,
