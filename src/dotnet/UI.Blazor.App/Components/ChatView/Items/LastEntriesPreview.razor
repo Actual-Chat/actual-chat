@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
-<div class="last-entries-preview">
+<div class="last-entries-preview @(Faded ? "faded" : "")">
     @if (IsLoading) {
         <chat-list-skeleton count="@SkeletonCount" messageCls="thread-skeleton"/>
     } else {
@@ -68,6 +68,7 @@
 @code {
     [Parameter] public IReadOnlyList<PreviewEntry> Entries { get; set; } = [];
     [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool Faded { get; set; }
     [Parameter] public int SkeletonCount { get; set; } = 2;
 
     private static (ChatEntryAttachment[] Media, ChatEntryAttachment[] Files) SplitByKind(ChatEntryAttachment[] items)

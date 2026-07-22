@@ -1009,7 +1009,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             var card = items.Items.SelectMany(i => i.GetLeafMessages())
                 .OfType<ConversationMessage>().SingleOrDefault(c => c.Conversation!.Title.IsNullOrEmpty());
             card.Should().NotBeNull("a pre-summary live block still emits its card");
-            card!.Conversation!.MessageCount.Should().Be(0);   // the card carries 0; the view must NOT render "0 messages"
+            // the card carries 0; the view must NOT render "0 messages"
+            card!.Conversation!.MessageCount.Should().Be(0);
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -1022,7 +1023,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var peer2Id = AuthorId.New(chat.Id, 777_341);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, CancellationToken.None); // 2+ => SessionStartedAt latches
+        // 2+ => SessionStartedAt latches
+        await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
