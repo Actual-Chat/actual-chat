@@ -59,11 +59,13 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var raw = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
         var amInLive = raw != null
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
-        lock (Lock)
+        lock (Lock) {
+            var effectiveBoundaryLid = Math.Min(baseState.FoldBoundaryLid, chatState.RevealedBoundaryLid);
             return baseState with {
-                Overlay = DeriveOverlay(chatState, baseState.FoldBoundaryLid, raw, amInLive),
+                Overlay = DeriveOverlay(chatState, effectiveBoundaryLid, raw, amInLive),
                 RevealedBoundaryLid = chatState.RevealedBoundaryLid,
             };
+        }
     }
 
     [ComputeMethod]

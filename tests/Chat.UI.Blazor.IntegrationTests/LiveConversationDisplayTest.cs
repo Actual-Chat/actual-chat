@@ -1167,6 +1167,73 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task RevealMoreSurvivesLeaveFreeze()
+    {
+        // §7 cross-task fix: a revealed batch must survive the freeze on leave/close - DeriveOverlay
+        // must use the reveal-aware effective boundary, not the raw monotonic FoldBoundaryLid, or
+        // leaving re-folds the rows the reader just revealed (a content shrink right under them).
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "reveal-leave-freeze-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_420);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+        for (var i = 0; i < 20; i++)
+            await Tester.CreateTextEntry(chat.Id, $"m-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        // act - viewport top sits at the last entry, so a large range folds
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var viewportTop = idRange.End - 1;
+        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+            chat.Id,
+            new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
+            false);
+
+        long foldedBoundary = 0;
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.FoldBoundaryLid.Should().BeGreaterThan(v + 5);
+            foldedBoundary = s.FoldBoundaryLid;
+        }, TimeSpan.FromSeconds(15));
+
+        // act - reveal one batch, retreating the effective boundary below the raw governed one
+        await liveBlockUI.RevealMore(chat.Id);
+        long revealedEffectiveBoundary = 0;
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            revealedEffectiveBoundary = Math.Min(s.FoldBoundaryLid, s.RevealedBoundaryLid);
+            revealedEffectiveBoundary.Should().BeLessThan(foldedBoundary);
+        }, TimeSpan.FromSeconds(10));
+
+        // act - leave: hang up, which freezes the block via the overlay
+        await chatAudioUI.SetListeningState(chat.Id, false);
+        InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+
+        // assert - the frozen overlay's FoldRange must end at the reveal-aware effective boundary,
+        // not the full monotonic FoldBoundaryLid the governor had reached before the reveal
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.Overlay.Should().NotBeNull();
+            s.Overlay!.FoldRange.End.Should().Be(revealedEffectiveBoundary,
+                "the freeze must preserve what the reader had revealed, not re-fold it back under them");
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task CollapsedJoinedBlockReportsSwallowedCount()
     {
         // §7: SwallowedCount is the true message count folded in [V, effectiveBoundary) - not a lid
