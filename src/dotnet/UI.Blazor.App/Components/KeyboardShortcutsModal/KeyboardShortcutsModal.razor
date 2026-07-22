@@ -1,0 +1,85 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<KeyboardShortcutsModal.Model>
+
+@* The global ctrl+/ Hotkey is inert while this modal is open, so this one takes
+   over and turns the second press into a toggle-off. *@
+<Hotkey Keys="ctrl+/" AriaLabel="Close keyboard shortcuts" OnTrigger="@(() => Modal.Close())"/>
+<DialogFrame
+    Class="keyboard-shortcuts-modal"
+    Title="Keyboard shortcuts"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Bottom">
+    <Body>
+        <div class="keyboard-shortcuts">
+            @foreach (var sec in _sections) {
+                <div class="c-section">
+                    <div class="c-title">@sec.Title</div>
+                    @foreach (var shortcut in sec.Shortcuts) {
+                        <div class="c-row">
+                            <div class="c-name">@shortcut.Description</div>
+                            <div class="c-keys">
+                                @for (var i = 0; i < shortcut.Combos.Length; i++) {
+                                    if (i > 0) {
+                                        <span class="c-sep">/</span>
+                                    }
+                                    var combo = shortcut.Combos[i];
+                                    for (var j = 0; j < combo.Length; j++) {
+                                        if (j > 0) {
+                                            <span class="c-sep">+</span>
+                                        }
+                                        <kbd>@combo[j]</kbd>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    private Section[] _sections = [];
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        var mod = Hub.BrowserInfo.IsMacOS ? "⌘" : "Ctrl";
+        _sections = [
+            new("General", [
+                new("Jump to chat or person", [[mod, "K"]]),
+                new("Search chats", [[mod, "F"]]),
+                new("Focus message editor", [[mod, "E"]]),
+                new("Keyboard shortcuts", [[mod, "/"]]),
+                new("Close dialog, menu, or search", [["Esc"]]),
+            ]),
+            new("Messages", [
+                new("Send message", [["Enter"]]),
+                new("New line", [["Shift", "Enter"]]),
+                new("Edit your last message (in empty editor)", [["↑"]]),
+                new("Cancel editing or reply", [["Esc"]]),
+            ]),
+            new("Chat", [
+                new("Scroll chat", [["PgUp"], ["PgDn"]]),
+                new("Previous or next media in viewer", [["←"], ["→"]]),
+            ]),
+            new("Navigation", [
+                new("Move focus", [["Tab"], ["Shift", "Tab"]]),
+                new("Navigate lists and menus", [["↑"], ["↓"]]),
+                new("First or last menu item", [["Home"], ["End"]]),
+                new("Press focused control", [["Enter"], ["Space"]]),
+                new("Toggle selection in pickers", [["Space"], ["X"]]),
+            ]),
+        ];
+    }
+
+    // Nested types
+
+    public sealed record Model;
+
+    private sealed record Section(string Title, Shortcut[] Shortcuts);
+    private sealed record Shortcut(string Description, string[][] Combos);
+}

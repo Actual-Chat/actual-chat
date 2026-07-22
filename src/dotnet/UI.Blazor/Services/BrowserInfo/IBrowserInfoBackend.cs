@@ -22,6 +22,7 @@ public interface IBrowserInfoBackend
         bool IsMobile,
         bool IsAndroid,
         bool IsIos,
+        bool IsMacOS,
         bool IsChromium,
         bool IsEdge,
         bool IsWebKit,

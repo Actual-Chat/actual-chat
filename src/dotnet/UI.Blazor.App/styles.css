@@ -67,6 +67,7 @@
 @import './Components/LogView/log-view.css';
 @import './Components/LogView/report-modal.css';
 @import './Components/ChatQuickNavModal/chat-quick-nav-modal.css';
+@import './Components/KeyboardShortcutsModal/keyboard-shortcuts-modal.css';
 @import './Components/MentionList/mention-list.css';
 @import './Components/Onboarding/onboarding-modal.css';
 @import './Components/Onboarding/line-progress.css';

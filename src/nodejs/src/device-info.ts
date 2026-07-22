@@ -33,6 +33,7 @@ export const DeviceInfo = {
     isMobile: isMobile,
     isAndroid: isMobile && userAgentLowerCase.includes('android'),
     isIos: isIos,
+    isMacOS: !isIos && userAgentLowerCase.includes('macintosh'),
     isChromium: isChromium,
     isWebKit: userAgentLowerCase.includes('webkit') && !isChromium,
     isFirefox: userAgentLowerCase.includes('firefox'),

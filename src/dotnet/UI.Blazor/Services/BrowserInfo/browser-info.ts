@@ -16,11 +16,12 @@ export class BrowserInfo {
     private static backendRef: DotNet.DotNetObject = null!;
     private static isWebSplashRemoved: boolean;
 
-    public static hostKind: HostKind = window.location.host === 'localhost' || window.location.host === '0.0.0.0' || window.location.host === '0.0.0.1'
-        ? 'MauiApp'
-        : ('MONO' in window)
-            ? 'WasmApp'
-            : 'WebServer';
+    public static hostKind: HostKind =
+        window.location.host === 'localhost' || window.location.host === '0.0.0.0' || window.location.host === '0.0.0.1'
+            ? 'MauiApp'
+            : ('MONO' in window)
+                ? 'WasmApp'
+                : 'WebServer';
     public static appKind: AppKind = 'Unknown';
     // eslint-disable-next-line
     public static renderMode = window?.['App']?.renderMode;
@@ -55,6 +56,7 @@ export class BrowserInfo {
             isMobile: DeviceInfo.isMobile,
             isAndroid: DeviceInfo.isAndroid,
             isIos: DeviceInfo.isIos,
+            isMacOS: DeviceInfo.isMacOS,
             isChromium: DeviceInfo.isChromium,
             isEdge: DeviceInfo.isEdge,
             isFirefox: DeviceInfo.isFirefox,
@@ -199,6 +201,7 @@ export interface InitResult {
     isMobile: boolean;
     isAndroid: boolean;
     isIos: boolean;
+    isMacOS: boolean;
     isChromium: boolean;
     isEdge: boolean;
     isFirefox: boolean;

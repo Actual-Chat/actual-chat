@@ -1,0 +1,45 @@
+.modal-frame.keyboard-shortcuts-modal {
+    @apply md:w-144 md:max-h-160;
+}
+
+.keyboard-shortcuts {
+    @apply grid grid-cols-1 gap-x-10 gap-y-5;
+    @apply px-4;
+}
+body.wide .keyboard-shortcuts {
+    @apply grid-cols-2;
+}
+
+.keyboard-shortcuts .c-section {
+    @apply flex-y;
+    @apply self-start;
+}
+.keyboard-shortcuts .c-section > .c-title {
+    @apply pb-1.5;
+    @apply border-b border-separator;
+    @apply text-caption-1 text-03;
+}
+
+.keyboard-shortcuts .c-row {
+    @apply flex-x items-center gap-x-4;
+    @apply min-h-7;
+}
+.keyboard-shortcuts .c-row > .c-name {
+    @apply flex-auto min-w-0;
+    @apply text-caption-4 text-01;
+}
+.keyboard-shortcuts .c-row > .c-keys {
+    @apply flex-none flex-x items-center gap-x-1;
+}
+.keyboard-shortcuts .c-keys > .c-sep {
+    @apply text-caption-6 text-03;
+}
+.keyboard-shortcuts .c-keys > kbd {
+    @apply flex-x items-center justify-center;
+    @apply min-w-6 h-6 px-1.5;
+    @apply rounded-md border border-separator;
+    @apply bg-02;
+    @apply text-caption-6 text-02 whitespace-nowrap;
+    font-family: inherit;
+    box-shadow: inset 0 -1.5px 0 var(--separator);
+}

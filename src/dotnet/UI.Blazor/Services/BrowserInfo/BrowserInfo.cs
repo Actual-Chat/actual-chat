@@ -27,6 +27,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public bool IsMobile { get; protected set; }
     public bool IsAndroid { get; protected set; }
     public bool IsIos { get; protected set; }
+    public bool IsMacOS { get; protected set; }
     public bool IsChromium { get; protected set; }
     public bool IsEdge { get; protected set; }
     public bool IsWebKit { get; protected set; }
@@ -63,6 +64,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
         IsMobile = initResult.IsMobile;
         IsAndroid = initResult.IsAndroid;
         IsIos = initResult.IsIos;
+        IsMacOS = initResult.IsMacOS;
         IsChromium = initResult.IsChromium;
         IsEdge = initResult.IsEdge;
         IsWebKit = initResult.IsWebKit;

@@ -194,6 +194,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppLocationGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinVideoCallModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.KeyboardShortcutsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LanguageButtonGroup>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LanguagesStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LastEntriesPreview>();
@@ -214,6 +215,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LinkRow>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListenButtonBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveConversationFooterView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveConversationHeaderView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveLocationBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocalLinkPreview>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationAccuracySelector>();
@@ -904,6 +907,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppLocationGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.JoinVideoCallModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.KeyboardShortcutsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LanguageButtonGroup), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LanguagesStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LastEntriesPreview), AotTypeKind.Component),
@@ -924,6 +928,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.LinkRow), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListenButtonBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.LiveConversationFooterView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.LiveConversationHeaderView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LiveLocationBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocalLinkPreview), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationAccuracySelector), AotTypeKind.Component),

@@ -6,6 +6,7 @@
 <BubbleHost />
 <SpoilerFilterDefs />
 <Hotkey Keys="ctrl+k" AriaLabel="Quick chat navigation" OnTrigger="OnQuickNav"/>
+<Hotkey Keys="ctrl+/" AriaLabel="Keyboard shortcuts" OnTrigger="OnShortcutsHelp"/>
 @if (!BrowserInfo.IsTouchCapable) {
     <TooltipHost />
 }
@@ -31,10 +32,12 @@
         UseFocusTrap = true,
     };
 
+    private bool _isQuickNavOpen;
+    private bool _isShortcutsHelpOpen;
+
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private LoadingUI LoadingUI => Hub.LoadingUI;
     private ModalUI ModalUI => Hub.ModalUI;
-    private bool _isQuickNavOpen;
 
     protected override void OnAfterRender(bool firstRender) {
         if (firstRender)
@@ -52,6 +55,20 @@
         }
         finally {
             _isQuickNavOpen = false;
+        }
+    }
+
+    private async Task OnShortcutsHelp() {
+        if (_isShortcutsHelpOpen)
+            return;
+
+        _isShortcutsHelpOpen = true;
+        try {
+            var modalRef = await ModalUI.Show(new KeyboardShortcutsModal.Model());
+            await modalRef.WhenClosed;
+        }
+        finally {
+            _isShortcutsHelpOpen = false;
         }
     }
 }
