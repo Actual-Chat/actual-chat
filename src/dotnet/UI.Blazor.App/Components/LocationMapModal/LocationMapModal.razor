@@ -108,7 +108,7 @@
             return ComputedModel.None with { MapType = mapType };
 
         var ownLocation = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-        var ownPoint = await LocationUI.GetOwnPoint(chatId, cancellationToken).ConfigureAwait(false);
+        var ownPoint = await LocationUI.GetOwnCurrentOrSharedLocation(chatId, cancellationToken).ConfigureAwait(false);
         var ownMarker = await LocationUI.GetOwnMarker(chatId, cancellationToken).ConfigureAwait(false);
         var clicked = ModalModel.LocationId is { } id ? participants.FirstOrDefault(x => x.Location.Id == id) : null;
         var center = clicked?.Location ?? ownLocation ?? participants[0].Location;
