@@ -1,9 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, LocationParticipantView.Model>
 @{
-    var m = State.Value;
     var location = Participant.Location;
     var menuRef = MenuRef.New<LocationParticipantMenu>(location.AuthorId.ChatId.Value, location.Id.Value).ToString();
+    var distanceText = !Participant.IsOwn && OwnPoint is { } ownPoint
+        ? ownPoint.DistanceTextTo(Participant.Location.Point)
+        : "";
 }
 
 <div class="c-participant" @onclick="@Click">
@@ -17,8 +18,8 @@
         </div>
         <div class="c-status">
             <span>Updated&nbsp;</span><LiveTimeDeltaText Moment="@Participant.Location.ModifiedAt" NullText=""/>
-            @if (!m.DistanceText.IsNullOrEmpty()) {
-                <span> · @m.DistanceText from you</span>
+            @if (!distanceText.IsNullOrEmpty()) {
+                <span> · @distanceText from you</span>
             }
         </div>
     </div>
@@ -37,23 +38,4 @@
     [Parameter, EditorRequired] public LocationParticipant Participant { get; set; } = null!;
     [Parameter] public GeoPoint? OwnPoint { get; set; }
     [Parameter] public EventCallback Click { get; set; }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new () {
-            InitialValue = Model.None,
-            Category = GetStateCategory(GetType()),
-        };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var distanceText = !Participant.IsOwn && OwnPoint is { } ownPoint
-            ? ownPoint.DistanceTextTo(Participant.Location.Point)
-            : "";
-        return new Model(distanceText);
-    }
-
-    // Nested types
-
-    public sealed record Model(string DistanceText) {
-        public static readonly Model None = new ("");
-    }
 }
