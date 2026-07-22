@@ -6,4 +6,5 @@ public sealed record LiveConversationHeaderState(
     bool HasFoldedEntries,
     bool IsExpanded,
     bool IsJoined = false,
+    bool HasOverlay = false,
     bool IsDissolving = false);

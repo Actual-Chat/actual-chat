@@ -9,7 +9,7 @@
 <div class="@cls">
     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
     <span class="c-lc-name">@title</span>
-    @if (!s.IsJoined) {
+    @if (!s.IsJoined && !s.HasOverlay) {
         <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">Join</button>
     }
     else if (s.HasFoldedEntries) {
@@ -61,7 +61,7 @@
         var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
         return new LiveConversationHeaderState(
             translated.Title.Text, participantsText, hasFoldedEntries, isExpanded, isJoined,
-            blockState.Overlay?.IsDissolving ?? false);
+            blockState.Overlay != null, blockState.Overlay?.IsDissolving ?? false);
     }
 
     private void Toggle()

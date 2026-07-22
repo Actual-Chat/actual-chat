@@ -1042,6 +1042,58 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(15));
     }
 
+    [Fact]
+    public async Task UnjoinedBlockHidesLiveEntriesWhenFoldLagsBehindSummary()
+    {
+        // A non-joined viewer must see the summary card only - never live entries. When a second
+        // summary advances EndEntryLid past the lag-held fold boundary, the entries in that gap
+        // (between the lagged fold end and the new summary end) must stay hidden behind the card.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "unjoined-no-leak-test");
+        var peerId = AuthorId.New(chat.Id, 777_350);
+        var peer2Id = AuthorId.New(chat.Id, 777_351);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"a-{i}");   // v, v+1, v+2
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v + 2, MessageCount = 3,
+        }, CancellationToken.None);
+
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        liveBlockUI.FoldLag = TimeSpan.FromMinutes(3);   // the second fold stays lagged for the whole test
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        chatUI.SelectChatOnNavigation(chat.Id);   // Bob is NOT recording/listening => not joined
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        // latch the fold boundary at the first summary's end; the summarized live entries are hidden
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.SelectMany(i => i.GetLeafMessages())
+                .OfType<LiveConversationHeader>().Should().ContainSingle();
+            LeafEntryLids(items).Should().NotContain([v, v + 1, v + 2],
+                "a non-joined viewer sees the card only, not the summarized live entries");
+        }, TimeSpan.FromSeconds(15));
+
+        // act - two more entries land, then a second summary advances EndEntryLid past the lagged boundary
+        for (var i = 0; i < 2; i++)
+            await Tester.CreateTextEntry(chat.Id, $"b-{i}");   // v+3, v+4
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d2", Summary = "s2", EndEntryLid = v + 4, MessageCount = 5,
+        }, CancellationToken.None);
+
+        // assert (sustained) - the newly-summarized entries in the lagged gap must never surface
+        await Task.Delay(1000);
+        var items2 = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+        LeafEntryLids(items2).Should().NotContain([v + 3, v + 4],
+            "the fold boundary lags but the non-joined card must still hide the whole live range");
+    }
+
     // Private methods
 
     private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)

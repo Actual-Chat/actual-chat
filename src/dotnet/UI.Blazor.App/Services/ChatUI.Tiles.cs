@@ -98,12 +98,21 @@ public partial class ChatUI
             liveBlockFoldRange = liveFoldRange;
         }
 
-        // Non-joined users see the live block's summary only — no live entries. The synthetic
-        // conversation already collapses [Start, EndEntryLid]; hide the un-summarized tail too.
+        // A non-joined viewer sees the block's summary card only — never its live entries. The card
+        // collapses [V, foldEnd) and this range hides everything from there on, so the two together
+        // cover [V, ∞) gaplessly. Starting the hidden range at foldEnd (not EndEntryLid+1) is what
+        // makes it gapless: the fold boundary lags EndEntryLid by up to FoldLag after a new summary,
+        // and anchoring to EndEntryLid would leak the entries in [foldEnd, EndEntryLid+1). Pre-first-
+        // summary the fold range is empty, so hide from V onward. Hiding the wider range is harmless -
+        // a non-joined viewer has no visible live entries to keep.
         var hiddenLiveTailRange = overlay != null
             ? overlay.HiddenTailRange
             : liveConversation is { } liveConv && !amInLiveConversation
-                ? new Range<long>(liveConv.EndEntryLid + 1, long.MaxValue)
+                ? new Range<long>(
+                    liveBlockFoldRange.IsEmpty
+                        ? liveConv.Id.StartEntryLid
+                        : Math.Min(liveConv.EndEntryLid + 1, liveBlockFoldRange.End),
+                    long.MaxValue)
                 : default;
         var liveAt = CpuTimestamp.Now;
 
