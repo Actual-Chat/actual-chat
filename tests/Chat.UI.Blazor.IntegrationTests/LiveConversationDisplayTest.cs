@@ -154,7 +154,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     public async Task GovernorLatchesInitialFoldBoundary()
     {
         // The first observation of a chat must latch to the raw fold end as-is - a fresh render
-        // starts fully folded, and only later advances go through the lag + viewport governor.
+        // starts fully folded, and only later advances go through the viewport governor.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -472,9 +472,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // When the summary's context reaches back before V, the persisted (materialized) conversation
         // starts at ContextStartLid, not V - id-tile loading must resolve that identity to the same
         // governed fold range GetTile uses, or the block's frozen (unfolded) tail loses its id-tiles
-        // and goes missing after close. A second, un-lagged summary widens the raw range past the
-        // governed fold boundary so the fold and the persisted range genuinely diverge - the exact
-        // condition that exposed the bug.
+        // and goes missing after close. A second summary widens the raw range past the governed fold
+        // boundary (which never advances without a viewport signal) so the fold and the persisted
+        // range genuinely diverge - the exact condition that exposed the bug.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -521,9 +521,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(10));
         preCloseLeafLids.Should().Contain(context0.LocalId, "the pre-latch context entry must already be visible");
 
-        // A second summary widens EndEntryLid to cover the tail, but the default (un-shrunk) FoldLag
-        // keeps the governed fold boundary at V+3 - so at close, the fold range [V, V+3) is genuinely
-        // narrower than the persisted range [ContextStartLid, V+6).
+        // A second summary widens EndEntryLid to cover the tail, but the governed fold boundary never
+        // advances past its initial latch without a viewport signal, so it stays parked at V+3 - at
+        // close, the fold range [V, V+3) is genuinely narrower than the persisted range
+        // [ContextStartLid, V+6).
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d2", Summary = "s2",
@@ -612,73 +613,12 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task FoldLagDefersMidCallFold()
-    {
-        // A fold must not land the instant its summary does - the lag gives the reader a beat
-        // before the entries it just covered disappear behind the card.
-
-        // arrange
-        await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "fold-lag-test");
-        var author = await Tester.GetOwnAuthor(chat.Id).Require();
-        var peerId = AuthorId.New(chat.Id, 777_140);
-        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
-        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
-        for (var i = 0; i < 3; i++)
-            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
-        await liveBackend.UpdateSummary(chat.Id,
-            new LiveSessionSummary {
-                Title = "Latch", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3,
-            }, CancellationToken.None);
-        await Tester.CreateTextEntry(chat.Id, "extra-1");
-        await Tester.CreateTextEntry(chat.Id, "extra-2");
-
-        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
-        liveBlockUI.FoldLag = TimeSpan.FromSeconds(2);
-        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
-        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
-        await chatAudioUI.SetListeningState(chat.Id, true);
-        chatUI.SelectChatOnNavigation(chat.Id);
-        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
-        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        List<long> beforeLids = null!;
-        await ComputedTest.When(async ct => {
-            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
-            var lids = LeafEntryLids(items);
-            lids.Should().Contain(v + 3);
-            lids.Should().Contain(v + 4);
-            beforeLids = lids;
-        }, TimeSpan.FromSeconds(10));
-
-        // act - a summary pass advances coverage over the two new entries
-        await liveBackend.UpdateSummary(chat.Id,
-            new LiveSessionSummary {
-                Title = "Latch", Description = "d2", Summary = "s2",
-                EndEntryLid = v + 4, MessageCount = 5,
-            }, CancellationToken.None);
-
-        // assert (sustained - nothing folds within the lag window)
-        await Task.Delay(700);
-        LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None)).Should().Equal(beforeLids);
-
-        // assert - after the lag the two newly covered entries fold
-        await ComputedTest.When(async ct => {
-            var lids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
-            lids.Should().NotContain(v + 3);
-            lids.Should().NotContain(v + 4);
-        }, TimeSpan.FromSeconds(10));
-    }
-
-    [Fact]
     public async Task ViewportGuardDefersFoldWhileVisible()
     {
-        // The fold must defer while its entries are on screen and complete once they scroll away -
-        // even with zero lag, a visible entry can't vanish out from under the reader.
+        // The fold must defer while its entries are the topmost visible ones - even once a summary
+        // pass widens the live pipeline's coverage over them - and complete once the reader scrolls
+        // further so a later message becomes the topmost visible one. The boundary tracks the
+        // viewport top, not the summary, so a visible entry can't vanish out from under the reader.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -701,8 +641,6 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await Tester.CreateTextEntry(chat.Id, "extra-1");
         await Tester.CreateTextEntry(chat.Id, "extra-2");
 
-        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
-        liveBlockUI.FoldLag = TimeSpan.Zero;
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         await chatAudioUI.SetListeningState(chat.Id, true);
@@ -725,7 +663,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             },
             false);
 
-        // act 1 - a summary pass covers the visible entries, but the guard holds the fold
+        // act 1 - a summary pass widens the live pipeline's known coverage over v+3/v+4, but they're
+        // still the topmost visible entries, so the viewport guard holds the fold there regardless
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Latch", Description = "d2", Summary = "s2",
@@ -734,10 +673,14 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await Task.Delay(700);
         LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None)).Should().Equal(beforeLids);
 
-        // act 2 - the entries scroll out of view, so the fold completes
-        chatUI.ItemVisibility.Value = ChatViewItemVisibility.Empty;
+        // act 2 - the reader scrolls further: a later message becomes the topmost visible one
+        var tailEntry = await Tester.CreateTextEntry(chat.Id, "tail-3");
+        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+            chat.Id,
+            new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, tailEntry.LocalId) },
+            false);
 
-        // assert
+        // assert - the boundary advances past v+3/v+4, folding them
         await ComputedTest.When(async ct => {
             var lids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
             lids.Should().NotContain(v + 3);
@@ -1045,11 +988,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task UnjoinedBlockHidesLiveEntriesWhenFoldLagsBehindSummary()
+    public async Task UnjoinedBlockHidesLiveEntriesEvenWhenFoldBoundaryStaysBehindSummary()
     {
-        // A non-joined viewer must see the summary card only - never live entries. When a second
-        // summary advances EndEntryLid past the lag-held fold boundary, the entries in that gap
-        // (between the lagged fold end and the new summary end) must stay hidden behind the card.
+        // A non-joined viewer must see the summary card only - never live entries. A non-joined
+        // viewer never renders live entries, so the governed fold boundary never receives a viewport
+        // signal and stays parked at its initial latch even as later summaries advance EndEntryLid -
+        // the entries in that gap (between the parked fold end and the new summary end) must stay
+        // hidden behind the card regardless.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -1067,8 +1012,6 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v + 2, MessageCount = 3,
         }, CancellationToken.None);
 
-        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
-        liveBlockUI.FoldLag = TimeSpan.FromMinutes(3);   // the second fold stays lagged for the whole test
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         chatUI.SelectChatOnNavigation(chat.Id);   // Bob is NOT recording/listening => not joined
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
@@ -1082,18 +1025,78 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 "a non-joined viewer sees the card only, not the summarized live entries");
         }, TimeSpan.FromSeconds(15));
 
-        // act - two more entries land, then a second summary advances EndEntryLid past the lagged boundary
+        // act - two more entries land, then a second summary advances EndEntryLid past the parked boundary
         for (var i = 0; i < 2; i++)
             await Tester.CreateTextEntry(chat.Id, $"b-{i}");   // v+3, v+4
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
             Title = "Recap", Description = "d2", Summary = "s2", EndEntryLid = v + 4, MessageCount = 5,
         }, CancellationToken.None);
 
-        // assert (sustained) - the newly-summarized entries in the lagged gap must never surface
+        // assert (sustained) - the newly-summarized entries beyond the parked boundary must never surface
         await Task.Delay(1000);
         var items2 = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
         LeafEntryLids(items2).Should().NotContain([v + 3, v + 4],
-            "the fold boundary lags but the non-joined card must still hide the whole live range");
+            "the fold boundary stays parked but the non-joined card must still hide the whole live range");
+    }
+
+    [Fact]
+    public async Task CollapsedBlockFoldsUnsummarizedRowsAboveViewport()
+    {
+        // §4: the collapsed live block swallows everything above the viewport, even rows no summary
+        // has ever covered - the boundary tracks the viewport top directly, with no summary gate.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "swallow-above-viewport-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_400);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        // A title so the block has a card, but the summary covers only V (EndEntryLid = v) - the entries
+        // below are UN-summarised. Viewport tracking must still fold them once they scroll above the top.
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+        var lids = new List<long>();
+        for (var i = 0; i < 8; i++)
+            lids.Add((await Tester.CreateTextEntry(chat.Id, $"m-{i}")).LocalId);
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetRecordingChatId(chat.Id);   // Bob is a recorder => joined
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        // act - viewport top sits at the 6th entry: everything above it (incl. un-summarised rows) must fold
+        var viewportTop = lids[5];
+        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+            chat.Id,
+            new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
+            false);
+
+        // assert - the governed boundary (not just the summary-covered range) advances to the viewport
+        // top, so un-summarised rows above it are swallowed too
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await ComputedTest.When(async ct => {
+            var blockState = await liveBlockUI.GetBlockState(chat.Id, ct);
+            blockState.FoldBoundaryLid.Should().BeGreaterThanOrEqualTo(viewportTop,
+                "the boundary tracks the viewport top, folding un-summarised rows above it");
+        }, TimeSpan.FromSeconds(15));
+
+        // assert - this must also hold at render level: the un-summarised rows above the viewport top
+        // are folded into the block (not rendered as individual messages), while the viewport top and
+        // everything below it still render normally
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var renderedLids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
+            renderedLids.Should().NotContain(lids.Take(5),
+                "un-summarised rows above the viewport top must fold, not render as individual messages");
+            renderedLids.Should().Contain(lids.Skip(5),
+                "the viewport top and the tail below it must still render normally");
+        }, TimeSpan.FromSeconds(15));
     }
 
     // Private methods

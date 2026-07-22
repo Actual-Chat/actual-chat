@@ -75,13 +75,13 @@ public partial class ChatUI
         var blockState = await Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken).ConfigureAwait(false);
         var overlay = blockState.Overlay;
 
-        // The governed boundary replaces the raw fold end: folds advance only FoldLag after the summary
-        // pass that produced them, and never across the viewer's viewport (LiveBlockUI owns both rules).
+        // The governed boundary replaces the raw fold end: it tracks the viewer's viewport top,
+        // monotonically, so un-summarised rows above the viewport fold too (LiveBlockUI owns this).
+        // No EndEntryLid cap here - FoldBoundaryLid is itself the monotonic max of real visible
+        // message lids, so it never exceeds the loaded entries.
         var liveFoldRange = rawLive is { SessionStartedAt: not null }
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid
-                ? new Range<long>(
-                    rawLive.EffectiveVisibleStartLid,
-                    Math.Min(blockState.FoldBoundaryLid, rawLive.EndEntryLid + 1))
+                ? new Range<long>(rawLive.EffectiveVisibleStartLid, blockState.FoldBoundaryLid)
                 : default;
 
         ConversationId? liveBlockId;
@@ -101,10 +101,11 @@ public partial class ChatUI
         // A non-joined viewer sees the block's summary card only — never its live entries. The card
         // collapses [V, foldEnd) and this range hides everything from there on, so the two together
         // cover [V, ∞) gaplessly. Starting the hidden range at foldEnd (not EndEntryLid+1) is what
-        // makes it gapless: the fold boundary lags EndEntryLid by up to FoldLag after a new summary,
-        // and anchoring to EndEntryLid would leak the entries in [foldEnd, EndEntryLid+1). Pre-first-
-        // summary the fold range is empty, so hide from V onward. Hiding the wider range is harmless -
-        // a non-joined viewer has no visible live entries to keep.
+        // makes it gapless: a non-joined viewer never renders live entries, so the governed boundary
+        // never gets a viewport signal and can trail EndEntryLid indefinitely - anchoring to
+        // EndEntryLid would leak the entries in [foldEnd, EndEntryLid+1). Pre-first-summary the fold
+        // range is empty, so hide from V onward. Hiding the wider range is harmless - a non-joined
+        // viewer has no visible live entries to keep.
         var hiddenLiveTailRange = overlay != null
             ? overlay.HiddenTailRange
             : liveConversation is { } liveConv && !amInLiveConversation
@@ -635,6 +636,14 @@ public partial class ChatUI
                 .Select(c => c.Id == liveBlockId ? liveFoldRange : c.EntryLidRange)
                 .Where(r => !r.IsEmpty)
                 .ToArray();
+            // The live conversation's own persisted EntryLidRange is server-tracked (EndEntryLid-based),
+            // so it can be narrower than the governed fold range once the boundary has advanced past
+            // un-summarised rows (§4) - this tile then carries no matching Conversation to substitute
+            // above, and the fold would never apply. Add it explicitly so folding is never limited by
+            // how far the persisted conversation record itself currently reaches.
+            if (liveBlockId is { } liveBlockConversationId && !expandedConversations.Contains(liveBlockConversationId)
+                && !liveFoldRange.IsEmpty && conversations.All(c => c.Id != liveBlockConversationId))
+                idRangesToSkip = [..idRangesToSkip, liveFoldRange];
         }
         if (!hiddenLiveTailRange.IsEmpty)
             idRangesToSkip = [..idRangesToSkip, hiddenLiveTailRange];

@@ -25,14 +25,13 @@ public sealed record LiveBlockState(
 }
 
 /// <summary>
-/// Governs how far a live block's fold boundary is allowed to advance (lag + viewport clamp via
-/// <see cref="LiveFoldMath"/>), and freezes/materializes the block's render once the viewer leaves
-/// or the session closes, so a watched viewport never mutates under the reader.
+/// Governs how far a live block's fold boundary is allowed to advance (monotonic viewport-top
+/// tracking via <see cref="LiveFoldMath"/>), and freezes/materializes the block's render once the
+/// viewer leaves or the session closes, so a watched viewport never mutates under the reader.
 /// </summary>
 public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeService, INotifyInitialized
 {
     private readonly Dictionary<ChatId, ChatFoldState> _chatStates = new();
-    internal TimeSpan FoldLag = TimeSpan.FromMinutes(3);
     // A too-short (tier-1) session leaves nothing behind, so its block is held briefly on close to
     // fade + collapse out instead of vanishing in one frame.
     internal TimeSpan DissolveDuration = TimeSpan.FromMilliseconds(300);
@@ -139,7 +138,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 return existing;
 
         // Isolated read: the initial latch must not make the governor's boundary state reactive to
-        // the raw live state - only subsequent advances go through the lag + viewport governor. The
+        // the raw live state - only subsequent advances go through the viewport governor. The
         // attending latch is seeded here too - whichever caller creates the state first (this read
         // path or the governor loop) must agree on it, or a join immediately followed by a leave (no
         // governor iteration lands in between) would never mark the viewer as having attended.
@@ -165,7 +164,6 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 State = StateFactory.NewMutable(
                     new LiveBlockState(foldEndLid, null, isJoined),
                     StateCategories.Get(GetType(), nameof(GetBlockState), "[*]")),
-                LastObservedFoldEndLid = foldEndLid,
                 WasAttending = isJoined,
                 Template = template,
             };
@@ -265,21 +263,12 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
             if (raw is { SessionStartedAt: not null }) {
                 var v = raw.EffectiveVisibleStartLid;
-                var foldEndLid = GetRawFoldEndLid(raw);
-                if (foldEndLid > chatState.LastObservedFoldEndLid) {
-                    chatState.Pending = [..chatState.Pending, new PendingFold(foldEndLid, raw.LastSummaryAt)];
-                    chatState.LastObservedFoldEndLid = foldEndLid;
-                }
-
                 var minVisibleLid = visibility.ChatId == chatId && !visibility.IsEmpty
                     ? visibility.VisibleMessageLids.Where(lid => lid >= v).DefaultIfEmpty(long.MaxValue).Min()
                     : long.MaxValue;
-                var result = LiveFoldMath.Advance(
-                    state.FoldBoundaryLid, chatState.Pending, Clocks.ServerClock.Now, FoldLag,
-                    minVisibleLid == long.MaxValue ? null : minVisibleLid);
-                chatState.Pending = result.Pending;
-                wakeAt = result.NextWakeAt;
-                state = new LiveBlockState(result.BoundaryLid, null, chatState.WasAttending);
+                var boundaryLid = LiveFoldMath.Advance(
+                    state.FoldBoundaryLid, minVisibleLid == long.MaxValue ? null : minVisibleLid);
+                state = new LiveBlockState(boundaryLid, null, chatState.WasAttending);
             }
 
             if (!Equals(chatState.State.Value, state))
@@ -309,8 +298,6 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
     private sealed class ChatFoldState
     {
         public MutableState<LiveBlockState> State = null!;
-        public IReadOnlyList<PendingFold> Pending = [];
-        public long LastObservedFoldEndLid;
         public bool WasAttending;
         public bool IsClosed;
         public Moment DissolveEndsAt;
