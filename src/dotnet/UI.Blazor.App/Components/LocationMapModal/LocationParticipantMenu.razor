@@ -17,8 +17,8 @@
 </div>
 
 @code {
-    private ChatId _chatId;
-    private SharedLocationId _locationId;
+    private ChatId _chatId = null!;
+    private SharedLocationId _locationId = null!;
 
     private ISharedLocations SharedLocations => Hub.SharedLocations;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
@@ -55,8 +55,8 @@
         await ClipboardUI.WriteText(point.ToOpenStreetMapUrl()).ConfigureAwait(false);
     }
 
-    private async Task<GeoPoint?> GetPoint() {
-        var location = await SharedLocations.Get(Session, _chatId, _locationId, default).ConfigureAwait(false);
+    private async Task<GeoPoint?> GetPoint(CancellationToken cancellationToken = default) {
+        var location = await SharedLocations.Get(Session, _chatId, _locationId, cancellationToken).ConfigureAwait(false);
         return location?.Point;
     }
 }

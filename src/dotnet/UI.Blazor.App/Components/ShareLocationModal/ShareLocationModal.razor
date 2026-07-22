@@ -114,10 +114,10 @@
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var ownMarker = await LocationUI.GetOwnMarker(ModalModel.ChatId, cancellationToken).ConfigureAwait(false);
         var mapType = await _mapType.Use(cancellationToken).ConfigureAwait(false);
         var isMapTypeMenuOpen = await _isMapTypeMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var isDurationMenuOpen = await _isDurationMenuOpen.Use(cancellationToken).ConfigureAwait(false);
+        var ownMarker = await LocationUI.GetOwnMarker(ModalModel.ChatId, cancellationToken).ConfigureAwait(false);
         return new ComputedModel(ownMarker, mapType, isMapTypeMenuOpen, isDurationMenuOpen);
     }
 
