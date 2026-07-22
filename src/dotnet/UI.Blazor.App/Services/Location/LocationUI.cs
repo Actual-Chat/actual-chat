@@ -131,8 +131,17 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         return locations.FirstOrDefault(x => x.AuthorId == authorId);
     }
 
+    // TODO: looks redundant
+    public async Task<MapMarker> GetOwnMarker(ChatId chatId, GeoPoint point, CancellationToken cancellationToken)
+    {
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return ownAuthor is null
+            ? new MapMarker(OwnMarkerId, point, IsOwnLocation: true)
+            : ToMapMarker(OwnMarkerId, point, ownAuthor, isOwnLocation: true);
+    }
+
     [ComputeMethod]
-    public virtual async Task<MapMarker?> GetMapMarker(
+    public virtual async Task<MapMarker?> GetMarker(
         ChatId chatId,
         SharedLocationId locationId,
         CancellationToken cancellationToken)
@@ -158,14 +167,6 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             return null;
 
         return await Tracker.Get(false, cancellationToken).ConfigureAwait(false);
-    }
-
-    public async Task<MapMarker> GetOwnMarker(ChatId chatId, GeoPoint point, CancellationToken cancellationToken)
-    {
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return ownAuthor is null
-            ? new MapMarker(OwnMarkerId, point, IsOwnLocation: true)
-            : ToMapMarker(OwnMarkerId, point, ownAuthor, isOwnLocation: true);
     }
 
     [ComputeMethod]
