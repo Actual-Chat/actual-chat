@@ -217,8 +217,8 @@
         // card carries the last entries itself to show the conversation is moving. A leaver is the third
         // case: !isJoined but the freeze overlay keeps the tail on screen, so a preview would double it -
         // gate on Overlay == null so only the genuinely-hidden case previews.
-        var tailPreview = isLive && !isJoined && !isVoiceOnly && blockState.Overlay == null
-            ? await GetTailPreview(chatId, cancellationToken).ConfigureAwait(true)
+        var tailPreview = isLive && !isJoined && !isVoiceOnly && blockState.Overlay == null && !isExpanded
+            ? await GetTailPreview(chatId, rawLive?.EffectiveVisibleStartLid ?? 0, cancellationToken).ConfigureAwait(true)
             : null;
         var hasSummary = !translated.Title.Text.IsNullOrEmpty();
         var swallowedCount = 0;
@@ -236,8 +236,8 @@
     }
 
     private async Task<IReadOnlyList<PreviewEntry>> GetTailPreview(
-        ChatId chatId, CancellationToken cancellationToken) {
-        var entries = await ChatUI.GetThreadPreviewEntries(chatId, 5, cancellationToken).ConfigureAwait(true);
+        ChatId chatId, long minLid, CancellationToken cancellationToken) {
+        var entries = await ChatUI.GetThreadPreviewEntries(chatId, 5, minLid, cancellationToken).ConfigureAwait(true);
         var markupHub = Hub.ChatMarkupHubFactory[chatId];
         var markups = await entries
             .Select(e => markupHub.GetMarkup(e, MarkupConsumer.MessageView, cancellationToken).AsTask())

@@ -12,7 +12,7 @@
     @if (!s.IsJoined && !s.HasOverlay) {
         <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">Join</button>
     }
-    else if (s.HasFoldedEntries) {
+    @if (s.CanExpand) {
         <HeaderButton Class="c-lc-expand" Click="@Toggle">
             <i class="@(s.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
         </HeaderButton>
@@ -59,11 +59,15 @@
         var hasFoldedEntries = isLive && !isVoiceOnly
             && rawLive is { SessionStartedAt: not null }
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
+        // A not-joined viewer can expand the block to read the whole conversation before joining; a joined
+        // one only when there is folded content behind the card.
+        var canExpand = isLive && !isVoiceOnly && rawLive is { SessionStartedAt: not null }
+            && (!isJoined || hasFoldedEntries);
         var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
         var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
         return new LiveConversationHeaderState(
             translated.Title.Text, participantsText, hasFoldedEntries, isExpanded, isJoined,
-            blockState.Overlay != null, blockState.Overlay?.IsDissolving ?? false);
+            blockState.Overlay != null, blockState.Overlay?.IsDissolving ?? false, canExpand);
     }
 
     private void Toggle()
