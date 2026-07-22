@@ -27,6 +27,14 @@
         var secondLine = state.IsVoiceOnly ? "Voice only" : messageCount + " message".Pluralize(messageCount);
         var startedAt = $"Started at {startsAt:HH:mm}";
         var hasFoldedEntries = state.HasFoldedEntries;
+        // The split-out header carries the title; when expanded the description + meta-row drop out, so an
+        // otherwise-empty card would render as a 1rem-padded gap between the header and the first message.
+        // Skip the card entirely unless it has something to show.
+        var showLiveCard = (!Message.HasSplitHeader && hasLiveTitle)
+            || (hasDescription && !state.IsExpanded)
+            || (state.HasSummary && !state.IsExpanded)
+            || state.TailPreview is { Count: > 0 };
+        if (showLiveCard) {
         <div class="c-live-card">
             @if (!Message.HasSplitHeader && hasLiveTitle) {
                 <div class="c-lc-title">
@@ -73,6 +81,7 @@
                 <LastEntriesPreview Entries="@tailPreview" Faded="true"/>
             }
         </div>
+        }
     } else {
         <CascadingValue Value="@_fakeEntry" IsFixed="true">
         <div class="c-details">
