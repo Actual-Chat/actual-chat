@@ -131,7 +131,6 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         return locations.FirstOrDefault(x => x.AuthorId == authorId);
     }
 
-    // TODO: what's the different between GetOwnPoint and GetCurrentLocation
     [ComputeMethod]
     public virtual async Task<GeoPoint?> GetOwnPoint(ChatId chatId, CancellationToken cancellationToken)
     {
@@ -178,6 +177,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     [ComputeMethod]
     public virtual async Task<GeoPoint?> GetCurrentLocation(CancellationToken cancellationToken)
     {
+        // One-shot device position (non-reactive snapshot); GetOwnPoint is the live, share-aware variant.
         if (Tracker.LastKnown.ValueOrDefault is { } lastKnown)
             return lastKnown;
 
