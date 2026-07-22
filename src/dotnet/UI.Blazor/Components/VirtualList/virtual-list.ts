@@ -980,11 +980,20 @@ export class VirtualList {
     };
 
     private onInteractiveEvent = (event: TouchEvent): void => {
-        // Your touchend event handling logic here
-        const itemRef = event.currentTarget;
-        const key = getItemKey(itemRef as HTMLElement);
+        const itemRef = event.currentTarget as HTMLElement;
+        let key = getItemKey(itemRef);
         if (!key)
             return;
+
+        // A control marked data-anchor="below" (the live block's Show-more pill) reveals rows ABOVE
+        // itself. Hold the first item BELOW this one as the interactive pivot instead of this item, so
+        // the revealed rows grow upward while everything from the control down keeps its screen position.
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('[data-anchor="below"]')) {
+            const belowKey = this.getFirstItemKeyBelow(itemRef);
+            if (belowKey)
+                key = belowKey;
+        }
 
         if (BrowserInfo.appKind === 'Wasm')
             this.updateCurrentPivots(key); // Required to do it synchronously at WASM
@@ -1647,6 +1656,19 @@ export class VirtualList {
             return null;
 
         return this.containerRef.querySelector(`:scope .item[data-key="${key}"]`);
+    }
+
+    private getFirstItemKeyBelow(itemRef: HTMLElement): string | null {
+        const all = Array.from(this.containerRef.querySelectorAll<HTMLElement>(':scope .item[data-key]'));
+        const idx = all.indexOf(itemRef);
+        if (idx < 0)
+            return null;
+        for (let i = idx + 1; i < all.length; i++) {
+            const skip = all[i].dataset.skip;
+            if (skip == null || skip === 'false')
+                return all[i].dataset.key ?? null;
+        }
+        return null;
     }
 
     private getFirstItemRef(): HTMLElement | null {
