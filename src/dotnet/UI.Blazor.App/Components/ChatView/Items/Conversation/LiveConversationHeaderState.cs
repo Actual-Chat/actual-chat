@@ -5,4 +5,5 @@ public sealed record LiveConversationHeaderState(
     string ParticipantsText,
     bool HasFoldedEntries,
     bool IsExpanded,
+    bool IsJoined = false,
     bool IsDissolving = false);

@@ -9,7 +9,10 @@
 <div class="@cls">
     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
     <span class="c-lc-name">@title</span>
-    @if (s.HasFoldedEntries) {
+    @if (!s.IsJoined) {
+        <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">Join</button>
+    }
+    else if (s.HasFoldedEntries) {
         <HeaderButton Class="c-lc-expand" Click="@Toggle">
             <i class="@(s.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
         </HeaderButton>
@@ -41,6 +44,7 @@
         var translated = await ConversationUI.GetTranslatedConversation(conversation, cancellationToken).ConfigureAwait(true);
         var live = await LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(true);
         var isLive = live != null && live.Id == conversation.Id;
+        var isJoined = isLive && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(true);
         var isVoiceOnly = isLive
             && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(true);
         var participantsText = isLive
@@ -56,10 +60,13 @@
         var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
         var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
         return new LiveConversationHeaderState(
-            translated.Title.Text, participantsText, hasFoldedEntries, isExpanded,
+            translated.Title.Text, participantsText, hasFoldedEntries, isExpanded, isJoined,
             blockState.Overlay?.IsDissolving ?? false);
     }
 
     private void Toggle()
         => ChatUI.ToggleExpandConversation(Header.Conversation!.Id);
+
+    private async Task Join()
+        => await Hub.ChatAudioUI.SetRecordingChatId(Header.Conversation!.Id.ChatId).ConfigureAwait(true);
 }

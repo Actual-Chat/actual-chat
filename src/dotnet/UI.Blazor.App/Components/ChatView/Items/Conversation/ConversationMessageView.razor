@@ -72,9 +72,6 @@
                 <Divider/>
                 <LastEntriesPreview Entries="@tailPreview"/>
             }
-            @if (!state.IsJoined) {
-                <button type="button" class="c-join-row" @onclick="@OnJoin">Join</button>
-            }
         </div>
     } else {
         <CascadingValue Value="@_fakeEntry" IsFixed="true">

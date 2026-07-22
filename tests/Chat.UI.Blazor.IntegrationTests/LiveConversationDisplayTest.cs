@@ -50,7 +50,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         live!.SessionStartedAt.Should().NotBeNull();
         (live.VisibleStartLid % tileSize).Should()
             .Be(0L, "the live block must start a fresh view tile or this test doesn't bite");
-        items.Items.OfType<ConversationMessage>()
+        // The unjoined live block now renders through the unified sticky-header shell, so its card is a
+        // leaf inside the block rather than a top-level ConversationMessage.
+        items.Items.SelectMany(i => i.GetLeafMessages())
+            .OfType<ConversationMessage>()
             .Select(m => m.Conversation!.Id)
             .Should().Contain(live.ConversationId);
     }
@@ -1008,6 +1011,35 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             card.Should().NotBeNull("a pre-summary live block still emits its card");
             card!.Conversation!.MessageCount.Should().Be(0);   // the card carries 0; the view must NOT render "0 messages"
         }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task UnjoinedLiveBlockUsesStickyHeader()
+    {
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "unjoined-shell-test");
+        var peerId = AuthorId.New(chat.Id, 777_340);
+        var peer2Id = AuthorId.New(chat.Id, 777_341);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, CancellationToken.None); // 2+ => SessionStartedAt latches
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        chatUI.SelectChatOnNavigation(chat.Id);   // Bob is NOT recording/listening => not joined
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.SelectMany(i => i.GetLeafMessages())
+                .OfType<LiveConversationHeader>().Should().ContainSingle(
+                    "the unjoined live block shares the sticky-header shell");
+        }, TimeSpan.FromSeconds(15));
     }
 
     // Private methods
