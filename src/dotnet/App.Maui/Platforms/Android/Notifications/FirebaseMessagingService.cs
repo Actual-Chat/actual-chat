@@ -139,8 +139,12 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             // there's no cached value (the chat was never opened here), don't suppress.
             if (entryLid > 0) {
                 var chatUI = scopedServices.GetRequiredService<ChatUI>();
+                // GetExisting can return an instance whose first computation is still in flight;
+                // touching its output then throws "Wrong Computed.State: Computing."
                 var cReadEntryLid = Computed.GetExisting(() => chatUI.GetReadEntryLid(chatId, default));
-                if (cReadEntryLid is not null && cReadEntryLid.IsValue(out var readEntryLid) && readEntryLid >= entryLid) {
+                if (cReadEntryLid is { ConsistencyState: not ConsistencyState.Computing }
+                    && cReadEntryLid.IsValue(out var readEntryLid)
+                    && readEntryLid >= entryLid) {
                     Log.LogDebug("OnMessageReceived: already read on this device #{ChatId} @ {EntryLid}", chatId, entryLid);
                     return true;
                 }
