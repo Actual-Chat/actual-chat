@@ -383,11 +383,16 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 .live-conversation-header .c-lc-expand i {
     @apply text-xl;
 }
-/* Header Join affordance - the activity-panel's transparent button, tinted violet-60. The
-   .virtual-list prefix outranks .btn.btn-transparent's text-primary so the violet colour wins. */
+/* Header Join affordance - styled like the activity panel's Join button: a visible tinted button by
+   default (not only on hover), violet-60 text, stronger tint on hover. The .virtual-list prefix
+   outranks .btn.btn-transparent's transparent background and text-primary colour. */
 .virtual-list .c-virtual-container .live-conversation-header .c-lc-join {
-    @apply flex-none;
+    @apply flex-none rounded-lg h-10 px-4;
     color: var(--violet-60);
+    background-color: var(--violet-60-10);
+}
+body.hoverable .virtual-list .c-virtual-container .live-conversation-header .c-lc-join:hover {
+    background-color: var(--violet-60-20);
 }
 
 /* Live conversation footer - just the block's rounded bottom edge, giving the last entry a little
@@ -399,6 +404,11 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    space between the last message and the rounded bottom. Collapse the item so the footer sits flush. */
 .virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) .item:has(> .live-conversation-footer) {
     @apply min-h-0;
+}
+/* The unjoined block is a compact preview card that the group's own rounding already closes, so its
+   footer band would just add empty space below the last preview row - collapse it to nothing. */
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header .c-lc-join) .live-conversation-footer {
+    @apply h-0;
 }
 
 /* Tier-1 dissolve: a too-short session leaves no card, so its block fades + collapses its chrome
