@@ -131,9 +131,27 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         return locations.FirstOrDefault(x => x.AuthorId == authorId);
     }
 
-    // TODO: looks redundant
-    public async Task<MapMarker> GetOwnMarker(ChatId chatId, GeoPoint point, CancellationToken cancellationToken)
+    // TODO: what's the different between GetOwnPoint and GetCurrentLocation
+    [ComputeMethod]
+    public virtual async Task<GeoPoint?> GetOwnPoint(ChatId chatId, CancellationToken cancellationToken)
     {
+        var livePoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
+        if (livePoint is not null)
+            return livePoint;
+
+        var ownLive = await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
+        if (ownLive is not null)
+            return ownLive.Point;
+
+        return await GetCurrentLocation(cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<MapMarker?> GetOwnMarker(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (await GetOwnPoint(chatId, cancellationToken).ConfigureAwait(false) is not { } point)
+            return null;
+
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return ownAuthor is null
             ? new MapMarker(OwnMarkerId, point, IsOwnLocation: true)
