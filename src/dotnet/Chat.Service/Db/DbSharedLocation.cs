@@ -38,12 +38,16 @@ public class DbSharedLocation : IHasId<string>, IHasVersion<long>, IRequirementT
     public DbSharedLocation(SharedLocation model) => UpdateFrom(model);
 
     public SharedLocation ToModel()
-        => new(ActualChat.SharedLocationId.Parse(Id), Version) {
+        => new(SharedLocationId.Parse(Id), Version) {
             AuthorId = ActualChat.AuthorId.Parse(AuthorId),
             Point = new GeoPoint(Latitude, Longitude, Accuracy, Bearing),
             CreatedAt = CreatedAt.ToMoment(),
             ModifiedAt = ModifiedAt.ToMoment(),
-            Duration = Duration,
+            // DB round-trip truncates TimeSpan ticks to microseconds,
+            // so UnlimitedDuration (MaxValue) never compares equal on read
+            Duration = Constants.Location.UnlimitedDuration - Duration < TimeSpan.FromSeconds(1)
+                ? Constants.Location.UnlimitedDuration
+                : Duration,
             StoppedAt = StoppedAt?.ToMoment(),
         };
 

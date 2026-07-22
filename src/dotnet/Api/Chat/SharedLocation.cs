@@ -26,11 +26,9 @@ public sealed partial record SharedLocation(
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ChatId => AuthorId.ChatId;
 
-    // Tolerant comparison: the DB stores Duration with microsecond precision,
-    // so TimeSpan.MaxValue doesn't round-trip bit-exactly.
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool IsUnlimited => Duration > Constants.Location.MaxFiniteDuration;
+    public bool IsUnlimited => Duration == Constants.Location.UnlimitedDuration;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
