@@ -166,7 +166,7 @@
     private async Task Select(FoundMention item) {
         CloseImmediately();
         LocalUrl? url = item.MentionRef.Target switch {
-            UserId userId => Links.User(userId),
+            UserId userId => GetUserUrl(userId),
             AuthorId authorId => Links.Chat(authorId.ChatId),
             ChatId chatId => Links.Chat(chatId),
             PlaceId placeId => Links.Chat(placeId.RootChatId),
@@ -174,6 +174,15 @@
         };
         if (url is { } localUrl)
             await Hub.History.NavigateTo(localUrl).ConfigureAwait(true);
+    }
+
+    private LocalUrl GetUserUrl(UserId userId) {
+        // The /u/{userId} route redirect remounts the left panel (a visible flash),
+        // so resolve the peer chat link directly when possible.
+        var ownAccountId = Hub.AccountUI.OwnAccount.Value.Id;
+        return ownAccountId.IsGuestOrNull() || ownAccountId == userId
+            ? Links.User(userId)
+            : Links.Chat(PeerChatId.New(ownAccountId, userId));
     }
 
     private FoundMention? FixSelection(FoundMention? selection, FoundMention[] results) {
