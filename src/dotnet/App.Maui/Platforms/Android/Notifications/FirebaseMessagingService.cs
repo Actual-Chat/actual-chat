@@ -41,10 +41,21 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     public override void OnNewToken(string token)
     {
+        // Same JNI boundary as OnMessageReceived: an escaping exception crashes the process.
+        try {
+            OnNewTokenImpl(token);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "OnNewToken failed");
+        }
+    }
+
+    private void OnNewTokenImpl(string token)
+    {
         Log.LogDebug("OnNewToken: '{Token}'", token);
         var appServices = IPlatformApplication.Current?.Services;
         var mauiNotifications = appServices?.GetService<MauiNotifications>();
-        if (mauiNotifications != null )
+        if (mauiNotifications is not null)
             _ = BackgroundTask.Run(
                 () => mauiNotifications.RefreshNotificationToken(token, DeviceType.AndroidApp, CancellationToken.None),
                 Log, "OnNewToken failed.");
