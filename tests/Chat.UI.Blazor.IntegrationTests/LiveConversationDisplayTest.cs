@@ -982,6 +982,34 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task PreSummaryBlockShowsNoMetaCount()
+    {
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "pre-summary-meta-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_330);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        // act + assert - no UpdateSummary => no title => HasSummary must be false on the rendered live conversation
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var card = items.Items.SelectMany(i => i.GetLeafMessages())
+                .OfType<ConversationMessage>().SingleOrDefault(c => c.Conversation!.Title.IsNullOrEmpty());
+            card.Should().NotBeNull("a pre-summary live block still emits its card");
+            card!.Conversation!.MessageCount.Should().Be(0);   // the card carries 0; the view must NOT render "0 messages"
+        }, TimeSpan.FromSeconds(10));
+    }
+
     // Private methods
 
     private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)
