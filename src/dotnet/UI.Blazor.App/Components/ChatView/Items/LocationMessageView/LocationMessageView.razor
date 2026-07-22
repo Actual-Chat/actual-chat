@@ -66,8 +66,6 @@
 </div>
 
 @code {
-    private MutableState<GeoPoint?> _currentLocation = null!;
-
     private ISharedLocations SharedLocations => Hub.SharedLocations;
     private LocationUI LocationUI => Hub.LocationUI;
     private ILocationTracker Tracker => Hub.LocationTracker;
@@ -75,13 +73,6 @@
         => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
-
-    protected override void OnInitialized() {
-        _currentLocation = StateFactory.NewMutable(
-            (GeoPoint?)null,
-            StateCategories.Get(GetType(), nameof(_currentLocation)));
-        _ = FetchCurrentLocation();
-    }
 
     protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -124,18 +115,16 @@
 
     private async Task<string> GetDistanceText(GeoPoint target, CancellationToken cancellationToken) {
         var ownPoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false)
-            ?? await _currentLocation.Use(cancellationToken).ConfigureAwait(false);
-        return ownPoint is { } point ? point.DistanceTextTo(target) : "";
+            ?? await GetCurrentLocation(cancellationToken).ConfigureAwait(false);
+        return ownPoint != null ? ownPoint.DistanceTextTo(target) : "";
     }
 
-    private async Task FetchCurrentLocation() {
-        // Never prompts for the location permission: a message card must stay passive,
-        // so it reads a cached fix only when the permission is already granted.
-        if (await LocationPermission.Check(CancellationToken.None).ConfigureAwait(false) != true)
-            return;
+    // TODO: make compute method of Location UI
+    private async Task<GeoPoint?> GetCurrentLocation(CancellationToken cancellationToken) {
+        if (await LocationPermission.Check(cancellationToken).ConfigureAwait(false) != true)
+            return null;
 
-        if (await Tracker.Get().ConfigureAwait(false) is { } point)
-            _currentLocation.Value = point;
+        return await Tracker.Get(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     private Task OnOpenMap()
