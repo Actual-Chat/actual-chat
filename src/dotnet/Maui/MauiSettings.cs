@@ -64,4 +64,11 @@ public static class MauiSettings
     {
         public static readonly bool UseSystemBrowser = true;
     }
+
+    public static class Diagnostics
+    {
+        // Persists startup-phase marks + reports previous abnormal process exits (ANRs, native
+        // crashes) via ApplicationExitInfo on the next launch. See MauiStartupBreadcrumbs.
+        public const bool EnableStartupBreadcrumbs = true;
+    }
 }

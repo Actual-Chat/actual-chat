@@ -31,6 +31,7 @@ public static class MauiDiagnostics
 
     public static void Initialize()
     {
+        MauiStartupBreadcrumbs.Initialize();
         Log.Logger = CreateAppLogger();
         StaticLog.Factory = new SanitizingLoggerFactory(
             new SerilogLoggerFactory(Log.Logger),

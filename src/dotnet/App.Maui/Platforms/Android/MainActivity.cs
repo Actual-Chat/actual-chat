@@ -89,6 +89,7 @@ public partial class MainActivity : MauiAppCompatActivity
         // As a result, splash screen is getting hidden early and user sees index.html w/o any content yet.
         // TODO: to think how we can gracefully handle this partial recreation.
         Log.LogInformation("OnCreate: isFirstTime={IsFirstTime}", _isFirstTime);
+        MauiStartupBreadcrumbs.Add($"MainActivity.OnCreate (isFirstTime: {_isFirstTime})");
         _isFirstTime = false;
 
         // ReSharper disable once ExplicitCallerInfoArgument

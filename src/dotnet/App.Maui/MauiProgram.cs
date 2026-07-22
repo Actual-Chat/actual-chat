@@ -45,6 +45,7 @@ public static partial class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         using var _1 = Tracer.MethodRegion();
+        MauiStartupBreadcrumbs.Add("CreateMauiApp");
 
         // Parse -t <seconds> for auto-shutdown (used for AOT testing)
         var args = Environment.GetCommandLineArgs();
@@ -93,14 +94,17 @@ public static partial class MauiProgram
                 Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
                 ConfigureMauiApp(appBuilder);
             }
+            MauiStartupBreadcrumbs.Add("MauiApp configured");
 #if DEBUG
             // NOTE: It's enabled in Debug mode only hence there are no performance penalties in Release mode.
             EnableContainerValidation(appBuilder);
 #endif
             var app = appBuilder.Build();
+            MauiStartupBreadcrumbs.Add("MauiApp built");
             StaticLog.Factory = app.Services.LoggerFactory();
 
             AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
+            MauiStartupBreadcrumbs.Add("static services warmed up");
 
 #pragma warning disable CA2025
             BlazorWebViewApp.Initialize(() => BuildBlazorViewAppInternal(app));
@@ -109,6 +113,7 @@ public static partial class MauiProgram
             SetupBlazorViewAppPostBuildRoutine();
 
             LoadingUI.MarkAppBuilt();
+            MauiStartupBreadcrumbs.Add("CreateMauiApp completed");
 
             return app;
         }
