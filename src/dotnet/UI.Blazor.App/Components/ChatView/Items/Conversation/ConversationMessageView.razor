@@ -81,7 +81,7 @@
                 <LastEntriesPreview Entries="@tailPreview"/>
             }
             @if (!state.IsJoined) {
-                <button type="button" class="c-join-row" @onclick="@OnJoin">Tap to join</button>
+                <button type="button" class="c-join-row" @onclick="@OnJoin">Join</button>
             }
         </div>
     } else {
@@ -248,7 +248,7 @@
 
     private async Task OnJoin() {
         var chatId = Message.Conversation!.Id.ChatId;
-        await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
+        await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
     }
 
     private void ToggleDetails() {
