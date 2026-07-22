@@ -192,10 +192,12 @@ public partial class ChatUI
                     HalfLoadLimit);
 
             expandedConversations = defaultExpanded.SymmetricExcept(overrides);
-            // A stale joined-era expand must not leak the hidden tail once the viewer is no longer joined -
-            // unless an overlay is freezing the block, in which case the leaver keeps their own expansion.
-            if (liveConversation != null && !amInLiveConversation && overlay == null)
-                expandedConversations = expandedConversations.Remove(liveConversation.Id);
+            // A not-joined viewer can expand the live block to read the whole conversation before joining;
+            // when expanded, stop hiding its tail so every entry [V, end] renders (the fold/skip logic
+            // already drops the fold range for an expanded block). Collapsed, the hidden tail stands.
+            if (liveConversation is { } liveConvExp && !amInLiveConversation && overlay == null
+                && expandedConversations.Contains(liveConvExp.Id))
+                hiddenLiveTailRange = default;
         }
 
         Range<long> chatLidRange;
@@ -912,8 +914,10 @@ public partial class ChatUI
     public virtual async Task<IReadOnlyList<ChatEntry>> GetThreadPreviewEntries(
         ChatId chatId,
         int count = 2,
+        long minLid = 0,
         CancellationToken cancellationToken = default)
         => await Chats.ReadReverse(Session, chatId, cancellationToken)
+            .TakeWhile(x => x.LocalId >= minLid) // reverse order: stop before the conversation start (minLid = V)
             .Where(x => !x.IsSystemEntry)
             .Take(count)
             .Reverse()
