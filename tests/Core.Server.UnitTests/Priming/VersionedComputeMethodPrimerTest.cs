@@ -120,7 +120,7 @@ public class VersionedComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase
         vb.Should().Be(20);
     }
 
-    [FlakyFact("AY: Flaky due to timing issues")]
+    [Fact]
     public async Task EntrySelfEvictsAfterLifetime()
     {
         var primer = new VersionedComputeMethodPrimer<string, long, int>(NoopCaller) {
@@ -131,13 +131,14 @@ public class VersionedComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase
         primer.TryUsePrimed("a", out var v).Should().BeTrue();
         v.Should().Be(100);
 
-        // Wait past the lifetime — the empty entry (still holding the version floor) should evict.
-        await Task.Delay(1500);
-
-        // Version floor gone: a lower version is now accepted because the slot is fresh.
-        await primer.Prime("a", 1, 7);
-        primer.TryUsePrimed("a", out var v2).Should().BeTrue();
-        v2.Should().Be(7);
+        // The empty entry keeps the version floor until it self-evicts after EntryLifetime.
+        // Eviction runs on the shared timer set with no upper-bound firing guarantee, so poll:
+        // a lower version is accepted only once the slot is fresh.
+        await TestExt.When(async () => {
+            await primer.Prime("a", 1, 7);
+            primer.TryUsePrimed("a", out var v2).Should().BeTrue();
+            v2.Should().Be(7);
+        }, TimeSpan.FromSeconds(15));
     }
 
     [Fact]
