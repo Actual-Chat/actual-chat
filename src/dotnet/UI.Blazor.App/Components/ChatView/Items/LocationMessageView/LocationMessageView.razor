@@ -68,9 +68,6 @@
 @code {
     private ISharedLocations SharedLocations => Hub.SharedLocations;
     private LocationUI LocationUI => Hub.LocationUI;
-    private ILocationTracker Tracker => Hub.LocationTracker;
-    private LocationPermissionHandler LocationPermission
-        => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
 
@@ -114,17 +111,8 @@
     // Private methods
 
     private async Task<string> GetDistanceText(GeoPoint target, CancellationToken cancellationToken) {
-        var ownPoint = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false)
-            ?? await GetCurrentLocation(cancellationToken).ConfigureAwait(false);
+        var ownPoint = await LocationUI.GetCurrentLocation(cancellationToken).ConfigureAwait(false);
         return ownPoint != null ? ownPoint.DistanceTextTo(target) : "";
-    }
-
-    // TODO: make compute method of Location UI
-    private async Task<GeoPoint?> GetCurrentLocation(CancellationToken cancellationToken) {
-        if (await LocationPermission.Check(cancellationToken).ConfigureAwait(false) != true)
-            return null;
-
-        return await Tracker.Get(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     private Task OnOpenMap()
