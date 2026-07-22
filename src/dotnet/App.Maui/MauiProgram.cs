@@ -64,6 +64,7 @@ public static partial class MauiProgram
         MauiRuntimeSettings.Apply();
 #if ANDROID
         ActivateDataCollectionIfEnabled(Android.App.Application.Context);
+        AndroidMainThreadMonitor.Activate();
 #endif
         ClientStartup.Initialize();
         // MainThreadTracker.Activate();

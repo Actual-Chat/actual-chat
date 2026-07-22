@@ -70,5 +70,8 @@ public static class MauiSettings
         // Persists startup-phase marks + reports previous abnormal process exits (ANRs, native
         // crashes) via ApplicationExitInfo on the next launch. See MauiStartupBreadcrumbs.
         public const bool EnableStartupBreadcrumbs = true;
+        // Warn-logs main-looper message dispatches that block the main thread for too long.
+        // Android-only; see AndroidMainThreadMonitor.
+        public const bool EnableMainThreadMonitor = true;
     }
 }
