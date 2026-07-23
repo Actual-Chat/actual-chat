@@ -684,7 +684,9 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var state = await backend.GetState(chatId, default);
         state!.Kind.Should().Be(LiveSessionKind.Call);
         state.SessionStartedAt.Should().NotBeNull();
-        state.VisibleStartLid.Should().Be(chatEnd);
+        // AcceptCall reads the chat end at answer time, strictly after our pre-answer read above,
+        // so a concurrently appended entry can only push it forward, never back.
+        state.VisibleStartLid.Should().BeGreaterThanOrEqualTo(chatEnd);
         state.AuthorIds.Should().Contain(aliceAuthor.Id);
     }
 
