@@ -62,6 +62,9 @@ public sealed partial record LiveSessionState
         => new(EffectiveVisibleStartLid, Math.Max(EndEntryLid, EffectiveVisibleStartLid) + 1);
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ConversationId ConversationId => ConversationId.New(ChatId, EffectiveVisibleStartLid);
+    // Ring id must stay fixed for the whole call, unlike ConversationId, which jumps at the latch.
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ConversationId RingConversationId => ConversationId.New(ChatId, StartEntryLid);
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsCall => Kind is LiveSessionKind.Call or LiveSessionKind.Dialing;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
