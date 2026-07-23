@@ -611,13 +611,17 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await backend.StartCall(
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
 
-        // assert — the call is live at once with the caller alone, and Alice is ringing
+        // assert — a fresh call is Dialing: the session exists (Call tab works) but no live conversation
+        // is surfaced yet, so SessionStartedAt stays null until someone answers.
         var state = await backend.GetState(chatId, default);
         state.Should().NotBeNull();
-        state!.Kind.Should().Be(LiveSessionKind.Call);
-        state.SessionStartedAt.Should().NotBeNull();
+        state!.Kind.Should().Be(LiveSessionKind.Dialing);
+        state.SessionStartedAt.Should().BeNull();
+        // the Call tab still gets a projection while dialing, with the ring visible and no conversation
         var live = await backend.Get(chatId, default);
-        live!.Invites.Should().ContainSingle(i =>
+        live.Should().NotBeNull();
+        live!.Conversation.Should().BeNull();
+        live.Invites.Should().ContainSingle(i =>
             i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Ringing);
     }
 
@@ -770,10 +774,41 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // act — Bob rings Alice while that session is live
         await backend.StartCall(chatId, bobAuthor.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
 
-        // assert — the existing session is promoted to a call so ring/close paths apply
+        // assert — promoting an unlatched (solo) ambient session gives a Dialing call: ring/close paths
+        // apply (via IsCall) but no block is surfaced until someone answers.
+        var state = await backend.GetState(chatId, default);
+        state!.Kind.Should().Be(LiveSessionKind.Dialing);
+        state.SessionStartedAt.Should().BeNull();
+        state.Host.Should().Be(bobAuthor.Id);
+    }
+
+    [Fact]
+    public async Task StartCallOnLatchedSessionStaysConnected()
+    {
+        // arrange — a 2-party ambient session is already latched (block visible) when a call starts
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(true);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, bobAuthor!.Id, null, true, default);
+        await backend.OnStreamRegistered(chatId, aliceAuthor!.Id, null, true, default);
+        var latched = await backend.GetState(chatId, default);
+        latched!.SessionStartedAt.Should().NotBeNull("two streamers latched the ambient session");
+        var startedAt = latched.SessionStartedAt;
+
+        // act — Bob rings a third-party author id while that session is live
+        await backend.StartCall(
+            chatId, bobAuthor.Id, new[] { AuthorId.New(chatId, 777_055) }.ToApiArray(), false, default);
+
+        // assert — monotonic: it stays a connected Call with its latch preserved (block stays)
         var state = await backend.GetState(chatId, default);
         state!.Kind.Should().Be(LiveSessionKind.Call);
-        state.Host.Should().Be(bobAuthor.Id);
+        state.SessionStartedAt.Should().Be(startedAt);
     }
 
     [Fact]

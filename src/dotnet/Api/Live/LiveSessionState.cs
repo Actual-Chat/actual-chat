@@ -62,6 +62,10 @@ public sealed partial record LiveSessionState
         => new(EffectiveVisibleStartLid, Math.Max(EndEntryLid, EffectiveVisibleStartLid) + 1);
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ConversationId ConversationId => ConversationId.New(ChatId, EffectiveVisibleStartLid);
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public bool IsCall => Kind is LiveSessionKind.Call or LiveSessionKind.Dialing;
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public bool IsDialing => Kind == LiveSessionKind.Dialing;
 
     public Conversation ToConversation()
         => new(ConversationId, Version) {

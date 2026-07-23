@@ -128,7 +128,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var state = await GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (state is null)
             return null;
-        if (state.SessionStartedAt is null)
+        if (state.SessionStartedAt is null && !state.IsCall)
             return null;
 
         var audio = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
@@ -196,7 +196,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             StartedAt = state.SessionStartedAt ?? state.StartedAt,
             Rules = state.Rules ?? SessionRules.Default,
             Members = members,
-            Conversation = state.ToConversation(),
+            Conversation = state.IsDialing ? null : state.ToConversation(),
             TranscriptionOn = state.TranscriptionOn,
             Version = state.Version,
             Kind = state.Kind,
@@ -471,17 +471,17 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var state = await SafeGet(chatId).ConfigureAwait(false);
             var lidRangeEnd = (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
             var startEntryLid = state?.StartEntryLid ?? lidRangeEnd;
-            // A call latches immediately: it is "live" the moment it rings, with the caller alone.
-            // Promote an already-live (ambient) session to a call too, so ring dismissal/close - gated
-            // on Kind == Call - runs for it.
+            // A fresh call is Dialing: the session exists (for the Call tab and the ring) but no live
+            // conversation is surfaced until someone answers, so SessionStartedAt stays null. Promoting an
+            // already-latched (ambient) session keeps it connected so its block and ring/close paths persist.
             state = (state ?? new LiveSessionState { ChatId = chatId, StartEntryLid = startEntryLid }) with {
                 EndEntryLid = state?.EndEntryLid ?? startEntryLid,
                 StartedAt = state?.StartedAt ?? now,
-                SessionStartedAt = state?.SessionStartedAt ?? now,
-                VisibleStartLid = state?.VisibleStartLid is { } vsl && vsl > 0 ? vsl : lidRangeEnd,
+                SessionStartedAt = state?.SessionStartedAt,
+                VisibleStartLid = state?.VisibleStartLid ?? 0,
                 AuthorIds = state?.AuthorIds is { Count: > 0 } ids ? ids : [callerAuthorId],
                 Host = callerAuthorId,
-                Kind = LiveSessionKind.Call,
+                Kind = state?.SessionStartedAt is not null ? LiveSessionKind.Call : LiveSessionKind.Dialing,
                 Version = VersionGenerator.NextVersion(state?.Version ?? 0),
             };
             await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
