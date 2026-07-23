@@ -150,8 +150,30 @@ mcp__voxt-robokitty__post_message(
 Confirm with a one-liner: `Posted release notes vX.Y → Releases (LID: <id>).`
 On any MCP failure, surface the error verbatim and stop — don't retry blindly.
 
-If the tool isn't wired up in this session, say so and print the notes for the
-user to paste manually.
+**If the `mcp__voxt-robokitty__*` tools aren't loaded this session** (common —
+the server is declared in `.mcp.json` but not always auto-connected), call the
+HTTP endpoint directly instead of asking the user to paste. It's the same
+RoboKitty server over plain JSON-RPC, authed with `ActualChat_RoboKitty_API_Key`:
+
+```bash
+# wrap the committed notes in a code fence
+{ echo '```'; cat docs/releases/release-notes-vX.Y.md; echo '```'; } > /tmp/rk-text.txt
+# build the JSON-RPC body with jq (safe escaping of backticks/emoji/newlines)
+jq -n --rawfile t /tmp/rk-text.txt \
+  '{jsonrpc:"2.0",id:2,method:"tools/call",params:{name:"post_message",
+    arguments:{chatId:"s-pmMsV1UVKG-dCKQXnYpX9",text:$t}}}' > /tmp/rk-body.json
+curl -s -X POST "https://voxt.ai/api/mcp" \
+  -H "Authorization: Bearer ${ActualChat_RoboKitty_API_Key}" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  --data-binary @/tmp/rk-body.json
+```
+
+The response is an SSE `data:` line; success looks like
+`"structuredContent":{"result":<LID>}`. Report that LID. (Use the prod key/URL
+above; `ActualChat_RoboKitty_Dev_API_Key` + `https://dev.voxt.ai/api/mcp` target
+the dev instance.) Only if neither the tool nor the key is available, print the
+notes for the user to paste manually.
 
 ## Release-notes style
 
