@@ -280,6 +280,13 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
             lastError = `stream error: ${msg}`;
         } finally {
             isDisposed = true;
+            // The gate only reopens from the generator above, which is now dead.
+            // On a peer-change/eviction it may be closed (uplink backlog) — leave
+            // it closed and capture stays gated forever, so no bundle reaches
+            // wireSend to trigger a sender rebuild. Reopen here to break that
+            // deadlock; clear the stale backlog we'll never drain.
+            floodGate.open();
+            bundles.clear();
             if (lastError)
                 pumpReject(new Error(lastError));
             else
