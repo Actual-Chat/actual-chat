@@ -7,15 +7,15 @@ know about.
 
 | Instrument | Kind | Source |
 |---|---|---|
-| `AppMeters.AudioStreamCount` | UpDownCounter<int> | `StreamStore<AudioFrame>` publish/expire |
-| `AppMeters.AudioLatency` | Histogram<double> ms | `ILiveAudioStreams.ReportAudioLatency` (receiver-reported end-to-end) |
-| `AppMeters.TranscriptStreamCount` | UpDownCounter<int> | `_transcriptStreams` publish/expire |
+| `AppMeters.AudioStreamCount` | `UpDownCounter<int>` | `StreamStore<AudioFrame>` publish/expire |
+| `AppMeters.AudioLatency` | `Histogram<double>` ms | `ILiveAudioStreams.ReportAudioLatency` (receiver-reported end-to-end) |
+| `AppMeters.TranscriptStreamCount` | `UpDownCounter<int>` | `_transcriptStreams` publish/expire |
 | `StreamingInstruments.AudioFrameDeserializeDuration` | Histogram, µs | `CachingAudioFrameFormatter` deserialize |
 | `StreamingInstruments.AudioFrameSerializeDuration` | Histogram, µs | same, serialize |
 | `StreamingInstruments.AudioFrameSizeBytes` | Histogram, int | encoded chunk size |
-| `StreamingInstruments.AudioActiveConsumers` | UpDownCounter<int> | `LiveAudioStreams.GetStream` enter/exit |
-| `StreamingInstruments.AudioFramesReceived` / `AudioBytesReceived` | Counter<long> | publish path |
-| `StreamingInstruments.AudioFramesSent` / `AudioBytesSent` | Counter<long> | per-consumer fan-out |
+| `StreamingInstruments.AudioActiveConsumers` | `UpDownCounter<int>` | `LiveAudioStreams.GetStream` enter/exit |
+| `StreamingInstruments.AudioFramesReceived` / `AudioBytesReceived` | `Counter<long>` | publish path |
+| `StreamingInstruments.AudioFramesSent` / `AudioBytesSent` | `Counter<long>` | per-consumer fan-out |
 
 OTEL pipeline / Grafana wiring lives in
 `Core.Server/Diagnostics/AppMeters.cs` and the repo-root

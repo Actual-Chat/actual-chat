@@ -10,22 +10,22 @@ Files: `src/dotnet/Core.Server/Diagnostics/AppMeters.cs`,
 
 | Instrument | Kind | Source of values |
 |---|---|---|
-| `VideoStreamCount` | UpDownCounter<int> | `StreamStore` publish/expire on each backend pod |
-| `VideoLatency` | Histogram<double>, ms | `ChangePlaybackQuality(info)` per stream (`LatencyMsEma`); tagged primary/secondary |
-| `VideoSendEncodeRatio` | Histogram<double> | `ChangeRecordingQuality(info.Health.EncodeRatioP90)` |
-| `VideoSendDropRatio` | Histogram<double> | `info.Health.SenderFrameDropRatioEma` |
-| `VideoSendAckAgeMs` | Histogram<double> | `info.Health.LastAckAgeMs` (skipped when -1) |
-| `VideoSendLayerCount` | Histogram<int> | `state.EffectiveLayerCount` |
-| `VideoReceiveCapacityBps` | Histogram<long> | `ChangePlaybackQuality(info.EstimatedCapacityBytesPerSec)` |
-| `VideoReceiveAggregateHealth` | Histogram<double> | `info.AggregateHealth` |
-| `VideoReceiveKeyframeSkips` | Counter<long> | `info.Streams[*].KeyframeSkipsInWindow` |
-| `VideoReceiveDecoderQueue` | Histogram<double> | `info.Streams[*].DecoderQueueDepthEma` |
-| `VideoFrameDeserializeDuration` | Histogram<double>, µs | `CachingVideoFrameFormatter` deserialize |
-| `VideoFrameSerializeDuration` | Histogram<double>, µs | same, serialize |
-| `VideoFrameSizeBytes` | Histogram<int> | encoded chunk size |
-| `VideoActiveConsumers` | UpDownCounter<int> | `LiveVideoStreams.GetStream` enter/exit |
-| `VideoFramesReceived` / `VideoBytesReceived` | Counter<long> | publish path |
-| `VideoFramesSent` / `VideoBytesSent` | Counter<long> | per-consumer fan-out |
+| `VideoStreamCount` | `UpDownCounter<int>` | `StreamStore` publish/expire on each backend pod |
+| `VideoLatency` | `Histogram<double>`, ms | `ChangePlaybackQuality(info)` per stream (`LatencyMsEma`); tagged primary/secondary |
+| `VideoSendEncodeRatio` | `Histogram<double>` | `ChangeRecordingQuality(info.Health.EncodeRatioP90)` |
+| `VideoSendDropRatio` | `Histogram<double>` | `info.Health.SenderFrameDropRatioEma` |
+| `VideoSendAckAgeMs` | `Histogram<double>` | `info.Health.LastAckAgeMs` (skipped when -1) |
+| `VideoSendLayerCount` | `Histogram<int>` | `state.EffectiveLayerCount` |
+| `VideoReceiveCapacityBps` | `Histogram<long>` | `ChangePlaybackQuality(info.EstimatedCapacityBytesPerSec)` |
+| `VideoReceiveAggregateHealth` | `Histogram<double>` | `info.AggregateHealth` |
+| `VideoReceiveKeyframeSkips` | `Counter<long>` | `info.Streams[*].KeyframeSkipsInWindow` |
+| `VideoReceiveDecoderQueue` | `Histogram<double>` | `info.Streams[*].DecoderQueueDepthEma` |
+| `VideoFrameDeserializeDuration` | `Histogram<double>`, µs | `CachingVideoFrameFormatter` deserialize |
+| `VideoFrameSerializeDuration` | `Histogram<double>`, µs | same, serialize |
+| `VideoFrameSizeBytes` | `Histogram<int>` | encoded chunk size |
+| `VideoActiveConsumers` | `UpDownCounter<int>` | `LiveVideoStreams.GetStream` enter/exit |
+| `VideoFramesReceived` / `VideoBytesReceived` | `Counter<long>` | publish path |
+| `VideoFramesSent` / `VideoBytesSent` | `Counter<long>` | per-consumer fan-out |
 
 Routing into the OTEL collector and Grafana is in
 `Core.Server/Diagnostics/AppMeters.cs` and the `otel-collector-config.yaml`

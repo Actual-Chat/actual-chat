@@ -75,7 +75,13 @@ export default withMermaid(defineConfig({
   srcExclude: [
     "node_modules",
   ],
-  ignoreDeadLinks: false,
+  // Links to repo files outside docs/ and to local dev servers can't resolve in the rendered site
+  ignoreDeadLinks: [
+    /^https?:\/\/localhost/,
+    /\.editorconfig$/,
+    /\.\.\/src\//,
+    /\.\.\/tests\//,
+  ],
   appearance: 'dark',
   themeConfig: {
     search: {
@@ -152,16 +158,7 @@ export default withMermaid(defineConfig({
               { text: "Login Flow", link: "/testing/login-flow" },
             ],
           },
-          {
-            text: "Plans",
-            collapsed: true,
-            items: [
-              { text: "Big Tasks", link: "/plans/BigTasks" },
-              { text: "Small Tasks", link: "/plans/SmallTasks" },
-              { text: "Search", link: "/plans/Search" },
-              { text: "MLSearch: OpenSearch → PostgreSQL", link: "/plans/mlsearch-postgres-fts" },
-            ],
-          },
+          { text: "Plans", link: "/plans/" },
         ],
       },
     ],

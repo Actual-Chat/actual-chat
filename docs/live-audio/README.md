@@ -5,7 +5,7 @@ microphone capture in browser A through the server (persistence + fan-out +
 transcription) to the speakers in browser B. It is written from current
 source code under `src/` only.
 
-Companion folder: [`docs/live-video/`](../live-video/) for the video
+Companion folder: [`docs/live-video/`](../live-video/README.md) for the video
 pipeline. The two share architectural patterns (sharded backend, RpcStream
 fan-out, RemoteStreamCache, AIMD-style controls) but audio diverges in
 important ways — it is **loss-preserving**, drives transcription, and is

@@ -10,7 +10,7 @@
     echo Starting documentation server...
     echo Press Ctrl+C to stop.
     echo.
-    call npm run docs:dev
+    call npm run docs:dev -- --open
 
     exit /b
 BATCH
@@ -26,4 +26,4 @@ fi
 echo "Starting documentation server..."
 echo "Press Ctrl+C to stop."
 echo
-npm run docs:dev
+npm run docs:dev -- --open
