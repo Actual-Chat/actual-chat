@@ -1,0 +1,59 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, CallMapSwitch.Model>
+@{
+    var m = State.Value;
+    if (!m.IsVisible)
+        return;
+}
+
+<div class="call-map-switch">
+    <button type="button"
+            class="c-option @(m.Tab == CallMapPanelTab.Call ? "on" : "")"
+            @onclick="@(() => OnSelect(CallMapPanelTab.Call))">
+        Call
+    </button>
+    <button type="button"
+            class="c-option @(m.Tab == CallMapPanelTab.Map ? "on" : "")"
+            @onclick="@(() => OnSelect(CallMapPanelTab.Map))">
+        Map
+    </button>
+</div>
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+    private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var state = await ChatActivityUI.GetPanelState(Chat.Id, cancellationToken).ConfigureAwait(false);
+        if (!state.HasBoth)
+            return new Model(false, state.Tab);
+
+        // The switch belongs to the inline panel only — the fullscreen / island /
+        // hidden video panel has its own chrome.
+        var videoPanelMode = await ChatVideoUI.GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
+        var isVisible = state.Tab != CallMapPanelTab.Call || videoPanelMode == VideoPanelMode.Inline;
+        return new Model(isVisible, state.Tab);
+    }
+
+    // Private methods
+
+    private void OnSelect(CallMapPanelTab tab)
+        => ChatActivityUI.SelectPanelTab(Chat.Id, tab);
+
+    // Nested types
+
+    public sealed record Model(bool IsVisible, CallMapPanelTab Tab) {
+        public static readonly Model None = new(false, CallMapPanelTab.Call);
+    }
+}

@@ -368,8 +368,10 @@ body.narrow .list-view-layout:has(.chat-activity-panel:not(.not-participating)) 
 .list-view-layout .layout-header:has(.video-panel:not(.collapsed)) {
     border: none;
 }
-/* Collapsed video panel island uses fixed positioning — no header overflow needed */
-.list-view-layout:has(.video-panel:not(.collapsed)) .layout-subheader {
+/* Collapsed video panel island uses fixed positioning — no header overflow needed.
+   The map panel counts too: its Call/Map switch overhangs the header into the subheader area. */
+.list-view-layout:has(.video-panel:not(.collapsed)) .layout-subheader,
+.list-view-layout:has(.map-panel) .layout-subheader {
     @apply z-40;
 }
 /* Hideable elements (control panel buttons) */

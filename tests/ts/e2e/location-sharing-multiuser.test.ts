@@ -4,10 +4,12 @@
  * Two users (Alice, Bob) sit in the same chat, each in their own browser context
  * with its own mocked geolocation. Proves the cross-user fan-out the single-user
  * test can't:
- *   - Alice shares -> Bob's banner shows "1 person is sharing location" (no Stop).
- *   - Bob opens the map and sees exactly Alice's marker; it tracks her movement.
- *   - Both share -> Alice's banner says "You and 1 other...", her map shows 2 markers.
- *   - Alice stops -> Bob still sees a live share (his own); Bob stops -> banners clear.
+ *   - Alice shares -> Bob's inline map panel appears (#4067) with a "Share your
+ *     location" CTA and no Stop button.
+ *   - Bob expands the map and sees Alice's marker; it tracks her movement.
+ *   - Both share -> both panels show Stop; Alice's map shows 2 markers.
+ *   - Alice stops -> her panel flips to the viewer CTA (Bob still shares);
+ *     Bob stops -> both panels disappear.
  *
  * Prerequisites:
  * - Server running (server-loop / run-watch).
@@ -16,7 +18,7 @@
  *   npx vitest run tests/ts/e2e/location-sharing-multiuser.test.ts --config vitest.config.e2e.ts
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
     BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, screenshot,
@@ -37,7 +39,7 @@ const TILE_URL_RE = /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pb
 
 const tileLoaded = (page: Page) => page.waitForResponse(
     r => TILE_URL_RE.test(r.url()) && r.ok(),
-    { timeout: 20_000 });
+    { timeout: 30_000 });
 
 async function openChat(page: Page) {
     await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
@@ -50,6 +52,25 @@ async function openChat(page: Page) {
         await page.waitForTimeout(1500);
     }
     await waitForEditor(page);
+}
+
+// A failed test must not leak its live share into the next run: re-sharing over an
+// active share mints a NEW SharedLocation and orphans the old row server-side, where
+// nothing can stop it until it expires on its own.
+async function stopSharingIfAny(page: Page | undefined) {
+    if (!page)
+        return;
+
+    for (let i = 0; i < 2; i++) {
+        await page.keyboard.press('Escape').catch(() => { /* ignore */ });
+        await page.waitForTimeout(300);
+    }
+    const stopButton = page.locator('.call-map-panel .map-panel .btn-stop-sharing').first();
+    if (await stopButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        await stopButton.click().catch(() => { /* ignore */ });
+        await page.locator('.call-map-panel .map-panel').first()
+            .waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => { /* ignore */ });
+    }
 }
 
 async function startShare(page: Page, label: string) {
@@ -75,6 +96,11 @@ describe('multi-user location sharing', () => {
         ({ context: bobCtx, page: bob } = await newUserContext(conn, TEST_EMAIL_2, BOB_START));
     }, 180_000);
 
+    afterEach(async () => {
+        await stopSharingIfAny(alice);
+        await stopSharingIfAny(bob);
+    }, 60_000);
+
     afterAll(async () => {
         await aliceCtx.close().catch(() => { /* ignore */ });
         await bobCtx.close().catch(() => { /* ignore */ });
@@ -89,24 +115,41 @@ describe('multi-user location sharing', () => {
         await openChat(alice);
         await openChat(bob);
 
-        const aliceBanner = alice.locator('.live-location-banner').first();
-        const bobBanner = bob.locator('.live-location-banner').first();
+        const alicePanel = alice.locator('.call-map-panel .map-panel').first();
+        const bobPanel = bob.locator('.call-map-panel .map-panel').first();
 
-        // act — Alice starts a live share
+        // act — Alice starts a live share (arm both tile listeners first: each user's
+        // inline panel starts fetching tiles as soon as the share reaches them)
+        const aliceTiles = tileLoaded(alice);
+        const bobTiles = tileLoaded(bob);
         await startShare(alice, '15 min');
 
-        // assert — Alice sees her own share (with a Stop button)
-        await aliceBanner.waitFor({ state: 'visible', timeout: 20_000 });
-        expect((await aliceBanner.innerText()).toLowerCase()).toContain('you are sharing your location');
-        expect(await aliceBanner.locator('.btn-stop-sharing').count()).toBe(1);
+        // assert — Alice sees her own share (with a Stop button, no viewer CTA)
+        await alicePanel.waitFor({ state: 'visible', timeout: 20_000 });
+        await alicePanel.locator('.btn-stop-sharing').first().waitFor({ state: 'visible', timeout: 10_000 });
+        expect(await alicePanel.locator('.btn-share-location').count()).toBe(0);
+        expect((await aliceTiles).ok()).toBe(true);
 
-        // assert — Bob (a viewer) sees Alice's share described as someone else's, with no stop button,
-        // and gets a "Share your location" call-to-action instead (#4057)
-        await bobBanner.waitFor({ state: 'visible', timeout: 20_000 });
-        expect((await bobBanner.innerText()).toLowerCase()).toContain('1 person is sharing location');
-        expect(await bobBanner.locator('.btn-stop-sharing').count()).toBe(0);
-        expect(await bobBanner.locator('.btn-share-location').count()).toBe(1);
+        // assert — no Call/Map switch on either side: the map is the only panel activity (#4067)
+        expect(await alice.locator('.call-map-switch').count()).toBe(0);
+        expect(await bob.locator('.call-map-switch').count()).toBe(0);
+
+        // assert — the old live-location banner stays hidden (the panel replaced it)
+        expect(await alice.locator('.live-location-banner').isVisible().catch(() => false)).toBe(false);
+
+        // assert — Bob (a viewer) gets the panel with no stop button and a "Share your
+        // location" call-to-action instead (#4057)
+        await bobPanel.waitFor({ state: 'visible', timeout: 20_000 });
+        expect(await bobPanel.locator('.btn-stop-sharing').count()).toBe(0);
+        await bobPanel.locator('.btn-share-location').first().waitFor({ state: 'visible', timeout: 10_000 });
+        expect((await bobTiles).ok()).toBe(true);
         await bob.screenshot({ path: shot('bob-sees-alice') });
+
+        // assert — Bob's inline panel shows both markers: Alice's share + his own location
+        await expect.poll(
+            async () => bobPanel.locator('.maplibregl-marker').count(),
+            { timeout: 20_000 },
+        ).toBe(2);
 
         // assert — the live card Alice posted offers Bob a share-back button, while Alice's own
         // copy of the same card doesn't (#4057)
@@ -117,15 +160,13 @@ describe('multi-user location sharing', () => {
         ).toBe(1);
         expect(await alice.locator('.location-message').last().locator('.c-share-back').count()).toBe(0);
 
-        // act — Bob opens the map from the banner
-        const bobTiles = tileLoaded(bob);
-        await bobBanner.locator('.c-body').first().click();
+        // act — Bob expands the map from the inline panel
+        await bobPanel.locator('.c-expand').first().click();
         const bobMap = bob.locator('.location-map-modal').first();
         await bobMap.waitFor({ state: 'visible', timeout: 10_000 });
 
-        // assert — Alice's marker plus Bob's own-location marker render, on real tiles
+        // assert — Alice's marker plus Bob's own-location marker render in the modal
         await bobMap.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
-        expect((await bobTiles).ok()).toBe(true);
         await bob.waitForTimeout(1_000);
         expect(await bobMap.locator('.maplibregl-marker').count()).toBe(2);
 
@@ -150,20 +191,21 @@ describe('multi-user location sharing', () => {
         await bobMap.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
         await startShare(bob, '15 min');
 
-        // assert — Alice's banner now reflects two sharers
-        await alice.waitForTimeout(500);
-        await expect.poll(
-            async () => (await aliceBanner.innerText()).toLowerCase(),
-            { timeout: 20_000 },
-        ).toContain('you and 1 other are sharing location');
+        // assert — Bob's panel flips to the sharer state: Stop button, no viewer CTA
+        await bobPanel.locator('.btn-stop-sharing').first().waitFor({ state: 'visible', timeout: 20_000 });
+        expect(await bobPanel.locator('.btn-share-location').count()).toBe(0);
 
-        // assert — Alice's map shows both markers (hers + Bob's)
-        const aliceTiles = tileLoaded(alice);
-        await aliceBanner.locator('.c-body').first().click();
+        // assert — Alice's inline panel now shows both markers (hers + Bob's)
+        await expect.poll(
+            async () => alicePanel.locator('.maplibregl-marker').count(),
+            { timeout: 20_000 },
+        ).toBe(2);
+
+        // act — Alice expands her map
+        await alicePanel.locator('.c-expand').first().click();
         const aliceMap = alice.locator('.location-map-modal').first();
         await aliceMap.waitFor({ state: 'visible', timeout: 10_000 });
         await aliceMap.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
-        expect((await aliceTiles).ok()).toBe(true);
         await alice.waitForTimeout(1_500);
         expect(await aliceMap.locator('.maplibregl-marker').count()).toBe(2);
 
@@ -190,27 +232,25 @@ describe('multi-user location sharing', () => {
         await aliceMap.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
 
         // act — Alice stops her share
-        await aliceBanner.locator('.btn-stop-sharing').first().click();
+        await alicePanel.locator('.btn-stop-sharing').first().click();
 
-        // assert — Alice's banner clears (she no longer shares and is the only one she tracked... )
-        // Bob is still sharing, so from Bob's side the banner stays but is now "you are sharing".
+        // assert — Bob is still sharing, so his panel keeps the Stop button
         await expect.poll(
-            async () => (await bobBanner.innerText()).toLowerCase(),
+            async () => bobPanel.locator('.btn-stop-sharing').count(),
             { timeout: 20_000 },
-        ).toContain('you are sharing your location');
+        ).toBe(1);
 
-        // assert — Alice, now a pure viewer of Bob's share, sees "1 person is sharing location"
-        await expect.poll(
-            async () => (await aliceBanner.innerText()).toLowerCase(),
-            { timeout: 20_000 },
-        ).toContain('1 person is sharing location');
+        // assert — Alice, now a pure viewer of Bob's share, keeps the panel but gets the
+        // viewer CTA instead of Stop
+        await alicePanel.locator('.btn-share-location').first().waitFor({ state: 'visible', timeout: 20_000 });
+        expect(await alicePanel.locator('.btn-stop-sharing').count()).toBe(0);
 
         // act — Bob stops too
-        await bobBanner.locator('.btn-stop-sharing').first().click();
+        await bobPanel.locator('.btn-stop-sharing').first().click();
 
-        // assert — both banners disappear once no one is sharing
-        await aliceBanner.waitFor({ state: 'hidden', timeout: 20_000 });
-        await bobBanner.waitFor({ state: 'hidden', timeout: 20_000 });
+        // assert — both panels disappear once no one is sharing
+        await alicePanel.waitFor({ state: 'hidden', timeout: 20_000 });
+        await bobPanel.waitFor({ state: 'hidden', timeout: 20_000 });
 
         // assert — the share-back button goes away with the share it answered (#4057)
         await expect.poll(

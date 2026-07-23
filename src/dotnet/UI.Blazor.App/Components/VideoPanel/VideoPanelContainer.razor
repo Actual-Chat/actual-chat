@@ -4,6 +4,8 @@
     var m = State.Value;
     var isWatching = m.IsWatching;
     var chatContext = m.ChatContext;
+    var showVideo = isWatching && m.PanelState.Tab == CallMapPanelTab.Call;
+    var showMap = m.PanelState is { HasMap: true, Tab: CallMapPanelTab.Map };
 
     // TODO(DF): move this logic to ChatVideoUI
     // Clear watching when navigating to a different chat.
@@ -15,28 +17,48 @@
         ChatVideoUI.CloseVideoPanel();
     _lastWatchingChatId = isWatching ? chatId : null;
 
-    // Handle show/hide transitions based on watching state
-    if (!_isRendered && isWatching) {
+    // Handle show/hide transitions based on watching state and the Call/Map tab
+    if (!_isRendered && showVideo) {
         _isRendered = true;
         _chatContextToRender = chatContext;
         _isClosing = false;
-    } else if (_isRendered && isWatching) {
+    } else if (_isRendered && showVideo) {
         _chatContextToRender = chatContext;
         _isClosing = false;
-    } else if (_isRendered && !isWatching) {
-        _isClosing = true;
+    } else if (_isRendered && !showVideo) {
+        if (isWatching) {
+            // Still on the call, just switched to the Map tab — swap instantly, no closing animation
+            _isRendered = false;
+            _isClosing = false;
+        } else
+            _isClosing = true;
     }
 
     if (!_isRendered)
         _chatContextToRender = null;
 }
 
-@if (_chatContextToRender is not null) {
-    <ErrorBarrier Name="VideoPanel" Kind="ErrorBarrierKind.Medium">
-        <CascadingValue Value="_chatContextToRender">
-            <VideoPanelContent IsClosing="@_isClosing" OnClosed="@OnContentClosed"/>
-        </CascadingValue>
-    </ErrorBarrier>
+@if (_chatContextToRender is not null || (showMap && chatContext is not null)) {
+    <div class="call-map-panel">
+        @if (_chatContextToRender is not null) {
+            <ErrorBarrier Name="VideoPanel" Kind="ErrorBarrierKind.Medium">
+                <CascadingValue Value="_chatContextToRender">
+                    <VideoPanelContent IsClosing="@_isClosing" OnClosed="@OnContentClosed"/>
+                </CascadingValue>
+            </ErrorBarrier>
+        } else if (showMap) {
+            <ErrorBarrier Name="MapPanel" Kind="ErrorBarrierKind.Medium">
+                <CascadingValue Value="chatContext">
+                    <MapPanelContent/>
+                </CascadingValue>
+            </ErrorBarrier>
+        }
+        @if (chatContext is not null) {
+            <CascadingValue Value="chatContext">
+                <CallMapSwitch/>
+            </CascadingValue>
+        }
+    </div>
 }
 
 @code {
@@ -47,6 +69,7 @@
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
 
     [CascadingParameter] public ChatContext? ChatContext { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -62,7 +85,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatContext = ChatContext;
         if (chatContext is null)
-            return new Model(null, false);
+            return Model.None;
 
         var chatId = chatContext.Chat.Id;
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
@@ -72,14 +95,16 @@
         if (!isWatching) {
             var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
             if (audioState.IsListening || audioState.IsRecording) {
-                var isAnyoneStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
+                var isAnyoneStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken)
+                    .ConfigureAwait(false);
                 if (isAnyoneStreaming) {
                     ChatVideoUI.OpenVideoPanel(chatId);
                     isWatching = true;
                 }
             }
         }
-        return new Model(chatContext, isWatching);
+        var panelState = await ChatActivityUI.GetPanelState(chatId, cancellationToken).ConfigureAwait(false);
+        return new Model(chatContext, isWatching, panelState);
     }
 
     private void OnContentClosed() {
@@ -92,8 +117,9 @@
 
     public sealed record Model(
         ChatContext? ChatContext,
-        [property: MemberNotNullWhen(true, nameof(Model.ChatContext))] bool IsWatching
+        [property: MemberNotNullWhen(true, nameof(Model.ChatContext))] bool IsWatching,
+        CallMapPanelState PanelState
     ) {
-        public static readonly Model None = new(null, false);
+        public static readonly Model None = new(null, false, CallMapPanelState.None);
     }
 }

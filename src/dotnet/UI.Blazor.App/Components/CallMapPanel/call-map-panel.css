@@ -1,0 +1,77 @@
+.call-map-panel {
+    @apply relative z-10;
+    @apply flex justify-center;
+    @apply w-full;
+}
+
+/* ── Map panel ── */
+
+.map-panel {
+    @apply relative;
+    @apply w-full max-w-192;
+    @apply h-48;
+    @apply rounded-b-lg;
+    @apply overflow-hidden;
+    @apply bg-02;
+}
+.map-panel .c-map {
+    @apply w-full h-full;
+}
+.map-panel .btn-video-panel.c-expand {
+    @apply absolute top-2 left-2 z-10;
+}
+.map-panel .c-countdown {
+    @apply absolute bottom-3 left-3 z-10;
+    @apply w-8 h-8;
+    @apply rounded-full;
+    background: var(--white-50);
+    color: var(--blue-50);
+    @apply text-sm font-medium;
+    @apply pointer-events-none;
+}
+.map-panel .c-countdown i {
+    @apply text-base;
+}
+.map-panel .btn.btn-round.btn-stop-sharing {
+    @apply absolute bottom-3 right-3 z-10;
+    @apply w-10 h-10;
+    background: var(--white-80);
+    color: var(--magenta-50);
+}
+.map-panel .btn.btn-round.btn-stop-sharing marker-pin-off-svg {
+    @apply text-xl;
+}
+.map-panel .btn.btn-share-location {
+    @apply absolute bottom-3 right-3 z-10;
+    @apply h-8 min-h-8;
+    @apply px-3;
+    @apply rounded-full;
+    background: var(--white-80);
+    color: var(--blue-50);
+}
+.map-panel .btn.btn-share-location .btn-content {
+    @apply text-caption-1;
+}
+
+/* ── Call/Map switch ── */
+
+.call-map-switch {
+    @apply absolute left-1/2 bottom-0 z-20;
+    @apply flex-x items-center gap-0.5;
+    @apply p-1;
+    @apply rounded-full;
+    @apply bg-01;
+    @apply shadow-md;
+    transform: translate(-50%, 50%);
+}
+.call-map-switch .c-option {
+    @apply flex items-center justify-center;
+    @apply h-7 min-w-14;
+    @apply px-3;
+    @apply rounded-full;
+    @apply text-sm font-medium text-01;
+}
+.call-map-switch .c-option.on {
+    background: var(--blue-50-10);
+    color: var(--blue-50);
+}

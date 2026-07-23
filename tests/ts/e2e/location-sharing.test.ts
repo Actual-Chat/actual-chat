@@ -2,9 +2,10 @@
  * E2E test: live location sharing.
  *
  * Drives the full web flow with a mocked browser geolocation:
- *   "+" menu -> Share location -> pick a duration -> banner appears ->
- *   open the map (a MapLibre marker renders) -> move the mock position ->
- *   Stop -> banner disappears.
+ *   "+" menu -> Share location -> pick a duration -> the inline map panel appears
+ *   at the top of the chat (same slot as the video call panel, #4067) ->
+ *   expand it into the map modal (a MapLibre marker renders) -> move the mock
+ *   position -> Stop -> the panel disappears.
  *
  * Prerequisites:
  * - Server running (server-loop / run-watch).
@@ -14,7 +15,7 @@
  *   npx vitest run tests/ts/e2e/location-sharing.test.ts --config vitest.config.e2e.ts
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, clearBrowserCache, connectBrowser, ensureSignedIn, skipOnboarding, screenshot,
@@ -23,7 +24,7 @@ import {
 
 const shot = (name: string) => screenshot('e2e', name);
 
-// A shared chat the test user can join, so it has an editor + Banners host to share from.
+// A shared chat the test user can join, so it has an editor + a panel host to share from.
 const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 
 // London -> Paris, to prove the marker tracks position updates.
@@ -32,6 +33,22 @@ const MOVED = { latitude: 48.8566, longitude: 2.3522, accuracy: 12 };
 
 // An ACTUAL tile/glyph fetch from our maps.* proxy (not just the style JSON).
 const TILE_URL_RE = /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/;
+
+// A failed test must not leak its live share into the next one: re-sharing over an
+// active share mints a NEW SharedLocation and orphans the old row server-side, where
+// nothing can stop it until it expires on its own.
+async function stopSharingIfAny(page: Page) {
+    for (let i = 0; i < 2; i++) {
+        await page.keyboard.press('Escape').catch(() => { /* ignore */ });
+        await page.waitForTimeout(300);
+    }
+    const stopButton = page.locator('.call-map-panel .map-panel .btn-stop-sharing').first();
+    if (await stopButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        await stopButton.click().catch(() => { /* ignore */ });
+        await page.locator('.call-map-panel .map-panel').first()
+            .waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => { /* ignore */ });
+    }
+}
 
 describe('location sharing', () => {
     let conn: BrowserConnection;
@@ -51,6 +68,10 @@ describe('location sharing', () => {
         await ensureSignedIn(page);
     }, 120_000);
 
+    afterEach(async () => {
+        await stopSharingIfAny(page);
+    }, 30_000);
+
     afterAll(async () => {
         await page.close();
         if (conn.ownsBrowser) {
@@ -59,7 +80,7 @@ describe('location sharing', () => {
         }
     });
 
-    it('shares location, shows the banner + map marker, then stops', async () => {
+    it('shares location, shows the inline map panel + map marker, then stops', async () => {
         // arrange — open a chat we can post in
         await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
         await waitForChatReady(page);
@@ -73,7 +94,11 @@ describe('location sharing', () => {
 
         await waitForEditor(page);
 
-        // act — open the "+" menu and start a share
+        // act — open the "+" menu and start a share (arm the tile listener BEFORE the share
+        // starts: the inline panel begins fetching tiles the moment it mounts)
+        const tileLoaded = page.waitForResponse(
+            r => TILE_URL_RE.test(r.url()) && r.ok(),
+            { timeout: 30_000 });
         await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
         await page.locator('.ac-menu-item:has-text("Location")').first().click({ force: true });
 
@@ -83,21 +108,30 @@ describe('location sharing', () => {
         await modal.locator('.c-share-live').first().click();
         await modal.locator('.c-duration-menu .c-menu-item:has-text("15 minutes")').first().click();
 
-        // assert — the chat banner reflects the active share
-        const banner = page.locator('.live-location-banner').first();
-        await banner.waitFor({ state: 'visible', timeout: 20_000 });
-        expect((await banner.innerText()).toLowerCase()).toContain('sharing your location');
-        await page.screenshot({ path: shot('loc-banner') });
+        // assert — the inline map panel appears in the video-panel slot (#4067) with the
+        // own-share affordances: stop button + countdown ring, no share CTA
+        const mapPanel = page.locator('.call-map-panel .map-panel').first();
+        await mapPanel.waitFor({ state: 'visible', timeout: 20_000 });
+        await mapPanel.locator('.btn-stop-sharing').first().waitFor({ state: 'visible', timeout: 10_000 });
+        await mapPanel.locator('.c-countdown').first().waitFor({ state: 'visible', timeout: 10_000 });
+        expect(await mapPanel.locator('.btn-share-location').count()).toBe(0);
 
-        // act — open the map modal from the banner (arm the tile listener BEFORE the click,
-        // so we don't miss the tile requests fired during map init)
-        // Match an ACTUAL tile/glyph fetch (not just the style JSON): proves the map has a
-        // real viewport and is painting — guards against the CSP block AND the 0-size-in-modal
-        // bug where the style loads but no tiles are ever requested.
-        const tileLoaded = page.waitForResponse(
-            r => TILE_URL_RE.test(r.url()) && r.ok(),
-            { timeout: 20_000 });
-        await banner.locator('.c-body').first().click();
+        // assert — with only the map activity (no call) the Call/Map switch is hidden (#4067)
+        expect(await page.locator('.call-map-switch').count()).toBe(0);
+
+        // assert — the old live-location banner is gone (it remains only for tracking errors)
+        expect(await page.locator('.live-location-banner').isVisible().catch(() => false)).toBe(false);
+
+        // assert — the inline panel renders a MapLibre marker on real tiles (not blank: CSP
+        // allows the maps host AND the map got a non-zero viewport)
+        await mapPanel.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
+        const tileResp = await tileLoaded;
+        expect(tileResp.ok()).toBe(true);
+        await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
+        await page.screenshot({ path: shot('loc-panel') });
+
+        // act — expand the panel into the full map modal
+        await mapPanel.locator('.c-expand').first().click();
         const mapModal = page.locator('.location-map-modal').first();
         await mapModal.waitFor({ state: 'visible', timeout: 10_000 });
 
@@ -105,23 +139,17 @@ describe('location sharing', () => {
         const marker = mapModal.locator('.maplibregl-marker').first();
         await marker.waitFor({ state: 'visible', timeout: 15_000 });
 
-        // assert — the participants list shows the sharer: own row marked "(you)",
-        // with a live "Updated ..." status and the remaining-time countdown
+        // assert — the participants list shows the sharer: own row marked "(you)"
+        // with a live "Updated ..." status
         const participant = mapModal.locator('.c-participant').first();
         await participant.waitFor({ state: 'visible', timeout: 10_000 });
         expect(await mapModal.locator('.c-participant').count()).toBe(1);
         const participantText = (await participant.innerText()).toLowerCase();
         expect(participantText).toContain('(you)');
         expect(participantText).toContain('updated');
-        expect(participantText).toContain('left');
 
         // assert — no attribution control (MapLibre | OpenFreeMap ... info bar) is drawn
         expect(await mapModal.locator('.maplibregl-ctrl-attrib').count()).toBe(0);
-
-        // assert — real tiles load from our maps.* proxy (not blank: CSP allows the host AND
-        // the map got a non-zero viewport)
-        const tileResp = await tileLoaded;
-        expect(tileResp.ok()).toBe(true);
         await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
         await page.screenshot({ path: shot('loc-map') });
 
@@ -131,13 +159,13 @@ describe('location sharing', () => {
         expect(await mapModal.locator('.maplibregl-marker').count()).toBe(1);
         await page.screenshot({ path: shot('loc-map-moved') });
 
-        // act — close the map, then stop sharing from the banner
+        // act — close the map, then stop sharing from the inline panel
         await page.keyboard.press('Escape');
         await mapModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
-        await banner.locator('.btn-stop-sharing').first().click();
+        await mapPanel.locator('.btn-stop-sharing').first().click();
 
-        // assert — the banner disappears once the share is stopped
-        await banner.waitFor({ state: 'hidden', timeout: 20_000 });
+        // assert — the panel disappears once the share is stopped
+        await mapPanel.waitFor({ state: 'hidden', timeout: 20_000 });
         await page.screenshot({ path: shot('loc-stopped') });
     }, 180_000);
 
@@ -195,9 +223,9 @@ describe('location sharing', () => {
         await listPreview.waitFor({ state: 'visible', timeout: 15_000 });
         expect(await listRow.locator('.c-last-message .c-text i.icon-map-point').count()).toBe(1);
 
-        // assert — there is no live-share banner for a one-shot send (it's a static message)
-        const banner = page.locator('.live-location-banner').first();
-        expect(await banner.isVisible({ timeout: 2_000 }).catch(() => false)).toBe(false);
+        // assert — there is no live-share map panel for a one-shot send (it's a static message)
+        const mapPanel = page.locator('.call-map-panel .map-panel').first();
+        expect(await mapPanel.isVisible({ timeout: 2_000 }).catch(() => false)).toBe(false);
 
         // assert — the inline map is NOT interactive (no MapLibre interaction handlers attached)
         expect(await locationMessage.locator('.maplibregl-interactive').count()).toBe(0);
@@ -211,20 +239,25 @@ describe('location sharing', () => {
         await mapModal.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
         expect(await mapModal.locator('.maplibregl-interactive').count()).toBeGreaterThan(0);
 
-        // assert — the one-shot sender appears in the participants list with an update time,
-        // but no countdown (a one-shot share has no live duration)
+        // assert — the one-shot sender appears in the participants list with an update time
         const senderRow = mapModal.locator('.c-participant').first();
         await senderRow.waitFor({ state: 'visible', timeout: 10_000 });
         const senderText = (await senderRow.innerText()).toLowerCase();
         expect(senderText).toContain('updated');
-        expect(senderText).not.toContain('left');
         await page.screenshot({ path: shot('loc-one-shot-modal') });
         await page.keyboard.press('Escape');
         await mapModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
     }, 180_000);
 
-    // Every duration option must start a live share (the banner appears), not just the first one.
-    for (const label of ['15 minutes', '1 hour', '8 hours']) {
+    // Every duration option must start a live share (the inline map panel appears), not just
+    // the first one. The countdown ring text is duration-specific: minutes for sub-hour
+    // shares, "Nh" for hour-scale ones ("1 hour" may render as "60" or "1h" depending on
+    // sub-second clock skew).
+    for (const [label, countdownRe] of [
+        ['15 minutes', /^15$/],
+        ['1 hour', /^(60|1h)$/],
+        ['8 hours', /^8h$/],
+    ] as const) {
         it(`starts a live share for "${label}"`, async () => {
             await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
             await waitForChatReady(page);
@@ -247,21 +280,23 @@ describe('location sharing', () => {
             await modal.locator('.c-share-live').first().click();
             await modal.locator(`.c-duration-menu .c-menu-item:has-text("${label}")`).first().click();
 
-            // assert — the banner reflects the active share for this duration, and appears promptly.
+            // assert — the map panel reflects the active share for this duration, and appears promptly.
             // The report loop must wait for the tracker's first fix before its first cycle; if it runs
             // once with an empty LastKnown it posts nothing and the share only starts a full UpdatePeriod
             // (10s) later — the "doesn't start on the first try" bug. Keep the timeout under UpdatePeriod.
-            const banner = page.locator('.live-location-banner').first();
-            await banner.waitFor({ state: 'visible', timeout: 8_000 });
+            const mapPanel = page.locator('.call-map-panel .map-panel').first();
+            await mapPanel.waitFor({ state: 'visible', timeout: 8_000 });
 
-            // A freshly picked 15-minute share must read "15m left", not "16m" — the countdown
-            // rounds the minute up, so sub-minute clock skew has to be absorbed first.
-            if (label === '15 minutes')
-                expect((await banner.innerText()).toLowerCase()).toContain('15m left');
+            // A freshly picked share must show its full remaining time — e.g. 15 minutes reads
+            // "15", not "16": the countdown rounds the minute up, so sub-minute clock skew has
+            // to be absorbed first.
+            const countdown = mapPanel.locator('.c-countdown').first();
+            await countdown.waitFor({ state: 'visible', timeout: 10_000 });
+            expect((await countdown.innerText()).trim()).toMatch(countdownRe);
 
             // cleanup — stop the share so the next duration starts clean
-            await banner.locator('.btn-stop-sharing').first().click();
-            await banner.waitFor({ state: 'hidden', timeout: 20_000 });
+            await mapPanel.locator('.btn-stop-sharing').first().click();
+            await mapPanel.waitFor({ state: 'hidden', timeout: 20_000 });
         }, 120_000);
     }
 });

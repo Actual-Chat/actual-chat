@@ -1,0 +1,90 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, MapPanelContent.Model?>
+@{
+    var m = State.Value;
+    if (m is null)
+        return;
+}
+
+<div class="map-panel">
+    <MapView
+        Class="c-map"
+        Markers="@m.Markers"
+        Center="@m.Center"/>
+    <HeaderButton Class="btn-video-panel c-expand" Click="@OnExpandClick">
+        <i class="icon-expand text-lg"></i>
+    </HeaderButton>
+    @if (m.Countdown is { } countdown) {
+        <RoundProgress Class="c-countdown" Radius="14.5" Fraction="@countdown.Fraction">
+            @if (countdown.IsUnlimited) {
+                <i class="icon-infinity"></i>
+            } else {
+                <span>@countdown.Text</span>
+            }
+        </RoundProgress>
+    }
+    @if (m.IsOwnSharing) {
+        <ButtonRound Class="btn-stop-sharing" Click="@OnStopSharing"
+                     Tooltip="Stop sharing" TooltipPosition="FloatingPosition.Top">
+            <marker-pin-off-svg></marker-pin-off-svg>
+        </ButtonRound>
+    } else {
+        <Button Class="btn-share-location" Click="@OnShare">Share your location</Button>
+    }
+</div>
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+    private LocationUI LocationUI => Hub.LocationUI;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<Model?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model?>.Options() {
+                InitialValue = null,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        var participants = await LocationUI.ListParticipants(chatId, cancellationToken).ConfigureAwait(false);
+        if (participants.Count == 0)
+            return null;
+
+        var ownMarker = await LocationUI.GetOwnMarker(chatId, cancellationToken).ConfigureAwait(false);
+        var markers = participants
+            .Where(p => !(ownMarker is not null && p.IsOwn))
+            .Select(p => p.MapMarker)
+            .ToList();
+        if (ownMarker is not null)
+            markers.Add(ownMarker);
+
+        var ownLive = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
+        var countdown = ownLive is null
+            ? null
+            : await LocationUI.GetCountdown(chatId, ownLive.Id, cancellationToken).ConfigureAwait(false);
+        var center = ownLive?.Point ?? participants[0].Location.Point;
+        return new Model(markers, center, countdown, ownLive is not null);
+    }
+
+    // Private methods
+
+    private Task OnExpandClick()
+        => ModalUI.Show(new LocationMapModal.Model(Chat.Id));
+
+    private Task OnStopSharing()
+        => LocationUI.StopSharing(Chat.Id, CancellationToken.None);
+
+    private Task OnShare()
+        => LocationUI.ShowShareModal(Chat.Id);
+
+    // Nested types
+
+    public sealed record Model(
+        IReadOnlyList<MapMarker> Markers,
+        GeoPoint Center,
+        LocationCountdown? Countdown,
+        bool IsOwnSharing);
+}
