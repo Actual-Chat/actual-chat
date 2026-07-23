@@ -4,11 +4,12 @@
     var m = State.Value;
 }
 
-@* The live-location map panel (MapPanelContent) covers the normal case;
-   the banner remains only to surface tracking errors. *@
+@* The live-location map panel (MapPanelContent) covers the normal case; the banner
+   remains to surface tracking errors and as the compact stand-in while the panel
+   is hidden via its ⋮ menu — clicking it then brings the panel back. *@
 <Banner
-    IsVisible="@(m.Count > 0 && m.IsTrackingBroken)"
-    Severity="@BannerSeverity.Error"
+    IsVisible="@(m.Count > 0 && (m.IsTrackingBroken || m.IsMapPanelHidden))"
+    Severity="@(m.IsTrackingBroken ? BannerSeverity.Error : BannerSeverity.Default)"
     Class="live-location-banner">
     <Icon>@*Empty on purpose: a null Icon would render the default SeverityIcon; the icon lives in Body*@</Icon>
     <Body>
@@ -66,17 +67,20 @@
             return Model.None;
 
         var trackingError = await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false);
-
-        return new Model(participants, trackingError);
+        var isMapPanelHidden = await Hub.ChatActivityUI.IsMapPanelHidden(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        return new Model(participants, trackingError, isMapPanelHidden);
     }
 
     // Private methods
 
     private Task OnClick() {
         var m = State.Value;
-        return m.IsTrackingBroken
-            ? ModalUI.Show(new LocationTroubleshooterModal.Model())
-            : ModalUI.Show(new LocationMapModal.Model(Chat.Id));
+        if (m.IsTrackingBroken)
+            return ModalUI.Show(new LocationTroubleshooterModal.Model());
+
+        Hub.ChatActivityUI.SetMapPanelHidden(Chat.Id, false);
+        return Task.CompletedTask;
     }
 
     private Task OnStop()
@@ -89,7 +93,8 @@
 
     public sealed record Model(
         IReadOnlyList<LocationParticipant> Participants,
-        GeoTrackingError? TrackingError = null) {
+        GeoTrackingError? TrackingError = null,
+        bool IsMapPanelHidden = false) {
         public static readonly Model None = new([]);
 
         public bool IsTrackingBroken => TrackingError is not null;

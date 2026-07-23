@@ -130,6 +130,23 @@ describe('location sharing', () => {
         await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
         await page.screenshot({ path: shot('loc-panel') });
 
+        // act — hide the panel from its ⋮ menu; the compact banner takes its place
+        await mapPanel.locator('.c-menu-btn').first().click();
+        const panelMenu = page.locator('.map-panel-host .c-menu').first();
+        await panelMenu.waitFor({ state: 'visible', timeout: 5_000 });
+        await panelMenu.locator('.c-menu-item:has-text("Hide")').first().click();
+        await mapPanel.waitFor({ state: 'hidden', timeout: 10_000 });
+        const banner = page.locator('.live-location-banner').first();
+        await banner.waitFor({ state: 'visible', timeout: 10_000 });
+        expect((await banner.innerText()).toLowerCase()).toContain('sharing your location');
+        await page.screenshot({ path: shot('loc-panel-hidden') });
+
+        // act — clicking the banner brings the panel back
+        await banner.locator('.c-body').first().click();
+        await mapPanel.waitFor({ state: 'visible', timeout: 10_000 });
+        await banner.waitFor({ state: 'hidden', timeout: 10_000 });
+        await mapPanel.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
+
         // act — expand the panel into the full map modal
         await mapPanel.locator('.c-expand').first().click();
         const mapModal = page.locator('.location-map-modal').first();

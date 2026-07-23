@@ -6,9 +6,13 @@
 
 /* ── Map panel ── */
 
-.map-panel {
+.map-panel-host {
     @apply relative;
     @apply w-full max-w-192;
+}
+.map-panel {
+    @apply relative;
+    @apply w-full;
     @apply h-48;
     @apply rounded-b-lg;
     @apply overflow-hidden;
@@ -17,8 +21,27 @@
 .map-panel .c-map {
     @apply w-full h-full;
 }
+.map-panel .btn-video-panel.btn,
+.map-panel .btn-video-panel.btn-h {
+    @apply w-8 h-8;
+}
 .map-panel .btn-video-panel.c-expand {
     @apply absolute top-2 left-2 z-10;
+}
+.map-panel .btn-video-panel.c-menu-btn {
+    @apply absolute top-2 right-2 z-10;
+}
+.map-panel .c-distance {
+    @apply absolute top-2 left-1/2 z-10;
+    @apply flex items-center;
+    @apply h-8;
+    @apply px-3;
+    @apply rounded-full;
+    background: var(--white-80);
+    color: var(--gray-30);
+    @apply text-sm font-medium;
+    @apply pointer-events-none;
+    transform: translateX(-50%);
 }
 .map-panel .c-countdown {
     @apply absolute bottom-3 left-3 z-10;
@@ -34,7 +57,7 @@
 }
 .map-panel .btn.btn-round.btn-stop-sharing {
     @apply absolute bottom-3 right-3 z-10;
-    @apply w-10 h-10;
+    @apply w-8 h-8;
     background: var(--white-80);
     color: var(--magenta-50);
 }
@@ -53,23 +76,61 @@
     @apply text-caption-1;
 }
 
+/* ── Map panel ⋮ menu — mirrors the LocationMapModal map-type menu ── */
+
+.map-panel-host .c-menu-backdrop {
+    @apply fixed inset-0 z-10;
+}
+.map-panel-host .c-menu {
+    @apply absolute right-2 top-11 z-20;
+    @apply flex-y;
+    @apply w-40;
+    @apply p-1;
+    @apply rounded-xl border border-separator;
+    @apply bg-01;
+    box-shadow: 0 2px 6px var(--black-05);
+}
+.map-panel-host .c-menu .c-menu-item {
+    @apply flex-x items-center gap-x-4;
+    @apply h-12 shrink-0;
+    @apply px-3;
+    @apply rounded-lg;
+}
+.map-panel-host .c-menu .c-menu-item:disabled {
+    @apply opacity-40;
+}
+body.hoverable .map-panel-host .c-menu .c-menu-item:hover:not(:disabled),
+.touch-capable .map-panel-host .c-menu .c-menu-item:active:not(:disabled) {
+    @apply bg-hover;
+}
+.map-panel-host .c-menu .c-menu-item i {
+    @apply text-2xl text-03;
+}
+.map-panel-host .c-menu .c-menu-item span {
+    @apply grow text-left;
+    @apply text-headline-1 text-01;
+}
+
 /* ── Call/Map switch ── */
 
 .call-map-switch {
     @apply absolute left-1/2 bottom-0 z-20;
-    @apply flex-x items-center gap-0.5;
+    @apply flex-x items-center gap-1;
     @apply p-1;
-    @apply rounded-full;
+    @apply rounded-2xl border;
     @apply bg-01;
-    @apply shadow-md;
+    border-color: var(--blue-80);
     transform: translate(-50%, 50%);
+    box-shadow: 0 2px 3px var(--black-10);
 }
 .call-map-switch .c-option {
     @apply flex items-center justify-center;
-    @apply h-7 min-w-14;
-    @apply px-3;
-    @apply rounded-full;
-    @apply text-sm font-medium text-01;
+    @apply min-w-14;
+    @apply px-2.5;
+    @apply rounded-2xl;
+    @apply text-base font-medium;
+    height: 1.625rem;
+    color: var(--gray-30);
 }
 .call-map-switch .c-option.on {
     background: var(--blue-50-10);

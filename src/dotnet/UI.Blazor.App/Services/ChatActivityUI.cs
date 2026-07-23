@@ -15,6 +15,7 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
 {
     private readonly MutableState<(ChatId ChatId, CallMapPanelTab Tab)?> _selectedPanelTab =
         hub.StateFactory.NewMutable(((ChatId ChatId, CallMapPanelTab Tab)?)null);
+    private readonly MutableState<ChatId?> _mapHiddenChatId = hub.StateFactory.NewMutable((ChatId?)null);
 
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ILiveSessions LiveSessions => Hub.LiveSessions;
@@ -55,7 +56,8 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         // call activity in the chat — a non-watcher's panel must not flip to an empty call view.
         var hasCall = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
         var activity = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        var hasMap = activity.HasLiveLocation;
+        var isMapHidden = await IsMapPanelHidden(chatId, cancellationToken).ConfigureAwait(false);
+        var hasMap = activity.HasLiveLocation && !isMapHidden;
         var tab = (hasCall, hasMap) switch {
             (true, false) => CallMapPanelTab.Call,
             (false, true) => CallMapPanelTab.Map,
@@ -68,6 +70,18 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
 
     public void SelectPanelTab(ChatId chatId, CallMapPanelTab tab)
         => _selectedPanelTab.Value = (chatId, tab);
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsMapPanelHidden(ChatId chatId, CancellationToken cancellationToken = default)
+        => await _mapHiddenChatId.Use(cancellationToken).ConfigureAwait(false) == chatId;
+
+    public void SetMapPanelHidden(ChatId chatId, bool isHidden)
+    {
+        if (isHidden)
+            _mapHiddenChatId.Value = chatId;
+        else if (_mapHiddenChatId.Value == chatId)
+            _mapHiddenChatId.Value = null;
+    }
 
     // Protected/internal methods
 
