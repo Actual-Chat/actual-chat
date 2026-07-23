@@ -136,12 +136,14 @@
             }
         </div>
         </CascadingValue>
-        <ConversationMessageFooter
-            CopyToClipboardRequested="@OnCopyToClipboardRequested"
-            Authors="@conversation.AuthorIds"
-            MessageCount="@messageCount"
-            StartsAt="@startsAt"
-            EndsAt="@endsAt"/>
+        @if (!Message.HasSplitFooter) {
+            <ConversationMessageFooter
+                CopyToClipboardRequested="@OnCopyToClipboardRequested"
+                Authors="@conversation.AuthorIds"
+                MessageCount="@messageCount"
+                StartsAt="@startsAt"
+                EndsAt="@endsAt"/>
+        }
     }
 </div>
 

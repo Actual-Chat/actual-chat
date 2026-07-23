@@ -900,6 +900,7 @@ public partial class ChatUI
                 Date = date,
                 PreviousMessage = prevMessage,
                 HasSplitHeader = hasSplitHeader,
+                HasSplitFooter = conversation.Id == liveBlockId,
             };
             // Can't skip adding a conversation message even if it's the same as previous message
             // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
