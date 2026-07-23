@@ -4,4 +4,5 @@ public enum LiveSessionKind
 {
     Ambient = 0,
     Call = 1,
+    Dialing = 2,
 }
