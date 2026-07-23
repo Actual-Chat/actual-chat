@@ -15,7 +15,7 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
 {
     private readonly MutableState<(ChatId ChatId, CallMapPanelTab Tab)?> _selectedPanelTab =
         hub.StateFactory.NewMutable(((ChatId ChatId, CallMapPanelTab Tab)?)null);
-    private readonly MutableState<ChatId?> _mapHiddenChatId = hub.StateFactory.NewMutable((ChatId?)null);
+    private readonly MutableState<ChatId?> _panelHiddenChatId = hub.StateFactory.NewMutable((ChatId?)null);
 
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ILiveSessions LiveSessions => Hub.LiveSessions;
@@ -54,10 +54,15 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
     {
         // The call side keys on watching (the call view is open for this user), not on mere
         // call activity in the chat — a non-watcher's panel must not flip to an empty call view.
-        var hasCall = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
+        var isWatching = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
         var activity = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        var isMapHidden = await IsMapPanelHidden(chatId, cancellationToken).ConfigureAwait(false);
-        var hasMap = activity.HasLiveLocation && !isMapHidden;
+        // Hide (from the map ⋮ menu) hides the whole panel — call view included — while
+        // location activity exists; LiveLocationBanner is the way back. Once the shares
+        // end the flag is moot and the call view returns.
+        var isHidden = activity.HasLiveLocation
+            && await IsPanelHidden(chatId, cancellationToken).ConfigureAwait(false);
+        var hasCall = isWatching && !isHidden;
+        var hasMap = activity.HasLiveLocation && !isHidden;
         var tab = (hasCall, hasMap) switch {
             (true, false) => CallMapPanelTab.Call,
             (false, true) => CallMapPanelTab.Map,
@@ -72,15 +77,16 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         => _selectedPanelTab.Value = (chatId, tab);
 
     [ComputeMethod]
-    public virtual async Task<bool> IsMapPanelHidden(ChatId chatId, CancellationToken cancellationToken = default)
-        => await _mapHiddenChatId.Use(cancellationToken).ConfigureAwait(false) == chatId;
+    public virtual async Task<bool> IsPanelHidden(ChatId chatId, CancellationToken cancellationToken = default)
+        => await _panelHiddenChatId.Use(cancellationToken).ConfigureAwait(false) == chatId;
 
-    public void SetMapPanelHidden(ChatId chatId, bool isHidden)
+    public void SetPanelHidden(ChatId chatId, bool isHidden)
     {
+        // TODO: use dictionary
         if (isHidden)
-            _mapHiddenChatId.Value = chatId;
-        else if (_mapHiddenChatId.Value == chatId)
-            _mapHiddenChatId.Value = null;
+            _panelHiddenChatId.Value = chatId;
+        else if (_panelHiddenChatId.Value == chatId)
+            _panelHiddenChatId.Value = null;
     }
 
     // Protected/internal methods
