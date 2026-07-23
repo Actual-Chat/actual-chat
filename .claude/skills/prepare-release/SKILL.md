@@ -29,6 +29,8 @@ RoboKitty post (steps 6–8). Those are the hard-to-revert, outward-facing parts
   — same path `/my-changes --post` and `/robokitty-post` use. No new HTTP code.
 - Release-notes **style** is defined below; match prior notes' tone, don't
   reinvent a format.
+- The **`configs`** sibling repo (`/proj/configs`) needs a matching
+  `release/vX.Y` branch — CI loads config from it. Don't skip step 3b.
 
 ## Prerequisites
 
@@ -70,6 +72,29 @@ git branch --list 'release/v*' | tail; git log --oneline -1 dev
 git push origin dev
 git push origin release/vX.Y
 ```
+
+### 3b. Cut the matching release branch in the configs repo
+
+**The CI build loads configuration from the `configs` repo's `release/vX.Y`
+branch, so it must exist or the release build fails.** The repo is a sibling at
+`../configs` (`/proj/configs`); its remote is `git@github.com:Actual-Chat/configs.git`.
+
+Ensure it's cloned, then create `release/vX.Y` from the latest `master` and push:
+
+```bash
+cd /proj/configs 2>/dev/null || git clone git@github.com:Actual-Chat/configs.git /proj/configs && cd /proj/configs
+git fetch origin
+git switch master && git pull --ff-only
+git switch -c release/vX.Y            # skip if it already exists
+git push origin release/vX.Y
+cd /proj/ActualChat                   # back to the app repo
+```
+
+If the SSH remote can't authenticate in this environment, push over HTTPS with
+the token instead:
+`git push "https://x-access-token:${GH_TOKEN}@github.com/Actual-Chat/configs.git" release/vX.Y`.
+If `release/vX.Y` already exists on origin and equals `origin/master`, it's
+already done — leave it.
 
 ### 4. Get the one-line commit log since the previous release
 
@@ -202,6 +227,7 @@ worth mentioning, ask: "would a user notice or care?" If no, fold it into the
 | Target version | `cat version.json` → drop `-alpha` → `X.Y` |
 | Bump | `dotnet nbgv prepare-release` (on `dev`) |
 | Push | `git push origin dev && git push origin release/vX.Y` |
+| Config branch | `/proj/configs`: `release/vX.Y` from latest `master`, push (CI loads it) |
 | Commit log | `git log --format='%s' origin/release/vX.(Y-1)..release/vX.Y` |
 | Notes file | `docs/releases/release-notes-vX.Y.md` |
 | Merge to dev | `git merge --no-ff release/vX.Y`, keep dev's `version.json` |
@@ -218,3 +244,5 @@ worth mentioning, ask: "would a user notice or care?" If no, fold it into the
 - **Wrong previous-release branch** for the diff → notes miss or double-count
   commits. Confirm `origin/release/vX.(Y-1)` is the actual prior release.
 - **Skipping the review pause.** The notes are public; show them first.
+- **Forgetting the `configs` release branch (step 3b).** The CI release build
+  loads config from `configs`' `release/vX.Y`; without it the build fails.
