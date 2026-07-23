@@ -359,7 +359,9 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    gradient and no violet outline. Keyed on the header's Join button - which shows ONLY for the
    never-attended block - so a leaver's frozen block (which shows the expand chevron, not Join) keeps
    the joined violet tint. The extra .c-lc-join in the :has() also outranks the joined tint rule above,
-   so this wins whenever it matches. */
+   so this wins whenever it matches. Its match set is a strict subset of the base shell rule's
+   expanded arm, so mx-1 and the transparent border cascade in from there - only the tint is overridden
+   here. */
 .virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header .c-lc-join) {
     isolation: isolate;
     @apply rounded-2xl;
