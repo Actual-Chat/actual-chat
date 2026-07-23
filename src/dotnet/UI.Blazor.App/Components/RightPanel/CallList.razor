@@ -16,6 +16,9 @@
     };
 }
 <div class="call-list-tab">
+    @if (live.Kind == LiveSessionKind.Dialing) {
+        <div class="c-dialing">Dialing…</div>
+    }
     <div class="c-rules">
         <span class="c-rules-title">Rules</span>
         <span class="c-rules-text">@RulesText(live.Rules)</span>
