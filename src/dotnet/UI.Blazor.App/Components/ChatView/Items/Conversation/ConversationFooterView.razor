@@ -3,6 +3,10 @@
     var conversation = Footer.Conversation!;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
     var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
+    // Same set GetClipboardText concatenates - with none of it there, copying yields blank lines.
+    var hasCopyText = !conversation.Title.IsNullOrWhiteSpace()
+        || !conversation.Description.IsNullOrWhiteSpace()
+        || !conversation.Summary.IsNullOrWhiteSpace();
 }
 
 <ConversationMessageFooter
@@ -10,12 +14,22 @@
     MessageCount="@conversation.MessageCount"
     StartsAt="@startsAt"
     EndsAt="@endsAt"
-    IsSeparated="true"/>
+    IsSeparated="true"
+    ShowCopy="@hasCopyText"
+    CopyToClipboardRequested="@OnCopyToClipboardRequested"/>
 
 @code {
     private AppUIHub Hub => ChatContext.Hub;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private ConversationUI ConversationUI => Hub.ConversationUI;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationFooter Footer { get; set; } = null!;
+
+    private async Task OnCopyToClipboardRequested() {
+        var translated = await ConversationUI.GetTranslatedConversation(Footer.Conversation!, CancellationToken.None);
+        var text = await ConversationUI.GetClipboardText(translated);
+        await ClipboardUI.WriteText(text).ConfigureAwait(false);
+    }
 }

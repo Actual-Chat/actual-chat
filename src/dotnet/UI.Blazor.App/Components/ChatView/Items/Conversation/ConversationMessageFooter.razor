@@ -22,9 +22,11 @@
                 </div>
             </div>
         </div>
-        <HeaderButton Click="CopyToClipboardRequested">
-            <i class="icon-copy"></i>
-        </HeaderButton>
+        @if (ShowCopy) {
+            <HeaderButton Click="CopyToClipboardRequested">
+                <i class="icon-copy"></i>
+            </HeaderButton>
+        }
     </div>
 </div>
 
@@ -39,6 +41,7 @@
     [Parameter] public DateTime EndsAt { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
     [Parameter] public string? SecondLine { get; set; }
+    [Parameter] public bool ShowCopy { get; set; } = true;
     [Parameter] public EventCallback CopyToClipboardRequested { get; set; }
 
     private string GetConversationTimeInfoString() {
