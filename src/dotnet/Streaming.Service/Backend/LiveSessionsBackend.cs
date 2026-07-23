@@ -115,7 +115,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
         // Prompt ring timeout while this session is observed (the self-heal below re-runs GetState);
         // the RingTtl field expiry in Redis is the backstop when no one observes.
-        if (state.Kind == LiveSessionKind.Call && await HasStaleRinging(chatId).ConfigureAwait(false))
+        if (state.IsCall && await HasStaleRinging(chatId).ConfigureAwait(false))
             _ = ExpireRings(chatId);
 
         computed.Invalidate(SelfHealDelay);
@@ -290,14 +290,18 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (state.SessionStartedAt is null && state.AuthorIds.Count >= 2) {
             var visibleStartLid = (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
             state = state with {
+                // A dialing call latching here (streamed before a formal accept) becomes a connected call,
+                // never a Dialing session with SessionStartedAt set.
+                Kind = state.Kind == LiveSessionKind.Dialing ? LiveSessionKind.Call : state.Kind,
                 SessionStartedAt = now,
                 VisibleStartLid = visibleStartLid,
                 Version = VersionGenerator.NextVersion(state.Version),
             };
-            // START fires at the 2+ latch for both modes; transcription's later Titled updates the same banner.
-            await EnqueueLiveNotification(
-                state, ConversationNotificationPhase.Started, "Voice chat started", cancellationToken)
-                .ConfigureAwait(false);
+            // Calls announce themselves by ringing, not a conversation banner; only ambient sessions banner.
+            if (state.Kind == LiveSessionKind.Ambient)
+                await EnqueueLiveNotification(
+                    state, ConversationNotificationPhase.Started, "Voice chat started", cancellationToken)
+                    .ConfigureAwait(false);
         }
 
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
@@ -837,7 +841,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 return;
             if (await IsSessionLive(chatId).ConfigureAwait(false))
                 return; // someone is (still) streaming - not empty after all
-            if (state is { TranscriptionOn: true, SessionStartedAt: not null, Kind: not LiveSessionKind.Call }) {
+            if (state is { TranscriptionOn: true, SessionStartedAt: not null, Kind: LiveSessionKind.Ambient }) {
                 // Hand the close to LiveConversationSummaryFlow: it runs the final summary pass, decides the
                 // tier, materializes, then calls FinalizeSession. StartClosingGrace marks IsClosing; the 90s
                 // SelfClose stays the backstop if the flow never finalizes.
@@ -883,7 +887,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     private async Task CloseAndMaterialize(LiveSessionState state, CancellationToken cancellationToken)
     {
-        if (state.Kind == LiveSessionKind.Call) {
+        if (state.IsCall) {
             // A voice call has no transcript to materialize - just stop any lingering rings on the
             // invitees' devices, then drop the session.
             var invitees = (await SafeGetInvites(state.ChatId).ConfigureAwait(false))

@@ -44,7 +44,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
         if (live.IsClosing) {
             // A latched transcription session hands its close to this flow; other shapes are the backend's.
-            if (live is { TranscriptionOn: true, SessionStartedAt: not null, Kind: not LiveSessionKind.Call })
+            if (live is { TranscriptionOn: true, SessionStartedAt: not null, Kind: LiveSessionKind.Ambient })
                 await Finalize(live, cancellationToken).ConfigureAwait(false);
             return;
         }

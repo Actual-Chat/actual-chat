@@ -774,6 +774,34 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
+    public async Task StreamBeforeAcceptLatchesDialingCallToConnected()
+    {
+        // A dialing call reaching the 2-party stream latch (both parties stream before a formal Accept)
+        // must become Connected - never left as Dialing with SessionStartedAt set (invariant).
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        (await backend.GetState(chatId, default))!.Kind.Should().Be(LiveSessionKind.Dialing);
+
+        // act — both parties stream (no explicit AcceptCall)
+        await backend.OnStreamRegistered(chatId, bobAuthor.Id, null, false, default);
+        await backend.OnStreamRegistered(chatId, aliceAuthor.Id, null, false, default);
+
+        // assert — invariant holds: latched → Connected, not Dialing-with-SessionStartedAt
+        var state = await backend.GetState(chatId, default);
+        state!.SessionStartedAt.Should().NotBeNull();
+        state.Kind.Should().Be(LiveSessionKind.Call);
+    }
+
+    [Fact]
     public async Task LeaveCallEndsCallBelowTwo()
     {
         // arrange
