@@ -5,8 +5,8 @@
 }
 
 @* The live-location map panel (MapPanelContent) covers the normal case; the banner
-   remains to surface tracking errors and as the compact stand-in while the whole
-   activity panel is hidden via the map's ⋮ menu — clicking it brings the panel back. *@
+   remains to surface tracking errors and as the compact stand-in while the map is
+   hidden via its ⋮ menu — clicking it brings the map back. *@
 <Banner
     IsVisible="@(m.Count > 0 && (m.IsTrackingBroken || m.IsPanelHidden))"
     Severity="@(m.IsTrackingBroken ? BannerSeverity.Error : BannerSeverity.Default)"
@@ -80,6 +80,9 @@
             return ModalUI.Show(new LocationTroubleshooterModal.Model());
 
         Hub.ChatActivityUI.SetPanelHidden(Chat.Id, false);
+        // Land on the map: the last-selected tab may be Call, whose view may still be
+        // collapsed to the Live pill — the banner is the map's way back, not the call's.
+        Hub.ChatActivityUI.SelectPanelTab(Chat.Id, CallMapPanelTab.Map);
         return Task.CompletedTask;
     }
 
