@@ -27,7 +27,6 @@ public class LocationUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
         var cancellationToken = cts.Token;
 
         var (chatId, _) = await Tester.CreateChat(true, cancellationToken: cancellationToken);
-        var author = await Tester.GetOwnAuthor(chatId, cancellationToken: cancellationToken).Require();
         var entry = await Tester.CreateLocationEntry(
             chatId,
             new GeoPoint(51.5074, -0.1278, 12f, 90f),
@@ -36,9 +35,10 @@ public class LocationUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
         var locationId = entry.LocationId.Require();
 
         var computed = await Computed.Capture(
-            () => LocationUI.GetTimeLeftText(author.Id, cancellationToken),
+            () => LocationUI.GetCountdown(chatId, locationId, cancellationToken),
             cancellationToken);
-        computed.Value.Should().NotBeEmpty();
+        computed.Value.Should().NotBeNull();
+        computed.Value!.Text.Should().NotBeEmpty();
         computed.IsConsistent().Should().BeTrue();
 
         // act
@@ -47,7 +47,7 @@ public class LocationUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
         // assert
         computed.IsConsistent().Should().BeFalse();
         computed = await computed.Update(cancellationToken);
-        computed.Value.Should().Be("");
+        computed.Value.Should().BeNull();
         computed.IsConsistent().Should().BeTrue();
     }
 }
