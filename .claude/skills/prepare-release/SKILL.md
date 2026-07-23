@@ -66,18 +66,13 @@ next `-alpha`, committing on both. Verify:
 git branch --list 'release/v*' | tail; git log --oneline -1 dev
 ```
 
-### 3. Push both branches
-
-```bash
-git push origin dev
-git push origin release/vX.Y
-```
-
-### 3b. Cut the matching release branch in the configs repo
+### 3. Cut and push the configs release branch FIRST
 
 **The CI build loads configuration from the `configs` repo's `release/vX.Y`
-branch, so it must exist or the release build fails.** The repo is a sibling at
-`../configs` (`/proj/configs`); its remote is `git@github.com:Actual-Chat/configs.git`.
+branch, so it must exist before you push the app's release branch — otherwise
+the release build the app-branch push triggers fails for lack of config.** The
+repo is a sibling at `../configs` (`/proj/configs`); its remote is
+`git@github.com:Actual-Chat/configs.git`.
 
 Ensure it's cloned, then create `release/vX.Y` from the latest `master` and push:
 
@@ -95,6 +90,15 @@ the token instead:
 `git push "https://x-access-token:${GH_TOKEN}@github.com/Actual-Chat/configs.git" release/vX.Y`.
 If `release/vX.Y` already exists on origin and equals `origin/master`, it's
 already done — leave it.
+
+### 3b. Push the app branches
+
+Only after the configs branch is live:
+
+```bash
+git push origin dev
+git push origin release/vX.Y
+```
 
 ### 4. Get the one-line commit log since the previous release
 
@@ -226,8 +230,8 @@ worth mentioning, ask: "would a user notice or care?" If no, fold it into the
 |---|---|
 | Target version | `cat version.json` → drop `-alpha` → `X.Y` |
 | Bump | `dotnet nbgv prepare-release` (on `dev`) |
-| Push | `git push origin dev && git push origin release/vX.Y` |
-| Config branch | `/proj/configs`: `release/vX.Y` from latest `master`, push (CI loads it) |
+| Config branch (first!) | `/proj/configs`: `release/vX.Y` from latest `master`, push — CI loads it |
+| Push app branches | `git push origin dev && git push origin release/vX.Y` (after config branch) |
 | Commit log | `git log --format='%s' origin/release/vX.(Y-1)..release/vX.Y` |
 | Notes file | `docs/releases/release-notes-vX.Y.md` |
 | Merge to dev | `git merge --no-ff release/vX.Y`, keep dev's `version.json` |
