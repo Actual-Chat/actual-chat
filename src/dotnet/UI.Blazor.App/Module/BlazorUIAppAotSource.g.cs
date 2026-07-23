@@ -503,7 +503,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsPrivacyContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsTermsContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ReconnectBanner>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VideoPanelContainer>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VisualActivityPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VideoPanelContent>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ActiveChat>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ActiveShare>();
@@ -1224,7 +1224,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.DocsPrivacyContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DocsTermsContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ReconnectBanner), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Components.VideoPanelContainer), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.VisualActivityPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.VideoPanelContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Services.ActiveChat), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.ActiveShare), AotTypeKind.Serializable),
