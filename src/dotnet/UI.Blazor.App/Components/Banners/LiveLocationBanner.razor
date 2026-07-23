@@ -4,9 +4,11 @@
     var m = State.Value;
 }
 
+@* The live-location map panel (MapPanelContent) covers the normal case;
+   the banner remains only to surface tracking errors. *@
 <Banner
-    IsVisible="@(m.Count > 0)"
-    Severity="@(m.IsTrackingBroken ? BannerSeverity.Error : BannerSeverity.Default)"
+    IsVisible="@(m.Count > 0 && m.IsTrackingBroken)"
+    Severity="@BannerSeverity.Error"
     Class="live-location-banner">
     <Icon>@*Empty on purpose: a null Icon would render the default SeverityIcon; the icon lives in Body*@</Icon>
     <Body>
