@@ -694,6 +694,37 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
+    public async Task RingIdSurvivesChatGrowthAcrossLatch()
+    {
+        // arrange — Bob dials Alice
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // the ring is published under this id while dialing; it must stay put for the whole call
+        var dialing = await backend.GetState(chatId, default);
+        var ringId = dialing!.RingConversationId;
+        dialing.ConversationId.Should().Be(ringId, "during dialing the block id and ring id coincide");
+
+        // act — a chat entry lands during the ring, advancing the chat end, then Alice answers
+        await bob.CreateTextEntry(chatId, "grows the chat end during the ring");
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert — the block id moved to the answer point, but the ring id did NOT (so dismissals still match)
+        var connected = await backend.GetState(chatId, default);
+        connected!.RingConversationId.Should()
+            .Be(ringId, "the ring id is latch-stable so DismissRing matches NotifyCall");
+        connected.ConversationId.Should().NotBe(ringId, "the block id legitimately moves to the answer's chat end");
+    }
+
+    [Fact]
     public async Task DeclineKeepsCallWhileAnotherRings()
     {
         // arrange — Bob rings two people

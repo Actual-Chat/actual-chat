@@ -489,7 +489,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 Version = VersionGenerator.NextVersion(state?.Version ?? 0),
             };
             await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
-            conversationId = state.ConversationId;
+            conversationId = state.RingConversationId;
             await EnsureParticipant(chatId, callerAuthorId).ConfigureAwait(false);
             foreach (var invitee in invitees)
                 await _invites.Set(chatId.Value, invitee.Value,
@@ -539,7 +539,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 };
                 await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
             }
-            conversationId = state?.ConversationId;
+            conversationId = state?.RingConversationId;
             InvalidateState(chatId);
         }
         if (conversationId is { } cid)
@@ -559,7 +559,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await _invites.Set(chatId.Value, inviteeAuthorId.Value,
                     invite with { Status = CallInviteStatus.Declined, RespondedAt = Clocks.SystemClock.Now })
                 .ConfigureAwait(false);
-            conversationId = (await SafeGet(chatId).ConfigureAwait(false))?.ConversationId;
+            conversationId = (await SafeGet(chatId).ConfigureAwait(false))?.RingConversationId;
             InvalidateState(chatId);
             abandoned = await IsCallAbandoned(chatId).ConfigureAwait(false);
         }
@@ -580,7 +580,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (state is null)
                 return;
 
-            conversationId = state.ConversationId;
+            conversationId = state.RingConversationId;
             var now = Clocks.SystemClock.Now;
             foreach (var info in (await SafeGetInvites(chatId).ConfigureAwait(false)).Values) {
                 if (info is not { Status: CallInviteStatus.Ringing })
@@ -717,7 +717,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 if (state is null)
                     return;
 
-                conversationId = state.ConversationId;
+                conversationId = state.RingConversationId;
                 var now = Clocks.SystemClock.Now;
                 var cutoff = now - RingTimeout;
                 foreach (var info in (await SafeGetInvites(chatId).ConfigureAwait(false)).Values) {
@@ -893,7 +893,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var invitees = (await SafeGetInvites(state.ChatId).ConfigureAwait(false))
                 .Values.Where(i => i is not null).Select(i => i!.InviteeId).ToList();
             if (invitees.Count > 0)
-                await DismissRing(state.ConversationId, invitees, cancellationToken).ConfigureAwait(false);
+                await DismissRing(state.RingConversationId, invitees, cancellationToken).ConfigureAwait(false);
             await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
             return;
         }
