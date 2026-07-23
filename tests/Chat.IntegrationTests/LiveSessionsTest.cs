@@ -680,13 +680,16 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var chatEnd = (await chatsBackend.GetLidRange(chatId, false, default)).End;
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
 
+        var chatEndAfter = (await chatsBackend.GetLidRange(chatId, false, default)).End;
+
         // assert — latched: Connected, block surfaced (SessionStartedAt set), VisibleStartLid = answer's chat end
         var state = await backend.GetState(chatId, default);
         state!.Kind.Should().Be(LiveSessionKind.Call);
         state.SessionStartedAt.Should().NotBeNull();
-        // AcceptCall reads the chat end at answer time, strictly after our pre-answer read above,
-        // so a concurrently appended entry can only push it forward, never back.
+        // AcceptCall reads the chat-end lid at answer time, which falls between our pre-answer and
+        // post-answer reads (chat end only grows), so this brackets it without a concurrent-write flake.
         state.VisibleStartLid.Should().BeGreaterThanOrEqualTo(chatEnd);
+        state.VisibleStartLid.Should().BeLessThanOrEqualTo(chatEndAfter);
         state.AuthorIds.Should().Contain(aliceAuthor.Id);
     }
 
