@@ -450,7 +450,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (await IsSessionLive(chatId).ConfigureAwait(false))
             return; // someone is streaming again - keep the session live
 
-        await CloseWithFinal(state, cancellationToken).ConfigureAwait(false);
+        await CloseAndMaterialize(state, cancellationToken).ConfigureAwait(false);
     }
 
     // Voice-call ring lifecycle
@@ -825,7 +825,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 await StartClosingGrace(chatId).ConfigureAwait(false);
                 return;
             }
-            await CloseWithFinal(state, CancellationToken.None).ConfigureAwait(false);
+            await CloseAndMaterialize(state, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "CloseNow failed for chat #{ChatId}", chatId);
@@ -840,7 +840,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var state = await SafeGet(chatId).ConfigureAwait(false);
             if (state is null)
                 return;
-            await CloseWithFinal(state, CancellationToken.None).ConfigureAwait(false);
+            await CloseAndMaterialize(state, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "CloseCall failed for chat #{ChatId}", chatId);
@@ -855,18 +855,18 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var state = await SafeGet(chatId).ConfigureAwait(false);
             if (state is not { IsClosing: true })
                 return;
-            await CloseWithFinal(state, CancellationToken.None).ConfigureAwait(false);
+            await CloseAndMaterialize(state, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "SelfClose failed for chat #{ChatId}", chatId);
         }
     }
 
-    private async Task CloseWithFinal(LiveSessionState state, CancellationToken cancellationToken)
+    private async Task CloseAndMaterialize(LiveSessionState state, CancellationToken cancellationToken)
     {
         if (state.Kind == LiveSessionKind.Call) {
-            // A voice call has no transcript to materialize or FINAL to post - just stop any lingering
-            // rings on the invitees' devices, then drop the session.
+            // A voice call has no transcript to materialize - just stop any lingering rings on the
+            // invitees' devices, then drop the session.
             var invitees = (await SafeGetInvites(state.ChatId).ConfigureAwait(false))
                 .Values.Where(i => i is not null).Select(i => i!.InviteeId).ToList();
             if (invitees.Count > 0)
@@ -876,19 +876,15 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
 
         // A session that never latched (solo) leaves its ordinary split-flow conversations behind;
-        // only a latched session sends FINAL and is covered by its own materialization.
-        if (state.SessionStartedAt is not null) {
-            // Persist the already-computed summary as a real conversation *before* the live state drops,
-            // so the in-chat block doesn't flicker; an empty title (phone-mode, or below the summary
-            // threshold) has nothing to keep and just vanishes.
-            if (!state.Title.IsNullOrEmpty())
-                await Commander
-                    .Call(new ConversationBackend_Materialize(state.ToMaterializedConversation()), true, cancellationToken)
-                    .ConfigureAwait(false);
-            var content = state.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {state.Title}";
-            await EnqueueLiveNotification(state, ConversationNotificationPhase.Final, content, cancellationToken)
+        // only a latched session materializes its summary. There is no completion notification - the
+        // in-chat block already carries the summary in place, so an "ended" banner adds nothing.
+        // Persist the already-computed summary as a real conversation *before* the live state drops,
+        // so the in-chat block doesn't flicker; an empty title (phone-mode, or below the summary
+        // threshold) has nothing to keep and just vanishes.
+        if (state.SessionStartedAt is not null && !state.Title.IsNullOrEmpty())
+            await Commander
+                .Call(new ConversationBackend_Materialize(state.ToMaterializedConversation()), true, cancellationToken)
                 .ConfigureAwait(false);
-        }
         await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -908,10 +904,17 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         ConversationNotificationPhase phase,
         string content,
         CancellationToken cancellationToken)
-        => Services.Queues()
+    {
+        // Peer (1:1) chats get no live-session banner - the sole recipient is the other participant,
+        // who is already inside the very conversation the session belongs to.
+        if (state.ChatId.Kind == ChatKind.Peer)
+            return Task.CompletedTask;
+
+        return Services.Queues()
             .Enqueue(
                 new NotificationsBackend_NotifyConversation(state.ConversationId, phase, content, state.EndEntryLid, state.AuthorIds),
                 cancellationToken);
+    }
 
     private void InvalidateState(ChatId chatId)
     {
