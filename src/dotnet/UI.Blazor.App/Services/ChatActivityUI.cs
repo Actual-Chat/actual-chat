@@ -56,12 +56,12 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         // call activity in the chat — a non-watcher's panel must not flip to an empty call view.
         var isWatching = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
         var activity = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        // Hide (from the map ⋮ menu) hides the whole panel — call view included — while
-        // location activity exists; LiveLocationBanner is the way back. Once the shares
-        // end the flag is moot and the call view returns.
-        var isHidden = activity.HasLiveLocation
-            && await IsPanelHidden(chatId, cancellationToken).ConfigureAwait(false);
-        var hasCall = isWatching && !isHidden;
+        // Hide (from the map ⋮ menu) hides only the map side here; the call side is
+        // collapsed to the Live pill via ChatVideoUI's hidden mode, so hasCall must stay
+        // on to keep the pill mounted. LiveLocationBanner brings the map back, the pill
+        // brings the call view back.
+        var isHidden = await IsPanelHidden(chatId, cancellationToken).ConfigureAwait(false);
+        var hasCall = isWatching;
         var hasMap = activity.HasLiveLocation && !isHidden;
         var tab = (hasCall, hasMap) switch {
             (true, false) => CallMapPanelTab.Call,
