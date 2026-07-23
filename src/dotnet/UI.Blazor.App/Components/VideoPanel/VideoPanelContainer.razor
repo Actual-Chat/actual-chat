@@ -4,7 +4,7 @@
     var m = State.Value;
     var isWatching = m.IsWatching;
     var chatContext = m.ChatContext;
-    var showVideo = isWatching && m.PanelState.Tab == CallMapPanelTab.Call;
+    var showVideo = m.PanelState is { HasCall: true, Tab: CallMapPanelTab.Call };
     var showMap = m.PanelState is { HasMap: true, Tab: CallMapPanelTab.Map };
 
     // TODO(DF): move this logic to ChatVideoUI
@@ -27,7 +27,7 @@
         _isClosing = false;
     } else if (_isRendered && !showVideo) {
         if (isWatching) {
-            // Still on the call, just switched to the Map tab — swap instantly, no closing animation
+            // Still on the call — switched to the Map tab or hid the panel; swap instantly, no closing animation
             _isRendered = false;
             _isClosing = false;
         } else

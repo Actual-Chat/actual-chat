@@ -5,10 +5,10 @@
 }
 
 @* The live-location map panel (MapPanelContent) covers the normal case; the banner
-   remains to surface tracking errors and as the compact stand-in while the panel
-   is hidden via its ⋮ menu — clicking it then brings the panel back. *@
+   remains to surface tracking errors and as the compact stand-in while the whole
+   activity panel is hidden via the map's ⋮ menu — clicking it brings the panel back. *@
 <Banner
-    IsVisible="@(m.Count > 0 && (m.IsTrackingBroken || m.IsMapPanelHidden))"
+    IsVisible="@(m.Count > 0 && (m.IsTrackingBroken || m.IsPanelHidden))"
     Severity="@(m.IsTrackingBroken ? BannerSeverity.Error : BannerSeverity.Default)"
     Class="live-location-banner">
     <Icon>@*Empty on purpose: a null Icon would render the default SeverityIcon; the icon lives in Body*@</Icon>
@@ -67,9 +67,9 @@
             return Model.None;
 
         var trackingError = await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false);
-        var isMapPanelHidden = await Hub.ChatActivityUI.IsMapPanelHidden(chatId, cancellationToken)
+        var isPanelHidden = await Hub.ChatActivityUI.IsPanelHidden(chatId, cancellationToken)
             .ConfigureAwait(false);
-        return new Model(participants, trackingError, isMapPanelHidden);
+        return new Model(participants, trackingError, isPanelHidden);
     }
 
     // Private methods
@@ -79,7 +79,7 @@
         if (m.IsTrackingBroken)
             return ModalUI.Show(new LocationTroubleshooterModal.Model());
 
-        Hub.ChatActivityUI.SetMapPanelHidden(Chat.Id, false);
+        Hub.ChatActivityUI.SetPanelHidden(Chat.Id, false);
         return Task.CompletedTask;
     }
 
@@ -94,7 +94,7 @@
     public sealed record Model(
         IReadOnlyList<LocationParticipant> Participants,
         GeoTrackingError? TrackingError = null,
-        bool IsMapPanelHidden = false) {
+        bool IsPanelHidden = false) {
         public static readonly Model None = new([]);
 
         public bool IsTrackingBroken => TrackingError is not null;
