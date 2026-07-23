@@ -29,6 +29,19 @@ public static class NotificationHelper
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
         => urlMapper.IconUrl(chat.GetIconQuery(author));
 
+    public static string GetVoiceChatStartedText(IReadOnlyList<string> authorNames)
+    {
+        var shown = authorNames.Take(Constants.Notification.MaxSummaryAuthors).ToList();
+        var moreCount = authorNames.Count - shown.Count;
+        var names = shown.Count switch {
+            0 => "",
+            1 => shown[0],
+            _ when moreCount > 0 => $"{string.Join(", ", shown)} and {moreCount} more",
+            _ => $"{string.Join(", ", shown.Take(shown.Count - 1))} and {shown[^1]}",
+        };
+        return names.IsNullOrEmpty() ? "Voice chat started" : $"{names} started a voice chat";
+    }
+
     public static string GetAggregatedText(string leadText, IReadOnlyList<string> authorNames, int moreCount)
     {
         // moreCount counts messages beyond those LeadText already shows, so a rolled-in lead

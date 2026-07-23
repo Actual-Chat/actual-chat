@@ -419,6 +419,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         var authorUserIds = new HashSet<UserId>();
         AuthorFull? primaryAuthor = null;
+        var authorNames = new List<string>();
         foreach (var authorId in authorIds) {
             var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             if (author is null)
@@ -426,8 +427,13 @@ public class NotificationsBackend(IServiceProvider services)
 
             primaryAuthor ??= author;
             authorUserIds.Add(author.UserId);
+            authorNames.Add(author.Avatar.Name);
         }
         var iconUrl = primaryAuthor is null ? "" : NotificationHelper.GetIconUrl(chat, primaryAuthor, UrlMapper);
+
+        // The Started banner names who opened the voice chat instead of the generic phrase.
+        if (phase == ConversationNotificationPhase.Started && authorNames.Count > 0)
+            text = NotificationHelper.GetVoiceChatStartedText(authorNames);
 
         // Started/Titled/Final are live phases; their joined participants already see the call live.
         var isLive = phase != ConversationNotificationPhase.Created;
