@@ -13,26 +13,26 @@
     <Body>
         <div class="keyboard-shortcuts">
             @foreach (var sec in _sections) {
-                <div class="c-section">
-                    <div class="c-title">@sec.Title</div>
-                    @foreach (var shortcut in sec.Shortcuts) {
-                        <div class="c-row">
-                            <div class="c-name">@shortcut.Description</div>
-                            <div class="c-keys">
-                                @for (var i = 0; i < shortcut.Combos.Length; i++) {
-                                    if (i > 0) {
-                                        <span class="c-sep">/</span>
-                                    }
-                                    var combo = shortcut.Combos[i];
-                                    for (var j = 0; j < combo.Length; j++) {
-                                        if (j > 0) {
-                                            <span class="c-sep">+</span>
-                                        }
-                                        <kbd>@combo[j]</kbd>
-                                    }
-                                }
-                            </div>
-                        </div>
+                <TileTopic Topic="@sec.Title"/>
+                <div class="c-card">
+                    @for (var s = 0; s < sec.Shortcuts.Length; s++) {
+                        if (s > 0) {
+                            <Divider/>
+                        }
+                        var shortcut = sec.Shortcuts[s];
+                        if (shortcut.Caption != null) {
+                            <TileItem>
+                                <Content>@shortcut.Description</Content>
+                                <Caption>@shortcut.Caption</Caption>
+                                <Right>@RenderKeys(shortcut)</Right>
+                            </TileItem>
+                        }
+                        else {
+                            <TileItem>
+                                <Content>@shortcut.Description</Content>
+                                <Right>@RenderKeys(shortcut)</Right>
+                            </TileItem>
+                        }
                     }
                 </div>
             }
@@ -42,6 +42,21 @@
 
 @code {
     private Section[] _sections = [];
+
+    private RenderFragment RenderKeys(Shortcut shortcut) => @<div class="c-keys">
+        @for (var i = 0; i < shortcut.Combos.Length; i++) {
+            if (i > 0) {
+                <span class="c-sep">/</span>
+            }
+            var combo = shortcut.Combos[i];
+            for (var j = 0; j < combo.Length; j++) {
+                if (j > 0) {
+                    <span class="c-sep">+</span>
+                }
+                <kbd>@combo[j]</kbd>
+            }
+        }
+    </div>;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -59,7 +74,7 @@
             new("Messages", [
                 new("Send message", [["Enter"]]),
                 new("New line", [["Shift", "Enter"]]),
-                new("Edit your last message (in empty editor)", [["↑"]]),
+                new("Edit your last message", [["↑"]], "When the editor is empty"),
                 new("Cancel editing or reply", [["Esc"]]),
             ]),
             new("Chat", [
@@ -81,5 +96,5 @@
     public sealed record Model;
 
     private sealed record Section(string Title, Shortcut[] Shortcuts);
-    private sealed record Shortcut(string Description, string[][] Combos);
+    private sealed record Shortcut(string Description, string[][] Combos, string? Caption = null);
 }

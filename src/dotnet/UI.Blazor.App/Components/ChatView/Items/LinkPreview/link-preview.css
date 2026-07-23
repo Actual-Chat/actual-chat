@@ -9,6 +9,7 @@
 body.narrow .link-preview:not(.local-link) {
     @apply flex-y items-start;
     @apply h-auto min-h-60;
+    @apply p-2;
 }
 body.narrow .link-preview.local-link {
     @apply flex-x;

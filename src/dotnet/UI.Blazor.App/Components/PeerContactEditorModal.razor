@@ -32,12 +32,22 @@
         </FormBlock>
         @if (_contact is not null) {
             <FormBlock Class="block-user-form-block">
-                <Button
-                    Type="@ButtonType.Button"
-                    Class="btn-modal btn-danger"
-                    Click="@OnToggleBlock">
-                    @(_contact.IsBlocked ? "Unblock user" : "Block user")
-                </Button>
+                <div class="c-card">
+                    <TileItem>
+                        <Content>@(_contact.IsBlocked ? "Unblock user" : "Block user")</Content>
+                        <Caption>
+                            @(_contact.IsBlocked ? "You blocked this user" : "They won't be able to message or call you")
+                        </Caption>
+                        <Right>
+                            <Button
+                                Type="@ButtonType.Button"
+                                Class="@(_contact.IsBlocked ? "btn-transparent btn-sm" : "btn-transparent btn-danger btn-sm")"
+                                Click="@OnToggleBlock">
+                                @(_contact.IsBlocked ? "Unblock" : "Block")
+                            </Button>
+                        </Right>
+                    </TileItem>
+                </div>
             </FormBlock>
         }
         </Body>
