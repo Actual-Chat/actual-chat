@@ -365,7 +365,8 @@ body.narrow .list-view-layout:has(.chat-activity-panel:not(.not-participating)) 
         var(--transparent) 100%);
 }
 /* Video panel styling — no max-height, just visual treatment */
-.list-view-layout .layout-header:has(.video-panel:not(.collapsed)) {
+.list-view-layout .layout-header:has(.video-panel:not(.collapsed)),
+.list-view-layout .layout-header:has(.map-panel) {
     border: none;
 }
 /* Collapsed video panel island uses fixed positioning — no header overflow needed.
