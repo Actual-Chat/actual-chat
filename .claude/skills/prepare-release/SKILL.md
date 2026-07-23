@@ -109,10 +109,15 @@ git push origin release/vX.Y
 ```bash
 git switch dev
 git merge --no-ff release/vX.Y -m "Merge release notes vX.Y into dev"
+git push origin dev
 ```
 
-`version.json` **will conflict** (release branch has `X.Y`, dev has the next
-`-alpha`). Resolve by keeping dev's version, then finish the merge:
+**Usually this merges cleanly** — git's `ort` strategy keeps dev's newer
+`version.json`, so the only change that lands on dev is the notes file. Verify
+after: `grep '"version"' version.json` should still show the next `-alpha`.
+
+Only if `version.json` **does** conflict (release branch has `X.Y`, dev has the
+next `-alpha`), resolve by keeping dev's version before pushing:
 
 ```bash
 git checkout --ours version.json && git add version.json
