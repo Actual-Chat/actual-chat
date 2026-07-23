@@ -511,12 +511,31 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (invite is not { Status: CallInviteStatus.Ringing })
                 return;
 
+            var now = Clocks.SystemClock.Now;
             await _invites.Set(chatId.Value, inviteeAuthorId.Value,
-                    invite with { Status = CallInviteStatus.Accepted, RespondedAt = Clocks.SystemClock.Now })
+                    invite with { Status = CallInviteStatus.Accepted, RespondedAt = now })
                 .ConfigureAwait(false);
             // Answering joins the call - register now so it's two-party and stays alive before the client streams.
             await EnsureParticipant(chatId, inviteeAuthorId).ConfigureAwait(false);
-            conversationId = (await SafeGet(chatId).ConfigureAwait(false))?.ConversationId;
+
+            var state = await SafeGet(chatId).ConfigureAwait(false);
+            if (state is { SessionStartedAt: null }) {
+                // The first answer latches a dialing call to Connected: it's now a live conversation, so
+                // surface the block from the chat end at answer time and make it genuinely two-party.
+                var visibleStartLid = (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
+                var authorIds = state.AuthorIds.Contains(inviteeAuthorId)
+                    ? state.AuthorIds
+                    : [..state.AuthorIds, inviteeAuthorId];
+                state = state with {
+                    Kind = LiveSessionKind.Call,
+                    SessionStartedAt = now,
+                    VisibleStartLid = visibleStartLid,
+                    AuthorIds = authorIds,
+                    Version = VersionGenerator.NextVersion(state.Version),
+                };
+                await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
+            }
+            conversationId = state?.ConversationId;
             InvalidateState(chatId);
         }
         if (conversationId is { } cid)
