@@ -649,6 +649,43 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         live!.Invites.Should().ContainSingle(i =>
             i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Accepted);
         (await backend.ListParticipants(chatId, default)).Should().Contain(aliceAuthor.Id);
+        // the answer latches the dialing call to Connected: block now surfaced
+        var state = await backend.GetState(chatId, default);
+        state!.Kind.Should().Be(LiveSessionKind.Call);
+        state.SessionStartedAt.Should().NotBeNull();
+        state.AuthorIds.Should().Contain(aliceAuthor.Id);
+    }
+
+    [Fact]
+    public async Task AcceptLatchesDialingCallToConnected()
+    {
+        // arrange — Bob dials Alice; while ringing the session is Dialing (no block: SessionStartedAt null)
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var chatsBackend = bob.AppServices.GetRequiredService<IChatsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // assert — dialing: no live conversation is surfaced (SessionStartedAt gates every block path)
+        (await backend.GetState(chatId, default))!.SessionStartedAt.Should().BeNull();
+
+        // act — Alice answers
+        var chatEnd = (await chatsBackend.GetLidRange(chatId, false, default)).End;
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert — latched: Connected, block surfaced (SessionStartedAt set), VisibleStartLid = answer's chat end
+        var state = await backend.GetState(chatId, default);
+        state!.Kind.Should().Be(LiveSessionKind.Call);
+        state.SessionStartedAt.Should().NotBeNull();
+        state.VisibleStartLid.Should().Be(chatEnd);
+        state.AuthorIds.Should().Contain(aliceAuthor.Id);
     }
 
     [Fact]
