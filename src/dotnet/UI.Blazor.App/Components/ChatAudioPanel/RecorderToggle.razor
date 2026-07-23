@@ -66,12 +66,7 @@
         MustKeepAwake="@mustKeepAwake"
         PointerDownPreventDefault="true"
         Tooltip="@tooltip"
-        TooltipPosition="FloatingPosition.Top"
-        @onmouseup="@OnPointerUp"
-        @ontouchend="@OnPointerUp"
-        @ontouchcancel="@OnPointerUp"
-        @oncontextmenu="@OnContextMenu"
-        data-context-menu-delay="200">
+        TooltipPosition="FloatingPosition.Top">
 
         @if (hasMicrophonePermission) {
             if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
@@ -125,7 +120,6 @@
         }
     }
     private bool IsRecordingHere => ChatId is not null && RecordingChatId == ChatId;
-    private bool IsPushToTalk { get; set; }
     private bool IsUpdating => Chat?.Id is not null && State.Value?.Chat != null && State.Value?.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
 
@@ -201,24 +195,15 @@
     private void OnClick()
         => ToggleRecording();
 
-    private void OnContextMenu()
-        => ToggleRecording(true);
-
-    private void OnPointerUp() {
-        if (IsPushToTalk && IsRecordingHere)
-            StopRecording();
-    }
-
-    private void ToggleRecording(bool isPushToTalk = false) {
+    private void ToggleRecording() {
         if (IsRecordingHere)
             StopRecording();
         else
-            StartRecording(isPushToTalk);
+            StartRecording();
     }
 
-    private void StartRecording(bool isPushToTalk = false) {
+    private void StartRecording() {
         SearchUI.Clear();
-        isPushToTalk = IsPushToTalk |= isPushToTalk;
         if (!IsValidAction())
             return;
 
@@ -236,7 +221,7 @@
             var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
             if (chat?.Rules.Author?.Id is { } ownAuthorId)
                 await LiveSessionUI.MutePeer(chatId, ownAuthorId, false, cancellationToken).ConfigureAwait(false);
-            await ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk).ConfigureAwait(false);
+            await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
         });
     }
 
@@ -244,7 +229,6 @@
         if (!IsValidAction())
             return;
 
-        IsPushToTalk = false;
         _ = _taskSerializer.Enqueue(async _ => {
             // .ConfigureAwait(false) is fine here
             if (RecordingChatId is not null)
