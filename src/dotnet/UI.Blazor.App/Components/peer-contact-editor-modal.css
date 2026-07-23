@@ -11,5 +11,8 @@
 }
 
 .block-user-form-block {
-    @apply pb-0;
+    @apply pt-0 pb-0;
+}
+.block-user-form-block .c-card {
+    @apply mt-4;
 }
