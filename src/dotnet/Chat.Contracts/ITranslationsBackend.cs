@@ -12,7 +12,11 @@ public interface ITranslationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Translation?> Get(TranslationId id, bool translateIfMissing, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 600)]
-    Task<string?> GetTranslatedUIText(string text, Language language, CancellationToken cancellationToken);
+    Task<string?> GetTranslatedUIText(
+        string text,
+        Language language,
+        UITextKind kind,
+        CancellationToken cancellationToken);
 
     // Non-compute methods
 

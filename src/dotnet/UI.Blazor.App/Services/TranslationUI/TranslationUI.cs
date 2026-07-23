@@ -27,7 +27,9 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService, ILiveLoca
         if (language.IsAnyEnglish)
             return message;
 
-        var translated = await Translator.GetTranslatedUIText(Session, message, language, cancellationToken).ConfigureAwait(false);
+        var translated = await Translator
+            .GetTranslatedUIText(Session, message, language, UITextKind.ErrorMessage, cancellationToken)
+            .ConfigureAwait(false);
         return translated.NullIfEmpty() ?? message;
     }
 

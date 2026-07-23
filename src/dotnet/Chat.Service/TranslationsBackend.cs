@@ -29,6 +29,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private IDbEntityResolver<string, DbChatEntryLanguage> LanguageEntityResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatEntryLanguage>>();
     private Translator Translator => field ??= Services.GetRequiredService<Translator>();
     private Translator RealtimeTranslator => field ??= Services.GetRequiredKeyedService<Translator>(Constants.Translation.RealtimeServiceKey);
+    private Translator UITextTranslator => field ??= Services.GetRequiredKeyedService<Translator>(Constants.Translation.UITextServiceKey);
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
     private IQueues Queues => field ??= Services.Queues();
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
@@ -58,7 +59,11 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     }
 
     // [ComputeMethod]
-    public virtual async Task<string?> GetTranslatedUIText(string text, Language language, CancellationToken cancellationToken)
+    public virtual async Task<string?> GetTranslatedUIText(
+        string text,
+        Language language,
+        UITextKind kind,
+        CancellationToken cancellationToken)
     {
         // The translation runs inline; the Fusion compute cache (this method is sharded by text, so each
         // distinct string is owned by a single node) dedups it globally at runtime. No persistence: a
@@ -68,7 +73,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (text.Length > Constants.Translation.MaxTextTranslationLength)
             return null;
 
-        var translated = await Translator.Translate(text, language, [], cancellationToken).ConfigureAwait(false);
+        var contextHint = GetUITextTranslationHint(kind);
+        var translated = await UITextTranslator
+            .Translate(text, language, [], contextHint, cancellationToken)
+            .ConfigureAwait(false);
         return translated.NullIfEmpty();
     }
 
@@ -196,6 +204,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 translationSource.Content,
                 id.Language,
                 context,
+                GetTranslationContextHint(id.Kind),
                 cancellationToken).ConfigureAwait(false);
 
             var contentHash = translationSource.ContentHash.IsNone
@@ -219,7 +228,12 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
             var context = await GetTranslationContext1().ConfigureAwait(false);
             using var stream = Translator
-                .Stream(translationSource.Content, id.Language, context, cancellationToken)
+                .Stream(
+                    translationSource.Content,
+                    id.Language,
+                    context,
+                    GetTranslationContextHint(id.Kind),
+                    cancellationToken)
                 .ToTranscriptDiffs()
                 .Memoize(cancellationToken);
             var rpcStream = RpcStream.New(stream.Replay(cancellationToken));
@@ -529,7 +543,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                         text,
                                         language,
                                         context.ToArray(),
-                                        cancellationToken)
+                                        cancellationToken: cancellationToken)
                                     .ConfigureAwait(false);
                                 if (string.Equals(translatedText, Constants.Translation.NoTranslationNeededText, StringComparison.OrdinalIgnoreCase))
                                     translatedText = text; // No translation needed, use original content
@@ -653,6 +667,28 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     }
 
     // Private methods
+
+    private static string? GetTranslationContextHint(TranslationIdKind kind)
+        // Titles/descriptions/summaries are short standalone texts with no sibling-message context,
+        // so the hint is the only signal distinguishing them from a chat message
+        => kind switch {
+            TranslationIdKind.ConversationTitle or TranslationIdKind.ThreadTitle
+                => "The input is a title of a conversation in a chat app. "
+                    + "Translate it as a concise title; do not add punctuation.",
+            TranslationIdKind.ConversationDescription or TranslationIdKind.ThreadDescription
+                => "The input is a short description of a conversation in a chat app.",
+            TranslationIdKind.ConversationSummary
+                => "The input is a brief summary of a conversation in a chat app.",
+            _ => null,
+        };
+
+    private static string GetUITextTranslationHint(UITextKind kind)
+        // The translation rules live in the UI-text prompt file; the hint only names the kind
+        => kind switch {
+            UITextKind.Label => "The input is a short UI label (button, menu item, or caption).",
+            UITextKind.Title => "The input is a title of a chat, conversation, or thread.",
+            _ => "The input is a user-facing error or status message.",
+        };
 
     private async ValueTask<(ChatEntry e, Translation?)> SelectTranslationAsync(ChatEntry e, Language language, CancellationToken cancellationToken)
         => (e, await GetInternal(TranslationId.New(ChatEntryId.New(e.ChatId, e.LocalId), language), cancellationToken).ConfigureAwait(false));

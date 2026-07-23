@@ -15,7 +15,11 @@ public interface ITranslations : IComputeService
         Range<long> lidTileRange,
         CancellationToken cancellationToken);
 
-    // TODO: think how to pass some context to make translation more accurate
     [ComputeMethod(MinCacheDuration = 300), RemoteComputeMethod(MinCacheDuration = 300)]
-    Task<string?> GetTranslatedUIText(Session session, string text, Language language, CancellationToken cancellationToken);
+    Task<string?> GetTranslatedUIText(
+        Session session,
+        string text,
+        Language language,
+        UITextKind kind,
+        CancellationToken cancellationToken);
 }
