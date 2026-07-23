@@ -159,6 +159,7 @@ export default withMermaid(defineConfig({
               { text: "Big Tasks", link: "/plans/BigTasks" },
               { text: "Small Tasks", link: "/plans/SmallTasks" },
               { text: "Search", link: "/plans/Search" },
+              { text: "MLSearch: OpenSearch → PostgreSQL", link: "/plans/mlsearch-postgres-fts" },
             ],
           },
         ],
