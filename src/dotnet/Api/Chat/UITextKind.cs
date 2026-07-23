@@ -5,8 +5,5 @@ namespace ActualChat.Chat;
 // key cardinality stays bounded (no free-form client-supplied hints).
 public enum UITextKind
 {
-    // TODO: since now we have only Error, then remove unused
     ErrorMessage = 0,
-    Label = 1,
-    Title = 2,
 }

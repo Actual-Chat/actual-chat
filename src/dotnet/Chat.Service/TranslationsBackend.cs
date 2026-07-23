@@ -682,13 +682,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             _ => null,
         };
 
+    // The translation rules live in the UI-text prompt file; the hint only names the kind
     private static string GetUITextTranslationHint(UITextKind kind)
-        // The translation rules live in the UI-text prompt file; the hint only names the kind
-        => kind switch {
-            UITextKind.Label => "The input is a short UI label (button, menu item, or caption).",
-            UITextKind.Title => "The input is a title of a chat, conversation, or thread.",
-            _ => "The input is a user-facing error or status message.",
-        };
+        => "The input is a user-facing error or status message.";
 
     private async ValueTask<(ChatEntry e, Translation?)> SelectTranslationAsync(ChatEntry e, Language language, CancellationToken cancellationToken)
         => (e, await GetInternal(TranslationId.New(ChatEntryId.New(e.ChatId, e.LocalId), language), cancellationToken).ConfigureAwait(false));

@@ -119,14 +119,13 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                     Constants.Translation.RealtimeServiceKey,
                     Settings.Translation.RealtimeGeminiModel,
                     Settings.Translation.HttpTimeout);
-            if (!Settings.Translation.UITextOpenAIKey.IsNullOrEmpty() || !Settings.Translation.UITextOpenAIModel.IsNullOrEmpty())
+            if (!Settings.Translation.UITextOpenAIModel.IsNullOrEmpty())
                 AddKeyedOpenAI(services,
                     Constants.Translation.UITextServiceKey,
-                    Settings.Translation.UITextOpenAIModel.NullIfEmpty() ?? Settings.Translation.OpenAIModel,
-                    Settings.Translation.UITextOpenAIKey.NullIfEmpty() ?? Settings.Translation.OpenAIKey,
+                    Settings.Translation.UITextOpenAIModel,
                     Settings.Translation.HttpTimeout);
             else
-                // With no dedicated UI-text key/model configured, it rides on the base translation
+                // With no dedicated UI-text model configured, it rides on the base translation
                 // client and rate-limit bucket; only the prompt differs (selected by service key)
                 services.AddKeyedSingleton<IChatCompletionService>(Constants.Translation.UITextServiceKey,
                     (c, _) => c.GetRequiredKeyedService<IChatCompletionService>(Constants.Translation.ServiceKey));
