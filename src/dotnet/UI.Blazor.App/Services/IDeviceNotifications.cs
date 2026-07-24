@@ -1,3 +1,5 @@
+using ActualChat.Notifications;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 // Per-platform access to the device's OS-level notifications, used by NotificationReconciler to
@@ -23,4 +25,5 @@ public sealed record ActiveNotificationInfo(
     string Title,
     string Text,
     string IconUrl,
-    string Url);
+    string Url,
+    ApiArray<NotificationMessage> Messages = default);

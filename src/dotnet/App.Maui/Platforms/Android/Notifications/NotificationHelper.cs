@@ -1,3 +1,4 @@
+using ActualChat.Notifications;
 using Android.App;
 using Android.Content;
 using Android.Graphics;
@@ -33,7 +34,9 @@ public static class NotificationHelper
 
     // Builds and shows a chat notification under the given tag. Shared by the FCM receive path
     // and the client reconciler's create-missing path so they stay identical.
-    public static void ShowChatNotification(string tag, string title, string body, string? imageUrl, string? link, bool silent = false)
+    public static void ShowChatNotification(
+        string tag, string title, string body, string? imageUrl, string? link,
+        bool silent = false, IReadOnlyList<PushMessage>? messages = null)
     {
         var context = Application.Context;
         var contentIntent = CreateViewIntent(context, link);
@@ -51,15 +54,17 @@ public static class NotificationHelper
             // A silent update re-posts under the same tag without alerting again.
             .SetSilent(silent)!
             .SetPriority((int)NotificationPriority.High)!;
-        builder.SetStyle(CreateStyle(title, body, largeImage));
+        builder.SetStyle(CreateStyle(title, body, largeImage, messages));
         if (largeImage != null)
             builder.SetLargeIcon(largeImage);
         NotificationManagerCompat.From(context)!.Notify(tag, 0, builder.Build());
     }
 
-    // Telegram-style rendering: show the sender + the (possibly multi-line, coalesced) body as a
-    // conversation card that expands to the full text; falls back to a plain expandable block.
-    private static NotificationCompat.Style CreateStyle(string title, string body, Bitmap? largeImage)
+    // Telegram-style rendering: one MessagingStyle line per pushed message (sender + text +
+    // timestamp) when structured messages are present; single-message and BigTextStyle fallbacks
+    // keep old-server pushes and non-chat titles working.
+    private static NotificationCompat.Style CreateStyle(
+        string title, string body, Bitmap? largeImage, IReadOnlyList<PushMessage>? messages)
     {
         var bigText = new NotificationCompat.BigTextStyle().BigText(body)!;
         var (senderName, conversationTitle) = SplitTitle(title);
@@ -67,17 +72,34 @@ public static class NotificationHelper
             return bigText;
 
         try {
-            var senderBuilder = new Person.Builder().SetName(senderName)!;
-            if (largeImage != null)
-                senderBuilder.SetIcon(IconCompat.CreateWithBitmap(largeImage));
-            var sender = senderBuilder.Build();
             var self = new Person.Builder().SetName("You")!.Build();
             var style = new NotificationCompat.MessagingStyle(self);
             if (!conversationTitle.IsNullOrEmpty()) {
                 style.SetGroupConversation(true);
                 style.SetConversationTitle(conversationTitle);
             }
-            style.AddMessage(body, Java.Lang.JavaSystem.CurrentTimeMillis(), sender);
+            if (messages is { Count: > 0 }) {
+                // Only the newest sender carries the avatar — it's the banner headline's icon.
+                var newestName = messages[^1].AuthorName.NullIfEmpty() ?? senderName;
+                var persons = new Dictionary<string, Person>();
+                foreach (var message in messages) {
+                    var name = message.AuthorName.NullIfEmpty() ?? senderName;
+                    if (!persons.TryGetValue(name, out var person)) {
+                        var personBuilder = new Person.Builder().SetName(name)!;
+                        if (name == newestName && largeImage != null)
+                            personBuilder.SetIcon(IconCompat.CreateWithBitmap(largeImage));
+                        person = personBuilder.Build();
+                        persons.Add(name, person);
+                    }
+                    style.AddMessage(message.Text, message.SentAtMs, person);
+                }
+            }
+            else {
+                var senderBuilder = new Person.Builder().SetName(senderName)!;
+                if (largeImage != null)
+                    senderBuilder.SetIcon(IconCompat.CreateWithBitmap(largeImage));
+                style.AddMessage(body, Java.Lang.JavaSystem.CurrentTimeMillis(), senderBuilder.Build());
+            }
             return style;
         }
         catch (Exception e) {
