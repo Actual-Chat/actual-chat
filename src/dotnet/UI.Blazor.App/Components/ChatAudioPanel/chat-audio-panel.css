@@ -23,7 +23,7 @@ body.narrow .narrow-panel .chat-audio-panel {
 }
 body.narrow .chat-message-editor:has(.related-chat-entry-panel):not(.narrow-panel) .chat-audio-panel,
 body.narrow .chat-message-editor.text-mode:not(.narrow-panel) .chat-audio-panel {
-    @apply bottom-3;
+    @apply bottom-2;
     @apply py-1;
 }
 
