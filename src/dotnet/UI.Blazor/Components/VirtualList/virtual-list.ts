@@ -27,6 +27,7 @@ const UpdateItemVisibilityInterval = 250;
 const VisibilityEpsilon = 4;
 const EdgeEpsilon = 4;
 const ScrollDebounce = 200;
+const InteractivePivotTtlMs = 2000;
 const ProgrammaticScrollGuardMs = DeviceInfo.isMobile ? 250 : 100;
 const SkeletonDetectionBoundary = 200;
 const MinViewPortSize = 400;
@@ -1201,7 +1202,7 @@ export class VirtualList {
         // in syncLayoutAfterRender — and drag the clicked header toward the edge. So the sticky-edge re-pin
         // is limited to non-interactive renders. Any user scroll clears pivots, so a genuine scroll-triggered
         // load-above render carries no interactive pivot and still re-pins the End edge as before.
-        const hasInteractivePivot = this.state.pivots.some(p => p.isInteractive);
+        const hasInteractivePivot = this.getFreshInteractivePivot() != null;
 
         if (scrollToItemRef != null) {
             // Server-side scroll request
@@ -1545,6 +1546,13 @@ export class VirtualList {
         }
     }
 
+    // A stale interactive pivot must not hijack later unrelated renders (it used to silently kill the
+    // sticky edge), so interactive semantics apply only within a short window after the click.
+    private getFreshInteractivePivot(): Pivot | null {
+        const pivot = this.state.pivots.find(p => p.isInteractive);
+        return pivot != null && Date.now() - pivot.time <= InteractivePivotTtlMs ? pivot : null;
+    }
+
     private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce);
 
     private turnOffIsScrolling() {
@@ -1631,7 +1639,7 @@ export class VirtualList {
         // row) intentionally holds THAT item's position while items below it shift with the content change,
         // so anchoring on a below item would false-flag their legitimate move. Non-interactive renders fall
         // back to the viewport-centre item below.
-        const interactiveKey = this.state.pivots.find(p => p.isInteractive)?.itemKey;
+        const interactiveKey = this.getFreshInteractivePivot()?.itemKey;
         if (interactiveKey != null) {
             const anchor = this.captureViewportAnchor(interactiveKey);
             if (anchor != null)
@@ -1986,7 +1994,7 @@ export class VirtualList {
         // No-jump check (debug only): a visible anchored item must keep its screen position across a
         // render that isn't an intentional scroll. Captured before re-layout, compared after.
         let jumpAnchor: { key: string; top: number } | null = null;
-        const hasInteractiveLayoutAnchor = [...this.state.pivots].some(p => p.isInteractive)
+        const hasInteractiveLayoutAnchor = this.getFreshInteractivePivot() != null
             && scrollIntent?.reason !== 'sticky-edge'
             && scrollIntent?.reason !== 'last-item'
             && scrollIntent?.reason !== 'item';
@@ -2198,10 +2206,7 @@ export class VirtualList {
         await result;
     }
 
-    private applyScrollIntent(
-        scrollIntent: ScrollIntent | null,
-        hasInteractiveLayoutAnchor: boolean
-    ): void {
+    private applyScrollIntent(scrollIntent: ScrollIntent | null, hasInteractiveLayoutAnchor: boolean): void {
         if (hasInteractiveLayoutAnchor) {
             debugLog?.log(`applyScrollIntent: held by interactive pivot`, scrollIntent?.reason);
             return;
@@ -2292,7 +2297,7 @@ export class VirtualList {
         if (this.state.itemRange)
             return false;
 
-        const { renderState: rs, orderedItems, pivots } = this.state;
+        const { renderState: rs, orderedItems } = this.state;
         const { visibleItems, defaultEdge, statistics } = this;
 
         // nothing to do when there are no items rendered
@@ -2301,10 +2306,9 @@ export class VirtualList {
 
         let cornerstoneItemIndex = -1;
         let cornerstoneItem: VirtualListItem | null = null;
-        const interactivePivots = pivots.filter(p => p.isInteractive);
-        if (interactivePivots.length > 0) {
+        const interactivePivot = this.getFreshInteractivePivot();
+        if (interactivePivot) {
             // Use interactive pivot as cornerstone item
-            const interactivePivot = interactivePivots[0];
             const itemKey = interactivePivot.itemKey;
             cornerstoneItemIndex = orderedItems.findIndex(i => i.key === itemKey);
             // ordered items might be re-built after render
