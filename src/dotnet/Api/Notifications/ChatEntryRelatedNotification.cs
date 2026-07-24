@@ -19,18 +19,19 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
     public int UnreadCount { get; init; }
     [DataMember(Order = 12), Key(12)]
     public ApiArray<AuthorId> AuthorIds { get; init; }
-    // First unread message body (+ a short next message rolled in) — kept raw so the summary text
-    // can be recomposed without re-reading entries.
+    // Rolling-deploy compat only: old nodes/clients compose from LeadText (= newest message text)
+    // and LeadCount (= 1). New code reads RecentMessages. Remove both in the next release.
     [DataMember(Order = 13), Key(13)]
     public string LeadText { get; init; } = "";
     [DataMember(Order = 14), Key(14)]
     public int BeepCount { get; init; }
     [DataMember(Order = 15), Key(15)]
     public Moment LastBeepAt { get; init; }
-    // Messages included in LeadText (roll-in makes it 2), so the "+N more" tail never counts a
-    // message the lead already shows. Old blobs deserialize this as 0 == 1.
     [DataMember(Order = 17), Key(17)]
     public int LeadCount { get; init; }
+    // The transcript window: last MaxRecentMessages unread messages, oldest -> newest.
+    [DataMember(Order = 18), Key(18)]
+    public ApiArray<NotificationMessage> RecentMessages { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
@@ -58,30 +59,10 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
             authorIds = authorIds.With(authorId);
         var startEntryLid = MinPositive(existingStart, incomingStart);
         var entryLid = Math.Max(e.EntryLid, EntryLid);
-
         // Pre-coalescing blobs deserialize UnreadCount as 0 though they represent one unread entry.
         var existingUnread = Math.Max(1, e.UnreadCount);
-        string leadText;
-        int leadCount;
-        if (incomingStart > 0 && incomingStart < existingStart) {
-            leadText = Text; // this message is now the earliest unread -> it becomes the lead
-            leadCount = 1;
-        }
-        else if (e.LeadText.IsNullOrEmpty()) {
-            // A legacy existing without a lead falls back to its own text (its latest message).
-            leadText = e.Text.IsNullOrEmpty() ? Text : e.Text;
-            leadCount = 1;
-        }
-        else {
-            leadText = e.LeadText;
-            leadCount = Math.Max(1, e.LeadCount);
-            var isLeadShort = leadText.Length < Constants.Notification.MaxRecentMessageTextLength;
-            var canRollIn = isLeadShort && !Text.IsNullOrEmpty();
-            if (existingUnread == 1 && canRollIn) {
-                leadText = $"{leadText}\n{Text}";
-                leadCount++;
-            }
-        }
+        var recentMessages = MergeRecentMessages(e, this);
+        var newestIsIncoming = EntryLid >= e.EntryLid;
 
         // A gap between messages long enough to count as a conversation lull resets the beep
         // back-off, so this fresh message alerts immediately instead of inheriting the back-off.
@@ -90,14 +71,18 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
             Version = e.Version,
             CreatedAt = e.CreatedAt,
             HandledAt = null,
-            // An out-of-order earlier message must not regress the newest-activity timestamp.
+            // An out-of-order earlier message must not regress the newest-activity timestamp,
+            // and the banner headline (title/icon) must keep tracking the newest message.
             SentAt = Moment.Max(e.SentAt, SentAt),
+            Title = newestIsIncoming ? Title : e.Title,
+            IconUrl = newestIsIncoming ? IconUrl : e.IconUrl,
             EntryLid = entryLid,
             StartEntryLid = startEntryLid,
             UnreadCount = existingUnread + 1,
             AuthorIds = authorIds,
-            LeadText = leadText,
-            LeadCount = leadCount,
+            RecentMessages = recentMessages,
+            LeadText = recentMessages.IsEmpty ? "" : recentMessages[^1].Text,
+            LeadCount = 1,
             BeepCount = isLull ? 0 : e.BeepCount,
             LastBeepAt = isLull ? default : e.LastBeepAt,
         };
@@ -105,4 +90,31 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
 
     private static long MinPositive(long a, long b)
         => a <= 0 ? b : b <= 0 ? a : Math.Min(a, b);
+
+    private static ApiArray<NotificationMessage> MergeRecentMessages(
+        ChatEntryRelatedNotification existing, ChatEntryRelatedNotification incoming)
+    {
+        var messages = new List<NotificationMessage>(existing.RecentMessages.Count + 1);
+        messages.AddRange(GetRecentMessages(existing));
+        foreach (var message in GetRecentMessages(incoming))
+            if (messages.All(m => m.EntryLid != message.EntryLid))
+                messages.Add(message);
+        messages.Sort((a, b) => a.EntryLid.CompareTo(b.EntryLid));
+        if (messages.Count > Constants.Notification.MaxRecentMessages)
+            messages.RemoveRange(0, messages.Count - Constants.Notification.MaxRecentMessages);
+        return messages.ToApiArray();
+    }
+
+    // Pre-RecentMessages blobs carry their text in LeadText/Text; synthesize a message so the
+    // merge upgrades them in place (empty author name -> the line renders without a prefix).
+    private static IEnumerable<NotificationMessage> GetRecentMessages(ChatEntryRelatedNotification n)
+    {
+        if (!n.RecentMessages.IsEmpty)
+            return n.RecentMessages;
+
+        var text = n.LeadText.IsNullOrEmpty() ? n.Text : n.LeadText;
+        return text.IsNullOrEmpty()
+            ? []
+            : [NotificationMessage.New(n.AuthorId ?? default, "", text, n.EntryLid, n.SentAt)];
+    }
 }

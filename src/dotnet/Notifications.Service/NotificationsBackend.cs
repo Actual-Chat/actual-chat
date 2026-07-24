@@ -1001,6 +1001,9 @@ public class NotificationsBackend(IServiceProvider services)
                     StartEntryLid = entryLid,
                     UnreadCount = 1,
                     AuthorIds = new[] { changeAuthor.Id }.ToApiArray(),
+                    RecentMessages = new[] {
+                        NotificationMessage.New(changeAuthor.Id, changeAuthor.Avatar.Name, content, entryLid, now),
+                    }.ToApiArray(),
                     LeadText = content,
                     LeadCount = 1,
                 };

@@ -99,25 +99,26 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         merged.StartEntryId.Should().Be(ChatEntryId.New(TestChatId, 100));
         merged.UnreadCount.Should().Be(2);
         merged.AuthorIds.Should().BeEquivalentTo(new[] { author1, author2 });
-        merged.LeadText.Should().Be("Hey team, here is the long first message");
+        merged.RecentMessages.Select(m => m.Text)
+            .Should().Equal("Hey team, here is the long first message", "second");
+        merged.LeadText.Should().Be("second");
+        merged.LeadCount.Should().Be(1);
     }
 
     [Fact]
-    public void MergeRollsInShortFirstMessage()
+    public void MergeEvictsOldestBeyondCapacity()
     {
         var author1 = AuthorId.New(TestChatId, 1);
-        var first = NewMessage(100, author1, "Hi");
-        var second = NewMessage(101, author1, "are you there?");
-
-        var info = new UserNotificationInfo(TestUserId)
-            .WithNotification(first)
-            .WithNotification(second);
+        var info = new UserNotificationInfo(TestUserId);
+        for (var lid = 100; lid < 107; lid++)
+            info = info.WithNotification(NewMessage(lid, author1, $"m{lid}"));
 
         var merged = (MessageNotification)info.Displayed.Single();
-        merged.LeadText.Should().Be("Hi\nare you there?");
-        merged.LeadCount.Should().Be(2);
-        merged.AuthorIds.Should().ContainSingle().Which.Should().Be(author1);
-        merged.UnreadCount.Should().Be(2);
+        merged.UnreadCount.Should().Be(7);
+        merged.RecentMessages.Should().HaveCount(Constants.Notification.MaxRecentMessages);
+        merged.RecentMessages.Select(m => m.Text).Should().Equal("m102", "m103", "m104", "m105", "m106");
+        merged.StartEntryLid.Should().Be(100);
+        merged.LeadText.Should().Be("m106");
     }
 
     [Fact]
@@ -136,28 +137,30 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
 
         var merged = (MessageNotification)info.Displayed.Single();
         merged.UnreadCount.Should().Be(2);
-        merged.LeadText.Should().Be("Hi\nare you there?");
-        merged.LeadCount.Should().Be(2);
+        merged.RecentMessages.Select(m => m.Text).Should().Equal("Hi", "are you there?");
+        merged.LeadText.Should().Be("are you there?");
+        merged.LeadCount.Should().Be(1);
         merged.StartEntryLid.Should().Be(100);
         merged.EntryLid.Should().Be(101);
     }
 
     [Fact]
-    public void MergeKeepsNewestSentAtOnOutOfOrderMerge()
+    public void MergeKeepsNewestSentAtAndTitleOnOutOfOrderMerge()
     {
         var author1 = AuthorId.New(TestChatId, 1);
         var t0 = Moment.Now;
         var t1 = t0 + TimeSpan.FromSeconds(30);
-        var existing = NewMessage(101, author1, "second") with { SentAt = t1 };
-        var late = NewMessage(100, author1, "first") with { SentAt = t0 };
+        var existing = NewMessage(101, author1, "second") with { SentAt = t1, Title = "Bob @ Chat" };
+        var late = NewMessage(100, author1, "first") with { SentAt = t0, Title = "Alice @ Chat" };
 
-        // The delayed earlier message becomes the lead, but must not regress the timestamp
-        // (a regressed SentAt would fake a lull and reset the beep back-off mid-burst).
+        // The delayed earlier message extends the window, but must regress neither the timestamp
+        // (a regressed SentAt would fake a lull) nor the headline (title tracks the newest message).
         var merged = (MessageNotification)late.MergeWith(existing);
         merged.SentAt.Should().Be(t1);
+        merged.Title.Should().Be("Bob @ Chat");
         merged.StartEntryLid.Should().Be(100);
-        merged.LeadText.Should().Be("first");
-        merged.LeadCount.Should().Be(1);
+        merged.RecentMessages.Select(m => m.Text).Should().Equal("first", "second");
+        merged.LeadText.Should().Be("second");
         merged.UnreadCount.Should().Be(2);
     }
 
@@ -218,15 +221,16 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
     public void MergeUpgradesLegacyNotification()
     {
         var author1 = AuthorId.New(TestChatId, 1);
-        // A pre-coalescing blob deserializes with UnreadCount=0 and no lead/anchor state.
+        // A pre-RecentMessages blob deserializes with an empty list; its text lives in LeadText/Text.
         var legacy = MessageNotification.New(TestUserId, TestChatId, 100, author1) with { Text = "old text" };
         var incoming = NewMessage(101, author1, "new text");
 
         var merged = (MessageNotification)incoming.MergeWith(legacy);
         merged.UnreadCount.Should().Be(2);
         merged.StartEntryLid.Should().Be(100);
-        merged.LeadText.Should().Be("old text");
-        merged.LeadCount.Should().Be(1);
+        merged.RecentMessages.Select(m => m.Text).Should().Equal("old text", "new text");
+        merged.RecentMessages[0].AuthorName.Should().Be("");
+        merged.LeadText.Should().Be("new text");
     }
 
     [Fact]
@@ -255,6 +259,10 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
             StartEntryLid = 100,
             UnreadCount = 5,
             AuthorIds = new[] { author1, author2 }.ToApiArray(),
+            RecentMessages = new[] {
+                NotificationMessage.New(author1, "Alice", "Lead", 100, Moment.Now),
+                NotificationMessage.New(author2, "Bob", "Body", 101, Moment.Now),
+            }.ToApiArray(),
             LeadText = "Lead",
             LeadCount = 2,
             BeepCount = 3,
@@ -269,8 +277,9 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         result.LeadCount.Should().Be(2);
         result.BeepCount.Should().Be(3);
         result.LastBeepAt.Should().Be(n.LastBeepAt);
-        // ApiArray equality is by reference, so normalize it before the whole-record value compare.
-        result.Should().Be(n with { AuthorIds = result.AuthorIds });
+        result.RecentMessages.Should().BeEquivalentTo(n.RecentMessages);
+        // ApiArray equality is by reference, so normalize them before the whole-record value compare.
+        result.Should().Be(n with { AuthorIds = result.AuthorIds, RecentMessages = result.RecentMessages });
     }
 
     [Fact]
@@ -294,12 +303,16 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         result.Actions[1].Target.Should().Be("/chat/x");
     }
 
-    private static MessageNotification NewMessage(long entryLid, AuthorId authorId, string text)
+    private static MessageNotification NewMessage(long entryLid, AuthorId authorId, string text, string authorName = "")
         => MessageNotification.New(TestUserId, TestChatId, entryLid, authorId) with {
             Text = text,
             StartEntryLid = entryLid,
             UnreadCount = 1,
             AuthorIds = new[] { authorId }.ToApiArray(),
+            RecentMessages = new[] {
+                NotificationMessage.New(
+                    authorId, authorName, text, entryLid, Moment.EpochStart + TimeSpan.FromSeconds(entryLid)),
+            }.ToApiArray(),
             LeadText = text,
             LeadCount = 1,
         };
