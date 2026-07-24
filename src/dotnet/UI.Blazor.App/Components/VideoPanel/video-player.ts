@@ -273,6 +273,7 @@ export class VideoPlayer {
     private lastWedgeDiagnosis: string | null = null;
     private lastWedgeAtMs = -1;
     private lastWedgeReportAtMs = -1;
+    private wedgeRestartCount = 0;
     private readonly breadcrumbs = new RingBuffer<{ atMs: number; note: string }>(24);
     private readonly videoLagEma = new RunningEMA(0, 3, 0.3);
     private readonly displayLatencyEma = new RunningEMA(0, 3, 0.3);
@@ -319,7 +320,9 @@ export class VideoPlayer {
         this.canvas = canvas;
         this.videoEl = videoEl;
         this.bgCanvasEl = bgCanvasEl;
-        // Resolve off videoEl (never swapped, unlike canvas). The placeholder
+        // Resolve off videoEl at construction time (videoEl itself can later
+        // be swapped by recreateMstgBackend; placeholderEl stays valid since
+        // it's resolved from the parent, which the swap preserves). It
         // carries its own state class so a Blazor re-render that rewrites the
         // tile root's class attribute can't strip the frame signal.
         this.placeholderEl = videoEl.parentElement?.querySelector('.video-placeholder') ?? null;
@@ -458,19 +461,35 @@ export class VideoPlayer {
         this.onWedgeDetected(diag);
     }
 
-    // Self-heal lands in a follow-up task; for now: breadcrumb + server-side
-    // stall report (the only channel that reaches dev logs without a console).
+    // Escalation ladder (rationale: a sender republish cured the incident
+    // because it forced a full receiver rebuild — each rung rebuilds
+    // progressively more of the receiver): #1 restart only (fresh MSTG
+    // generator/track, same <video>); #2 recreate <video> + backend, then
+    // restart (receiver-side equivalent of a republish); #3+ give up on
+    // mstg for the session and fall back to canvas.
     protected onWedgeDetected(diag: WedgeDiagnosis): void {
         void diag;
         const note = this.lastWedgeDiagnosis!;
         this.pushBreadcrumb(note);
         const now = Date.now();
-        if (this.lastWedgeReportAtMs > 0 && now - this.lastWedgeReportAtMs < 30_000)
-            return;
+        if (this.lastWedgeReportAtMs < 0 || now - this.lastWedgeReportAtMs >= 30_000) {
+            this.lastWedgeReportAtMs = now;
+            void this.blazorRef.invokeMethodAsync('OnPlaybackStalled', `wedge: ${note}`)
+                .catch((e: unknown) => warnLog?.log('OnPlaybackStalled error:', e));
+        }
+        this.wedgeRestartCount++;
+        this.wedgeDetector.reset();
+        this.pushBreadcrumb(`wedge restart #${this.wedgeRestartCount}`);
+        if (this.renderBackend.kind === 'mstg') {
+            if (this.wedgeRestartCount === 2)
+                this.recreateMstgBackend(`wedge x${this.wedgeRestartCount}`);
+            else if (this.wedgeRestartCount >= 3) {
+                this.fallbackFromMstgToCanvas(`wedge x${this.wedgeRestartCount}`);
+                return;
+            }
+        }
 
-        this.lastWedgeReportAtMs = now;
-        void this.blazorRef.invokeMethodAsync('OnPlaybackStalled', `wedge: ${note}`)
-            .catch((e: unknown) => warnLog?.log('OnPlaybackStalled error:', e));
+        this.settleCurrentAttempt({ kind: 'error', error: new Error(`wedge: ${note}`) });
     }
 
     setExpectedPaused(paused: boolean): void {
@@ -628,18 +647,8 @@ export class VideoPlayer {
             // Wire focused-state changes on the mstg backend. The worker no
             // longer paints the bg canvas, so the focused hook becomes a no-op
             // — kept to preserve the existing observer wiring.
-            if (this.renderBackend.kind === 'mstg') {
-                const mstgBackend = this.renderBackend as OffThreadRenderBackend;
-                mstgBackend.onFocusedChange = (focused: boolean) => { void focused; };
-                mstgBackend.onPlaybackStalled = report => {
-                    const details =
-                        `watchdog:${report.reason}, readyState=${report.readyState}, ` +
-                        `videoWH=${report.videoWidth}x${report.videoHeight}, tracks=[${report.tracks}]`;
-                    void this.blazorRef.invokeMethodAsync('OnPlaybackStalled', details)
-                        .catch((e: unknown) => warnLog?.log('OnPlaybackStalled error:', e));
-                    this.fallbackFromMstgToCanvas(details);
-                };
-            }
+            if (this.renderBackend.kind === 'mstg')
+                this.wireMstgBackendHooks(this.renderBackend as OffThreadRenderBackend);
 
             // Pre-warm the worker's Fusion RPC peer so the WS handshake
             // overlaps the rest of init. kind=video tells the server this
@@ -651,6 +660,18 @@ export class VideoPlayer {
         } catch (error) {
             errorLog?.log('Failed to initialize player worker:', error);
         }
+    }
+
+    private wireMstgBackendHooks(mstgBackend: OffThreadRenderBackend): void {
+        mstgBackend.onFocusedChange = (focused: boolean) => { void focused; };
+        mstgBackend.onPlaybackStalled = report => {
+            const details =
+                `watchdog:${report.reason}, readyState=${report.readyState}, ` +
+                `videoWH=${report.videoWidth}x${report.videoHeight}, tracks=[${report.tracks}]`;
+            void this.blazorRef.invokeMethodAsync('OnPlaybackStalled', details)
+                .catch((e: unknown) => warnLog?.log('OnPlaybackStalled error:', e));
+            this.fallbackFromMstgToCanvas(details);
+        };
     }
 
     private supportsWebCodecs(): boolean {
@@ -1224,6 +1245,32 @@ export class VideoPlayer {
             this.renderBackend = new TransferableCanvasRenderBackend(this.canvas);
     }
 
+    // The rVFC display-latency loop closes over the <video> element it was
+    // armed on; a swapped-away element never presents another frame, so
+    // re-arm it on the new element or the metric goes silently stale.
+    private replaceVideoElement(): void {
+        const replacement = this.videoEl.cloneNode(false) as HTMLVideoElement;
+        this.videoEl.replaceWith(replacement);
+        this.videoEl = replacement;
+        this.startDisplayLatencyTracking();
+    }
+
+    // Receiver-side equivalent of a sender republish for the render layer: a
+    // fresh <video> + backend clears element/compositor state a per-attempt
+    // fresh track can't reach.
+    private recreateMstgBackend(reason: string): void {
+        if (this.renderBackend.kind !== 'mstg')
+            return;
+
+        this.pushBreadcrumb(`mstg backend recreate: ${reason}`);
+        this.renderBackend.dispose();
+        this.replaceVideoElement();
+        const backend = new OffThreadRenderBackend(this.videoEl);
+        this.wireMstgBackendHooks(backend);
+        this.renderBackend = backend;
+        this.applyBackendVisibility(this.canvas, this.videoEl);
+    }
+
     private onWorkerLatencyReport(streamId: string, sample: LatencySample): void {
         void streamId;
         // Push rotation to render backend — latencyTap fires immediately on
@@ -1267,6 +1314,8 @@ export class VideoPlayer {
         this.presentedFrameCount = sample.playerStats.presented;
         if (this.restartAttempts > 0)
             this.restartAttempts = 0;
+        if (this.wedgeRestartCount > 0)
+            this.wedgeRestartCount = 0;
 
         const nowMs = performance.now();
         if (this.lastLatencyTickMs > 0) {
