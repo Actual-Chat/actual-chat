@@ -306,6 +306,7 @@ body.narrow .attachment-list-wrapper {
 }
 .narrow-panel .attachment-list-wrapper {
     @apply flex-x items-center gap-x-2;
+    @apply px-3;
 }
 .attachment-list-wrapper > .c-btn-group {
     @apply flex-1 flex-x justify-between;
