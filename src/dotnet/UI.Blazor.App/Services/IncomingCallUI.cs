@@ -1,4 +1,5 @@
 using ActualChat.Live;
+using ActualChat.Notifications;
 using ActualLab.Diagnostics;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
@@ -30,6 +31,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IAuthors Authors => Hub.Authors;
+    private INotifications Notifications => Hub.Notifications;
     private ILogger? CallDebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
     public IncomingCallUI(AppUIHub hub) : base(hub)
@@ -51,7 +53,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public void OnRing(ChatId chatId, bool showOverLockScreen = false)
     {
-        if (chatId is null || chatId.Value.IsNullOrEmpty())
+        if (chatId.Value.IsNullOrEmpty())
             return;
 
         CallDebugLog?.LogInformation("CALL_TRACE: OnRing #{ChatId}, showOverLockScreen={ShowOverLockScreen}", chatId, showOverLockScreen);
@@ -84,7 +86,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public void OnCallDismissed(ChatId chatId)
     {
-        if (chatId is null || chatId.Value.IsNullOrEmpty())
+        if (chatId.Value.IsNullOrEmpty())
             return;
 
         EndRing(chatId);
@@ -246,6 +248,8 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return Task.WhenAll(
             AsyncChain.From(SyncRings)
                 .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken),
+            AsyncChain.From(SyncActiveCallNotifications)
+                .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken),
             AsyncChain.From(ResetOverLockScreen)
                 .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken));
     }
@@ -283,6 +287,24 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         finally {
             if (isRinging)
                 Bridge?.StopRinging();
+        }
+    }
+
+    private async Task SyncActiveCallNotifications(CancellationToken cancellationToken)
+    {
+        // The server's active-notification set reactively carries this user's incoming-call rings,
+        // so a connected client discovers them without waiting on a push. Seeds the same candidate
+        // set as OnRing; GetRingingCall + PruneDeadRings confirm and prune against the live session.
+        var cNotifications = await Computed
+            .Capture(() => Notifications.ListActive(Session, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var c in cNotifications.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (c.HasError)
+                continue;
+
+            foreach (var notification in c.Value)
+                if (notification is CallNotification call)
+                    OnRing(call.ChatId);
         }
     }
 

@@ -133,14 +133,30 @@ onBackgroundMessage(messaging, async payload => {
         return;
     const dismissedTags = data.dismissedTags as string | undefined;
     if (dismissedTags) {
+        const tags = dismissedTags.split(',');
         // getNotifications isn't available in every environment (some webviews/desktop); still
         // return so a dismissal payload never falls through to showing a banner.
         if (typeof sw.registration.getNotifications === 'function') {
-            for (const dismissedTag of dismissedTags.split(',')) {
+            for (const dismissedTag of tags) {
                 const toDismiss = await sw.registration.getNotifications({ tag: dismissedTag });
                 for (const notification of toDismiss)
                     notification.close();
             }
+        }
+        // A cancelled/declined/timed-out call: route it to any open tab so the in-app ring banner
+        // clears at once over the same channel that delivered the ring, instead of waiting on the
+        // reactive live-session self-heal. Mirrors Android's ClearForegroundCallRings; tag format is
+        // Constants.Notification.CallTagPrefix + chatId.
+        const callTagPrefix = 'call-';
+        const cancelledCallChatIds = tags
+            .filter(tag => tag.startsWith(callTagPrefix))
+            .map(tag => tag.substring(callTagPrefix.length))
+            .filter(chatId => chatId.length > 0);
+        if (cancelledCallChatIds.length > 0) {
+            const windowClients = await sw.clients.matchAll({ type: 'window' });
+            for (const client of windowClients)
+                for (const chatId of cancelledCallChatIds)
+                    client.postMessage({ type: 'INCOMING_CALL_CANCELLED', chatId });
         }
         return;
     }
