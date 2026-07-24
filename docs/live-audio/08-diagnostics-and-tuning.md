@@ -73,6 +73,21 @@ Feeder worklet emits state changes for `playbackState` (`playing` /
 `AudioPlayer` forwards them through Blazor as `OnPlaying(...)` and
 `OnPresentationLag(ms)`.
 
+## Audio Diagnostics modal (on-device)
+
+A read-only troubleshooting panel for the classic iOS failure where inbound
+playback dies mid-conversation (AVAudioSession stuck suspended/interrupted)
+while UI "tunes" still play. It surfaces the native session state, the Web
+Audio `AudioContext` state, and per-track feeder state side by side — the
+tell-tale is `_isSuspended` / `AudioContext.state == 'suspended'` while streams
+are live and feeders are `starving` — and offers reactivate/resume actions.
+
+- Compute service — `src/dotnet/UI.Blazor.App/Services/AudioDiagnostics/AudioDiagnosticsUI.cs`
+- Modal + JS collector — `UI.Blazor.App/Components/AudioPanel/{AudioDiagnosticsModal.razor,audio-diagnostics.ts}`
+- Native session snapshot — `App.Maui/MaciOS/Audio/{AppleAudioFocusUI,AudioSession}.cs`
+- Enable via `LocalAppSettings.IsAudioDiagnosticsEnabled` (DeveloperTools toggle);
+  mirrors the Video Diagnostics modal.
+
 ## Debug hooks
 
 - **`DebugUI.EnableAudioSync(true|false)`** — toggle the

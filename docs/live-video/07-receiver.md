@@ -196,6 +196,18 @@ The MSTG render backend on the main thread runs a watchdog that retries
 `<video>.play()` on stalls and falls back to canvas if `<video>` is stuck
 for a configurable period (`render-backend-mstg.ts`).
 
+### Rotation-aware presentation
+
+The sender stamps a quantized device-orientation rotation on each wire frame
+(the encoded pixels stay sensor-oriented). The receiver applies it on decode —
+`VideoFrame.rotation` on Chromium, a worker VTG wrap where that isn't
+available — so the picture is always upright. `video-player.ts` then makes a
+**cover-vs-contain** fit decision against the tile: it uses cover until it
+would crop more than `COVER_LOSS_MAX` (20%) of source pixels, then switches to
+contain and paints a **blurred backdrop** on a second (background) canvas to
+fill the letterbox (`applyFitDecision`; backdrop can be disabled). Fit is
+recomputed on tile resize from the last post-rotation frame dims.
+
 ## Player lifecycle
 
 File: `playback/player.ts`.
