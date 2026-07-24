@@ -54,6 +54,15 @@ export async function collectActiveStreamHints(): Promise<{ streamId: string; cu
     return result;
 }
 
+// Invoked from VideoQualityUI on the background→foreground transition.
+export function restartActivePlayersForResume(): number {
+    let restarted = 0;
+    for (const player of getActivePlayers().values())
+        if (player.restartForResume())
+            restarted++;
+    return restarted;
+}
+
 export function setRequestedReceiveQuality(
     streamId: string,
     layerId: number | null
