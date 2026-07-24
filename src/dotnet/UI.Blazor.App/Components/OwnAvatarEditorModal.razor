@@ -34,7 +34,7 @@
 
         @if (!_isAnonymous) {
             <FormBlock Class="avatar-buttons">
-                <div class="c-card">
+                <Card>
                     <ButtonTile Click="@ChangeDefaultAvatar">
                         <Icon>
                             <i class="icon-star text-xl @(_form.IsDefault ? "text-primary" : "text-03")"></i>
@@ -59,7 +59,7 @@
                             </div>
                         </Content>
                     </ButtonTile>
-                </div>
+                </Card>
 
                 @if (ModalModel.ChatId is not null) {
                     <FormSection For="() => _form.IsActive" InputId="@_form.IsActiveFieldId">

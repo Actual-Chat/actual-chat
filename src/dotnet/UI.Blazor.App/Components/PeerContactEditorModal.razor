@@ -32,9 +32,9 @@
         </FormBlock>
         @if (_contact is not null) {
             <FormBlock Class="block-user-form-block">
-                <div class="c-card">
-                    <TileItem>
-                        <Content>@(_contact.IsBlocked ? "Unblock user" : "Block user")</Content>
+                <Card>
+                    <CardItem>
+                        <Title>@(_contact.IsBlocked ? "Unblock user" : "Block user")</Title>
                         <Caption>
                             @(_contact.IsBlocked ? "You blocked this user" : "They won't be able to message or call you")
                         </Caption>
@@ -46,8 +46,8 @@
                                 @(_contact.IsBlocked ? "Unblock" : "Block")
                             </Button>
                         </Right>
-                    </TileItem>
-                </div>
+                    </CardItem>
+                </Card>
             </FormBlock>
         }
         </Body>

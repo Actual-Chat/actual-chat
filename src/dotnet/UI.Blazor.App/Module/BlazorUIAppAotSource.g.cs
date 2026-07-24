@@ -347,7 +347,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightChatPanelButtonBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelChatInfo>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelChatInfoItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelSearchTabs>();
@@ -1070,7 +1069,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightChatPanelButtonBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelChatInfo), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelChatInfoItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelSearchTabs), AotTypeKind.Component),

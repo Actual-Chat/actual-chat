@@ -274,7 +274,7 @@ body.hoverable .btn.btn-round.post-panel-btn.post-message:hover,
 
 .attachment-list-wrapper {
     @apply relative flex-y;
-    @apply md:mx-3 p-1;
+    @apply p-1;
     @apply bg-02;
     @apply rounded-xl;
     animation: show-attachment-list 400ms ease-in-out forwards;
@@ -549,8 +549,7 @@ body.wide .related-chat-entry-panel {
 }
 body.wide .related-chat-entry-panel:has(.related-chat-entry) {
     @apply flex;
-    @apply mx-3;
-    @apply rounded-lg;
+    @apply rounded-xl;
     @apply overflow-hidden;
     @apply opacity-100;
     @apply translate-y-0;
