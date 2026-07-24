@@ -198,22 +198,29 @@ export const playerWorkerImpl: PlayerWorker = {
             (e: unknown) => {
                 if (locallyStopped.has(player))
                     return;
+
                 if (isTerminalStreamError(e)) {
                     h.reportStreamEnded?.(opts.streamId, 'evicted');
                     return;
                 }
+
                 const msg = e instanceof Error ? e.message : String(e);
                 h.reportError?.(opts.streamId, msg);
             },
         ).finally(() => {
-            if (players.get(opts.streamId) === player) {
+            // Slot-ownership guard: an abandoned zombie's late drain must not
+            // dispose the shared controller a replacement player is using.
+            const current = players.get(opts.streamId);
+            if (current === player) {
                 players.delete(opts.streamId);
                 s.unregisterStream();
             }
-            const c = bgBlurControllers.get(opts.streamId);
-            if (c === bgController) {
-                bgBlurControllers.delete(opts.streamId);
-                c.dispose();
+            if (current === player || current === undefined) {
+                const c = bgBlurControllers.get(opts.streamId);
+                if (c === bgController) {
+                    bgBlurControllers.delete(opts.streamId);
+                    c.dispose();
+                }
             }
             locallyStopped.delete(player);
         });
@@ -306,8 +313,11 @@ export const playerWorkerImpl: PlayerWorker = {
             }
             return;
         }
+
         const player = players.get(streamId);
-        if (!player) return;
+        if (!player)
+            return;
+
         locallyStopped.add(player);
         player.stop();
         const unwound = await Promise.race([
