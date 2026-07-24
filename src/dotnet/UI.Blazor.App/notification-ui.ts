@@ -74,6 +74,7 @@ export class NotificationUI {
                 const messaging = getMessaging(firebaseApp);
                 onMessage(messaging, (payload) => {
                     debugLog?.log(`onMessage, payload:`, payload);
+                    void this.onIncomingCallPush(payload.data);
                 });
 
                 const workerRegistration = await navigator.serviceWorker.getRegistration('sw.js');
@@ -174,6 +175,18 @@ export class NotificationUI {
             debugLog?.log(`navigator.serviceWorker.message:`, event);
             if (event.origin !== window.location.origin)
                 return;
+
+            if (event.data?.type === 'INCOMING_CALL') {
+                // @ts-expect-error TODO: fix errors
+                await this.backendRef.invokeMethodAsync('OnIncomingCall', event.data.chatId);
+                return;
+            }
+            if (event.data?.type === 'INCOMING_CALL_CANCELLED') {
+                // @ts-expect-error TODO: fix errors
+                await this.backendRef.invokeMethodAsync('OnIncomingCallCancelled', event.data.chatId);
+                return;
+            }
+
             if (event.type !== 'message' || event.data?.type !== 'NOTIFICATION_CLICK')
                 return;
 
@@ -194,6 +207,15 @@ export class NotificationUI {
             // @ts-expect-error TODO: fix errors
             await this.backendRef.invokeMethodAsync('NavigateToNotificationUrl', url.href);
         });
+    }
+
+    // An incoming-call push (foreground FCM) registers the ring in Blazor so the in-app banner shows.
+    private static async onIncomingCallPush(data: Record<string, string> | undefined): Promise<void> {
+        if (data?.kind !== 'IncomingCall' || !data.chatId)
+            return;
+
+        // @ts-expect-error TODO: fix errors
+        await this.backendRef.invokeMethodAsync('OnIncomingCall', data.chatId);
     }
 
     // Must be lambda, otherwise "this" is going to be wrong here

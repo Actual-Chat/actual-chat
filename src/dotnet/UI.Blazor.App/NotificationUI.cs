@@ -1,6 +1,7 @@
 using ActualChat.Hosting;
 using ActualChat.Notifications;
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App;
@@ -27,6 +28,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
 
     private IDeviceTokenRetriever DeviceTokenRetriever => field ??= Hub.Services.GetRequiredService<IDeviceTokenRetriever>();
+    private IncomingCallUI IncomingCallUI => field ??= Hub.Services.GetRequiredService<IncomingCallUI>();
     private UrlMapper UrlMapper => Hub.UrlMapper;
     private IJSRuntime JS => Hub.JS;
 
@@ -82,6 +84,18 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     {
         Log.LogInformation("NavigateToNotificationUrl, Url: {Url}", url);
         return AutoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.Notification);
+    }
+
+    // Web counterpart of the Android FCM path: an incoming-call push (foreground onMessage or the
+    // service worker for an open background tab) registers the ring so the in-app banner appears.
+    [JSInvokable]
+    public void OnIncomingCall(string sChatId)
+    {
+        var chatId = ChatId.TryParse(sChatId, allowNull: true);
+        if (chatId is null)
+            return;
+
+        IncomingCallUI.OnRing(chatId);
     }
 
     public void SetIsGranted(bool? isGranted)
