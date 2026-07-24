@@ -1,63 +1,171 @@
 ---
 title: Plans
-description: Index of all project plans and task lists.
+description: Project task tracker — active plans, standing plans by area, and the backlog.
 ---
 
 # Plans
 
-Task lists and design/implementation plans, roughly grouped by area.
+This is the project's task tracker. **Active** (recently added, larger) efforts
+come first, then **standing plans** grouped by area, then the **backlog** of
+candidate tasks. A plan is removed from here once its work ships.
 
-## Task lists
+## Active
 
-- [Big tasks](./BigTasks.md)
-- [Small tasks](./SmallTasks.md)
+Recently added, larger efforts — in progress or next up.
 
-## Architecture and infrastructure
+### AI search & indexing — MLSearch → PostgreSQL
 
-- [Distributed services](./distributed-services.md) — migrating off operations-framework invalidation
-- [Database sharding](./db-sharding.md) — sharding for backend services
-- [On-premises instances](./on-prem-instances.md)
-- [MessagePack migration](./msgpack.md)
-- [Live streams](./live-streams.md) — multiplexed streaming service
+[MLSearch: OpenSearch → PostgreSQL](./mlsearch-postgres-fts.md) — replace
+OpenSearch with PostgreSQL full-text search (`tsvector` + GIN) behind
+`ISearch` / `ISearchBackend`. Text analysis (tokenization, stemming, CJK
+segmentation) moves to the application level for uniform coverage across the
+top ~50 languages, on a pgvector-ready schema.
 
-## Search
+### Distributed services
 
-- [MLSearch: OpenSearch → PostgreSQL](./mlsearch-postgres-fts.md) — tsvector-based search with app-level multilingual analysis
-- [Search](./Search.md) — original (2024) search architecture notes
+[Distributed services](./distributed-services.md) — migrate the ~30 `*Backend`
+services off Fusion's Operations-Framework cluster-wide invalidation (the
+`Invalidation.IsActive` blocks) to the single-writer-per-shard model already
+used by presence, Flows, and the live audio/video pipelines.
 
-## Chat and UI
+### Database sharding
 
-- [Chat entry redesign](./chat-entry-redesign.md) — eliminating audio entries
-- [Universal mentions](./uni-mentions.md) — implementation record
-- [Auto-fetch avatars](./auto-fetch-avatars.md) — user profile picture flow
-- [Speech render performance](./speech-render-perf.md) — rendering improvements during speech
+[Database sharding](./db-sharding.md) — shard `ac_chat`, `ac_users`, and the
+other backend DBs by their natural key (`ChatId`, `UserId`, `OwnerId`, …) using
+Fusion's app-level sharding subsystem, which ActualChat runs in single-shard
+mode today.
 
-## Audio and video
+### On-premises instances
 
-- [Audio diagnostics](./audio-diagnostics.md) — diagnostics UI (#4029)
-- [NAudio replacement](./naudio-replacement.md) — Windows audio on NativeAOT
-- [Video quality control v2](./video-quality-control-v2.md)
-- [Video simulcast](./video-simulcast.md) — long-term
-- [Video throughput probing](./video-throughput-probing.md) — medium-term
-- [Video rotation](./video-rotation.md)
+[On-premises instances](./on-prem-instances.md) — let customers run their own
+Voxt server, DBs, Redis, NATS and (optionally) their own transcription/LLM
+providers, while our official apps talk to their instance alongside the cloud
+account.
 
-## Notifications
+## Standing plans
 
-- [Notifications redesign](./notif-api.md) — `feat/notif-api`
-- [Notifications redesign review](./notif-api-review.md) — PR #3892 review
+### Architecture and infrastructure
 
-## Accounts and security
+- [MessagePack migration](./msgpack.md) — replace MemoryPack with MessagePack
+  as the primary binary serializer for better cross-platform (non-.NET) support.
 
-- [E2E encryption](./e2ee.md)
-- [User and account merge](./user-account-merge.md)
+### Audio and video
 
-## Platform: macOS / Mac Catalyst
+- [NAudio replacement](./naudio-replacement.md) — Windows audio capture fails
+  under NativeAOT (`InvalidProgramException` in NAudio's WASAPI COM path);
+  replace it with an AOT-safe capture path.
+- [Video simulcast](./video-simulcast.md) — emit multiple encoded tiers per
+  sender so each receiver subscribes to what its link sustains (long-term).
+- [Video throughput probing](./video-throughput-probing.md) — capacity-probing
+  step-up on high-latency links, mirroring the throughput step-down path
+  (medium-term).
 
-- [Voice processing](./maccatalyst-voice-processing.md) — restore AVAudioEngine AEC / NS / AGC
-- [Notification permission](./macos-notification-permission.md) — wiring the "Configure" button
+### Chat and UI
 
-## Build, testing, CI
+- [Speech render performance](./speech-render-perf.md) — next-tier CPU/GPU
+  reductions during recording (R1/R2 already shipped; desktop holds 60 fps).
 
-- [E2E tests in CI](./e2e-ci.md) — running E2E and TS unit tests from CI and locally
-- [E2E nightly fixes](./e2e-nightly-fixes.md)
-- [TypeScript `moduleResolution: bundler`](./ts-module-resolution-bundler.md)
+### Accounts and security
+
+- [E2E encryption](./e2ee.md) — per-chat AES-256-GCM group key, ECDH P-256
+  identity keys, client-side encryption; text-only when enabled.
+- [User and account merge](./user-account-merge.md) — unify `User` and
+  `Account` into one type; incremental (the `AccountFull` step landed; DB
+  schema and backend renames remain).
+
+### Platform: macOS / Mac Catalyst
+
+- [Voice processing](./maccatalyst-voice-processing.md) — restore hardware
+  AEC / NS / AGC on Mac Catalyst; currently disabled (the `AVAudioEngine` VP
+  downlink has no reference graph), so Mac records without echo cancellation.
+- [Notification permission](./macos-notification-permission.md) — wire the
+  `NotificationsPermissionBanner` "Configure" button on Mac Catalyst; today
+  `MacNotificationsPermission` is an unwired stub.
+
+### Build, testing, CI
+
+- [TypeScript `moduleResolution: bundler`](./ts-module-resolution-bundler.md) —
+  switch from the legacy `node` algorithm so TS honors `package.json` `exports`
+  subpaths.
+
+### Search (historical)
+
+- [Search](./Search.md) — original (2024) search architecture notes, largely
+  superseded by the MLSearch plan above.
+
+## Backlog
+
+Candidate tasks without a dedicated plan yet, carried over from the former Big
+and Small task lists. Grouped by theme.
+
+### Chat & messaging
+
+- Rename any of your contacts — the custom name is used everywhere (image & bio
+  still come from the avatar); auto-rename to the phone-contact name when
+  contact import finds a match.
+- New chat modes / settings:
+  - Only owners can post (+ allow/disallow others' reactions; later:
+    allow/disallow others to comment in threads).
+  - Max voice-fragment duration: `0` (voice off) / 10s / 30s / 1m / 3m / 5m /
+    no limit.
+  - Post cooldown: same options + 10m / 30m / 1h.
+  - Public chats: require join to view more than the last N messages.
+- Emoji `:` picker syntax — `:` opens an inline emoji picker (consider
+  [emoji-mart](https://github.com/missive/emoji-mart)); AI emojis (`:my-…`
+  generation; admin-published custom emojis available to everyone).
+- Tenor / GIF picker — extend the picker with a `.gif` search.
+- Show bios in the Members list.
+- Chat & place background image (shown at the top of the Chat Settings tab).
+- "New message [in another chat]" notification banner.
+- Max message length = 64K characters.
+
+### Security & privacy
+
+- Auto-wipe messages:
+  - Group chats: chat-level option managed by the owner.
+  - Private chats: per-user option applied to that user's messages; also "wipe
+    all of my messages from here once they're read".
+  - Needs a way to display wipe timers (or a fade-out).
+- "Disable file-system cache" option in Settings / Application (store almost
+  nothing on-device).
+- See also [E2E encryption](./e2ee.md).
+
+### Extensibility / API
+
+- Generate your own API keys; accept API keys instead of a `Session`.
+- Web hook for posts.
+- Google / crawler support for public chats & places — Open Graph tags for
+  `/chat/xxx` and `/u/xxx`; pre-render recent content (~1K messages).
+- Custom chat & account IDs — `voxt.ai/u/xxx` vanity URLs as no-redirect aliases.
+- Offline action queue — enqueue + list queued actions per scope (chat);
+  implement for Post (with uploads) and for recorded audio.
+
+### Recording, playback, transcription
+
+- 1.25× / 1.5× / 1.66× / 2× speed-up for historical playback.
+- Dynamic split / pause detection — measure inter-word pauses (discarding long
+  inter-phrase ones), track the average, split when a pause exceeds it by 2–3×.
+
+### Mobile
+
+- Android: get rid of share-intent state persistence.
+- MAUI: portrait/landscape switch should work (mainly for images & videos) —
+  verify whether still broken.
+
+### Accounts & settings
+
+- Replace "Full name" with "Real name" (or hide it — it's confusing next to
+  avatars).
+- Default-avatar affordance: replace the "Star" with "Default"; use "Make
+  default" on other avatars.
+- Get rid of `IAuth` — extract Session management (shard it or use Redis); fold
+  `User` / `IAuth` into `IAccounts` (relates to
+  [User and account merge](./user-account-merge.md)).
+
+### Infrastructure / codebase
+
+- Use "Auto" render mode (.NET 8) for Blazor components.
+- `SettingsPanel` / `SettingsTab` should inherit/use `TabPanel` / `Tab`.
+- Remove the Kubernetes project?
+</content>
+</invoke>
