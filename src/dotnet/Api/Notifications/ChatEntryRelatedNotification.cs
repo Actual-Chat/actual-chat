@@ -75,7 +75,8 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
         else {
             leadText = e.LeadText;
             leadCount = Math.Max(1, e.LeadCount);
-            var canRollIn = leadText.Length < Constants.Notification.LeadRollInThreshold && !Text.IsNullOrEmpty();
+            var isLeadShort = leadText.Length < Constants.Notification.MaxRecentMessageTextLength;
+            var canRollIn = isLeadShort && !Text.IsNullOrEmpty();
             if (existingUnread == 1 && canRollIn) {
                 leadText = $"{leadText}\n{Text}";
                 leadCount++;

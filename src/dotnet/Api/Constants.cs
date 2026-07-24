@@ -315,8 +315,10 @@ public static partial class Constants
         // at most MaxMentionReAlerts times per mention.
         public static readonly TimeSpan MentionReAlertInterval = TimeSpan.FromMinutes(10);
         public const int MaxMentionReAlerts = 2;
-        // A first unread message shorter than this rolls the next message into the notification lead.
-        public const int LeadRollInThreshold = 24;
+        // Messages kept verbatim in a coalesced notification (its transcript window); older ones
+        // fold into the "+N earlier messages" tail.
+        public const int MaxRecentMessages = 5;
+        public const int MaxRecentMessageTextLength = 200;
         // Distinct author names shown in a coalesced notification's summary before "+N more".
         public const int MaxSummaryAuthors = 3;
         // Distinct authors tracked on a coalesced notification (bounds the stored set).
