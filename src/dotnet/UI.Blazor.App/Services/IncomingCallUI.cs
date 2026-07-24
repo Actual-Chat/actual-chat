@@ -1,8 +1,10 @@
 using ActualChat.Live;
 using ActualChat.Notifications;
+using ActualChat.UI.Blazor.App.Module;
 using ActualLab.Diagnostics;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
+using Microsoft.JSInterop;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -15,6 +17,9 @@ public sealed record IncomingCall(ChatId ChatId, AuthorId Caller, bool HasVideo)
 /// </summary>
 public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
+    private static readonly string JSStartRingtone = $"{BlazorUIAppModule.ImportName}.IncomingCallRingtone.start";
+    private static readonly string JSStopRingtone = $"{BlazorUIAppModule.ImportName}.IncomingCallRingtone.stop";
+
     private readonly Lock _lock = new();
     private readonly MutableState<ImmutableList<ChatId>> _ringingChatIds;
     // The chat whose call surfaced over the lock screen; stays set through Accept (so the in-call
@@ -274,9 +279,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 if (call is not null != isRinging) {
                     isRinging = call is not null;
                     if (isRinging)
-                        Bridge?.StartRinging();
+                        StartRinging();
                     else
-                        Bridge?.StopRinging();
+                        StopRinging();
                 }
                 await PruneDeadRings(cancellationToken).ConfigureAwait(false);
 
@@ -286,7 +291,36 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
         finally {
             if (isRinging)
-                Bridge?.StopRinging();
+                StopRinging();
+        }
+    }
+
+    private void StartRinging()
+    {
+        // Routes the ring melody to the platform ringer: the native bridge on Android, the looping web
+        // ringtone everywhere else. Fire-and-forget to mirror the sync Bridge calls (and keep the finally
+        // teardown sync); the JS invocation swallows its own errors.
+        if (Bridge is not null)
+            Bridge.StartRinging();
+        else
+            _ = PlayWebRingtone(true);
+    }
+
+    private void StopRinging()
+    {
+        if (Bridge is not null)
+            Bridge.StopRinging();
+        else
+            _ = PlayWebRingtone(false);
+    }
+
+    private async Task PlayWebRingtone(bool start)
+    {
+        try {
+            await Hub.JS.InvokeVoidAsync(start ? JSStartRingtone : JSStopRingtone).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Web ringtone {Action} failed", start ? "start" : "stop");
         }
     }
 

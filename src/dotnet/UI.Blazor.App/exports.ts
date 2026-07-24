@@ -53,6 +53,7 @@ export * from './Components/Selection/selection-host';
 export * from './Components/TranslationSubHeader/translation-svg.lit';
 export * from './Components/SubHeader/sub-header';
 export * from './Components/SubHeader/sub-header.lit';
+export * from './Services/incoming-call-ringtone';
 export * from './Services/LanguageUI/language-ui';
 export * from './Services/Location/location-tracker';
 export * from './Services/Location/web-location-permission-handler';
