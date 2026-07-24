@@ -613,6 +613,75 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ToggleAfterOverlayDismissExpandsBlockAgain()
+    {
+        // The first toggle on a closed block dismisses the frozen overlay; every toggle after that
+        // must act as an ordinary expand/collapse - a dead expand button here is a regression.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "close-retoggle-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_135);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+        ConversationId blockConversationId = null!;
+        await ComputedTest.When(async ct => {
+            var liveState = await liveBackend.GetState(chat.Id, ct);
+            liveState.Should().BeNull();
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Single();
+            blockConversationId = block.Conversation!.Id;
+        }, TimeSpan.FromSeconds(15));
+
+        // act - first toggle dismisses the overlay and collapses the materialized block
+        chatUI.ToggleExpandConversation(blockConversationId);
+        ConversationId materializedId = null!;
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().BeEmpty();
+            var collapsed = items.Items.OfType<ConversationMessage>().Single();
+            materializedId = collapsed.Conversation!.Id;
+        }, TimeSpan.FromSeconds(10));
+
+        // act - second toggle must expand the collapsed conversation
+        chatUI.ToggleExpandConversation(materializedId);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task ViewportGuardDefersFoldWhileVisible()
     {
         // The fold must defer while its entries are the topmost visible ones - even once a summary
