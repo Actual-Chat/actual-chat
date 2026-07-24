@@ -1140,6 +1140,20 @@ export class VideoPlayer {
             attempt.reject(outcome.error);
     }
 
+    // Proactive self-heal on background→foreground: a paused-then-resumed
+    // pipeline reliably needs a fresh keyframe anchor and often a fresh
+    // decoder, so restarting immediately beats waiting out the stall watchdogs.
+    public restartForResume(): boolean {
+        if (!this.isPlaying || this.getExpectedPaused())
+            return false;
+
+        this.pushBreadcrumb('resume-restart');
+        this.wedgeDetector.reset();
+        this.consecutiveProgressPolls = 0;
+        this.settleCurrentAttempt({ kind: 'error', error: new Error('resume-restart') });
+        return true;
+    }
+
     public stopPull(): void {
         if (!this.workerStreamActive || !this.playerWorker) return;
         this.workerStreamActive = false;
