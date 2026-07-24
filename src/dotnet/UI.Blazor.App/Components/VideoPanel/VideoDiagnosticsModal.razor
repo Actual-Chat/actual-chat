@@ -562,6 +562,32 @@
                             }
                         }
 
+                        @if (hasDiag && rdPeek.TryGetProperty("decoderStats", out var liveStats)
+                            && liveStats.ValueKind == JsonValueKind.Object) {
+                            <div class="diag-row">
+                                <span class="diag-label">Liveness</span>
+                                <span class="diag-value multiline">@FormatLiveness(liveStats)</span>
+                            </div>
+                            <div class="diag-row diag-sub">
+                                <span class="diag-label">stage</span>
+                                <span class="diag-value diag-dim">pump=@GetStr(liveStats, "feedPumpState") present=@GetStr(liveStats, "presentState")</span>
+                            </div>
+                        }
+
+                        @if (hasDiag && GetStr(rdPeek, "stallDiagnosis") is { Length: > 0 } stallDiagnosis) {
+                            <div class="diag-group-header">Stall</div>
+                            <div class="diag-row">
+                                <span class="diag-label">Last wedge</span>
+                                <span class="diag-value multiline">@stallDiagnosis (@FormatAge(GetNum(rdPeek, "stallAgeMs")) ago)</span>
+                            </div>
+                        }
+                        @if (hasDiag && GetStrArray(rdPeek, "breadcrumbs", "\n") is { Length: > 0 } crumbs) {
+                            <div class="diag-row">
+                                <span class="diag-label">Lifecycle</span>
+                                <span class="diag-value multiline">@crumbs</span>
+                            </div>
+                        }
+
                         @{
                             var authorId = s.Info.AuthorId;
                             var lag = LagTracker.GetSnapshot(authorId);
@@ -1096,11 +1122,20 @@
         StateHasChanged();
     }
 
-    private static string GetStrArray(JsonElement el, string prop) {
+    private static string GetStrArray(JsonElement el, string prop, string separator = ", ") {
         if (!el.TryGetProperty(prop, out var v) || v.ValueKind != JsonValueKind.Array)
             return "";
-        return string.Join(", ", v.EnumerateArray().Select(x => x.GetString()));
+        return string.Join(separator, v.EnumerateArray().Select(x => x.GetString()));
     }
+
+    private static string FormatLiveness(JsonElement decoderStats)
+        => $"arr={FormatAge(GetNum(decoderStats, "lastArrivalAtMs"))}"
+            + $" pull={FormatAge(GetNum(decoderStats, "lastBufferPullAtMs"))}"
+            + $" dec={FormatAge(GetNum(decoderStats, "lastDecodeOutAtMs"))}"
+            + $" pres={FormatAge(GetNum(decoderStats, "lastPresentAtMs"))}";
+
+    private static string FormatAge(double ageMs)
+        => ageMs < 0 ? "never" : $"{ageMs / 1000:0}s";
 
     private static string FormatRequestedReceiveQuality(JsonElement rd) {
         var senderMax = -1;
