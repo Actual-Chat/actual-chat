@@ -22,10 +22,10 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task TestAgentShouldBeAdmin()
+    public async Task TestAgentShouldNotBeAdmin()
     {
         var (account, _) = await SignInAsTestAgent();
-        account.IsAdmin.Should().BeTrue();
+        account.IsAdmin.Should().BeFalse();
     }
 
     [Fact]

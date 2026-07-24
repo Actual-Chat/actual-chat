@@ -501,12 +501,14 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             if (email.IsNullOrEmpty() || !MailAddress.TryCreate(email, out var emailAddress))
                 continue;
 
+            // test-*@actual.chat accounts are never admins, even with a verified email
+            if (Constants.Auth.TestAgent.IsTestAgentEmail(email))
+                continue;
+
             if (AdminEmails.Contains(email))
                 return true; // Predefined admin email
             if (emailAddress.Host == AdminEmailDomain)
                 return true; // company email
-            if (Constants.Auth.TestAgent.IsTestAgentEmail(email))
-                return true; // test agent email
         }
         return false;
     }
