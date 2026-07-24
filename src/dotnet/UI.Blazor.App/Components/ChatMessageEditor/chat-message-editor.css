@@ -94,7 +94,7 @@ body.narrow .narrow-panel .post-panel .message-input-label {
 }
 
 .post-panel .message-input .editor-content {
-    @apply mr-0 md:mr-2 md:py-0.5;
+    @apply mr-0 md:py-0.5;
     /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
        but flexbox ensures it never grows above what's allowed;
        I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
@@ -129,6 +129,10 @@ body.narrow .btn.post-panel-btn.post-message {
 body.hoverable .post-panel-btn:hover {
     @apply text-02;
 }
+body.hoverable .btn.btn-round.btn-transparent.post-panel-btn:hover::after,
+.touch-capable .btn.btn-round.btn-transparent.post-panel-btn:active::after {
+    @apply bg-transparent;
+}
 .attach-btn.btn.btn-round,
 .mention-btn.btn.btn-round {
     @apply my-1;
@@ -140,9 +144,6 @@ body.narrow .attach-btn.btn.btn-round {
 body.narrow.touch-capable .attach-btn.btn.btn-round.btn-transparent:active {
     @apply text-mobile-landscape-audio-panel-button-text;
     filter: blur(0.04rem) brightness(1.25);
-}
-body.hoverable .attach-btn.btn.btn-round.btn-transparent:hover {
-    @apply bg-input;
 }
 
 body.narrow .post-panel-btn.attach-btn {
@@ -254,6 +255,7 @@ body.narrow .post-panel-btn.post-message {
 }
 
 .text-mode .post-panel-btn.post-message {
+    @apply static;
     @apply flex;
     @apply opacity-100;
 }
@@ -272,9 +274,9 @@ body.hoverable .btn.btn-round.post-panel-btn.post-message:hover,
 
 .attachment-list-wrapper {
     @apply relative flex-y;
-    @apply px-2;
-    @apply bg-01;
-    @apply border-y border-bg-02;
+    @apply md:mx-3 p-1;
+    @apply bg-02;
+    @apply rounded-xl;
     animation: show-attachment-list 400ms ease-in-out forwards;
 }
 @keyframes show-attachment-list {
