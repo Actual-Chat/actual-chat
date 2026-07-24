@@ -255,6 +255,15 @@ describe('EncodedFrameBuffer', () => {
         // After many under→over transitions, EMA drops below 0.5.
         expect(stats.bufferUnderrunRatio).toBeLessThan(0.5);
     });
+
+    it('stamps lastBufferPullAtMs on successful pull', () => {
+        const stats = createEmptyPlayerStats();
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 0, frameDurationMs: 33.333, stats });
+        buffer.push(mkChunk({ capturedAtMs: 0, isKeyFrame: true }));
+        expect(stats.lastBufferPullAtMs).toBe(-1);
+        expect(buffer.tryPull()).not.toBeNull();
+        expect(stats.lastBufferPullAtMs).toBeGreaterThan(0);
+    });
 });
 
 describe('EncodedFrameBuffer skip-to-audio', () => {

@@ -162,6 +162,7 @@ async function* decodeAsync(
                     return;
                 }
                 const arrived = result.value;
+                arrived.stats.feedPumpState = 'blocked';
 
                 // Backpressure: hold the pulled chunk until the decoder has room
                 // and inventory is below cap — but never stall while an error is
@@ -180,7 +181,9 @@ async function* decodeAsync(
                 }
                 if (isStopped()) { closeEncodedChunk(arrived.chunk); return; }
 
+                arrived.stats.feedPumpState = 'submitting';
                 bridge.submit(arrived);
+                arrived.stats.feedPumpState = 'awaiting-source';
             }
         } catch (e) {
             // Surface a fatal feed error (e.g. recovery exhausted) to the consumer.

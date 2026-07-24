@@ -138,4 +138,21 @@ describe('VideoDecoderBridge', () => {
         expect(stats.decoderQueueSize).toBe(1);
         expect(bridge.hangDeadline()).toBe(4000);
     });
+
+    it('stamps submit/decode liveness and tracks decodedReadyCount', () => {
+        // arrange: submit one keyframe, then fire onFrame via the fake decoder
+        const { bridge, decoders } = makeBridge();
+        const stats = createEmptyPlayerStats();
+        bridge.submit(makeArrived(stats, true, 0));
+
+        // act
+        decoders[0].handlers.onFrame({ close: () => { /* nothing */ } } as unknown as VideoFrame);
+
+        // assert
+        expect(stats.lastSubmitAtMs).toBeGreaterThan(0);
+        expect(stats.lastDecodeOutAtMs).toBeGreaterThan(0);
+        expect(stats.decodedReadyCount).toBe(1);
+        bridge.tryPull();
+        expect(stats.decodedReadyCount).toBe(0);
+    });
 });

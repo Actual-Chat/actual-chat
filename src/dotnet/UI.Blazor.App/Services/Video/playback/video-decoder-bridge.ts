@@ -131,6 +131,8 @@ export class VideoDecoderBridge {
 
     tryPull(): DecodedFrame | null {
         const frame = this.ready.shift() ?? null;
+        if (frame && this.currentStats)
+            this.currentStats.decodedReadyCount = this.ready.length;
         if (frame)
             this.whenSpaceAvailable.notify();
         return frame;
@@ -278,6 +280,7 @@ export class VideoDecoderBridge {
                 // chunks the decoder could actually work on. Counting at arrival
                 // made a keyframe-wait read as decoder failure (deficit 0.5-0.96).
                 arrived.stats.chunksReceived++;
+                arrived.stats.lastSubmitAtMs = Date.now();
                 arrived.stats.decoderQueueSize = this.pending.length;
                 // Nudge the drain loop so it (re)arms the hang watchdog now that a
                 // chunk is in flight — the pump, not the consumer, drives submission.
@@ -339,10 +342,12 @@ export class VideoDecoderBridge {
         stats.recoveryStreak = 0;
         this.decodeRatioEma.appendSample((decodedAtMs - meta.submitMs) / this.opts.frameDurationMs);
         stats.decodeRatioEma = this.decodeRatioEma.value;
+        stats.lastDecodeOutAtMs = Date.now();
         stats.framesDecoded++;
         stats.decoderQueueSize = this.pending.length;
         this.noteFrameDecoded(meta.layerId);
         this.ready.push(envelope);
+        stats.decodedReadyCount = this.ready.length;
         this.whenDataReady.notify();
         this.whenSpaceAvailable.notify();
     }

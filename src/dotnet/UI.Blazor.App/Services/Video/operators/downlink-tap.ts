@@ -26,6 +26,7 @@ export function downlinkTap(opts: DownlinkTapOptions): PipeOperator<ArrivedChunk
     let lastArrivedWallMs = -1;
     return tap((chunk: ArrivedChunk): void => {
         const wallNowMs = now();
+        stats.lastArrivalAtMs = wallNowMs;
 
         if (lastArrivedWallMs >= 0) {
             intervalEma.appendSample(wallNowMs - lastArrivedWallMs);
