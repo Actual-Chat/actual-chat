@@ -372,11 +372,9 @@ public class LiveVideoStreams : ILiveVideoStreams
         // Small delay so the new envelope propagates before the PLI; otherwise
         // the keyframe can land while some component is still on the old envelope,
         // wasting the anchor and forcing us to wait the full ~3 s periodic interval.
-        // A stream re-appearing in a viewer's map (stats-silent prune -> re-add
-        // flap) looks identical to a fresh subscription here, and during the
-        // 2026-07-24 receiver-wedge incident it PLI-flooded the sender for 15
-        // minutes. Genuine layer upgrades stay un-throttled; re-adds get a
-        // per-(session, stream) cooldown.
+        // Re-adds (stats-silent prune flap, not a real upgrade) are cooldown-gated
+        // per (session, stream) so they can't keyframe-flood the sender (2026-07-24
+        // incident); genuine upgrades stay un-throttled.
         var now = SystemClock.Now;
         var upgradedStreams = GetUpgradedStreams(prevState?.QualityByStream, qualityByStream)
             .Where(x => !x.WasAbsent || TryStartReAddPli(session, x.StreamId, now))
@@ -475,7 +473,8 @@ public class LiveVideoStreams : ILiveVideoStreams
     private bool TryStartReAddPli(Session session, string streamId, Moment now)
     {
         var key = (session, streamId);
-        if (_lastReAddPliAt.TryGetValue(key, out var last) && now - last < ReAddPliCooldown)
+        var lastPliAt = _lastReAddPliAt.TryGetValue(key, out var last) ? last : (Moment?)null;
+        if (!ShouldSendReAddPli(lastPliAt, now, ReAddPliCooldown))
             return false;
 
         _lastReAddPliAt[key] = now;
@@ -516,6 +515,9 @@ public class LiveVideoStreams : ILiveVideoStreams
             }
         }
     }
+
+    internal static bool ShouldSendReAddPli(Moment? lastPliAt, Moment now, TimeSpan cooldown)
+        => lastPliAt is not { } last || now - last >= cooldown;
 
     internal static IEnumerable<(string StreamId, bool WasAbsent)> GetUpgradedStreams(
         ApiMap<string, ReceiveQuality>? previous,
