@@ -10,6 +10,8 @@ public class LiveVideoStreams : ILiveVideoStreams
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
     private static readonly TimeSpan ReceiveQualityRetention = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan ReceiveQualityCleanupPeriod = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ReAddPliCooldown = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan ReAddPliRetention = TimeSpan.FromMinutes(10);
 
     private IServiceProvider Services { get; }
     private MeshWatcher MeshWatcher { get; }
@@ -23,6 +25,7 @@ public class LiveVideoStreams : ILiveVideoStreams
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     private readonly ConcurrentDictionary<Session, ReceiveQualityState> _qualityBySession = new();
+    private readonly ConcurrentDictionary<(Session Session, string StreamId), Moment> _lastReAddPliAt = new();
     // ReSharper disable once NotAccessedField.Local
     private readonly Task _qualityBySessionCleanupTask;
 
@@ -369,7 +372,16 @@ public class LiveVideoStreams : ILiveVideoStreams
         // Small delay so the new envelope propagates before the PLI; otherwise
         // the keyframe can land while some component is still on the old envelope,
         // wasting the anchor and forcing us to wait the full ~3 s periodic interval.
-        var upgradedStreams = GetUpgradedStreams(prevState?.QualityByStream, qualityByStream).ToArray();
+        // A stream re-appearing in a viewer's map (stats-silent prune -> re-add
+        // flap) looks identical to a fresh subscription here, and during the
+        // 2026-07-24 receiver-wedge incident it PLI-flooded the sender for 15
+        // minutes. Genuine layer upgrades stay un-throttled; re-adds get a
+        // per-(session, stream) cooldown.
+        var now = SystemClock.Now;
+        var upgradedStreams = GetUpgradedStreams(prevState?.QualityByStream, qualityByStream)
+            .Where(x => !x.WasAbsent || TryStartReAddPli(session, x.StreamId, now))
+            .Select(x => x.StreamId)
+            .ToArray();
         if (upgradedStreams.Length != 0) {
             var keyFrameRequests = upgradedStreams
                 .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), cancellationToken))
@@ -440,10 +452,16 @@ public class LiveVideoStreams : ILiveVideoStreams
         return;
 
         void CleanupQualityBySession() {
-            var threshold = SystemClock.Now - ReceiveQualityRetention;
+            var now = SystemClock.Now;
+            var threshold = now - ReceiveQualityRetention;
             foreach (var kv in _qualityBySession)
                 if (kv.Value.UpdatedAt < threshold)
                     _qualityBySession.TryRemove(kv);
+
+            var reAddPliThreshold = now - ReAddPliRetention;
+            foreach (var kv in _lastReAddPliAt)
+                if (kv.Value < reAddPliThreshold)
+                    _lastReAddPliAt.TryRemove(kv);
         }
     }
 
@@ -453,6 +471,16 @@ public class LiveVideoStreams : ILiveVideoStreams
                 ? quality
                 : ReceiveQuality.Lowest
             : ReceiveQuality.Default;
+
+    private bool TryStartReAddPli(Session session, string streamId, Moment now)
+    {
+        var key = (session, streamId);
+        if (_lastReAddPliAt.TryGetValue(key, out var last) && now - last < ReAddPliCooldown)
+            return false;
+
+        _lastReAddPliAt[key] = now;
+        return true;
+    }
 
     private static int MaxLayerIdFromMask(int mask)
         => mask == 0 ? -1 : System.Numerics.BitOperations.Log2((uint)mask);
@@ -489,7 +517,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         }
     }
 
-    internal static IEnumerable<string> GetUpgradedStreams(
+    internal static IEnumerable<(string StreamId, bool WasAbsent)> GetUpgradedStreams(
         ApiMap<string, ReceiveQuality>? previous,
         ApiMap<string, ReceiveQuality> current)
     {
@@ -499,11 +527,10 @@ public class LiveVideoStreams : ILiveVideoStreams
             // Do not compare against ReceiveQuality.Default here: screencast's
             // top layer id is 1, so that would suppress the PLI needed to
             // switch from L0 to L1.
-            var oldQuality = previous is not null && previous.TryGetValue(streamId, out var old)
-                ? old
-                : ReceiveQuality.Lowest;
+            var wasAbsent = previous is null || !previous.TryGetValue(streamId, out _);
+            var oldQuality = wasAbsent ? ReceiveQuality.Lowest : previous![streamId];
             if (quality.LayerId > oldQuality.LayerId)
-                yield return streamId;
+                yield return (streamId, wasAbsent);
         }
     }
 
