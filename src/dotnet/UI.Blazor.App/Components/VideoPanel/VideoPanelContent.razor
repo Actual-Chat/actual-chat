@@ -58,7 +58,7 @@
     var collapsedCls = m.IsCollapsed ? "collapsed" : "";
     var hiddenCls = m.IsHidden ? "panel-hidden" : "";
     var expandedCls = m.IsExpanded ? "expanded" : "";
-    var equalLayoutCls = m.IsEqualLayout ? "layout-equal" : "";
+    var equalLayoutCls = m.IsEqualLayout && m.IsExpanded ? "layout-equal" : "";
     var videoMenuRef = MenuRef.New<VideoPanelMenu>(Chat.Id.Value, ScreenSize.IsNarrow().ToString()).ToString();
     var layout = m.Layout;
     var isMobileOrNarrow = ScreenSize.IsNarrow() || Hub.BrowserInfo.IsMobile;
