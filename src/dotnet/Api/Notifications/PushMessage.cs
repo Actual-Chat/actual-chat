@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace ActualChat.Notifications;
 
 /// <summary>
@@ -16,17 +18,18 @@ public sealed record PushMessage(
             .Select(m => new PushMessage(m.AuthorName, m.Text, (long)m.SentAt.EpochOffset.TotalMilliseconds))
             .ToList();
 
-    public static string ToJson(ApiArray<NotificationMessage> messages, int maxLength = MaxJsonLength)
+    public static string ToJson(ApiArray<NotificationMessage> messages, int maxByteLength = MaxJsonLength)
     {
         // Drops oldest messages while the JSON exceeds the budget; returns "" when even the newest
         // alone can't fit, so this key alone can't push the whole FCM message over its 4KB limit.
+        // The budget is UTF-8 bytes (what FCM counts), not chars.
         var items = From(messages);
         var json = JsonSerializer.Serialize(items);
-        while (items.Count > 1 && json.Length > maxLength) {
+        while (items.Count > 1 && Encoding.UTF8.GetByteCount(json) > maxByteLength) {
             items.RemoveAt(0);
             json = JsonSerializer.Serialize(items);
         }
-        return json.Length > maxLength ? "" : json;
+        return Encoding.UTF8.GetByteCount(json) > maxByteLength ? "" : json;
     }
 
     public static IReadOnlyList<PushMessage> FromJson(string? json)
