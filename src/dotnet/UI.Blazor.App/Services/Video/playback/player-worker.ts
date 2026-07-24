@@ -60,12 +60,15 @@ interface PlayerWorkerHooks {
 }
 
 let hooks: PlayerWorkerHooks | null = null;
-// Stream IDs we stopped locally — so the lifecycle observer suppresses
+// Player instances we stopped locally — so the lifecycle observer suppresses
 // onError/onStreamEnded for the resulting abort. Without this, an
 // MSTG-to-canvas fallback (stop then immediately start the same
 // stream) raises spurious terminal callbacks while the restart is
-// mid-flight.
-const locallyStopped = new Set<string>();
+// mid-flight. Keyed by instance, not streamId: an abandoned (wedged) player
+// can outlive a new player started for the same streamId, and a streamId key
+// would either suppress the new player's real terminal callbacks or have its
+// marker deleted out from under it by the zombie's own late cleanup.
+const locallyStopped = new Set<Player>();
 const { warnLog } = getLogs('VideoPipeline');
 
 // A pipeline that ignores abort (dead MSTG track, a stuck bitmap conversion)
@@ -189,11 +192,11 @@ export const playerWorkerImpl: PlayerWorker = {
         // fallback's intermediate abort doesn't race the restart.
         player.whenDone().then(
             () => {
-                if (!locallyStopped.has(opts.streamId))
+                if (!locallyStopped.has(player))
                     h.reportStreamEnded?.(opts.streamId, 'completed');
             },
             (e: unknown) => {
-                if (locallyStopped.has(opts.streamId))
+                if (locallyStopped.has(player))
                     return;
                 if (isTerminalStreamError(e)) {
                     h.reportStreamEnded?.(opts.streamId, 'evicted');
@@ -212,7 +215,7 @@ export const playerWorkerImpl: PlayerWorker = {
                 bgBlurControllers.delete(opts.streamId);
                 c.dispose();
             }
-            locallyStopped.delete(opts.streamId);
+            locallyStopped.delete(player);
         });
     },
 
@@ -291,7 +294,7 @@ export const playerWorkerImpl: PlayerWorker = {
             // Snapshot so iteration isn't perturbed by the
             // cleanup-on-drain handler racing us.
             const all = Array.from(players.entries());
-            for (const [id, _p] of all) locallyStopped.add(id);
+            for (const [, p] of all) locallyStopped.add(p);
             for (const [, p] of all) p.stop();
             await Promise.race([
                 Promise.allSettled(all.map(([, p]) => p.whenDone())),
@@ -305,7 +308,7 @@ export const playerWorkerImpl: PlayerWorker = {
         }
         const player = players.get(streamId);
         if (!player) return;
-        locallyStopped.add(streamId);
+        locallyStopped.add(player);
         player.stop();
         const unwound = await Promise.race([
             player.whenDone().then(() => true, () => true),

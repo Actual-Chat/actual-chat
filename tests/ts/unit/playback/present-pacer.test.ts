@@ -205,11 +205,13 @@ describe('presentPacer', () => {
         expect(stats.lastPresentAttemptAtMs).toBeGreaterThan(0);
     });
 
-    it('unwinds on abort while the sink is stuck', async () => {
+    it('unwinds on abort while the sink is stuck, without counting a drop or a present', async () => {
         const stats = createEmptyPlayerStats();
         const abortController = new AbortController();
+        let disposed = false;
         const sink: PresentSink = {
             present: () => new Promise<boolean>(() => { /* never resolves */ }),
+            dispose: () => { disposed = true; },
         };
         const items = [makeEnvelope(stats, 0, 0)];
 
@@ -221,6 +223,9 @@ describe('presentPacer', () => {
         setTimeout(() => abortController.abort(new Error('test abort')), 10);
 
         await expect(done).resolves.toBeDefined();
+        expect(stats.pendingPresenterDrops).toBe(0);
+        expect(stats.presented).toBe(0);
+        expect(disposed).toBe(true);
     });
 
     it('catch-up is an evenly spaced bounded overspeed, ramping with backlog', async () => {
