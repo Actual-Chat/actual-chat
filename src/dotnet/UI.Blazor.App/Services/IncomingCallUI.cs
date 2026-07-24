@@ -326,9 +326,14 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private async Task SyncActiveCallNotifications(CancellationToken cancellationToken)
     {
-        // The server's active-notification set reactively carries this user's incoming-call rings,
-        // so a connected client discovers them without waiting on a push. Seeds the same candidate
-        // set as OnRing; GetRingingCall + PruneDeadRings confirm and prune against the live session.
+        // Android has its own incoming-call path (FCM push + a system call notification via the bridge),
+        // so this reactive discovery is for every other platform only. The server's active-notification
+        // set reactively carries this user's incoming-call rings, so a connected client discovers them
+        // without waiting on a push. Seeds the same candidate set as OnRing; GetRingingCall +
+        // PruneDeadRings confirm and prune against the live session.
+        if (Bridge is not null)
+            return;
+
         var cNotifications = await Computed
             .Capture(() => Notifications.ListActive(Session, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
