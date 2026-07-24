@@ -1128,11 +1128,19 @@
         return string.Join(separator, v.EnumerateArray().Select(x => x.GetString()));
     }
 
-    private static string FormatLiveness(JsonElement decoderStats)
-        => $"arr={FormatAge(GetNum(decoderStats, "lastArrivalAtMs"))}"
-            + $" pull={FormatAge(GetNum(decoderStats, "lastBufferPullAtMs"))}"
-            + $" dec={FormatAge(GetNum(decoderStats, "lastDecodeOutAtMs"))}"
-            + $" pres={FormatAge(GetNum(decoderStats, "lastPresentAtMs"))}";
+    private static string FormatLiveness(JsonElement decoderStats) {
+        // Stamps are JS Date.now() epoch ms, not ages — convert against Unix now.
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        return $"arr={FormatStampAge(decoderStats, "lastArrivalAtMs", nowMs)}"
+            + $" pull={FormatStampAge(decoderStats, "lastBufferPullAtMs", nowMs)}"
+            + $" dec={FormatStampAge(decoderStats, "lastDecodeOutAtMs", nowMs)}"
+            + $" pres={FormatStampAge(decoderStats, "lastPresentAtMs", nowMs)}";
+    }
+
+    private static string FormatStampAge(JsonElement el, string prop, long nowMs) {
+        var stampMs = GetNum(el, prop);
+        return stampMs <= 0 ? "never" : FormatAge(Math.Max(0, nowMs - stampMs));
+    }
 
     private static string FormatAge(double ageMs)
         => ageMs < 0 ? "never" : $"{ageMs / 1000:0}s";
