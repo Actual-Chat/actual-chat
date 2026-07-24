@@ -1,16 +1,21 @@
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Diagnostics;
 using Android.Content;
 
 namespace ActualChat.App.Maui;
 
 public static class NotificationHandler
 {
+    private static readonly ILogger Log = StaticLog.For(typeof(NotificationHandler));
+    private static ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
+
     public static void HandleIntent(Intent intent, bool isColdStart = false)
     {
         if (NotificationHelper.NotificationViewAction != intent.Action)
             return;
 
         if (intent.GetBooleanExtra(IncomingCallNotifications.FullScreenExtraKey, false)) {
+            DebugLog?.LogInformation("CALL_TRACE: HandleIntent full-screen intent, isColdStart={IsColdStart}", isColdStart);
             // Over the lock screen we don't navigate to the chat (it opens on go-to-chat). On a cold
             // start the WebView boots to a restored route that would flash, so bring the app over the
             // keyguard eagerly behind a splash-colored cover. When the app is already running, don't
@@ -21,6 +26,8 @@ public static class NotificationHandler
                 activity.ShowCallCover();
                 activity.EnableShowWhenLocked();
             }
+            else
+                DebugLog?.LogInformation("CALL_TRACE: warm start — no cover, render-first-then-reveal");
             IncomingCallNotifications.HandleViewIntent(intent);
             return;
         }

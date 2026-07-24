@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using ActualChat.App.Maui.Services;
+using ActualLab.Diagnostics;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
@@ -63,6 +64,7 @@ public partial class MainActivity : MauiAppCompatActivity
     private AView? _callCover;
 
     private ILogger Log { get; } = StaticLog.For<MainActivity>();
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -170,6 +172,7 @@ public partial class MainActivity : MauiAppCompatActivity
     // screen has rendered. HideCallCover reveals the already-drawn call screen underneath.
     public void ShowCallCover()
     {
+        DebugLog?.LogInformation("CALL_TRACE: ShowCallCover (alreadyShown={AlreadyShown})", _callCover != null);
         if (_callCover != null)
             return;
         if (Window?.DecorView is not ViewGroup decor)
@@ -187,6 +190,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
     public void HideCallCover()
     {
+        DebugLog?.LogInformation("CALL_TRACE: HideCallCover (hadCover={HadCover})", _callCover != null);
         if (_callCover?.Parent is ViewGroup parent)
             parent.RemoveView(_callCover);
         _callCover = null;

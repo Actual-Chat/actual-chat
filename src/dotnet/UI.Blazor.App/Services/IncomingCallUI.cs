@@ -1,4 +1,5 @@
 using ActualChat.Live;
+using ActualLab.Diagnostics;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
@@ -29,6 +30,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IAuthors Authors => Hub.Authors;
+    private ILogger? CallDebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
     public IncomingCallUI(AppUIHub hub) : base(hub)
     {
@@ -52,6 +54,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (chatId is null || chatId.Value.IsNullOrEmpty())
             return;
 
+        CallDebugLog?.LogInformation("CALL_TRACE: OnRing #{ChatId}, showOverLockScreen={ShowOverLockScreen}", chatId, showOverLockScreen);
         lock (_lock) {
             var chatIds = _ringingChatIds.Value;
             if (!chatIds.Contains(chatId))
@@ -67,11 +70,15 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // WebView actually paints, so wait a beat before removing the native cover — otherwise the app's
     // restored route flashes through for a frame on a cold start.
     public void OnOverLockScreenRendered()
-        => _ = RevealCallScreenAfterPaint();
+    {
+        CallDebugLog?.LogInformation("CALL_TRACE: OnOverLockScreenRendered");
+        _ = RevealCallScreenAfterPaint();
+    }
 
     private async Task RevealCallScreenAfterPaint()
     {
         await Task.Delay(TimeSpan.FromMilliseconds(200)).ConfigureAwait(false);
+        CallDebugLog?.LogInformation("CALL_TRACE: RevealCallScreen (after paint delay), Bridge={HasBridge}", Bridge is not null);
         Bridge?.RevealCallScreen();
     }
 
@@ -101,15 +108,20 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (ownAuthor is null)
-            return null;
-
-        return FindRingingCall(live, ownAuthor.Id);
+        var call = ownAuthor is null ? null : FindRingingCall(live, ownAuthor.Id);
+        CallDebugLog?.LogInformation(
+            "CALL_TRACE: GetRingingCall #{ChatId} → hasCall={HasCall}; liveNull={LiveNull}, "
+            + "liveKind={Kind}, host={Host}, ownNull={OwnNull}, own={Own}, invites=[{Invites}]",
+            chatId, call is not null, live is null, live?.Kind, live?.Host, ownAuthor is null, ownAuthor?.Id,
+            live is null ? "" : live.Invites.Select(i => $"{i.InviteeId}:{i.Status}").ToDelimitedString(","));
+        return call;
     }
 
     public static IncomingCall? FindRingingCall(LiveSession? live, AuthorId ownAuthorId)
     {
-        if (live is not { Kind: LiveSessionKind.Call })
+        // An incoming ring is the Dialing phase; once someone answers it's promoted to Call and is
+        // no longer an incoming call.
+        if (live is not { Kind: LiveSessionKind.Dialing })
             return null;
         if (live.Host == ownAuthorId)
             return null;
@@ -223,7 +235,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (await GetRingingCall(chatId, cancellationToken).ConfigureAwait(false) is not null)
             return true;
 
-        return await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        var inCall = await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        CallDebugLog?.LogInformation("CALL_TRACE: IsOverLockSessionActive #{ChatId} → inCall={InCall} (ring not confirmed)", chatId, inCall);
+        return inCall;
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
@@ -302,6 +316,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (cActive.Value)
                 _overLockWasActive = true;
             else if (_overLockWasActive && _overLockChatId.Value is not null) {
+                CallDebugLog?.LogInformation("CALL_TRACE: ResetOverLockScreen teardown #{ChatId} (session ended, was active)", _overLockChatId.Value);
                 ClearOverLock();
                 Bridge?.MoveBehindLockScreen();
             }
