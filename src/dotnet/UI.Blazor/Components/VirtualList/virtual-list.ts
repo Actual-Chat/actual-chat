@@ -995,7 +995,7 @@ export class VirtualList {
         // holds only when not pinned - when pinned the sticky re-pin absorbs the shrink instead.
         const target = event.target as HTMLElement | null;
         const holdRef = target?.closest<HTMLElement>('[data-vl-hold]');
-        if (!holdRef)
+        if (!holdRef || !itemRef.contains(holdRef))
             return;
 
         const isPinned = this.state.stickyEdge != null;
