@@ -15,9 +15,9 @@ public class LiveVideoStreamsTest
             ["screen"] = new ReceiveQuality(1),
         };
 
-        var result = LiveVideoStreams.GetUpgradedStreams(previous, current);
+        var result = LiveVideoStreams.GetUpgradedStreams(previous, current).ToArray();
 
-        result.Should().Equal("screen");
+        result.Should().ContainSingle(x => x.StreamId == "screen" && x.WasAbsent);
     }
 
     [Fact]
@@ -27,9 +27,37 @@ public class LiveVideoStreamsTest
             ["screen"] = new ReceiveQuality(1),
         };
 
-        var result = LiveVideoStreams.GetUpgradedStreams(null, current);
+        var result = LiveVideoStreams.GetUpgradedStreams(null, current).ToArray();
 
-        result.Should().Equal("screen");
+        result.Should().ContainSingle(x => x.StreamId == "screen" && x.WasAbsent);
+    }
+
+    [Fact]
+    public void GetUpgradedStreams_MarksReAddedStreamAsWasAbsent()
+    {
+        // arrange
+        var previous = new ApiMap<string, ReceiveQuality>();
+        var current = new ApiMap<string, ReceiveQuality> { ["s1"] = new ReceiveQuality(1) };
+
+        // act
+        var result = LiveVideoStreams.GetUpgradedStreams(previous, current).ToArray();
+
+        // assert
+        result.Should().ContainSingle(x => x.StreamId == "s1" && x.WasAbsent);
+    }
+
+    [Fact]
+    public void GetUpgradedStreams_MarksGenuineUpgradeAsPresent()
+    {
+        // arrange
+        var previous = new ApiMap<string, ReceiveQuality> { ["s1"] = new ReceiveQuality(0) };
+        var current = new ApiMap<string, ReceiveQuality> { ["s1"] = new ReceiveQuality(2) };
+
+        // act
+        var result = LiveVideoStreams.GetUpgradedStreams(previous, current).ToArray();
+
+        // assert
+        result.Should().ContainSingle(x => x.StreamId == "s1" && !x.WasAbsent);
     }
 
     [Fact]
