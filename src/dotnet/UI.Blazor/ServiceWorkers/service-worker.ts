@@ -144,6 +144,21 @@ onBackgroundMessage(messaging, async payload => {
         }
         return;
     }
+    // Incoming call: ring any open tab (in-app banner via OnRing) and show an OS notification so a
+    // backgrounded/closed app still rings. The banner's own Accept/Decline take over once focused.
+    if (data.kind === 'IncomingCall' && data.chatId) {
+        const windowClients = await sw.clients.matchAll({ type: 'window' });
+        for (const client of windowClients)
+            client.postMessage({ type: 'INCOMING_CALL', chatId: data.chatId });
+
+        await sw.registration.showNotification(payload.notification?.title ?? 'Incoming call', {
+            tag: data.tag,
+            icon: data.icon,
+            body: payload.notification?.body ?? 'Incoming call',
+            data: { url: data.link },
+        });
+        return;
+    }
     // Skip the banner if the user is actively viewing this chat in a visible tab — they're
     // already seeing the messages; no OS notification needed (the server still dismisses it
     // for other devices once the read position advances).
