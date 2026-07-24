@@ -1,3 +1,5 @@
+using ActualChat.Notifications;
+
 namespace ActualChat.App.Maui;
 
 public class NotificationData(string messageId, Dictionary<string, string> data)
