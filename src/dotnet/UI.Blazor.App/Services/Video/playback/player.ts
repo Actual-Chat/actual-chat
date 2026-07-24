@@ -131,6 +131,7 @@ export class Player {
                 getBufferSpanMs,
                 targetSpanMs,
                 getAudioCaptureOffsetMs,
+                stats,
             });
         } else {
             const canvasCtx: CanvasImageInterface = config.backend.canvasCtx;
@@ -141,6 +142,7 @@ export class Player {
                 getBufferSpanMs,
                 targetSpanMs,
                 getAudioCaptureOffsetMs,
+                stats,
             });
         }
         const reportLatency = config.reportLatency;

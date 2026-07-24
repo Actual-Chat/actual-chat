@@ -104,6 +104,7 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
             for await (const decoded of source) {
                 try {
                     const now = nowFn();
+                    decoded.stats.presentState = 'pacing';
                     if (prevCapturedEpoch !== null && decoded.capturedAt.epoch !== prevCapturedEpoch) {
                         lastWriteAt = null;
                         prevCapturedAt = null;
@@ -186,6 +187,8 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                     sink ??= createSink();
                     let presented = false;
                     try {
+                        decoded.stats.lastPresentAttemptAtMs = Date.now();
+                        decoded.stats.presentState = 'sink-await';
                         presented = await sink.present(decoded.frame);
                     } finally {
                         if (!presented) {
@@ -204,6 +207,8 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                                 decoded.stats.pendingPresenterDrops = 0;
                             }
                             decoded.stats.presented++;
+                            decoded.stats.presentState = 'presented';
+                            decoded.stats.lastPresentAtMs = Date.now();
                             updatePlaybackRateEma(decoded.stats, decoded.capturedAt, performance.now());
                         }
                     }

@@ -167,6 +167,18 @@ export interface PlayerStats {
     // decoderQueueSize: chunks submitted to the decode operator awaiting output.
     encodedQueueCount: number;
     decoderQueueSize: number;
+    // Liveness stamps (Date.now() domain; -1 == never). Written at each stage
+    // boundary so a wedge diagnosis can name the frozen stage without console
+    // access. Read by the main-thread WedgeDetector via worker getStats.
+    lastArrivalAtMs: number;
+    lastBufferPullAtMs: number;
+    lastSubmitAtMs: number;
+    lastDecodeOutAtMs: number;
+    lastPresentAttemptAtMs: number;
+    lastPresentAtMs: number;
+    decodedReadyCount: number;
+    feedPumpState: string;
+    presentState: string;
 }
 
 export function createEmptyRecorderStats(): RecorderStats {
@@ -220,6 +232,15 @@ export function createEmptyPlayerStats(): PlayerStats {
         bufferUnderrunRatio: -1,
         encodedQueueCount: 0,
         decoderQueueSize: 0,
+        lastArrivalAtMs: -1,
+        lastBufferPullAtMs: -1,
+        lastSubmitAtMs: -1,
+        lastDecodeOutAtMs: -1,
+        lastPresentAttemptAtMs: -1,
+        lastPresentAtMs: -1,
+        decodedReadyCount: 0,
+        feedPumpState: 'idle',
+        presentState: 'idle',
     };
 }
 
