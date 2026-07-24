@@ -969,6 +969,21 @@ public sealed partial class VideoQualityUI
         }
     }
 
+    private async Task RestartActivePlayersForResume(CancellationToken cancellationToken)
+    {
+        try {
+            var restarted = await JS.InvokeAsync<int>(
+                $"{BlazorUIAppModule.ImportName}.restartActivePlayersForResume",
+                cancellationToken).ConfigureAwait(false);
+            if (restarted > 0)
+                Log.LogInformation(
+                    "RestartActivePlayersForResume: restarted {Count} player(s)", restarted);
+        }
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+            Log.LogWarning(e, "RestartActivePlayersForResume failed");
+        }
+    }
+
     private async Task ClearRequestedReceiveQualityRegistry(
         IReadOnlyList<PlaybackStreamHint> streamHints,
         CancellationToken cancellationToken)

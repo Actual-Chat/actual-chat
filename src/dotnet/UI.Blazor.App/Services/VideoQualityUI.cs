@@ -145,8 +145,9 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
         // single largest pointless battery drain on mobile.
         var cState = BackgroundStateTracker.IsBackground.Computed;
         await foreach (var (isBackground, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            bool isResumingPlayback;
             lock (_playbackLock) {
-                var isResumingPlayback = _isBackground && !isBackground;
+                isResumingPlayback = _isBackground && !isBackground;
                 _isBackground = isBackground;
                 if (isResumingPlayback)
                     RefreshPlaybackEntriesLastSeenLocked();
@@ -154,6 +155,11 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
             await RecomputePlaybackQuality(
                 PlaybackQualityReason.ActiveSetChanged,
                 cancellationToken).ConfigureAwait(false);
+            // A paused-then-resumed pipeline reliably needs a fresh keyframe
+            // anchor and often a fresh decoder (background GPU deprioritization);
+            // restarting now beats waiting 4-7 s for the stall watchdogs.
+            if (isResumingPlayback)
+                await RestartActivePlayersForResume(cancellationToken).ConfigureAwait(false);
         }
     }
 
