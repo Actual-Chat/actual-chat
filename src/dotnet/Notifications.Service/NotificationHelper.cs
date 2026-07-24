@@ -42,17 +42,25 @@ public static class NotificationHelper
         return names.IsNullOrEmpty() ? "Voice chat started" : $"{names} started a voice chat";
     }
 
-    public static string GetAggregatedText(string leadText, IReadOnlyList<string> authorNames, int moreCount)
+    public static string ComposeAggregatedText(ChatEntryRelatedNotification notification)
     {
-        // moreCount counts messages beyond those LeadText already shows, so a rolled-in lead
-        // never produces a "+1 more" for a message the user is looking at.
-        if (moreCount <= 0)
-            return leadText;
+        var messages = notification.RecentMessages;
+        if (messages.IsEmpty)
+            return notification.LeadText.IsNullOrEmpty() ? notification.Text : notification.LeadText;
 
-        var namePart = string.Join(", ", authorNames.Take(Constants.Notification.MaxSummaryAuthors));
-        var moreText = moreCount == 1 ? "+1 more message" : $"+{moreCount} more messages";
-        var tail = namePart.IsNullOrEmpty() ? moreText : $"{namePart} · {moreText}";
-        return $"{leadText}\n{tail}";
+        // Newest first: collapsed banners show only the first line(s), and that must be the
+        // latest message, not the oldest unread one.
+        var showAuthorNames = notification.ChatId.GetThreadOutermostParentOrSelf().Kind
+            is ChatKind.Group or ChatKind.Place;
+        var lines = new List<string>(messages.Count + 1);
+        for (var i = messages.Count - 1; i >= 0; i--) {
+            var m = messages[i];
+            lines.Add(showAuthorNames && !m.AuthorName.IsNullOrEmpty() ? $"{m.AuthorName}: {m.Text}" : m.Text);
+        }
+        var moreCount = notification.UnreadCount - messages.Count;
+        if (moreCount > 0)
+            lines.Add(moreCount == 1 ? "+1 earlier message" : $"+{moreCount} earlier messages");
+        return string.Join('\n', lines);
     }
 
     public static async ValueTask<(string Content, HashSet<MentionRef> MentionIds)> GetText(

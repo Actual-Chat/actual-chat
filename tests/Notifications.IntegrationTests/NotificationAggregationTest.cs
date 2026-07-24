@@ -210,11 +210,96 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void AggregatedTextCountsOnlyMessagesBeyondLead()
+    public void AggregatedTextIsNewestFirstWithAuthorPrefixesInGroupChat()
     {
-        NotificationHelper.GetAggregatedText("Hi", ["Alice"], 0).Should().Be("Hi");
-        NotificationHelper.GetAggregatedText("Hi", ["Alice"], 1).Should().Be("Hi\nAlice · +1 more message");
-        NotificationHelper.GetAggregatedText("Hi", [], 2).Should().Be("Hi\n+2 more messages");
+        var author1 = AuthorId.New(TestChatId, 1);
+        var author2 = AuthorId.New(TestChatId, 2);
+        var first = NewMessage(100, author1, "who takes the release?", "Alice");
+        var second = NewMessage(101, author2, "I fixed the flaky test", "Bob");
+
+        var merged = (MessageNotification)second.MergeWith(first);
+
+        NotificationHelper.ComposeAggregatedText(merged)
+            .Should().Be("Bob: I fixed the flaky test\nAlice: who takes the release?");
+    }
+
+    [Fact]
+    public void AggregatedTextSkipsAuthorNamesInPeerChat()
+    {
+        var peerChatId = PeerChatId.New(UserId.New(), UserId.New());
+        var author = AuthorId.New(peerChatId, 1);
+        var first = MessageNotification.New(TestUserId, peerChatId, 100, author) with {
+            StartEntryLid = 100,
+            UnreadCount = 1,
+            RecentMessages = new[] { NotificationMessage.New(author, "Alice", "first", 100, Moment.Now) }.ToApiArray(),
+        };
+        var second = MessageNotification.New(TestUserId, peerChatId, 101, author) with {
+            StartEntryLid = 101,
+            UnreadCount = 1,
+            RecentMessages = new[] { NotificationMessage.New(author, "Alice", "second", 101, Moment.Now) }.ToApiArray(),
+        };
+
+        var merged = (MessageNotification)second.MergeWith(first);
+
+        NotificationHelper.ComposeAggregatedText(merged).Should().Be("second\nfirst");
+    }
+
+    [Fact]
+    public void AggregatedTextCountsOnlyMessagesBeyondWindow()
+    {
+        var author1 = AuthorId.New(TestChatId, 1);
+        var info = new UserNotificationInfo(TestUserId);
+        for (var lid = 100; lid < 106; lid++)
+            info = info.WithNotification(NewMessage(lid, author1, $"m{lid}", "Alice"));
+        var merged = (MessageNotification)info.Displayed.Single();
+
+        var text = NotificationHelper.ComposeAggregatedText(merged);
+
+        text.Should().StartWith("Alice: m105");
+        text.Should().EndWith("+1 earlier message");
+        merged.UnreadCount.Should().Be(6);
+    }
+
+    [Fact]
+    public void AggregatedTextFallsBackForLegacyNotification()
+    {
+        var author1 = AuthorId.New(TestChatId, 1);
+        var legacy = MessageNotification.New(TestUserId, TestChatId, 100, author1) with {
+            Text = "composed old body",
+            LeadText = "old lead",
+        };
+
+        NotificationHelper.ComposeAggregatedText(legacy).Should().Be("old lead");
+    }
+
+    [Fact]
+    public void ReAnchorAtDropsReadMessages()
+    {
+        var author = AuthorId.New(TestChatId, 1);
+        var info = new UserNotificationInfo(TestUserId);
+        for (var lid = 100; lid < 105; lid++)
+            info = info.WithNotification(NewMessage(lid, author, $"m{lid}", "Alice"));
+        var merged = (MessageNotification)info.Displayed.Single();
+
+        var reAnchored = merged.ReAnchorAt(103);
+
+        reAnchored.StartEntryLid.Should().Be(103);
+        reAnchored.UnreadCount.Should().Be(2);
+        reAnchored.RecentMessages.Select(m => m.Text).Should().Equal("m103", "m104");
+        reAnchored.LeadText.Should().Be("m104");
+    }
+
+    [Fact]
+    public void ReAnchorAtEmptiesWindowWhenAllShownAreRead()
+    {
+        var author = AuthorId.New(TestChatId, 1);
+        var n = NewMessage(100, author, "only", "Alice");
+
+        var reAnchored = n.ReAnchorAt(101);
+
+        reAnchored.RecentMessages.Should().BeEmpty();
+        reAnchored.LeadText.Should().Be("");
+        reAnchored.UnreadCount.Should().Be(1);
     }
 
     [Fact]
