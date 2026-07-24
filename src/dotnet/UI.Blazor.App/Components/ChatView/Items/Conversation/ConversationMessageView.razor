@@ -13,7 +13,6 @@
     var liveClass = state.IsLive ? (state.IsJoined ? "live joined" : "live") : "";
     var cls = $"conversation-message message-wrapper {openClass} {liveClass}";
     var attachments = conversation.Attachments;
-    var canExpand = !state.IsLive || state.IsJoined;
     var hasLiveTitle = !m.Title.Text.IsNullOrEmpty();
     var hasDescription = !m.Description.Markup.ToReadableText().IsNullOrEmpty();
     // Exactly what GetClipboardText concatenates - with none of it there, copying yields blank lines.
@@ -36,58 +35,56 @@
             || (!state.IsExpanded && state.SwallowedCount > 0)
             || state.TailPreview is { Count: > 0 };
         if (showLiveCard) {
-        <div class="c-live-card">
-            @if (!Message.HasSplitHeader && hasLiveTitle) {
-                <div class="c-lc-title">
-                    <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
-                    <span class="c-lc-name">@m.Title.Text</span>
-                    @if (hasFoldedEntries) {
+            <div class="c-live-card">
+                @if (!Message.HasSplitHeader && hasLiveTitle) {
+                    <div class="c-lc-title">
+                        <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
+                        <span class="c-lc-name">@m.Title.Text</span>
                         <HeaderButton Class="c-lc-expand" Click="@ToggleShowMessage">
                             <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
                         </HeaderButton>
-                    }
-                </div>
-            }
-            @* Gated on the text, not hasSummary: a fold can outlive an empty description. Also collapsed-only:
-               expanded reads as a plain conversation, so the description box drops out once expanded. *@
-            @if (hasDescription && !state.IsExpanded) {
-                <div class="c-lc-summary-box">
-                    <div class="c-lc-summary" @key="@m.Description.Markup.ToReadableText()">
-                        <CascadingValue Value="@_fakeEntry" IsFixed="true">
-                            <MarkupView Markup="@m.Description.Markup"/>
-                        </CascadingValue>
                     </div>
-                </div>
-            }
-            @if (state.HasSummary && !state.IsExpanded) {
-                <div class="c-lc-meta-row">
-                    <AuthorCircleGroup
-                        Class="c-lc-authors"
-                        AuthorIds="@conversation.AuthorIds"
-                        Size="@SquareSize.Size5"
-                        MaxCount="4"
-                        ShowRing="false"/>
-                    <div class="c-lc-meta">
-                        <div class="c-lc-started">@startedAt · @secondLine</div>
+                }
+                @* Gated on the text, not hasSummary: a fold can outlive an empty description. Also collapsed-only:
+                   expanded reads as a plain conversation, so the description box drops out once expanded. *@
+                @if (hasDescription && !state.IsExpanded) {
+                    <div class="c-lc-summary-box">
+                        <div class="c-lc-summary" @key="@m.Description.Markup.ToReadableText()">
+                            <CascadingValue Value="@_fakeEntry" IsFixed="true">
+                                <MarkupView Markup="@m.Description.Markup"/>
+                            </CascadingValue>
+                        </div>
                     </div>
-                    @if (hasCopyText) {
-                        <HeaderButton Class="c-lc-copy" Click="@OnCopyToClipboardRequested">
-                            <i class="icon-copy"></i>
-                        </HeaderButton>
-                    }
-                </div>
-            }
-            @if (state.TailPreview is { Count: > 0 } tailPreview) {
-                <Divider/>
-                <LastEntriesPreview Entries="@tailPreview" Faded="true"/>
-            }
-            @if (!state.IsExpanded && state.SwallowedCount > 0) {
-                <button type="button" class="c-lc-showmore" data-anchor="below" @onclick="@OnRevealMore">
-                    <i class="icon-chevron-up"></i>
-                    <span>Show @state.RevealBatch of @state.SwallowedCount</span>
-                </button>
-            }
-        </div>
+                }
+                @if (state.HasSummary && !state.IsExpanded) {
+                    <div class="c-lc-meta-row">
+                        <AuthorCircleGroup
+                            Class="c-lc-authors"
+                            AuthorIds="@conversation.AuthorIds"
+                            Size="@SquareSize.Size5"
+                            MaxCount="4"
+                            ShowRing="false"/>
+                        <div class="c-lc-meta">
+                            <div class="c-lc-started">@startedAt · @secondLine</div>
+                        </div>
+                        @if (hasCopyText) {
+                            <HeaderButton Class="c-lc-copy" Click="@OnCopyToClipboardRequested">
+                                <i class="icon-copy"></i>
+                            </HeaderButton>
+                        }
+                    </div>
+                }
+                @if (state.TailPreview is { Count: > 0 } tailPreview) {
+                    <Divider/>
+                    <LastEntriesPreview Entries="@tailPreview" Faded="true"/>
+                }
+                @if (!state.IsExpanded && state.SwallowedCount > 0) {
+                    <button type="button" class="c-lc-showmore" data-anchor="below" @onclick="@OnRevealMore">
+                        <i class="icon-chevron-up"></i>
+                        <span>Show @state.RevealBatch of @state.SwallowedCount</span>
+                    </button>
+                }
+            </div>
         }
     } else {
         <CascadingValue Value="@_fakeEntry" IsFixed="true">
@@ -99,11 +96,11 @@
                         Title="@m.Title"
                         MessageCount="@messageCount"
                         StartsAt="@startsAt"
-                        ConversationToggleClick="@OnHeaderClick"/>
+                        ConversationToggleClick="@ToggleShowMessage"/>
                 }
                 <div class="c-short">
                     <MarkupView Markup="@m.Description.Markup"/>
-                    @if (!_isOpen && canExpand) {
+                    @if (!_isOpen) {
                         <span class="show-more-btn" @onclick="@ToggleDetails"> Show items</span>
                     }
                 </div>
@@ -154,7 +151,6 @@
 
     private ChatUI ChatUI => Hub.ChatUI;
     private IAuthors Authors => Hub.Authors;
-    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private LiveBlockUI LiveBlockUI => Hub.LiveBlockUI;
     private TranscriptUI TranscriptUI => Hub.TranscriptUI;
@@ -195,12 +191,14 @@
 
     protected override async Task<ConversationLiveState> ComputeState(CancellationToken cancellationToken) {
         var conversation = Message.Conversation!;
-        var translated = await ConversationUI.GetTranslatedConversation(conversation, cancellationToken).ConfigureAwait(true);
+        var translated = await ConversationUI.GetTranslatedConversation(conversation, cancellationToken)
+            .ConfigureAwait(true);
 
         var chatId = conversation.Id.ChatId;
         var live = await LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(true);
         var isLive = live != null && live.Id == conversation.Id;
-        var isJoined = isLive && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(true);
+        var isJoined = isLive
+            && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(true);
         var isVoiceOnly = isLive
             && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(true);
         var participantsText = isLive
@@ -220,7 +218,8 @@
         // case: !isJoined but the freeze overlay keeps the tail on screen, so a preview would double it -
         // gate on Overlay == null so only the genuinely-hidden case previews.
         var tailPreview = isLive && !isJoined && !isVoiceOnly && blockState.Overlay == null && !isExpanded
-            ? await GetTailPreview(chatId, rawLive?.EffectiveVisibleStartLid ?? 0, cancellationToken).ConfigureAwait(true)
+            ? await GetTailPreview(chatId, rawLive?.EffectiveVisibleStartLid ?? 0, cancellationToken)
+                .ConfigureAwait(true)
             : null;
         var hasSummary = !translated.Title.Text.IsNullOrEmpty();
         var swallowedCount = 0;
@@ -254,20 +253,8 @@
             .ToList();
     }
 
-    private void OnHeaderClick() {
-        if (State.Value is { IsLive: true, IsJoined: false })
-            _ = OnJoin();
-        else
-            ToggleShowMessage();
-    }
-
     private void ToggleShowMessage()
         => ChatUI.ToggleExpandConversation(Message.Conversation!.Id);
-
-    private async Task OnJoin() {
-        var chatId = Message.Conversation!.Id.ChatId;
-        await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
-    }
 
     private async Task OnRevealMore() {
         var chatId = Message.Conversation!.Id.ChatId;
@@ -280,7 +267,7 @@
     }
 
     private async Task OnCopyToClipboardRequested() {
-        var text = await ConversationUI.GetClipboardText(State.Value.Conversation);
+        var text = await ConversationUI.GetClipboardText(State.Value.Conversation).ConfigureAwait(true);
         await ClipboardUI.WriteText(text).ConfigureAwait(false);
     }
 

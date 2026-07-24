@@ -150,7 +150,9 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
     {
         lock (Lock) {
             foreach (var chatState in _chatStates.Values) {
-                if (!chatState.IsClosed || chatState.Template is not { HadSummary: true } t)
+                // WasAttending gates the intercept to a still-visible overlay: once dismissed, later
+                // toggles on the materialized conversation must reach the ordinary expand/collapse path.
+                if (!chatState.IsClosed || !chatState.WasAttending || chatState.Template is not { HadSummary: true } t)
                     continue;
                 if (t.LiveRenderId != conversationId && t.MaterializedId != conversationId)
                     continue;
@@ -327,6 +329,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 chatState.Template = template;
             if (raw == null && chatState.WasAttending)
                 chatState.IsClosed = true;
+            else if (raw != null)
+                chatState.IsClosed = false;
 
             var state = chatState.State.Value with { WasAttending = chatState.WasAttending };
 
