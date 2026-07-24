@@ -16,17 +16,17 @@ public sealed record PushMessage(
             .Select(m => new PushMessage(m.AuthorName, m.Text, (long)m.SentAt.EpochOffset.TotalMilliseconds))
             .ToList();
 
-    public static string ToJson(ApiArray<NotificationMessage> messages)
+    public static string ToJson(ApiArray<NotificationMessage> messages, int maxLength = MaxJsonLength)
     {
-        // Drops oldest messages while the JSON exceeds the budget, so this key alone can't push
-        // the whole FCM message over its 4KB limit.
+        // Drops oldest messages while the JSON exceeds the budget; returns "" when even the newest
+        // alone can't fit, so this key alone can't push the whole FCM message over its 4KB limit.
         var items = From(messages);
         var json = JsonSerializer.Serialize(items);
-        while (items.Count > 1 && json.Length > MaxJsonLength) {
+        while (items.Count > 1 && json.Length > maxLength) {
             items.RemoveAt(0);
             json = JsonSerializer.Serialize(items);
         }
-        return json;
+        return json.Length > maxLength ? "" : json;
     }
 
     public static IReadOnlyList<PushMessage> FromJson(string? json)

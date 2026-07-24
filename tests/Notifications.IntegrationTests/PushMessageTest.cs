@@ -47,6 +47,33 @@ public class PushMessageTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void ToJsonRespectsExplicitBudget()
+    {
+        var author = AuthorId.New(TestChatId, 1);
+        var messages = Enumerable.Range(0, 3)
+            .Select(i => NotificationMessage.New(
+                author, $"a{i}", new string((char)('a' + i), 100), 100 + i, Moment.Now))
+            .ToApiArray();
+
+        var json = PushMessage.ToJson(messages, 300);
+
+        var parsed = PushMessage.FromJson(json);
+        parsed.Should().HaveCountLessThan(3);
+        parsed[^1].Text.Should().StartWith("c");
+    }
+
+    [Fact]
+    public void ToJsonReturnsEmptyWhenNewestCannotFit()
+    {
+        var author = AuthorId.New(TestChatId, 1);
+        var messages = new[] {
+            NotificationMessage.New(author, "Alice", new string('x', 150), 100, Moment.Now),
+        }.ToApiArray();
+
+        PushMessage.ToJson(messages, 50).Should().BeEmpty();
+    }
+
+    [Fact]
     public void FromJsonToleratesGarbage()
     {
         PushMessage.FromJson(null).Should().BeEmpty();
