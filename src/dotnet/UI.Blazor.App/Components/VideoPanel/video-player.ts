@@ -274,6 +274,7 @@ export class VideoPlayer {
     private lastWedgeAtMs = -1;
     private lastWedgeReportAtMs = -1;
     private wedgeRestartCount = 0;
+    private consecutiveProgressPolls = 0;
     private readonly breadcrumbs = new RingBuffer<{ atMs: number; note: string }>(24);
     private readonly videoLagEma = new RunningEMA(0, 3, 0.3);
     private readonly displayLatencyEma = new RunningEMA(0, 3, 0.3);
@@ -444,6 +445,7 @@ export class VideoPlayer {
         // artificial freeze gap toward the wedge threshold once it resumes.
         if (this.getExpectedPaused()) {
             this.wedgeDetector.reset();
+            this.consecutiveProgressPolls = 0;
             return;
         }
 
@@ -457,11 +459,18 @@ export class VideoPlayer {
         const diag = this.wedgeDetector.onSample(stats, now);
         if (this.wedgeDetector.hasProgress) {
             this.lastWedgeDiagnosis = null;
-            if (this.wedgeRestartCount > 0)
+            this.consecutiveProgressPolls++;
+            // A freshly (re)started MSTG generator's first writer.write()
+            // typically resolves on enqueue, so one restart attempt can
+            // present exactly one frame before re-wedging — a single
+            // progress poll must not clear the ladder, or every wedge in
+            // that sub-mode is misread as rung #1 forever.
+            if (this.consecutiveProgressPolls >= 2 && this.wedgeRestartCount > 0)
                 this.wedgeRestartCount = 0;
 
             return;
         }
+        this.consecutiveProgressPolls = 0;
         if (!diag)
             return;
 
