@@ -440,6 +440,12 @@ export class VideoPlayer {
     private async checkLiveness(): Promise<void> {
         if (!this.playerWorker || !this.isPlaying)
             return;
+        // A paused tile's stats don't move; sampling it would just bank an
+        // artificial freeze gap toward the wedge threshold once it resumes.
+        if (this.getExpectedPaused()) {
+            this.wedgeDetector.reset();
+            return;
+        }
 
         let stats: PlayerStats;
         try {
@@ -451,6 +457,9 @@ export class VideoPlayer {
         const diag = this.wedgeDetector.onSample(stats, now);
         if (this.wedgeDetector.hasProgress) {
             this.lastWedgeDiagnosis = null;
+            if (this.wedgeRestartCount > 0)
+                this.wedgeRestartCount = 0;
+
             return;
         }
         if (!diag)
@@ -715,6 +724,9 @@ export class VideoPlayer {
         if (this.isPlaying) return;
 
         this.isPlaying = true;
+        // stopPull (unlike stop) leaves the instance alive for a resumed
+        // startPull — re-arm the poller it tore down.
+        this.livenessTimer ??= setInterval(() => void this.checkLiveness(), 2_000);
         // Per-instance scope — refcounts across concurrent players so one
         // stopping doesn't park the peer that other players still need.
         Api.requireConnection(`VideoPlayer:${this.streamId}`);
@@ -1007,6 +1019,9 @@ export class VideoPlayer {
             this.currentAttempt = { attemptId, resolve, reject };
         });
 
+        // A stale freeze window from the previous (wedged) attempt must not
+        // carry over — the recovering stream needs a fresh seed sample.
+        this.wedgeDetector.reset();
         try {
             await this.startWorkerForAttempt(streamId);
         } catch (e) {
@@ -1123,11 +1138,17 @@ export class VideoPlayer {
         // suppresses the callback, `await settled` hangs, and restartLoopRunning stays true
         // forever, blocking any future startPull.
         this.isPlaying = false;
+        this.clearLivenessTimer();
         this.settleCurrentAttempt({ kind: 'error', error: new Error('VideoPlayer.stopPull') });
         void this.playerWorker.stop(this.streamId)
             .catch((e: unknown) => warnLog?.log('worker.stop error:', e));
     }
 
+    private clearLivenessTimer(): void {
+        if (this.livenessTimer === null) return;
+        clearInterval(this.livenessTimer);
+        this.livenessTimer = null;
+    }
 
     public async getDiagnosticsAsync(): Promise<RemoteStreamDiagnostics> {
         let stats: PlayerStats | null = null;
@@ -1314,8 +1335,6 @@ export class VideoPlayer {
         this.presentedFrameCount = sample.playerStats.presented;
         if (this.restartAttempts > 0)
             this.restartAttempts = 0;
-        if (this.wedgeRestartCount > 0)
-            this.wedgeRestartCount = 0;
 
         const nowMs = performance.now();
         if (this.lastLatencyTickMs > 0) {
@@ -1395,10 +1414,7 @@ export class VideoPlayer {
             clearInterval(this.audioCaTimer);
             this.audioCaTimer = null;
         }
-        if (this.livenessTimer !== null) {
-            clearInterval(this.livenessTimer);
-            this.livenessTimer = null;
-        }
+        this.clearLivenessTimer();
         if (!this.isPlaying) return;
 
         infoLog?.log(`VideoPlayer stop() called for stream ${this.streamId}, rendered=${this.renderFrameCount} frames, received=${this.receivedFrameCount}`);

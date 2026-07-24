@@ -68,7 +68,7 @@ let hooks: PlayerWorkerHooks | null = null;
 // can outlive a new player started for the same streamId, and a streamId key
 // would either suppress the new player's real terminal callbacks or have its
 // marker deleted out from under it by the zombie's own late cleanup.
-const locallyStopped = new Set<Player>();
+const locallyStopped = new WeakSet<Player>();
 const { warnLog } = getLogs('VideoPipeline');
 
 // A pipeline that ignores abort (dead MSTG track, a stuck bitmap conversion)

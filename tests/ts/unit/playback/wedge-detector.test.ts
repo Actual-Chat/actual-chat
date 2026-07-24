@@ -55,4 +55,28 @@ describe('WedgeDetector', () => {
         expect(d.onSample(statsAt({ bytesReceived: 200, presented: 10 }), 20_000)).toBeNull();
         expect(d.hasProgress).toBe(false);
     });
+
+    it('byte-starved samples do not age the freeze window', () => {
+        const d = new WedgeDetector(6_000);
+        d.onSample(statsAt({ bytesReceived: 100, presented: 5 }), 0);
+        // flowing + frozen for 4s
+        expect(d.onSample(statsAt({ bytesReceived: 200, presented: 5 }), 4_000)).toBeNull();
+        // starved (bytes frozen too) for 20s — must not count toward the window
+        expect(d.onSample(statsAt({ bytesReceived: 200, presented: 5 }), 24_000)).toBeNull();
+        // flowing again for 1s — cumulative flowing-frozen time is now 5s
+        expect(d.onSample(statsAt({ bytesReceived: 300, presented: 5 }), 25_000)).toBeNull();
+        // one more flowing second pushes cumulative flowing-frozen time to 6s
+        const diag = d.onSample(statsAt({ bytesReceived: 400, presented: 5 }), 26_000);
+        expect(diag).not.toBeNull();
+        expect(diag?.frozenMs).toBeGreaterThanOrEqual(6_000);
+    });
+
+    it('fresh byte flow after reset needs the full window', () => {
+        const d = new WedgeDetector(6_000);
+        d.onSample(statsAt({ bytesReceived: 100, presented: 5 }), 0);
+        d.onSample(statsAt({ bytesReceived: 200, presented: 6 }), 3_000);
+        d.reset();
+        expect(d.onSample(statsAt({ bytesReceived: 300, presented: 6 }), 20_000)).toBeNull();
+        expect(d.onSample(statsAt({ bytesReceived: 400, presented: 6 }), 25_000)).toBeNull();
+    });
 });
