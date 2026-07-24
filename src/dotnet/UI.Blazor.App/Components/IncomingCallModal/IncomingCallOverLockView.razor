@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualLab.Diagnostics
 @inherits ComputedStateComponent<AppUIHub, IncomingCallOverLockView.ComputedModel>
 @{
     var m = State.Value;
@@ -37,13 +38,18 @@
 
     private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
     protected override void OnAfterRender(bool firstRender) {
         // Bring the app forward over the keyguard only after the call screen is actually drawn, so
         // the lock screen never flashes the app's main content before the call screen.
         var isShowing = State.Value.Chat is not null;
+        if (firstRender)
+            DebugLog?.LogInformation("CALL_TRACE: OverLockView first render, isShowing={IsShowing}", isShowing);
         if (isShowing && !_shownOverLock) {
             _shownOverLock = true;
+            DebugLog?.LogInformation("CALL_TRACE: OverLockView became visible → OnOverLockScreenRendered");
             IncomingCallUI.OnOverLockScreenRendered();
         }
         else if (!isShowing && _shownOverLock)
@@ -60,21 +66,30 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var overLockChatId = await IncomingCallUI.OverLockChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (overLockChatId is not { } chatId)
+        if (overLockChatId is not { } chatId) {
+            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState → None (no overLockChatId)");
             return ComputedModel.None;
+        }
 
         var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat is null)
+        if (chat is null) {
+            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → None (chat not loaded)", chatId);
             return ComputedModel.None;
+        }
 
         var ringing = await IncomingCallUI.GetRingingCall(chatId, cancellationToken).ConfigureAwait(false);
-        if (ringing is not null)
+        if (ringing is not null) {
+            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Ringing", chatId);
             return new() { Chat = chat, Phase = CallPhase.Ringing, HasVideo = ringing.HasVideo };
+        }
 
         var inCall = await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
-        if (inCall)
+        if (inCall) {
+            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → InCall", chatId);
             return new() { Chat = chat, Phase = CallPhase.InCall };
+        }
 
+        DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → None (ring not confirmed, not in call)", chatId);
         return ComputedModel.None;
     }
 

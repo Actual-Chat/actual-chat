@@ -1,10 +1,12 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.Diagnostics;
 
 namespace ActualChat.App.Maui;
 
 public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposable
 {
     private ILogger Log => field ??= StaticLog.For<AndroidIncomingCallsBridge>();
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
     public void StartRinging()
         => IncomingCallRinger.Start();
@@ -36,6 +38,7 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
     public void RevealCallScreen()
         => BeginDispatchToMainThread(() => {
             try {
+                DebugLog?.LogInformation("CALL_TRACE: Bridge.RevealCallScreen → EnableShowWhenLocked + HideCallCover");
                 var activity = MainActivity.Current;
                 // Warm start: the call screen has now rendered, so bring the app over the keyguard
                 // (it wasn't shown over-lock eagerly to avoid a cover). Cold start: idempotent here,
@@ -51,6 +54,7 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
     public void MoveBehindLockScreen()
         => BeginDispatchToMainThread(() => {
             try {
+                DebugLog?.LogInformation("CALL_TRACE: Bridge.MoveBehindLockScreen → DisableShowWhenLocked + MoveTaskToBack");
                 var activity = MainActivity.Current;
                 activity.DisableShowWhenLocked();
                 activity.MoveTaskToBack(true);

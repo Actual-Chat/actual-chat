@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.Diagnostics;
 using Android.App;
 using Android.Content;
 using Android.Media;
@@ -23,6 +24,7 @@ public static class IncomingCallNotifications
 
     private static Context Context => Application.Context;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(IncomingCallNotifications));
+    private static ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
     public static string DeclineAction => Context.PackageName + ".IncomingCall.Decline";
     public static string AcceptExtraKey => Context.PackageName + ".IncomingCall.Accept";
@@ -130,6 +132,8 @@ public static class IncomingCallNotifications
         // take over once the app is up. The full-screen-intent path (over the lock screen / screen
         // off) additionally shows the full-screen call modal; a plain tap only shows the banner.
         var overLockScreen = intent.GetBooleanExtra(FullScreenExtraKey, false);
+        DebugLog?.LogInformation("CALL_TRACE: HandleViewIntent → dispatch OnRing #{ChatId}, overLockScreen={OverLockScreen}",
+            chatId, overLockScreen);
         _ = AppServicesAccessor.DispatchToBlazor(
             c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId, overLockScreen),
             "IncomingCallUI.OnRing", whenRendered: true);

@@ -73,5 +73,8 @@ public static partial class Constants
         // File upload
         public const bool FileAttachments = false;
         public const bool VideoTranscoding = false;
+
+        // Calls
+        public const bool AndroidIncomingCalls = false;
     }
 }

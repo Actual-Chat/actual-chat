@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualLab.Diagnostics;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using Android.App;
@@ -31,6 +32,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     */
 
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<FirebaseMessagingService>();
+    private static ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
  #pragma warning disable CS0169 // Field is never used
  #pragma warning disable CA1823
@@ -196,6 +198,8 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         // The system notification (silent channel) is always shown; its full-screen intent surfaces
         // the Blazor app over the lock screen / in the background. Whenever the Blazor scope is alive
         // we also register the ring so the in-app banner + ringer run.
+        DebugLog?.LogInformation("CALL_TRACE: HandleIncomingCall push #{ChatId}, scopeAlive={ScopeAlive}",
+            chatId, TryGetScopedServices(out _));
         IncomingCallNotifications.Show(data);
         if (TryGetScopedServices(out _))
             _ = DispatchToBlazor(
