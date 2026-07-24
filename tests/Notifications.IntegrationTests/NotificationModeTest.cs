@@ -133,7 +133,7 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var notification = info.Displayed.Should().ContainSingle().Subject;
-            notification.Text.Should().Be("sentinel");
+            notification.Text.Should().Be("Bobby: sentinel");
         }, TimeSpan.FromSeconds(10));
         Sink.Messages.Should().NotContain(m =>
             !m.IsDismissal && m.Notification!.Kind == NotificationKind.Mention && m.DeviceIds.Contains(deviceId));

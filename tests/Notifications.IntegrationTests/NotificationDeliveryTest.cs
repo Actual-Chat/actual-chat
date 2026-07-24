@@ -106,13 +106,13 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var displayed = info.Displayed.Should().ContainSingle().Subject;
-            displayed.Text.Should().Be("First in chat2");
+            displayed.Text.Should().Be("Bobby: First in chat2");
         }, TimeSpan.FromSeconds(10));
 
         // ...and the chat2 delivery push carries a badge of 1 (chat1 is muted, so excluded).
         await TestExt.When(() => {
             var chat2Push = Sink.Messages
-                .Where(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId) && m.Notification!.Text == "First in chat2")
+                .Where(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId) && m.Notification!.Text == "Bobby: First in chat2")
                 .ToList();
             chat2Push.Should().NotBeEmpty();
             chat2Push[^1].BadgeCount.Should().Be(1);

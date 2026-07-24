@@ -30,7 +30,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
         aliceNotification.Title.Should().Be($"Bobby @ {chat.Title}");
-        aliceNotification.Text.Should().Be("Ok!");
+        aliceNotification.Text.Should().Be("Bobby: Ok!");
 
         var bobNotification = await GetNotification(bob, entry.Id);
         bobNotification.Title.Should().Be($"Alice @ {chat.Title}");
@@ -57,7 +57,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
         aliceNotification.Title.Should().Be("Bobby @ Good chat");
-        aliceNotification.Text.Should().Be("Sent an image");
+        aliceNotification.Text.Should().Be("Bobby: Sent an image");
 
         var bobNotification = await GetNotification(bob, entry.Id);
         bobNotification.Title.Should().Be("Alice @ Good chat");
