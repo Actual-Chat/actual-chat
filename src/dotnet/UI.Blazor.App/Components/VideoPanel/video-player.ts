@@ -117,6 +117,9 @@ export interface RemoteStreamDiagnostics {
     bytesPerSec: number;
     // Per-FrameDropStage drop rates; same provenance as presentedPerSec.
     dropTracePerSecByStage: Record<string, number>;
+    stallDiagnosis: string | null;
+    stallAgeMs: number;
+    breadcrumbs: string[];
 }
 
 interface ViewportInfo {
@@ -1164,6 +1167,10 @@ export class VideoPlayer {
             bytesPerSec: this.bytesPerSec,
             dropTracePerSecByStage: Object.fromEntries(
                 Array.from(this.dropPerSec.entries(), ([k, v]) => [String(k), v])),
+            stallDiagnosis: this.lastWedgeDiagnosis,
+            stallAgeMs: this.lastWedgeAtMs > 0 ? Date.now() - this.lastWedgeAtMs : -1,
+            breadcrumbs: this.breadcrumbs.toArray()
+                .map(b => `[-${((Date.now() - b.atMs) / 1000).toFixed(0)}s] ${b.note}`),
         };
     }
 
