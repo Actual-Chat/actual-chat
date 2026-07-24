@@ -982,16 +982,31 @@ export class VirtualList {
         }
     };
 
-    private onInteractiveEvent = (event: TouchEvent): void => {
+    private onInteractiveEvent = (event: Event): void => {
         const itemRef = event.currentTarget as HTMLElement;
         let key = getItemKey(itemRef);
         if (!key)
             return;
 
+        // Only controls opted in via data-vl-hold arm an interactive pivot; plain taps (play, links,
+        // text selection) must not affect anchoring or stickiness. 'always' (expand / Show-more) holds
+        // the item and leaves the End edge - a deliberate "read history" action; 'keep-edge' (collapse)
+        // holds only when not pinned - when pinned the sticky re-pin absorbs the shrink instead.
+        const target = event.target as HTMLElement | null;
+        const holdRef = target?.closest<HTMLElement>('[data-vl-hold]');
+        if (!holdRef)
+            return;
+
+        const isPinned = this.state.stickyEdge != null;
+        if (holdRef.dataset.vlHold === 'keep-edge' && isPinned)
+            return;
+
+        if (isPinned)
+            this.setStickyEdge(null);
+
         // A control marked data-anchor="below" (the live block's Show-more pill) reveals rows ABOVE
         // itself. Hold the first item BELOW this one as the interactive pivot instead of this item, so
         // the revealed rows grow upward while everything from the control down keeps its screen position.
-        const target = event.target as HTMLElement | null;
         if (target?.closest('[data-anchor="below"]')) {
             const belowKey = this.getFirstItemKeyBelow(itemRef);
             if (belowKey)
@@ -2183,16 +2198,17 @@ export class VirtualList {
         await result;
     }
 
-    private applyScrollIntent(scrollIntent: ScrollIntent | null, hasInteractiveLayoutAnchor: boolean): void {
-        if (!hasInteractiveLayoutAnchor) {
-            scrollIntent?.scroll?.();
-            debugLog?.log(`applyScrollIntent: scroll set synchronously`, scrollIntent?.reason);
+    private applyScrollIntent(
+        scrollIntent: ScrollIntent | null,
+        hasInteractiveLayoutAnchor: boolean
+    ): void {
+        if (hasInteractiveLayoutAnchor) {
+            debugLog?.log(`applyScrollIntent: held by interactive pivot`, scrollIntent?.reason);
             return;
         }
 
-        if (this.state.stickyEdge && Math.abs(this.ref.scrollTop) > 50)
-            this.setStickyEdge(null);
-        debugLog?.log(`applyScrollIntent: scroll set interactive`, scrollIntent?.reason);
+        scrollIntent?.scroll?.();
+        debugLog?.log(`applyScrollIntent: scroll set synchronously`, scrollIntent?.reason);
     }
 
     // No scrollTop change: the cornerstone is held fixed, so writing containerTop alone keeps the view put.
