@@ -117,6 +117,14 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         if (!chat.IsMember())
             return;
 
+        // Same anti-spam gate as peer messaging: in a peer chat the audio/video (and other stream)
+        // permissions are stripped unless the recipient stored the caller's contact or replied to
+        // them (a block by the recipient leaves the contact non-regular too). So CanWriteAudio is the
+        // reused signal that this caller is allowed to reach the peer with a call.
+        if (chatId is PeerChatId && !chat.Rules.CanWriteAudio())
+            throw StandardError.Constraint(
+                "You can call this user only after they add you to their contacts or reply to you.");
+
         var callerAuthorId = chat.Rules.Author!.Id;
         if (invitees.Count == 0) {
             // Empty = ring every other chat member.
