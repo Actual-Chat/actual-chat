@@ -1,6 +1,6 @@
 import { getLogs } from 'logging';
 import { Api, streamingApi } from 'api';
-import { delayAsync } from 'actuallab-core';
+import { delayAsync, RingBuffer } from 'actuallab-core';
 import { ServerClock } from 'clocks';
 
 const RPC_SESSION_DEFAULT = '~';
@@ -18,6 +18,7 @@ import type {
 import { getAudioLatency, isSkipToAudioEnabled } from '../../Services/Video/audio-latency-registry';
 import type { RenderBackendKind } from '../../Services/Video/playback/render-backends';
 import type { PlayerStats } from '../../Services/Video/frame-envelopes';
+import { WedgeDetector, type WedgeDiagnosis } from '../../Services/Video/playback/wedge-detector';
 import {
     getCodecCandidates,
     selectDecoderCodec,
@@ -264,6 +265,12 @@ export class VideoPlayer {
     private startedAtMs: number;
 
     private audioCaTimer: ReturnType<typeof setInterval> | null = null;
+    private livenessTimer: ReturnType<typeof setInterval> | null = null;
+    private readonly wedgeDetector = new WedgeDetector();
+    private lastWedgeDiagnosis: string | null = null;
+    private lastWedgeAtMs = -1;
+    private lastWedgeReportAtMs = -1;
+    private readonly breadcrumbs = new RingBuffer<{ atMs: number; note: string }>(24);
     private readonly videoLagEma = new RunningEMA(0, 3, 0.3);
     private readonly displayLatencyEma = new RunningEMA(0, 3, 0.3);
     private readonly uplinkLatencyEma = new RunningEMA(0, 3, 0.3);
@@ -349,6 +356,7 @@ export class VideoPlayer {
         // lands on the audio timeline instead of the live edge. Cheap no-op
         // until a worker stream is active and a fresh audio latency exists.
         this.audioCaTimer = setInterval(() => this.pushAudioCaptureOffset(), 150);
+        this.livenessTimer = setInterval(() => void this.checkLiveness(), 2_000);
 
         // Diagnostics: measure display/compositor latency (present → on-screen)
         // via rVFC, the symmetric counterpart of audio's AudioContext output latency.
@@ -416,6 +424,50 @@ export class VideoPlayer {
             : (ServerClock.now() - audioLatencyMs) - this.startedAtMs;
         this.playerWorker.setAudioCaptureOffsetMs(this.streamId, caOffsetMs, rpcNoWait)
             .catch((e: unknown) => warnLog?.log('setAudioCaptureOffsetMs failed:', e));
+    }
+
+    private pushBreadcrumb(note: string): void {
+        this.breadcrumbs.pushTailAndMoveHeadIfFull({ atMs: Date.now(), note });
+        debugLog?.log(`[${this.streamId}] ${note}`);
+    }
+
+    private async checkLiveness(): Promise<void> {
+        if (!this.playerWorker || !this.isPlaying)
+            return;
+
+        let stats: PlayerStats;
+        try {
+            stats = await this.playerWorker.getStats(this.streamId);
+        } catch {
+            return;
+        }
+        const now = Date.now();
+        const diag = this.wedgeDetector.onSample(stats, now);
+        if (this.wedgeDetector.hasProgress) {
+            this.lastWedgeDiagnosis = null;
+            return;
+        }
+        if (!diag)
+            return;
+
+        this.lastWedgeDiagnosis = `${diag.kind}: frozen ${(diag.frozenMs / 1000).toFixed(1)}s; ${diag.detail}`;
+        this.lastWedgeAtMs = now;
+        this.onWedgeDetected(diag);
+    }
+
+    // Self-heal lands in a follow-up task; for now: breadcrumb + server-side
+    // stall report (the only channel that reaches dev logs without a console).
+    protected onWedgeDetected(diag: WedgeDiagnosis): void {
+        void diag;
+        const note = this.lastWedgeDiagnosis!;
+        this.pushBreadcrumb(note);
+        const now = Date.now();
+        if (this.lastWedgeReportAtMs > 0 && now - this.lastWedgeReportAtMs < 30_000)
+            return;
+
+        this.lastWedgeReportAtMs = now;
+        void this.blazorRef.invokeMethodAsync('OnPlaybackStalled', `wedge: ${note}`)
+            .catch((e: unknown) => warnLog?.log('OnPlaybackStalled error:', e));
     }
 
     setExpectedPaused(paused: boolean): void {
@@ -499,6 +551,7 @@ export class VideoPlayer {
                     },
                     onStreamEnded: (streamId: string, reason: string) => {
                         debugLog?.log(`Worker stream ended: stream=${streamId}, reason=${reason}`);
+                        this.pushBreadcrumb(`stream ended: ${reason}`);
                         if (reason === 'completed')
                             this.settleCurrentAttempt({ kind: 'completed' });
                         else
@@ -507,6 +560,7 @@ export class VideoPlayer {
                     },
                     onError: (streamId: string, error: string) => {
                         warnLog?.log(`Worker reported error for stream ${streamId}: ${error}`);
+                        this.pushBreadcrumb(`player-error: ${error}`);
                         // Terminal for this attempt (StreamStallTimer included), so the
                         // tile stops moving — beacon it, or the only record is this console.
                         void this.blazorRef.invokeMethodAsync('OnPlaybackStalled', `player-error: ${error}`)
@@ -848,6 +902,7 @@ export class VideoPlayer {
             warnLog?.log('startPull called but player not started');
             return;
         }
+        this.pushBreadcrumb(`startPull backend=${this.renderBackend.kind}`);
         infoLog?.log(
             `startPull:streamId=${streamId}, skipToMs=${skipToMs.toFixed(0)}, ` +
             `renderBackend=${this.renderBackend.kind}, isOffThread=${this.renderBackend.isOffThread}`);
@@ -896,6 +951,7 @@ export class VideoPlayer {
                         warnLog?.log(
                             `runPlaybackLoop: codec exhausted (${this.codecCategory}) — ` +
                             `requesting exclusion (${e.message})`);
+                        this.pushBreadcrumb(`codec exclusion requested: ${this.codecCategory}`);
                         void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
                         return;
                     }
@@ -912,6 +968,7 @@ export class VideoPlayer {
                 warnLog?.log(
                     `runPlaybackLoop: attempt ${this.restartAttempts} failed — ` +
                     `${e.message}; retrying in ${delayMs.toFixed(0)}ms`);
+                this.pushBreadcrumb(`attempt ${this.restartAttempts} failed: ${e.message}`);
                 await delayAsync(delayMs);
             }
         }
@@ -940,8 +997,12 @@ export class VideoPlayer {
             if (this.currentAttempt?.attemptId === attemptId)
                 this.currentAttempt = null;
             if (this.workerStreamActive) {
+                const stopStartedMs = Date.now();
                 try { await this.playerWorker.stop(streamId); }
                 catch { /* ignore */ }
+                const stopMs = Date.now() - stopStartedMs;
+                if (stopMs > 1_000)
+                    this.pushBreadcrumb(`worker.stop took ${stopMs}ms`);
                 this.workerStreamActive = false;
             }
         }
@@ -1124,6 +1185,7 @@ export class VideoPlayer {
             return;
 
         warnLog?.log(`fallbackFromMstgToCanvas: ${reason}`);
+        this.pushBreadcrumb(`mstg->canvas fallback: ${reason}`);
         this.renderBackend.dispose();
         this.renderBackend = new TransferableCanvasRenderBackend(this.canvas);
         this.applyBackendVisibility(this.canvas, this.videoEl);
@@ -1276,6 +1338,10 @@ export class VideoPlayer {
         if (this.audioCaTimer !== null) {
             clearInterval(this.audioCaTimer);
             this.audioCaTimer = null;
+        }
+        if (this.livenessTimer !== null) {
+            clearInterval(this.livenessTimer);
+            this.livenessTimer = null;
         }
         if (!this.isPlaying) return;
 
