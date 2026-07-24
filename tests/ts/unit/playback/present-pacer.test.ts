@@ -205,6 +205,24 @@ describe('presentPacer', () => {
         expect(stats.lastPresentAttemptAtMs).toBeGreaterThan(0);
     });
 
+    it('unwinds on abort while the sink is stuck', async () => {
+        const stats = createEmptyPlayerStats();
+        const abortController = new AbortController();
+        const sink: PresentSink = {
+            present: () => new Promise<boolean>(() => { /* never resolves */ }),
+        };
+        const items = [makeEnvelope(stats, 0, 0)];
+
+        const done = count(pipe(staticSource(items), presentPacer({
+            createSink: () => sink,
+            ...defaults(),
+            abortSignal: abortController.signal,
+        })));
+        setTimeout(() => abortController.abort(new Error('test abort')), 10);
+
+        await expect(done).resolves.toBeDefined();
+    });
+
     it('catch-up is an evenly spaced bounded overspeed, ramping with backlog', async () => {
         // arrange: 30fps frames; scheduled delay per frame reveals the chosen pace.
         async function delayFor(extraMs: number): Promise<number> {

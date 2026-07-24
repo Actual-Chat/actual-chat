@@ -1,4 +1,6 @@
+import { delayAsync } from 'actuallab-core';
 import { VIDEO } from 'app-constants';
+import { getLogs } from 'logging';
 import { createEmptyPlayerStats, type PlayerStats } from '../frame-envelopes';
 import type { DecoderLike } from '../operators/decode';
 import type { VideoFrameDto } from '../operators/pull';
@@ -64,6 +66,11 @@ let hooks: PlayerWorkerHooks | null = null;
 // stream) raises spurious terminal callbacks while the restart is
 // mid-flight.
 const locallyStopped = new Set<string>();
+const { warnLog } = getLogs('VideoPipeline');
+
+// A pipeline that ignores abort (dead MSTG track, a stuck bitmap conversion)
+// must not block restarts forever — bound the wait and abandon it past this.
+const STOP_HANG_TIMEOUT_MS = 8_000;
 
 export function __setPlayerWorkerHooks(next: PlayerWorkerHooks | null): void {
     hooks = next;
@@ -286,14 +293,30 @@ export const playerWorkerImpl: PlayerWorker = {
             const all = Array.from(players.entries());
             for (const [id, _p] of all) locallyStopped.add(id);
             for (const [, p] of all) p.stop();
-            await Promise.allSettled(all.map(([, p]) => p.whenDone()));
+            await Promise.race([
+                Promise.allSettled(all.map(([, p]) => p.whenDone())),
+                delayAsync(STOP_HANG_TIMEOUT_MS),
+            ]);
+            for (const [id, p] of all) {
+                if (players.get(id) === p)
+                    players.delete(id);
+            }
             return;
         }
         const player = players.get(streamId);
         if (!player) return;
         locallyStopped.add(streamId);
         player.stop();
-        try { await player.whenDone(); } catch { /* local stop — suppressed */ }
+        const unwound = await Promise.race([
+            player.whenDone().then(() => true, () => true),
+            delayAsync(STOP_HANG_TIMEOUT_MS).then(() => false),
+        ]);
+        if (!unwound && players.get(streamId) === player) {
+            // A pipeline that ignores abort must not block restarts forever:
+            // abandon it (source already aborted) so start() can reuse the slot.
+            warnLog?.log(`stop: pipeline ${streamId} did not unwind in ${STOP_HANG_TIMEOUT_MS}ms — abandoning`);
+            players.delete(streamId);
+        }
     },
 };
 
@@ -301,7 +324,10 @@ export async function disposePlayerWorker(): Promise<void> {
     if (players.size > 0) {
         const all = Array.from(players.values());
         for (const p of all) p.stop();
-        await Promise.allSettled(all.map(p => p.whenDone()));
+        await Promise.race([
+            Promise.allSettled(all.map(p => p.whenDone())),
+            delayAsync(STOP_HANG_TIMEOUT_MS),
+        ]);
         players.clear();
     }
     if (session) {
