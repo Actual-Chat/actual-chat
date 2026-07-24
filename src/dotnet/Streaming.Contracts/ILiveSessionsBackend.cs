@@ -17,6 +17,8 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     Task<ApiArray<AuthorId>> ListParticipants(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(ConsolidationDelay = 0.5)]
     Task<bool> HasRecorder(ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<CallState?> GetCallState(ChatId chatId, CancellationToken cancellationToken);
 
     Task OnStreamRegistered(
         ChatId chatId,
@@ -49,6 +51,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         bool hasVideo,
         CancellationToken cancellationToken);
     Task CancelCall(ChatId chatId, AuthorId callerAuthorId, CancellationToken cancellationToken);
+    Task DismissCallStatus(ChatId chatId, CancellationToken cancellationToken);
     // Callee methods
     Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
     Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);

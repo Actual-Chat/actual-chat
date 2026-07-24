@@ -1,0 +1,62 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Live
+@inherits ComputedStateComponent<AppUIHub, CallStatus>
+@{
+    var status = State.Value;
+}
+
+<Banner
+    IsVisible="@(status != CallStatus.None)"
+    Class="outgoing-call-banner">
+    <Icon><i class="@Icon(status) c-icon"></i></Icon>
+    <Body>
+        <div class="c-text">@Text(status)</div>
+    </Body>
+    <Buttons>
+        <HeaderButton
+            Class="btn-close-call"
+            Click="@OnClose"
+            Tooltip="@(status == CallStatus.Dialing ? "Cancel call" : "Close")"
+            TooltipPosition="FloatingPosition.Top">
+            <i class="icon-close text-2xl"></i>
+        </HeaderButton>
+    </Buttons>
+</Banner>
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<CallStatus>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<CallStatus>.Options() {
+                InitialValue = CallStatus.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override Task<CallStatus> ComputeState(CancellationToken cancellationToken)
+        => LiveSessionUI.GetCallStatus(Chat.Id, cancellationToken);
+
+    private Task OnClose()
+        => State.Value == CallStatus.Dialing
+            ? LiveSessionUI.CancelCall(Chat.Id, CancellationToken.None)
+            : LiveSessionUI.DismissCallStatus(Chat.Id, CancellationToken.None);
+
+    private static string Text(CallStatus status) => status switch {
+        CallStatus.Dialing => "You are calling…",
+        CallStatus.Accepted => "Call accepted",
+        CallStatus.Declined => "Call declined",
+        CallStatus.NoAnswer => "No answer",
+        _ => "",
+    };
+
+    private static string Icon(CallStatus status) => status switch {
+        CallStatus.Accepted => "icon-phone-call",
+        CallStatus.Declined => "icon-phone-hang-up",
+        CallStatus.NoAnswer => "icon-phone-missed",
+        _ => "icon-phone-call",
+    };
+}

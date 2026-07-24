@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-using ActualChat.Chat;
 using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
@@ -16,11 +14,17 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     // Refresh interval for active participations; must stay under the server's
     // ParticipantStaleness (90s) so a still-joined viewer never expires mid-call.
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(45);
+    // Give up watching if the call we just started never shows up as dialing.
+    private static readonly TimeSpan DialingWaitTimeout = TimeSpan.FromSeconds(15);
+
+    private readonly ConcurrentDictionary<ChatId, CancellationTokenSource> _callWatches = new();
 
     private ILiveSessions LiveSessions => Hub.LiveSessions;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private Moment Now => Clocks.CpuClock.Now;
 
     void INotifyInitialized.Initialized()
         => this.Start();
@@ -56,8 +60,15 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task MuteAll(ChatId chatId, bool muted, CancellationToken cancellationToken)
         => LiveSessions.MuteAll(Session, chatId, muted, cancellationToken);
 
-    public Task StartCall(ChatId chatId, ApiArray<AuthorId> invitees, bool hasVideo, CancellationToken cancellationToken)
-        => LiveSessions.StartCall(Session, chatId, invitees, hasVideo, cancellationToken);
+    public async Task StartCall(
+        ChatId chatId,
+        ApiArray<AuthorId> invitees,
+        bool hasVideo,
+        CancellationToken cancellationToken)
+    {
+        await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, cancellationToken).ConfigureAwait(false);
+        StartCallWatch(chatId);
+    }
 
     public Task AcceptCall(ChatId chatId, CancellationToken cancellationToken)
         => LiveSessions.AcceptCall(Session, chatId, cancellationToken);
@@ -66,7 +77,17 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         => LiveSessions.DeclineCall(Session, chatId, cancellationToken);
 
     public Task CancelCall(ChatId chatId, CancellationToken cancellationToken)
-        => LiveSessions.CancelCall(Session, chatId, cancellationToken);
+    {
+        StopCallWatch(chatId);
+        return LiveSessions.CancelCall(Session, chatId, cancellationToken);
+    }
+
+    [ComputeMethod]
+    public virtual Task<CallStatus> GetCallStatus(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.GetCallStatus(Session, chatId, cancellationToken);
+
+    public Task DismissCallStatus(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.DismissCallStatus(Session, chatId, cancellationToken);
 
     public Task LeaveCall(ChatId chatId, CancellationToken cancellationToken)
         => LiveSessions.LeaveCall(Session, chatId, cancellationToken);
@@ -175,5 +196,66 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             result[videoChatId] = ParticipationKind.VideoView;
 
         return result.ToImmutable();
+    }
+
+    // Private methods
+
+    private void StartCallWatch(ChatId chatId)
+    {
+        StopCallWatch(chatId);
+        var cts = StopToken.CreateLinkedTokenSource();
+        _callWatches[chatId] = cts;
+        _ = WatchOutgoingCall(chatId, cts.Token);
+    }
+
+    private void StopCallWatch(ChatId chatId)
+    {
+        if (_callWatches.TryRemove(chatId, out var cts))
+            cts.CancelAndDisposeSilently();
+    }
+
+    private async Task WatchOutgoingCall(ChatId chatId, CancellationToken cancellationToken)
+    {
+        try {
+            var watchStartedAt = Now;
+            var isDialing = false;
+            var computed = await Computed
+                .Capture(() => Get(chatId, cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            while (!cancellationToken.IsCancellationRequested) {
+                var live = computed.Value;
+                if (live is { Kind: LiveSessionKind.Dialing })
+                    isDialing = true;
+                else if (isDialing) {
+                    // A session that outlives dialing was answered; a vanished one ended without one.
+                    if (live is not null)
+                        await JoinAnsweredCall(chatId, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+                else if (Now - watchStartedAt > DialingWaitTimeout)
+                    return;
+
+                await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+                computed = await computed.Update(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "WatchOutgoingCall failed for chat #{ChatId}", chatId);
+        }
+        finally {
+            _callWatches.TryRemove(chatId, out _);
+        }
+    }
+
+    private async Task JoinAnsweredCall(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Placing a call is itself the intent to talk, so answering it puts the caller on the line.
+        // A denied mic still joins them — listening only, same as anywhere else.
+        await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
+        var hasMic = await AudioRecorder.MicrophonePermission
+            .CheckOrRequest(cancellationToken)
+            .ConfigureAwait(false);
+        if (hasMic)
+            await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
     }
 }

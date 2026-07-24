@@ -782,6 +782,187 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
+    public async Task StartCallSetsDialingStatus()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // assert — the caller sees Dialing right away
+        var callState = await backend.GetCallState(chatId, default);
+        callState.Should().NotBeNull();
+        callState!.Status.Should().Be(CallStatus.Dialing);
+        callState.CallerId.Should().Be(bobAuthor.Id);
+    }
+
+    [Fact]
+    public async Task AcceptSetsAcceptedStatus()
+    {
+        // arrange — Bob rings Alice
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — Alice answers
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert — the caller is briefly told the call was accepted
+        var callState = await backend.GetCallState(chatId, default);
+        callState.Should().NotBeNull();
+        callState!.Status.Should().Be(CallStatus.Accepted);
+    }
+
+    [Fact]
+    public async Task DeclineLeavesDeclinedStatus()
+    {
+        // arrange — Bob rings Alice
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — Alice declines, which ends the call
+        await backend.DeclineCall(chatId, aliceAuthor.Id, default);
+
+        // assert — the session is gone, but Bob is still told why
+        (await backend.GetState(chatId, default)).Should().BeNull();
+        var callState = await backend.GetCallState(chatId, default);
+        callState.Should().NotBeNull();
+        callState!.Status.Should().Be(CallStatus.Declined);
+        callState.CallerId.Should().Be(bobAuthor.Id);
+
+        // dismiss clears it with the session already gone, so nothing falls back to "calling"
+        await backend.DismissCallStatus(chatId, default);
+        (await backend.GetCallState(chatId, default)).Should().BeNull();
+        (await backend.GetState(chatId, default)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CancelClearsStatus()
+    {
+        // arrange — Bob rings Alice
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — Bob hangs up before anyone answers
+        await backend.CancelCall(chatId, bobAuthor.Id, default);
+
+        // assert — hanging up myself leaves no status
+        (await backend.GetCallState(chatId, default)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task FreshDialingCallIsNotClosedBySelfHeal()
+    {
+        // arrange — Bob rings Alice
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — the ring is fresh; repeated observation must not trip the no-fresh-ring finalizer
+        for (var i = 0; i < 3; i++) {
+            var state = await backend.GetState(chatId, default);
+            state.Should().NotBeNull("a still-ringing dialing call must stay alive");
+            state!.IsDialing.Should().BeTrue();
+        }
+        (await backend.GetCallState(chatId, default))!.Status.Should()
+            .Be(CallStatus.Dialing, "nobody has failed to answer yet");
+    }
+
+    [Fact]
+    public async Task CallStatusGoesToTheCallerOnly()
+    {
+        // arrange — Bob rings Alice
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — Alice declines
+        await backend.DeclineCall(chatId, aliceAuthor.Id, default);
+
+        // assert — the session-scoped facade (what the UI calls) shows it to Bob and hides it from Alice
+        var bobSessions = bob.AppServices.GetRequiredService<ILiveSessions>();
+        var aliceSessions = alice.AppServices.GetRequiredService<ILiveSessions>();
+        (await bobSessions.GetCallStatus(bob.Session, chatId, default)).Should().Be(CallStatus.Declined);
+        (await aliceSessions.GetCallStatus(alice.Session, chatId, default)).Should().Be(CallStatus.None);
+    }
+
+    [Fact]
+    public async Task CallStatusInvalidatesAnAlreadyObservedValue()
+    {
+        // arrange — Bob rings Alice; Bob is already observing the status, like the banner is
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // capture on the session-scoped facade — exactly what the client's banner subscribes to over RPC
+        var sessions = bob.AppServices.GetRequiredService<ILiveSessions>();
+        var cStatus = await Computed.Capture(() => sessions.GetCallStatus(bob.Session, chatId, default));
+        cStatus.Value.Should().Be(CallStatus.Dialing);
+
+        // act — Alice declines
+        await backend.DeclineCall(chatId, aliceAuthor.Id, default);
+
+        // assert — the captured computed flips Dialing → Declined on its own, without a fresh Capture
+        await ComputedTest.When(async ct => {
+            var status = await sessions.GetCallStatus(bob.Session, chatId, ct);
+            status.Should().Be(CallStatus.Declined);
+        }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public async Task CancelCallEndsTheCall()
     {
         // arrange

@@ -17,6 +17,9 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<bool> HasRecorder(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<CallStatus> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     Task SetParticipation(
         Session session,
@@ -37,6 +40,7 @@ public interface ILiveSessions : IComputeService
         bool hasVideo,
         CancellationToken cancellationToken);
     Task CancelCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
     // Callee methods
     Task AcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken);
     Task DeclineCall(Session session, ChatId chatId, CancellationToken cancellationToken);
