@@ -31,7 +31,7 @@ public class RetranscribeNotifyFlowTest(
         var entry = await Tester.RecordVoiceEntry(chat.Id, Languages.English);
 
         var notification = await Tester.WaitForChatEntryNotification(alice.Id, entry.Id);
-        notification.Text.Should().StartWith(FakeRefineTranscriber.Marker);
+        notification.Text.Should().StartWith("Bobby: " + FakeRefineTranscriber.Marker);
         notification.EntryId.Should().Be(entry.Id);
     }
 
@@ -50,7 +50,7 @@ public class RetranscribeNotifyFlowTest(
         var entry = await Tester.RecordVoiceEntry(chat.Id, Languages.English);
 
         var notification = await Tester.WaitForChatEntryNotification(alice.Id, entry.Id);
-        notification.Text.Should().NotStartWith(FakeRefineTranscriber.Marker);
+        notification.Text.Should().NotContain(FakeRefineTranscriber.Marker);
         notification.Text.Should().NotBeNullOrEmpty();
         notification.EntryId.Should().Be(entry.Id);
     }
@@ -74,7 +74,7 @@ public class RetranscribeNotifyFlowTest(
         var entry = await Tester.RecordVoiceEntry(chat.Id, Languages.English, VoiceMode.JustText);
 
         var notification = await Tester.WaitForChatEntryNotification(alice.Id, entry.Id);
-        notification.Text.Should().NotStartWith(FakeRefineTranscriber.Marker);
+        notification.Text.Should().NotContain(FakeRefineTranscriber.Marker);
         notification.Text.Should().NotBeNullOrEmpty();
         notification.EntryId.Should().Be(entry.Id);
         transcribeCallCount.Should().Be(0, "no audio → no OpenAI retranscription should be triggered");
