@@ -1,3 +1,4 @@
+using System.Text;
 using FirebaseAdmin.Messaging;
 
 namespace ActualChat.Notifications;
@@ -9,6 +10,9 @@ public class FirebaseMessagingClient(
     ILogger<FirebaseMessagingClient> log)
     : IFirebaseMessagingClient
 {
+    private const int MaxFcmPayloadBytes = 4096;
+    private const int FcmPayloadMargin = 512;
+
     private UrlMapper UrlMapper { get; } = urlMapper;
     private FirebaseMessaging FirebaseMessaging { get; } = firebaseMessaging;
     private ICommander Commander { get; } = commander;
@@ -85,8 +89,17 @@ public class FirebaseMessagingClient(
             { Constants.Notification.MessageDataKeys.Body, content },
             { Constants.Notification.MessageDataKeys.ImageUrl, absoluteIconUrl },
         };
-        if (notification is ChatEntryRelatedNotification { RecentMessages.Count: > 0 } coalesced)
-            androidData.Add(Constants.Notification.MessageDataKeys.Messages, PushMessage.ToJson(coalesced.RecentMessages));
+        if (notification is ChatEntryRelatedNotification { RecentMessages.Count: > 0 } coalesced) {
+            // FCM rejects messages over 4KB, which would drop the push entirely — so the transcript
+            // key gets only the space the other data values leave, and is omitted when even one
+            // message can't fit (the Body fallback still renders).
+            var usedBytes = data.Concat(androidData)
+                .Sum(kv => Encoding.UTF8.GetByteCount(kv.Key) + Encoding.UTF8.GetByteCount(kv.Value));
+            var budget = Math.Min(PushMessage.MaxJsonLength, MaxFcmPayloadBytes - FcmPayloadMargin - usedBytes);
+            var json = PushMessage.ToJson(coalesced.RecentMessages, budget);
+            if (!json.IsNullOrEmpty())
+                androidData.Add(Constants.Notification.MessageDataKeys.Messages, json);
+        }
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
             // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
