@@ -17,7 +17,7 @@ public class LiveVideoStreamsTest
 
         var result = LiveVideoStreams.GetUpgradedStreams(previous, current).ToArray();
 
-        result.Should().ContainSingle(x => x.StreamId == "screen" && x.WasAbsent);
+        result.Should().Equal(("screen", true));
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class LiveVideoStreamsTest
 
         var result = LiveVideoStreams.GetUpgradedStreams(null, current).ToArray();
 
-        result.Should().ContainSingle(x => x.StreamId == "screen" && x.WasAbsent);
+        result.Should().Equal(("screen", true));
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public class LiveVideoStreamsTest
         var result = LiveVideoStreams.GetUpgradedStreams(previous, current).ToArray();
 
         // assert
-        result.Should().ContainSingle(x => x.StreamId == "s1" && x.WasAbsent);
+        result.Should().Equal(("s1", true));
     }
 
     [Fact]
@@ -57,7 +57,46 @@ public class LiveVideoStreamsTest
         var result = LiveVideoStreams.GetUpgradedStreams(previous, current).ToArray();
 
         // assert
-        result.Should().ContainSingle(x => x.StreamId == "s1" && !x.WasAbsent);
+        result.Should().Equal(("s1", false));
+    }
+
+    [Fact]
+    public void ShouldSendReAddPli_NoPriorStampAllowsPli()
+    {
+        // arrange
+        var now = Moment.Now;
+
+        // act
+        var result = LiveVideoStreams.ShouldSendReAddPli(null, now, TimeSpan.FromSeconds(30));
+
+        // assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShouldSendReAddPli_PriorStampWithinCooldownSuppressesPli()
+    {
+        // arrange
+        var now = Moment.Now;
+        var lastPliAt = now - TimeSpan.FromSeconds(10);
+
+        // act
+        var result = LiveVideoStreams.ShouldSendReAddPli(lastPliAt, now, TimeSpan.FromSeconds(30));
+
+        // assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldSendReAddPli_PriorStampAtOrBeyondCooldownAllowsPli()
+    {
+        // arrange
+        var now = Moment.Now;
+        var cooldown = TimeSpan.FromSeconds(30);
+
+        // act + assert
+        LiveVideoStreams.ShouldSendReAddPli(now - cooldown, now, cooldown).Should().BeTrue();
+        LiveVideoStreams.ShouldSendReAddPli(now - cooldown - TimeSpan.FromSeconds(1), now, cooldown).Should().BeTrue();
     }
 
     [Fact]
