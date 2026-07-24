@@ -14,6 +14,7 @@ export interface MstgPresentOptions {
     holdMs?: number;
     getAudioCaptureOffsetMs?: () => number | null;
     stats?: PlayerStats;
+    abortSignal?: AbortSignal;
 }
 
 export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame, void> {
@@ -24,6 +25,7 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
         delayFn: opts.delayFn,
         holdMs: opts.holdMs,
         getAudioCaptureOffsetMs: opts.getAudioCaptureOffsetMs,
+        abortSignal: opts.abortSignal,
         createSink: (): PresentSink => {
             const writer = opts.getWriter();
             return {

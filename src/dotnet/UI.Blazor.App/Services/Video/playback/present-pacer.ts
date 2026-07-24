@@ -1,6 +1,6 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { RunningEMA } from 'math';
-import { delayAsync } from 'actuallab-core';
+import { abortPromise, delayAsync } from 'actuallab-core';
 import { DeviceInfo } from 'device-info';
 import { aggregateDropTrace, updatePlaybackRateEma, type DecodedFrame } from '../frame-envelopes';
 import { FrameDropStage } from '../frame-drop-trace';
@@ -62,6 +62,9 @@ export interface PresentPacerOptions {
     // no paired audio. When set, video may sprint to catch up only while it's
     // behind this point; it never sprints past audio.
     getAudioCaptureOffsetMs?: () => number | null;
+    // Bounds the present await and the pacing sleep so a wedged sink (dead MSTG
+    // track, a stuck bitmap conversion) can't hang teardown forever.
+    abortSignal?: AbortSignal;
 }
 
 const DEFAULT_HOLD_MS = 500;
@@ -91,6 +94,10 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
     return source => from(impl(source));
 
     async function* impl(source: AsyncIterable<DecodedFrame>): AsyncIterable<void> {
+        const abortSignal = opts.abortSignal;
+        const abortWait: Promise<'aborted'> | null = abortSignal
+            ? abortPromise(abortSignal).catch((): 'aborted' => 'aborted')
+            : null;
         let sink: PresentSink | null = null;
         let lastWriteAt: number | null = null;
         let prevCapturedAt: number | null = null;
@@ -181,19 +188,33 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                     if (nextWriteAt > now) {
                         const sleepMs = nextWriteAt - now - PRESENT_LEAD_MS;
                         if (sleepMs > 0)
-                            await delayFn(sleepMs);
+                            await (abortWait ? Promise.race([delayFn(sleepMs), abortWait]) : delayFn(sleepMs));
+                        if (abortSignal?.aborted)
+                            return;
                     }
 
                     sink ??= createSink();
                     let presented = false;
+                    let aborted = false;
                     try {
                         decoded.stats.lastPresentAttemptAtMs = Date.now();
                         decoded.stats.presentState = 'sink-await';
-                        presented = await sink.present(decoded.frame);
-                    } finally {
-                        if (!presented) {
-                            decoded.stats.pendingPresenterDrops++;
+                        const presentP = sink.present(decoded.frame);
+                        if (abortWait) {
+                            presentP.catch(() => { /* late rejection of an abandoned present */ });
+                            const winner = await Promise.race([presentP, abortWait]);
+                            if (winner === 'aborted') {
+                                aborted = true;
+                                return;
+                            }
+                            presented = winner;
                         } else {
+                            presented = await presentP;
+                        }
+                    } finally {
+                        if (!presented && !aborted) {
+                            decoded.stats.pendingPresenterDrops++;
+                        } else if (presented) {
                             // Carry-forward Option A: every successful present
                             // attributes the upstream trace AND any presenter
                             // drops accumulated since the previous accept to
