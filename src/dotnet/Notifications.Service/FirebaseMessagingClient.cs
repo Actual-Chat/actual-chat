@@ -80,6 +80,13 @@ public class FirebaseMessagingClient(
         };
         if (lastEntryLocalId > 0)
             data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString());
+        var androidData = new Dictionary<string, string>() {
+            { Constants.Notification.MessageDataKeys.Title, title },
+            { Constants.Notification.MessageDataKeys.Body, content },
+            { Constants.Notification.MessageDataKeys.ImageUrl, absoluteIconUrl },
+        };
+        if (notification is ChatEntryRelatedNotification { RecentMessages.Count: > 0 } coalesced)
+            androidData.Add(Constants.Notification.MessageDataKeys.Messages, PushMessage.ToJson(coalesced.RecentMessages));
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
             // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
@@ -88,11 +95,7 @@ public class FirebaseMessagingClient(
             Android = new AndroidConfig {
                 // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
                 // Notification = default,
-                Data = new Dictionary<string, string>() {
-                    { Constants.Notification.MessageDataKeys.Title, title },
-                    { Constants.Notification.MessageDataKeys.Body, content },
-                    { Constants.Notification.MessageDataKeys.ImageUrl, absoluteIconUrl },
-                },
+                Data = androidData,
                 Priority = Priority.High,
                 // CollapseKey = default, /* We don't use collapsible messages */
                 TimeToLive = TimeSpan.FromDays(10),

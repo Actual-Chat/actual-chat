@@ -279,13 +279,14 @@ public static partial class Constants
             public const string Title = "title";
             public const string Body = "body";
             public const string ImageUrl = "imageUrl";
+            public const string Messages = "messages";
             public const string Timestamp = "timestamp";
             public const string DismissedIds = "dismissedIds";
             public const string DismissedTags = "dismissedTags";
             public const string Silent = "silent";
 
             public static readonly string[] ValidKeys = {
-                Body, ChatId, ChatEntryId, DismissedIds, DismissedTags, LastEntryLocalId, Icon, ImageUrl, Kind, Link, NotificationId, Silent, Tag, Title, Timestamp
+                Body, ChatId, ChatEntryId, DismissedIds, DismissedTags, LastEntryLocalId, Icon, ImageUrl, Kind, Link, Messages, NotificationId, Silent, Tag, Title, Timestamp
             };
 
             public static bool IsValidKey(string key)
