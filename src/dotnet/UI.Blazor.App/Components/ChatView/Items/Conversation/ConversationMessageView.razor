@@ -40,7 +40,10 @@
                     <div class="c-lc-title">
                         <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
                         <span class="c-lc-name">@m.Title.Text</span>
-                        <HeaderButton Class="c-lc-expand" Click="@ToggleShowMessage">
+                        <HeaderButton
+                            Class="c-lc-expand"
+                            data-vl-hold="@(state.IsExpanded ? "keep-edge" : "always")"
+                            Click="@ToggleShowMessage">
                             <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
                         </HeaderButton>
                     </div>
@@ -79,7 +82,12 @@
                     <LastEntriesPreview Entries="@tailPreview" Faded="true"/>
                 }
                 @if (!state.IsExpanded && state.SwallowedCount > 0) {
-                    <button type="button" class="c-lc-showmore" data-anchor="below" @onclick="@OnRevealMore">
+                    <button
+                        type="button"
+                        class="c-lc-showmore"
+                        data-anchor="below"
+                        data-vl-hold="always"
+                        @onclick="@OnRevealMore">
                         <i class="icon-chevron-up"></i>
                         <span>Show @state.RevealBatch of @state.SwallowedCount</span>
                     </button>
@@ -101,7 +109,7 @@
                 <div class="c-short">
                     <MarkupView Markup="@m.Description.Markup"/>
                     @if (!_isOpen) {
-                        <span class="show-more-btn" @onclick="@ToggleDetails"> Show items</span>
+                        <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails"> Show items</span>
                     }
                 </div>
             </div>
@@ -109,7 +117,7 @@
                 <div class="c-long">
                     <div class="c-long-content @detailsCls">
                         <MarkupView Markup="@m.Summary.Markup"/>
-                        <span class="show-more-btn" @onclick="@ToggleDetails"> Hide items</span>
+                        <span class="show-more-btn" data-vl-hold="keep-edge" @onclick="@ToggleDetails"> Hide items</span>
                     </div>
                 </div>
             }
