@@ -120,6 +120,25 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     @apply mt-4;
 }
 
+/* ── Outgoing-call banner ── */
+
+.banner.outgoing-call-banner {
+    @apply h-12;
+    @apply my-1;
+}
+.outgoing-call-banner .c-icon {
+    @apply text-01;
+}
+.outgoing-call-banner .banner-body {
+    @apply flex-x items-center justify-center;
+}
+.outgoing-call-banner .c-text {
+    @apply text-caption-1 text-01;
+}
+.outgoing-call-banner .banner-buttons .btn-h.btn-close-call i {
+    @apply text-02;
+}
+
 /* ── Live-location banner ── */
 
 .banner.live-location-banner {

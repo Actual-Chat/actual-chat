@@ -39,6 +39,25 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         return await Backend.HasRecorder(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<CallStatus> GetCallStatus(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        var callState = await Backend.GetCallState(chatId, cancellationToken).ConfigureAwait(false);
+        // Only the caller sees the status of their outgoing call.
+        return callState is not null && callState.CallerId == chat.Rules.Author?.Id
+            ? callState.Status
+            : CallStatus.None;
+    }
+
+    public async Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (await GetCallStatus(session, chatId, cancellationToken).ConfigureAwait(false) != CallStatus.None)
+            await Backend.DismissCallStatus(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task SetParticipation(
         Session session,
         ChatId chatId,

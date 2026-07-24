@@ -27,13 +27,21 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // Grace once nobody is recording/streaming before a phone-mode session winds down.
     private static readonly TimeSpan RecordingCloseGrace = TimeSpan.FromSeconds(30);
     // How long a call rings an unanswered invitee before it's marked Missed and the ring stops.
-    private static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(40);
+    // TODO: revert to 40s - lowered to 20s only for call-status testing.
+    private static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(20);
     // Redis field TTL on a ringing invite: the no-observer backstop that expires a stale ring even
     // if the caller disconnects and nobody polls GetState. Longer than RingTimeout so the observed
     // path marks it Missed first; a status change rewrites the field without this short TTL.
     private static readonly TimeSpan RingTtl = TimeSpan.FromSeconds(60);
+    // How long a dialing call state lingers with no observer before its Redis key lapses - it covers
+    // the ring plus a backstop; a terminal transition overwrites it sooner.
+    private static readonly TimeSpan DialingStateTtl = TimeSpan.FromSeconds(60);
+    // How long the caller keeps being shown a resolved call status (accepted / declined / no answer),
+    // once the session itself is gone.
+    private static readonly TimeSpan ResolvedStateTtl = TimeSpan.FromSeconds(30);
 
     private readonly RedisScope<LiveSessionState> _redisScope;
+    private readonly RedisScope<CallState> _callStates;
     private readonly RedisMultiHashMap<ParticipationInfo> _participants;
     private readonly RedisMultiHashMap<CallInvite> _invites;
     private readonly AsyncLockSet<ChatId> _changeLocks = new(LockReentryMode.CheckedFail);
@@ -67,6 +75,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
         _redisScope = new RedisScope<LiveSessionState>(redisDb, "live-session:state", Log) {
             DefaultTtl = KeyTtl,
+        };
+        _callStates = new RedisScope<CallState>(redisDb, "live-session:call-state", Log) {
+            DefaultTtl = ResolvedStateTtl,
         };
         _participants = new RedisMultiHashMap<ParticipationInfo>(redisDb, "live-session:participants", Log) {
             HashTtl = KeyTtl,
@@ -114,8 +125,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             _ = StartClosingGrace(chatId);
 
         // Prompt ring timeout while this session is observed (the self-heal below re-runs GetState);
-        // the RingTtl field expiry in Redis is the backstop when no one observes.
+        // the RingTtl field expiry in Redis is the backstop when no one observes. A dialing call whose
+        // ring has already lapsed (or vanished via RingTtl) is finalized too, so it can't linger unanswered.
         if (state.IsCall && await HasStaleRinging(chatId).ConfigureAwait(false))
+            _ = ExpireRings(chatId);
+        else if (state.IsDialing && !await HasFreshRing(chatId).ConfigureAwait(false))
             _ = ExpireRings(chatId);
 
         computed.Invalidate(SelfHealDelay);
@@ -240,6 +254,26 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             // Re-check so a stale (crashed) recorder drops without an explicit off signal.
             computed.Invalidate(SelfHealDelay);
         return hasRecorder;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<CallState?> GetCallState(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Captured before the awaits below — see GetState.
+        var computed = Computed.GetCurrent();
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
+        var callState = await SafeGetCallState(chatId).ConfigureAwait(false);
+        if (callState is null)
+            return null;
+
+        // Nothing invalidates a Redis TTL expiry, so age the observed value out alongside the key.
+        var expiresIn = callState.ChangedAt + CallStateTtl(callState.Status) - Clocks.SystemClock.Now;
+        if (expiresIn <= TimeSpan.Zero)
+            return null;
+
+        computed.Invalidate(expiresIn);
+        return callState;
     }
 
     public virtual async Task OnStreamRegistered(
@@ -489,6 +523,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 Version = VersionGenerator.NextVersion(state?.Version ?? 0),
             };
             await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
+            // Dialing status only for a fresh call; promoting an already-connected session isn't "calling".
+            await SetCallState(chatId, state.IsDialing ? NewCallState(state, CallStatus.Dialing) : null)
+                .ConfigureAwait(false);
             conversationId = state.RingConversationId;
             await EnsureParticipant(chatId, callerAuthorId).ConfigureAwait(false);
             foreach (var invitee in invitees)
@@ -538,6 +575,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                     Version = VersionGenerator.NextVersion(state.Version),
                 };
                 await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
+                // The latch is the caller's "accepted" moment - a brief confirmation before this fades.
+                await SetCallState(chatId, NewCallState(state, CallStatus.Accepted)).ConfigureAwait(false);
             }
             conversationId = state?.RingConversationId;
             InvalidateState(chatId);
@@ -559,9 +598,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await _invites.Set(chatId.Value, inviteeAuthorId.Value,
                     invite with { Status = CallInviteStatus.Declined, RespondedAt = Clocks.SystemClock.Now })
                 .ConfigureAwait(false);
-            conversationId = (await SafeGet(chatId).ConfigureAwait(false))?.RingConversationId;
-            InvalidateState(chatId);
+            var state = await SafeGet(chatId).ConfigureAwait(false);
+            conversationId = state?.RingConversationId;
             abandoned = await IsCallAbandoned(chatId).ConfigureAwait(false);
+            // Recorded before the close below drops the session that carries the caller's identity.
+            if (abandoned && state is not null)
+                await SetCallState(chatId, NewCallState(state, CallStatus.Declined)).ConfigureAwait(false);
+            InvalidateState(chatId);
         }
         if (conversationId is { } cid)
             await DismissRing(cid, [inviteeAuthorId], cancellationToken).ConfigureAwait(false);
@@ -592,6 +635,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                     .ConfigureAwait(false);
             }
             await _participants.Remove(chatId.Value, callerAuthorId.Value).ConfigureAwait(false);
+            // Hanging up myself needs no status, and it must beat a decline that just landed.
+            await SetCallState(chatId, null).ConfigureAwait(false);
             InvalidateState(chatId);
             InvalidateListParticipants(chatId);
             InvalidateHasRecorder(chatId);
@@ -600,6 +645,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await DismissRing(cid, ringing, cancellationToken).ConfigureAwait(false);
         await CloseNow(chatId).ConfigureAwait(false);
     }
+
+    public virtual Task DismissCallStatus(ChatId chatId, CancellationToken cancellationToken)
+        => SetCallState(chatId, null);
 
     public virtual async Task LeaveCall(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
     {
@@ -670,6 +718,44 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
     }
 
+    private async Task<CallState?> SafeGetCallState(ChatId chatId)
+    {
+        try {
+            return await _callStates.Get(chatId.Value).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to read call state from Redis for chat #{ChatId}", chatId);
+            return null;
+        }
+    }
+
+    private async Task SetCallState(ChatId chatId, CallState? callState)
+    {
+        try {
+            if (callState is null)
+                await _callStates.Remove(chatId.Value).ConfigureAwait(false);
+            else
+                await _callStates.Set(chatId.Value, callState, CallStateTtl(callState.Status)).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to write call state to Redis for chat #{ChatId}", chatId);
+            return;
+        }
+
+        using (Invalidation.Begin())
+            _ = GetCallState(chatId, default);
+    }
+
+    private CallState NewCallState(LiveSessionState state, CallStatus status)
+        => new() {
+            CallerId = state.Host ?? state.AuthorIds[0],
+            Status = status,
+            ChangedAt = Clocks.SystemClock.Now,
+        };
+
+    private static TimeSpan CallStateTtl(CallStatus status)
+        => status == CallStatus.Dialing ? DialingStateTtl : ResolvedStateTtl;
+
     private async Task<CallInvite?> SafeGetInvite(ChatId chatId, AuthorId inviteeAuthorId)
     {
         try {
@@ -699,6 +785,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing } && i.RingingAt <= cutoff);
     }
 
+    private async Task<bool> HasFreshRing(ChatId chatId)
+    {
+        var cutoff = Clocks.SystemClock.Now - RingTimeout;
+        var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
+        return invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing } && i.RingingAt > cutoff);
+    }
+
     private Task DismissRing(
         ConversationId conversationId, IReadOnlyList<AuthorId> invitees, CancellationToken cancellationToken)
         => Services.Queues()
@@ -706,11 +799,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     // An unanswered invitee rang past RingTimeout: mark Missed and stop the ring (the caller still
     // sees "missed" and can hang up). Fired observation-independently from GetState's self-heal.
+    // A dialing call is finalized here even when no invite is left to expire — a ring can vanish via
+    // its RingTtl before this catches it, and the call must still reach an outcome rather than linger.
     private async Task ExpireRings(ChatId chatId)
     {
         try {
             ConversationId? conversationId = null;
             var expired = new List<AuthorId>();
+            var wasDialing = false;
             using (Computed.BeginIsolation())
             using (await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false)) {
                 var state = await SafeGet(chatId).ConfigureAwait(false);
@@ -718,6 +814,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                     return;
 
                 conversationId = state.RingConversationId;
+                wasDialing = state.IsDialing;
                 var now = Clocks.SystemClock.Now;
                 var cutoff = now - RingTimeout;
                 foreach (var info in (await SafeGetInvites(chatId).ConfigureAwait(false)).Values) {
@@ -734,8 +831,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             }
             if (expired.Count > 0 && conversationId is { } cid)
                 await DismissRing(cid, expired, CancellationToken.None).ConfigureAwait(false);
-            if (expired.Count > 0 && await IsCallAbandoned(chatId).ConfigureAwait(false))
+            if ((expired.Count > 0 || wasDialing) && await IsCallAbandoned(chatId).ConfigureAwait(false)) {
+                // Only a still-dialing call gets a "no answer" - a connected one that emptied out just closes.
+                if (await SafeGet(chatId).ConfigureAwait(false) is { IsDialing: true } current
+                    && await SafeGetCallState(chatId).ConfigureAwait(false) is null or { Status: CallStatus.Dialing })
+                    await SetCallState(chatId, NewCallState(current, CallStatus.NoAnswer)).ConfigureAwait(false);
                 await CloseCall(chatId).ConfigureAwait(false);
+            }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "ExpireRings failed for chat #{ChatId}", chatId);

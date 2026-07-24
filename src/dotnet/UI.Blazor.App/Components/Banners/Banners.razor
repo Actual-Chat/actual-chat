@@ -11,6 +11,7 @@
 }
 @if (chat is not null) {
     <NoComponent @key="Chat">
+        <OutgoingCallBanner/>
         <ChatCopyBanner/>
         <AddToContactsBanner/>
         <AddChatMembersBanner/>
