@@ -1,5 +1,5 @@
 import { type PipeOperator } from 'ix-ext';
-import { type DecodedFrame } from '../frame-envelopes';
+import { type DecodedFrame, type PlayerStats } from '../frame-envelopes';
 import { presentPacer, type PresentSink } from '../playback/present-pacer';
 
 export interface CanvasImageInterface {
@@ -18,6 +18,7 @@ export interface CanvasPresentOptions {
     delayFn?: (ms: number) => Promise<void>;
     holdMs?: number;
     getAudioCaptureOffsetMs?: () => number | null;
+    stats?: PlayerStats;
 }
 
 export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedFrame, void> {
@@ -43,7 +44,9 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
                     if (convertToBitmap) {
                         let bitmap: ImageBitmap | null = null;
                         try {
+                            if (opts.stats) opts.stats.presentState = 'canvas:converting';
                             bitmap = await convertToBitmap(frame);
+                            if (opts.stats) opts.stats.presentState = 'canvas:drawing';
                             canvasCtx.drawImage(bitmap, 0, 0, width, height);
                         } finally {
                             if (bitmap) {
@@ -51,6 +54,7 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
                             }
                         }
                     } else {
+                        if (opts.stats) opts.stats.presentState = 'canvas:drawing';
                         canvasCtx.drawImage(frame, 0, 0, width, height);
                     }
                     return true;

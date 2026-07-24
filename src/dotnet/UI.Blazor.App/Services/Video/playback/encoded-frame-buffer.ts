@@ -173,7 +173,10 @@ export class EncodedFrameBuffer {
 
     tryPull(): ArrivedChunk | null {
         if (!this.isReady()) return null;
-        return this.chunks.shift() ?? null;
+        const chunk = this.chunks.shift() ?? null;
+        if (chunk && this.stats)
+            this.stats.lastBufferPullAtMs = Date.now();
+        return chunk;
     }
 
     reset(): void {

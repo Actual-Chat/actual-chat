@@ -1,6 +1,6 @@
 import { type PipeOperator } from 'ix-ext';
 import { getLogs } from 'logging';
-import { type DecodedFrame } from '../frame-envelopes';
+import { type DecodedFrame, type PlayerStats } from '../frame-envelopes';
 import { presentPacer, type PresentSink } from '../playback/present-pacer';
 
 const { warnLog } = getLogs('VideoPipeline');
@@ -13,6 +13,7 @@ export interface MstgPresentOptions {
     delayFn?: (ms: number) => Promise<void>;
     holdMs?: number;
     getAudioCaptureOffsetMs?: () => number | null;
+    stats?: PlayerStats;
 }
 
 export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame, void> {
@@ -34,8 +35,11 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
                         // is behind, await ready — this paces us to its drain rate
                         // and, on a sustained stall, stalls the present loop + the
                         // upstream decode until it resumes.
-                        if ((writer.desiredSize ?? 1) <= 0)
+                        if ((writer.desiredSize ?? 1) <= 0) {
+                            if (opts.stats) opts.stats.presentState = 'mstg:awaiting-ready';
                             await writer.ready;
+                        }
+                        if (opts.stats) opts.stats.presentState = 'mstg:writing';
                         await writer.write(frame);
                         return true;
                     } catch (e: unknown) {

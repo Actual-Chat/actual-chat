@@ -193,6 +193,18 @@ describe('presentPacer', () => {
         expect(await lastDelay(() => 0)).toBeCloseTo(33 - PRESENT_LEAD_MS, 1);
     });
 
+    it('tracks presentState through a successful present', async () => {
+        const stats = createEmptyPlayerStats();
+        const sink = new MockSink();
+        const items = [makeEnvelope(stats, 0, 0)];
+
+        await count(pipe(staticSource(items), presentPacer({ createSink: () => sink, ...defaults() })));
+
+        expect(stats.presentState).toBe('presented');
+        expect(stats.lastPresentAtMs).toBeGreaterThan(0);
+        expect(stats.lastPresentAttemptAtMs).toBeGreaterThan(0);
+    });
+
     it('catch-up is an evenly spaced bounded overspeed, ramping with backlog', async () => {
         // arrange: 30fps frames; scheduled delay per frame reveals the chosen pace.
         async function delayFor(extraMs: number): Promise<number> {
