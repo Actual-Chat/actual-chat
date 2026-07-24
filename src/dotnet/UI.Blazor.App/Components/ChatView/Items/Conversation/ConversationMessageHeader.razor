@@ -12,6 +12,7 @@
             <HeaderButton
                 Class="btn-summary-toggle"
                 Tooltip="@tooltip"
+                data-vl-hold="@(IsSeparated ? "keep-edge" : "always")"
                 Click="@OnConversationToggleClick">
                 @if (IsSeparated) {
                     <i class="icon-collapse"></i>

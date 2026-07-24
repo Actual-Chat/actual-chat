@@ -13,7 +13,10 @@
         <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">Join</button>
     }
     @if (s.CanExpand) {
-        <HeaderButton Class="c-lc-expand" Click="@Toggle">
+        <HeaderButton
+            Class="c-lc-expand"
+            data-vl-hold="@(s.IsExpanded ? "keep-edge" : "always")"
+            Click="@Toggle">
             <i class="@(s.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
         </HeaderButton>
     }
