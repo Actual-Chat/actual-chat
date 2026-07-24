@@ -1,0 +1,54 @@
+@namespace ActualChat.UI.Blazor.Components
+
+@{
+    var isClickable = Click.HasDelegate;
+    var rootCls = isClickable ? "card-item hovered" : "card-item";
+
+    RenderFragment RenderInner() =>
+        @<text>
+            @if (Left != null) {
+                <div class="c-left">
+                    @Left
+                </div>
+            }
+            <div class="c-center">
+                <div class="@TitleClass c-title">
+                    @Title
+                </div>
+                @if (Caption != null) {
+                    <div class="c-caption">
+                        @Caption
+                    </div>
+                }
+            </div>
+            @if (Right != null) {
+                <div class="c-right">
+                    @Right
+                </div>
+            }
+        </text>;
+}
+
+@if (isClickable) {
+    <div class="@rootCls @Class"
+         role="button"
+         tabindex="0"
+         @onclick="@Click"
+         @onclick:preventDefault="true">
+        @RenderInner()
+    </div>
+} else {
+    <div class="@rootCls @Class">
+        @RenderInner()
+    </div>
+}
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string TitleClass { get; set; } = "text-01";
+    [Parameter] public EventCallback Click { get; set; }
+    [Parameter] public RenderFragment? Left { get; set; }
+    [Parameter] public RenderFragment? Title { get; set; }
+    [Parameter] public RenderFragment? Caption { get; set; }
+    [Parameter] public RenderFragment? Right { get; set; }
+}

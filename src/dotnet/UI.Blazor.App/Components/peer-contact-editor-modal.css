@@ -13,6 +13,6 @@
 .block-user-form-block {
     @apply pt-0 pb-0;
 }
-.block-user-form-block .c-card {
+.block-user-form-block .card {
     @apply mt-4;
 }

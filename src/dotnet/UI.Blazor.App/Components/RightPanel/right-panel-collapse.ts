@@ -166,7 +166,7 @@ export class RightPanelCollapse {
     }
 
     private measureChatInfo() {
-        const card = this.rightPanel.querySelector<HTMLElement>('.c-chat-info > .c-card');
+        const card = this.rightPanel.querySelector<HTMLElement>('.c-chat-info > .card');
         const height = card ? card.offsetHeight + remToPx(CHATINFO_PADDING_REM) : 0;
         if (Math.abs(height - this.chatInfoHeightPx) < 0.5)
             return;

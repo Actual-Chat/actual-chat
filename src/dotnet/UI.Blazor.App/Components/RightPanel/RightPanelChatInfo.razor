@@ -7,22 +7,21 @@
 
 <div class="c-chat-info">
     @if (m.ShowSummarizationToggle) {
-        <div class="c-card">
+        <Card>
             @if (m.ShowSummarizationToggle) {
                 var iconCls = m.IsSummarized ? "text-primary" : "text-03";
-                <RightPanelChatInfoItem
-                    Click="@(_ => OnSummarizeToggleChanged(!m.IsSummarized))"
-                    Content="Summarize"
-                    Hint="@(m.IsSummarized ? "On" : "Off")">
-                    <Icon>
+                <CardItem Click="@(_ => OnSummarizeToggleChanged(!m.IsSummarized))">
+                    <Left>
                         <i class="text-2xl icon-ai-stars @iconCls"></i>
-                    </Icon>
+                    </Left>
+                    <Title>Summarize</Title>
+                    <Caption>@(m.IsSummarized ? "On" : "Off")</Caption>
                     <Right>
-                        <Toggle Class="mr-2" IsChecked="@m.IsSummarized"/>
+                        <Toggle IsChecked="@m.IsSummarized"/>
                     </Right>
-                </RightPanelChatInfoItem>
+                </CardItem>
             }
-        </div>
+        </Card>
     }
 </div>
 

@@ -14,27 +14,27 @@
         <div class="keyboard-shortcuts">
             @foreach (var sec in _sections) {
                 <TileTopic Topic="@sec.Title"/>
-                <div class="c-card">
+                <Card>
                     @for (var s = 0; s < sec.Shortcuts.Length; s++) {
                         if (s > 0) {
                             <Divider/>
                         }
                         var shortcut = sec.Shortcuts[s];
                         if (shortcut.Caption != null) {
-                            <TileItem>
-                                <Content>@shortcut.Description</Content>
+                            <CardItem>
+                                <Title>@shortcut.Description</Title>
                                 <Caption>@shortcut.Caption</Caption>
                                 <Right>@RenderKeys(shortcut)</Right>
-                            </TileItem>
+                            </CardItem>
                         }
                         else {
-                            <TileItem>
-                                <Content>@shortcut.Description</Content>
+                            <CardItem>
+                                <Title>@shortcut.Description</Title>
                                 <Right>@RenderKeys(shortcut)</Right>
-                            </TileItem>
+                            </CardItem>
                         }
                     }
-                </div>
+                </Card>
             }
         </div>
     </Body>
