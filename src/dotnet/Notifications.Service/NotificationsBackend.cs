@@ -1338,7 +1338,7 @@ public class NotificationsBackend(IServiceProvider services)
                 }
 
                 var shouldBeep = NotificationBeepPolicy.ShouldBeep(related.Kind, related.BeepCount, related.LastBeepAt, now);
-                var text = await ComposeAggregatedText(related, cancellationToken).ConfigureAwait(false);
+                var text = NotificationHelper.ComposeAggregatedText(related);
                 var updated = related with {
                     Text = text,
                     BeepCount = shouldBeep ? related.BeepCount + 1 : related.BeepCount,
@@ -1375,49 +1375,32 @@ public class NotificationsBackend(IServiceProvider services)
         }
     }
 
-    // Moves a coalesced notification's first-unread anchor to newStart, refreshing its lead text
-    // from that entry and approximating the remaining unread count from the entry-id span.
+    // Partial read: drops now-read messages via ReAnchorAt; when every shown message was read,
+    // re-seeds the window from the first still-unread entry so the banner isn't left textless.
     private async Task<ChatEntryRelatedNotification> ReAnchor(
         ChatEntryRelatedNotification related, long newStart, CancellationToken cancellationToken)
     {
-        var unreadCount = (int)Math.Max(1, related.EntryLid - newStart + 1);
-        var leadText = related.LeadText ?? "";
-        var entry = await ChatsBackend
-            .GetEntry(ChatEntryId.New(related.ChatId, newStart), TimeSpan.Zero, cancellationToken)
-            .ConfigureAwait(false);
-        if (entry is { IsSystemEntry: false }) {
-            var (text, _) = await NotificationHelper
-                .GetText(entry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
+        var updated = related.ReAnchorAt(newStart);
+        if (updated.RecentMessages.IsEmpty) {
+            var entry = await ChatsBackend
+                .GetEntry(ChatEntryId.New(related.ChatId, newStart), TimeSpan.Zero, cancellationToken)
                 .ConfigureAwait(false);
-            leadText = text;
+            if (entry is { IsSystemEntry: false }) {
+                var (text, _) = await NotificationHelper
+                    .GetText(entry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
+                    .ConfigureAwait(false);
+                var author = await AuthorsBackend
+                    .Get(related.ChatId, entry.AuthorId, RequestedAuthorKind.Full, cancellationToken)
+                    .ConfigureAwait(false);
+                var message = NotificationMessage.New(
+                    entry.AuthorId, author?.Avatar.Name ?? "", text, entry.LocalId, entry.BeginsAt);
+                updated = updated with {
+                    RecentMessages = new[] { message }.ToApiArray(),
+                    LeadText = message.Text,
+                };
+            }
         }
-        var updated = related with {
-            StartEntryLid = newStart,
-            UnreadCount = unreadCount,
-            LeadText = leadText,
-            LeadCount = 1,
-        };
-        return (ChatEntryRelatedNotification)(updated with {
-            Text = await ComposeAggregatedText(updated, cancellationToken).ConfigureAwait(false),
-        });
-    }
-
-    private async Task<string> ComposeAggregatedText(ChatEntryRelatedNotification notification, CancellationToken cancellationToken)
-    {
-        var leadText = notification.LeadText.IsNullOrEmpty() ? notification.Text : notification.LeadText;
-        var moreCount = notification.UnreadCount - Math.Max(1, notification.LeadCount);
-        if (moreCount <= 0)
-            return leadText;
-
-        var names = new List<string>();
-        foreach (var authorId in notification.AuthorIds.Take(Constants.Notification.MaxSummaryAuthors)) {
-            var author = await AuthorsBackend
-                .Get(notification.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken)
-                .ConfigureAwait(false);
-            if (author is { } a)
-                names.Add(a.Avatar.Name);
-        }
-        return NotificationHelper.GetAggregatedText(leadText, names, moreCount);
+        return updated with { Text = NotificationHelper.ComposeAggregatedText(updated) };
     }
 
     // Banner grouping key = the client push tag. Uses the shared NotificationExt.GetPushTag so

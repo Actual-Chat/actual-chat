@@ -88,6 +88,21 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
         };
     }
 
+    // Moves the first-unread anchor to newStart: drops now-read messages from the transcript
+    // window and approximates the remaining unread count from the entry span. The caller re-seeds
+    // RecentMessages (from the entry store) when the window empties, then recomposes Text.
+    public ChatEntryRelatedNotification ReAnchorAt(long newStart)
+    {
+        var recentMessages = RecentMessages.Where(m => m.EntryLid >= newStart).ToApiArray();
+        return this with {
+            StartEntryLid = newStart,
+            UnreadCount = (int)Math.Max(1, EntryLid - newStart + 1),
+            RecentMessages = recentMessages,
+            LeadText = recentMessages.IsEmpty ? "" : recentMessages[^1].Text,
+            LeadCount = 1,
+        };
+    }
+
     private static long MinPositive(long a, long b)
         => a <= 0 ? b : b <= 0 ? a : Math.Min(a, b);
 
