@@ -245,19 +245,25 @@ body.narrow .notify-call-panel.panel-open {
     @apply outline-none;
     @apply text-primary;
     @apply opacity-0;
-    transition-property: display, opacity;
+    transition-property: display, opacity, transform;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
 }
 body.narrow .post-panel-btn.post-message {
     @apply static;
 }
 
 .text-mode .post-panel-btn.post-message {
-    @apply static right-auto;
     @apply flex;
     @apply opacity-100;
 }
 body.wide .attachment-mode .post-panel-btn.post-message {
     @apply flex;
+}
+body.hoverable .btn.btn-round.post-panel-btn.post-message:hover,
+.touch-capable .btn.btn-round.post-panel-btn.post-message:active {
+    @apply text-primary;
+    @apply scale-110 rotate-45;
 }
 
 .text-mode .recorder-buttons .btn {
