@@ -16,11 +16,12 @@ const DEFAULT_WEDGE_AFTER_MS = 6_000;
 // feed it getStats() snapshots; deltas only, so clock domains don't matter.
 export class WedgeDetector {
     private readonly wedgeAfterMs: number;
+    private lastSampleAtMs = -1;
     private lastBytes = -1;
     private lastDecoded = -1;
     private lastPresented = -1;
-    private presentFrozenSinceMs: number | null = null;
-    private decodeFrozenSinceMs: number | null = null;
+    private presentFrozenMs = 0;
+    private decodeFrozenMs = 0;
     private lastSampleHadProgress = false;
 
     constructor(wedgeAfterMs?: number) {
@@ -32,42 +33,45 @@ export class WedgeDetector {
     }
 
     reset(): void {
+        this.lastSampleAtMs = -1;
         this.lastBytes = -1;
         this.lastDecoded = -1;
         this.lastPresented = -1;
-        this.presentFrozenSinceMs = null;
-        this.decodeFrozenSinceMs = null;
+        this.presentFrozenMs = 0;
+        this.decodeFrozenMs = 0;
         this.lastSampleHadProgress = false;
     }
 
     onSample(stats: PlayerStats, nowMs: number): WedgeDiagnosis | null {
         const first = this.lastBytes < 0;
+        const elapsed = first ? 0 : nowMs - this.lastSampleAtMs;
         const bytesAdvanced = stats.bytesReceived > this.lastBytes;
         const decodedAdvanced = stats.framesDecoded > this.lastDecoded;
         const presentedAdvanced = stats.presented > this.lastPresented;
+        this.lastSampleAtMs = nowMs;
         this.lastBytes = stats.bytesReceived;
         this.lastDecoded = stats.framesDecoded;
         this.lastPresented = stats.presented;
         this.lastSampleHadProgress = !first && presentedAdvanced;
         if (first) {
-            this.presentFrozenSinceMs = nowMs;
-            this.decodeFrozenSinceMs = nowMs;
+            this.presentFrozenMs = 0;
+            this.decodeFrozenMs = 0;
             return null;
         }
         if (presentedAdvanced)
-            this.presentFrozenSinceMs = nowMs;
+            this.presentFrozenMs = 0;
+        else if (bytesAdvanced)
+            this.presentFrozenMs += elapsed;
         if (decodedAdvanced)
-            this.decodeFrozenSinceMs = nowMs;
-        if (!bytesAdvanced)
+            this.decodeFrozenMs = 0;
+        else if (bytesAdvanced)
+            this.decodeFrozenMs += elapsed;
+
+        if (this.presentFrozenMs < this.wedgeAfterMs)
             return null;
 
-        const presentFrozenMs = nowMs - (this.presentFrozenSinceMs ?? nowMs);
-        if (presentFrozenMs < this.wedgeAfterMs)
-            return null;
-
-        const decodeFrozenMs = nowMs - (this.decodeFrozenSinceMs ?? nowMs);
-        const kind: WedgeKind = decodeFrozenMs >= this.wedgeAfterMs ? 'decode-wedge' : 'present-wedge';
-        return { kind, frozenMs: presentFrozenMs, detail: formatDetail(stats, nowMs) };
+        const kind: WedgeKind = this.decodeFrozenMs >= this.wedgeAfterMs ? 'decode-wedge' : 'present-wedge';
+        return { kind, frozenMs: this.presentFrozenMs, detail: formatDetail(stats, nowMs) };
     }
 }
 
@@ -77,9 +81,9 @@ function age(nowMs: number, atMs: number): string {
 
 function formatDetail(s: PlayerStats, nowMs: number): string {
     return `present=${s.presentState} pump=${s.feedPumpState}`
-        + ` ages[arr=${age(nowMs, s.lastArrivalAtMs)} pull=${age(nowMs, s.lastBufferPullAtMs)}`
-        + ` sub=${age(nowMs, s.lastSubmitAtMs)} dec=${age(nowMs, s.lastDecodeOutAtMs)}`
-        + ` presAtt=${age(nowMs, s.lastPresentAttemptAtMs)} pres=${age(nowMs, s.lastPresentAtMs)}]`
+        + ` ages[a=${age(nowMs, s.lastArrivalAtMs)} pl=${age(nowMs, s.lastBufferPullAtMs)}`
+        + ` su=${age(nowMs, s.lastSubmitAtMs)} de=${age(nowMs, s.lastDecodeOutAtMs)}`
+        + ` pr=${age(nowMs, s.lastPresentAtMs)}]`
         + ` buf=${s.encodedQueueCount} inflight=${s.decoderQueueSize} ready=${s.decodedReadyCount}`
         + ` decoded=${s.framesDecoded} presented=${s.presented}`;
 }
