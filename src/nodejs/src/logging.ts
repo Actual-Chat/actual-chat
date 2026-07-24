@@ -93,6 +93,7 @@ export type LogScope =
     | 'FeederNode'
     | 'FeederProcessor'
     | 'SoundsPlayer'
+    | 'IncomingCallRingtone'
     // Location
     | 'LocationTracker'
     // Audio recording
@@ -203,6 +204,7 @@ const defaults: Record<LogScope, LogLevel> = {
     FeederNode: LogLevel.Warn,
     FeederProcessor: LogLevel.Warn,
     SoundsPlayer: LogLevel.Warn,
+    IncomingCallRingtone: LogLevel.Warn,
     // Location
     LocationTracker: LogLevel.Warn,
     // Audio recording
