@@ -181,6 +181,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     private void ShowChatMessageNotification(NotificationData data)
     {
         Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}', silent: {Silent}", data.Body!.ToPrivate(), data.Silent);
-        NotificationHelper.ShowChatNotification(data.Tag!, data.Title!, data.Body!, data.ImageUrl, data.Link, data.Silent);
+        NotificationHelper.ShowChatNotification(
+            data.Tag!, data.Title!, data.Body!, data.ImageUrl, data.Link, data.Silent, data.Messages);
     }
 }

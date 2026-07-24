@@ -92,6 +92,7 @@ public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
                 x.Notification.Title,
                 x.Notification.Text,
                 x.Notification.IconUrl,
-                UrlMapper.ToAbsolute(x.Notification.GetChatLink())))
+                UrlMapper.ToAbsolute(x.Notification.GetChatLink()),
+                (x.Notification as ChatEntryRelatedNotification)?.RecentMessages ?? default))
             .ToList();
 }

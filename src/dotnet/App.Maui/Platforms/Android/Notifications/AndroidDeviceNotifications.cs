@@ -1,5 +1,6 @@
 using Android.App;
 using AndroidX.Core.App;
+using ActualChat.Notifications;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.App.Maui;
@@ -38,7 +39,8 @@ public class AndroidDeviceNotifications : IDeviceNotifications
             var info = active.FirstOrDefault(x => x.Tag == tag);
             if (info != null)
                 // Healing a dropped banner must not alert — it's a reconcile, not a new event.
-                NotificationHelper.ShowChatNotification(info.Tag, info.Title, info.Text, info.IconUrl, info.Url, silent: true);
+                NotificationHelper.ShowChatNotification(info.Tag, info.Title, info.Text, info.IconUrl, info.Url,
+                    silent: true, messages: info.Messages.IsEmpty ? null : PushMessage.From(info.Messages));
         }
         return Task.CompletedTask;
     }
