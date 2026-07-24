@@ -529,12 +529,12 @@ public class NotificationsBackend(IServiceProvider services)
             if (invitee is not { } a || a.UserId.Value.IsNullOrEmpty())
                 continue;
 
-            // Same id as the ring (keyed by the call's ConversationId), so the device closes that banner.
-            var notification = new CallNotification(
-                NotificationId.New(a.UserId, NotificationKind.IncomingCall, conversationId.Value));
-            var dismissal = new[] { (Notification)notification }.ToApiArray();
+            // Same id as the ring (keyed by the call's ConversationId): handling it drops the ring
+            // from the active set (so it can't linger in ListActive / the in-app list) and closes
+            // the device banner via the dismissal push ApplyHardUpdate emits for a removed notification.
+            var notificationId = NotificationId.New(a.UserId, NotificationKind.IncomingCall, conversationId.Value);
             await Queues
-                .Enqueue(new NotificationsBackend_PushDismissal(a.UserId, dismissal), cancellationToken)
+                .Enqueue(new NotificationsBackend_Handle(notificationId), cancellationToken)
                 .ConfigureAwait(false);
         }
     }

@@ -98,6 +98,19 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         IncomingCallUI.OnRing(chatId);
     }
 
+    // Web counterpart of Android's ClearForegroundCallRings: a call dismissal push (cancel, decline,
+    // timeout) routed through the service worker clears the in-app ring without waiting on the
+    // reactive live-session self-heal.
+    [JSInvokable]
+    public void OnIncomingCallCancelled(string sChatId)
+    {
+        var chatId = ChatId.TryParse(sChatId, allowNull: true);
+        if (chatId is null)
+            return;
+
+        IncomingCallUI.OnCallDismissed(chatId);
+    }
+
     public void SetIsGranted(bool? isGranted)
     {
         try {
