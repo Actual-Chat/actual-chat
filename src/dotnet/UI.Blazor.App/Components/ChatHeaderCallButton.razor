@@ -2,8 +2,8 @@
 @{
     if (State.IsInitial(out var m))
         return;
-    // Admin-only; hidden while a live conversation is active — the ChatActivityPanel owns that state.
-    if (!m.IsAdmin || m.IsActive)
+    // Hidden while a live conversation is active — the ChatActivityPanel owns that state.
+    if (!m.EnableIncompleteUI || m.IsActive)
         return;
 }
 
@@ -24,8 +24,8 @@
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        if (!account.IsAdmin)
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        if (!enableIncompleteUI)
             return new Model(false, false);
 
         var activity = await ChatActivityUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
@@ -37,5 +37,5 @@
 
     // Nested types
 
-    public sealed record Model(bool IsAdmin, bool IsActive);
+    public sealed record Model(bool EnableIncompleteUI, bool IsActive);
 }
