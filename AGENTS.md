@@ -458,6 +458,28 @@ ai wt feature1   # Creates ActualLab.Fusion-feature1 if it doesn't exist and run
 
 The worktree is created using `git worktree add` from the main project directory.
 
+# `roslynk` MCP (optional)
+
+A Roslyn-backed MCP server named **`roslynk`** may be wired up (look for
+`mcp__roslynk__*` tools). It's optional — if it's absent, just use the regular
+tools. When present, prefer it for C# semantic work: it keeps a live
+compilation of the solution, so it answers from the compiler's symbol model
+instead of text search.
+
+What it helps with:
+- **Navigation** — definitions, references, callers, implementations, type
+  hierarchy, symbol search (correct across partial classes and generated code).
+- **Diagnostics** — errors/warnings/analyzer results without a rebuild;
+  iterate as edit → `get_diagnostics` → fix.
+- **Refactoring** — semantic rename, signature changes, compiler code fixes.
+- **Dead/unused code** — unused members, unreachable conditional branches,
+  unused `using` directives.
+
+Call `open_solution` first (it loads in the background; retry if a query
+returns `Indexing`). The tools are self-describing once connected — use the
+tool list for exact arguments. See
+https://github.com/mrpmorris/Roslynk/blob/master/skills/roslynk/SKILL.md.
+
 # Fusion documentation and source code
 
 Several projects here build on **ActualLab.Fusion** — an end-to-end
@@ -467,20 +489,18 @@ work with Fusion, two complementary resources may be available; use them.
 
 ## `fusion-docs` MCP
 
-A documentation MCP server named **`fusion-docs`** may be wired up (look for
-`mcp__fusion-docs__*` tools). When present, it's the fastest way to get
-Fusion right — prefer it over guessing. Its tools:
+A documentation + source MCP server named **`fusion-docs`** may be wired up
+(look for `mcp__fusion-docs__*` tools). When present, it's the fastest way to
+get Fusion right — prefer it over guessing. It can search and read both the
+Fusion **documentation** (mental model, glossary, API index) and the Fusion
+**source** — find files or declarations by regex and read exact line ranges, or
+ripgrep across `src` / `samples` / `tests`. Start with the `intro` tool if
+you're unsure; the individual tools are self-describing once connected, so use
+the tool list (not this summary) for exact arguments.
 
-- `mcp__fusion-docs__intro` — a concise intro to Fusion, its mental model,
-  and what documentation exists. Start here if you're unsure.
-- `mcp__fusion-docs__search` — find candidate documentation anchors.
-- `mcp__fusion-docs__get` — fetch the text at a known anchor.
-- `mcp__fusion-docs__search_expanded` — return complete matched sections
-  including their nested subsections.
-
-The MCP is powered by the Markdown (`.md`) docs that live in the
-**ActualLab.Fusion** repository, so its content and the repo's docs stay in
-sync.
+It's backed by the docs and source in the **ActualLab.Fusion** repository, so it
+stays in sync with the code. The same server hosts the docs site and the MCP at
+`https://fusion.actuallab.net` (endpoint: `/mcp`).
 
 ## ActualLab.Fusion source, samples, and tests
 
