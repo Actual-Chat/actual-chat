@@ -19,6 +19,7 @@
 
     private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
     private readonly Action<FoundMention> _onMentionSelected;
+    private readonly Action _onMentionListDismissed;
     private MentionListManager? _lastMentionListManager;
 
     private ElementReference Ref { get; set; }
@@ -46,13 +47,17 @@
     public Task WhenReady => _whenReadySource.Task;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MarkupEditor))]
-    public MarkupEditor()
-        => _onMentionSelected = mention => _ = InsertMention(mention);
+    public MarkupEditor() {
+        _onMentionSelected = mention => _ = InsertMention(mention);
+        _onMentionListDismissed = () => _ = DismissMentionList();
+    }
 
     public async ValueTask DisposeAsync() {
         _whenReadySource.TrySetCanceled();
-        if (_lastMentionListManager != null)
+        if (_lastMentionListManager != null) {
             _lastMentionListManager.MentionSelected -= _onMentionSelected;
+            _lastMentionListManager.Dismissed -= _onMentionListDismissed;
+        }
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
@@ -60,11 +65,15 @@
     }
 
     protected override void OnParametersSet() {
-        if (_lastMentionListManager != null)
+        if (_lastMentionListManager != null) {
             _lastMentionListManager.MentionSelected -= _onMentionSelected;
+            _lastMentionListManager.Dismissed -= _onMentionListDismissed;
+        }
         _lastMentionListManager = MentionListManager;
-        if (_lastMentionListManager != null)
+        if (_lastMentionListManager != null) {
             _lastMentionListManager.MentionSelected += _onMentionSelected;
+            _lastMentionListManager.Dismissed += _onMentionListDismissed;
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -105,6 +114,11 @@
     public ValueTask Clear(bool mustFocus = false)
         => SetHtml("", mustFocus);
 
+    public async ValueTask DismissMentionList() {
+        await WhenReady;
+        await JSRef.InvokeVoidAsync("dismissList");
+    }
+
     public async ValueTask Focus() {
         await WhenReady;
         await JSRef.InvokeVoidAsync("focus");
@@ -115,16 +129,19 @@
         await JSRef.InvokeVoidAsync("moveCursorToEnd");
     }
 
-    public async ValueTask InsertMention(FoundMention? mention) {
+    public async ValueTask<bool> InsertMention(FoundMention? mention) {
+        // Returns false when there was nothing to insert - the JS side then falls back
+        // to the default handling of the key that triggered this.
         await WhenReady;
         MentionListManager?.Hide();
         if (mention == null)
-            return;
+            return false;
 
         var name = mention.MentionName.NullIfEmpty() ?? mention.Match.Text;
         var html = HtmlConverter.Format(MentionMarkup.New(mention.MentionRef, name)) + " ";
         await JSRef.InvokeVoidAsync("insertHtml", html, "@");
         _ = RecentMentionsUI.Use(mention.MentionRef);
+        return true;
     }
 
     [JSInvokable]
@@ -151,29 +168,29 @@
         => OpenPrevious.InvokeAsync();
 
     [JSInvokable]
-    public async Task OnListCommand(string listId, MarkupEditorListCommand command) {
+    public async Task<bool> OnListCommand(string listId, MarkupEditorListCommand command) {
         if (listId != "@")
             throw new ArgumentOutOfRangeException(nameof(listId));
 
         var manager = MentionListManager;
         if (manager == null)
-            return;
+            return false;
+
         switch (command.Kind) {
         case MarkupEditorListCommandKind.Show:
             manager.Show(command.Filter ?? "");
-            break;
+            return true;
         case MarkupEditorListCommandKind.Hide:
             manager.Hide();
-            break;
+            return true;
         case MarkupEditorListCommandKind.GoToNextItem:
             manager.ListRef?.MoveSelection(1);
-            break;
+            return true;
         case MarkupEditorListCommandKind.GoToPreviousItem:
             manager.ListRef?.MoveSelection(-1);
-            break;
+            return true;
         case MarkupEditorListCommandKind.InsertItem:
-            await InsertMention(manager.ListRef?.Selection);
-            break;
+            return await InsertMention(manager.ListRef?.Selection);
         default:
             throw new ArgumentOutOfRangeException(nameof(command));
         }

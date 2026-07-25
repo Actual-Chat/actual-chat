@@ -21,6 +21,7 @@
     public MentionList? ListRef { get; private set; }
     public MutableState<Func<MentionCandidate, bool>> Filter { get; private set; } = null!;
     public event Action<FoundMention>? MentionSelected;
+    public event Action? Dismissed;
 
     protected override void OnInitialized()
         => Filter = StateFactory.NewMutable(
@@ -52,5 +53,11 @@
             _cls = "";
             StateHasChanged();
         }
+    }
+
+    public void Dismiss() {
+        // Unlike Hide(), this one tells the editor to keep the picker closed for the current "@".
+        Hide();
+        Dismissed?.Invoke();
     }
 }
