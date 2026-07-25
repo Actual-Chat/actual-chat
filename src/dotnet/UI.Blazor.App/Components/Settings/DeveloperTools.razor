@@ -77,6 +77,8 @@
     private IMauiLogAccessor? MauiLogAccessor { get; set; }
 
     private LogUI LogUI => Hub.LogUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private AudioDiagnosticsUI AudioDiagnosticsUI => Hub.AudioDiagnosticsUI;
 
     protected override void OnInitialized() {
         ServerInstanceSelector = Services.GetService<AppServerInstanceSelector>();
@@ -90,13 +92,15 @@
         var settings = await UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var appSettings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        var isVideoDiagnosticsEnabled = await ChatVideoUI.IsDiagnosticsEnabled(cancellationToken).ConfigureAwait(false);
+        var isAudioDiagnosticsEnabled = await AudioDiagnosticsUI.IsEnabled(cancellationToken).ConfigureAwait(false);
         return new(
             settings.AreExperimentalFeaturesEnabled ?? false,
             settings.IsIncompleteUIEnabled ?? false,
             account.IsAdmin,
             appSettings.IsLogViewerEnabledOrDefault,
-            appSettings.IsVideoDiagnosticsEnabledOrDefault,
-            appSettings.IsAudioDiagnosticsEnabledOrDefault);
+            isVideoDiagnosticsEnabled,
+            isAudioDiagnosticsEnabled);
     }
 
     private Task OnExperimentalFeatureEnabledClick()
@@ -117,13 +121,13 @@
     }
 
     private Task OnVideoDiagnosticsEnabledClick()
-        => LocalSettings.LocalAppSettings().Update(x => x with {
-            IsVideoDiagnosticsEnabled = !x.IsVideoDiagnosticsEnabledOrDefault,
+        => UserSettingsUI.UserAppSettings().Update(x => x with {
+            IsVideoDiagnosticsEnabled = !State.Value.IsVideoDiagnosticsEnabled,
         });
 
     private Task OnAudioDiagnosticsEnabledClick()
-        => LocalSettings.LocalAppSettings().Update(x => x with {
-            IsAudioDiagnosticsEnabled = !x.IsAudioDiagnosticsEnabledOrDefault,
+        => UserSettingsUI.UserAppSettings().Update(x => x with {
+            IsAudioDiagnosticsEnabled = !State.Value.IsAudioDiagnosticsEnabled,
         });
 
     private Task OnGetLogFileClick()

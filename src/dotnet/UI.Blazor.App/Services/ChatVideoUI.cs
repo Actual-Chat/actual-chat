@@ -133,7 +133,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         var mode = await GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
         var isVideoAvailable = await IsVideoAvailable(chatId, cancellationToken).ConfigureAwait(false);
-        var settings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        var isDiagnosticsEnabled = await IsDiagnosticsEnabled(cancellationToken).ConfigureAwait(false);
         return new VideoPanelActions(
             Mode: mode,
             IsNarrow: isNarrow,
@@ -144,9 +144,17 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             CanToggleVideo: isVideoAvailable,
             CanToggleScreenCast: !isNarrow && !BrowserInfo.IsMobile && isVideoAvailable,
             CanToggleChatPanel: !isNarrow && mode == VideoPanelMode.Expanded,
-            CanShowDiagnostics: settings.IsVideoDiagnosticsEnabledOrDefault || HostInfo.IsDevelopmentInstance,
+            CanShowDiagnostics: isDiagnosticsEnabled,
             CanShowVoiceSettings: true,
             CanShowVideoSettings: isVideoAvailable);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsDiagnosticsEnabled(CancellationToken cancellationToken = default)
+    {
+        // Dev instances only shift the default — an explicit setting always wins.
+        var settings = await UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        return settings.IsVideoDiagnosticsEnabled ?? HostInfo.IsDevelopmentInstance;
     }
 
     // State mutators
