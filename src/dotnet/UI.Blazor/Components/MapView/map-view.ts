@@ -25,38 +25,128 @@ interface MapViewOptions {
     interactive: boolean;
 }
 
+// A chat can show dozens of MapView instances at once (each location message renders one),
+// but browsers cap live WebGL contexts per page (~16 in Chrome) and silently kill the oldest
+// beyond that, leaving those maps blank and unresponsive. So the MapLibre map only exists
+// while its container is near the viewport, and is rebuilt if its context still gets evicted.
 export class MapView {
-    private readonly map: MlMap;
+    private readonly element: HTMLElement;
+    private readonly options: MapViewOptions;
     private readonly markers = new Map<string, MlMarker>();
     private readonly resizeObserver: ResizeObserver;
+    private readonly visibilityObserver: IntersectionObserver;
+    private map: MlMap | null = null;
+    private lastMarkers: MapMarker[] = [];
+    private isVisible = false;
+    private isDisposed = false;
+    private recreateTimer: ReturnType<typeof setTimeout> | null = null;
 
     public static create(element: HTMLElement, options: MapViewOptions): MapView {
         return new MapView(element, options);
     }
 
     constructor(element: HTMLElement, options: MapViewOptions) {
-        this.map = new maplibregl.Map({
-            container: element,
-            style: options.styleUrl,
-            center: [options.centerLongitude, options.centerLatitude],
-            zoom: options.zoom,
-            interactive: options.interactive,
-            attributionControl: false,
-        });
+        this.element = element;
+        this.options = options;
         // The map is often created while its container is still 0-sized (e.g. inside a
         // modal that's mid-open-animation); MapLibre then loads no tiles and stays blank.
         // Re-measure whenever the container resizes so tiles load once it has real size.
-        this.resizeObserver = new ResizeObserver(() => this.map.resize());
+        this.resizeObserver = new ResizeObserver(() => this.map?.resize());
         this.resizeObserver.observe(element);
+        this.visibilityObserver = new IntersectionObserver(
+            entries => this.onVisibilityChange(entries[entries.length - 1].isIntersecting),
+            { rootMargin: '50% 0px' });
+        this.visibilityObserver.observe(element);
     }
 
     // Markers are DOM overlays, not style layers, so they survive setStyle — only
     // the tile/glyph/sprite layers are swapped when the app theme changes.
     public setStyle(styleUrl: string): void {
-        this.map.setStyle(styleUrl);
+        this.options.styleUrl = styleUrl;
+        this.map?.setStyle(styleUrl);
     }
 
     public setMarkers(markers: MapMarker[]): void {
+        this.lastMarkers = markers;
+        if (this.map != null)
+            this.applyMarkers(markers);
+    }
+
+    public flyTo(latitude: number, longitude: number): void {
+        this.options.centerLatitude = latitude;
+        this.options.centerLongitude = longitude;
+        this.map?.flyTo({ center: [longitude, latitude] });
+    }
+
+    public dispose(): void {
+        this.isDisposed = true;
+        if (this.recreateTimer != null)
+            clearTimeout(this.recreateTimer);
+        this.visibilityObserver.disconnect();
+        this.resizeObserver.disconnect();
+        this.destroyMap();
+    }
+
+    // Private methods
+
+    private onVisibilityChange(isVisible: boolean): void {
+        this.isVisible = isVisible;
+        if (isVisible)
+            this.createMap();
+        else
+            this.destroyMap();
+    }
+
+    private createMap(): void {
+        if (this.map != null || this.isDisposed)
+            return;
+
+        this.map = new maplibregl.Map({
+            container: this.element,
+            style: this.options.styleUrl,
+            center: [this.options.centerLongitude, this.options.centerLatitude],
+            zoom: this.options.zoom,
+            interactive: this.options.interactive,
+            attributionControl: false,
+        });
+        this.map.on('webglcontextlost', () => this.onContextLost());
+        this.applyMarkers(this.lastMarkers);
+    }
+
+    private destroyMap(): void {
+        const map = this.map;
+        if (map == null)
+            return;
+
+        this.map = null;
+        // Keep the user's pan/zoom, so the map reappears where they left it.
+        const center = map.getCenter();
+        this.options.centerLatitude = center.lat;
+        this.options.centerLongitude = center.lng;
+        this.options.zoom = map.getZoom();
+        for (const marker of this.markers.values())
+            marker.remove();
+        this.markers.clear();
+        map.remove();
+    }
+
+    // The delay lets a burst of evictions settle before rebuilding.
+    private onContextLost(): void {
+        this.destroyMap();
+        if (this.recreateTimer != null)
+            clearTimeout(this.recreateTimer);
+        this.recreateTimer = setTimeout(() => {
+            this.recreateTimer = null;
+            if (this.isVisible && !this.isDisposed)
+                this.createMap();
+        }, 250);
+    }
+
+    private applyMarkers(markers: MapMarker[]): void {
+        const map = this.map;
+        if (map == null)
+            return;
+
         const seen = new Set<string>();
         for (const m of markers) {
             seen.add(m.id);
@@ -83,7 +173,7 @@ export class MapView {
                 : { element: MapView.createMarkerElement(m), anchor: 'bottom', offset: [0, 8] };
             const marker = new maplibregl.Marker(options)
                 .setLngLat([m.point.longitude, m.point.latitude]);
-            marker.addTo(this.map);
+            marker.addTo(map);
             this.markers.set(m.id, marker);
         }
         for (const [id, marker] of this.markers) {
@@ -94,18 +184,6 @@ export class MapView {
             this.markers.delete(id);
         }
     }
-
-    public flyTo(latitude: number, longitude: number): void {
-        this.map.flyTo({ center: [longitude, latitude] });
-    }
-
-    public dispose(): void {
-        this.resizeObserver.disconnect();
-        this.markers.clear();
-        this.map.remove();
-    }
-
-    // Private methods
 
     // Marker styles: the avatar-less own position is a lone blue dot (+ heading fan),
     // avatar-less others are the complete <map-marker-pin>, and any marker with an
