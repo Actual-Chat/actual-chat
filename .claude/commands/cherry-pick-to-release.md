@@ -37,9 +37,10 @@ reach step 5, instead of asking.
 
 ## Reuse
 
-- **`git log --cherry-pick --right-only A...B`** is the whole "which commits
-  aren't there yet" engine — patch-id equivalence, built in. Don't hand-roll
-  subject matching.
+- **`git patch-id --stable`** fed from `git log -p` is the "which commits aren't
+  there yet" engine — one streaming pass per side, no per-commit `git show`.
+  Don't hand-roll subject matching, and **don't** reach for
+  `git log --cherry-pick A...B` here (see step 3 for why it silently fails).
 - **`git cherry-pick -x`** stamps `(cherry picked from commit <sha>)` into each
   message; step 4 reads those trailers back. Every run makes the next one
   smarter — never drop `-x`.
@@ -103,26 +104,63 @@ Report the release branch and its sync state before going further, e.g.:
 
 ### 3. Collect candidates
 
-Run this **once**, unfiltered — the full symmetric difference:
+**Do not use `git log --cherry-pick --right-only A...B` for this.** It looks
+like the right tool and it is actively wrong here: it only cancels a `dev`
+commit against a twin that sits in the *symmetric difference*. Step 7 of this
+very command merges the release branch back into `dev`, which makes every twin
+an ancestor of `dev` — so the twins leave the symmetric difference, nothing
+remains to cancel against, and every previously ported commit is offered again.
+Measured on `release/v2.13`: it excluded **0 of 36** already-ported commits.
+
+Compare patch-ids against the release branch's **whole** post-cut history
+instead. First find the cut point — nbgv's version commit on the release branch:
 
 ```bash
-git log --no-merges --cherry-pick --right-only \
-  --format='%H%x09%an%x09%ae%x09%aI%x09%s' \
-  origin/release/vX.Y...dev
+git log -1 --format='%H' origin/release/vX.Y --grep="^Set version to 'X.Y'$"
 ```
 
-**Do not add `--author` or `--since` to this command.** Both prune the traversal
-on the *left* side too, which breaks `--cherry-pick`'s patch-id matching and
-resurrects commits that are already on the release branch. Filter the output
-afterwards instead.
+If that finds nothing, fall back to `git merge-base origin/release/vX.(Y-1)
+origin/release/vX.Y`, and if that also fails, bound by `--since` a month before
+the oldest candidate. The bound is only there to keep the walk cheap — too wide
+is harmless, too narrow silently re-offers commits.
+
+Then two streaming passes (`git patch-id` reads a whole `git log -p` stream and
+attributes each diff to the `%H` line preceding it — one process, not one per
+commit):
+
+```bash
+# what the release branch already contains, post-cut
+git log -p --no-merges --format='%H' <cut>..origin/release/vX.Y \
+  | git patch-id --stable | awk '{print $1}' | sort -u > /tmp/rel-pids.txt
+
+# every dev commit not reachable from the release branch  ->  "<patch-id> <sha>"
+git log -p --no-merges --format='%H' origin/release/vX.Y..dev \
+  | git patch-id --stable > /tmp/dev-pids.txt
+
+# the ones already ported
+join <(sort -k1,1 /tmp/dev-pids.txt) /tmp/rel-pids.txt | awk '{print $2}' \
+  | sort -u > /tmp/already.txt
+
+# candidates, newest-first
+git log --no-merges --format='%H' origin/release/vX.Y..dev \
+  | grep -vxF -f /tmp/already.txt
+```
+
+Note the ranges: `..` (two-dot), **not** `...`. Then hydrate the surviving SHAs
+with `git log -1 --format='%h%x09%an%x09%ae%x09%aI%x09%s' <sha>`.
+
+**Do not add `--author` or `--since` to the two patch-id passes.** Filtering
+there shrinks the set a candidate is compared *against*, which resurrects
+already-ported commits. Filter afterwards, in step 4.
 
 ### 4. Filter
 
 Apply, in order, to the rows from step 3:
 
-1. **Already cherry-picked** — collect the SHAs the release branch already
-   credits and drop rows matching them (catches picks whose diff drifted, so
-   patch-id no longer matches):
+1. **Already cherry-picked, diff drifted** — step 3 catches anything whose diff
+   is still identical. This catches the rest: picks that were conflict-resolved
+   on the way in, so their patch-id no longer matches. Collect the SHAs the
+   release branch already credits and drop rows matching them:
 
    ```bash
    git log --format='%b' origin/release/vX.Y \
