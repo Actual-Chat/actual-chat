@@ -41,6 +41,9 @@ export class MarkupEditor {
     private readonly listHandlers: ListHandler[];
     private listHandler?: ListHandler;
     private listFilter = '';
+    // Anchor of the '@' the user explicitly dismissed the picker for; it stays suppressed
+    // until the match at that anchor is gone (caret moved before it, or the '@' was deleted).
+    private dismissedMatch: { node: Node; offset: number } | null = null;
     // While > Date.now(), suppress the mention picker — set on paste so pasted "@…" never auto-opens it.
     private pasteGuardUntil = 0;
     private sizeObserver: ResizeObserver | null = null;
@@ -259,6 +262,7 @@ export class MarkupEditor {
     }
 
     public setHtml(html: string, mustFocus = false, clearUndoStack = true) {
+        this.dismissedMatch = null;
         this.transaction('setHtml', () => {
             this.contentDiv.innerHTML = html;
             this.fixEverything();
@@ -301,6 +305,8 @@ export class MarkupEditor {
         const mentionListWrapper = document.querySelector('.mention-list-wrapper');
         if (mentionListWrapper == null)
             return;
+
+        this.dismissedMatch = null;
 
         if (!this.hasFocus()) {
             this.focus();
@@ -376,9 +382,9 @@ export class MarkupEditor {
         await this.blazorRef.invokeMethodAsync('OnOpenPrevious');
     }
 
-    private async onListCommand(listId: string, command: ListCommand): Promise<void> {
+    private async onListCommand(listId: string, command: ListCommand): Promise<boolean> {
         debugLog?.log(`onListCommand(): listId:`, listId, ', command:', command.kind, ', filter:', command.filter);
-        await this.blazorRef.invokeMethodAsync('OnListCommand', listId, command);
+        return await this.blazorRef.invokeMethodAsync<boolean>('OnListCommand', listId, command);
     }
 
     // Event handlers
@@ -412,15 +418,25 @@ export class MarkupEditor {
                 ok(); return;
             }
             if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-                preventDefaultForEvent(e);
-                void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.InsertItem));
+                // The picker may have nothing to insert (e.g. "No matches found"), in which case
+                // Enter must fall back to its normal behavior instead of being silently eaten.
+                const isShiftKey = DeviceInfo.isMobile ? true : e.shiftKey;
+                const isPost = e.ctrlKey || e.metaKey || e.altKey || !isShiftKey;
+                void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.InsertItem))
+                    .then(isHandled => {
+                        if (isHandled)
+                            return;
+
+                        this.closeListUI();
+                        if (isPost)
+                            void this.onPost();
+                        else
+                            this.insertLineFeed();
+                    });
                 ok(); return;
             }
             if (e.code === 'Escape') {
-                preventDefaultForEvent(e);
-                if (!this.expandSelection(listHandler))
-                { ok(); return; }
-                this.closeListUI();
+                this.dismissList();
                 ok(); return;
             }
         }
@@ -459,17 +475,7 @@ export class MarkupEditor {
                 ok(); return;
             }
 
-            this.transaction('fix line feed', () => {
-                const text1 = this.getText();
-                document.execCommand('insertHTML', false, '\n');
-                const text2 = this.getText();
-                const isBuggy = !text1.endsWith('\n') && text2.startsWith(text1);
-                if (isBuggy) {
-                    // Workaround for "Enter does nothing if cursor is in the end of the document" issue
-                    document.execCommand('insertHTML', false, '\n');
-                }
-                this.fixContent();
-            });
+            this.insertLineFeed();
             ok(); return;
         }
     }
@@ -624,6 +630,34 @@ export class MarkupEditor {
 
     // List UI (lists, etc.) support
 
+    // Closes the picker and keeps it closed for the '@' it was showing - called on Escape
+    // and from Blazor when the user closes the picker via its own UI.
+    public dismissList() {
+        const listHandler = this.listHandler;
+        if (listHandler) {
+            const cursorRange = this.getCursorRange();
+            const matchRange = cursorRange ? listHandler.getMatchRange(cursorRange) : null;
+            this.dismissedMatch = matchRange
+                ? { node: matchRange.startContainer, offset: matchRange.startOffset }
+                : null;
+        }
+        this.closeListUI();
+    }
+
+    private insertLineFeed() {
+        this.transaction('fix line feed', () => {
+            const text1 = this.getText();
+            document.execCommand('insertHTML', false, '\n');
+            const text2 = this.getText();
+            const isBuggy = !text1.endsWith('\n') && text2.startsWith(text1);
+            if (isBuggy) {
+                // Workaround for "Enter does nothing if cursor is in the end of the document" issue
+                document.execCommand('insertHTML', false, '\n');
+            }
+            this.fixContent();
+        });
+    }
+
     private updateListUIThrottled = throttle(() => this.updateListUI(), 250);
     private updateListUI() {
         debugLog?.log(`updateListUI`);
@@ -659,9 +693,20 @@ export class MarkupEditor {
     // Helpers
 
     private tryUseListHandler(listHandler: ListHandler, cursorRange: Range): boolean {
-        const matchText = listHandler.getMatchText(cursorRange);
+        const matchRange = listHandler.getMatchRange(cursorRange);
+        const matchText = matchRange ? listHandler.getMatchText(matchRange) : '';
         const isActive = listHandler == this.listHandler;
-        if (!matchText) {
+        if (!matchRange || !matchText) {
+            this.dismissedMatch = null;
+            if (isActive)
+                this.closeListUI();
+            return false;
+        }
+
+        const dismissedMatch = this.dismissedMatch;
+        if (dismissedMatch
+            && dismissedMatch.node === matchRange.startContainer
+            && dismissedMatch.offset === matchRange.startOffset) {
             if (isActive)
                 this.closeListUI();
             return false;
@@ -669,6 +714,9 @@ export class MarkupEditor {
 
         const listFilter = listHandler.getFilter(matchText);
         if (!isActive) {
+            if (!listHandler.canAutoOpen(matchText))
+                return false;
+
             this.listHandler = listHandler;
             this.listFilter = listFilter;
             void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.Show, listFilter));
@@ -844,11 +892,7 @@ abstract class ListHandler {
 
     public getFilter = (matchText: string) => matchText.substring(1);
 
-    public getMatchText(cursorRange: Range): string {
-        const matchRange = this.getMatchRange(cursorRange);
-        if (!matchRange)
-            return '';
-
+    public getMatchText(matchRange: Range): string {
         const textNode = matchRange.startContainer as Text;
         if (!textNode)
             return '';
@@ -877,11 +921,23 @@ abstract class ListHandler {
         return (startOffset == null || startOffset >= endOffset) ? 0 : endOffset - startOffset;
     }
 
+    // Whether this match may open the list; a failing match still keeps an open one alive.
+    public canAutoOpen(matchText: string): boolean {
+        return matchText.length > 0;
+    }
+
     public abstract getMatchStart(text: string, endOffset: number): number | null;
 }
 
 class MentionListHandler extends ListHandler {
-    static wrongPrefixRe = /[\p{L}\p{Nd}_@\/`]/u;
+    // A whitelist, not a blacklist: no list of "wrong" prefixes stays complete, and a stray "@"
+    // inside a word ("test-@actual.chat") must not start a mention.
+    static okPrefixRe = /[\s(\[{"'«\u200b]/u;
+    // Everything \s matches except U+2005, which joins the words of a name in readable markup
+    // (MentionMarkup.ReadableSpace) and therefore is not a word boundary here.
+    static separatorRe = /[^\S\u2005]/u;
+    static separatorRunRe = /[^\S\u2005]+/gu;
+    static MaxWordCount = 3;
 
     constructor(editor: MarkupEditor) {
         super(MentionListId, editor);
@@ -900,23 +956,37 @@ class MentionListHandler extends ListHandler {
         return s.replace(/\u2005/g, ' ');
     };
 
+    // Only a match with no separator in it may open the list; once open, getMatchStart keeps
+    // matching across separators, so a space typed while the list is up doesn't close it.
+    public canAutoOpen(matchText: string): boolean {
+        return matchText.length > 0 && !MentionListHandler.separatorRe.test(matchText);
+    }
+
     public getMatchStart(text: string, endOffset: number): number | null {
-        // Spaces are kept inside the mention filter so the picker survives multi-word
-        // queries ("@John Bolton"); only newlines or '/' terminate the scan.
         let i = endOffset - 1;
         for (; i >= 0; i--) {
             const c = text[i];
             if (c == '\n' || c == '/')
                 return null;
+
             if (c == '@')
                 break;
         }
 
-        if (i == 0)
-            return i;
+        if (i < 0)
+            return null;
 
-        const c = text[i - 1];
-        if (MentionListHandler.wrongPrefixRe.test(c))
+        if (i > 0 && !MentionListHandler.okPrefixRe.test(text[i - 1]))
+            return null;
+
+        // A separator right after '@' means this isn't a mention at all, wherever the caret is.
+        const next = text[i + 1];
+        if (next != null && MentionListHandler.separatorRe.test(next))
+            return null;
+
+        // Past MaxWordCount the user is writing prose, not picking a mention.
+        const wordCount = text.substring(i + 1, endOffset).split(MentionListHandler.separatorRunRe).length;
+        if (wordCount > MentionListHandler.MaxWordCount)
             return null;
 
         return i;

@@ -5,6 +5,6 @@ public interface IMarkupEditorBackend
     Task OnPost(string? text = null);
     Task OnCancel();
     Task OnOpenPrevious();
-    Task OnListCommand(string listId, MarkupEditorListCommand command);
+    Task<bool> OnListCommand(string listId, MarkupEditorListCommand command);
     Task<string> ParseTextToHtml(string text);
 }
