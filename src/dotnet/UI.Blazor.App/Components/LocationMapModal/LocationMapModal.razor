@@ -135,10 +135,7 @@
     }
 
     private async Task OnLocate() {
-        if (await Tracker.Get(force: true).ConfigureAwait(true) is not { } point)
-            return;
-
-        if (_mapView is { } mapView)
+        if (await Tracker.Get().ConfigureAwait(true) is { } point && _mapView is { } mapView)
             await mapView.FlyTo(point).ConfigureAwait(false);
     }
 
