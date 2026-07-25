@@ -8,6 +8,7 @@ public class ThemeUI(UIHub hub) : UIWorkerBase<UIHub>(hub)
     private static readonly string JSThemeClassName = "window.Theme";
     private static readonly string JSSetMethod = $"{JSThemeClassName}.set";
 
+    private Theme _lightTheme = Theme.Light;
     private BrowserInfo BrowserInfo => field ??= Services.GetRequiredService<BrowserInfo>();
     private IEnumerable<Action<ThemeInfo>> ThemeHandlers =>
         field ??= Services.GetRequiredService<IEnumerable<Action<ThemeInfo>>>();
@@ -19,6 +20,16 @@ public class ThemeUI(UIHub hub) : UIWorkerBase<UIHub>(hub)
     {
         var sTheme = theme?.ToString().ToLower();
         return JS.InvokeVoidAsync(JSSetMethod, sTheme);
+    }
+
+    public ValueTask ToggleTheme()
+    {
+        // CurrentTheme is the effective theme, so "system" resolves to what's actually shown;
+        // _lightTheme makes the toggle return to Ash rather than Light when it started from Ash.
+        var currentTheme = State.Value.CurrentTheme;
+        if (currentTheme != Theme.Dark)
+            _lightTheme = currentTheme;
+        return SetTheme(currentTheme == Theme.Dark ? _lightTheme : Theme.Dark);
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)

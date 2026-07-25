@@ -7,6 +7,7 @@
 <SpoilerFilterDefs />
 <Hotkey Keys="ctrl+k" AriaLabel="Quick chat navigation" OnTrigger="OnQuickNav"/>
 <Hotkey Keys="ctrl+/" AriaLabel="Keyboard shortcuts" OnTrigger="OnShortcutsHelp"/>
+<Hotkey Keys="ctrl+shift+l" AriaLabel="Toggle light or dark theme" OnTrigger="OnToggleTheme"/>
 @if (!BrowserInfo.IsTouchCapable) {
     <TooltipHost />
 }
@@ -38,6 +39,7 @@
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private LoadingUI LoadingUI => Hub.LoadingUI;
     private ModalUI ModalUI => Hub.ModalUI;
+    private ThemeUI ThemeUI => Hub.ThemeUI;
 
     protected override void OnAfterRender(bool firstRender) {
         if (firstRender)
@@ -57,6 +59,9 @@
             _isQuickNavOpen = false;
         }
     }
+
+    private Task OnToggleTheme()
+        => ThemeUI.ToggleTheme().AsTask();
 
     private async Task OnShortcutsHelp() {
         if (_isShortcutsHelpOpen)
