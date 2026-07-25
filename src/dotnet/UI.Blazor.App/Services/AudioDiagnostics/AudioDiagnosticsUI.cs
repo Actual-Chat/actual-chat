@@ -29,11 +29,9 @@ public class AudioDiagnosticsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     [ComputeMethod]
     public virtual async Task<bool> IsEnabled(CancellationToken cancellationToken = default)
     {
-        if (HostInfo.IsDevelopmentInstance)
-            return true;
-
-        var appSettings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
-        return appSettings.IsAudioDiagnosticsEnabledOrDefault;
+        // Dev instances only shift the default — an explicit setting always wins.
+        var settings = await UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        return settings.IsAudioDiagnosticsEnabled ?? HostInfo.IsDevelopmentInstance;
     }
 
     public Task Reactivate(CancellationToken cancellationToken = default)

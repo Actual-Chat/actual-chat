@@ -59,6 +59,8 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             IsDataCollectionEnabled = true,
             AreExperimentalFeaturesEnabled = false,
             IsIncompleteUIEnabled = null,
+            IsVideoDiagnosticsEnabled = true,
+            IsAudioDiagnosticsEnabled = false,
         };
         settings.AssertPassesThroughAllSerializers();
     }
@@ -194,7 +196,6 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var settings = new LocalAppSettings {
             IsLogViewerEnabled = true,
-            IsVideoDiagnosticsEnabled = true,
             LocationAccuracy = GeoTrackingAccuracy.Low,
         };
         settings.AssertPassesThroughAllSerializers(AssertLocalAppSettingsEqual);
@@ -235,7 +236,6 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         actual.IsLogViewerEnabled.Should().Be(expected.IsLogViewerEnabled);
         actual.SelectedCameraDeviceId.Should().Be(expected.SelectedCameraDeviceId);
         actual.IsBackgroundBlurEnabled.Should().Be(expected.IsBackgroundBlurEnabled);
-        actual.IsVideoDiagnosticsEnabled.Should().Be(expected.IsVideoDiagnosticsEnabled);
         actual.LocationAccuracy.Should().Be(expected.LocationAccuracy);
         actual.CameraMirrorOverrides.Should().BeEquivalentTo(expected.CameraMirrorOverrides);
     }

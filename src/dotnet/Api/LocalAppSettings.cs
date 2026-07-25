@@ -22,18 +22,14 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
         init;
     } = ApiMap<string, bool>.Empty;
 
-    [DataMember, MemoryPackOrder(4), Key(4)] public bool? IsVideoDiagnosticsEnabled { get; init; }
+    // MemoryPackOrder(4) reserved (was IsVideoDiagnosticsEnabled) — do not reuse.
     [DataMember, MemoryPackOrder(5), Key(5)] public GeoTrackingAccuracy? LocationAccuracy { get; init; }
-    [DataMember, MemoryPackOrder(6), Key(6)] public bool? IsAudioDiagnosticsEnabled { get; init; }
+    // MemoryPackOrder(6) reserved (was IsAudioDiagnosticsEnabled) — do not reuse.
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsBackgroundBlurEnabledOrDefault => IsBackgroundBlurEnabled ?? false;
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool IsVideoDiagnosticsEnabledOrDefault => IsVideoDiagnosticsEnabled ?? false;
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool IsAudioDiagnosticsEnabledOrDefault => IsAudioDiagnosticsEnabled ?? false;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public GeoTrackingAccuracy LocationAccuracyOrDefault => LocationAccuracy ?? GeoTrackingAccuracy.Balanced;
 }
