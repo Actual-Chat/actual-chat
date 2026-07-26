@@ -76,6 +76,12 @@ public partial class ChatUI
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
     public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
     public static readonly int SecondTileSize = (int)IdTileStack.LastLayer.TileSize; // 20
+    // Mirrors VirtualList.ExpandMultiplier = 2, so the load zone is 1 viewport + 2 x 2 viewports.
+    private const double VirtualListLoadZoneSize = 5;
+    // VirtualListStatistics.DefaultItemSize (48) is tuned for uniform lists; measured chat rows average
+    // ~82px. This sits deliberately below that: under-estimating row height over-fetches a little, while
+    // over-estimating it would under-fill the load zone and cost the follow-up query we're avoiding.
+    private const double AssumedItemSize = 64;
 
     private volatile ChatEntry? _audioRecordingEntry;
 
@@ -92,6 +98,23 @@ public partial class ChatUI
 
     public int HalfLoadLimit => BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2; // 20 for mobile
     public int LoadLimit => BrowserInfo.IsMobile ? SecondTileSize * 2 : SecondTileSize * 4; // 40 for mobile
+
+    // The VirtualList loads viewport +/- ExpandMultiplier x viewport and sizes its own requests as
+    // loadZone / itemSize. The very first request is issued before the list exists, so it carries no
+    // ExpectedCount and we have to mirror that formula here - otherwise a fixed row count means ~4
+    // viewports where messages are long and ~16 where they're short, which is what made switching into
+    // a chat mid-history slow. A collapsed conversation costs one row here regardless of its lid span,
+    // because TryGetIdTilesToLoad walks it as a single [start, start+1) range.
+    public int InitialLoadLimit {
+        get {
+            var windowHeight = BrowserInfo.WindowHeight.Value;
+            if (windowHeight <= 0)
+                return LoadLimit; // Height not reported yet - keep the old behaviour
+
+            var rows = (int)Math.Ceiling(VirtualListLoadZoneSize * windowHeight / AssumedItemSize);
+            return Math.Clamp(rows, SecondTileSize * 2, SecondTileSize * 8);
+        }
+    }
 
     public Task<ChatItems> GetChatItems(
         ChatId chatId,

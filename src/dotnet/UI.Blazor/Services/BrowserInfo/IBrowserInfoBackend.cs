@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public interface IBrowserInfoBackend
 {
-    void OnScreenSizeChanged(string screenSizeText, bool isHoverable);
+    void OnScreenSizeChanged(string screenSizeText, bool isHoverable, double windowHeight);
     void OnIsVisibleChanged(bool isVisible);
     void OnThemeChanged(ThemeInfo themeInfo);
     void OnThermalStateChanged(string state);
@@ -13,6 +13,7 @@ public interface IBrowserInfoBackend
 
     public sealed record InitResult(
         string ScreenSizeText,
+        double WindowHeight,
         bool IsVisible,
         bool IsHoverable,
         ThemeInfo ThemeInfo,

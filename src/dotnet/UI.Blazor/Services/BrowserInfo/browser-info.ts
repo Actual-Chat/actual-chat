@@ -48,6 +48,7 @@ export class BrowserInfo {
         const isWasmReady = this.isWasmReady();
         const initResult: InitResult = {
             screenSizeText: ScreenSize.size,
+            windowHeight: window.innerHeight,
             isVisible: !document.hidden,
             isHoverable: ScreenSize.isHoverable,
             themeInfo: Theme.info!,
@@ -81,7 +82,7 @@ export class BrowserInfo {
     private static async onScreenSizeChanged(screenSize: string, isHoverable: boolean): Promise<void> {
         infoLog?.log(`onScreenSizeChanged, screenSize:`, screenSize);
         await this.whenReady;
-        void this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable);
+        void this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable, window.innerHeight);
     };
 
     private static async onVisibilityChanged(): Promise<void> {
@@ -193,6 +194,7 @@ type PressureObserverCtor = new (callback: (records: PressureRecordLike[]) => vo
 
 export interface InitResult {
     screenSizeText: string;
+    windowHeight: number;
     isVisible: boolean,
     isHoverable: boolean,
     themeInfo: ThemeInfo,

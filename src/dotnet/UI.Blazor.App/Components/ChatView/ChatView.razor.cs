@@ -585,6 +585,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var itemVisibility = ItemVisibility.Value;
         var firstItem = oldData.FirstItem;
         var lastItem = oldData.LastItem;
+        var initialLoadLimit = ChatUI.InitialLoadLimit;
         var keyRange = query.IsNone
             ? firstItem != null
                 ? new Range<long>(firstItem.Id, lastItem!.Id + 1)
@@ -602,8 +603,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             // No query, no data -> initial load
             (false, false) => new ChatDataQuery(
                 secondLayer.GetTile(chatLidRange.End - firstLayer.TileSize).Range,
-                -ChatUI.HalfLoadLimit,
-                ChatUI.HalfLoadLimit),
+                -initialLoadLimit / 2,
+                initialLoadLimit / 2),
 
             // No query, there is old data, and we are at the end of the list, let's stick to the visible range if possible
             (false, true) when oldData.HasVeryLastItem
@@ -636,10 +637,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // If we are scrolling somewhere within idRange, let's extend the range to navigation & nearby entries.
         if (navigation != null && chatLidRange.Contains(navigation.EntryLid)) {
             caseName += "+navigation";
+            // The anchor lands at the top of the viewport unless ShowInTheMiddle, so most of the load zone
+            // is needed below it - hence the 1:2 split rather than an even one.
             dataQuery = new ChatDataQuery(
                 secondLayer.GetTile(navigation.EntryLid).Range,
-                -ChatUI.HalfLoadLimit,
-                ChatUI.LoadLimit) {
+                -initialLoadLimit / 3,
+                initialLoadLimit * 2 / 3) {
                     Navigation = navigation,
             };
         }

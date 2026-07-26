@@ -5,6 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
 {
     private readonly MutableState<ScreenSize> _screenSize;
+    private readonly MutableState<double> _windowHeight;
     private readonly MutableState<bool> _isHoverable;
     private readonly MutableState<bool> _isVisible;
     private readonly MutableState<ThemeInfo> _themeInfo;
@@ -18,6 +19,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public DotNetObjectReference<IClipboardHandlers>? ClipboardHandlersRef { get; protected set; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ScreenSize> ScreenSize => _screenSize;
+    public IState<double> WindowHeight => _windowHeight;
     public IState<bool> IsHoverable => _isHoverable;
     public IState<bool> IsVisible => _isVisible;
     public IState<ThemeInfo> ThemeInfo => _themeInfo;
@@ -44,6 +46,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
         BlazorRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
         var stateFactory = StateFactory;
         _screenSize = stateFactory.NewMutable<ScreenSize>();
+        _windowHeight = stateFactory.NewMutable<double>();
         _isHoverable = stateFactory.NewMutable(false);
         _isVisible = stateFactory.NewMutable(true);
         _themeInfo = stateFactory.NewMutable(Blazor.Services.ThemeInfo.Default);
@@ -59,6 +62,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
         UpdateThemeInfo(initResult.ThemeInfo);
         var screenSize = TryParseScreenSize(initResult.ScreenSizeText) ?? Blazor.Services.ScreenSize.Unknown;
         Update(screenSize, initResult.IsHoverable, initResult.IsVisible);
+        _windowHeight.Value = initResult.WindowHeight;
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         TimeZone = initResult.TimeZone;
         IsMobile = initResult.IsMobile;
@@ -76,11 +80,12 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     }
 
     [JSInvokable]
-    public void OnScreenSizeChanged(string screenSizeText, bool isHoverable)
+    public void OnScreenSizeChanged(string screenSizeText, bool isHoverable, double windowHeight)
     {
         if (!Enum.TryParse<ScreenSize>(screenSizeText, true, out var screenSize))
             screenSize = Blazor.Services.ScreenSize.Unknown;
         Update(screenSize, isHoverable);
+        _windowHeight.Value = windowHeight;
     }
 
     [JSInvokable]
