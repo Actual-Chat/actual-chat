@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.Components
+@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, VisualActivityPanel.Model>
 @{
     var m = State.Value;
@@ -39,7 +39,7 @@
 }
 
 @if (_chatContextToRender is not null || (showMap && chatContext is not null)) {
-    <div class="call-map-panel">
+    <div class="visual-activity-panel">
         @if (_chatContextToRender is not null) {
             <ErrorBarrier Name="VideoPanel" Kind="ErrorBarrierKind.Medium">
                 <CascadingValue Value="_chatContextToRender">

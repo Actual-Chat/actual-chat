@@ -1,4 +1,4 @@
-.call-map-panel {
+.visual-activity-panel {
     @apply relative z-10;
     @apply flex justify-center;
     @apply w-full;
