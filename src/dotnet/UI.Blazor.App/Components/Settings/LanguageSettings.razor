@@ -34,6 +34,9 @@
         _formModel.LanguageCode = code;
         LanguageUI.UILanguage.Value = _formModel.Language;
         await LanguageUI.UILanguage.WhenWritten();
+        // WhenWritten only means the value reached BatchingKvas' write queue;
+        // without a flush, ForceReload can discard it before it hits the storage.
+        await LocalSettings.Flush();
         await History.ForceReload("Language changed", History.Uri);
     }
 
