@@ -15,7 +15,7 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
 {
     private readonly MutableState<(ChatId ChatId, CallMapPanelTab Tab)?> _selectedPanelTab =
         hub.StateFactory.NewMutable(((ChatId ChatId, CallMapPanelTab Tab)?)null);
-    private readonly MutableState<ChatId?> _panelHiddenChatId = hub.StateFactory.NewMutable((ChatId?)null);
+    private readonly ConcurrentDictionary<ChatId, Unit> _panelHiddenChatIds = new();
 
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ILiveSessions LiveSessions => Hub.LiveSessions;
@@ -78,16 +78,19 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         => _selectedPanelTab.Value = (chatId, tab);
 
     [ComputeMethod]
-    public virtual async Task<bool> IsPanelHidden(ChatId chatId, CancellationToken cancellationToken = default)
-        => await _panelHiddenChatId.Use(cancellationToken).ConfigureAwait(false) == chatId;
+    public virtual Task<bool> IsPanelHidden(ChatId chatId, CancellationToken cancellationToken = default)
+        => Task.FromResult(_panelHiddenChatIds.ContainsKey(chatId));
 
     public void SetPanelHidden(ChatId chatId, bool isHidden)
     {
-        // TODO: use dictionary
-        if (isHidden)
-            _panelHiddenChatId.Value = chatId;
-        else if (_panelHiddenChatId.Value == chatId)
-            _panelHiddenChatId.Value = null;
+        var isChanged = isHidden
+            ? _panelHiddenChatIds.TryAdd(chatId, default)
+            : _panelHiddenChatIds.TryRemove(chatId, out _);
+        if (!isChanged)
+            return;
+
+        using (Invalidation.Begin())
+            _ = IsPanelHidden(chatId, default);
     }
 
     // Protected/internal methods
