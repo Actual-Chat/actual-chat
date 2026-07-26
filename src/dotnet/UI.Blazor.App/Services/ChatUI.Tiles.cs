@@ -78,6 +78,13 @@ public partial class ChatUI
             .Select(metaIdTile
                 => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))
             .Collect(cancellationToken);
+        // Issued here rather than under the showConversations check below, which needs chat + liveConversation
+        // and so could only run a round later. Summarization is on by default, so showConversations is nearly
+        // always true; for the rare chat without conversations this tile set comes back empty and then only
+        // invalidates if summarization is turned on - so the unconditional dependency costs ~nothing.
+        var conversationTilesTask = metaIdTiles
+            .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
+            .Collect(cancellationToken);
         Task<Range<long>> chatLidRangeTask;
         using (Computed.BeginIsolation())
             chatLidRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
@@ -150,11 +157,8 @@ public partial class ChatUI
         // expandedConversations below is the resolved "render expanded" set, not the raw override set.
         IImmutableSet<ConversationId> defaultExpanded = ImmutableHashSet<ConversationId>.Empty;
         IImmutableSet<ConversationId> expandedConversations = ImmutableHashSet<ConversationId>.Empty;
+        var conversationTiles = await conversationTilesTask.ConfigureAwait(false);
         if (showConversations) {
-            var conversationTiles = await metaIdTiles
-                .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
-                .Collect(cancellationToken)
-                .ConfigureAwait(false);
             // Fold the loaded tiles' IsExpandedByDefault into the persistent cache (loaded tiles are
             // authoritative), then resolve defaultExpanded from the cache - so a conversation whose tile
             // isn't currently loaded keeps its last-known state instead of silently collapsing.
