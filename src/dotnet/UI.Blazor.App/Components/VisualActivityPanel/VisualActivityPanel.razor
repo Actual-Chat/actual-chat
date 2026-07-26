@@ -103,7 +103,7 @@
                 }
             }
         }
-        var panelState = await ChatActivityUI.GetPanelState(chatId, cancellationToken).ConfigureAwait(false);
+        var panelState = await ChatActivityUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         return new Model(chatContext, isWatching, panelState);
     }
 
@@ -118,8 +118,8 @@
     public sealed record Model(
         ChatContext? ChatContext,
         [property: MemberNotNullWhen(true, nameof(Model.ChatContext))] bool IsWatching,
-        VisualActivityPanelState PanelState
+        VisualActivity PanelState
     ) {
-        public static readonly Model None = new(null, false, VisualActivityPanelState.None);
+        public static readonly Model None = new(null, false, VisualActivity.None);
     }
 }
