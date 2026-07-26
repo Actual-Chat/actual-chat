@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, CallMapSwitch.Model>
+@inherits ComputedStateComponent<AppUIHub, VisualActivityPanelTabSwitch.Model>
 @{
     var m = State.Value;
     if (!m.IsVisible)
@@ -8,13 +8,13 @@
 
 <div class="call-map-switch">
     <button type="button"
-            class="c-option @(m.Tab == CallMapPanelTab.Call ? "on" : "")"
-            @onclick="@(() => OnSelect(CallMapPanelTab.Call))">
+            class="c-option @(m.Tab == VisualActivityTab.Call ? "on" : "")"
+            @onclick="@(() => OnSelect(VisualActivityTab.Call))">
         Call
     </button>
     <button type="button"
-            class="c-option @(m.Tab == CallMapPanelTab.Map ? "on" : "")"
-            @onclick="@(() => OnSelect(CallMapPanelTab.Map))">
+            class="c-option @(m.Tab == VisualActivityTab.Map ? "on" : "")"
+            @onclick="@(() => OnSelect(VisualActivityTab.Map))">
         Map
     </button>
 </div>
@@ -42,18 +42,18 @@
         // The switch belongs to the inline panel only — the fullscreen / island /
         // hidden video panel has its own chrome.
         var videoPanelMode = await ChatVideoUI.GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
-        var isVisible = state.Tab != CallMapPanelTab.Call || videoPanelMode == VideoPanelMode.Inline;
+        var isVisible = state.Tab != VisualActivityTab.Call || videoPanelMode == VideoPanelMode.Inline;
         return new Model(isVisible, state.Tab);
     }
 
     // Private methods
 
-    private void OnSelect(CallMapPanelTab tab)
+    private void OnSelect(VisualActivityTab tab)
         => ChatActivityUI.SelectPanelTab(Chat.Id, tab);
 
     // Nested types
 
-    public sealed record Model(bool IsVisible, CallMapPanelTab Tab) {
-        public static readonly Model None = new(false, CallMapPanelTab.Call);
+    public sealed record Model(bool IsVisible, VisualActivityTab Tab) {
+        public static readonly Model None = new(false, VisualActivityTab.Call);
     }
 }
