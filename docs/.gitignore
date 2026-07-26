@@ -7,3 +7,5 @@ node_modules/
 
 # Compiled theme files
 .vitepress/theme/*.js
+
+internal
