@@ -26,6 +26,10 @@ public static class AppStrings
         public string Common_Copy => l["Common_Copy"].Value;
         public string Common_Share => l["Common_Share"].Value;
         public string Common_Disabled => l["Common_Disabled"].Value;
+        public string Common_Listen => l["Common_Listen"].Value;
+        public string Common_Mute => l["Common_Mute"].Value;
+        public string Common_Start => l["Common_Start"].Value;
+        public string Common_Stop => l["Common_Stop"].Value;
 
         public string Settings_Title => l["Settings_Title"].Value;
         public string Settings_Language => l["Settings_Language"].Value;
@@ -67,7 +71,8 @@ public static class AppStrings
         public string AppSettings_AllowTelemetry => l["AppSettings_AllowTelemetry"].Value;
         public string AppSettings_TelemetryAllowed => l["AppSettings_TelemetryAllowed"].Value;
         public string AppSettings_TelemetryDisallowed => l["AppSettings_TelemetryDisallowed"].Value;
-        public string AppSettings_TelemetryDescription_Format(object arg0) => l["AppSettings_TelemetryDescription_Format", arg0].Value;
+        public string AppSettings_TelemetryDescription_Format(object arg0)
+            => l["AppSettings_TelemetryDescription_Format", arg0].Value;
 
         public string ThemeSettings_Light => l["ThemeSettings_Light"].Value;
         public string ThemeSettings_LightLinkWater => l["ThemeSettings_LightLinkWater"].Value;
@@ -147,5 +152,36 @@ public static class AppStrings
 
         public string ApiKeyReveal_CopyWarning => l["ApiKeyReveal_CopyWarning"].Value;
         public string ApiKeyReveal_Title => l["ApiKeyReveal_Title"].Value;
+
+        public string ChatList_TabAll => l["ChatList_TabAll"].Value;
+        public string ChatList_TabGroups => l["ChatList_TabGroups"].Value;
+        public string ChatList_TabPeople => l["ChatList_TabPeople"].Value;
+        public string ChatList_TabThreads => l["ChatList_TabThreads"].Value;
+        public string ChatList_SortBy => l["ChatList_SortBy"].Value;
+        public string ChatList_SortByAnyonesActivity => l["ChatList_SortByAnyonesActivity"].Value;
+        public string ChatList_SortByOwnActivity => l["ChatList_SortByOwnActivity"].Value;
+        public string ChatList_SortByUnreadCount => l["ChatList_SortByUnreadCount"].Value;
+        public string ChatList_SortByAlphabet => l["ChatList_SortByAlphabet"].Value;
+        public string ChatList_ActiveChats => l["ChatList_ActiveChats"].Value;
+        public string ChatList_ActiveChatsTooltip => l["ChatList_ActiveChatsTooltip"].Value;
+        public string ChatList_Talking => l["ChatList_Talking"].Value;
+        public string ChatList_Live_Format(object arg0) => l["ChatList_Live_Format", arg0].Value;
+        public string ChatList_Thread_Format(object arg0) => l["ChatList_Thread_Format", arg0].Value;
+        public string ChatList_SharedLiveLocation => l["ChatList_SharedLiveLocation"].Value;
+        public string ChatList_SentLocation => l["ChatList_SentLocation"].Value;
+
+        public string ChatMenu_AddMembers => l["ChatMenu_AddMembers"].Value;
+        public string ChatMenu_EditContact => l["ChatMenu_EditContact"].Value;
+        public string ChatMenu_LeaveChat => l["ChatMenu_LeaveChat"].Value;
+        public string ChatMenu_BlockUser => l["ChatMenu_BlockUser"].Value;
+        public string ChatMenu_UnblockUser => l["ChatMenu_UnblockUser"].Value;
+        public string ChatMenu_Pin => l["ChatMenu_Pin"].Value;
+        public string ChatMenu_Unpin => l["ChatMenu_Unpin"].Value;
+        public string ChatMenu_PinToSidebar => l["ChatMenu_PinToSidebar"].Value;
+        public string ChatMenu_UnpinFromSidebar => l["ChatMenu_UnpinFromSidebar"].Value;
+        public string ChatMenu_StartAnonymousChat => l["ChatMenu_StartAnonymousChat"].Value;
+        public string ChatMenu_StartRecording => l["ChatMenu_StartRecording"].Value;
+        public string ChatMenu_StopRecording => l["ChatMenu_StopRecording"].Value;
+        public string ChatMenu_RemoveFromActiveChats => l["ChatMenu_RemoveFromActiveChats"].Value;
     }
 }

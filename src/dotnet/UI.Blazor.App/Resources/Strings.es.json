@@ -19,6 +19,10 @@
   "Common_Copy": "Copiar",
   "Common_Share": "Compartir",
   "Common_Disabled": "Desactivado",
+  "Common_Listen": "Escuchar",
+  "Common_Mute": "Silenciar",
+  "Common_Start": "Iniciar",
+  "Common_Stop": "Detener",
 
   "Settings_Title": "Ajustes",
   "Settings_Language": "Idioma",
@@ -138,5 +142,36 @@
   "ApiKeyCreate_Create": "Crear",
 
   "ApiKeyReveal_CopyWarning": "Copia esta clave ahora. No se mostrará de nuevo.",
-  "ApiKeyReveal_Title": "Tu nueva clave API"
+  "ApiKeyReveal_Title": "Tu nueva clave API",
+
+  "ChatList_TabAll": "Todos",
+  "ChatList_TabGroups": "Grupos",
+  "ChatList_TabPeople": "Personas",
+  "ChatList_TabThreads": "Hilos",
+  "ChatList_SortBy": "Ordenar por:",
+  "ChatList_SortByAnyonesActivity": "Actividad reciente de cualquiera",
+  "ChatList_SortByOwnActivity": "Tu actividad reciente",
+  "ChatList_SortByUnreadCount": "Número de mensajes sin leer",
+  "ChatList_SortByAlphabet": "Alfabético",
+  "ChatList_ActiveChats": "Chats activos",
+  "ChatList_ActiveChatsTooltip": "Chats donde estás escuchando o grabando ahora mismo",
+  "ChatList_Talking": "hablando",
+  "ChatList_Live_Format": "{0} · en vivo",
+  "ChatList_Thread_Format": "Hilo '{0}'",
+  "ChatList_SharedLiveLocation": "Ubicación en vivo compartida",
+  "ChatList_SentLocation": "Ubicación enviada",
+
+  "ChatMenu_AddMembers": "Añadir miembros",
+  "ChatMenu_EditContact": "Editar contacto",
+  "ChatMenu_LeaveChat": "Salir del chat",
+  "ChatMenu_BlockUser": "Bloquear usuario",
+  "ChatMenu_UnblockUser": "Desbloquear usuario",
+  "ChatMenu_Pin": "Fijar",
+  "ChatMenu_Unpin": "Desfijar",
+  "ChatMenu_PinToSidebar": "Fijar en la barra lateral",
+  "ChatMenu_UnpinFromSidebar": "Quitar de la barra lateral",
+  "ChatMenu_StartAnonymousChat": "Iniciar chat anónimo",
+  "ChatMenu_StartRecording": "Iniciar grabación",
+  "ChatMenu_StopRecording": "Detener grabación",
+  "ChatMenu_RemoveFromActiveChats": "Quitar de chats activos"
 }

@@ -52,9 +52,12 @@
                         }
                         @if (m.CallActivity.HasLiveConversation) {
                             var activity = m.CallActivity;
+                            var activityText = activity.IsLiveSession
+                                ? L.ChatList_Live_Format(activity.ParticipantCount)
+                                : L.ChatList_Talking;
                             <span class="c-live-talking">
                                 <chat-activity-svg size="4" isActive="true"/>
-                                @(activity.IsLiveSession ? $"{activity.ParticipantCount} · live" : "talking")
+                                @activityText
                             </span>
                         }
                         else if (lastTextEntry.IsContentStreaming) {

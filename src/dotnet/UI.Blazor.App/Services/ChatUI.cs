@@ -2,8 +2,10 @@
 using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
+using ActualChat.UI.Blazor.App.Resources;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
+using Microsoft.Extensions.Localization;
 using MathExt = ActualLab.Mathematics.MathExt;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -51,6 +53,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private NavbarUI NavbarUI { get; }
+    private IStringLocalizer L => field ??= Services.GetRequiredService<IStringLocalizer>();
 
     public IState<ChatId?> SelectedChatId => _selectedChatId;
     public IState<PlaceId?> SelectedPlaceId => _selectedPlaceId;
@@ -170,7 +173,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var threadChat = await threadChatTask.ConfigureAwait(false);
             var threadCreator = await threadCreatorTask.ConfigureAwait(false);
             return new ChatPreview {
-                Text = threadChat is not null ? $"Thread '{threadChat.Title}'" : "",
+                Text = threadChat is not null ? L.ChatList_Thread_Format(threadChat.Title) : "",
                 Thread = threadChat,
                 ThreadCreator = threadCreator,
             };
@@ -178,7 +181,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
         if (lastTextEntry is { HasLocation: true, LocationId: { } locationId }) {
             var isOneTime = await LocationUI.IsOneTime(chatId, locationId, cancellationToken).ConfigureAwait(false);
-            return new ChatPreview { Text = isOneTime ? "Sent a location" : "Shared live location" };
+            return new ChatPreview { Text = isOneTime ? L.ChatList_SentLocation : L.ChatList_SharedLiveLocation };
         }
 
         var emoji = Emojis.TryGetByIdOrSymbol(lastTextEntry.Content.Trim());

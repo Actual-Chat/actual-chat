@@ -19,6 +19,10 @@
   "Common_Copy": "Копировать",
   "Common_Share": "Поделиться",
   "Common_Disabled": "Отключено",
+  "Common_Listen": "Слушать",
+  "Common_Mute": "Без звука",
+  "Common_Start": "Начать",
+  "Common_Stop": "Остановить",
 
   "Settings_Title": "Настройки",
   "Settings_Language": "Язык",
@@ -138,5 +142,36 @@
   "ApiKeyCreate_Create": "Создать",
 
   "ApiKeyReveal_CopyWarning": "Скопируйте этот ключ сейчас. Он больше не будет показан.",
-  "ApiKeyReveal_Title": "Ваш новый API-ключ"
+  "ApiKeyReveal_Title": "Ваш новый API-ключ",
+
+  "ChatList_TabAll": "Все",
+  "ChatList_TabGroups": "Группы",
+  "ChatList_TabPeople": "Люди",
+  "ChatList_TabThreads": "Треды",
+  "ChatList_SortBy": "Сортировать по:",
+  "ChatList_SortByAnyonesActivity": "Недавней активности участников",
+  "ChatList_SortByOwnActivity": "Вашей недавней активности",
+  "ChatList_SortByUnreadCount": "Количеству непрочитанных сообщений",
+  "ChatList_SortByAlphabet": "Алфавиту",
+  "ChatList_ActiveChats": "Активные чаты",
+  "ChatList_ActiveChatsTooltip": "Чаты, которые вы сейчас слушаете или в которых записываете",
+  "ChatList_Talking": "говорят",
+  "ChatList_Live_Format": "{0} · в эфире",
+  "ChatList_Thread_Format": "Тред «{0}»",
+  "ChatList_SharedLiveLocation": "Геопозиция в реальном времени",
+  "ChatList_SentLocation": "Геопозиция",
+
+  "ChatMenu_AddMembers": "Добавить участников",
+  "ChatMenu_EditContact": "Редактировать контакт",
+  "ChatMenu_LeaveChat": "Покинуть чат",
+  "ChatMenu_BlockUser": "Заблокировать пользователя",
+  "ChatMenu_UnblockUser": "Разблокировать пользователя",
+  "ChatMenu_Pin": "Закрепить",
+  "ChatMenu_Unpin": "Открепить",
+  "ChatMenu_PinToSidebar": "Закрепить в боковой панели",
+  "ChatMenu_UnpinFromSidebar": "Открепить от боковой панели",
+  "ChatMenu_StartAnonymousChat": "Начать анонимный чат",
+  "ChatMenu_StartRecording": "Начать запись",
+  "ChatMenu_StopRecording": "Остановить запись",
+  "ChatMenu_RemoveFromActiveChats": "Убрать из активных чатов"
 }

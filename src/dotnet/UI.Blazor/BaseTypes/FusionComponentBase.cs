@@ -1,5 +1,6 @@
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor;
 
@@ -36,6 +37,7 @@ public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircu
     protected ShareUI ShareUI => Hub.ShareUI;
     protected Dispatcher Dispatcher => Hub.Dispatcher;
     protected Features Features => Hub.Features;
+    protected IStringLocalizer L => field ??= Hub.Services.GetRequiredService<IStringLocalizer>();
 
     // Shortcuts
     protected bool IsPrerendering => Hub.IsPrerendering;

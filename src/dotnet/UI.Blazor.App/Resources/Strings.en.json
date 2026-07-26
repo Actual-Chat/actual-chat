@@ -19,6 +19,10 @@
   "Common_Copy": "Copy",
   "Common_Share": "Share",
   "Common_Disabled": "Disabled",
+  "Common_Listen": "Listen",
+  "Common_Mute": "Mute",
+  "Common_Start": "Start",
+  "Common_Stop": "Stop",
 
   "Settings_Title": "Settings",
   "Settings_Language": "Language",
@@ -138,5 +142,36 @@
   "ApiKeyCreate_Create": "Create",
 
   "ApiKeyReveal_CopyWarning": "Copy this key now. It will not be shown again.",
-  "ApiKeyReveal_Title": "Your new API key"
+  "ApiKeyReveal_Title": "Your new API key",
+
+  "ChatList_TabAll": "All",
+  "ChatList_TabGroups": "Groups",
+  "ChatList_TabPeople": "People",
+  "ChatList_TabThreads": "Threads",
+  "ChatList_SortBy": "Sort by:",
+  "ChatList_SortByAnyonesActivity": "Recency of anyone's activity",
+  "ChatList_SortByOwnActivity": "Recency of your own activity",
+  "ChatList_SortByUnreadCount": "Count of unread messages",
+  "ChatList_SortByAlphabet": "Alphabet",
+  "ChatList_ActiveChats": "Active Chats",
+  "ChatList_ActiveChatsTooltip": "Chats where you are listening or recording right now",
+  "ChatList_Talking": "talking",
+  "ChatList_Live_Format": "{0} · live",
+  "ChatList_Thread_Format": "Thread '{0}'",
+  "ChatList_SharedLiveLocation": "Shared live location",
+  "ChatList_SentLocation": "Sent a location",
+
+  "ChatMenu_AddMembers": "Add members",
+  "ChatMenu_EditContact": "Edit contact",
+  "ChatMenu_LeaveChat": "Leave chat",
+  "ChatMenu_BlockUser": "Block user",
+  "ChatMenu_UnblockUser": "Unblock user",
+  "ChatMenu_Pin": "Pin",
+  "ChatMenu_Unpin": "Unpin",
+  "ChatMenu_PinToSidebar": "Pin to Sidebar",
+  "ChatMenu_UnpinFromSidebar": "Unpin from Sidebar",
+  "ChatMenu_StartAnonymousChat": "Start anonymous chat",
+  "ChatMenu_StartRecording": "Start recording",
+  "ChatMenu_StopRecording": "Stop recording",
+  "ChatMenu_RemoveFromActiveChats": "Remove from Active Chats"
 }

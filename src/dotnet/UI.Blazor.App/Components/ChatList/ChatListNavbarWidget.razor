@@ -5,9 +5,9 @@
     var supportThreads = PlaceId is null || Constants.Place.SystemPlaceIds.All(c => PlaceId.Value != c.Value);
 
     RenderFragment RenderChatListTab(double order, ChatListFilter filter)
-        => RenderTab(order, filter.Id.Value, filter.Title, filter);
+        => RenderTab(order, filter.Id.Value, GetFilterTitle(filter), filter);
     RenderFragment RenderThreadsTab(double order)
-        => RenderTab(order, ThreadsTabId, "Threads", null);
+        => RenderTab(order, ThreadsTabId, L.ChatList_TabThreads, null);
     RenderFragment RenderTab(double order, string id, string title, ChatListFilter? filter) {
         var contentVersion = (id, title);
         return @<Tab
@@ -20,7 +20,9 @@
                    <TitleContent>
                        <span>@title</span>
                        @if (filter is not null) {
-                           <ChatListTabUnreadCount PlaceChatListSettings="@_placeChatListSettings" ChatListFilter="@filter" />
+                           <ChatListTabUnreadCount
+                               PlaceChatListSettings="@_placeChatListSettings"
+                               ChatListFilter="@filter" />
                        }
                    </TitleContent>
                </Tab>;
@@ -106,4 +108,9 @@
             _placeChatListSettings?.SetFilter(filterId);
         }
     }
+
+    private string GetFilterTitle(ChatListFilter filter)
+        => filter == ChatListFilter.People ? L.ChatList_TabPeople
+            : filter == ChatListFilter.Groups ? L.ChatList_TabGroups
+            : L.ChatList_TabAll;
 }
