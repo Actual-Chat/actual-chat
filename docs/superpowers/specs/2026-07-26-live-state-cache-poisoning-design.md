@@ -80,134 +80,117 @@ so the server is not slow; it is thrashing its cache while the client queues.
 ## Constraints discovered during design
 
 1. **Fusion invalidation is eager and transitive with no value diffing**
-   (`ActualLab.Fusion/Computed.cs:314-319`). Wrapping `GetState` in a narrower compute
-   method does not stop the cascade — the wrapper is invalidated too. Narrowing the
-   *type* is useless; only removing the dependency or reducing `GetState`'s own
-   invalidation rate helps.
+   (`ActualLab.Fusion/Computed.cs:314-319`). A narrower compute method *derived from*
+   `GetState` does not stop the cascade — it is invalidated too. Narrowing only helps if
+   the new method bypasses `GetState` and carries its own invalidation lifecycle.
 
-2. **`Computed.BeginIsolation()` alone is unsafe here.** The live range grows as
-   `EndEntryLid` advances and `EffectiveVisibleStartLid` jumps at the latch, so
-   "does not intersect now, skip the dependency" goes stale when the range later grows
-   into the tile.
+2. **`Computed.BeginIsolation()` alone is unsafe.** The live block's start jumps at the
+   latch and the session can vanish, so "does not intersect now, skip the dependency"
+   goes stale. Isolation only works when something else guarantees invalidation.
 
 3. **The overlay cannot simply be deleted.** The client matches
    `ConversationId.New(chatId, r.Start) == liveBlockId` at `ChatUI.Tiles.cs:473-479` to
    substitute `liveBlockFoldRange`. `liveBlockId` is
    `ConversationId.New(ChatId, EffectiveVisibleStartLid)`, exactly the `Start` of the
-   injected live range. Without the injection that match fails, collapsed solo-era
-   conversations exclude id-tiles inside the live region, and live entries drop out of
-   the view.
+   injected live range. Without the injection that match fails and live entries drop out
+   of the view.
 
-4. **A front-end-only overlay cannot preserve prev/next semantics.**
-   `ConversationsBackend.GetRangeMeta:95-98` nulls `PreviousConversationLidRange` /
-   `NextConversationLidRange` when they overlap the live range. Those feed
-   `ChatsBackend.GetChatRangeMeta`'s outward walk and its `PreviousLidTileStart` /
-   `NextLidTileStart` output. By the time a front-end service sees `ChatRangeMeta`, the
-   per-tile prev/next values are gone and cannot be reconstructed.
+4. **Backend contracts must not carry live-session vocabulary.** Threading a
+   `Range<long>? liveRange` / `Conversation? liveConversation` parameter through
+   `IChatsBackend` / `IConversationsBackend` was rejected: it spreads the same
+   responsibility mixing one level up rather than removing it.
 
-5. Backend contracts (`IChatsBackend`, `IConversationsBackend`) carry no `[LegacyName]`
-   anywhere, so adding a parameter to a backend method is routine in this codebase.
-   Client-facing contracts (`IChats`, `IConversations`) must stay wire-compatible —
-   shipped MAUI/iOS builds depend on the current meaning of
-   `ChatRangeMeta.ConversationLidRanges` and `IConversations.GetTile`.
+5. **`ConversationsBackend.GetRangeMeta` is invalidated by cache key**
+   (`ConversationsBackend.cs:157,162,166`), so adding an argument to it would silently
+   break invalidation. `ChatsBackend.GetChatRangeMeta` and `ConversationsBackend.GetTile`
+   have no explicit invalidation sites — they invalidate transitively.
+
+6. **The 30s self-heal poll is load-bearing and must stay.** `IsSessionLive` reads raw
+   Redis (`SafeGetHashMap`, `_invites.GetHashMap`) and `HasFreshRecorder` compares against
+   a time-based 90s staleness cutoff, so nothing invalidates `GetState` on its own.
+   Gating the poll would stop ambient sessions from ever auto-closing. (An earlier draft
+   of this design proposed making it conditional — that was wrong.)
+
+7. **A latched live session owns `[V, +inf)`, not a bounded range.**
+   `ConversationSplitFlow.cs:74-76` computes its territory as
+   `new Range<long>(…, long.MaxValue)`, and the client models it the same way
+   (`ChatUI.Tiles.cs:436-438`, `hiddenLiveTailRange`, `GroupExpandedConversations`).
+   `LiveSessionState.VisibleEntryLidRange` instead ends at the last *summarized* lid
+   (`LiveConversationSummaryFlow.cs:191`), which lags by up to a minute.
 
 ## Design
 
-**Pass the live range down the backend chain as data instead of taking a Fusion
-dependency on it.**
-
-`ConversationsBackend` loses its `ILiveSessionsBackend` field entirely. The overlay
-logic stays exactly where it is — so prev/next semantics are preserved bit for bit —
-but its input arrives as a plain parameter.
-
-### Signature changes (backend only)
+**Extend `ILiveSessionsBackend` with two narrow queries that bypass `GetState`.**
 
 ```
-IConversationsBackend.GetRangeMeta(ChatId chatId, long idTileStart,
-    Range<long>? liveRange, CancellationToken ct)
-IConversationsBackend.GetTile(ChatId chatId, Range<long> lidTileRange,
-    Conversation? liveConversation, CancellationToken ct)
-IChatsBackend.GetChatRangeMeta(ChatId chatId, long lidTileStart,
-    Range<long>? liveRange, CancellationToken ct)
+Task<long?> GetVisibleStartLid(ChatId chatId, CancellationToken ct);
+Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken ct);
 ```
 
-`liveRange` is **normalized per tile** by the caller: `null` when the tile does not
-intersect the live range. This is what keeps the cache stable — tiles away from the live
-session always get the key `null` and never churn. Only the one or two tiles the live
-session actually overlaps get a changing cache key, which is correct and minimal.
+Both read Redis directly via `SafeGet` rather than calling `GetState`, so they inherit
+none of its invalidations — not the 30s liveness poll, not a summary rewrite that changed
+nothing. They are kept fresh by a new `InvalidateLiveView(chatId)`, called from the five
+writers that can move the block's start or change its card: `OnStreamRegistered`,
+`UpdateSummary`, `StartCall`, `AcceptCall`, and `Close`. The other three state writers
+(`SetRules`, `SetContextStart`, `EvaluateLiveness`) cannot affect either value.
 
-Because these are compute-method arguments rather than dependencies, a change to the
-live range does not *invalidate* anything; it selects a different cache entry. Entries
-for the previous range stay valid for other readers and age out via `MinCacheDuration`.
+`LiveSessionsBackend` is the right owner of that contract: nothing else knows when the
+range moves. `IChatsBackend` and `IConversationsBackend` are untouched.
 
-### Where the live state is read
+`ConversationsBackend` then depends on the two narrow queries instead of `GetState`. Per
+constraint 7, `GetVisibleStartLid` returns a lid with `[V, +inf)` semantics; the range
+*emitted* into `ConversationLidRanges` still needs a finite end for the downstream range
+math (`ChatsBackend.EstimateMinimumCount`), so it is capped at the chat's end via an
+isolated `GetLidRange` read — isolated because depending on the lid range would invalidate
+`GetRangeMeta` on every message, which is worse than the problem being fixed.
 
-The session-scoped front-end services, which exist to compose backends for a view:
-
-- `Chats.GetChatRangeMeta` (`Chats.cs:143-150`, currently a passthrough)
-- `Conversations.GetTile` (`Conversations.cs:14-21`, currently a permission check +
-  passthrough)
-
-Client-facing wire contracts are unchanged, so shipped clients keep working.
-
-### Internal callers pass null
-
-`ConversationSplitFlow:99`, `LiveConversationSummaryFlow:133` and
-`ConversationsBackend.OnAppendReply:394` pass `null` and get the pure persisted view,
-which is what they actually want. This fixes a latent bug: `LiveConversationSummaryFlow`
-asks for the persisted previous conversation to clamp `contextStart` ("Never re-claim a
-persisted conversation's range") but can currently receive `null` because the overlay
-suppressed it. `ConversationSplitFlow` already does its own `OverlapsLiveSession` check
-at `:95` and does not want the merge either.
+Additionally, `UpdateSummary` now bails out when the summary is unchanged instead of
+always rewriting `LastSummaryAt`/`Version`, so a scheduled re-run no longer looks like a
+change.
 
 ### Client: cut the serialized round-trips
 
-1. **Parallelize `live` + `meta`** in `GetChatItemsInternal`. Round 1 issues
-   `Chats.Get`, `LiveSessions.GetState`, `GetChatRangeMeta` and `GetIdRange`
-   concurrently; round 2 issues `Conversations.GetTile`. Takes the chain from ~5 RTT to
-   ~2-3.
-2. **Fix the prefetch gap** at `:237-242` so it covers
+1. **Parallelize `live` + `meta`** in `GetChatItemsInternal`: `Chats.Get`,
+   `LiveSessionUI.GetConversation`, `GetState`, `LiveBlockUI.GetBlockState`, the
+   `GetChatRangeMeta` batch and the isolated `GetIdRange` are all issued before the first
+   await. Verified safe: `ComputeContext.Current` is an `AsyncLocal` read synchronously by
+   the interceptor, so both dependency capture and `BeginIsolation` apply at call time,
+   not await time.
+2. **Fix the prefetch gap** at `ChatUI.Tiles.cs:237-242` so it covers
    `idTiles[0].Start - FirstLayer.TileSize`, the tile `GetTile` always requests when
    `prevMessage == null`.
-3. **Make `PrefetchChatTails` actually prefetch** — `ChatUI.StateSync.cs:272` calls
-   `GetChatItemsInternal(..., isPrefetch: true, ...)`, removing the self-spawning
-   duplicate chain and the misleading warnings.
+3. **Make `PrefetchChatTails` actually prefetch** — `ChatUI.StateSync.cs:272` now calls
+   `GetChatItemsInternal(..., isPrefetch: true, ...)`.
 
 ## Explicitly out of scope
 
 This change does **not** reduce how often the client rebuilds.
 `GetChatItemsInternal` already depends on `LiveSessionUI.GetState` at
-`ChatUI.Tiles.cs:74`, so the client is subscribed to the same churn regardless. It makes
-each rebuild cheaper (server cache hits instead of Postgres queries) and stops one live
-session from degrading the shared metadata cache for every other reader.
-
-Cutting rebuild *frequency* requires two separate `LiveSessionsBackend` changes, tracked
-as follow-up:
-
-- make the 30s self-heal conditional on there actually being a pending deadline
-  (`IsClosing` with a grace deadline, or `IsCall`/`IsDialing` with ring deadlines);
-- make `UpdateSummary` a no-op when the semantic fields are unchanged, instead of always
-  bumping `LastSummaryAt`/`Version`.
+`ChatUI.Tiles.cs:74`, so the client is subscribed to the same churn regardless. What it
+does is stop one live session from degrading the shared per-chat metadata cache for every
+other reader, and make each rebuild cheaper — server cache hits instead of Postgres
+queries, and ~2 round-trips instead of ~5 on the client.
 
 ## Reuse
 
-Existing abstractions used: `ILiveSessions.GetState` / `ILiveSessionsBackend.GetState`
-(moved caller, not new), `LiveSessionState.VisibleEntryLidRange` and `ToConversation()`,
-`Range<long>.IntersectWith`, `ConversationRangeMeta` / `ChatRangeMeta` (unchanged),
-`EnsureMonotonic` / `Merge` / `Collect`.
+Existing abstractions used: `SafeGet` and `ShardOwner.RequireShardOwnership` (the same
+pattern `GetState` uses), `LiveSessionState.EffectiveVisibleStartLid` / `ToConversation()`,
+`ChatsBackend.GetLidRange`, `Range<long>.IntersectWith`, `Collect`, `EnsureMonotonic`.
+`ConversationRangeMeta` and `ChatRangeMeta` are unchanged.
 
-No new shared component is introduced: the overlay code stays in place inside
-`ConversationsBackend` and only its input changes, so there is nothing to promote to
-`ActualChat.Core`. Per-tile normalization of `liveRange` is a one-line
-`IntersectWith(...).IsEmpty ? null : liveRange` at each call site rather than a helper,
-until a third caller appears.
+No new shared component: the overlay stays inside `ConversationsBackend` and only its
+input changes, so there is nothing to promote to `ActualChat.Core`.
 
 ## Testing
 
-- `ConversationsBackend.GetRangeMeta` with `liveRange: null` returns raw persisted
-  ranges during an active live session (new test).
-- `Chats.GetChatRangeMeta` still suppresses a persisted conversation overlapping the
-  live range and injects the live range keyed at `EffectiveVisibleStartLid` (new test).
-- `tests/Chat.UI.Blazor.IntegrationTests/LiveConversationDisplayTest.cs` is the
-  end-to-end regression guard for the rendered outcome.
-- `tests/Chat.IntegrationTests/LiveSessionsTest.cs` covers session lifecycle.
+Covered by existing suites, all green after the change:
+
+- `tests/Chat.IntegrationTests` — 300 passed, 6 skipped (includes `LiveSessionsTest`, 45).
+- `tests/Chat.UI.Blazor.IntegrationTests` — 62 passed, 2 skipped (includes
+  `LiveConversationDisplayTest` and `SendingMessagesDisplayTest`, the end-to-end guards
+  for the rendered live block).
+
+Still worth adding: a focused test that a persisted conversation in the summary-lag window
+`[EndEntryLid+1, chatEnd)` is now suppressed — the behaviour constraint 7 corrects. It is
+latent today because `ConversationSplitFlow` refuses to create one there, so it needs a
+hand-built fixture rather than the normal flow.

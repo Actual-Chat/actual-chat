@@ -133,26 +133,26 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             _ = ExpireRings(chatId);
 
         // Required, not merely defensive: IsSessionLive reads raw Redis against a time-based staleness
-        // cutoff, so nothing invalidates this on its own. GetVisibleRange/GetLiveConversation bypass
+        // cutoff, so nothing invalidates this on its own. GetVisibleStartLid/GetLiveConversation bypass
         // GetState precisely so this poll can't reach the conversation metadata cache.
         computed.Invalidate(SelfHealDelay);
         return state;
     }
 
     // [ComputeMethod]
-    public virtual async Task<Range<long>?> GetVisibleRange(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<long?> GetVisibleStartLid(ChatId chatId, CancellationToken cancellationToken)
     {
         // Reads Redis, not GetState, so its liveness poll can't poison the conversation metadata cache;
-        // every writer that moves the range must call InvalidateLiveView.
+        // every writer that moves the start must call InvalidateLiveView.
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
         var state = await SafeGet(chatId).ConfigureAwait(false);
-        return state is { SessionStartedAt: not null } ? state.VisibleEntryLidRange : null;
+        return state is { SessionStartedAt: not null } ? state.EffectiveVisibleStartLid : null;
     }
 
     // [ComputeMethod]
     public virtual async Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken cancellationToken)
     {
-        // See GetVisibleRange - same contract, same reason.
+        // See GetVisibleStartLid - same contract, same reason.
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
         var state = await SafeGet(chatId).ConfigureAwait(false);
         return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
@@ -1094,7 +1094,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // Must be called by every writer that moves VisibleEntryLidRange or changes ToConversation() -
         // these two don't depend on GetState, so InvalidateState alone leaves them stale.
         using (Invalidation.Begin()) {
-            _ = GetVisibleRange(chatId, default);
+            _ = GetVisibleStartLid(chatId, default);
             _ = GetLiveConversation(chatId, default);
         }
     }

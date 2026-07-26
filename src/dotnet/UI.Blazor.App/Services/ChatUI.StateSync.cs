@@ -269,7 +269,9 @@ public partial class ChatUI
                             var secondLayer = IdTileStack.LastLayer;
                             var idTile = secondLayer.GetTile(prefetchNearTo).Range;
                             var chatDataQuery = new ChatDataQuery(idTile, -HalfLoadLimit, LoadLimit);
-                            _ = GetChatItems(chatId, chatDataQuery, lastReadEntryLid, changeToken);
+                            // Must be the isPrefetch overload: the public one logs as a real query and
+                            // spawns a second full chain of its own for every prefetched chat.
+                            _ = GetChatItemsInternal(chatId, chatDataQuery, lastReadEntryLid, true, changeToken);
                     }
                 }, changeToken);
         }
