@@ -14,7 +14,41 @@ public sealed record ConversationViewState(
     Range<long> HiddenLiveTailRange,
     ConversationId? LiveBlockConversationId,
     Range<long> LiveFoldRange,
-    ConversationId? MaterializedBlockId);
+    ConversationId? MaterializedBlockId)
+{
+    public bool Equals(ConversationViewState? other)
+    {
+        // Hand-written because this record is a ChatUI.GetTile compute-method argument - it IS the tile
+        // cache key. ExpandedConversations is rebuilt from scratch on every GetChatItems call, and the
+        // compiler's synthesized comparison falls back to reference equality for it, so every rebuild
+        // would re-key (and thereby discard) every cached tile.
+        if (other is null)
+            return false;
+
+        if (ReferenceEquals(this, other))
+            return true;
+
+        return ShowConversations == other.ShowConversations
+            && HiddenLiveTailRange == other.HiddenLiveTailRange
+            && LiveBlockConversationId == other.LiveBlockConversationId
+            && LiveFoldRange == other.LiveFoldRange
+            && MaterializedBlockId == other.MaterializedBlockId
+            && ExpandedConversations.SetEquals(other.ExpandedConversations);
+    }
+
+    public override int GetHashCode()
+    {
+        var hash = HashCode.Combine(ShowConversations,
+            HiddenLiveTailRange,
+            LiveBlockConversationId,
+            LiveFoldRange,
+            MaterializedBlockId,
+            ExpandedConversations.Count);
+        foreach (var conversationId in ExpandedConversations)
+            hash ^= conversationId.GetHashCode(); // XOR - the set has no order
+        return hash;
+    }
+}
 
 public partial class ChatUI
 {
