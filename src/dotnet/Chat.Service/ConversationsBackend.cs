@@ -81,18 +81,24 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        // A latched live session owns its range: replace any solo-era conversations it overlaps with
-        // the single live range (the UI swaps the regular block for the live one).
-        var live = await LiveSessionsBackend.GetVisibleRange(chatId, cancellationToken).ConfigureAwait(false);
-        if (live is { } liveRange && !liveRange.IntersectWith(idTileRange).IsEmpty) {
+        // A latched live session owns [V, +inf) - it always runs to the chat's tail - so it replaces every
+        // solo-era conversation from V on (the UI swaps the regular block for the live one). The emitted
+        // range still needs a finite end for the range math downstream, hence the cap at the chat's end;
+        // that read is isolated because depending on the lid range would invalidate this on every message.
+        var liveStartLid = await LiveSessionsBackend.GetVisibleStartLid(chatId, cancellationToken).ConfigureAwait(false);
+        if (liveStartLid is { } liveStart && idTileRange.End > liveStart) {
+            Range<long> chatLidRange;
+            using (Computed.BeginIsolation())
+                chatLidRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
+            var liveRange = new Range<long>(liveStart, Math.Max(chatLidRange.End, liveStart + 1));
             conversationRanges = conversationRanges
-                .Where(r => r.IntersectWith(liveRange).IsEmpty)
+                .Where(r => r.End <= liveStart)
                 .Append(liveRange)
                 .OrderBy(r => r.Start)
                 .ToList();
-            if (previousConversationRange is { } prev && !prev.IntersectWith(liveRange).IsEmpty)
+            if (previousConversationRange is { } prev && prev.End > liveStart)
                 previousConversationRange = null;
-            if (nextConversationRange is { } next && !next.IntersectWith(liveRange).IsEmpty)
+            if (nextConversationRange is { } next && next.End > liveStart)
                 nextConversationRange = null;
         }
 

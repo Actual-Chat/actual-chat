@@ -64,15 +64,33 @@ public partial class ChatUI
     {
         // DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, dataQuery, shownReadyEntryLid);
         var startedAt = CpuTimestamp.Now;
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        // Each of these is a separate RPC round-trip on a remote client, and none of them depends on
+        // another, so they're all issued before the first await. Awaiting them in sequence cost ~4 x RTT
+        // per rebuild - a full second on a 200ms+ link, which is invisible on Blazor Server.
+        var chatTask = Chats.Get(Session, chatId, cancellationToken);
+        var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
+        var rawLiveTask = Hub.LiveSessionUI.GetState(chatId, cancellationToken);
+        var blockStateTask = Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken);
+        var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
+            .Where(t => t.Start >= 0)
+            .ToList();
+        var chatRangeMetaListTask = metaIdTiles
+            .Select(metaIdTile
+                => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))
+            .Collect(cancellationToken);
+        Task<Range<long>> chatLidRangeTask;
+        using (Computed.BeginIsolation())
+            chatLidRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
+
+        var chat = await chatTask.ConfigureAwait(false);
         if (chat == null)
             return ChatItems.Empty;
 
-        var liveConversation = await Hub.LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(false);
+        var liveConversation = await liveConversationTask.ConfigureAwait(false);
         var amInLiveConversation = liveConversation != null
             && await Hub.LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
-        var rawLive = await Hub.LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        var blockState = await Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken).ConfigureAwait(false);
+        var rawLive = await rawLiveTask.ConfigureAwait(false);
+        var blockState = await blockStateTask.ConfigureAwait(false);
         var overlay = blockState.Overlay;
 
         // The governed boundary replaces the raw fold end: it tracks the viewer's viewport top,
@@ -120,14 +138,7 @@ public partial class ChatUI
                 : default;
         var liveAt = CpuTimestamp.Now;
 
-        var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
-            .Where(t => t.Start >= 0)
-            .ToList();
-        var chatRangeMetaList = (await metaIdTiles
-                .Select(metaIdTile
-                    => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))
-                .Collect(cancellationToken)
-                .ConfigureAwait(false))
+        var chatRangeMetaList = (await chatRangeMetaListTask.ConfigureAwait(false))
             .OrderBy(m => m.LidRange.Start)
             .ThenByDescending(m => m.LidRange.Size()) // ChatRangeMeta can be overlapping, so we need to keep the largest
             .EnsureMonotonic(Comparer<ChatRangeMeta>.Create((a, b) => a.LidRange.Start.CompareTo(b.LidRange.Start)))
@@ -200,10 +211,7 @@ public partial class ChatUI
                 hiddenLiveTailRange = default;
         }
 
-        Range<long> chatLidRange;
-        using (Computed.BeginIsolation())
-            chatLidRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
-
+        var chatLidRange = await chatLidRangeTask.ConfigureAwait(false);
         if (chatRangeMetaList.Count == 0)
             return ChatItems.Empty;
 
@@ -234,9 +242,14 @@ public partial class ChatUI
         // Prefetch tiles for the loaded id ranges
         {
             await Task.Run(async () => {
+                // GetTile widens its request by one tile for the first tile (prevMessage == null, so it
+                // needs the preceding entry to render the block start). Prefetching only idTiles left
+                // that one always uncached, costing a serial round-trip on every rebuild.
                 var prefetchEntriesTask = idTiles
-                    .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(r))
+                    .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(
+                        r == idTiles[0] ? r.MoveStart(-IdTileStack.FirstLayer.TileSize) : r))
                     .Select(t => t.Range)
+                    .Where(r => r.Start >= 0)
                     .EnsureMonotonic()
                     .Select(r => Chats.GetTile(Session, chatId, r, cancellationToken))
                     .Collect(ApiConstants.Concurrency.High, cancellationToken);
