@@ -5,6 +5,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class ChatUI
 {
+    private static readonly TimeSpan PrefetchThrottle = TimeSpan.FromSeconds(5);
+
     // All state sync logic should be here
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -265,13 +267,13 @@ public partial class ChatUI
                         var prefetchNearTo = lastReadEntryLid != 0
                             ? lastReadEntryLid
                             : chatInfo.News?.TextEntryLidRange.End ?? 0;
-
-                            var secondLayer = IdTileStack.LastLayer;
-                            var idTile = secondLayer.GetTile(prefetchNearTo).Range;
-                            var chatDataQuery = new ChatDataQuery(idTile, -HalfLoadLimit, LoadLimit);
-                            // Must be the isPrefetch overload: the public one logs as a real query and
-                            // spawns a second full chain of its own for every prefetched chat.
-                            _ = GetChatItemsInternal(chatId, chatDataQuery, lastReadEntryLid, true, changeToken);
+                        var idTile = IdTileStack.LastLayer.GetTile(prefetchNearTo).Range;
+                        var chatDataQuery = new ChatDataQuery(idTile, -HalfLoadLimit, LoadLimit);
+                        // isPrefetch: the public overload logs as a real query and spawns a second chain.
+                        await GetChatItemsInternal(chatId, chatDataQuery, lastReadEntryLid, true, changeToken)
+                            .SilentAwait(false);
+                        // ChatInfo moves on every new entry and read-position change; Changes() coalesces.
+                        await Clocks.CoarseSystemClock.Delay(PrefetchThrottle, changeToken).ConfigureAwait(false);
                     }
                 }, changeToken);
         }
