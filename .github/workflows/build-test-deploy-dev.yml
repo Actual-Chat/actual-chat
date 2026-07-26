@@ -383,34 +383,6 @@ jobs:
           output-to: "step-summary"
           only-summary: "true"
 
-  notify-voxt:
-    name: Notify Voxt
-    if: always()
-    runs-on: ubuntu-latest
-    needs:
-      - unit-tests
-      - integration-tests
-      - ts-unit-tests
-    steps:
-      - name: Compute overall status
-        id: status
-        env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          status=success
-          if [[ "$RESULTS" == *cancelled* ]]; then status=cancelled; fi
-          if [[ "$RESULTS" == *failure* ]]; then status=failure; fi
-          echo "status=$status" | tee -a $GITHUB_OUTPUT
-
-      - name: Post test results to Voxt
-        uses: Actual-Chat/voxt-action@v1
-        with:
-          api-key: ${{ secrets.VOXT_API_KEY }}
-          chat-id: ${{ secrets.VOXT_CHAT_ID }}
-          status: ${{ steps.status.outputs.status }}
-          message: |
-            Unit: ${{ needs.unit-tests.result }} · Integration: ${{ needs.integration-tests.result }} · TS unit: ${{ needs.ts-unit-tests.result }}
-
   nuget-pack:
     name: Create nuget packages for ${{ github.ref_name }}
     if: |
