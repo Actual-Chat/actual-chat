@@ -11,6 +11,12 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken);
+
+    // The two below bypass GetState on purpose: their own invalidation lifecycle is far quieter.
+    [ComputeMethod]
+    Task<Range<long>?> GetVisibleRange(ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(ConsolidationDelay = 0.5)]

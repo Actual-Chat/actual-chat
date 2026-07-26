@@ -132,8 +132,30 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         else if (state.IsDialing && !await HasFreshRing(chatId).ConfigureAwait(false))
             _ = ExpireRings(chatId);
 
+        // Required, not merely defensive: IsSessionLive reads raw Redis against a time-based staleness
+        // cutoff, so nothing invalidates this on its own. GetVisibleRange/GetLiveConversation bypass
+        // GetState precisely so this poll can't reach the conversation metadata cache.
         computed.Invalidate(SelfHealDelay);
         return state;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Range<long>?> GetVisibleRange(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Reads Redis, not GetState, so its liveness poll can't poison the conversation metadata cache;
+        // every writer that moves the range must call InvalidateLiveView.
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        return state is { SessionStartedAt: not null } ? state.VisibleEntryLidRange : null;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // See GetVisibleRange - same contract, same reason.
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
     }
 
     // [ComputeMethod]
@@ -343,6 +365,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // (grouping uses live-stream state, so a stale entry never misgroups an active streamer).
         await EnsureParticipant(chatId, authorId).ConfigureAwait(false);
         InvalidateState(chatId);
+        InvalidateLiveView(chatId);
     }
 
     public virtual async Task SetParticipation(
@@ -442,6 +465,19 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (state is null)
             return;
 
+        // The summary flow re-runs on a fixed schedule, so most calls carry an unchanged summary. Bailing
+        // out here keeps LastSummaryAt/Version from making every run look like a change and invalidating
+        // the whole live view for nothing.
+        var isUnchanged = state.Title == summary.Title
+            && state.Description == summary.Description
+            && state.Summary == summary.Summary
+            && state.EndEntryLid == summary.EndEntryLid
+            && state.MessageCount == summary.MessageCount
+            && state.IsExpandedByDefault == summary.IsExpandedByDefault
+            && (summary.AuthorIds.Count == 0 || state.AuthorIds.SequenceEqual(summary.AuthorIds));
+        if (isUnchanged)
+            return;
+
         // The first non-empty title promotes the live banner to "Voice chat: {title}" (TITLED fires once).
         var isFirstTitle = state.Title.IsNullOrEmpty() && !summary.Title.IsNullOrEmpty();
         state = state with {
@@ -461,6 +497,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 state, ConversationNotificationPhase.Titled, $"Voice chat: {summary.Title}", cancellationToken)
                 .ConfigureAwait(false);
         InvalidateState(chatId);
+        InvalidateLiveView(chatId);
     }
 
     public virtual async Task SetContextStart(ChatId chatId, long contextStartLid, CancellationToken cancellationToken)
@@ -534,6 +571,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                         RingTtl)
                     .ConfigureAwait(false);
             InvalidateState(chatId);
+            InvalidateLiveView(chatId);
         }
         if (invitees.Count > 0)
             await Services.Queues()
@@ -580,6 +618,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             }
             conversationId = state?.RingConversationId;
             InvalidateState(chatId);
+            InvalidateLiveView(chatId);
         }
         if (conversationId is { } cid)
             await DismissRing(cid, [inviteeAuthorId], cancellationToken).ConfigureAwait(false);
@@ -1022,6 +1061,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
         await _invites.RemoveHashMap(chatId.Value).ConfigureAwait(false);
         InvalidateState(chatId);
+        InvalidateLiveView(chatId);
     }
 
     private Task EnqueueLiveNotification(
@@ -1046,6 +1086,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (Invalidation.Begin()) {
             _ = GetState(chatId, default);
             _ = Get(chatId, default);
+        }
+    }
+
+    private void InvalidateLiveView(ChatId chatId)
+    {
+        // Must be called by every writer that moves VisibleEntryLidRange or changes ToConversation() -
+        // these two don't depend on GetState, so InvalidateState alone leaves them stale.
+        using (Invalidation.Begin()) {
+            _ = GetVisibleRange(chatId, default);
+            _ = GetLiveConversation(chatId, default);
         }
     }
 
