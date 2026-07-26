@@ -1,0 +1,61 @@
+name: Notify Voxt
+
+on:
+  workflow_run:
+    workflows:
+      - Build test and deploy
+      - Run slow tests
+      - Run nightly tests
+      - Run claude tests
+      - Build nats docker image
+      - Create release branch
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  notify-failure:
+    name: Notify Voxt on failure
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build message
+        id: msg
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WF: ${{ github.event.workflow_run.name }}
+          NUM: ${{ github.event.workflow_run.run_number }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
+          URL: ${{ github.event.workflow_run.html_url }}
+          COMMIT_MSG: ${{ github.event.workflow_run.head_commit.message }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          short_sha="${SHA:0:7}"
+          commit_title="$(printf '%s' "$COMMIT_MSG" | head -n1)"
+          failed_jobs="$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --paginate \
+            -q '.jobs[] | select(.conclusion == "failure") | .name')"
+          {
+            echo "text<<VOXT_EOF"
+            echo "❌ **$REPO — $WF #$NUM failed**"
+            echo "\`$BRANCH\` · \`$short_sha\` $commit_title · by $ACTOR"
+            if [ -n "$failed_jobs" ]; then
+              echo "Failed:"
+              printf '%s\n' "$failed_jobs" | while IFS= read -r job; do
+                [ -n "$job" ] && echo "• $job"
+              done
+            fi
+            echo "$URL"
+            echo "VOXT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post to Voxt
+        uses: Actual-Chat/voxt-action@v1
+        with:
+          api-key: ${{ secrets.VOXT_API_KEY }}
+          chat-id: ${{ secrets.VOXT_CHAT_ID }}
+          message: ${{ steps.msg.outputs.text }}
