@@ -34,7 +34,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<bool?> _isVideoPanelChatVisible;
 
     // Set when a remote stream completes normally (sender intentionally ended).
-    // Consumed by VideoPanelContent to suppress "Connecting..." overlay.
+    // Consumed by VideoPanel to suppress "Connecting..." overlay.
     private volatile int _remoteStreamEndedSuccessfully;
     private readonly ConcurrentDictionary<string, CpuTimestamp> _locallyEndedRemoteStreams = new(StringComparer.Ordinal);
 

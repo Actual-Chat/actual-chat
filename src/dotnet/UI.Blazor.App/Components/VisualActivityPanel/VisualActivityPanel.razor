@@ -43,13 +43,13 @@
         @if (_chatContextToRender is not null) {
             <ErrorBarrier Name="VideoPanel" Kind="ErrorBarrierKind.Medium">
                 <CascadingValue Value="_chatContextToRender">
-                    <VideoPanelContent IsClosing="@_isClosing" OnClosed="@OnContentClosed"/>
+                    <VideoPanel IsClosing="@_isClosing" OnClosed="@OnContentClosed"/>
                 </CascadingValue>
             </ErrorBarrier>
         } else if (showMap) {
             <ErrorBarrier Name="MapPanel" Kind="ErrorBarrierKind.Medium">
                 <CascadingValue Value="chatContext">
-                    <MapPanelContent/>
+                    <MapPanel/>
                 </CascadingValue>
             </ErrorBarrier>
         }
