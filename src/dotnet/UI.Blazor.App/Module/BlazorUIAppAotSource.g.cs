@@ -230,7 +230,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LogList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LogView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ManageAccountSettingsBubble>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MapPanelContent>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MapPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditor>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.AuthorMentionView>();
@@ -506,7 +506,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsPrivacyContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsTermsContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ReconnectBanner>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VideoPanelContent>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VideoPanel>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ActiveChat>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ActiveShare>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry>();
@@ -953,7 +953,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.LogList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LogView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ManageAccountSettingsBubble), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.MapPanelContent), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MapPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditor), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.AuthorMentionView), AotTypeKind.Component),
@@ -1229,7 +1229,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.DocsPrivacyContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DocsTermsContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ReconnectBanner), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Components.VideoPanelContent), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.VideoPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Services.ActiveChat), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.ActiveShare), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry), AotTypeKind.Serializable),

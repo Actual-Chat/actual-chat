@@ -261,10 +261,10 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
 .video-panel.first-time-open .video-panel-content {
     @apply opacity-0;
     clip-path: inset(50% 50% round 9999px);
-    animation: smoothShowVideoPanelContent 0.3s ease-in-out 0.2s forwards;
+    animation: smoothShowVideoPanel 0.3s ease-in-out 0.2s forwards;
 }
 .video-panel.closing .video-panel-content {
-    animation: smoothHideVideoPanelContent 0.35s ease-in-out forwards;
+    animation: smoothHideVideoPanel 0.35s ease-in-out forwards;
 }
 /* Hide-button is desktop-only — narrow uses the swipe-handle */
 body.narrow .video-panel .btn-video-hide {
@@ -889,7 +889,7 @@ body.narrow .video-panel-content .video-track-player.pip-overlay .video-particip
         opacity: 1;
     }
 }
-@keyframes smoothShowVideoPanelContent {
+@keyframes smoothShowVideoPanel {
     0% {
         clip-path: inset(50% 50% round 9999px);
         opacity: 0;
@@ -1026,7 +1026,7 @@ body.narrow .video-panel.expanded.layout-equal .c-grid {
     }
 }
 
-@keyframes smoothHideVideoPanelContent {
+@keyframes smoothHideVideoPanel {
     0% {
         clip-path: inset(0 round 0.5rem);
         opacity: 1;

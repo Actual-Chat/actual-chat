@@ -3,7 +3,7 @@
 @using ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.UI.Blazor.App.Events
 @using ActualChat.UI.Blazor.App.Module
-@inherits ComputedStateComponent<AppUIHub, VideoPanelContent.Model>
+@inherits ComputedStateComponent<AppUIHub, VideoPanel.Model>
 @{
     var m = State.Value;
     var hasRemoteStreams = m.RemoteStreams.Length > 0;
@@ -270,7 +270,7 @@
 </div>
 
 @code {
-    private const string CameraMenuRequester = nameof(VideoPanelContent);
+    private const string CameraMenuRequester = nameof(VideoPanel);
     private const string ChatNavigationSlot = "VideoPanelSubFooter";
 
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
@@ -297,7 +297,7 @@
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private ElementReference Ref { get; set; }
-    private DotNetObjectReference<VideoPanelContent> BlazorRef { get; set; } = null!;
+    private DotNetObjectReference<VideoPanel> BlazorRef { get; set; } = null!;
     private IJSObjectReference? JSRef { get; set; }
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
@@ -500,7 +500,7 @@
         var focusedAuthorId = GetFocusedRemoteAuthorId(layout, remoteStreams);
 
 #if false
-        Log.LogWarning("[VideoPanelContent] ComputeState: remoteStreams=[{Streams}], isOwnRecording={IsOwnRecording}, isOwnScreenCasting={IsOwnScreenCasting}",
+        Log.LogWarning("[VideoPanel] ComputeState: remoteStreams=[{Streams}], isOwnRecording={IsOwnRecording}, isOwnScreenCasting={IsOwnScreenCasting}",
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             isOwnRecording,
             isOwnScreenCasting);
