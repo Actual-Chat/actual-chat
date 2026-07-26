@@ -230,6 +230,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LogList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LogView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ManageAccountSettingsBubble>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MapPanelContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditor>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.AuthorMentionView>();
@@ -416,6 +417,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanelMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanelMenuContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoToggle>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualActivityPanel>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualActivityPanelTabSwitch>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachment>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachmentList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualMediaList>();
@@ -503,7 +506,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsPrivacyContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsTermsContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ReconnectBanner>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VisualActivityPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VideoPanelContent>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ActiveChat>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ActiveShare>();
@@ -951,6 +953,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.LogList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LogView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ManageAccountSettingsBubble), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MapPanelContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditor), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.AuthorMentionView), AotTypeKind.Component),
@@ -1137,6 +1140,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanelMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanelMenuContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoToggle), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.VisualActivityPanel), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.VisualActivityPanelTabSwitch), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachment), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachmentList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VisualMediaList), AotTypeKind.Component),
@@ -1224,7 +1229,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.DocsPrivacyContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DocsTermsContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ReconnectBanner), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Components.VisualActivityPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.VideoPanelContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Services.ActiveChat), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.ActiveShare), AotTypeKind.Serializable),
