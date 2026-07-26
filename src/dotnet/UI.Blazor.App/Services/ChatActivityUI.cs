@@ -37,14 +37,15 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         var participantCount = liveSession?.Members.Count(m =>
             m.IsMicOpen || m.HasCamera || m.HasScreenShare || m.IsListening) ?? 0;
         if (participantCount > 0)
-            return new ChatActivity(true, IsLiveSession: true, participantCount, locationSharerCount);
+            return new ChatActivity(IsLiveSession: true, participantCount, locationSharerCount);
 
         var talkingIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        var isTalking = talkingIds.Length > 0
-            || await LiveSessions.HasRecorder(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return isTalking
-            ? new ChatActivity(true, IsLiveSession: false, talkingIds.Length, locationSharerCount)
-            : new ChatActivity(false, false, 0, locationSharerCount);
+        var talkingCount = talkingIds.Length;
+        // Own recorder may not be in the streaming author ids yet — count it as one talker.
+        if (talkingCount == 0
+            && await LiveSessions.HasRecorder(Session, chatId, cancellationToken).ConfigureAwait(false))
+            talkingCount = 1;
+        return new ChatActivity(IsLiveSession: false, talkingCount, locationSharerCount);
     }
 
     [ComputeMethod]
@@ -105,12 +106,12 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
 // the header call button key off it; location sharing is a parallel dimension.
 
 public readonly record struct ChatActivity(
-    bool IsActive,
     bool IsLiveSession,
     int ParticipantCount,
     int LocationSharerCount)
 {
     public static readonly ChatActivity None = default;
+    public bool IsActive => ParticipantCount > 0;
     public bool HasLiveLocation => LocationSharerCount > 0;
 }
 
