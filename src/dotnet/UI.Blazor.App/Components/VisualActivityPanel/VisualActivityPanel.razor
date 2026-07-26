@@ -118,8 +118,8 @@
     public sealed record Model(
         ChatContext? ChatContext,
         [property: MemberNotNullWhen(true, nameof(Model.ChatContext))] bool IsWatching,
-        CallMapPanelState PanelState
+        VisualActivityPanelState PanelState
     ) {
-        public static readonly Model None = new(null, false, CallMapPanelState.None);
+        public static readonly Model None = new(null, false, VisualActivityPanelState.None);
     }
 }

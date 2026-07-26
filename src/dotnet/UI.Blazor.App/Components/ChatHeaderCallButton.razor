@@ -28,7 +28,7 @@
         if (!enableIncompleteUI)
             return new Model(false, false);
 
-        var activity = await ChatActivityUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
+        var activity = await ChatActivityUI.GetCallActivity(Chat.Id, cancellationToken).ConfigureAwait(false);
         return new Model(true, activity.HasLiveConversation);
     }
 
