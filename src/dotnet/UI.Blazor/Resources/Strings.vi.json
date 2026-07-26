@@ -157,5 +157,8 @@
   "ChatMenu_StartAnonymousChat": "Bắt đầu chat ẩn danh",
   "ChatMenu_StartRecording": "Bắt đầu ghi âm",
   "ChatMenu_StopRecording": "Dừng ghi âm",
-  "ChatMenu_RemoveFromActiveChats": "Xóa khỏi chat đang hoạt động"
+  "ChatMenu_RemoveFromActiveChats": "Xóa khỏi chat đang hoạt động",
+
+  "ErrorToast_ActionFailed": "Thao tác thất bại!",
+  "ErrorToast_UnknownError": "Lỗi không xác định."
 }

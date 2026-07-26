@@ -157,5 +157,8 @@
   "ChatMenu_StartAnonymousChat": "गुमनाम चैट शुरू करें",
   "ChatMenu_StartRecording": "रिकॉर्डिंग शुरू करें",
   "ChatMenu_StopRecording": "रिकॉर्डिंग रोकें",
-  "ChatMenu_RemoveFromActiveChats": "सक्रिय चैट से हटाएं"
+  "ChatMenu_RemoveFromActiveChats": "सक्रिय चैट से हटाएं",
+
+  "ErrorToast_ActionFailed": "कार्रवाई विफल रही!",
+  "ErrorToast_UnknownError": "अज्ञात त्रुटि।"
 }

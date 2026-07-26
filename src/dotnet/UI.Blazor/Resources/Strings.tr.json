@@ -157,5 +157,8 @@
   "ChatMenu_StartAnonymousChat": "Anonim sohbet başlat",
   "ChatMenu_StartRecording": "Kaydı başlat",
   "ChatMenu_StopRecording": "Kaydı durdur",
-  "ChatMenu_RemoveFromActiveChats": "Aktif sohbetlerden kaldır"
+  "ChatMenu_RemoveFromActiveChats": "Aktif sohbetlerden kaldır",
+
+  "ErrorToast_ActionFailed": "İşlem başarısız oldu!",
+  "ErrorToast_UnknownError": "Bilinmeyen hata."
 }

@@ -157,5 +157,8 @@
   "ChatMenu_StartAnonymousChat": "익명 채팅 시작",
   "ChatMenu_StartRecording": "녹음 시작",
   "ChatMenu_StopRecording": "녹음 중지",
-  "ChatMenu_RemoveFromActiveChats": "활성 채팅에서 제거"
+  "ChatMenu_RemoveFromActiveChats": "활성 채팅에서 제거",
+
+  "ErrorToast_ActionFailed": "작업이 실패했습니다!",
+  "ErrorToast_UnknownError": "알 수 없는 오류입니다."
 }

@@ -157,5 +157,8 @@
   "ChatMenu_StartAnonymousChat": "Anonymen Chat starten",
   "ChatMenu_StartRecording": "Aufnahme starten",
   "ChatMenu_StopRecording": "Aufnahme beenden",
-  "ChatMenu_RemoveFromActiveChats": "Aus aktiven Chats entfernen"
+  "ChatMenu_RemoveFromActiveChats": "Aus aktiven Chats entfernen",
+
+  "ErrorToast_ActionFailed": "Aktion fehlgeschlagen!",
+  "ErrorToast_UnknownError": "Unbekannter Fehler."
 }

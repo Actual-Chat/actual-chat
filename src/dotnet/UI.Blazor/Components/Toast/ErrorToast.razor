@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@using Microsoft.Extensions.Localization
 
 @if (_isDismissed) {
     return;
@@ -18,7 +19,7 @@
     </div>
     <div class="c-content">
         <div class="c-title">
-            @Title
+            @(Title ?? L.Common_Error)
             @if (Count > 1) {
                 <span class="c-count">&nbsp;×@(Count)</span>
             }
@@ -38,8 +39,10 @@
     private bool _isDismissed;
     private object? _timerKey = new();
 
+    [Inject] private IStringLocalizer L { get; init; } = null!;
+
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string Title { get; set; } = "Error";
+    [Parameter] public string? Title { get; set; }
     [Parameter] public int Count { get; set; } = 1;
     [Parameter] public double? AutoDismissDelay { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
@@ -49,8 +52,7 @@
         _timerKey = new(); // To make sure the timer is renewed on Count update
     }
 
-    private async Task Dismiss()
-    {
+    private async Task Dismiss() {
         if (_isDismissed)
             return;
 

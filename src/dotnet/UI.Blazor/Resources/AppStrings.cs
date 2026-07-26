@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Localization;
 
-namespace ActualChat.UI.Blazor.App.Resources;
+namespace ActualChat.UI.Blazor.Resources;
 
 public static class AppStrings
 {
@@ -183,5 +183,8 @@ public static class AppStrings
         public string ChatMenu_StartRecording => l["ChatMenu_StartRecording"].Value;
         public string ChatMenu_StopRecording => l["ChatMenu_StopRecording"].Value;
         public string ChatMenu_RemoveFromActiveChats => l["ChatMenu_RemoveFromActiveChats"].Value;
+
+        public string ErrorToast_ActionFailed => l["ErrorToast_ActionFailed"].Value;
+        public string ErrorToast_UnknownError => l["ErrorToast_UnknownError"].Value;
     }
 }

@@ -1,5 +1,5 @@
-using ActualChat.UI.Blazor.App.Resources;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Resources;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
@@ -7,7 +7,7 @@ public class AppLocalizationTest
 {
     private const string Prefix = "Strings.";
     private const string Suffix = ".json";
-    private static readonly Assembly Assembly = typeof(AppStringLocalizer).Assembly;
+    private static readonly Assembly Assembly = typeof(Strings).Assembly;
 
     [Fact]
     public void EnglishFallbackIsComplete()
@@ -26,8 +26,11 @@ public class AppLocalizationTest
     [Fact]
     public void EveryShippedTranslationMapsToKnownLanguage()
     {
+        // act
+        var subtags = ShippedSubtags().ToList();
+
         // assert
-        foreach (var subtag in ShippedSubtags())
+        foreach (var subtag in subtags)
             Languages.All.Should().Contain(
                 l => l.PrimarySubtag == subtag,
                 $"resource '{Prefix}{subtag}{Suffix}' must map to a known language");
@@ -41,9 +44,13 @@ public class AppLocalizationTest
         var enKeys = en.Keys.ToHashSet();
         var formatKeys = en.Where(kv => kv.Value.Contains("{0}")).Select(kv => kv.Key);
 
+        // act
+        var translations = ShippedSubtags()
+            .Where(s => s != Languages.English.PrimarySubtag)
+            .ToDictionary(s => s, s => Load(s)!);
+
         // assert
-        foreach (var subtag in ShippedSubtags().Where(s => s != Languages.English.PrimarySubtag)) {
-            var dict = Load(subtag)!;
+        foreach (var (subtag, dict) in translations) {
             dict.Keys.Should().BeEquivalentTo(enKeys, $"'{subtag}' must define exactly the English keys");
             foreach (var key in formatKeys)
                 dict[key].Should().Contain("{0}", $"'{subtag}.{key}' must keep the {{0}} placeholder");
@@ -62,7 +69,7 @@ public class AppLocalizationTest
         // act
         var missingBySubtag = ShippedSubtags()
             .Where(s => s != Languages.English.PrimarySubtag)
-            .Select(s => (Subtag: s, Missing: enKeys.Except(Load(s)!.Keys).OrderBy(k => k, StringComparer.Ordinal).ToList()))
+            .Select(s => (Subtag: s, Missing: enKeys.Except(Load(s)!.Keys).OrderBy(k => k).ToList()))
             .Where(x => x.Missing.Count > 0)
             .Select(x => $"'{x.Subtag}' is missing: {string.Join(", ", x.Missing)}")
             .ToList();
@@ -101,7 +108,8 @@ public class AppLocalizationTest
         var members = AppStringsMembers().ToHashSet();
 
         // assert
-        members.Should().BeEquivalentTo(enKeys, "every English key must have exactly one AppStrings member and vice-versa");
+        members.Should().BeEquivalentTo(
+            enKeys, "every English key must have exactly one AppStrings member and vice-versa");
     }
 
     // Private methods

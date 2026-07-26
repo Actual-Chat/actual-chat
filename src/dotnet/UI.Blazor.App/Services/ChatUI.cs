@@ -2,7 +2,7 @@
 using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
-using ActualChat.UI.Blazor.App.Resources;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 using Microsoft.Extensions.Localization;

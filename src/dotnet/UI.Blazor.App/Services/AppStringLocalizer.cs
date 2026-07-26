@@ -1,7 +1,7 @@
-using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Resources;
 using Microsoft.Extensions.Localization;
 
-namespace ActualChat.UI.Blazor.App.Resources;
+namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// <see cref="IStringLocalizer{T}"/> that reads translations from embedded JSON resources and
@@ -29,7 +29,8 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
         }
     }
 
-    public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) {
+    public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
+    {
         var dict = Translations.GetValueOrDefault(LanguageUI.UILanguage.Value)
             ?? Translations.GetValueOrDefault(LanguageUI.DefaultUILanguage);
         return dict?.Select(kv => new LocalizedString(kv.Key, kv.Value)) ?? [];
@@ -37,26 +38,30 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
 
     // Private methods
 
-    private string GetString(string name, out bool found) {
+    private string GetString(string name, out bool found)
+    {
         var lang = LanguageUI.UILanguage.Value;
         if (Translations.TryGetValue(lang, out var dict) && dict.TryGetValue(name, out var value)) {
             found = true;
             return value;
         }
+
         if (lang != LanguageUI.DefaultUILanguage
             && Translations.TryGetValue(LanguageUI.DefaultUILanguage, out dict)
             && dict.TryGetValue(name, out value)) {
             found = true;
             return value;
         }
+
         found = false;
         return name;
     }
 
-    private static Dictionary<Language, Dictionary<string, string>> LoadAll() {
+    private static Dictionary<Language, Dictionary<string, string>> LoadAll()
+    {
         var result = new Dictionary<Language, Dictionary<string, string>>();
-        var assembly = typeof(AppStringLocalizer).Assembly;
-        foreach (var lang in Services.LanguageUI.SupportedUILanguages) {
+        var assembly = typeof(Strings).Assembly;
+        foreach (var lang in LanguageUI.SupportedUILanguages) {
             using var stream = assembly.GetManifestResourceStream($"Strings.{lang.PrimarySubtag}.json");
             if (stream == null)
                 continue;

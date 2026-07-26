@@ -157,5 +157,8 @@
   "ChatMenu_StartAnonymousChat": "发起匿名聊天",
   "ChatMenu_StartRecording": "开始录音",
   "ChatMenu_StopRecording": "停止录音",
-  "ChatMenu_RemoveFromActiveChats": "从活跃聊天中移除"
+  "ChatMenu_RemoveFromActiveChats": "从活跃聊天中移除",
+
+  "ErrorToast_ActionFailed": "操作失败！",
+  "ErrorToast_UnknownError": "未知错误。"
 }

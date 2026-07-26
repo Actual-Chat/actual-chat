@@ -824,6 +824,48 @@ Full detail — the verified per-serializer behavior matrix, the MemoryPack clos
 cutoff, unions, constructor attributes, and the test helpers that catch shape divergence — is in
 [`architecture/serialization.md`](architecture/serialization.md).
 
+### Localization (UI Strings)
+
+**Never hardcode user-visible English text in UI code.** Every static string
+a user can see (titles, labels, menu items, toasts, tooltips) comes from the
+string catalog. The catalog is a set of embedded JSON files —
+`src/dotnet/UI.Blazor/Resources/Strings.<lang>.json` — resolved at
+runtime by `AppStringLocalizer` (a custom `IStringLocalizer<Strings>` in
+`UI.Blazor.App`; `.resx`/`CultureInfo` localization does not work under
+`InvariantGlobalization`). English is the fallback and defines the key set.
+
+**Adding a key** means three edits, all enforced by `AppLocalizationTest`:
+
+1. Add it to `Strings.en.json` **and every other shipped `Strings.*.json`**
+   (all languages must define exactly the English key set).
+2. Add the matching typed member to `AppStrings.cs` (one member per key,
+   names must match exactly).
+3. Use it from code (see below).
+
+**Key naming:** `Group_Name` in PascalCase, where the group mirrors the
+component/page/feature (`ChatMenu_Pin`, `Settings_Title`, `ErrorToast_ActionFailed`).
+Format strings get a `_Format` suffix and use `{0}`-style placeholders — every
+translation must keep the placeholder. Plural variants use `_One` / `_Other`
+suffixes (`Sessions_DaysAgo_One`, `Sessions_DaysAgo_Other`).
+
+**Consuming strings** — always through the typed `AppStrings` extension
+members (`src/dotnet/UI.Blazor/Resources/AppStrings.cs`), never the raw
+`L["..."]` indexer — the typed members are compile-time-safe against typos:
+
+- **Components** — use the `L` property that component base classes
+  (`ComponentBase<THub>`, `FusionComponentBase<THub>`,
+  `ComputedStateComponent<T>`, …) already expose: `@L.ChatMenu_Pin`,
+  `L.Settings_Quit_Format(appName)`. If the component doesn't derive from
+  a base exposing `L`, inject it:
+  `[Inject] private IStringLocalizer L { get; init; } = null!;`
+- **Services** — lazy-resolve:
+  `private IStringLocalizer L => field ??= Services.GetRequiredService<IStringLocalizer>();`
+
+**Dynamic text** (server-composed messages that cross RPC, e.g. exception
+messages) is not catalog material — it's localized at runtime via
+`ILiveLocalizer` (AI translation); see `LocalizingUIActionFailureTracker`
+for the pattern.
+
 ### Test Conventions
 
 #### Test Method Naming

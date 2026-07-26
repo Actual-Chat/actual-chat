@@ -157,5 +157,8 @@
   "ChatMenu_StartAnonymousChat": "Почати анонімний чат",
   "ChatMenu_StartRecording": "Почати запис",
   "ChatMenu_StopRecording": "Зупинити запис",
-  "ChatMenu_RemoveFromActiveChats": "Прибрати з активних чатів"
+  "ChatMenu_RemoveFromActiveChats": "Прибрати з активних чатів",
+
+  "ErrorToast_ActionFailed": "Не вдалося виконати дію!",
+  "ErrorToast_UnknownError": "Невідома помилка."
 }

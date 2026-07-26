@@ -12,7 +12,7 @@ using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
 using ActualChat.UI.Blazor.App.Testing;
-using ActualChat.UI.Blazor.App.Resources;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Fusion.UI;
@@ -215,7 +215,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // Contacts
         fusion.AddService<ContactSync>(ServiceLifetime.Scoped);
         if (HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp)
-            services.AddScoped<FakeDeviceContacts>().AddAlias<DeviceContacts, FakeDeviceContacts>(ServiceLifetime.Scoped);
+            services.AddScoped<FakeDeviceContacts>()
+                .AddAlias<DeviceContacts, FakeDeviceContacts>(ServiceLifetime.Scoped);
         else
             services.AddScoped<DeviceContacts>();
 

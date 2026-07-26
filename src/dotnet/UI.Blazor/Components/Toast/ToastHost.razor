@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
+@using Microsoft.Extensions.Localization
 @implements IDisposable
 @{
     var toasts = ToastUI.Items.Items;
@@ -11,7 +12,7 @@
             @foreach (var failureGroup in _failureGroups.Values.OrderBy(g => g.Order)) {
                 <ErrorToast
                     @key="@failureGroup"
-                    Title="Action failed!"
+                    Title="@L.ErrorToast_ActionFailed"
                     Count="@failureGroup.Count"
                     AutoDismissDelay="5"
                     Dismissed="@(() => DismissFailureGroup(failureGroup))">
@@ -46,6 +47,7 @@
 
     [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private UIActionFailureTracker Failures { get; init; } = null!;
+    [Inject] private IStringLocalizer L { get; init; } = null!;
     private ToastUI ToastUI => Hub.ToastUI;
     private History History => Hub.History;
     private IJSRuntime JS => Hub.JS;
@@ -87,7 +89,7 @@
 
             var isChanged = false;
             foreach (var failure in Failures) {
-                var message = failure.Error?.Message ?? "Unknown error.";
+                var message = failure.Error?.Message ?? L.ErrorToast_UnknownError;
                 var group = _failureGroups.GetValueOrDefault(message);
                 bool isNewFailure;
                 if (group == null) {

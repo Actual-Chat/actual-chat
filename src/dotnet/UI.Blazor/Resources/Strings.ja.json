@@ -157,5 +157,8 @@
   "ChatMenu_StartAnonymousChat": "匿名チャットを開始",
   "ChatMenu_StartRecording": "録音を開始",
   "ChatMenu_StopRecording": "録音を停止",
-  "ChatMenu_RemoveFromActiveChats": "アクティブなチャットから削除"
+  "ChatMenu_RemoveFromActiveChats": "アクティブなチャットから削除",
+
+  "ErrorToast_ActionFailed": "操作に失敗しました！",
+  "ErrorToast_UnknownError": "不明なエラーです。"
 }
