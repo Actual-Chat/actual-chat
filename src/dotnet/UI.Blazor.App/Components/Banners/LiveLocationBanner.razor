@@ -80,7 +80,7 @@
             return ModalUI.Show(new LocationTroubleshooterModal.Model());
 
         Hub.ChatActivityUI.SetPanelHidden(Chat.Id, false);
-        Hub.ChatActivityUI.SelectPanelTab(Chat.Id, CallMapPanelTab.Map);
+        Hub.ChatActivityUI.SelectPanelTab(Chat.Id, VisualActivityTab.Map);
         return Task.CompletedTask;
     }
 

@@ -4,8 +4,8 @@
     var m = State.Value;
     var isWatching = m.IsWatching;
     var chatContext = m.ChatContext;
-    var showVideo = m.PanelState is { HasCall: true, Tab: CallMapPanelTab.Call };
-    var showMap = m.PanelState is { HasMap: true, Tab: CallMapPanelTab.Map };
+    var showVideo = m.PanelState is { HasCall: true, Tab: VisualActivityTab.Call };
+    var showMap = m.PanelState is { HasMap: true, Tab: VisualActivityTab.Map };
 
     // TODO(DF): move this logic to ChatVideoUI
     // Clear watching when navigating to a different chat.
@@ -55,7 +55,7 @@
         }
         @if (chatContext is not null) {
             <CascadingValue Value="chatContext">
-                <CallMapSwitch/>
+                <VisualActivityPanelTabSwitch/>
             </CascadingValue>
         }
     </div>

@@ -3,7 +3,7 @@ using ActualChat.Streaming;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public enum CallMapPanelTab { Call, Map }
+public enum VisualActivityTab { Call, Map }
 
 /// <summary>
 /// The per-chat "what's live right now" signal — a latched live session (2+ peers or a ringing
@@ -13,7 +13,7 @@ public enum CallMapPanelTab { Call, Map }
 /// </summary>
 public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private readonly ConcurrentDictionary<ChatId, CallMapPanelTab> _selectedPanelTabs = new();
+    private readonly ConcurrentDictionary<ChatId, VisualActivityTab> _selectedPanelTabs = new();
     private readonly ConcurrentDictionary<ChatId, Unit> _panelHiddenChatIds = new();
 
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
@@ -64,16 +64,16 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         var hasCall = isWatching;
         var hasMap = activity.HasLiveLocation && !isHidden;
         var tab = (hasCall, hasMap) switch {
-            (true, false) => CallMapPanelTab.Call,
-            (false, true) => CallMapPanelTab.Map,
+            (true, false) => VisualActivityTab.Call,
+            (false, true) => VisualActivityTab.Map,
             (true, true) => await GetSelectedPanelTab(chatId, cancellationToken).ConfigureAwait(false)
-                ?? CallMapPanelTab.Call,
-            _ => CallMapPanelTab.Call,
+                ?? VisualActivityTab.Call,
+            _ => VisualActivityTab.Call,
         };
         return new CallMapPanelState(hasCall, hasMap, tab);
     }
 
-    public void SelectPanelTab(ChatId chatId, CallMapPanelTab tab)
+    public void SelectPanelTab(ChatId chatId, VisualActivityTab tab)
     {
         if (_selectedPanelTabs.TryGetValue(chatId, out var oldTab) && oldTab == tab)
             return;
@@ -102,8 +102,8 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
     // Protected/internal methods
 
     [ComputeMethod]
-    protected virtual Task<CallMapPanelTab?> GetSelectedPanelTab(ChatId chatId, CancellationToken cancellationToken)
-        => Task.FromResult(_selectedPanelTabs.TryGetValue(chatId, out var tab) ? (CallMapPanelTab?)tab : null);
+    protected virtual Task<VisualActivityTab?> GetSelectedPanelTab(ChatId chatId, CancellationToken cancellationToken)
+        => Task.FromResult(_selectedPanelTabs.TryGetValue(chatId, out var tab) ? (VisualActivityTab?)tab : null);
 }
 
 // HasLiveConversation covers call-style activity only (session or talking) — the chat-list
@@ -119,9 +119,9 @@ public readonly record struct ChatActivity(
     public bool HasLiveLocation => LocationSharerCount > 0;
 }
 
-public sealed record CallMapPanelState(bool HasCall, bool HasMap, CallMapPanelTab Tab)
+public sealed record CallMapPanelState(bool HasCall, bool HasMap, VisualActivityTab Tab)
 {
-    public static readonly CallMapPanelState None = new(false, false, CallMapPanelTab.Call);
+    public static readonly CallMapPanelState None = new(false, false, VisualActivityTab.Call);
 
     public bool HasBoth => HasCall && HasMap;
     public bool IsAnyActive => HasCall || HasMap;
