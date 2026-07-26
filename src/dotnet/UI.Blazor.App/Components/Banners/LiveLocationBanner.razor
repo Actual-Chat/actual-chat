@@ -80,8 +80,6 @@
             return ModalUI.Show(new LocationTroubleshooterModal.Model());
 
         Hub.ChatActivityUI.SetPanelHidden(Chat.Id, false);
-        // Land on the map: the last-selected tab may be Call, whose view may still be
-        // collapsed to the Live pill — the banner is the map's way back, not the call's.
         Hub.ChatActivityUI.SelectPanelTab(Chat.Id, CallMapPanelTab.Map);
         return Task.CompletedTask;
     }

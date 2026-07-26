@@ -13,8 +13,7 @@ public enum CallMapPanelTab { Call, Map }
 /// </summary>
 public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private readonly MutableState<(ChatId ChatId, CallMapPanelTab Tab)?> _selectedPanelTab =
-        hub.StateFactory.NewMutable(((ChatId ChatId, CallMapPanelTab Tab)?)null);
+    private readonly ConcurrentDictionary<ChatId, CallMapPanelTab> _selectedPanelTabs = new();
     private readonly ConcurrentDictionary<ChatId, Unit> _panelHiddenChatIds = new();
 
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
@@ -75,7 +74,14 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
     }
 
     public void SelectPanelTab(ChatId chatId, CallMapPanelTab tab)
-        => _selectedPanelTab.Value = (chatId, tab);
+    {
+        if (_selectedPanelTabs.TryGetValue(chatId, out var oldTab) && oldTab == tab)
+            return;
+
+        _selectedPanelTabs[chatId] = tab;
+        using (Invalidation.Begin())
+            _ = GetSelectedPanelTab(chatId, default);
+    }
 
     [ComputeMethod]
     public virtual Task<bool> IsPanelHidden(ChatId chatId, CancellationToken cancellationToken = default)
@@ -96,13 +102,8 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
     // Protected/internal methods
 
     [ComputeMethod]
-    protected virtual async Task<CallMapPanelTab?> GetSelectedPanelTab(
-        ChatId chatId,
-        CancellationToken cancellationToken)
-    {
-        var selection = await _selectedPanelTab.Use(cancellationToken).ConfigureAwait(false);
-        return selection is { } s && s.ChatId == chatId ? s.Tab : null;
-    }
+    protected virtual Task<CallMapPanelTab?> GetSelectedPanelTab(ChatId chatId, CancellationToken cancellationToken)
+        => Task.FromResult(_selectedPanelTabs.TryGetValue(chatId, out var tab) ? (CallMapPanelTab?)tab : null);
 }
 
 // HasLiveConversation covers call-style activity only (session or talking) — the chat-list
