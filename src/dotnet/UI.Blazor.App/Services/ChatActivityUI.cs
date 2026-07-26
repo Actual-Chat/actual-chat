@@ -22,6 +22,35 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     [ComputeMethod]
+    public virtual async Task<VisualActivity> Get(
+        ChatId chatId,
+        CancellationToken cancellationToken = default)
+    {
+        if (chatId.Value.IsNullOrEmpty())
+            return VisualActivity.None;
+
+        // The call side keys on watching (the call view is open for this user), not on mere
+        // call activity in the chat — a non-watcher's panel must not flip to an empty call view.
+        var isWatching = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
+        var locationParticipants = await LocationUI.ListParticipants(chatId, cancellationToken).ConfigureAwait(false);
+        // Hide (from the map ⋮ menu) hides only the map side here; the call side is
+        // collapsed to the Live pill via ChatVideoUI's hidden mode, so hasCall must stay
+        // on to keep the pill mounted. LiveLocationBanner brings the map back, the pill
+        // brings the call view back.
+        var isHidden = await IsPanelHidden(chatId, cancellationToken).ConfigureAwait(false);
+        var hasCall = isWatching;
+        var hasMap = locationParticipants.Count > 0 && !isHidden;
+        var tab = (hasCall, hasMap) switch {
+            (true, false) => VisualActivityTab.Call,
+            (false, true) => VisualActivityTab.Map,
+            (true, true) => await GetSelectedPanelTab(chatId, cancellationToken).ConfigureAwait(false)
+                ?? VisualActivityTab.Call,
+            _ => VisualActivityTab.Call,
+        };
+        return new VisualActivity(hasCall, hasMap, tab);
+    }
+
+    [ComputeMethod]
     public virtual async Task<CallActivity> GetCallActivity(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.Value.IsNullOrEmpty())
@@ -45,33 +74,8 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
     }
 
     [ComputeMethod]
-    public virtual async Task<VisualActivityPanelState> GetPanelState(
-        ChatId chatId,
-        CancellationToken cancellationToken = default)
-    {
-        if (chatId.Value.IsNullOrEmpty())
-            return VisualActivityPanelState.None;
-
-        // The call side keys on watching (the call view is open for this user), not on mere
-        // call activity in the chat — a non-watcher's panel must not flip to an empty call view.
-        var isWatching = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
-        var locationParticipants = await LocationUI.ListParticipants(chatId, cancellationToken).ConfigureAwait(false);
-        // Hide (from the map ⋮ menu) hides only the map side here; the call side is
-        // collapsed to the Live pill via ChatVideoUI's hidden mode, so hasCall must stay
-        // on to keep the pill mounted. LiveLocationBanner brings the map back, the pill
-        // brings the call view back.
-        var isHidden = await IsPanelHidden(chatId, cancellationToken).ConfigureAwait(false);
-        var hasCall = isWatching;
-        var hasMap = locationParticipants.Count > 0 && !isHidden;
-        var tab = (hasCall, hasMap) switch {
-            (true, false) => VisualActivityTab.Call,
-            (false, true) => VisualActivityTab.Map,
-            (true, true) => await GetSelectedPanelTab(chatId, cancellationToken).ConfigureAwait(false)
-                ?? VisualActivityTab.Call,
-            _ => VisualActivityTab.Call,
-        };
-        return new VisualActivityPanelState(hasCall, hasMap, tab);
-    }
+    public virtual Task<bool> IsPanelHidden(ChatId chatId, CancellationToken cancellationToken = default)
+        => Task.FromResult(_panelHiddenChatIds.ContainsKey(chatId));
 
     public void SelectPanelTab(ChatId chatId, VisualActivityTab tab)
     {
@@ -82,10 +86,6 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         using (Invalidation.Begin())
             _ = GetSelectedPanelTab(chatId, default);
     }
-
-    [ComputeMethod]
-    public virtual Task<bool> IsPanelHidden(ChatId chatId, CancellationToken cancellationToken = default)
-        => Task.FromResult(_panelHiddenChatIds.ContainsKey(chatId));
 
     public void SetPanelHidden(ChatId chatId, bool isHidden)
     {
@@ -106,16 +106,16 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         => Task.FromResult(_selectedPanelTabs.TryGetValue(chatId, out var tab) ? (VisualActivityTab?)tab : null);
 }
 
+public sealed record VisualActivity(bool HasCall, bool HasMap, VisualActivityTab Tab)
+{
+    public static readonly VisualActivity None = new(false, false, VisualActivityTab.Call);
+    public bool HasBoth => HasCall && HasMap;
+}
+
 // ParticipantCount counts live-session members when IsLiveSession, streaming talkers otherwise.
 
 public readonly record struct CallActivity(bool IsLiveSession, int ParticipantCount)
 {
     public static readonly CallActivity None = default;
     public bool HasLiveConversation => ParticipantCount > 0;
-}
-
-public sealed record VisualActivityPanelState(bool HasCall, bool HasMap, VisualActivityTab Tab)
-{
-    public static readonly VisualActivityPanelState None = new(false, false, VisualActivityTab.Call);
-    public bool HasBoth => HasCall && HasMap;
 }
