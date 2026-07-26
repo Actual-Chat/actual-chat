@@ -430,13 +430,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var prevConversationRangeMetaTask = previousId != 0
                 ? ConversationsBackend.GetRangeMeta(chatId, previousTile.Start, cancellationToken)
                 : null;
-            var nextEntryRangeMetaTask = nextId != long.MaxValue
-                ? GetEntryRangeMeta(chatId, nextTile.Start, cancellationToken)
-                : null;
-            var nextConversationRangeMetaTask = nextId != long.MaxValue
-                ? ConversationsBackend.GetRangeMeta(chatId, nextTile.Start, cancellationToken)
-                : null;
-
             previousEntryRangeMeta = prevEntryRangeMetaTask != null
                 ? await prevEntryRangeMetaTask.ConfigureAwait(false)
                 : null;
@@ -456,6 +449,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             else
                 startLid = IdTileStack.LastLayer.GetTile(chatLidRange.Start).Start;
 
+            // Started only once the previous side hasn't already fulfilled: a compute-method call that hits
+            // cache registers its dependency synchronously, before any await, so issuing these alongside the
+            // previous side made the result depend on the next tile even on the paths that break before
+            // using it - and that tile is usually the warm tail, which invalidates on every new message.
+            var nextEntryRangeMetaTask = nextId != long.MaxValue
+                ? GetEntryRangeMeta(chatId, nextTile.Start, cancellationToken)
+                : null;
+            var nextConversationRangeMetaTask = nextId != long.MaxValue
+                ? ConversationsBackend.GetRangeMeta(chatId, nextTile.Start, cancellationToken)
+                : null;
             nextEntryRangeMeta = nextEntryRangeMetaTask is not null
                 ? await nextEntryRangeMetaTask.ConfigureAwait(false)
                 : null;
