@@ -50,7 +50,7 @@
                             </span>
                             <span class="c-colon">:</span>
                         }
-                        @if (m.ChatActivity.IsActive) {
+                        @if (m.ChatActivity.HasLiveConversation) {
                             var activity = m.ChatActivity;
                             <span class="c-live-talking">
                                 <chat-activity-svg size="4" isActive="true"/>
