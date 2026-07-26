@@ -7,10 +7,20 @@ namespace ActualChat.Chat.IntegrationTests;
 // Guards the conversation metadata cache against live-session churn. ConversationsBackend used to depend
 // on LiveSessionsBackend.GetState, which is invalidated ~3x/min per session by its liveness poll and by
 // UpdateSummary rewriting LastSummaryAt/Version - dragging the shared per-chat metadata cache with it.
+
 [Collection(nameof(ChatCollection))]
 public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
+    private static TileStack<long> IdTileStack => Constants.Chat.ServerIdTileStack;
+    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
+
+    protected override async Task DisposeAsync()
+    {
+        await Tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
+
     [Fact]
     public async Task RangeMetaSurvivesLiveStateChangeThatCannotMoveTheBlock()
     {
@@ -23,8 +33,7 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         cRangeMeta.IsConsistent().Should().BeTrue();
         cTile.IsConsistent().Should().BeTrue();
 
-        // act - SetRules rewrites the live session state (so GetState is invalidated) but cannot move
-        // the block's start or change its card, so neither of the two above may be dropped.
+        // act - SetRules invalidates GetState but cannot move the block's start or change its card
         await live.SetRules(chatId, new SessionRules { VideoAllowed = false }, default);
 
         // assert
@@ -63,8 +72,6 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
     [Fact]
     public async Task ChangedSummaryStillInvalidatesTheLiveCard()
     {
-        // The complement of the two tests above: bypassing GetState must not mean never invalidating.
-
         // arrange
         var (chatId, _, live, _) = await StartLiveSession();
         await live.UpdateSummary(
@@ -88,17 +95,14 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
 
     // Private methods
 
-    private static TileStack<long> IdTileStack => Constants.Chat.ServerIdTileStack;
-
     private async Task<(ChatId ChatId, long TileStart, ILiveSessionsBackend Live, IConversationsBackend Conversations)>
         StartLiveSession()
     {
-        var tester = AppHost.NewBlazorTester(Out);
-        await tester.SignInAsUniqueBob();
-        var (chatId, _) = await tester.CreateChat(true);
-        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(tester.Session, chatId, default);
-        var live = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
-        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+        await Tester.SignInAsUniqueBob();
+        var (chatId, _) = await Tester.CreateChat(true);
+        var author = await Tester.AppServices.GetRequiredService<IAuthors>().GetOwn(Tester.Session, chatId, default);
+        var live = Tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = Tester.AppServices.GetRequiredService<IConversationsBackend>();
 
         // Two streamers latch the session - only a latched one owns a range and renders a card.
         await live.OnStreamRegistered(chatId, author!.Id, null, true, default);
