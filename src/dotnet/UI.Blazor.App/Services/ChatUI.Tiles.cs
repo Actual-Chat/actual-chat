@@ -36,6 +36,25 @@ public sealed record ConversationViewState(
             && ExpandedConversations.SetEquals(other.ExpandedConversations);
     }
 
+    public ConversationViewState NarrowTo(Range<long> scope)
+    {
+        // Both ranges reach ChatUI.GetTile only as idRangesToSkip entries, so one that can't reach the
+        // tile can never match and dropping it is equivalent - and this record is the tile cache key
+        // shared by every tile, so otherwise one scroll step inside a live block re-keys them all.
+        // ExpandedConversations stays: a conversation may start before the tile and extend into it.
+        var hiddenLiveTailRange = HiddenLiveTailRange.IntersectWith(scope).IsEmpty
+            ? default
+            : HiddenLiveTailRange;
+        var liveFoldRange = LiveFoldRange.IntersectWith(scope).IsEmpty ? default : LiveFoldRange;
+        if (hiddenLiveTailRange == HiddenLiveTailRange && liveFoldRange == LiveFoldRange)
+            return this;
+
+        return this with {
+            HiddenLiveTailRange = hiddenLiveTailRange,
+            LiveFoldRange = liveFoldRange,
+        };
+    }
+
     public override int GetHashCode()
     {
         var hash = HashCode.Combine(ShowConversations,
@@ -304,6 +323,9 @@ public partial class ChatUI
         }
         var loadAt = CpuTimestamp.Now;
 
+        var conversationView = new ConversationViewState(
+            showConversations, expandedConversations, hiddenLiveTailRange,
+            liveBlockId, liveBlockFoldRange, materializedBlockId);
         var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
         var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
         var tiles = new List<VirtualListTile<ChatMessage>>();
@@ -329,9 +351,7 @@ public partial class ChatUI
                     chatId,
                     chat.Rules.Author?.Id,
                     idTile,
-                    new ConversationViewState(
-                        showConversations, expandedConversations, hiddenLiveTailRange,
-                        liveBlockId, liveBlockFoldRange, materializedBlockId),
+                    conversationView.NarrowTo(idTile.MoveStart(-IdTileStack.FirstLayer.TileSize)),
                     prevMessage,
                     lastReadEntryLid,
                     isLastTile ? chatLidRange.End : null,
@@ -399,9 +419,7 @@ public partial class ChatUI
                     chatId,
                     chat.Rules.Author?.Id,
                     tailRange,
-                    new ConversationViewState(
-                        showConversations, expandedConversations, hiddenLiveTailRange,
-                        liveBlockId, liveBlockFoldRange, materializedBlockId),
+                    conversationView.NarrowTo(tailRange.MoveStart(-IdTileStack.FirstLayer.TileSize)),
                     prevMessage,
                     shownReadyEntryLid,
                     chatLidRange.End,
@@ -1140,8 +1158,6 @@ public partial class ChatUI
             Log,
             "Error prefetching chat tiles.",
             CancellationToken.None);
-
-    // Private methods
 
     private static bool IsBlockStart(ChatEntry? prevEntry, ChatEntry entry)
     {

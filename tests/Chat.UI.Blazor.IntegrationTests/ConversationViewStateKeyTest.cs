@@ -28,4 +28,31 @@ public sealed class ConversationViewStateKeyTest
         a.Should().Be(b);
         a.GetHashCode().Should().Be(b.GetHashCode());
     }
+
+    [Fact]
+    public void NarrowToDropsRangesThatCannotReachTheTile()
+    {
+        // arrange
+        var chatId = ChatId.Parse("the-actual-one");
+        var liveBlockId = ConversationId.New(chatId, 9000);
+        var state = new ConversationViewState(
+            true,
+            ImmutableHashSet<ConversationId>.Empty,
+            new Range<long>(9100, long.MaxValue),
+            liveBlockId,
+            new Range<long>(9000, 9100),
+            null);
+
+        // act
+        var farTile = state.NarrowTo(new Range<long>(100, 105));
+        var nearTile = state.NarrowTo(new Range<long>(9050, 9055));
+
+        // assert
+        farTile.HiddenLiveTailRange.Should().Be(default(Range<long>));
+        farTile.LiveFoldRange.Should().Be(default(Range<long>));
+        // The whole point: tiles far from the live block share one key as the fold boundary advances.
+        var advanced = state with { LiveFoldRange = new Range<long>(9000, 9200) };
+        advanced.NarrowTo(new Range<long>(100, 105)).Should().Be(farTile);
+        nearTile.LiveFoldRange.Should().Be(new Range<long>(9000, 9100), "an overlapping range must survive");
+    }
 }
