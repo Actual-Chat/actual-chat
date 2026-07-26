@@ -3,7 +3,7 @@
     if (State.IsInitial(out var m))
         return;
     // Hidden while a live conversation is active — the ChatActivityPanel owns that state.
-    if (!m.EnableIncompleteUI || m.IsActive)
+    if (!m.EnableIncompleteUI || m.HasLiveConversation)
         return;
 }
 
@@ -29,7 +29,7 @@
             return new Model(false, false);
 
         var activity = await ChatActivityUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
-        return new Model(true, activity.IsActive);
+        return new Model(true, activity.HasLiveConversation);
     }
 
     private Task OnClick()
@@ -37,5 +37,5 @@
 
     // Nested types
 
-    public sealed record Model(bool EnableIncompleteUI, bool IsActive);
+    public sealed record Model(bool EnableIncompleteUI, bool HasLiveConversation);
 }

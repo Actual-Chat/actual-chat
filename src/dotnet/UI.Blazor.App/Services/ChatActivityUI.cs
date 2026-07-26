@@ -102,8 +102,8 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
     }
 }
 
-// IsActive covers call-style activity only (session or talking) — the chat-list badge and
-// the header call button key off it; location sharing is a parallel dimension.
+// HasLiveConversation covers call-style activity only (session or talking) — the chat-list
+// badge and the header call button key off it; location sharing is a parallel dimension.
 
 public readonly record struct ChatActivity(
     bool IsLiveSession,
@@ -111,7 +111,7 @@ public readonly record struct ChatActivity(
     int LocationSharerCount)
 {
     public static readonly ChatActivity None = default;
-    public bool IsActive => ParticipantCount > 0;
+    public bool HasLiveConversation => ParticipantCount > 0;
     public bool HasLiveLocation => LocationSharerCount > 0;
 }
 
