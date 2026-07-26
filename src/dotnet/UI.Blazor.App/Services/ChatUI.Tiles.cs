@@ -143,8 +143,14 @@ public partial class ChatUI
             chatLidRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
 
         var chat = await chatTask.ConfigureAwait(false);
-        if (chat == null)
+        if (chat == null) {
+            // Everything above is already in flight, so bailing out here would leave those tasks unobserved.
+            _ = Task.WhenAll(
+                    liveConversationTask, rawLiveTask, blockStateTask,
+                    chatRangeMetaListTask, conversationTilesTask, chatLidRangeTask)
+                .SilentAwait(false);
             return ChatItems.Empty;
+        }
 
         var liveConversation = await liveConversationTask.ConfigureAwait(false);
         var amInLiveConversation = liveConversation != null
@@ -303,8 +309,8 @@ public partial class ChatUI
                 // needs the preceding entry to render the block start). Prefetching only idTiles left
                 // that one always uncached, costing a serial round-trip on every rebuild.
                 var prefetchEntriesTask = idTiles
-                    .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(
-                        r == idTiles[0] ? r.MoveStart(-IdTileStack.FirstLayer.TileSize) : r))
+                    .SelectMany((r, i) => IdTileStack.FirstLayer.GetCoveringTiles(
+                        i == 0 ? r.MoveStart(-IdTileStack.FirstLayer.TileSize) : r))
                     .Select(t => t.Range)
                     .Where(r => r.Start >= 0)
                     .EnsureMonotonic()
