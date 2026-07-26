@@ -83,10 +83,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // A latched live session owns its range: replace any solo-era conversations it overlaps with
         // the single live range (the UI swaps the regular block for the live one).
-        var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        if (live is { SessionStartedAt: not null } lc
-            && !lc.VisibleEntryLidRange.IntersectWith(idTileRange).IsEmpty) {
-            var liveRange = lc.VisibleEntryLidRange;
+        var live = await LiveSessionsBackend.GetVisibleRange(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is { } liveRange && !liveRange.IntersectWith(idTileRange).IsEmpty) {
             conversationRanges = conversationRanges
                 .Where(r => r.IntersectWith(liveRange).IsEmpty)
                 .Append(liveRange)
@@ -126,16 +124,14 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // A latched live session owns its range: drop any solo-era conversations it overlaps and inject
         // its synthetic block instead (the UI swaps the regular block for the live one).
-        var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        if (live is { SessionStartedAt: not null } lc) {
-            var liveConversation = lc.ToConversation();
-            if (!liveConversation.EntryLidRange.IntersectWith(lidTileRange).IsEmpty) {
-                result = result
-                    .Where(c => c!.EntryLidRange.IntersectWith(liveConversation.EntryLidRange).IsEmpty)
-                    .Append(liveConversation)
-                    .OrderBy(c => c!.EntryLidRange.Start)
-                    .ToList()!;
-            }
+        var liveConversation = await LiveSessionsBackend.GetLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        if (liveConversation is not null
+            && !liveConversation.EntryLidRange.IntersectWith(lidTileRange).IsEmpty) {
+            result = result
+                .Where(c => c!.EntryLidRange.IntersectWith(liveConversation.EntryLidRange).IsEmpty)
+                .Append(liveConversation)
+                .OrderBy(c => c!.EntryLidRange.Start)
+                .ToList()!;
         }
 
         return result.ToArray()!;
