@@ -117,8 +117,14 @@ public interface IChats : IComputeService
     [ComputeMethod]
     Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod]
-    Task<bool> IsEntryReadByMentionedUser(Session session, ChatEntryId chatEntryId, MentionRef mentionId, CancellationToken cancellationToken);
+    // Consolidated: this is monotone - it flips false -> true once - but every read-position advance
+    // by the mentioned user invalidates it for every rendered entry that mentions them.
+    [ComputeMethod(ConsolidationDelay = 0.2)]
+    Task<bool> IsEntryReadByMentionedUser(
+        Session session,
+        ChatEntryId chatEntryId,
+        MentionRef mentionId,
+        CancellationToken cancellationToken);
 
     // Commands
 
