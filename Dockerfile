@@ -47,6 +47,8 @@ RUN for file in $(ls *.csproj); do mkdir -p tests/${file%.*}/ && mv $file tests/
 COPY tests/Directory.Build.* tests/.editorconfig tests/
 
 COPY build/ build/
+# Build.csproj links this file, so it has to be here before run-build.cmd compiles it
+COPY src/dotnet/Api/Constants.AppSchemes.cs src/dotnet/Api/
 COPY run-build.cmd .
 
 RUN dotnet workload install wasm-tools aspire \
