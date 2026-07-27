@@ -53,6 +53,8 @@ public static partial class StandardError
         => new TimeoutException($"{target} has timed out.");
     public static Exception Postpone(TimeSpan delay)
         => new PostponeException($"Postponed for {delay.ToShortString()}.") { Delay = delay };
+    public static Exception RateLimitExceeded(TimeSpan retryDelay)
+        => new RateLimitExceededException(retryDelay);
 
     public static Exception WrongShard<TTarget>()
         => WrongShard(typeof(TTarget).GetName());

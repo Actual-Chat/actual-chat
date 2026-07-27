@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />

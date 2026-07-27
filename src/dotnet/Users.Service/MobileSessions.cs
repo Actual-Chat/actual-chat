@@ -1,6 +1,7 @@
-﻿using ActualChat.AspNetCore;
-using Microsoft.AspNetCore.Http;
+using ActualChat.AspNetCore;
+using ActualChat.Resilience;
 using ActualLab.Rpc.Infrastructure;
+using Microsoft.AspNetCore.Http;
 
 namespace ActualChat.Users;
 
@@ -11,6 +12,10 @@ public class MobileSessions(IServiceProvider services) : IMobileSessions
     private const string UnknownAppUserAgent = "UnknownApp/1.0";
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private ISessionsBackend SessionsBackend { get; } = services.GetRequiredService<ISessionsBackend>();
+    private RateLimitPolicy RateLimitPolicy { get; }
+        = services.GetService<RateLimitPolicy>() ?? RateLimitPolicy.Unlimited;
+    private RateLimitIdentityResolver IdentityResolver { get; }
+        = services.GetService<RateLimitIdentityResolver>() ?? new RateLimitIdentityResolver(services);
     private ICommander Commander { get; } = services.Commander();
 
     // Not a [ComputeMethod]!
@@ -21,8 +26,11 @@ public class MobileSessions(IServiceProvider services) : IMobileSessions
     // Not a [ComputeMethod]!
     public async Task<Session> CreateSession(string appUserAgent, CancellationToken cancellationToken)
     {
-        var session = Session.New();
         var (description, ipAddress) = GetDescriptionAndIPAddress(appUserAgent);
+        await CheckRateLimits($"{nameof(MobileSessions)}.{nameof(CreateSession)}", cancellationToken)
+            .ConfigureAwait(false);
+
+        var session = Session.New();
         var upsertSessionCmd = new SessionsBackend_Upsert(session) {
             IPAddress = ipAddress,
             Description = description,
@@ -62,5 +70,17 @@ public class MobileSessions(IServiceProvider services) : IMobileSessions
         if (!userAgent.IsNullOrEmpty())
             description += $" {userAgent}";
         return (description, ipAddress);
+    }
+
+    private async Task CheckRateLimits(string method, CancellationToken cancellationToken)
+    {
+        var source = RateLimitSource.ForConnection(RpcInboundContext.Current!.Peer.ConnectionState.Value.Connection);
+        var identities = new RateLimitIdentity[RateLimitIdentityResolver.MaxIdentityCount];
+        var identityCount = await IdentityResolver
+            .Resolve(RateLimitPolicy, RateLimitClass.SessionCreation, source, identities, cancellationToken)
+            .ConfigureAwait(false);
+        await RateLimitPolicy
+            .Check(method, RateLimitClass.SessionCreation, identities.AsSpan(0, identityCount), cancellationToken)
+            .ConfigureAwait(false);
     }
 }

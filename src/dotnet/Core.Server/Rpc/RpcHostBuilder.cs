@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using ActualChat.Hosting;
+using ActualChat.Resilience.Internal;
 using ActualChat.Rpc.Internal;
 using ActualLab.Fusion.Server;
 using ActualLab.Fusion.Server.Middlewares;
@@ -49,6 +50,10 @@ public readonly struct RpcHostBuilder
         AddRpcServer(IsApiHost);
         AddRpcClient();
         AddRpcPeerFactory();
+
+        // Inbound call budgets
+        if (IsApiHost)
+            Rpc.AddMiddleware<RpcRateLimitMiddleware>();
 
         // Debug stuff
         if (CoreConstants.DebugMode.RpcCalls.AnyServerInboundDelay is { } delay)

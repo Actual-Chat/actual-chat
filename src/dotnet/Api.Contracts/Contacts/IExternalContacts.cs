@@ -16,7 +16,10 @@ public interface IExternalContacts : IComputeService
 public sealed partial record ExternalContacts_BulkChange(
     [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1), Key(1)] ExternalContactChange[] Changes
-) : ISessionCommand<Result<ExternalContactFull?>[]>, IApiCommand;
+) : ISessionCommand<Result<ExternalContactFull?>[]>, IApiCommand
+{
+    public const int MaxChangeCount = 1_000;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record ExternalContactChange(

@@ -33,6 +33,10 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
             return null!; // It just spawns other commands, so nothing to do here
 
         var (session, changes) = command;
+        if (changes.Length > ExternalContacts_BulkChange.MaxChangeCount)
+            throw StandardError.Constraint(
+                $"A contact batch cannot contain more than {ExternalContacts_BulkChange.MaxChangeCount} changes.");
+
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
             return Enumerable.Repeat(new Result<ExternalContactFull?>(null, null), changes.Length).ToArray();

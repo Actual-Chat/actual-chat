@@ -29,17 +29,11 @@ public static partial class ApiContractsModuleInitializer
             MinCacheDuration = TimeSpan.FromSeconds(10),
         };
 
-        // Any AccountException isn't a transient error
+        // Any AccountException isn't a transient error, while a rate limit error always is
         var oldPreferTransient = TransiencyResolvers.PreferTransient;
-        TransiencyResolvers.PreferTransient = e => {
-            var transiency = oldPreferTransient.Invoke(e);
-            if (transiency is Transiency.Transient)
-                return transiency;
-
-            return e switch {
-                AccountException => Transiency.NonTransient,
-                _ => transiency,
-            };
+        TransiencyResolvers.PreferTransient = e => e switch {
+            AccountException => Transiency.NonTransient,
+            _ => oldPreferTransient.Invoke(e),
         };
 
         // Rpc - API version

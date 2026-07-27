@@ -288,7 +288,8 @@
             return false;
         }
 
-        var blocked = await TotpUI.CheckIfBlocked(email, TotpPurpose.SignInEmail, CancellationToken.None);
+        var blocked = await TotpUI.GetEmailValidationMessage(
+            email, TotpPurpose.SignInEmail, CancellationToken.None);
         if (blocked.IsNullOrEmpty())
             return true;
 

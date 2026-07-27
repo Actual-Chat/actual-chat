@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using ActualChat.AI;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
@@ -9,7 +9,9 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
+using ActualChat.Resilience;
 using ActualChat.Streaming;
+using ActualLab.Redis;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.EntityFrameworkCore;
@@ -271,14 +273,11 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddKeyedSingleton<IChatCompletionService>(rateLimitedKey,
             (c, _) => {
                 var chatCompletion = c.GetRequiredKeyedService<IChatCompletionService>(unlimitedServiceKey);
-                var rateLimiter = RedisTokenBucketRateLimiter.Create<ChatDbContext>(
-                    new RedisTokenBucketRateLimiter.Options(
-                        $"rate_limit:openai:{serviceKey}",
-                        2_000_000,
-                        TimeSpan.FromSeconds(60)
-                    ),
-                    c);
-                return chatCompletion.WrapWithRateLimiter(rateLimiter);
+                var rateLimiter = new RedisTokenBucketRateLimiter(
+                    c.GetRequiredService<RedisDb<ChatDbContext>>(),
+                    "",
+                    new TokenBucketBudget(2_000_000, TimeSpan.FromSeconds(60)));
+                return chatCompletion.WrapWithRateLimiter(rateLimiter, $"rate_limit:openai:{serviceKey}");
             });
 
         // for serviceKey
@@ -320,14 +319,11 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddKeyedSingleton<IChatCompletionService>(rateLimitedKey,
             (c, _) => {
                 var chatCompletion = c.GetRequiredKeyedService<IChatCompletionService>(unlimitedServiceKey);
-                var rateLimiter = RedisTokenBucketRateLimiter.Create<ChatDbContext>(
-                    new RedisTokenBucketRateLimiter.Options(
-                        $"rate_limit:gemini:{serviceKey}",
-                        2_000_000,
-                        TimeSpan.FromSeconds(60)
-                    ),
-                    c);
-                return chatCompletion.WrapWithRateLimiter(rateLimiter);
+                var rateLimiter = new RedisTokenBucketRateLimiter(
+                    c.GetRequiredService<RedisDb<ChatDbContext>>(),
+                    "",
+                    new TokenBucketBudget(2_000_000, TimeSpan.FromSeconds(60)));
+                return chatCompletion.WrapWithRateLimiter(rateLimiter, $"rate_limit:gemini:{serviceKey}");
             });
 
         // for serviceKey

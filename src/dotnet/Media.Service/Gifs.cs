@@ -1,6 +1,6 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ActualChat.Media.Module;
+using ActualChat.Resilience;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Media;
 
@@ -13,6 +13,10 @@ public class Gifs(IServiceProvider services) : IGifs
     private IHttpClientFactory HttpClientFactory { get; } = services.GetRequiredService<IHttpClientFactory>();
     private HttpClient HttpClient => field ??= HttpClientFactory.CreateClient(HttpClientName);
     private string ApiKey { get; } = services.GetRequiredService<MediaSettings>().KlipyApiKey;
+    private RateLimitPolicy RateLimitPolicy { get; }
+        = services.GetService<RateLimitPolicy>() ?? RateLimitPolicy.Unlimited;
+    private RateLimitIdentityResolver IdentityResolver { get; }
+        = services.GetService<RateLimitIdentityResolver>() ?? new RateLimitIdentityResolver(services);
     private ILogger<Gifs> Log { get; } = services.LogFor<Gifs>();
 
     public async Task<GifSearchResult> Search(string query, int page, CancellationToken cancellationToken)
@@ -21,7 +25,7 @@ public class Gifs(IServiceProvider services) : IGifs
             return new GifSearchResult([], false);
 
         var url = $"{BaseUrl}/{ApiKey}/gifs/search?q={Uri.EscapeDataString(query)}&per_page={PerPage}&page={page}&rating=pg";
-        return await Fetch(url, cancellationToken).ConfigureAwait(false);
+        return await Fetch(nameof(Search), url, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<GifSearchResult> GetTrending(int page, CancellationToken cancellationToken)
@@ -30,11 +34,13 @@ public class Gifs(IServiceProvider services) : IGifs
             return new GifSearchResult([], false);
 
         var url = $"{BaseUrl}/{ApiKey}/gifs/trending?per_page={PerPage}&page={page}";
-        return await Fetch(url, cancellationToken).ConfigureAwait(false);
+        return await Fetch(nameof(GetTrending), url, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<GifSearchResult> Fetch(string url, CancellationToken cancellationToken)
+    private async Task<GifSearchResult> Fetch(string method, string url, CancellationToken cancellationToken)
     {
+        await CheckRateLimits($"{nameof(Gifs)}.{method}", cancellationToken).ConfigureAwait(false);
+
         try {
             using var response = await HttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
@@ -53,6 +59,18 @@ public class Gifs(IServiceProvider services) : IGifs
             Log.LogWarning(e, "Failed to fetch GIFs from Klipy");
             return new GifSearchResult([], false);
         }
+    }
+
+    private async Task CheckRateLimits(string method, CancellationToken cancellationToken)
+    {
+        var source = RateLimitSource.ForConnection(RpcInboundContext.Current?.Peer.ConnectionState.Value.Connection);
+        var identities = new RateLimitIdentity[RateLimitIdentityResolver.MaxIdentityCount];
+        var identityCount = await IdentityResolver
+            .Resolve(RateLimitPolicy, RateLimitClass.GifProvider, source, identities, cancellationToken)
+            .ConfigureAwait(false);
+        await RateLimitPolicy
+            .Check(method, RateLimitClass.GifProvider, identities.AsSpan(0, identityCount), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static GifItem? ToGifItem(KlipyItem item)

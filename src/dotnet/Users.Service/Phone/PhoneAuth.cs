@@ -1,11 +1,13 @@
-using System.Security.Claims;
-using System.Text;
+﻿using System.Security.Claims;
 using ActualChat.Hashing;
 using ActualChat.Hosting;
+using ActualChat.Resilience;
+using ActualChat.Rpc;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Redis;
+using ActualLab.Rpc.Infrastructure;
 using StackExchange.Redis;
 
 namespace ActualChat.Users.Phone;
@@ -13,16 +15,18 @@ namespace ActualChat.Users.Phone;
 public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Phone.TotpLength);
-    private readonly Lazy<string[]> _blockedPhonePrefixes;
 
     private UsersSettings Settings { get; }
     private HostInfo HostInfo { get; }
     private ITextMessageSender TextMessage { get; }
     private TotpCodes Totps { get; }
-    private TotpSecrets TotpSecrets { get; }
+    private CaptchaProofValidator CaptchaProofs { get; }
+    private RateLimitPolicy RateLimitPolicy { get; }
     private RedisDb<UsersDbContext> RedisDb { get; }
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    private string[] BlockedPhonePrefixes
+        => field ??= Settings.BlockedPhonePrefixes.Split([';', ','], StringSplitOptions.RemoveEmptyEntries);
 
     public PhoneAuth(IServiceProvider services) : base(services)
     {
@@ -30,10 +34,9 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         HostInfo = services.HostInfo();
         TextMessage = services.GetRequiredService<ITextMessageSender>();
         Totps = services.GetRequiredService<TotpCodes>();
-        TotpSecrets = services.GetRequiredService<TotpSecrets>();
+        CaptchaProofs = services.GetRequiredService<CaptchaProofValidator>();
+        RateLimitPolicy = services.GetService<RateLimitPolicy>() ?? RateLimitPolicy.Unlimited;
         RedisDb = services.GetRequiredService<RedisDb<UsersDbContext>>();
-        _blockedPhonePrefixes = new Lazy<string[]>(()
-            => Settings.BlockedPhonePrefixes.Split([';', ','], StringSplitOptions.RemoveEmptyEntries));
     }
 
     // [ComputeMethod]
@@ -64,7 +67,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         return Task.FromResult(message);
 
         bool IsBlocked() {
-            foreach (var blockedPrefix in _blockedPhonePrefixes.Value)
+            foreach (var blockedPrefix in BlockedPhonePrefixes)
                 if (value.StartsWith(blockedPrefix))
                     return true;
             return false;
@@ -77,6 +80,18 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         ActualChat.Phone phone,
         CancellationToken cancellationToken)
     {
+        var method = $"{nameof(PhoneAuth)}.{nameof(AccountExists)}";
+        var identities = new RateLimitIdentity[2];
+        var identityCount = 0;
+        identities[identityCount++] = new RateLimitIdentity(
+            RateLimitIdentityKind.Target,
+            $"{method}:{phone.Value}");
+        if (RateLimitIdentity.ForIP(RpcInboundContext.Current.GetRemoteIPAddress()) is { } ipIdentity)
+            identities[identityCount++] = ipIdentity;
+        await RateLimitPolicy
+            .Check(method, RateLimitClass.Auth, identities.AsSpan(0, identityCount), cancellationToken)
+            .ConfigureAwait(false);
+
         var identity = UserIdentityExt.NewPhoneIdentity(phone);
         var userId = await AccountsBackend.GetIdByUserIdentity(identity, cancellationToken).ConfigureAwait(false);
         return userId is not null;
@@ -91,22 +106,24 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (Invalidation.IsActive)
             return default; // It just spawns other commands, so nothing to do here
 
-        var (session, phone, purpose) = command;
+        var (session, phone, purpose, captchaToken, captchaAction) = command;
         if (TryGetPredefined(phone, out _))
             return NextSendAt(); // no need to send predefined totp
 
-        // Throttle to prevent SMS pumping: limit by phone and by session
+        await CaptchaProofs
+            .Require(captchaToken, captchaAction, purpose, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Throttle the send rate: limit by phone and by session
         if (await IsThrottled(session, phone, cancellationToken).ConfigureAwait(false))
             return NextSendAt();
-
-        var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose, cancellationToken).ConfigureAwait(false);
-        var totp = Totps.Generate(securityToken, modifier); // generate totp with the newest one
-        var nextSendAt = NextSendAt();
 
         var canSendValidationMessage = await CheckIfBlocked(session, phone, purpose, cancellationToken).ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
+        var totp = await Totps.Generate(purpose, phone.Value, session, cancellationToken).ConfigureAwait(false);
+        var nextSendAt = NextSendAt();
         var sTotp = totp.ToString(TotpFormat);
         if (!HostInfo.IsProductionInstance)
             Log.LogWarning("!!! Phone verification code for {Phone}: {Code}", phone.Value, sTotp);
@@ -201,23 +218,20 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         TotpPurpose purpose,
         CancellationToken cancellationToken)
     {
-        if (TryGetPredefined(phone, out var predefinedTotp) && predefinedTotp == totp)
-            return true;
+        var method = $"{nameof(PhoneAuth)}.{purpose}";
+        var identities = new RateLimitIdentity[2];
+        var identityCount = 0;
+        identities[identityCount++] = new RateLimitIdentity(RateLimitIdentityKind.Target, $"{purpose}:{phone.Value}");
+        if (RateLimitIdentity.ForIP(RpcInboundContext.Current.GetRemoteIPAddress()) is { } ipIdentity)
+            identities[identityCount++] = ipIdentity;
+        await RateLimitPolicy
+            .Check(method, RateLimitClass.Auth, identities.AsSpan(0, identityCount), cancellationToken)
+            .ConfigureAwait(false);
 
-        var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose, cancellationToken).ConfigureAwait(false);
-        return Totps.Validate(securityToken, totp, modifier);
-    }
+        if (TryGetPredefined(phone, out var predefinedTotp))
+            return predefinedTotp == totp;
 
-    private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(
-        Session session,
-        ActualChat.Phone phone,
-        TotpPurpose purpose,
-        CancellationToken cancellationToken)
-    {
-        var randomSecret = await TotpSecrets.Get(session, cancellationToken).ConfigureAwait(false);
-        var securityTokens = Encoding.UTF8.GetBytes($"{randomSecret}_{session.Id}_{phone}");
-        var modifier = $"{purpose}:{phone}";
-        return (securityTokens, modifier);
+        return await Totps.Validate(purpose, phone.Value, session, totp, cancellationToken).ConfigureAwait(false);
     }
 
     private bool TryGetPredefined(ActualChat.Phone phone, out int predefinedTotp)

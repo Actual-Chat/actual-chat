@@ -22,6 +22,12 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `MemSearchDocument` / `MemSearchQuery` — typed match blob + parsed query (tokenize, `IsMatch`, coverage score, `GetMatchParts` highlight ranges)
 - `SearchMatch` / `SearchMatchPart` — matched text + rank + highlight parts (explicit, or lazy from a `MemSearchQuery`)
 
+### Rate Limiting (`ActualChat.Resilience`)
+- `IRateLimiter<TKey>` / `IRateLimiter<TKey, TBudget>` — one check per key, returns the retry delay or null
+- `SlidingWindowBudget` — limit + window pair a limiter charges against
+- `RateLimitExceededException` — thrown when a limit is exceeded; carries `RetryDelay`
+- `RateLimitPolicy` / `RateLimitRule` (`ActualChat.Core.Server`) — the configured limits; charge every dimension of a call
+
 ### Collections & Caching
 - `LruCache<TKey, TValue>` — thread-safe LRU cache
 - `BlockRingBuffer<T>` — ring buffer with block-level operations
@@ -77,7 +83,8 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 
 - `RedisModule` — Redis module configuration
 - `RedisMeshLocks` — Redis-based distributed locks
-- `RedisTokenBucketRateLimiter`, `RedisSlidingWindowRateLimiter` — rate limiting
+- `RedisSlidingWindowRateLimiter` — sliding window rate limiter (`IRateLimiter<string, SlidingWindowBudget>`)
+- `RedisRateLimitPolicy` — builds the API host `RateLimitPolicy` (commands local, the rest via Redis)
 
 
 ## Kubernetes (`ActualChat.Kubernetes`)

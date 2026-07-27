@@ -1,4 +1,4 @@
-using ActualChat.Redis;
+﻿using ActualChat.Redis;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 
@@ -6,11 +6,14 @@ namespace ActualChat.Chat.ML;
 
 public class RateLimitedChatCompletionService(
     IChatCompletionService chatCompletionService,
-    RedisTokenBucketRateLimiter rateLimiter)
+    RedisTokenBucketRateLimiter rateLimiter,
+    string rateLimitKey)
     : IChatCompletionService
 {
-    public IReadOnlyDictionary<string, object?> Attributes => chatCompletionService.Attributes;
-    public IChatCompletionService ChatCompletionService => chatCompletionService;
+    public IReadOnlyDictionary<string, object?> Attributes => ChatCompletionService.Attributes;
+    public IChatCompletionService ChatCompletionService { get; } = chatCompletionService;
+    private RedisTokenBucketRateLimiter RateLimiter { get; } = rateLimiter;
+    private string RateLimitKey { get; } = rateLimitKey;
 
     public async Task<IReadOnlyList<ChatMessageContent>> GetChatMessageContentsAsync(
         ChatHistory chatHistory,
@@ -19,8 +22,8 @@ public class RateLimitedChatCompletionService(
         CancellationToken cancellationToken = default)
     {
         var tokenCount = TokenEstimator.Estimate(chatHistory);
-        await rateLimiter.Acquire(tokenCount, cancellationToken).ConfigureAwait(false);
-        return await chatCompletionService.GetChatMessageContentsAsync(chatHistory,
+        await RateLimiter.Acquire(RateLimitKey, tokenCount, cancellationToken).ConfigureAwait(false);
+        return await ChatCompletionService.GetChatMessageContentsAsync(chatHistory,
             executionSettings,
             kernel,
             cancellationToken)
@@ -34,8 +37,8 @@ public class RateLimitedChatCompletionService(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var tokenCount = TokenEstimator.Estimate(chatHistory);
-        await rateLimiter.Acquire(tokenCount, cancellationToken).ConfigureAwait(false);
-        var chatMessages = chatCompletionService.GetStreamingChatMessageContentsAsync(chatHistory,
+        await RateLimiter.Acquire(RateLimitKey, tokenCount, cancellationToken).ConfigureAwait(false);
+        var chatMessages = ChatCompletionService.GetStreamingChatMessageContentsAsync(chatHistory,
             executionSettings,
             kernel,
             cancellationToken)

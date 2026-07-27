@@ -384,6 +384,31 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task RejectsOversizedContactBatch()
+    {
+        // arrange
+        const int clientBatchSize = 100;
+        var account = await _tester.SignInAsUniqueBob();
+        var deviceId = NewDeviceId();
+        var clientBatch = NewRemovalBatch(account, deviceId, clientBatchSize);
+        var oversizedBatch = NewRemovalBatch(
+            account,
+            deviceId,
+            ExternalContacts_BulkChange.MaxChangeCount + 1);
+
+        // act
+        var clientBatchResult = await _commander.Call(
+            new ExternalContacts_BulkChange(_tester.Session, clientBatch));
+        var act = () => _commander.Call(
+            new ExternalContacts_BulkChange(_tester.Session, oversizedBatch));
+
+        // assert
+        clientBatchResult.Should().HaveCount(clientBatchSize);
+        clientBatchResult.Should().OnlyContain(x => x.Error == null);
+        await act.Should().ThrowAsync<Exception>().WithMessage("*contact batch cannot contain more than*");
+    }
+
     // Private methods
 
     private Task<ExternalContact[]> List(Symbol deviceId)
@@ -417,6 +442,14 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
         => new (ExternalContactId.New(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()));
+
+    private static ExternalContactChange[] NewRemovalBatch(AccountFull owner, Symbol ownerDeviceId, int count)
+        => Enumerable.Range(0, count)
+            .Select(_ => new ExternalContactChange(
+                ExternalContactId.New(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()),
+                null,
+                Change.Remove<ExternalContactFull>()))
+            .ToArray();
 
     private static Symbol NewDeviceId()
         => new (Guid.NewGuid().ToString());

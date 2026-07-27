@@ -20,6 +20,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `HashInput` - Input for hash computation.
 - `HashOutput` (struct) - Output of a hash computation.
 - `InternalError` - Exception for internal application errors.
+- `IRateLimiter<TKey>`, `IRateLimiter<TKey, TBudget>` - Rate limiter contracts (`ActualChat.Resilience`).
 - `Interest` (record struct) - Represents a user interest tag.
 - `Language` (record struct) - Represents a language identifier (BCP 47).
 - `MediaType` (enum) - Specifies the type of media content.
@@ -238,6 +239,17 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 
 ## ActualChat.Core.Server
 
+- `RateLimitClass` (enum) - Selects the budgets an inbound call is charged against.
+- `RateLimitClassResolver` (record) - Maps an inbound RPC command to its `RateLimitClass`.
+- `RateLimitBudgets` (record) - Per-class, per-identity-kind call budgets.
+- `RateLimitIdentity` (record struct) - One identity dimension a call is charged against.
+- `RateLimitPolicy` - Charges an inbound call against every dimension that has a rule; throws `RateLimitExceededException`.
+- `RateLimitRule` - One configured limit: a limiter, its budget and its key builder.
+- `RateLimitSource` (record struct) - What a call is known to come from (session, IP).
+- `RateLimitIdentityResolver` (sealed class) - Fills the identity dimensions of a call.
+- `LocalRateLimiter<TKey>` (sealed class) - In-process fixed-window limiter, used for commands.
+- `IRateLimitUserIdResolver` - Resolves the user id dimension of a session.
+
 - `IAnthropicClient` - Anthropic Claude API client wrapper.
 - `IPromptHelpers` - Prompt-template helper service.
 - `PromptTemplate` (record) - Reusable prompt template with named variables.
@@ -345,8 +357,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `RedisModule` - Redis module configuration.
 - `RedisMeshLocks` - Redis-based distributed locks.
 - `RedisSettings` - Redis settings.
-- `RedisTokenBucketRateLimiter` - Token bucket rate limiting.
-- `RedisSlidingWindowRateLimiter` - Sliding window rate limiting.
+- `RedisSlidingWindowRateLimiter` (sealed class) - Sliding window rate limiter.
+- `RedisRateLimitPolicy` (static class) - Builds the API host `RateLimitPolicy`: commands local, the rest via Redis.
 
 
 ## ActualChat.Api.Contracts

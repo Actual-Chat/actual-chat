@@ -234,6 +234,18 @@ public static partial class Constants
         public static class Actions
         {
             public static readonly string PhoneSignIn = nameof(PhoneSignIn);
+            public static readonly string PhoneVerify = nameof(PhoneVerify);
+            public static readonly string EmailSignIn = nameof(EmailSignIn);
+            public static readonly string EmailVerify = nameof(EmailVerify);
+
+            public static string ForPurpose(TotpPurpose purpose)
+                => purpose switch {
+                    TotpPurpose.SignInPhone => PhoneSignIn,
+                    TotpPurpose.VerifyPhone => PhoneVerify,
+                    TotpPurpose.SignInEmail => EmailSignIn,
+                    TotpPurpose.VerifyEmail => EmailVerify,
+                    _ => throw new ArgumentOutOfRangeException(nameof(purpose)),
+                };
         }
 
         public static readonly float ValidScore = 0.5f;

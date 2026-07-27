@@ -3,6 +3,7 @@ using ActualChat.Authentication;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.Resilience;
 using ActualChat.Redis.Module;
 using ActualChat.Security;
 using ActualChat.Users.Db;
@@ -134,6 +135,13 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         if (rpcHost.IsApiHost) {
             services.AddSingleton<AuthHelper>(); // Used by ApiHost-s
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth
+            services.AddSingleton<RateLimitUserIdResolver>(c => { // Used by RpcRateLimitMiddleware
+                var sessionsBackend = c.GetRequiredService<ISessionsBackend>();
+                return async (session, cancellationToken) => {
+                    var sessionInfo = await sessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+                    return sessionInfo?.UserId;
+                };
+            });
         }
 
         // Sessions
@@ -203,6 +211,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // reCAPTCHA
         rpcHost.AddLocalApi<ICaptcha, Captcha>();
+        services.AddSingleton<CaptchaProofValidator>(); // Used by IPhoneAuth & IEmailAuth (API)
 
         // NOTE(AY): We don't have a clear separation between the backend and the front-end
         // due to IAuth, ISessionsBackend & IAccountsBackend, so these services are always local, and thus
@@ -220,9 +229,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 .Add<AccountMigrationFlow>();
         }
 
-        // TOTP codes - used by IPhoneAuth (API)
-        services.AddSingleton<TotpCodes>();
-        services.AddSingleton<TotpSecrets>(); // Requires Redis
+        // TOTP codes - used by IPhoneAuth & IEmailAuth (API)
+        services.AddSingleton<TotpCodes>(); // Requires Redis
 
         // Email sender - used by IEmailAuth (API) & Emails
         services.AddSingleton<IEmailSender, EmailSender>();

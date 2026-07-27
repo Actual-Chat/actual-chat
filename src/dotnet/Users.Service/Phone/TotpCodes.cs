@@ -1,95 +1,144 @@
-using System.Net;
 using System.Security.Cryptography;
-using System.Text;
+using ActualChat.Hashing;
+using ActualChat.Users.Db;
 using ActualChat.Users.Module;
+using ActualLab.Redis;
+using StackExchange.Redis;
 
 namespace ActualChat.Users.Phone;
 
-// Implements TOTP code generation & verification per RFC 6238.
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-
-public sealed class TotpCodes(UsersSettings settings)
+/// <summary>
+/// Keeps at most one pending code per (purpose, target, session): its hash, issue time and remaining
+/// attempt count live in a single Redis record, so consuming an attempt and dropping the code once
+/// they run out is one atomic operation. A new code overwrites the pending one - newest wins.
+/// </summary>
+public sealed class TotpCodes(IServiceProvider services)
 {
-    private static readonly Encoding Encoding = new UTF8Encoding(false, true);
-    private UsersSettings Settings { get; } = settings;
+    private const string KeyPrefix = ".TotpCode.";
+    private const long Match = 1;
+    private const long Exhausted = 3;
+    private const string SetScript =
+        """
+        local key = KEYS[1]
+        redis.call('DEL', key)
+        redis.call('HSET', key, 'h', ARGV[1], 'n', ARGV[2], 't', ARGV[3])
+        redis.call('PEXPIRE', key, ARGV[4])
+        return 1
+        """;
+    private const string ValidateScript =
+        """
+        local key = KEYS[1]
+        local candidate = ARGV[1]
+        local hash = redis.call('HGET', key, 'h')
+        if not hash then
+            return { 0, 0 }
+        end
 
-    public int Generate(byte[] securityToken, string? modifier = null)
+        -- Full-length scan: the loop cost must not depend on where the first difference is
+        local diff = 0
+        if #hash ~= #candidate then
+            diff = 1
+        else
+            for i = 1, #hash do
+                if string.byte(hash, i) ~= string.byte(candidate, i) then
+                    diff = diff + 1
+                end
+            end
+        end
+        if diff == 0 then
+            redis.call('DEL', key)
+            return { 1, 0 }
+        end
+
+        local remaining = redis.call('HINCRBY', key, 'n', -1)
+        if remaining <= 0 then
+            redis.call('DEL', key)
+            return { 3, 0 }
+        end
+        return { 2, remaining }
+        """;
+    private static readonly int CodeCount = (int)Math.Pow(10, Constants.Auth.Phone.TotpLength);
+
+    private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
+    private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
+    private MomentClockSet Clocks { get; } = services.Clocks();
+    private ILogger Log => field ??= services.LogFor(GetType());
+
+    public Task<int> Generate(
+        TotpPurpose purpose,
+        string target,
+        Session session,
+        CancellationToken cancellationToken = default)
+        => Generate(purpose,
+            target,
+            session,
+            Settings.TotpCodeLifetime,
+            Settings.TotpMaxAttemptCount,
+            cancellationToken);
+
+    public async Task<bool> Validate(
+        TotpPurpose purpose,
+        string target,
+        Session session,
+        int code,
+        CancellationToken cancellationToken = default)
     {
-        // Allow a variance of no greater than TimeStepCount * TimeStep in either direction
-        var currentTimeStep = GetCurrentTimeStepNumber();
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var result = await database
+            .ScriptEvaluateAsync(
+                ValidateScript,
+                [ToKey(purpose, target, session)],
+                [ToCodeHash(purpose, target, session, code)]
+            ).ConfigureAwait(false);
+        var values = (long[])result!;
+        var status = values[0];
+        if (status == Match)
+            return true;
 
-        var modifierBytes = modifier is not null ? Encoding.GetBytes(modifier) : null;
-        return Compute(securityToken, currentTimeStep, modifierBytes);
+        if (status == Exhausted)
+            Log.LogWarning("{Purpose}: no attempts left for session #{SessionHash}, pending code dropped",
+                purpose, session.Hash);
+        else
+            Log.LogDebug("{Purpose}: check failed for session #{SessionHash}, status = {Status}, left = {Left}",
+                purpose, session.Hash, status, values[1]);
+
+        return false;
     }
 
-    public bool Validate(byte[] securityToken, int code, string? modifier = null)
+    // Protected/internal methods
+
+    internal async Task<int> Generate(
+        TotpPurpose purpose,
+        string target,
+        Session session,
+        TimeSpan lifetime,
+        int maxAttemptCount,
+        CancellationToken cancellationToken)
     {
-        // Allow a variance of no greater than TimeStepCount * TimeStep in either direction
-        var currentTimeStep = GetCurrentTimeStepNumber();
-
-        var modifierBytes = modifier is not null ? Encoding.GetBytes(modifier) : null;
-        for (var i = -Settings.TotpTimestepCount; i <= Settings.TotpTimestepCount; i++) {
-            var computedTotp = Compute(securityToken, (ulong)((long)currentTimeStep + i), modifierBytes);
-            if (computedTotp == code)
-                return true;
-        }
-
-        // No match
-        return false;
+        var code = RandomNumberGenerator.GetInt32(0, CodeCount);
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        await database
+            .ScriptEvaluateAsync(
+                SetScript,
+                [ToKey(purpose, target, session)],
+                [
+                    ToCodeHash(purpose, target, session, code),
+                    maxAttemptCount,
+                    (long)Clocks.SystemClock.Now.EpochOffset.TotalMilliseconds,
+                    (long)lifetime.TotalMilliseconds,
+                ]
+            ).ConfigureAwait(false);
+        return code;
     }
 
     // Private methods
 
-    private static int Compute(
-        byte[] key,
-        ulong timestepNumber,
-        byte[]? modifierBytes)
-    {
-        // # of 0's = length of pin
-        var mod = (int)Math.Pow(10, Constants.Auth.Phone.TotpLength);
+    private static string ToKey(TotpPurpose purpose, string target, Session session)
+        => $"{KeyPrefix}{purpose}.{Hash(target)}.{Hash(session.Id)}";
 
-        // See https://tools.ietf.org/html/rfc4226
-        // We can add an optional modifier
-        Span<byte> timestepAsBytes = stackalloc byte[sizeof(long)];
-        var res = BitConverter.TryWriteBytes(timestepAsBytes, IPAddress.HostToNetworkOrder((long)timestepNumber));
-        Debug.Assert(res);
+    private static string ToCodeHash(TotpPurpose purpose, string target, Session session, int code)
+        => Hash($"{purpose}:{target}:{session.Id}:{code.Format()}");
 
-        Span<byte> modifierCombinedBytes = timestepAsBytes;
-        if (modifierBytes is not null)
-        {
-            modifierCombinedBytes = ApplyModifier(timestepAsBytes, modifierBytes);
-        }
-        Span<byte> hash = stackalloc byte[HMACSHA1.HashSizeInBytes];
-#pragma warning disable CA5350
-        res = HMACSHA1.TryHashData(key, modifierCombinedBytes, hash, out var written);
-#pragma warning restore CA5350
-        Debug.Assert(res);
-        Debug.Assert(written == hash.Length);
-
-        // Generate DT string
-        var offset = hash[^1] & 0xf;
-        Debug.Assert(offset + 4 < hash.Length);
-        var binaryCode = ((hash[offset] & 0x7f) << 24)
-            | ((hash[offset + 1] & 0xff) << 16)
-            | ((hash[offset + 2] & 0xff) << 8)
-            | (hash[offset + 3] & 0xff);
-
-        return binaryCode % mod;
-    }
-
-    private static byte[] ApplyModifier(Span<byte> input, byte[] modifierBytes)
-    {
-        var combined = new byte[checked(input.Length + modifierBytes.Length)];
-        input.CopyTo(combined);
-        Buffer.BlockCopy(modifierBytes, 0, combined, input.Length, modifierBytes.Length);
-        return combined;
-    }
-
-    // More info: https://tools.ietf.org/html/rfc6238#section-4
-    private ulong GetCurrentTimeStepNumber()
-    {
-        var delta = DateTimeOffset.UtcNow - DateTimeOffset.UnixEpoch;
-        return (ulong)(delta.Ticks / Settings.TotpTimestep.Ticks);
-    }
+    private static string Hash(string value)
+        => value.Hash().SHA256().ToBase64HashString(Hashing.HashAlgorithm.SHA256);
 }

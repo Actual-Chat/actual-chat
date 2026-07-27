@@ -2,6 +2,7 @@ using System.Net.Mail;
 using System.Security.Claims;
 using ActualChat.Db;
 using ActualChat.Flows;
+using ActualChat.Hosting;
 using ActualChat.Security;
 using ActualChat.Users.Db;
 using ActualChat.Users.Flows;
@@ -32,6 +33,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private UsersSettings UsersSettings => field ??= Services.GetRequiredService<UsersSettings>();
     private AccountNameValidator AccountNameValidator => field ??= Services.GetRequiredService<AccountNameValidator>();
     private ISecureTokensBackend SecureTokensBackend => field ??= Services.GetRequiredService<ISecureTokensBackend>();
+    private HostInfo HostInfo => field ??= Services.HostInfo();
 
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
@@ -488,9 +490,12 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         return Task.CompletedTask;
     }
 
-    // Private methods
+    // Protected/internal methods
 
-    internal static bool IsAdmin(AccountFull account)
+    internal bool IsAdmin(AccountFull account)
+        => IsAdmin(account, HostInfo.BaseUrlKind == BaseUrlKind.Local);
+
+    internal static bool IsAdmin(AccountFull account, bool areTestAgentsAdmins)
     {
         // TODO(AY): Remove the check relying on test/internal auth providers in the production code
         if (account.Identities.HasInternalIdentity() && account.Id == Constants.User.Admin.UserId)
@@ -501,9 +506,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             if (email.IsNullOrEmpty() || !MailAddress.TryCreate(email, out var emailAddress))
                 continue;
 
-            // test-*@actual.chat accounts are never admins, even with a verified email
-            if (Constants.Auth.TestAgent.IsTestAgentEmail(email))
+            // test-*@actual.chat matches the team email domain, so it's decided separately
+            if (Constants.Auth.TestAgent.IsTestAgentEmail(email)) {
+                if (areTestAgentsAdmins)
+                    return true;
+
                 continue;
+            }
 
             if (AdminEmails.Contains(email))
                 return true; // Predefined admin email
@@ -512,6 +521,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
         return false;
     }
+
+    // Private methods
 
     private static string GetPendingRegistrationIdentifier(
         UserIdentity authenticatedIdentity,

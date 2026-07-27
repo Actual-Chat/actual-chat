@@ -2,16 +2,20 @@ using System.IO.Compression;
 using ActualChat.App.Server.Components.Pages;
 using ActualChat.App.Server.Flows;
 using ActualChat.App.Server.Health;
+using ActualChat.AspNetCore;
 using ActualChat.Db.Diagnostics;
 using ActualChat.Diagnostics;
 using ActualChat.Hosting;
 using ActualChat.Kubernetes;
+using ActualChat.Resilience;
+using ActualChat.Resilience.Internal;
 using ActualChat.Mcp;
 using ActualChat.MLSearch.Diagnostics;
 using ActualChat.Streaming.Diagnostics;
 using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
+using ActualLab.Redis;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
@@ -127,6 +131,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseRouting();
         app.UseCors("Default");
         app.UseResponseCaching();
+        app.UseMiddleware<HttpRateLimitMiddleware>();
         if (HostInfo.HasRole(HostRole.Api))
             app.UseAuthentication();
         app.UseAntiforgery();
@@ -202,6 +207,15 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<InfrastructureDbContext>(services);
+
+        // Inbound call budgets
+        services.AddSingleton(_ => RateLimitBudgets.Default);
+        services.AddSingleton(_ => RateLimitClassResolver.Default);
+        services.AddSingleton(c => new RateLimitIdentityResolver(c));
+        services.AddSingleton(c => RedisRateLimitPolicy.New(
+            c.GetRequiredService<RedisDb<InfrastructureDbContext>>(),
+            c.GetRequiredService<RateLimitBudgets>(),
+            c));
 
         // Mesh Locks
         var hasKube = IKubeInfo.HasKube();
@@ -302,8 +316,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             options.ForwardedHeaders = ForwardedHeaders.All;
             if (Settings.AssumeHttps)
                 options.ForwardedHeaders &= ~ForwardedHeaders.XForwardedProto;
-            options.KnownIPNetworks.Clear();
-            options.KnownProxies.Clear();
+            options.SetKnownProxies(Settings.KnownProxyNetworks, Settings.KnownProxies, Log);
+            Log.LogInformation("ForwardedHeaders: {NetworkCount} known network(s), {ProxyCount} known proxy(ies)",
+                options.KnownIPNetworks.Count, options.KnownProxies.Count);
         });
 
         // Compression

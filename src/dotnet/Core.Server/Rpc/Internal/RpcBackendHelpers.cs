@@ -1,4 +1,6 @@
+using ActualChat.AspNetCore;
 using ActualChat.Hosting;
+using ActualChat.Resilience;
 using ActualLab.Caching;
 using ActualLab.Interception;
 using ActualLab.Rpc;
@@ -96,7 +98,8 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
             ?? httpContext.TryGetSessionFromQuery()
             ?? httpContext.TryGetSessionFromCookie();
         return Task.FromResult(session.IsValid()
-            ? new RpcBackendConnection(transport, properties, session)
+            ? new RpcBackendConnection(transport, properties, session,
+                RateLimitIdentity.ToChargeableIP(httpContext.GetRemoteIPAddress()))
             : new RpcConnection(transport, properties));
     }
 

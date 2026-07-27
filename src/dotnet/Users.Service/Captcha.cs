@@ -9,7 +9,8 @@ namespace ActualChat.Users;
 
 public class Captcha : ICaptcha
 {
-    private readonly RecaptchaEnterpriseServiceClient _client = RecaptchaEnterpriseServiceClient.Create();
+    private readonly Lazy<RecaptchaEnterpriseServiceClient> _client =
+        new(RecaptchaEnterpriseServiceClient.Create);
     private readonly ProjectName _projectName;
     private readonly string _siteKey;
     private readonly bool _isAvailable;
@@ -50,7 +51,7 @@ public class Captcha : ICaptcha
             ParentAsProjectName = _projectName
         };
         try {
-            var response = await _client.CreateAssessmentAsync(request, cancellationToken).ConfigureAwait(false);
+            var response = await _client.Value.CreateAssessmentAsync(request, cancellationToken).ConfigureAwait(false);
             if (response.TokenProperties.Valid == false)
                 return new RecaptchaValidationResult(false, response.TokenProperties.InvalidReason.ToString());
 

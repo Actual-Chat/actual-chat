@@ -31,11 +31,9 @@ public sealed class UsersSettings
     public IReadOnlyDictionary<string, int> PredefinedTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
 
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Active;
-    public TimeSpan TotpTimestep { get; set; } = TimeSpan.FromSeconds(60 * 15);
-    public int TotpTimestepCount { get; set; } = 2;
-    public int TotpRandomSecretLength { get; set; } = 32;
-    public TimeSpan TotpLifetime => TotpTimestep * TotpTimestepCount;
-    public TimeSpan TotpUIThrottling => TotpTimestep.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));
+    public TimeSpan TotpCodeLifetime { get; set; } = TimeSpan.FromMinutes(15);
+    public int TotpMaxAttemptCount { get; set; } = 5;
+    public TimeSpan TotpUIThrottling => TotpCodeLifetime.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));
     public bool IsTwilioEnabled => !TwilioAccountSid.IsNullOrEmpty()
         && !TwilioApiKey.IsNullOrEmpty()
         && !TwilioApiSecret.IsNullOrEmpty()

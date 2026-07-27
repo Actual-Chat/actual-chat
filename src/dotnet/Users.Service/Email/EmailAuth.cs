@@ -1,13 +1,15 @@
-using System.Security.Claims;
-using System.Text;
+﻿using System.Security.Claims;
 using ActualChat.Hashing;
 using ActualChat.Hosting;
+using ActualChat.Resilience;
+using ActualChat.Rpc;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Templates;
 using ActualLab.Redis;
+using ActualLab.Rpc.Infrastructure;
 using Mjml.Net;
 using StackExchange.Redis;
 
@@ -24,28 +26,47 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
-    private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
+    private CaptchaProofValidator CaptchaProofs { get; } = services.GetRequiredService<CaptchaProofValidator>();
+    private RateLimitPolicy RateLimitPolicy { get; }
+        = services.GetService<RateLimitPolicy>() ?? RateLimitPolicy.Unlimited;
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
-    private UrlMapper UrlMapper { get; } = services.UrlMapper();
-
-    [Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
-    // [ComputeMethod]
-    public virtual Task<string> ValidateCanSendToEmail(
-        Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
-        => CheckIfBlocked(session, email, purpose, cancellationToken);
 
     // [ComputeMethod]
-    public virtual Task<string> CheckIfBlocked(
+    public virtual Task<string> GetEmailValidationMessage(
         Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
         => Task.FromResult(
             System.Net.Mail.MailAddress.TryCreate(email.Value, out _)
                 ? string.Empty
                 : "Invalid email address.");
 
+    [Obsolete("2026.07: Use GetEmailValidationMessage.")]
+    // [ComputeMethod]
+    public virtual Task<string> CheckIfBlocked(
+        Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
+        => GetEmailValidationMessage(session, email, purpose, cancellationToken);
+
+    [Obsolete("2026.03: Use GetEmailValidationMessage.")]
+    // [ComputeMethod]
+    public virtual Task<string> ValidateCanSendToEmail(
+        Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
+        => GetEmailValidationMessage(session, email, purpose, cancellationToken);
+
     // [ComputeMethod]
     public virtual async Task<bool> AccountExists(
         Session session, ActualChat.Email email, CancellationToken cancellationToken)
     {
+        var method = $"{nameof(EmailAuth)}.{nameof(AccountExists)}";
+        var identities = new RateLimitIdentity[2];
+        var identityCount = 0;
+        identities[identityCount++] = new RateLimitIdentity(
+            RateLimitIdentityKind.Target,
+            $"{method}:{email.Value}");
+        if (RateLimitIdentity.ForIP(RpcInboundContext.Current.GetRemoteIPAddress()) is { } ipIdentity)
+            identities[identityCount++] = ipIdentity;
+        await RateLimitPolicy
+            .Check(method, RateLimitClass.Auth, identities.AsSpan(0, identityCount), cancellationToken)
+            .ConfigureAwait(false);
+
         var identity = UserIdentityExt.NewEmailIdentity(email);
         var userId = await AccountsBackend.GetIdByUserIdentity(identity, cancellationToken).ConfigureAwait(false);
         return userId is not null;
@@ -61,22 +82,24 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var purpose = command.Purpose;
         var email = command.Email.Value;
 
-        // Skip sending email for AI agent test accounts - they use predefined code 111111
-        // Only works on localhost, not on any prod/dev/local domains
-        if (Constants.Auth.TestAgent.IsTestAgentEmail(email) && IsTestAgentBypassAllowed())
+        if (Constants.Auth.TestAgent.IsTestAgentEmail(email) && IsTestAgentEmailTotpHost(HostInfo))
             return NextSendAt();
+
+        await CaptchaProofs
+            .Require(command.CaptchaToken, command.CaptchaAction, purpose, cancellationToken)
+            .ConfigureAwait(false);
 
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
             return NextSendAt();
 
-        var canSendValidationMessage = await CheckIfBlocked(session, command.Email, purpose, cancellationToken).ConfigureAwait(false);
+        var canSendValidationMessage = await GetEmailValidationMessage(
+                session, command.Email, purpose, cancellationToken)
+            .ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
-        var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
-        var totp = TotpCodes.Generate(securityToken, modifier);
+        var totp = await TotpCodes.Generate(purpose, email, session, cancellationToken).ConfigureAwait(false);
         var nextSendAt = NextSendAt();
-
         var sTotp = totp.ToString(TotpFormat);
         if (!HostInfo.IsProductionInstance)
             Log.LogWarning("!!! Email verification code for {Email}: {Code}", email, sTotp);
@@ -156,6 +179,16 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         return true;
     }
 
+    // Protected/internal methods
+
+    internal static bool IsTestAgentEmailTotpHost(HostInfo hostInfo)
+    {
+        var baseUri = hostInfo.BaseUrl.ToUri();
+        return hostInfo.IsTested
+            || baseUri.IsLoopback
+            || Constants.Hosts.IsLocalDev(baseUri.Host);
+    }
+
     // Private methods
 
     private async Task<bool> ValidateCode(
@@ -165,25 +198,22 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         TotpPurpose purpose,
         CancellationToken cancellationToken)
     {
-        // Bypass for AI agent test accounts: test-*@actual.chat with code 111111
-        // Only works on localhost, not on any prod/dev/local domains
-        if (totp == TestAgentTotp && Constants.Auth.TestAgent.IsTestAgentEmail(email) && IsTestAgentBypassAllowed())
+        var method = $"{nameof(EmailAuth)}.{purpose}";
+        var identities = new RateLimitIdentity[2];
+        var identityCount = 0;
+        identities[identityCount++] = new RateLimitIdentity(RateLimitIdentityKind.Target, $"{purpose}:{email}");
+        if (RateLimitIdentity.ForIP(RpcInboundContext.Current.GetRemoteIPAddress()) is { } ipIdentity)
+            identities[identityCount++] = ipIdentity;
+        await RateLimitPolicy
+            .Check(method, RateLimitClass.Auth, identities.AsSpan(0, identityCount), cancellationToken)
+            .ConfigureAwait(false);
+
+        if (totp == TestAgentTotp
+            && Constants.Auth.TestAgent.IsTestAgentEmail(email)
+            && IsTestAgentEmailTotpHost(HostInfo))
             return true;
 
-        var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
-        return TotpCodes.Validate(securityToken, totp, modifier);
-    }
-
-    private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(
-        Session session,
-        string email,
-        TotpPurpose purpose,
-        CancellationToken cancellationToken)
-    {
-        var randomSecret = await TotpSecrets.Get(session, cancellationToken).ConfigureAwait(false);
-        var securityTokens = Encoding.UTF8.GetBytes($"{randomSecret}_{session.Id}_{email}");
-        var modifier = $"{purpose}:{email}";
-        return (securityTokens, modifier);
+        return await TotpCodes.Validate(purpose, email, session, totp, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<bool> IsThrottled(Session session, string email, CancellationToken cancellationToken)
@@ -202,12 +232,4 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             .Hash()
             .SHA256()
             .ToBase64HashString(HashAlgorithm.SHA256);
-
-    private bool IsTestAgentBypassAllowed()
-    {
-        var host = UrlMapper.BaseUri.Host;
-        // Not allowed on prod or dev domains, but allowed on local domains and localhost
-        return !Constants.Hosts.AllProd.Contains(host)
-            && !Constants.Hosts.AllDev.Contains(host);
-    }
 }

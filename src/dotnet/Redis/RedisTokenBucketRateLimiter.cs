@@ -1,20 +1,19 @@
+using ActualChat.Resilience;
 using ActualLab.Redis;
 using StackExchange.Redis;
 
 namespace ActualChat.Redis;
 
-public class RedisTokenBucketRateLimiter(RedisDb redisDb, RedisTokenBucketRateLimiter.Options options, IServiceProvider? services = null)
+/// <summary>
+/// Redis-backed token bucket limiter: permits refill continuously, and a single call may spend
+/// more than one of them, so it can bound throughput rather than just call count.
+/// </summary>
+public sealed class RedisTokenBucketRateLimiter(
+    RedisDb redisDb,
+    string keyPrefix,
+    TokenBucketBudget defaultBudget
+) : IRateLimiter<string, TokenBucketBudget>
 {
-    public static RedisTokenBucketRateLimiter Create<TContext>(Options options, IServiceProvider services)
-    {
-        var redisDb = services.GetRequiredService<RedisDb<TContext>>();
-        return new RedisTokenBucketRateLimiter(redisDb, options, services);
-    }
-
-    private RedisDb RedisDb { get; } = redisDb;
-    private ILogger Log => field ??= services?.LogFor(GetType()) ?? NullLogger.Instance;
-
-    // Lua Script (Token Bucket):
     private const string TokenBucketScript =
         """
         local key = KEYS[1]
@@ -46,57 +45,65 @@ public class RedisTokenBucketRateLimiter(RedisDb redisDb, RedisTokenBucketRateLi
         end
         """;
 
-    public async Task<bool> IsRequestAllowedAsync(int permitCount, CancellationToken cancellationToken = default)
-    {
-        var (isAcquired, _) = await TryAcquire(permitCount, cancellationToken).ConfigureAwait(false);
-        return isAcquired;
-    }
+    private RedisDb RedisDb { get; } = redisDb.WithKeyPrefix(keyPrefix);
+    private TokenBucketBudget DefaultBudget { get; } = defaultBudget;
 
-    public async Task Acquire(int permitCount, CancellationToken cancellationToken = default)
+    public ValueTask<TimeSpan?> Check(
+        string key,
+        TokenBucketBudget? budget,
+        CancellationToken cancellationToken = default)
+        => Check(key, 1, budget, cancellationToken);
+
+    // Unlike the shared contract, a call here may cost more than one permit - an LLM call spends
+    // as many as it consumes tokens
+    public ValueTask<TimeSpan?> Check(
+        string key,
+        int permitCount,
+        TokenBucketBudget? budget = null,
+        CancellationToken cancellationToken = default)
+        => CheckImpl(key, permitCount, budget ?? DefaultBudget, cancellationToken);
+
+    public async Task Acquire(string key, int permitCount, CancellationToken cancellationToken = default)
     {
         while (true) {
-            var result = await TryAcquire(permitCount, cancellationToken).ConfigureAwait(false);
-            if (result.IsAcquired)
+            if (await Check(key, permitCount, null, cancellationToken).ConfigureAwait(false) is not { } retryDelay)
                 return;
 
-            await Task.Delay(result.RetryAfter, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    public async Task<AcquireResult> TryAcquire(int permitCount, CancellationToken cancellationToken = default)
+    public async Task DeleteKey(string key, CancellationToken cancellationToken = default)
+    {
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        await database.KeyDeleteAsync(key).ConfigureAwait(false);
+    }
+
+    ValueTask<TimeSpan?> IRateLimiter<string>.Check(
+        string key,
+        object? budget,
+        CancellationToken cancellationToken)
+        => Check(key, (TokenBucketBudget?)budget, cancellationToken);
+
+    // Private methods
+
+    private async ValueTask<TimeSpan?> CheckImpl(
+        string key,
+        int permitCount,
+        TokenBucketBudget budget,
+        CancellationToken cancellationToken)
     {
         var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
         var result = await database.ScriptEvaluateAsync(
                 TokenBucketScript,
-                new RedisKey[] { options.Key },
-                new RedisValue[] {
-                    (long)options.ReplenishmentPeriod.TotalSeconds,
-                    options.TokenLimit,
-                    permitCount
-                }
-            )
+                [key],
+                [(long)budget.ReplenishmentPeriod.TotalSeconds, budget.TokenLimit, permitCount])
             .ConfigureAwait(false);
-        var iResult = (long[])result!;
-        var isAllowed = iResult[0];
-        var isAcquired = isAllowed == 1;
-        if (isAcquired)
-            return AcquireResult.Success;
+        var values = (long[])result!;
+        if (values[0] == 1)
+            return null;
 
-        var tokens = iResult[1];
-        var retryAfter = options.ReplenishmentPeriod.MultiplyBy((permitCount - tokens) / (double)options.TokenLimit);
-        return new AcquireResult(false, TimeSpan.FromMilliseconds(retryAfter.TotalMilliseconds));
+        var tokens = values[1];
+        return budget.ReplenishmentPeriod.MultiplyBy((permitCount - tokens) / (double)budget.TokenLimit);
     }
-
-    public async Task DeleteKey(CancellationToken cancellationToken = default)
-    {
-        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        await database.KeyDeleteAsync(options.Key).ConfigureAwait(false);
-    }
-
-    public record AcquireResult(bool IsAcquired, TimeSpan RetryAfter)
-    {
-        public static readonly AcquireResult Success = new (true, TimeSpan.Zero);
-    }
-
-    public record Options(string Key, int TokenLimit, TimeSpan ReplenishmentPeriod);
 }

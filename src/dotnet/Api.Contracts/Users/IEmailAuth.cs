@@ -6,7 +6,8 @@
 public interface IEmailAuth : IComputeService
 {
     [ComputeMethod]
-    Task<string> CheckIfBlocked(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
+    Task<string> GetEmailValidationMessage(
+        Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<bool> AccountExists(Session session, Email email, CancellationToken cancellationToken);
     [CommandHandler]
@@ -16,7 +17,9 @@ public interface IEmailAuth : IComputeService
     [CommandHandler]
     Task<bool> OnVerifyEmail(EmailAuth_VerifyEmail command, CancellationToken cancellationToken);
 
-    [ComputeMethod, Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
+    [ComputeMethod, Obsolete("2026.07: Use GetEmailValidationMessage.")]
+    Task<string> CheckIfBlocked(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
+    [ComputeMethod, Obsolete("2026.03: Use GetEmailValidationMessage.")]
     Task<string> ValidateCanSendToEmail(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
 }
 
@@ -25,7 +28,9 @@ public interface IEmailAuth : IComputeService
 public sealed partial record EmailAuth_SendTotp(
     [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1), Key(1)] Email Email,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] TotpPurpose Purpose = TotpPurpose.SignInEmail
+    [property: DataMember, MemoryPackOrder(2), Key(2)] TotpPurpose Purpose = TotpPurpose.SignInEmail,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] string? CaptchaToken = null,
+    [property: DataMember, MemoryPackOrder(4), Key(4)] string? CaptchaAction = null
 ) : ISessionCommand<Moment>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

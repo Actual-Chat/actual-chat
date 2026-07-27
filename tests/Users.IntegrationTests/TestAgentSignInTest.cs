@@ -1,5 +1,7 @@
+using ActualChat.Hosting;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
+using ActualChat.Users.Email;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -29,6 +31,22 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public void TestAgentShouldBeAdminOnLocalHostsOnly()
+    {
+        // arrange
+        var email = ActualChat.Email.Parse($"test-{Ulid.NewUlid().ToString().ToLower()}@actual.chat");
+        var account = new AccountFull("").WithEmailIdentity(email);
+
+        // act
+        var isAdminOnLocal = AccountsBackend.IsAdmin(account, true);
+        var isAdminElsewhere = AccountsBackend.IsAdmin(account, false);
+
+        // assert
+        isAdminOnLocal.Should().BeTrue();
+        isAdminElsewhere.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task TestAgentShouldHaveVerifiedEmail()
     {
         var (account, email) = await SignInAsTestAgent();
@@ -54,6 +72,59 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
         var appSettings = await kvas.UserAppSettings().Get(default);
         appSettings.AreExperimentalFeaturesEnabled.Should().BeTrue();
         appSettings.IsIncompleteUIEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RefusesConstantCodeOnUnknownHost()
+    {
+        // arrange
+        var hostInfo = new HostInfo {
+            BaseUrl = "https://preview.example.com",
+            IsTested = false,
+        };
+        var localHostInfo = hostInfo with { BaseUrl = "https://local.voxt.ai" };
+
+        // act
+        var isAllowed = EmailAuth.IsTestAgentEmailTotpHost(hostInfo);
+        var isLocalAllowed = EmailAuth.IsTestAgentEmailTotpHost(localHostInfo);
+
+        // assert
+        isAllowed.Should().BeFalse();
+        isLocalAllowed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task EmailValidationMessageKeepsLegacyRoutes()
+    {
+        // arrange
+        var emailAuth = AppHost.Services.GetRequiredService<IEmailAuth>();
+        var email = ActualChat.Email.Parse($"test-{Ulid.NewUlid().ToString().ToLower()}@actual.chat");
+        var arguments = new object[] {
+            _tester.Session,
+            email,
+            TotpPurpose.SignInEmail,
+            CancellationToken.None,
+        };
+        var routeNames = new[] {
+            "GetEmailValidationMessage",
+            "CheckIfBlocked",
+            "ValidateCanSendToEmail",
+        };
+
+        // act
+        var methods = routeNames.Select(x => typeof(IEmailAuth).GetMethod(x)).ToArray();
+        var results = new List<string>();
+        foreach (var method in methods) {
+            if (method is null)
+                continue;
+
+            var task = (Task<string>)method.Invoke(emailAuth, arguments)!;
+            results.Add(await task);
+        }
+
+        // assert
+        methods.Should().AllSatisfy(x => x.Should().NotBeNull());
+        results.Should().Equal(string.Empty, string.Empty, string.Empty);
     }
 
     // Helpers

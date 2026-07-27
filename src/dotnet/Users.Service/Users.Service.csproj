@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <InternalsVisibleTo Include="$(RootNamespace).Users.IntegrationTests$(AssemblyPublicKey)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Chat.ML\Chat.ML.csproj" />
     <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
     <ProjectReference Include="..\Db\Db.csproj" />
