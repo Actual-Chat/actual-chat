@@ -271,7 +271,7 @@ public sealed class AuthHelper
 
         string? redirectUrl = null;
         if (request.Query.TryGetValue("redirectUrl", out var returnUrlValues))
-            redirectUrl = returnUrlValues.FirstOrDefault().NullIfEmpty();
+            redirectUrl = AuthRedirectUrl.Sanitize(returnUrlValues.FirstOrDefault(), HostInfo.GetHosts());
 
         var mustClose = true;
         if (request.Query.TryGetValue("mustClose", out var mustCloseValues))
