@@ -67,9 +67,9 @@
             return Model.None;
 
         var trackingError = await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false);
-        var isPanelHidden = await Hub.ChatActivityUI.IsPanelHidden(chatId, cancellationToken)
+        var isPanelVisible = await Hub.ChatActivityUI.IsPanelVisible(chatId, cancellationToken)
             .ConfigureAwait(false);
-        return new Model(participants, trackingError, isPanelHidden);
+        return new Model(participants, trackingError, !isPanelVisible);
     }
 
     // Private methods
@@ -79,8 +79,8 @@
         if (m.IsTrackingBroken)
             return ModalUI.Show(new LocationTroubleshooterModal.Model());
 
-        Hub.ChatActivityUI.SetPanelHidden(Chat.Id, false);
-        Hub.ChatActivityUI.SelectPanelTab(Chat.Id, VisualActivityTab.Map);
+        Hub.ChatActivityUI.TogglePanel(Chat.Id, true);
+        Hub.ChatActivityUI.SelectTab(Chat.Id, VisualActivityTab.Map);
         return Task.CompletedTask;
     }
 

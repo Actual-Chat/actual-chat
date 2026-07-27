@@ -19,6 +19,13 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     private ISharedLocations SharedLocations => Hub.SharedLocations;
 
     [ComputeMethod]
+    public virtual async Task<bool> IsAnyoneSharing(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var participants = await ListParticipants(chatId, cancellationToken).ConfigureAwait(false);
+        return participants.Any();
+    }
+
+    [ComputeMethod]
     public virtual async Task<IReadOnlyList<Author>> ListAuthors(ChatId chatId, CancellationToken cancellationToken)
     {
         var participants = await ListParticipants(chatId, cancellationToken).ConfigureAwait(false);

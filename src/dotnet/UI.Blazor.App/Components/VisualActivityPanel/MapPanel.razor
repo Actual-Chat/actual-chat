@@ -134,7 +134,7 @@
         // video ⋮ menu's Hide) instead of vanishing with the map.
         if (await ChatVideoUI.IsWatching(Chat.Id).ConfigureAwait(true))
             ChatVideoUI.SetVideoPanelHidden(true);
-        ChatActivityUI.SetPanelHidden(Chat.Id, true);
+        ChatActivityUI.TogglePanel(Chat.Id, false);
     }
 
     private async Task OnLocate() {
