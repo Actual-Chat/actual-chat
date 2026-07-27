@@ -3,14 +3,15 @@
     if (State.IsInitial(out var m))
         return;
     // Hidden while a live conversation is active — the ChatActivityPanel owns that state.
-    if (!m.EnableIncompleteUI || m.HasLiveConversation)
+    if (!m.EnableIncompleteUI || m.IsActive)
         return;
 }
 
 <HeaderButton
     Class="btn-start-call"
-    Tooltip="Start call"
+    Tooltip="@(m.CanCall ? "Start call" : "You can call this user after they add you to contacts or reply")"
     TooltipPosition="FloatingPosition.Bottom"
+    IsDisabled="@(!m.CanCall)"
     Click="OnClick">
     <i class="icon-phone-call text-2xl"></i>
 </HeaderButton>
@@ -26,10 +27,18 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         if (!enableIncompleteUI)
-            return new Model(false, false);
+            return new Model(false, false, false);
 
-        var activity = await ChatActivityUI.GetCallActivity(Chat.Id, cancellationToken).ConfigureAwait(false);
-        return new Model(true, activity.HasLiveConversation);
+        var chatId = Chat.Id;
+        var activity = await ChatActivityUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        // Mirror the server's peer-call gate: a peer call is allowed only while the audio-stream
+        // permission is granted (the recipient added the caller or replied, and neither side blocked).
+        var canCall = true;
+        if (chatId.Kind == ChatKind.Peer) {
+            var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+            canCall = chat?.Rules.CanWriteAudio() ?? false;
+        }
+        return new Model(true, activity.IsActive, canCall);
     }
 
     private Task OnClick()
@@ -37,5 +46,5 @@
 
     // Nested types
 
-    public sealed record Model(bool EnableIncompleteUI, bool HasLiveConversation);
+    public sealed record Model(bool EnableIncompleteUI, bool IsActive, bool CanCall);
 }

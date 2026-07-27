@@ -73,7 +73,16 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         bool hasVideo,
         CancellationToken cancellationToken)
     {
-        await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, cancellationToken).ConfigureAwait(false);
+        try {
+            await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            // The server rejects calls the caller isn't allowed to place (e.g. a peer who hasn't added
+            // them), so surface it as a toast instead of letting it reach the ErrorBoundary.
+            Log.LogWarning(e, "StartCall failed for chat #{ChatId}", chatId);
+            Hub.ToastUI.Show(e.Message, "icon-phone-hang-up", ToastDismissDelay.Short);
+            return;
+        }
         StartCallWatch(chatId);
     }
 
