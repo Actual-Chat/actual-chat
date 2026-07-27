@@ -22,7 +22,9 @@ public static class MauiSettings
     // ReSharper disable once HeuristicUnreachableCode
     public const string ReverseDomain = IsDevApp ? "ai.voxt.dev" : "ai.voxt";
     // ReSharper disable once HeuristicUnreachableCode
-    public const string AppScheme = IsDevApp ? "voxt-dev" : "voxt";
+    public const string AppScheme = IsDevApp ? Constants.AppSchemes.Dev : Constants.AppSchemes.Prod;
+    // "auth-complete" is the URI host, not a path — the Android intent filter matches on DataHost.
+    public const string AuthCallbackUrl = $"{AppScheme}://auth-complete";
     public const string DefaultHost =
         UseLocalhost
             ? Constants.Hosts.LocalVoxt

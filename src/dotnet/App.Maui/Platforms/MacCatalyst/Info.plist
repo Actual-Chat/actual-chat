@@ -63,8 +63,8 @@
 			<string>ai.voxt.dev</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+                <!-- Replaced with voxt for prod instance -->
 				<string>voxt-dev</string>
-				<string>voxt</string>
 			</array>
 		</dict>
 	</array>

@@ -36,6 +36,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Session & authentication
         services.AddSingleton(c => new MauiSession(c));
+        services.AddSingleton(c => new MauiWebAuthenticator(c));
         fusion.AddService<AccountUI, MauiAccountUI>(ServiceLifetime.Scoped);
 
         // UI
