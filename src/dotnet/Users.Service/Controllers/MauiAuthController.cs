@@ -19,6 +19,7 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         [FromQuery(Name = "e")] string endpoint,
         [FromQuery(Name = "flow")] string flowName,
         string? redirectUrl = null,
+        string? appKind = null,
         CancellationToken cancellationToken = default)
     {
         // Store the secure session token as a cookie — it will be picked up by AuthHelper
@@ -26,8 +27,11 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         // We never store the raw session ID in a cookie here to prevent MAUI sessions leaking to the browser.
         HttpContext.AddSessionTokenCookie(sessionToken);
         var baseUrl = HostInfo.GetAllowedBaseUrl(Request.Host.Host);
+        // Windows has no in-app browser, so it needs the close page to actually render (and
+        // script-navigate to the app scheme) rather than 302 straight to it — see CloseFlow.
+        var mustClose = Enum.TryParse<AppKind>(appKind, true, out var parsedAppKind) && parsedAppKind == AppKind.Windows;
         var closeFlowUrl = UrlMapper.ToAbsolute(baseUrl,
-            Links.CloseFlow(flowName, false, redirectUrl));
+            Links.CloseFlow(flowName, mustClose, redirectUrl));
         if (!endpoint.StartsWith('/'))
             endpoint = $"/{endpoint}";
         return Redirect($"{endpoint}?returnUrl={closeFlowUrl.UrlEncode()}");

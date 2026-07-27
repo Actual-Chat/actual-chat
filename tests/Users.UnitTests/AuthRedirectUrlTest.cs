@@ -41,6 +41,25 @@ public class AuthRedirectUrlTest
             result.Should().BeNull();
     }
 
+    [Theory]
+    [InlineData("voxt://auth-complete", true)] // Prod app scheme
+    [InlineData("voxt-dev://auth-complete", true)] // Dev app scheme
+    [InlineData("VOXT://auth-complete", true)] // App scheme, case-insensitive
+    [InlineData("voxt://something-else", true)] // App scheme, regardless of host
+    [InlineData("https://voxt.ai/chat", false)] // Allowed host, but not an app scheme
+    [InlineData("/chat", false)] // Relative
+    [InlineData("javascript:alert(1)", false)] // Script scheme
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void IsAppSchemeShouldDetectAppSchemeUrls(string? url, bool expected)
+    {
+        // act
+        var result = AuthRedirectUrl.IsAppScheme(url);
+
+        // assert
+        result.Should().Be(expected);
+    }
+
     [Fact]
     public void ShouldAllowWorktreeHostOfOwnDeployment()
     {
