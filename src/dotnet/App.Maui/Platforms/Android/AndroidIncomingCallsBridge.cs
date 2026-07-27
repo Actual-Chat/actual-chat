@@ -16,7 +16,7 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
 
     public Task<bool> OnCallHandled(bool accepted)
     {
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tcs = TaskCompletionSourceExt.New<bool>();
         BeginDispatchToMainThread(() => {
             try {
                 if (accepted)
