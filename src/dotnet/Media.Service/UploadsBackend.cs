@@ -19,6 +19,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
     private IMediaProgressBackend MediaProgressBackend => field ??= Services.GetRequiredService<IMediaProgressBackend>();
+    private IMeshLocks ConvertToMediaRefLocks => field ??= Services.MeshLocks()
+        .WithKeyPrefix($"{nameof(UploadsBackend)}.{nameof(OnConvertToMediaRef)}");
 
     private bool IsGoogleStorage => Blobs is GoogleCloudBlobStorages;
 
@@ -145,16 +147,36 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
         await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
 
-        var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
-        MediaId mediaId;
-        if (upload.Tag.IsNullOrEmpty())
-            mediaId = MediaId.New(MediaId.NewScope());
-        else {
-            var chatId = upload.ExtractChatIdFromTag();
-            mediaId = MediaId.New(chatId.Value);
+        var mediaId = GetConvertedMediaId(upload);
+        return await ConvertToMediaRefLocks
+            .LockAndRun(
+                uploadId.Value,
+                async ct => await Convert(mediaId, upload, ct).ConfigureAwait(false),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        async Task<MediaRef> Convert(MediaId mediaId1, Upload upload1, CancellationToken cancellationToken1)
+        {
+            if (await GetMediaRef(mediaId1, cancellationToken1).ConfigureAwait(false) is { } existing)
+                return existing;
+
+            var uploadedFile = GetUploadedStreamFileFrom(upload1, cancellationToken1);
+            using var processedFile = await MediaProcessor
+                .ProcessUpload(
+                    uploadedFile,
+                    MediaKind.ChatEntryAttachment,
+                    null,
+                    cancellationToken1)
+                .ConfigureAwait(false);
+            return await MediaSaver
+                .Save(
+                    mediaId1,
+                    processedFile,
+                    isUpdate: false,
+                    MediaKind.ChatEntryAttachment,
+                    cancellationToken1)
+                .ConfigureAwait(false);
         }
-        using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, MediaKind.ChatEntryAttachment, null, cancellationToken).ConfigureAwait(false);
-        return await MediaSaver.Save(mediaId, processedFile, isUpdate:false, MediaKind.ChatEntryAttachment, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<MediaRef> OnProcessAndSaveContent(UploadsBackend_ProcessAndSaveContent command, CancellationToken cancellationToken)
@@ -264,6 +286,27 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
     private static Exception UploadNotFound()
         => StandardError.Upload.NotFound();
+
+    private static MediaId GetConvertedMediaId(Upload upload)
+    {
+        var scope = upload.Tag.IsNullOrEmpty()
+            ? upload.Id.Value
+            : upload.ExtractChatIdFromTag().Value;
+        return MediaId.New(scope, upload.Id.Value);
+    }
+
+    private async Task<MediaRef?> GetMediaRef(MediaId mediaId, CancellationToken cancellationToken)
+    {
+        var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
+        if (media is null || media.BlobId.IsNullOrEmpty())
+            return null;
+
+        var thumbnailId = media.ThumbnailId;
+        var thumbnail = thumbnailId is null
+            ? null
+            : await MediaBackend.Get(thumbnailId, cancellationToken).ConfigureAwait(false);
+        return new MediaRef(mediaId, media.BlobId, thumbnailId, thumbnail?.BlobId);
+    }
 
     private async Task EnsureUploadHasBeenCompleted(Upload upload, CancellationToken cancellationToken)
     {

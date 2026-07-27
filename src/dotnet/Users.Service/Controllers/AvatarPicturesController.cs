@@ -1,7 +1,9 @@
 using ActualChat.AspNetCore;
 using ActualChat.Controllers;
+using ActualChat.Resilience;
 using ActualChat.Security;
 using ActualChat.Uploads;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
@@ -13,6 +15,9 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
     private IMediaProcessor MediaProcessor => services.GetRequiredService<IMediaProcessor>();
     private IMediaSaver MediaSaver => services.GetRequiredService<IMediaSaver>();
     private AvatarPictures AvatarPictures => services.GetRequiredService<AvatarPictures>();
+    private RateLimitPolicy RateLimitPolicy => field ??= services.GetRequiredService<RateLimitPolicy>();
+    private RateLimitIdentityResolver IdentityResolver
+        => field ??= services.GetRequiredService<RateLimitIdentityResolver>();
 
     [HttpPost("upload-picture")]
     [DisableFormValueModelBinding]
@@ -47,6 +52,21 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 
         if (!MediaTypeExt.SupportedAvatarContentTypes.Contains(file.ContentType))
             return BadRequest($"Unsupported image type '{file.ContentType}'.");
+
+        try {
+            await RateLimitPolicy
+                .CheckUpload(
+                    IdentityResolver,
+                    $"{nameof(AvatarPicturesController)}.{nameof(UploadPicture)}",
+                    RateLimitSource.ForHttp(HttpContext),
+                    file.Length,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (RateLimitExceededException e) {
+            Response.SetRetryAfter(e.RetryDelay);
+            return StatusCode(StatusCodes.Status429TooManyRequests, e.Message);
+        }
 
         var mediaId = MediaId.New(account.Id.Value);
         var uploadedFile = new UploadedStreamFile(

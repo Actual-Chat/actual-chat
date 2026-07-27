@@ -57,13 +57,14 @@ public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
         var svgStream = await upload.Open().ConfigureAwait(false);
         await using var _1 = svgStream.ConfigureAwait(false);
 
-        var outPath = (FilePath.GetApplicationTempDirectory() & upload.FileName).ChangeExtension(".png")
-            .ToUnique(randomLength: 10);
+        var outPath = UploadedFileExt.NewTempFilePath();
         var pngStream = File.Create(outPath);
         await using var _2 = pngStream.ConfigureAwait(false);
         var size = SvgRasterizer.RasterizeToPng(svgStream, pngStream, MaxSize);
 
-        var converted = new UploadedTempFile(outPath.FileName, "image/png", outPath);
+        var displayedName = upload.GetDisplayFileName().ChangeExtension(".png")
+            .ToUnique(ensureNotExists: false, randomLength: 10).FileName;
+        var converted = new UploadedTempFile(displayedName, "image/png", outPath);
         progress?.Report(100);
         return new ProcessedFile(converted, size);
     }

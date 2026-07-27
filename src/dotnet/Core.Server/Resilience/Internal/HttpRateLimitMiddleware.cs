@@ -1,6 +1,6 @@
+using ActualChat.AspNetCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.Net.Http.Headers;
 
 namespace ActualChat.Resilience.Internal;
 
@@ -40,8 +40,7 @@ public sealed class HttpRateLimitMiddleware(RequestDelegate next, IServiceProvid
             }
             catch (RateLimitExceededException e) {
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                context.Response.Headers[HeaderNames.RetryAfter] =
-                    ((int)Math.Ceiling(e.RetryDelay.TotalSeconds)).Format();
+                context.Response.SetRetryAfter(e.RetryDelay);
                 return;
             }
         }

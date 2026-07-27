@@ -89,12 +89,20 @@ public class RateLimitBudgetsTest(ITestOutputHelper @out) : TestBase(@out)
         var sessionAddress = budgets.Get(RateLimitClass.SessionCreation, RateLimitIdentityKind.IP);
         var gifAccount = budgets.Get(RateLimitClass.GifProvider, RateLimitIdentityKind.UserId);
         var gifAddress = budgets.Get(RateLimitClass.GifProvider, RateLimitIdentityKind.IP);
+        var uploadCreationAccount = budgets.Get(RateLimitClass.UploadCreation, RateLimitIdentityKind.UserId);
+        var uploadCreationAddress = budgets.Get(RateLimitClass.UploadCreation, RateLimitIdentityKind.IP);
+        var uploadBytesAccount = budgets.Get(RateLimitClass.UploadBytes, RateLimitIdentityKind.UserId);
+        var uploadBytesAddress = budgets.Get(RateLimitClass.UploadBytes, RateLimitIdentityKind.IP);
 
         // assert
         sessionAccount.Should().Be(new SlidingWindowBudget(100, TimeSpan.FromDays(1)));
         sessionAddress.Should().Be(new SlidingWindowBudget(100_000, TimeSpan.FromDays(1)));
         gifAccount.Should().Be(new SlidingWindowBudget(1_000, TimeSpan.FromHours(1)));
         gifAddress.Should().Be(new SlidingWindowBudget(100_000, TimeSpan.FromHours(1)));
+        uploadCreationAccount.Should().Be(new SlidingWindowBudget(10_000, TimeSpan.FromDays(1)));
+        uploadCreationAddress.Should().Be(new SlidingWindowBudget(100_000, TimeSpan.FromDays(1)));
+        uploadBytesAccount.Should().Be(new SlidingWindowBudget(10_486, TimeSpan.FromDays(1)));
+        uploadBytesAddress.Should().Be(new SlidingWindowBudget(104_858, TimeSpan.FromDays(1)));
     }
 
     [Fact]

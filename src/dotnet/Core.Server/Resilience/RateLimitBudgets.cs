@@ -6,6 +6,7 @@ namespace ActualChat.Resilience;
 /// </summary>
 public sealed record RateLimitBudgets
 {
+    public const long UploadByteUnit = 100L * 1024 * 1024;
     public static readonly RateLimitBudgets Default = new();
 
     public IReadOnlyDictionary<(RateLimitClass, RateLimitIdentityKind), SlidingWindowBudget> Items { get; init; }
@@ -25,6 +26,11 @@ public sealed record RateLimitBudgets
 
             [(RateLimitClass.GifProvider, RateLimitIdentityKind.UserId)] = new(1_000, TimeSpan.FromHours(1)),
             [(RateLimitClass.GifProvider, RateLimitIdentityKind.IP)] = new(100_000, TimeSpan.FromHours(1)),
+
+            [(RateLimitClass.UploadCreation, RateLimitIdentityKind.UserId)] = new(10_000, TimeSpan.FromDays(1)),
+            [(RateLimitClass.UploadCreation, RateLimitIdentityKind.IP)] = new(100_000, TimeSpan.FromDays(1)),
+            [(RateLimitClass.UploadBytes, RateLimitIdentityKind.UserId)] = new(10_486, TimeSpan.FromDays(1)),
+            [(RateLimitClass.UploadBytes, RateLimitIdentityKind.IP)] = new(104_858, TimeSpan.FromDays(1)),
         };
 
     public SlidingWindowBudget? Get(RateLimitClass rateLimitClass, RateLimitIdentityKind kind)

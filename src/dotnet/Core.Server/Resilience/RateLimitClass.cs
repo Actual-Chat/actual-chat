@@ -10,4 +10,6 @@ public enum RateLimitClass
     Auth,
     SessionCreation,
     GifProvider,
+    UploadCreation,
+    UploadBytes,
 }

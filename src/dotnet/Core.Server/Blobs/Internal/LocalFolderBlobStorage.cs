@@ -21,9 +21,7 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
 
     public Task<bool> Exists(string path, CancellationToken cancellationToken)
     {
-        ValidatePath(path);
-
-        var fullPath = (BaseDirectory & path).Value;
+        var fullPath = GetFullPath(path);
         if (File.Exists(fullPath))
             return ActualLab.Async.TaskExt.TrueTask;
         if (Directory.Exists(fullPath))
@@ -34,10 +32,10 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
 
     public Task<Stream?> Read(string path, CancellationToken cancellationToken)
     {
-        ValidatePath(path);
+        var fullPath = GetFullPath(path);
 
         try {
-            return Task.FromResult<Stream?>(File.OpenRead( BaseDirectory & path));
+            return Task.FromResult<Stream?>(File.OpenRead(fullPath));
         }
         catch (DirectoryNotFoundException) {
             return Task.FromResult<Stream?>(null);
@@ -49,9 +47,7 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
 
     public Task<string?> GetContentType(string path, CancellationToken cancellationToken)
     {
-        ValidatePath(path);
-
-        var fullPath = BaseDirectory & path;
+        var fullPath = GetFullPath(path);
         return File.Exists(fullPath) && ContentTypeProvider.TryGetContentType(fullPath, out var contentType)
             ? Task.FromResult<string?>(contentType)
             : Task.FromResult<string?>(null);
@@ -59,9 +55,7 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
 
     public async Task Write(string path, Stream stream, string contentType, CancellationToken cancellationToken)
     {
-        ValidatePath(path);
-
-        var fullPath = BaseDirectory & path;
+        var fullPath = GetFullPath(path);
         Directory.CreateDirectory(fullPath.DirectoryPath);
 
         if (File.Exists(fullPath))
@@ -80,11 +74,8 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
 
     public Task Copy(string oldPath, string newPath, CancellationToken cancellationToken)
     {
-        ValidatePath(oldPath);
-        ValidatePath(newPath);
-
-        var fullOldPath = BaseDirectory & oldPath;
-        var fullNewPath = BaseDirectory & newPath;
+        var fullOldPath = GetFullPath(oldPath);
+        var fullNewPath = GetFullPath(newPath);
 
         Directory.CreateDirectory(fullNewPath.DirectoryPath);
 
@@ -95,9 +86,7 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
 
     public Task Delete(string path, CancellationToken cancellationToken)
     {
-        ValidatePath(path);
-
-        var fullPath = (BaseDirectory & path).Value;
+        var fullPath = GetFullPath(path);
         if (File.Exists(fullPath))
             File.Delete(fullPath);
         else if (Directory.Exists(fullPath))
@@ -110,9 +99,7 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
 
     public async Task Append(string path, Stream stream, CancellationToken cancellationToken)
     {
-        ValidatePath(path);
-
-        var fullPath = BaseDirectory & path;
+        var fullPath = GetFullPath(path);
         if (!File.Exists(fullPath))
             throw StandardError.Constraint($"Cannot append to non-existent file: '{path}'.");
 
@@ -123,14 +110,6 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
 
     // Private methods
 
-    private void ValidatePath(string path)
-    {
-        if (path == null)
-            throw new ArgumentNullException(nameof(path));
-
-        var filePath = FilePath.New(path);
-        if (filePath.IsRooted && !filePath.IsSubPathOf(BaseDirectory))
-            throw StandardError.Constraint<LocalFolderBlobStorage>(
-                "Path should be either relative to the base directory or rooted there.");
-    }
+    private FilePath GetFullPath(string path)
+        => FilePathValidator.GetContainedPath(BaseDirectory, path);
 }

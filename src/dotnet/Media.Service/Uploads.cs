@@ -1,6 +1,8 @@
 using ActualChat.Flows;
 using ActualChat.Media.Flows;
+using ActualChat.Resilience;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Media;
 
@@ -13,6 +15,9 @@ public class Uploads(IServiceProvider services) : IUploads
     private IUploadsBackend Backend { get; } = services.GetRequiredService<IUploadsBackend>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private IMediaProgressBackend MediaProgressBackend { get; } = services.GetRequiredService<IMediaProgressBackend>();
+    private RateLimitPolicy RateLimitPolicy => field ??= services.GetRequiredService<RateLimitPolicy>();
+    private RateLimitIdentityResolver IdentityResolver
+        => field ??= services.GetRequiredService<RateLimitIdentityResolver>();
     private ICommander Commander { get; } = services.Commander();
     private FlowHub FlowHub => field ??= services.FlowHub();
 
@@ -34,7 +39,16 @@ public class Uploads(IServiceProvider services) : IUploads
             throw StandardError.Constraint("File is too big.");
 
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        EnsureCanCreate(user, length.Value, tag, metadata);
+        var connectionSource = RateLimitSource.ForConnection(
+            RpcInboundContext.Current?.Peer.ConnectionState.Value.Connection);
+        await RateLimitPolicy
+            .CheckUpload(
+                IdentityResolver,
+                $"{nameof(Uploads)}.{nameof(OnCreate)}",
+                connectionSource with { Session = session },
+                length.Value,
+                cancellationToken)
+            .ConfigureAwait(false);
         var uploadId = UploadId.New();
         await Commander.Call(new UploadsBackend_Create(uploadId, user.Id, length, tag, metadata), cancellationToken).ConfigureAwait(false);
         return uploadId;
@@ -167,10 +181,5 @@ public class Uploads(IServiceProvider services) : IUploads
     {
         if (upload is null || upload.UserId != user.Id)
             throw StandardError.Upload.NotFound();
-    }
-
-    private static void EnsureCanCreate(AccountFull user, long length, string tag, PropertyBag metadata)
-    {
-        // Add validation by tag and user permissions
     }
 }

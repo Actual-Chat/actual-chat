@@ -65,4 +65,47 @@ public class ImageUploadProcessorTest : IDisposable
         // assert
         result.File.ContentType.Should().Be("image/jpeg");
     }
+
+    [Fact]
+    public async Task RejectsImageExceedingPixelBudget()
+    {
+        // arrange
+        var data = TestImages.CreatePngHeader(65535, 65535);
+        var upload = TestImages.CreateUploadedFile("huge.png", "image/png", data);
+
+        // act
+        var process = () => _processor.Process(upload, null, CancellationToken.None);
+
+        // assert
+        await process.Should().ThrowAsync<InvalidOperationException>().WithMessage("*too big*");
+    }
+
+    [Fact]
+    public async Task RejectsExcessiveFrameCount()
+    {
+        // arrange
+        var data = TestImages.CreateAnimatedWebp(1, 1, ImageLimits.MaxFrameCount + 1);
+        var upload = TestImages.CreateUploadedFile("animation.webp", "image/webp", data);
+
+        // act
+        var process = () => _processor.Process(upload, null, CancellationToken.None);
+
+        // assert
+        await process.Should().ThrowAsync<InvalidOperationException>().WithMessage("*too many frames*");
+    }
+
+    [Fact]
+    public async Task AcceptsPhotoSizedImage()
+    {
+        // arrange
+        var upload = TestImages.CreateUploadedFile("photo.jpg", "image/jpeg", TestImages.CreateJpeg(4000, 3000));
+
+        // act
+        var result = await _processor.Process(upload, null, CancellationToken.None);
+        _processedFiles.Add(result);
+
+        // assert
+        result.File.ContentType.Should().Be("image/jpeg");
+        result.Size.Should().Be(new Size2D(1920, 1440));
+    }
 }

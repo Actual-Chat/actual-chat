@@ -1,5 +1,10 @@
+using ActualChat.Media.Db;
+using ActualChat.Resilience;
 using ActualChat.Testing.Host;
+using ActualLab.Fusion.EntityFramework;
 using ActualLab.Rpc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -127,6 +132,89 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task RefusesUploadPastBudget()
+    {
+        // arrange
+        var policy = new CountingRateLimitPolicy(RateLimitClass.UploadCreation, 2);
+        await using var appHost = await NewAppHost("upload-creation-budget", options => options with {
+            ConfigureServices = (_, services)
+                => services.Replace(ServiceDescriptor.Singleton<RateLimitPolicy>(policy)),
+        });
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var metadata = new PropertyBag()
+            .Set("FileName", "test.txt")
+            .Set("ContentType", "text/plain");
+
+        // act
+        var first = await tester.Commander.Call(new Uploads_Create(tester.Session, 1, "", metadata));
+        var second = await tester.Commander.Call(new Uploads_Create(tester.Session, 1, "", metadata));
+        var act = () => tester.Commander.Call(new Uploads_Create(tester.Session, 1, "", metadata));
+
+        // assert
+        first.Should().NotBeNull();
+        second.Should().NotBeNull();
+        await act.Should().ThrowAsync<RateLimitExceededException>();
+    }
+
+    [Fact]
+    public async Task RefusesUploadPastByteBudget()
+    {
+        // arrange
+        var policy = new CountingRateLimitPolicy(RateLimitClass.UploadBytes, 2);
+        await using var appHost = await NewAppHost("upload-byte-budget", options => options with {
+            ConfigureServices = (_, services)
+                => services.Replace(ServiceDescriptor.Singleton<RateLimitPolicy>(policy)),
+        });
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var metadata = new PropertyBag()
+            .Set("FileName", "test.bin")
+            .Set("ContentType", "application/octet-stream");
+
+        // act
+        var normal = await tester.Commander.Call(
+            new Uploads_Create(tester.Session, RateLimitBudgets.UploadByteUnit, "", metadata));
+        var act = () => tester.Commander.Call(
+            new Uploads_Create(tester.Session, 2 * RateLimitBudgets.UploadByteUnit, "", metadata));
+
+        // assert
+        normal.Should().NotBeNull();
+        await act.Should().ThrowAsync<RateLimitExceededException>();
+    }
+
+    [Fact]
+    public async Task ConvertToMediaRefIsIdempotent()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var data = "converted once"u8.ToArray();
+        var metadata = new PropertyBag()
+            .Set("FileName", "test.txt")
+            .Set("ContentType", "text/plain");
+        var uploadId = await tester.Commander.Call(
+            new Uploads_Create(tester.Session, data.Length, "", metadata));
+        await tester.Commander.Call(new Uploads_Append(tester.Session, uploadId, 0, data));
+
+        // act
+        var first = await tester.Commander.Call(
+            new Uploads_ConvertToMediaRef(tester.Session, uploadId));
+        var second = await tester.Commander.Call(
+            new Uploads_ConvertToMediaRef(tester.Session, uploadId));
+        var dbHub = tester.AppServices.DbHub<MediaDbContext>();
+        await using var dbContext = await dbHub.CreateDbContext();
+        var mediaCount = await dbContext.Media.CountAsync(x => x.Scope == first.MediaId.Scope);
+
+        // assert
+        second.MediaId.Should().Be(first.MediaId);
+        second.BlobId.Should().Be(first.BlobId);
+        second.ThumbnailMediaId.Should().Be(first.ThumbnailMediaId);
+        second.ThumbnailBlobId.Should().Be(first.ThumbnailBlobId);
+        mediaCount.Should().Be(1);
+    }
+
+    [Fact]
     public async Task ShouldAllowOnlyOwnerToUpdateProgress()
     {
         // Arrange
@@ -234,6 +322,30 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
                 yield return chunk;
                 await Task.Yield();
             }
+        }
+    }
+
+    private sealed class CountingRateLimitPolicy(RateLimitClass rateLimitClass, int limit) : RateLimitPolicy
+    {
+        private int _count;
+
+        public override bool IsCharged(RateLimitClass actualClass, RateLimitIdentityKind kind)
+            => actualClass == rateLimitClass
+                && kind is RateLimitIdentityKind.UserId or RateLimitIdentityKind.IP;
+
+        public override ValueTask Check(
+            string method,
+            RateLimitClass actualClass,
+            ReadOnlySpan<RateLimitIdentity> identities,
+            CancellationToken cancellationToken = default)
+        {
+            if (actualClass != rateLimitClass)
+                return default;
+
+            if (Interlocked.Increment(ref _count) <= limit)
+                return default;
+
+            throw StandardError.RateLimitExceeded(TimeSpan.FromMinutes(1));
         }
     }
 }

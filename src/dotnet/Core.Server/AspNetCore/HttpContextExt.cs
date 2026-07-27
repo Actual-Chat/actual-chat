@@ -29,4 +29,8 @@ public static class HttpContextExt
         }
         return context.Connection.RemoteIpAddress;
     }
+
+    // Rounded up, so the client never retries earlier than the server meant
+    public static void SetRetryAfter(this HttpResponse response, TimeSpan retryDelay)
+        => response.Headers[HeaderNames.RetryAfter] = ((int)Math.Ceiling(retryDelay.TotalSeconds)).Format();
 }

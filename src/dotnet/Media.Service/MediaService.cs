@@ -6,6 +6,7 @@ public class MediaService(IServiceProvider services) : IMedia
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private IMediaProgressBackend MediaProgressBackend { get; } = services.GetRequiredService<IMediaProgressBackend>();
+    private IUploadsBackend UploadsBackend { get; } = services.GetRequiredService<IUploadsBackend>();
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
@@ -118,6 +119,9 @@ public class MediaService(IServiceProvider services) : IMedia
             throw StandardError.NotFound<Media>();
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
+        var upload = await UploadsBackend.Get(uploadId, cancellationToken).ConfigureAwait(false);
+        if (upload is null || upload.UserId != media.UserId)
+            throw StandardError.Upload.NotFound();
 
         // Process upload and bind to media
         var mediaRef = await Commander

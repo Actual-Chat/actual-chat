@@ -14,10 +14,14 @@ public class RasterImageNormalizer(ILogger<RasterImageNormalizer> log)
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        var imageInfo = await Identify(upload, cancellationToken).ConfigureAwait(false);
+        imageInfo.RequireDecodable();
+
         var inputStream = await upload.Open().ConfigureAwait(false);
         await using var _ = inputStream.ConfigureAwait(false);
 
-        using var image = await Image.LoadAsync(inputStream, cancellationToken).ConfigureAwait(false);
+        using var image = await Image.LoadAsync(ImageLimits.DecoderOptions, inputStream, cancellationToken)
+            .ConfigureAwait(false);
         progress?.Report(30);
 
         var changed = OrientAndResize(image, maxSize);
@@ -29,6 +33,13 @@ public class RasterImageNormalizer(ILogger<RasterImageNormalizer> log)
         }
 
         return await Save(upload, image, convertToPng, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<ImageInfo> Identify(UploadedFile upload, CancellationToken cancellationToken)
+    {
+        var stream = await upload.Open().ConfigureAwait(false);
+        await using var _ = stream.ConfigureAwait(false);
+        return await Image.IdentifyAsync(ImageLimits.DecoderOptions, stream, cancellationToken).ConfigureAwait(false);
     }
 
     private static bool OrientAndResize(Image image, int maxSize)
@@ -48,9 +59,7 @@ public class RasterImageNormalizer(ILogger<RasterImageNormalizer> log)
 
     private async Task<ProcessedFile> Save(UploadedFile upload, Image image, bool convertToPng, CancellationToken cancellationToken)
     {
-        var outPath = (FilePath.GetApplicationTempDirectory() & upload.FileName).ToUnique(randomLength: 10);
-        if (convertToPng)
-            outPath = outPath.ChangeExtension(".png");
+        var outPath = UploadedFileExt.NewTempFilePath();
         var outStream = File.OpenWrite(outPath);
         await using var _ = outStream.ConfigureAwait(false);
         var format = convertToPng ? PngFormat.Instance : image.Metadata.DecodedImageFormat!;
@@ -61,7 +70,7 @@ public class RasterImageNormalizer(ILogger<RasterImageNormalizer> log)
             upload.FileName, image.Width, image.Height,
             convertToPng ? " (converted to PNG)" : "");
 
-        var displayedName = upload.FileName;
+        var displayedName = upload.GetDisplayFileName();
         if (convertToPng)
             displayedName = displayedName.ChangeExtension(".png");
         return new ProcessedFile(new UploadedTempFile(displayedName, contentType, outPath), new Size2D(image.Width, image.Height));

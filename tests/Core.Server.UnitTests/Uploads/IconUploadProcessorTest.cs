@@ -1,4 +1,5 @@
 using ActualChat.Uploads;
+using ActualLab.IO;
 using SixLabors.ImageSharp;
 
 namespace ActualChat.Core.Server.UnitTests.Uploads;
@@ -147,7 +148,73 @@ public class IconUploadProcessorTest : IDisposable
         result.Size!.Value.Height.Should().BeLessThanOrEqualTo(Constants.Attachments.MaxIconSize);
     }
 
-    // Helpers
+    [Fact]
+    public async Task KeepsPassthroughTempFileInsideTempDirectory()
+    {
+        // arrange
+        var upload = TestImages.CreateUploadedFile(
+            "../outside/icon.png",
+            "image/png",
+            TestImages.CreatePng(100, 100));
+
+        // act
+        var result = await _processor.Process(upload, null, CancellationToken.None);
+        _processedFiles.Add(result);
+
+        // assert
+        var tempFile = AssertTempFileInsideDirectory(result);
+        tempFile.FileName.Value.Should().Be("icon.png");
+    }
+
+    [Fact]
+    public async Task KeepsNormalizedTempFileInsideTempDirectory()
+    {
+        // arrange
+        var upload = TestImages.CreateUploadedFile(
+            "../outside/icon.bmp",
+            "image/bmp",
+            TestImages.CreateBmp(80, 80));
+
+        // act
+        var result = await _processor.Process(upload, null, CancellationToken.None);
+        _processedFiles.Add(result);
+
+        // assert
+        var tempFile = AssertTempFileInsideDirectory(result);
+        tempFile.FileName.Value.Should().Be("icon.png");
+    }
+
+    [Fact]
+    public async Task KeepsConvertedTempFileInsideTempDirectory()
+    {
+        // arrange
+        var svgContent = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+              <circle cx="50" cy="50" r="40" fill="blue"/>
+            </svg>
+            """u8.ToArray();
+        var upload = TestImages.CreateUploadedFile("../outside/icon.svg", "image/svg+xml", svgContent);
+
+        // act
+        var result = await _processor.Process(upload, null, CancellationToken.None);
+        _processedFiles.Add(result);
+
+        // assert
+        var tempFile = AssertTempFileInsideDirectory(result);
+        tempFile.FileName.Value.Should().StartWith("icon-").And.EndWith(".png");
+    }
+
+    // Private methods
+
+    private static UploadedTempFile AssertTempFileInsideDirectory(ProcessedFile result)
+    {
+        var tempFile = result.File.Should().BeOfType<UploadedTempFile>().Subject;
+        var tempDirectory = FilePath.GetApplicationTempDirectory().FullPath;
+        tempFile.TempFilePath.FullPath.IsSubPathOf(tempDirectory).Should().BeTrue();
+        tempFile.TempFilePath.FileName.Should().NotBe(tempFile.FileName);
+        return tempFile;
+    }
 
     private static async Task AssertImageFormat(UploadedFile file, string expectedMimeType)
     {
