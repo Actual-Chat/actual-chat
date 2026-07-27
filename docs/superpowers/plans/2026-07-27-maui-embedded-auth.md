@@ -37,7 +37,6 @@
 **MAUI (new)**
 - `src/dotnet/App.Maui/Services/MauiWebAuthenticator.cs` — the in-app browser session. One responsibility: run a URL to completion and report completed/cancelled.
 - `src/dotnet/App.Maui/Platforms/Android/WebAuthCallbackActivity.cs` — the Android intent-filter target.
-- `src/dotnet/App.Maui/Platforms/Windows/WindowsAppScheme.cs` — `HKCU` protocol registration for the unpackaged app.
 
 **MAUI (modified)**
 - `src/dotnet/Maui/MauiSettings.cs` — add `AuthCallbackUrl`, source `AppScheme` from `Constants.AppSchemes`, delete `WebAuth`.
@@ -503,16 +502,18 @@ git commit -m "feat(auth): add MauiWebAuthenticator for Apple platforms and Andr
 
 ### Task 4: Windows protocol registration and activation bridge
 
-Windows has no in-app browser and the app is unpackaged (`App.Maui.csproj:814` sets `WindowsPackageType=None`), so MAUI's `WebAuthenticator` is not usable. This task builds the equivalent from the pieces already present: launch the default browser, then wait for a protocol activation delivered through the existing single-instance redirection.
+Windows has no in-app browser, so MAUI's `WebAuthenticator` is not usable. This task builds the equivalent from the pieces already present: launch the default browser, then wait for a protocol activation delivered through the existing single-instance redirection.
+
+The shipped Windows app is **MSIX-packaged** — CI builds `App.Maui_<ver>_x64.msix`, and the `WindowsPackageType=None` at `App.Maui.csproj:814` applies only to the NativeAOT publish path, which is used for iOS. So the scheme is declared in `Package.appxmanifest`, not written to `HKCU\Software\Classes` at runtime: MSIX virtualizes such writes into a package-private hive where the shell never sees them, and a bare `"<exe>" "%1"` command is not the shape `GetActivatedEventArgs` recognizes as a protocol activation.
 
 **Files:**
-- Create: `src/dotnet/App.Maui/Platforms/Windows/WindowsAppScheme.cs`
+- Modify: `src/dotnet/App.Maui/Platforms/Windows/Package.appxmanifest`
+- Modify: `build/AppxManifestGenerator.cs`
 - Modify: `src/dotnet/App.Maui/Platforms/Windows/App.Activation.cs:32-38`
 - Modify: `src/dotnet/App.Maui/Services/MauiWebAuthenticator.cs`
 
 **Interfaces:**
 - Consumes: `ActualChat.App.Maui.WinUI.App.AppInstanceActivated` : `event Action<string>` (`App.Activation.cs:8`), and its existing `AppInstance.FindOrRegisterForKey` / `RedirectActivationToAsync` single-instance logic (`App.Activation.cs:20-30`), which already routes an activation of a second launch into the running instance.
-- Produces: `WindowsAppScheme.EnsureRegistered()` → `void`, idempotent.
 
 - [ ] **Step 1: Forward protocol activations**
 
@@ -545,38 +546,25 @@ with:
     }
 ```
 
-- [ ] **Step 2: Add the registry registration**
+- [ ] **Step 2: Declare the protocol in the appx manifest**
 
-Create `src/dotnet/App.Maui/Platforms/Windows/WindowsAppScheme.cs`:
+In `src/dotnet/App.Maui/Platforms/Windows/Package.appxmanifest`, replace the MAUI template placeholder `<uap:Protocol Name="myapp">` with the dev-flavor scheme, mirroring how the iOS and Mac Catalyst plists commit `voxt-dev`:
+
+```xml
+          <uap:Extension Category="windows.protocol">
+              <uap:Protocol Name="voxt-dev">
+                  <uap:DisplayName>Voxt</uap:DisplayName>
+              </uap:Protocol>
+          </uap:Extension>
+```
+
+Then flavor it for prod in `build/AppxManifestGenerator.cs`: add the `uap` namespace to the `XmlNamespaceManager` in `Read`, thread the scheme (`Constants.AppSchemes.Prod` / `.Dev`) into `Generate`, and add
 
 ```csharp
-using Microsoft.Win32;
-
-namespace ActualChat.App.Maui;
-
-/// <summary>
-/// Registers the app's custom URL scheme under HKCU. Packaged apps get this from
-/// their manifest; this app is unpackaged (WindowsPackageType=None), so it must
-/// register itself — and re-register whenever the executable moves.
-/// </summary>
-public static class WindowsAppScheme
-{
-    public static void EnsureRegistered()
-    {
-        var exePath = Environment.ProcessPath;
-        if (exePath.IsNullOrEmpty())
-            return;
-
-        var command = $"\"{exePath}\" \"%1\"";
-        using var schemeKey = Registry.CurrentUser.CreateSubKey($@"Software\Classes\{MauiSettings.AppScheme}");
-        schemeKey.SetValue(null, $"URL:{MauiSettings.AppScheme}");
-        schemeKey.SetValue("URL Protocol", "");
-        using var commandKey = schemeKey.CreateSubKey(@"shell\open\command");
-        if (!Equals(commandKey.GetValue(null), command))
-            commandKey.SetValue(null, command);
-    }
-}
+UpdateAttr("//uap:Extension[@Category='windows.protocol']/uap:Protocol", "Name", appScheme);
 ```
+
+`Build.csproj` links `src/dotnet/Api/Constants.AppSchemes.cs` so the generator uses the same constants as the app.
 
 - [ ] **Step 3: Add the Windows branch to `MauiWebAuthenticator`**
 
@@ -632,7 +620,6 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
 
     private async Task<bool> RunWindows(string url, CancellationToken cancellationToken)
     {
-        WindowsAppScheme.EnsureRegistered();
         var callbackSource = TaskCompletionSourceExt.New<bool>();
         void OnActivated(string arguments) {
             if (arguments.StartsWith(MauiSettings.AuthCallbackUrl, StringComparison.OrdinalIgnoreCase))
@@ -667,7 +654,8 @@ The Windows TFM cannot be built in this environment (`App.Maui.csproj:12` gates 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/dotnet/App.Maui/Platforms/Windows/WindowsAppScheme.cs \
+git add src/dotnet/App.Maui/Platforms/Windows/Package.appxmanifest \
+        build/AppxManifestGenerator.cs build/Build.csproj \
         src/dotnet/App.Maui/Platforms/Windows/App.Activation.cs \
         src/dotnet/App.Maui/Services/MauiWebAuthenticator.cs
 git commit -m "feat(auth): add Windows protocol activation path for web auth"
