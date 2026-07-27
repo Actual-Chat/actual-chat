@@ -62,11 +62,6 @@ public static class MauiSettings
 
     // Nested types
 
-    public static class WebAuth
-    {
-        public static readonly bool UseSystemBrowser = true;
-    }
-
     public static class Diagnostics
     {
         // Persists startup-phase marks + reports previous abnormal process exits (ANRs, native

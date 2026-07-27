@@ -1,4 +1,3 @@
-using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.AspNetCore.Components.WebView;
@@ -8,9 +7,7 @@ namespace ActualChat.App.Maui;
 public partial class MauiWebView
 {
     // ReSharper disable once CollectionNeverUpdated.Local
-    private static readonly HashSet<string> AllowedExternalHosts = MauiSettings.WebAuth.UseSystemBrowser
-        ? new() { "www.youtube.com" }
-        : new() { "accounts.google.com", "appleid.apple.com" };
+    private static readonly HashSet<string> AllowedExternalHosts = new() { "www.youtube.com" };
 
     public static readonly Uri BaseLocalUri = new($"https://{MauiSettings.LocalHost}/");
     public Uri LastUri { get; private set; } = BaseLocalUri;
@@ -84,44 +81,12 @@ public partial class MauiWebView
             return false;
         }
 
-        // If we're here, it's a host URL
-
-        if (IsAllowedHostUri(uri)) {
-            // We never land here, coz IsAllowedHostUri(...) always returns false now
-            if (uri.PathAndQuery.StartsWith("/fusion/close", StringComparison.OrdinalIgnoreCase)) {
-                BeginDispatchToMainThread(
-                    () => HardNavigateTo(LastLocalUri.ToString()),
-                    allowInline: false);
-                eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
-                return false;
-            }
-            eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.OpenInWebView;
-            return false;
-        }
-
-        // It's a host URL, so we have to re-route it to the local one
+        // If we're here, it's a host URL, so we have to re-route it to the local one
         var localUri = HostToAbsoluteLocalUri(uri);
         BeginDispatchToMainThread(
             () => _ = NavigateTo(localUri, !wasOnLocalUri),
             allowInline: false);
         eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
-        return false;
-    }
-
-    private static bool IsAllowedHostUri(Uri uri)
-    {
-        if (MauiSettings.WebAuth.UseSystemBrowser)
-            return false;
-
-        var pathAndQuery = uri.PathAndQuery.ToLower();
-        if (pathAndQuery.StartsWith("/maui-auth/"))
-            return true;
-        if (pathAndQuery.StartsWith("/signin"))
-            return true;
-        if (pathAndQuery.StartsWith("/signout"))
-            return true;
-        if (pathAndQuery.StartsWith("/fusion/close"))
-            return true;
         return false;
     }
 

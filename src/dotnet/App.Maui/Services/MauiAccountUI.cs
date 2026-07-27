@@ -40,8 +40,7 @@ public class MauiAccountUI(UIHub hub) : AccountUI(hub)
         }
 #endif
 
-        var endpoint = $"/signIn/{schema}";
-        await WebSignInOrSignOut(endpoint, "Sign-in").ConfigureAwait(false);
+        await WebSignIn($"/signIn/{schema}").ConfigureAwait(false);
     }
 
     protected override async Task SignOutBackend()
@@ -52,36 +51,26 @@ public class MauiAccountUI(UIHub hub) : AccountUI(hub)
             await googleAuth.SignOut().ConfigureAwait(true);
 #endif
 
-        await WebSignInOrSignOut("/signOut", "Sign-out").ConfigureAwait(false);
+        await Hub.Services.Commander().Call(new NativeAuth_SignOut(Session)).ConfigureAwait(false);
     }
 
     // Private methods
 
-    private async Task WebSignInOrSignOut(string endpoint, string flowName)
+    private async Task WebSignIn(string endpoint)
     {
-        var isSignIn = endpoint.StartsWith("/signIn", StringComparison.OrdinalIgnoreCase);
         try {
-            var minSessionTokenLifespan = TimeSpan.FromMinutes(isSignIn ? 15 : 1);
-            var sessionToken = await Hub.SessionTokens.Get(minSessionTokenLifespan).ConfigureAwait(true);
+            var sessionToken = await Hub.SessionTokens.Get(TimeSpan.FromMinutes(15)).ConfigureAwait(true);
             var url = $"{MauiSettings.BaseUrl}maui-auth/start"
                 + $"?s={sessionToken.Token.UrlEncode()}"
                 + $"&e={endpoint.UrlEncode()}"
-                + $"&flow={flowName.UrlEncode()}"
-                + $"&appKind={HostInfo.AppKind:G}";
-            if (MauiSettings.WebAuth.UseSystemBrowser) {
-                _ = MauiBrowser.Open(url);
-                return;
-            }
-
-            // WebView-based authentication
-            var redirectUrl = UrlMapper.ToAbsolute(isSignIn ? Links.Chats : Links.Home);
-            // NOTE(AY): returnUrl here points to https://[xxx.]voxt.ai/xxx ,
-            // but MauiNavigationInterceptor will correct it to the local one anyway.
-            url = $"{url}&redirectUrl={redirectUrl.UrlEncode()}";
-            Nav.NavigateTo(url);
+                + $"&flow={"Sign-in".UrlEncode()}"
+                + $"&appKind={HostInfo.AppKind:G}"
+                + $"&redirectUrl={MauiSettings.AuthCallbackUrl.UrlEncode()}";
+            var webAuthenticator = Hub.Services.GetRequiredService<MauiWebAuthenticator>();
+            await webAuthenticator.Run(url).ConfigureAwait(false);
         }
-        catch (Exception ex) {
-            Log.LogError(ex, "WebSignInOrSignOut failed (endpoint: {Endpoint})", endpoint);
+        catch (Exception e) {
+            Log.LogError(e, "WebSignIn failed (endpoint: {Endpoint})", endpoint);
         }
     }
 }
