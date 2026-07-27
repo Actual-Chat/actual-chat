@@ -214,7 +214,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         };
     }
 
-    [ComputeMethod] // Manually & automatically invalidated
+    // Consolidated: the local lease usually already holds the position the server is catching up to,
+    // so the invalidation that follows our own ChatPositions_Set recomputes to the same lid.
+    [ComputeMethod(ConsolidationDelay = 0.2)] // Manually & automatically invalidated
     public virtual async Task<long> GetReadEntryLid(ChatId chatId, CancellationToken cancellationToken)
     {
         // Notes chat should always appear as fully read
