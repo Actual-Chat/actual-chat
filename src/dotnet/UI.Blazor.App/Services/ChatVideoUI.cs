@@ -336,6 +336,7 @@ public sealed record VideoDevice(string DeviceId, string Label, string? Facing =
     public bool IsBack => Facing == "environment";
 }
 
+// TODO: is it VideoPanelMode indeed or after adding map activity it must become VisualPanelActivity?
 public enum VideoPanelMode
 {
     Inline,
