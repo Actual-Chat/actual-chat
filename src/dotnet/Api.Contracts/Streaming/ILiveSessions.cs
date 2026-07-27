@@ -17,7 +17,9 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<bool> HasRecorder(Session session, ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
+    // Consolidated server-side, so a GetCallState or chat-rules change that leaves the status alone
+    // isn't pushed to the caller. Zero delay - this is a ring/accept path.
+    [ComputeMethod(ConsolidationDelay = 0)]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<CallStatus> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
 

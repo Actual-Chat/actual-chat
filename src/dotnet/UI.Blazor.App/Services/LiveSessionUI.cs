@@ -29,9 +29,11 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0, ConsolidationComparer = typeof(ConversationContentComparer))]
     public virtual async Task<Conversation?> GetConversation(ChatId chatId, CancellationToken cancellationToken)
     {
+        // GetState churns far more often than the card it projects, and ToConversation() rebuilds it
+        // every time, so the comparer is what lets this absorb the churn.
         var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
         return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
     }

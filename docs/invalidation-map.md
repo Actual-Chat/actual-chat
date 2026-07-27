@@ -917,6 +917,16 @@ real client-side numbers rather than static reasoning.
 
 The original analysis, kept for the reasoning:
 
+> **Applied as option 1.** Option 2 was tried first, now that `ConsolidationComparer`
+> makes it possible: a `LiveSessionStateComparer` plus a consolidating protected
+> `GetConsolidatedState`. It broke ~15 `LiveSessionsTest` tests — `GetState` served a
+> stale `null` right after a write, because consolidation propagates asynchronously.
+> That's tolerable on the projections but not on `GetState`, whose writes are read back
+> immediately, so option 1 stands as the right one. Consolidated instead:
+> `LiveSessionUI.GetConversation` (with `ConversationContentComparer`) and
+> `ILiveSessions.GetCallStatus` — the latter server-side, so a no-op change never
+> reaches the caller at all. `LiveSessionUI.IsTranscriptionOn` came with §9.6.
+
 `GetState` self-invalidates on `SelfHealDelay` (`LiveSessionsBackend.cs:138`) and is
 invalidated by most call mutations, yet during a stable call the state is unchanged.
 It looks like the ideal target — but it isn't, for two compounding reasons:
