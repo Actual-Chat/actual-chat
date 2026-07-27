@@ -12,5 +12,5 @@ namespace ActualChat.App.Maui;
     [Intent.ActionView],
     Categories = [Intent.CategoryDefault, Intent.CategoryBrowsable],
     DataScheme = MauiSettings.AppScheme,
-    DataHost = "auth-complete")]
+    DataHost = MauiSettings.AuthCallbackHost)]
 public class WebAuthCallbackActivity : WebAuthenticatorCallbackActivity;
