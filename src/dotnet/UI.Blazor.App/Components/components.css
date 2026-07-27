@@ -182,6 +182,11 @@ body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.listening)) .
 body.hoverable .chat-header-control-panel .btn-start-call:hover {
     @apply text-[var(--green-40)];
 }
+.chat-header-control-panel .btn-start-call:disabled,
+body.hoverable .chat-header-control-panel .btn-start-call:disabled:hover {
+    @apply text-04;
+    @apply cursor-default;
+}
 
 .message-counter-with-time {
     @apply flex-y items-center gap-y-0.5;
