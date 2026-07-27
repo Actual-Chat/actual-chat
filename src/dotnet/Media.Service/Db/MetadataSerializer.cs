@@ -16,7 +16,7 @@ public static class MetadataSerializer
         var newItems = new PropertyBagItem[items.Count];
         var i = 0;
         foreach (var (key, value) in items)
-            newItems[i++] = new PropertyBagItem(key, TypeDecoratingUniSerialized.New(value));
+            newItems[i++] = new PropertyBagItem(key, TypeDecoratingUniSerialized.New<TypeSchema.Any, object>(value));
         return new PropertyBag(newItems);
     }
 
