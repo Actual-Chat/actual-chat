@@ -3,7 +3,7 @@
     if (State.IsInitial(out var m))
         return;
     // Hidden while a live conversation is active — the ChatActivityPanel owns that state.
-    if (!m.EnableIncompleteUI || m.IsActive)
+    if (!m.EnableIncompleteUI || m.IsBusy)
         return;
 }
 
@@ -38,7 +38,9 @@
             var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
             canCall = chat?.Rules.CanWriteAudio() ?? false;
         }
-        return new Model(true, activity.IsActive, canCall);
+        // A dialing call counts as busy: the ring is already ours, and offering the button again would
+        // re-notify every invitee and extend the ring window.
+        return new Model(true, activity.IsActive || activity.IsDialing, canCall);
     }
 
     private Task OnClick()
@@ -46,5 +48,5 @@
 
     // Nested types
 
-    public sealed record Model(bool EnableIncompleteUI, bool IsActive, bool CanCall);
+    public sealed record Model(bool EnableIncompleteUI, bool IsBusy, bool CanCall);
 }
