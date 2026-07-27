@@ -22,6 +22,10 @@
     <PackageReference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Linked so the appxmanifest protocol rewrite uses the same scheme constants as the app -->
+    <Compile Include="..\src\dotnet\Api\Constants.AppSchemes.cs" Link="Constants.AppSchemes.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <UpToDateCheckInput Condition="Exists('..\version.json')" Include="..\version.json" />
   </ItemGroup>
 </Project>

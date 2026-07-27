@@ -29,9 +29,11 @@
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
         <uap:VisualElements />
         <Extensions>
+          <!--  Protocol Name is replaced with voxt for the prod flavor by AppxManifestGenerator;
+                a locally built prod-flavor app keeps voxt-dev here and won't be activated  -->
           <uap:Extension Category="windows.protocol">
-              <uap:Protocol Name="myapp">
-                  <uap:DisplayName>My App</uap:DisplayName>
+              <uap:Protocol Name="voxt-dev">
+                  <uap:DisplayName>Voxt</uap:DisplayName>
               </uap:Protocol>
           </uap:Extension>
             <uap5:Extension Category="windows.startupTask">
