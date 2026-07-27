@@ -21,9 +21,7 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     [ComputeMethod]
-    public virtual async Task<VisualActivity> Get(
-        ChatId chatId,
-        CancellationToken cancellationToken = default)
+    public virtual async Task<VisualActivity> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
         if (chatId.Value.IsNullOrEmpty())
             return VisualActivity.None;

@@ -42,10 +42,10 @@ async function stopSharingIfAny(page: Page) {
         await page.keyboard.press('Escape').catch(() => { /* ignore */ });
         await page.waitForTimeout(300);
     }
-    const stopButton = page.locator('.call-map-panel .map-panel .btn-stop-sharing').first();
+    const stopButton = page.locator('.visual-activity-panel .map-panel .btn-stop-sharing').first();
     if (await stopButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
         await stopButton.click().catch(() => { /* ignore */ });
-        await page.locator('.call-map-panel .map-panel').first()
+        await page.locator('.visual-activity-panel .map-panel').first()
             .waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => { /* ignore */ });
     }
 }
@@ -110,7 +110,7 @@ describe('location sharing', () => {
 
         // assert — the inline map panel appears in the video-panel slot (#4067) with the
         // own-share affordances: stop button + countdown ring, no share CTA
-        const mapPanel = page.locator('.call-map-panel .map-panel').first();
+        const mapPanel = page.locator('.visual-activity-panel .map-panel').first();
         await mapPanel.waitFor({ state: 'visible', timeout: 20_000 });
         await mapPanel.locator('.btn-stop-sharing').first().waitFor({ state: 'visible', timeout: 10_000 });
         await mapPanel.locator('.c-countdown').first().waitFor({ state: 'visible', timeout: 10_000 });
@@ -241,7 +241,7 @@ describe('location sharing', () => {
         expect(await listRow.locator('.c-last-message .c-text i.icon-map-point').count()).toBe(1);
 
         // assert — there is no live-share map panel for a one-shot send (it's a static message)
-        const mapPanel = page.locator('.call-map-panel .map-panel').first();
+        const mapPanel = page.locator('.visual-activity-panel .map-panel').first();
         expect(await mapPanel.isVisible({ timeout: 2_000 }).catch(() => false)).toBe(false);
 
         // assert — the inline map is NOT interactive (no MapLibre interaction handlers attached)
@@ -301,7 +301,7 @@ describe('location sharing', () => {
             // The report loop must wait for the tracker's first fix before its first cycle; if it runs
             // once with an empty LastKnown it posts nothing and the share only starts a full UpdatePeriod
             // (10s) later — the "doesn't start on the first try" bug. Keep the timeout under UpdatePeriod.
-            const mapPanel = page.locator('.call-map-panel .map-panel').first();
+            const mapPanel = page.locator('.visual-activity-panel .map-panel').first();
             await mapPanel.waitFor({ state: 'visible', timeout: 8_000 });
 
             // A freshly picked share must show its full remaining time — e.g. 15 minutes reads
