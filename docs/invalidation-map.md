@@ -20,12 +20,12 @@ from production FusionMonitor reports on 2026-07-26/27 (§11.4).
 >
 > **Status:** every §9 item has shipped (§9.6 partly, by design; §9.7 superseded by the
 > live-session rework). The measurements in §11.4 predate all of it — they are the
-> *before* picture, and re-running §11.2 is what will show whether the fixes landed.
-> Fusion has also moved on since: 14.1.71 added `ConsolidationComparer`, which removed
-> the equality constraint §2.1 describes and unblocked §9.8.
+> *before* picture. Fusion has also moved on: 14.1.71 added `ConsolidationComparer`,
+> which removed the equality constraint §2.1 describes and unblocked §9.8.
 
 **Contents**
 
+- [Open items](#open-items) — what is *not* done
 - [1. Mechanics you need to read the map](#1-mechanics-you-need-to-read-the-map)
 - [2. Consolidation: what it does and when it silently does nothing](#2-consolidation-what-it-does-and-when-it-silently-does-nothing)
 - [3. The two amplification dimensions](#3-the-two-amplification-dimensions)
@@ -40,6 +40,20 @@ from production FusionMonitor reports on 2026-07-26/27 (§11.4).
 - [12. Methodology and limits](#12-methodology-and-limits)
 
 ---
+
+## Open items
+
+Everything in §9 has shipped. These are the only things left; none blocks another.
+
+| # | Open item | Where |
+|---|---|---|
+| 1 | **Re-measure — the one that matters.** Every fix here is unverified in production: §11.4's numbers are the *before* picture, taken on Fusion 14.1.47 before any of it landed. The single number that says whether this worked is the `StartAutoInvalidation` share, 44 % at peak and 73.7 % off-peak. `MediaBackend.Get`'s hit rate — 0.0 % on 97.5 k reads — is the second. | §11.2 queries, §11.4 baseline |
+| 2 | **Watch for a fast-retry regression.** The §9.1 classifier flip is the broadest behavioral change in this document: any compute method throwing an unrecognized error now caches it for ~30 s instead of retrying at 1 s. The test suites pass, but they cannot catch something that *relied* on fast retry to self-heal. | §9.1 |
+| 3 | **Confirm which error was spinning.** §9.1 shipped without pinning it down — the fix covers both candidates, so it wasn't blocking, but nobody has seen the actual exception. | §9.1 |
+| 4 | **Client-side measurement.** §9.3 and §9.6 rest on static reasoning; the server logs can't see `ChatUI` / `ChatListUI`. `debugUI.StartFusionMonitor()` closes this. | §11.5 |
+| 5 | **`CanRead` instead of consolidating full rules**, if `GetRules` still churns after §9.8. Suppresses more, costs a call-site migration. | §9.8 |
+| 6 | **`LocationUI.IsLive`** is the last unassessed predicate from §9.6. | §9.6 |
+| 7 | **Split `Accounts.GetOwn` from `~Accounts.GetOwn`** when reading the next report — the pre-14.1.71 numbers conflate consolidation source and target. | §1.3 note 3 |
 
 ## 1. Mechanics you need to read the map
 
@@ -722,11 +736,12 @@ Two plausible sources, both reachable with ordinary client traffic:
 
 Both produce a *permanent* error for a given key, so the retry can never succeed.
 
-**Diagnose first, then pick the fix** — the logs show the invalidation but not the
-exception. Add a one-off `Log.LogWarning` on the throwing paths (or capture
+**Still unconfirmed** — the logs show the invalidation but not the exception, and the
+fix shipped without pinning it down, since options 1 and 2 below cover both candidates.
+To settle it, add a one-off `Log.LogWarning` on the throwing paths (or capture
 `Computed.Error` for these two categories) on one pod for a few minutes.
 
-Then, in order of preference:
+The options, in order of preference — option 2 is what shipped:
 
 1. **Return a value instead of throwing** for the expected-invalid cases. An invalid
    session is a normal client state, not an exception: `Get` returning `null` makes
@@ -899,7 +914,8 @@ rarely moves; skipped where it doesn't:
 | `ChatUI.GetUnreadCount` | `Trimmed<int>` | ✅ — collapses `ChatUI.Get`, which fires on news, mentions, read position or settings |
 | `ChatVideoUI.IsOwnCameraRecording` / `IsOwnScreenCasting` | `bool` | ❌ — read local state set by the user's own click, so a delay lags their own feedback; only upstream is the now-consolidated `IsVideoAvailable` |
 | `TranslationUI.MustTranslate` / `NeedsTranslation` / `IsEnabled` | `bool(?)` | ❌ — derive from settings that rarely change, so there is nothing to suppress |
-| `LocationUI.IsLive`, `LiveSessionUI.GetCallStatus` | `bool` / `CallStatus` | — not assessed; revisit with §11.5 data |
+| `LiveSessionUI.GetCallStatus` | `CallStatus` | ✅ — consolidated at its source, `ILiveSessions.GetCallStatus` |
+| `LocationUI.IsLive` | `bool` | — not assessed; revisit with §11.5 data |
 
 These are individually small but collectively broad: they're the leaves the Blazor
 components actually subscribe to, so suppressing here prevents re-renders even when
