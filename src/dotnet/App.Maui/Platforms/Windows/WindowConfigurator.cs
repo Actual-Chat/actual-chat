@@ -22,15 +22,21 @@ internal static partial class WindowConfigurator
                 }
 
                 try {
-                    if (window.GetAppWindow() is { Presenter: Microsoft.UI.Windowing.OverlappedPresenter presenter })
+                    if (window.GetAppWindow() is { Presenter: Microsoft.UI.Windowing.OverlappedPresenter presenter }
+                        && presenter.State == Microsoft.UI.Windowing.OverlappedPresenterState.Minimized)
                         presenter.Restore();
                 }
                 catch {
                     // In unpackaged/AOT mode, GetAppWindow may fail
                 }
                 window.Activate();
-                // Activate() alone rarely wins the foreground lock from the browser we're returning from.
-                SetForegroundWindow(WindowNative.GetWindowHandle(window));
+                try {
+                    // Activate() alone rarely wins the foreground lock from the browser we're returning from.
+                    SetForegroundWindow(WindowNative.GetWindowHandle(window));
+                }
+                catch {
+                    // GetWindowHandle may fail in unpackaged/AOT mode, same as GetAppWindow above
+                }
             });
         };
 
