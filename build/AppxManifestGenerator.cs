@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
+using ActualChat;
 
 namespace Build;
 
@@ -14,6 +15,7 @@ public static class AppxManifestGenerator
         await Generate(appVersion,
             isProduction ? "" : ".Dev",
             isProduction ? "" : " Dev",
+            isProduction ? Constants.AppSchemes.Prod : Constants.AppSchemes.Dev,
             cancellationToken).ConfigureAwait(false);
         Utils.SetGithubOutput("AppVersion", appVersion);
     }
@@ -42,6 +44,7 @@ public static class AppxManifestGenerator
         string version,
         string packageIdentityNameSuffix,
         string startupTaskDisplayNameSuffix,
+        string appScheme,
         CancellationToken cancellationToken)
     {
         var manifestPath = "src/dotnet/App.Maui/Platforms/Windows/Package.appxmanifest";
@@ -51,6 +54,7 @@ public static class AppxManifestGenerator
             UpdateAttr("//default:Package/default:Identity", "Version",version);
         UpdateAttr("//default:Package/default:Identity", "Name",$"ActualChatInc.ActualChat{packageIdentityNameSuffix}");
         UpdateAttr("//uap5:StartupTask", "DisplayName", $"Voxt{startupTaskDisplayNameSuffix}");
+        UpdateAttr("//uap:Extension[@Category='windows.protocol']/uap:Protocol", "Name", appScheme);
 
         await Write(manifestPath, doc, cancellationToken).ConfigureAwait(false);
 
@@ -77,6 +81,7 @@ public static class AppxManifestGenerator
         var nsManager = new XmlNamespaceManager(new NameTable());
         nsManager.AddNamespace("", "http://schemas.microsoft.com/appx/manifest/foundation/windows10");
         nsManager.AddNamespace("default", "http://schemas.microsoft.com/appx/manifest/foundation/windows10");
+        nsManager.AddNamespace("uap", "http://schemas.microsoft.com/appx/manifest/uap/windows10");
         nsManager.AddNamespace("uap5", "http://schemas.microsoft.com/appx/manifest/uap/windows10/5");
         return (xDocument, nsManager);
     }
