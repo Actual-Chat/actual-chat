@@ -17,6 +17,12 @@ from production FusionMonitor reports on 2026-07-26/27 (§11.4).
 > `MediaBackend.Get` alone is 97.5 k reads at a **0.0 %** hit rate), not an
 > invalidation problem at all.
 > §8 and §9 are ordered by the measurements; §4–§7 remain the structural reference.
+>
+> **Status:** every §9 item has shipped (§9.6 partly, by design; §9.7 superseded by the
+> live-session rework). The measurements in §11.4 predate all of it — they are the
+> *before* picture, and re-running §11.2 is what will show whether the fixes landed.
+> Fusion has also moved on since: 14.1.71 added `ConsolidationComparer`, which removed
+> the equality constraint §2.1 describes and unblocked §9.8.
 
 **Contents**
 
@@ -677,7 +683,25 @@ Ordered by measured value. §9.1 and §9.2 are **not** consolidation work — th
 measurements say they dominate, so they come first. Consolidation proper starts at
 §9.3.
 
-### 9.1 Stop the error-retry spin on `SessionsBackend.Get` / `Accounts.GetOwn`
+**Status:** §9.1–§9.6 and §9.8 have shipped; §9.7 is superseded by the live-session
+rework. What remains is re-measuring against the numbers in §11.4, and the
+client-side measurement of §11.5 that would size §9.3 and §9.6 properly.
+
+A note on delay values, learned while applying these: the delay is a *batching*
+knob, not the thing that does the work. The dedup — recompute, compare, swallow —
+happens at any delay, so prefer a short one (0.2 s is what these use) unless the
+recompute is expensive enough that batching bursts is worth the added latency.
+
+### 9.1 Stop the error-retry spin on `SessionsBackend.Get` / `Accounts.GetOwn` — **done**
+
+> **Applied.** `ComputedTransiencyResolver` (`Core/Errors/`) is registered as
+> `TransiencyResolver<Computed>` in `CoreModule`, inverting the default so unrecognized
+> errors are `NonTransient`; `DbException`, `SocketException` and `HttpRequestException`
+> stay `Transient`, as does everything `CoreOnly` classifies. `SessionsBackend.Get` and
+> `Accounts.GetOwn` also carry `NonTransientErrorInvalidationDelay = 120`. It is
+> deliberately *not* a replacement of the static `TransiencyResolvers.PreferTransient`,
+> which `DbContextBuilder` also registers as `TransiencyResolver<TDbContext>` — that one
+> drives DB **retries**, and flipping it would stop them.
 
 **44.0 % of all server-side invalidations at peak, and 73.7 % off-peak.**
 Pure waste: nothing changed, an error was re-tried.
@@ -717,7 +741,14 @@ Then, in order of preference:
 Expect this single fix to remove roughly a third of peak and four fifths of off-peak
 server invalidations, plus the corresponding DB load.
 
-### 9.2 Add `MinCacheDuration` to the hot backend contracts
+### 9.2 Add `MinCacheDuration` to the hot backend contracts — **done globally**
+
+> **Applied**, but not as written below: rather than per-method attributes,
+> `ComputedOptions.Default.MinCacheDuration` is now 10 s
+> (`ApiContractsModuleInitializer`), so every compute method without an explicit value
+> gets a residency floor. Re-measure before adding the per-method values proposed here —
+> the floor may already recover most of the hit rate, and a 300 s value on a
+> high-cardinality key like `MediaBackend.Get` costs real memory.
 
 Not an invalidation fix, but the largest measured win available and the cheapest to
 apply. From §8.1, in descending order of measured waste:
@@ -768,11 +799,11 @@ not by retention. The primer's invalidate-then-refill is deliberate
 almost no read is served from cache between primes. Worth confirming the primed value
 is actually picked up by the recompute rather than every reader re-querying.
 
-### 9.3 `ChatUI.GetReadEntryLid` — add `ConsolidationDelay = 0.5`
+### 9.3 `ChatUI.GetReadEntryLid` — **done** (`ConsolidationDelay = 0.2`)
 
 ```csharp
-// src/dotnet/UI.Blazor.App/Services/ChatUI.cs:217
-[ComputeMethod(ConsolidationDelay = 0.5)]
+// src/dotnet/UI.Blazor.App/Services/ChatUI.cs
+[ComputeMethod(ConsolidationDelay = 0.2)]
 public virtual async Task<long> GetReadEntryLid(ChatId chatId, CancellationToken cancellationToken)
 ```
 
@@ -783,10 +814,10 @@ public virtual async Task<long> GetReadEntryLid(ChatId chatId, CancellationToken
   before `ChatUI.Get`. This kills the "my own scroll invalidates my own sidebar"
   loop.
 - **Client-local, so consolidation applies** (§2.2).
-- **Risk:** unread counts lag by ≤ 0.5 s. `ChatListUI`'s counters already carry
-  `InvalidationDelay = 0.6`, so this is within existing tolerances.
+- **Risk:** unread counts lag by ≤ 0.2 s — well inside the `InvalidationDelay = 0.6`
+  the `ChatListUI` counters already carry.
 
-### 9.4 `UserPresences.Get` — small win; remove the `GetLastCheckIn` one regardless
+### 9.4 `UserPresences.Get` — **done**; small win, and `GetLastCheckIn`'s was removed
 
 > **Applied.** `ConsolidationDelay = 0.5` now sits on `Get` and is gone from
 > `GetLastCheckIn`. Kept at 0.5 s rather than the 1 s suggested below to stay closer
@@ -801,7 +832,7 @@ change (§7.3). Consolidation cannot suppress those.
 
 ```csharp
 // src/dotnet/Api.Contracts/Users/IUserPresences.cs:8
-[ComputeMethod(MinCacheDuration = 30, ConsolidationDelay = 1)]
+[ComputeMethod(MinCacheDuration = 30, ConsolidationDelay = 0.5)]
 Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
 ```
 
@@ -830,12 +861,13 @@ the same author's presence is computed once per viewing session. Re-keying it to
 Measured server-side fan-out is only ≈ 1.24×, so size this against a peak
 measurement before committing to the refactor.
 
-### 9.5 `Chats.IsEntryReadByMentionedUser` — add `ConsolidationDelay = 1`
+### 9.5 `Chats.IsEntryReadByMentionedUser` — **done** (`ConsolidationDelay = 0.2`)
 
 ```csharp
-// src/dotnet/Chat.Service/Chats.cs:264
-[ComputeMethod(ConsolidationDelay = 1)]   // declare on IChats
-Task<bool> IsEntryReadByMentionedUser(Session session, ChatEntryId chatEntryId, MentionRef mentionId, CancellationToken cancellationToken);
+// src/dotnet/Api.Contracts/Chat/IChats.cs
+[ComputeMethod(ConsolidationDelay = 0.2)]
+Task<bool> IsEntryReadByMentionedUser(
+    Session session, ChatEntryId chatEntryId, MentionRef mentionId, CancellationToken cancellationToken);
 ```
 
 - **Equality:** `bool`. ✅
@@ -845,30 +877,40 @@ Task<bool> IsEntryReadByMentionedUser(Session session, ChatEntryId chatEntryId, 
   them**, and the answer changes at most once. The code already carries a
   `// TODO: Do not track dependency after resulting to true` at
   `Chats.cs:292` — consolidation is the cheap version of that TODO.
-- **Risk:** the ✓ appears ≤ 1 s later.
+- **Risk:** the ✓ appears ≤ 0.2 s later.
 
-### 9.6 `ChatUI.GetUnreadCount` and the `ChatVideoUI` / `LiveStreamUI` / `TranslationUI` predicate family
+### 9.6 The derived predicate family — **partly done** (`ConsolidationDelay = 0.2`)
 
 All return `bool` / `int` / `Trimmed<int>` / enums, all sit downstream of hot roots,
-and all are client-local. Candidates in descending order of dependents:
+and all are client-local. Applied where a churny upstream collapses to a value that
+rarely moves; skipped where it doesn't:
 
-| Method | Returns | Site |
+| Method | Returns | Consolidated? |
 |---|---|---|
-| `ChatVideoUI.IsVideoAvailable` | `bool` | `ChatVideoUI.cs:79` |
-| `LocationUI.IsLive` | `bool` | `Location/LocationUI.cs:82` |
-| `ChatVideoUI.IsOwnCameraRecording` / `IsOwnScreenCasting` | `bool` | `ChatVideoUI.Recording.cs:34,44` |
-| `LiveStreamUI.IsAnyoneStreaming` / `IsAuthorStreaming` | `bool` | `LiveStreamUI.cs:24,31` |
-| `ChatVideoUI.GetVideoStreamMemberCount` / `LiveVideoStreams.GetMemberCount` | `int` | `ChatVideoUI.Playback.cs:19`, `LiveVideoStreams.cs:65` |
-| `TranslationUI.MustTranslate` / `NeedsTranslation` / `IsEnabled` | `bool(?)` | `TranslationUI/TranslationUI.cs:93,60,30` |
-| `ChatUI.GetUnreadCount` | `Trimmed<int>` | `ChatUI.cs:267` |
-| `LiveSessionUI.IsTranscriptionOn` / `GetCallStatus` | `bool` / `CallStatus` | `LiveSessionUI.cs:48,86` |
+| `LiveStreamUI.IsAnyoneStreaming` / `IsAuthorStreaming` | `bool` | ✅ — `GetStreamingAuthorIds` rebuilds its array every update |
+| `ChatVideoUI.GetVideoStreamMemberCount` | `int` | ✅ — same source |
+| `LiveSessionUI.IsTranscriptionOn` | `bool` | ✅ — collapses `LiveSessionState` |
+| `ChatVideoUI.IsVideoAvailable` | `bool` | ✅ — collapses the chat record and its rules |
+| `ChatUI.GetUnreadCount` | `Trimmed<int>` | ✅ — collapses `ChatUI.Get`, which fires on news, mentions, read position or settings |
+| `ChatVideoUI.IsOwnCameraRecording` / `IsOwnScreenCasting` | `bool` | ❌ — read local state set by the user's own click, so a delay lags their own feedback; only upstream is the now-consolidated `IsVideoAvailable` |
+| `TranslationUI.MustTranslate` / `NeedsTranslation` / `IsEnabled` | `bool(?)` | ❌ — derive from settings that rarely change, so there is nothing to suppress |
+| `LocationUI.IsLive`, `LiveSessionUI.GetCallStatus` | `bool` / `CallStatus` | — not assessed; revisit with §11.5 data |
 
 These are individually small but collectively broad: they're the leaves the Blazor
 components actually subscribe to, so suppressing here prevents re-renders even when
 an upstream invalidation was unavoidable. Apply `ConsolidationDelay` in the 0.2–0.5 s
-range and measure. Treat this as a batch after §9.3 and §9.5 land.
+The ones above use 0.2 s. The unassessed rows are worth revisiting once §11.5 gives
+real client-side numbers rather than static reasoning.
 
-### 9.7 `LiveSessionsBackend.GetState` — blocked on equality; consolidate its consumers instead
+### 9.7 `LiveSessionsBackend.GetState` — **superseded**
+
+> The live-session rework consolidated `GetVisibleStartLid`, `GetLiveConversation`,
+> `ListParticipants` and `HasRecorder` onto protected `GetConsolidated*` methods, with
+> `ConsolidationComparer`s where the result type compares by reference. `GetState`
+> itself stays unconsolidated and is filtered at its consumers, which is what this
+> section recommended. See §10 for the resulting audit rows.
+
+The original analysis, kept for the reasoning:
 
 `GetState` self-invalidates on `SelfHealDelay` (`LiveSessionsBackend.cs:138`) and is
 invalidated by most call mutations, yet during a stable call the state is unchanged.
@@ -899,24 +941,36 @@ A custom `FusionDefaultDelegates.ComputedOutputEqualityComparer` would also work
 it's a global settable static — changing it affects every consolidating computed in
 the process. Not worth it for one type.
 
-### 9.8 `ChatsBackend.GetRules` — high value, blocked on equality
+### 9.8 `ChatsBackend.GetRules` — **done** (`GetConsolidatedRules`, 0.2 s)
 
-110 downstream methods make this the most valuable consolidation target by graph
-depth. It is currently impossible: `AuthorRules.Equals` is `ReferenceEquals` by
-explicit design (`Api/Chat/AuthorRules.cs:44`), and `GetRules` constructs a new
-`AuthorRules` on most paths.
+110 downstream methods make this the widest edge in the graph: `RequireCanRead` /
+`CanRead` gate nearly every `Chats.*` / `Authors.*` / `Roles.*` / `LiveSessions.*`
+method on it, and it recurses for place and thread chats (§5.2). It depends on the
+chat record, the account, the author and the role list, so a change to any of them
+re-runs every permission check for that principal — almost always to the same
+`Permissions`.
 
-Two viable routes, in order of preference:
+This was listed as impossible while the only lever was the type's own `Equals`.
+`ConsolidationComparer` (Fusion 14.1.71) removed that constraint, and
+`AuthorRulesComparer` (`Api/Chat/`) compares `ChatId` and `Permissions` by value and
+`Author` / `Account` **by reference**. That last choice is deliberate and
+conservative: those two come straight out of `AuthorsBackend` / `AccountsBackend`, so
+an identical reference means identical content, whereas comparing them by `Id` or
+`Version` would hide changes their own fields carry — an avatar edit doesn't bump
+`AuthorFull.Version`. It still swallows the common case, where `GetRules` is
+invalidated by something other than the author or account.
 
-1. **Consolidate a narrower derived value instead.** Most callers only need
-   `CanRead()`. Introduce `[ComputeMethod(ConsolidationDelay = 1)] Task<bool> CanRead(chatId, principalId)`
-   and route `RequireCanRead`/`CanRead` through it. A `bool` consolidates perfectly,
-   and this converts the widest edge in the graph into one that only fires when
-   someone's read access actually changes. This is the highest-leverage structural
-   change in this document.
-2. Give `AuthorRules` value equality. Riskier — the reference-equality choice is
-   deliberate and probably load-bearing for parameter comparison in Blazor
-   (`ByValueParameterComparer` is applied selectively elsewhere).
+The consolidation sits on a `protected virtual GetConsolidatedRules` that the public
+`GetRules` derives from, per §2.2: `IChatsBackend` is `Server`-mode today, but
+`ForceDistributedModeForServerModeServices` flips it and `Chat.Contracts`'
+`AssemblyAttributes.cs` marks `ChatBackend` as `// TBD: -> Distributed` — either of
+which would turn `ConsolidationDelay` on an RPC-exposed method into a startup error.
+
+The narrower alternative this section used to prefer — a consolidated
+`Task<bool> CanRead(chatId, principalId)` that `RequireCanRead` routes through —
+is still available and would suppress more, since `CanRead` changes even less often
+than the full rules. It costs a call-site migration; worth revisiting if measurement
+shows `GetRules` still churning.
 
 ### 9.9 What **not** to consolidate
 
@@ -943,6 +997,10 @@ Two viable routes, in order of preference:
 | `LiveSessionsBackend.GetConsolidatedParticipants` | 0.5 s | `ApiArray<AuthorId>` | **✅ yes** — *now*, via `ConsolidationComparer`. `ApiArray<T>.Equals` compares the backing array by reference (`ApiArray.cs:305`) and the method builds a fresh one via `.ToApiArray()` on every compute, so the default comparer could never suppress |
 | `LiveSessionsBackend.GetConsolidatedLiveConversation` | 0 s | `Conversation?` | **✅ yes** — via `ConsolidationComparer`; `Conversation` compares by reference and `ToConversation()` rebuilds it every time |
 | `LiveSessionsBackend.GetConsolidatedVisibleStartLid` | 0 s | `long?` | **✅ yes** — value equality, no comparer needed |
+| `ChatsBackend.GetConsolidatedRules` | 0.2 s | `AuthorRules` | **✅ yes** — via `ConsolidationComparer`. `AuthorRulesComparer` compares `ChatId`/`Permissions` by value and `Author`/`Account` by reference, so only a real author or account change propagates. On a protected method, per §2.2 |
+| `ChatUI.GetReadEntryLid` | 0.2 s | `long` | **✅ yes** — client-local; the local lease usually already holds the position the server is catching up to |
+| `IChats.IsEntryReadByMentionedUser` | 0.2 s | `bool` | **✅ yes** — monotone, so after the single false→true flip every later invalidation is swallowed |
+| `LiveStreamUI.IsAnyoneStreaming` / `IsAuthorStreaming`, `ChatVideoUI.GetVideoStreamMemberCount` / `IsVideoAvailable`, `LiveSessionUI.IsTranscriptionOn`, `ChatUI.GetUnreadCount` | 0.2 s | `bool` / `int` / `Trimmed<int>` | **✅ yes** — client-local leaves; see §9.6 for what was deliberately left out |
 
 ### 10.1 What the two former ❌ rows needed
 
