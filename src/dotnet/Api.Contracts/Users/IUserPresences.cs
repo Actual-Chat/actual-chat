@@ -5,9 +5,11 @@
 /// </summary>
 public interface IUserPresences : IComputeService
 {
-    [ComputeMethod(MinCacheDuration = 30)]
-    Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
+    // Consolidated here, not on GetLastCheckIn: a check-in moves the timestamp every time, but rarely
+    // the presence - and GetLastCheckIn's own readers want each new timestamp.
     [ComputeMethod(MinCacheDuration = 30, ConsolidationDelay = 0.5)]
+    Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
+    [ComputeMethod(MinCacheDuration = 30)]
     Task<ApiNullable8<Moment>> GetLastCheckIn(UserId userId, CancellationToken cancellationToken);
 
     [CommandHandler]

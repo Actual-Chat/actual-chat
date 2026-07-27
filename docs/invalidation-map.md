@@ -60,8 +60,8 @@ The other three origin classes:
 |---|---|---|
 | Command invalidation block | `Invalidation.IsActive` | all `*Backend.OnXxx` handlers |
 | Completion handler | `context.Operation.AddCompletionHandler` + `Invalidation.Begin()` | `UserPresencesBackend.OnCheckIn` (`UserPresencesBackend.cs:64`) |
-| Self-invalidation (timer) | `Computed.GetCurrent().Invalidate(delay)` | `UserPresences.Get`, `LiveSessionsBackend.GetState`/`ListParticipants`/`HasRecorder`/`GetCallState`, `SharedLocationsBackend`, `LiveVideoBackend`, `LiveTime` |
-| Non-command direct invalidation | `using (Invalidation.Begin())` outside a handler | `ChatUI.EnableSearch` (`ChatUI.cs:250`), `LiveSessionsBackend.InvalidateState` (`LiveSessionsBackend.cs:1084`) |
+| Self-invalidation (timer) | `Computed.GetCurrent().Invalidate(delay)` | `UserPresences.Get`, `LiveSessionsBackend.GetState`/`GetConsolidatedParticipants`/`GetConsolidatedHasRecorder`/`GetCallState`, `SharedLocationsBackend`, `LiveVideoBackend`, `LiveTime` |
+| Non-command direct invalidation | `using (Invalidation.Begin())` outside a handler | `ChatUI.EnableSearch` (`ChatUI.cs:250`), `LiveSessionsBackend.InvalidateState` |
 
 Once a root is invalidated, Fusion walks its **dependents** transitively. Every
 compute method that awaited it during its own computation is invalidated too, then
@@ -213,6 +213,21 @@ So:
 - the client's replica of `IChats.GetNews` & co → **does not**. To damp an
   RPC-delivered invalidation on the client, consolidate a client-local wrapper.
 
+The sharp edge is a **`Distributed` backend service**: its RPC-exposed methods go
+through `RemoteComputeMethodFunction` *even on the shard owner*, which executes the
+body in-process yet still produces a plain `ComputeMethodComputed`. So consolidation
+is dropped on both sides, not just on callers. Since Fusion 14.1.71 that's a startup
+error rather than a silent no-op. The remedy is a non-RPC-visible (`protected
+virtual`) compute method carrying the consolidation, with the public method deriving
+from it — the shape `LiveSessionsBackend.GetConsolidated*` uses.
+
+One consequence worth knowing when wiring the writers: invalidate the **consolidating**
+method, not the public one. `ConsolidatingComputed` is an `IHasInvalidationTarget` whose
+target is its consolidation source, and `Invalidation.Begin()` follows that
+(`ComputedImpl.Helpers.cs:47-48`). Invalidating the public wrapper instead only
+invalidates that derived computed, which then re-reads the still-consistent
+consolidating one and keeps serving the stale value.
+
 ### 2.3 Related knobs, and when to prefer them
 
 | Knob | Effect | Use when |
@@ -347,12 +362,15 @@ copying elsewhere.
 
 ### 4.7 Live sessions / calls — `LiveSessionsBackend` (`LiveSessionsBackend.cs:1084-1120`)
 
-Four explicit invalidators: `InvalidateState`, `InvalidateLiveView`,
-`InvalidateGet`, `InvalidateListParticipants` / `InvalidateHasRecorder`, called
-from ~15 sites. On top of that, four compute methods **self-invalidate on a timer**
-(`GetState`, `ListParticipants`, `HasRecorder`, `GetCallState`) so stale state heals
-without an explicit signal. During an active call this is a continuous background
-invalidation source, per chat, independent of user activity.
+Three explicit invalidators: `InvalidateState`, `InvalidateGet`,
+`InvalidateListParticipants` / `InvalidateHasRecorder`, called from ~15 sites. On top
+of that, four compute methods **self-invalidate on a timer** (`GetState`,
+`GetConsolidatedParticipants`, `GetConsolidatedHasRecorder`, `GetCallState`) so stale
+state heals without an explicit signal. During an active call this is a continuous
+background invalidation source, per chat, independent of user activity — but most of
+it now stops at the consolidating layer (§10) instead of reaching the conversation
+metadata cache. `InvalidateLiveView` is gone: `GetVisibleStartLid` /
+`GetLiveConversation` derive from `GetState` again, so they invalidate transitively.
 
 ### 4.8 Other roots
 
@@ -534,9 +552,9 @@ consolidation targets (§9.3, §9.5).
 AppPresenceReporter (every 45 s while active)
 └─ UserPresences.OnCheckIn → UserPresencesBackend.OnCheckIn
    └─ UserPresencesBackend.GetLastCheckIn(user)          ← Moment, changes EVERY time
-      └─ UserPresences.GetLastCheckIn(user)              ← ConsolidationDelay = 0.5 — cannot help, value really changed
+      └─ UserPresences.GetLastCheckIn(user)              ← no consolidation: the value really changed
          ├─ Authors.GetLastCheckIn(session, chat, author)
-         └─ UserPresences.Get(user)  → Presence          ← almost ALWAYS unchanged (Online → Online)
+         └─ UserPresences.Get(user)  → Presence          ← almost ALWAYS unchanged (Online → Online); consolidated here
             ├─ Authors.GetPresence(session, chat, author)   ← subscribed per rendered author badge
             └─ ChatUI.GetState(chat)                        ← per open chat
 ```
@@ -566,12 +584,13 @@ See §9.4 for what this does and doesn't justify.
 
 ### 7.4 A live call is in progress
 
-`LiveSessionsBackend.GetState` / `ListParticipants` / `HasRecorder` / `GetCallState`
-each self-invalidate on a `SelfHealDelay` timer while the call is active, and are
-additionally invalidated by ~15 explicit call sites. Downstream:
-`LiveSessions.*` → `LiveSessionUI.*` → the call UI, per participant. `HasRecorder`
-(`bool`) consolidates correctly today; `ListParticipants` (`ApiArray`) does not —
-§10.
+`LiveSessionsBackend.GetState` / `GetConsolidatedParticipants` /
+`GetConsolidatedHasRecorder` / `GetCallState` each self-invalidate on a
+`SelfHealDelay` timer while the call is active, and are additionally invalidated by
+~15 explicit call sites. Downstream: `LiveSessions.*` → `LiveSessionUI.*` → the call
+UI, per participant. Both the participant list and the recorder flag consolidate
+correctly now (§10); `GetCallState` still doesn't, and `GetState`'s own churn is
+absorbed by the consolidating projections rather than by `GetState` itself.
 
 ### 7.5 A session's `LastSeenAt` is refreshed (hourly)
 
@@ -769,6 +788,11 @@ public virtual async Task<long> GetReadEntryLid(ChatId chatId, CancellationToken
 
 ### 9.4 `UserPresences.Get` — small win; remove the `GetLastCheckIn` one regardless
 
+> **Applied.** `ConsolidationDelay = 0.5` now sits on `Get` and is gone from
+> `GetLastCheckIn`. Kept at 0.5 s rather than the 1 s suggested below to stay closer
+> to the previous latency budget; the attribute-only change is wire-compatible with
+> `release/v2.13`.
+
 **Downgraded from the pre-measurement draft.** The a-priori case was that check-ins
 drive presence churn and the recomputed `Presence` almost never changes. Production
 says presence churn is ~25 % of server invalidations but is dominated by the
@@ -855,8 +879,11 @@ It looks like the ideal target — but it isn't, for two compounding reasons:
   **by reference**;
 - every compute deserializes a fresh instance from Redis (`SafeGet`, `LiveSessionsBackend.cs:105`).
 
-The two together guarantee the outputs never compare equal, so a `ConsolidationDelay`
-here would be a pure delay — the same failure mode as `ListParticipants` in §10.
+The two together guarantee the outputs never compare equal under the *default*
+comparer, so a bare `ConsolidationDelay` here would be a pure delay — the failure mode
+`ListParticipants` used to have (§10). Since Fusion 14.1.71 a third option exists:
+supply a `ConsolidationComparer`, which is how `GetConsolidatedLiveConversation`
+consolidates a rebuilt `Conversation`.
 
 Options, in order of preference:
 
@@ -910,28 +937,27 @@ Two viable routes, in order of preference:
 |---|---|---|---|
 | `IAccounts.GetOwn` (`Api.Contracts/Users/IAccounts.cs:29`) | 0.01 s | `AccountFull` (ref eq) | **✅ yes** — pass-through of an unchanged `AccountsBackend.Get` reference. Textbook usage; see §7.5 |
 | `ChatsBackend.GetCurrentYear` (`Chat.Service/ChatsBackend.ContentItems.cs:151`) | 1 s | `int` | **✅ yes** — the documented intent (only the year-flip propagates) is exactly right |
-| `ILiveSessionsBackend.HasRecorder` (`Streaming.Contracts/ILiveSessionsBackend.cs:26`) | 0.5 s | `bool` | **✅ yes** |
+| `LiveSessionsBackend.GetConsolidatedHasRecorder` | 0.5 s | `bool` | **✅ yes** — *now*. It used to sit on `ILiveSessionsBackend.HasRecorder`, where it was inert: an RPC-exposed method of a `Distributed` service is served by `RemoteComputeMethodFunction`, so §2.2 applied and the `bool`'s value equality never got a chance. Moved to a protected method that the public one derives from |
 | `LiveStreamUI.GetLastActivityServerTime` (`UI.Blazor.App/Services/LiveStreamUI.cs:37`) | 0.5 s | `Moment?` | **✅ yes** — struct, value equality. While anyone streams it returns `null`; while idle it returns a cached first-idle `Moment`. Both are stable across recomputes, so the churn from `GetStreamingAuthorIds` is absorbed |
-| `IUserPresences.GetLastCheckIn` (`Api.Contracts/Users/IUserPresences.cs:10`) | 0.5 s | `ApiNullable8<Moment>` | **❌ no** — the value changes on every check-in by construction. Pure cost. Move the consolidation to `Get` (§9.4) |
-| `ILiveSessionsBackend.ListParticipants` (`Streaming.Contracts/ILiveSessionsBackend.cs:24`) | 0.5 s | `ApiArray<AuthorId>` | **❌ no** — `ApiArray<T>.Equals` compares the backing array by reference (`ApiArray.cs:305`) and `LiveSessionsBackend.cs:252-258` builds a fresh one via `.ToApiArray()` on every compute. It never suppresses; it only delays the self-heal loop by 0.5 s |
+| `IUserPresences.Get` (`Api.Contracts/Users/IUserPresences.cs:10`) | 0.5 s | `Presence` | **✅ yes** — *now*. The consolidation used to sit on `GetLastCheckIn`, where the value moves on every check-in by construction, so it never suppressed anything; `Get` is where the value is stable across check-ins. `GetLastCheckIn`'s own readers (`Authors.GetLastCheckIn` → `AuthorPresenceText`) want each new timestamp anyway |
+| `LiveSessionsBackend.GetConsolidatedParticipants` | 0.5 s | `ApiArray<AuthorId>` | **✅ yes** — *now*, via `ConsolidationComparer`. `ApiArray<T>.Equals` compares the backing array by reference (`ApiArray.cs:305`) and the method builds a fresh one via `.ToApiArray()` on every compute, so the default comparer could never suppress |
+| `LiveSessionsBackend.GetConsolidatedLiveConversation` | 0 s | `Conversation?` | **✅ yes** — via `ConsolidationComparer`; `Conversation` compares by reference and `ToConversation()` rebuilds it every time |
+| `LiveSessionsBackend.GetConsolidatedVisibleStartLid` | 0 s | `long?` | **✅ yes** — value equality, no comparer needed |
 
-The two ❌ rows are worth fixing regardless of the rest of this document: they cost
-an extra computed and an extra recompute per invalidation and return nothing.
+### 10.1 What the two former ❌ rows needed
 
-For `ListParticipants` specifically, the cheapest fix is to make `ApiArray<T>`
-sequence-comparable — but that's a Fusion-wide change with broad implications.
-The local fix is to keep the previous result and return the *same instance* when the
-sequence is unchanged, which makes reference equality hold:
+Both are fixed as of Fusion 14.1.71, which added
+`ComputeMethodAttribute.ConsolidationComparer` — the `IEqualityComparer<T>` used to
+compare consecutive outputs. That removes the need for the workaround this section
+used to recommend for `ListParticipants` (returning the previous instance so
+reference equality holds), and for the Fusion-wide change it rejected (making
+`ApiArray<T>` sequence-comparable). The per-method comparers now live next to the
+types they compare: `ApiArrayComparer<T>` (`Core/Comparison/`) and
+`ConversationContentComparer` (`Api/Chat/`).
 
-```csharp
-// sketch — LiveSessionsBackend.ListParticipants
-var authorIds = /* … */.ToApiArray();
-if (Computed.GetExisting(…)?.Value is { } prev && prev.SequenceEqual(authorIds))
-    authorIds = prev;
-```
-
-Verify against the actual API before adopting; the principle (return the old
-instance when the value is unchanged) is what matters.
+14.1.71 also turned the §2.2 precondition into a startup error for `Distributed`
+services, which is what surfaced the `HasRecorder` / `ListParticipants` rows as
+inert rather than merely suboptimal.
 
 ---
 
