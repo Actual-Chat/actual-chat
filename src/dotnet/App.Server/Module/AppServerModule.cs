@@ -84,6 +84,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // - https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins?view=aspnetcore-6.0
         // - https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-6.0
         app.UseForwardedHeaders();
+        app.UseResponseHeaders();
 
         // And here we can modify httpContext.Request.Scheme & Host manually to whatever we like
         var baseUrl = Settings.BaseUri;
@@ -279,7 +280,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         }
         else
             services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtection));
-        // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
+        services.AddSingleton(new ContentSecurityPolicy(HostInfo));
         var origins = new List<string> {
             "http://0.0.0.0",
             "http://0.0.0.1",
@@ -347,8 +348,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 o.DisconnectedCircuitMaxRetained = 100; // Default is 100
                 o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(2); // Default is 3 min.
             }
-            o.MaxBufferedUnacknowledgedRenderBatches = 1000; // Default is 10
-            o.DetailedErrors = true;
+            o.MaxBufferedUnacknowledgedRenderBatches = 100; // Default is 10, chat switch needs more
+            o.DetailedErrors = HostInfo.IsDevelopmentInstance;
         }).AddHubOptions(o => {
             o.MaximumParallelInvocationsPerClient = 4;
             o.StatefulReconnectBufferSize = 1000;

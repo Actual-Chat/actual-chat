@@ -34,7 +34,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         if (rpcHost.IsApiHost) {
             var signalR = services.AddSignalR(options => {
                 options.StreamBufferCapacity = 20;
-                options.EnableDetailedErrors = true; // Enable for debugging
+                options.EnableDetailedErrors = HostInfo.IsDevelopmentInstance;
                 options.StatefulReconnectBufferSize = 2000;
             });
             signalR.AddJsonProtocol();

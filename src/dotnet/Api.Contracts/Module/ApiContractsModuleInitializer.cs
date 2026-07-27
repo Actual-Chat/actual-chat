@@ -2,6 +2,7 @@ using ActualChat.Aot;
 using ActualLab.Generators;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Serialization;
 
 namespace ActualChat.Module;
 
@@ -36,7 +37,9 @@ public static partial class ApiContractsModuleInitializer
             _ => oldPreferTransient.Invoke(e),
         };
 
-        // Rpc - API version
+        // Rpc
+        RpcByteMessageSerializer.Defaults.MaxArgumentDataSize = ApiConstants.Rpc.MaxArgumentDataSize;
+        RpcTextMessageSerializer.Defaults.MaxArgumentDataSize = ApiConstants.Rpc.MaxArgumentDataSize;
         RpcDefaults.ApiVersion = RpcDefaults.BackendVersion = ApiConstants.Version;
 #if false
         // Default caching settings

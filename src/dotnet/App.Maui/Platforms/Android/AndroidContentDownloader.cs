@@ -15,7 +15,7 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
         => (relativeUrl ?? "").StartsWith(Prefix);
 
     public static string CreateWebRequestUri(string url)
-        => Prefix + System.Uri.EscapeDataString(url);
+        => Prefix + LocalContentRegistry.GetOrAddKey(url);
 
     public AttachFileInfo[] ConvertToAttachFileInfos(IEnumerable<Uri> uris, bool canPersistGrant = false)
     {
@@ -155,7 +155,11 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
         if (!requestUri.StartsWith(Prefix))
             return (null, null);
 
-        var uri = System.Uri.UnescapeDataString(requestUri[Prefix.Length..]);
+        if (!LocalContentRegistry.TryGetContentRef(requestUri[Prefix.Length..], out var uri)) {
+            Log.LogWarning("Unknown content key in request uri: '{RequestUri}'", requestUri);
+            return (null, null);
+        }
+
         try {
             return OpenInputStream(uri);
         }

@@ -25,9 +25,11 @@ public partial class CustomBlazorWebViewHandler
         webView.SetLayerType(Android.Views.LayerType.Hardware, null);
         var settings = webView.Settings;
         settings.JavaScriptEnabled = true;
-        settings.AllowFileAccess = true;
+        settings.AllowFileAccess = false;
         settings.MediaPlaybackRequiresUserGesture = false;
-        settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
+        // Passive http subresources (link-preview and remote images) must keep loading,
+        // while http scripts and frames must not — that's exactly CompatibilityMode.
+        settings.MixedContentMode = MixedContentHandling.CompatibilityMode;
         settings.CacheMode = CacheModes.Default;
         settings.TextZoom = 100;
         // Disable WebView's algorithmic dark theme: the app controls its own

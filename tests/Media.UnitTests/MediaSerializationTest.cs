@@ -1,3 +1,9 @@
+using ActualLab.Interception;
+using ActualLab.Rpc;
+using ActualLab.Rpc.Infrastructure;
+using ActualLab.Rpc.Serialization;
+using ActualLab.Rpc.WebSockets;
+
 namespace ActualChat.Media.UnitTests;
 
 public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
@@ -109,5 +115,64 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var uploadId = UploadId.New();
         var cmd = new Uploads_Remove(TestSession, uploadId);
         cmd.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
+    public void LimitsRpcArgumentDataSize()
+    {
+        // act
+        var textLimit = RpcTextMessageSerializer.Defaults.MaxArgumentDataSize;
+        var byteLimit = RpcByteMessageSerializer.Defaults.MaxArgumentDataSize;
+        var transportLimit = RpcWebSocketTransport.Options.Default.MaxMessageSize;
+        Out.WriteLine($"text = {textLimit}, byte = {byteLimit}, transport = {transportLimit}");
+
+        // assert
+        textLimit.Should().Be(ApiConstants.Rpc.MaxArgumentDataSize);
+        byteLimit.Should().Be(ApiConstants.Rpc.MaxArgumentDataSize);
+        textLimit.Should().BeLessThan(130_000_000);
+        transportLimit.Should().Be(
+            RpcTextMessageSerializerV3.GetMaxMessageSize(ApiConstants.Rpc.MaxArgumentDataSize));
+    }
+
+    [Fact]
+    public void AcceptsRealisticPayload()
+    {
+        // arrange
+        var command = new Uploads_Append(TestSession, UploadId.New(), 0, new byte[4 * 1024 * 1024]);
+        var arguments = ArgumentList.New(command);
+        var formats = new[] {
+            RpcSerializationFormat.MessagePackV6,
+            RpcSerializationFormat.SystemJsonV5,
+        };
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddFusion().AddClient<IUploads>();
+        using var services = serviceCollection.BuildServiceProvider();
+        var hub = services.RpcHub();
+        var method = hub.ServiceRegistry[typeof(IUploads)].Methods
+            .Single(x => x.MethodInfo.Name == nameof(IUploads.OnAppend));
+        var sizes = new List<(string Format, int ArgumentData, int Message)>();
+
+        // act
+        foreach (var format in formats) {
+            var peer = new RpcClientPeer(hub, RpcRef.NewClient("payload-test", format.Key).Route);
+            using var argumentBuffer = new ArrayPoolBuffer<byte>(mustClear: false);
+            format.ArgumentSerializer.Serialize(arguments, false, argumentBuffer);
+            var argumentData = argumentBuffer.WrittenMemory;
+            var context = new RpcOutboundContext(peer) {
+                Arguments = arguments,
+                MethodDef = method,
+            };
+            var message = new RpcOutboundMessage(context, method, 1, false, null, argumentData);
+            using var messageBuffer = new ArrayPoolBuffer<byte>(mustClear: false);
+            format.MessageSerializerFactory.Invoke(peer).Write(messageBuffer, message);
+            sizes.Add((format.Key, argumentData.Length, messageBuffer.WrittenCount));
+        }
+
+        // assert
+        foreach (var size in sizes) {
+            Out.WriteLine($"{size.Format}: argument data = {size.ArgumentData}, message = {size.Message}");
+            size.ArgumentData.Should().BeLessThan(ApiConstants.Rpc.MaxArgumentDataSize);
+            size.Message.Should().BeLessThanOrEqualTo(RpcWebSocketTransport.Options.Default.MaxMessageSize);
+        }
     }
 }

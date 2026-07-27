@@ -116,15 +116,12 @@ public partial class MauiWebView
             WKMediaCaptureType type,
             Action<WKPermissionDecision> decisionHandler)
         {
-#if false
-            // Disabled for now: needs testing + the condition here is always supposed to be true now
-            if (!IsCurrent(webView, out var mauiWebView) || !mauiWebView.IsOnLocalUri) {
+            if (!IsAppOrigin(webView, origin)) {
                 decisionHandler.Invoke(WKPermissionDecision.Deny);
                 return;
             }
-#endif
 
-            if (IsMediaCaptureGranted(origin, type)) {
+            if (IsMediaCaptureGranted(type)) {
                 decisionHandler.Invoke(WKPermissionDecision.Grant);
                 return;
             }
@@ -158,16 +155,20 @@ public partial class MauiWebView
                 "RequestMediaCapturePermission");
         }
 
-        private static bool IsMediaCaptureGranted(
-            WKSecurityOrigin origin,
-            WKMediaCaptureType type)
+        private static bool IsAppOrigin(WKWebView webView, WKSecurityOrigin origin)
         {
-            // Grant only for our own WebView origin — MAUI BlazorWebView serves the host page
-            // at app://0.0.0.1/ (MauiSettings.LocalHost); an empty host means an opaque origin.
+            // MAUI BlazorWebView serves the host page at app://0.0.0.1/ (MauiSettings.LocalHost),
+            // and WebKit reports an empty host for opaque origins — which a custom-scheme page of
+            // ours may be — so that case is accepted only while the WebView is on our local URI.
             var host = origin.Host;
-            if (!host.IsNullOrEmpty() && host != MauiSettings.LocalHost)
-                return false;
+            if (!host.IsNullOrEmpty())
+                return host == MauiSettings.LocalHost;
 
+            return IsCurrent(webView, out var mauiWebView) && mauiWebView.IsOnLocalUri;
+        }
+
+        private static bool IsMediaCaptureGranted(WKMediaCaptureType type)
+        {
             return type switch {
                 WKMediaCaptureType.Camera => IsGranted(AVAuthorizationMediaType.Video),
                 WKMediaCaptureType.Microphone => IsGranted(AVAuthorizationMediaType.Audio),

@@ -1,3 +1,4 @@
+@using ActualChat.App.Server.Module
 @using ActualChat.Chat
 @using ActualChat.Hosting
 @using ActualChat.Security
@@ -8,27 +9,16 @@
 @using ActualChat.Users.Module
 @using ActualLab.Fusion.Blazor
 @using ActualLab.Fusion.Server.Endpoints
-@using ActualLab.Generators
 @using Microsoft.AspNetCore.Http.Extensions
 @{
     // Log.LogWarning("RootServerPage rendering, Hash={Hash}", GetHashCode());
     var renderModeKey = _renderMode.Key;
     var blazorMaxReconnectRetries = 0; // 100_000_000;
-    var isLocal = HostInfo.BaseUrlKind == BaseUrlKind.Local;
-    var nonceGenerator = RandomStringGenerator.Default;
-    var startupNonce = nonceGenerator.Next(12);
-    var blazorReloadNonce = nonceGenerator.Next(12);
-    var webSplashNonce = nonceGenerator.Next(12);
-    var closeFlowNonce = nonceGenerator.Next(12);
-    var importMapNonce = nonceGenerator.Next(12);
-    var screenSizeNonce = nonceGenerator.Next(12);
-    // unsafe-eval is required for 'eval-source-map' to debug during local development
-    var unsafeEval = isLocal ? "'unsafe-eval'" : "'wasm-unsafe-eval'";
-    var extraConnectSrc = isLocal ? "ws://localhost:* wss://localhost:* https://raw.githubusercontent.com" : "";
+    // The same nonce goes into the Content-Security-Policy response header, see ContentSecurityPolicy
+    var nonce = ContentSecurityPolicy.GetNonce(HttpContext);
 
     // Re-captcha setup
     var recaptchaSiteKey = UserSettings.GoogleRecaptchaSiteKey;
-    var recaptchaNonce = nonceGenerator.Next(12);
 
     // Build custom import map with WASM
     var defaultImportMap = HttpContext.GetEndpoint()?.Metadata.GetMetadata<ImportMapDefinition>();
@@ -44,65 +34,6 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"/>
-    <meta http-equiv="Content-Security-Policy" content="
-        default-src 'self';
-        img-src 'self'
-            https://@Constants.Hosts.Voxt
-            https://*.@Constants.Hosts.Voxt
-            https://*.@Constants.Hosts.DevVoxt
-            https://*.@Constants.Hosts.LocalVoxt
-            https://*.dicebear.com
-            https://i.ytimg.com
-            https://www.googletagmanager.com
-            https://static.klipy.com
-            blob: data:;
-        media-src 'self'
-            https://*.@Constants.Hosts.Voxt
-            https://*.@Constants.Hosts.DevVoxt
-            https://*.@Constants.Hosts.LocalVoxt
-            blob: data:;
-        style-src 'self'
-            'unsafe-inline'
-            https://fonts.googleapis.com/css;
-        font-src 'self'
-            https://fonts.gstatic.com/s/ubuntu/;
-        frame-src https://www.youtube.com/
-            https://www.google.com/recaptcha/;
-        object-src 'none';
-        worker-src 'self' blob:;
-        script-src 'self'
-            @unsafeEval
-            'nonce-@startupNonce'
-            'nonce-@blazorReloadNonce'
-            'nonce-@webSplashNonce'
-            'nonce-@closeFlowNonce'
-            'nonce-@recaptchaNonce'
-            'nonce-@importMapNonce'
-            'nonce-@screenSizeNonce'
-            'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
-            'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg='
-            https://www.youtube.com/iframe_api
-            https://www.youtube.com/s/player/
-            https://www.googletagmanager.com/gtag/js
-            https://www.gstatic.com/recaptcha/releases/;
-        connect-src 'self'
-            @extraConnectSrc
-            https://@Constants.Hosts.Voxt
-            https://*.@Constants.Hosts.Voxt
-            https://*.@Constants.Hosts.DevVoxt
-            https://*.@Constants.Hosts.LocalVoxt
-            wss://@Constants.Hosts.Voxt
-            wss://*.@Constants.Hosts.Voxt
-            https://*.dicebear.com
-            https://*.ingest.sentry.io
-            https://firebaseinstallations.googleapis.com
-            https://fcmregistrations.googleapis.com
-            https://firebase.googleapis.com
-            https://*.google-analytics.com/g/collect
-            https://*.analytics.google.com/g/collect
-            https://www.google.com/recaptcha/enterprise/clr;
-        upgrade-insecure-requests;
-        " />
     <HeadOutlet @rendermode="@(_renderMode.Mode)" />
     <PageTitle>@CoreConstants.AppName</PageTitle>
     <HeadContent>
@@ -168,13 +99,13 @@
     <meta name="emoji-svg-names" content="@(string.Join(",", Emojis.SvgNames.Values))" />
 
     <link href="/@Assets["dist/bundle.css"]" rel="stylesheet" />
-    <ImportMap nonce="@importMapNonce" ImportMapDefinition="importMap"/>
+    <ImportMap nonce="@nonce" ImportMapDefinition="importMap"/>
     @if (Captcha.IsAvailable(HostInfo, recaptchaSiteKey)) {
-        <script id="recaptcha-head-script" nonce="@recaptchaNonce" src="https://www.google.com/recaptcha/enterprise.js?render=@recaptchaSiteKey" async defer></script>
+        <script id="recaptcha-head-script" nonce="@nonce" src="https://www.google.com/recaptcha/enterprise.js?render=@recaptchaSiteKey" async defer></script>
     } else {
         <meta id="recaptcha-fake" content="true" />
     }
-    <script nonce="@startupNonce">
+    <script nonce="@nonce">
         history.scrollRestoration = "manual";
         window.App = {
             environment: '@(HostInfo.Environment.Value)',
@@ -209,7 +140,7 @@
 </head>
 
 <body class="app-web" style="background-color: #0C003D">
-<script nonce="@screenSizeNonce">
+<script nonce="@nonce">
     // Pre-paint screen-size body classes to avoid a wide->narrow layout flash before
     // the bundle's ScreenSize runs. Mirrors updateBodyClasses() in screen-size.ts and
     // the `sm` (640px) breakpoint in screen-size.css; ScreenSize re-measures on init.
@@ -224,7 +155,7 @@
 
 @if (!_authState.IsAnyAuthFlow && !renderModeKey.StartsWith("s")) {
     <div id="web-splash" class="web-splash"></div>
-    <script nonce="@webSplashNonce">
+    <script nonce="@nonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
         (async () => {
             try {
@@ -252,7 +183,7 @@
 @if (_authState.CloseFlow is { } closeFlow) {
     var isFailed = closeFlow.Error != null;
     @if (closeFlow.MustClose) {
-        <script nonce="@closeFlowNonce">
+        <script nonce="@nonce">
             @if (closeFlow.RedirectUrl is { } closeFlowRedirectUrl) {
                 @((MarkupString)$"window.location.href = {JsonSerializer.Serialize(closeFlowRedirectUrl)};")
             }
@@ -304,7 +235,7 @@
     <div id="app-connection-state" class="reconnect-overlay" style="display: none"></div>
 
     <script src="/@Assets["_framework/blazor.web.js"]" autostart="false"></script>
-    <script nonce="@blazorReloadNonce">
+    <script nonce="@nonce">
         if (!window.Blazor) {
             console.error('Blazor is not loaded. Please check the script tag for blazor.web.js.');
         }

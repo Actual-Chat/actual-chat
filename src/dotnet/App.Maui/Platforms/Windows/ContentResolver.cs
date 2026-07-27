@@ -7,7 +7,7 @@ public static class ContentResolver
     private const string FilesContentPrefix = $"{UriContentScheme}://{FilesContentProvider}/";
 
     public static string GetFileUri(string filePath)
-        => $"{FilesContentPrefix}{Uri.EscapeDataString(filePath)}";
+        => $"{FilesContentPrefix}{LocalContentRegistry.GetOrAddKey(filePath)}";
 
     public static bool TryGetFilePathFromUri(string uri, [NotNullWhen(true)] out string? filePath)
     {
@@ -18,7 +18,6 @@ public static class ContentResolver
         if (uri1.Host != FilesContentProvider || !uri1.IsDefaultPort)
             return false;
 
-        filePath = Uri.UnescapeDataString(uri1.LocalPath.TrimStart('/'));
-        return true;
+        return LocalContentRegistry.TryGetContentRef(uri1.AbsolutePath.TrimStart('/'), out filePath);
     }
 }

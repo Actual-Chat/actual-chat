@@ -9,7 +9,7 @@ public static class ContentResolver
     private const string FilesContentPrefix = $"{UriContentScheme}://{FilesContentProvider}/";
 
     public static string GetFileUri(string filePath)
-        => $"{FilesContentPrefix}{Uri.EscapeDataString(filePath)}";
+        => $"{FilesContentPrefix}{LocalContentRegistry.GetOrAddKey(filePath)}";
 
     public static bool TryGetFilePathFromUri(string uri, [NotNullWhen(true)] out string? filePath)
     {
@@ -17,17 +17,9 @@ public static class ContentResolver
         if (!Uri.TryCreate(uri, UriKind.Absolute, out var uri1))
             return false;
 
-        if (!string.Equals(uri1.Host, FilesContentProvider) || !uri1.IsDefaultPort)
+        if (uri1.Host != FilesContentProvider || !uri1.IsDefaultPort)
             return false;
 
-        // IMPORTANT(iOS): keep absolute paths.
-        // `content://files/<escaped path>` is used to serve local files into WKWebView.
-        // For paths like `/private/...` (Files/iCloud), trimming the leading '/' turns it into
-        // a relative path and `File.Exists` fails.
-        var path = Uri.UnescapeDataString(uri1.LocalPath);
-        if (path.Length >= 2 && path[0] == '/' && path[1] == '/')
-            path = "/" + path.TrimStart('/');
-        filePath = path;
-        return true;
+        return LocalContentRegistry.TryGetContentRef(uri1.AbsolutePath.TrimStart('/'), out filePath);
     }
 }

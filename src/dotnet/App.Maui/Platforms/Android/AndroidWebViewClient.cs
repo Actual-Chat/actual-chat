@@ -1,4 +1,5 @@
 using Android.Webkit;
+using Uri = Android.Net.Uri;
 using WebView = Android.Webkit.WebView;
 
 namespace ActualChat.App.Maui;
@@ -60,7 +61,7 @@ public class AndroidWebViewClient(
 
         var requestUrl = request?.Url;
         if (request != null && requestUrl != null
-            && requestUrl.Host == MauiSettings.LocalHost
+            && IsAppOrigin(requestUrl)
             && AndroidContentDownloader.CanHandleWebRequestUri(requestUrl.EncodedPath)) {
             var (stream, mimeType) = ContentDownloader.GetWebRequestStream(requestUrl.EncodedPath!);
             if (stream == null)
@@ -107,4 +108,11 @@ public class AndroidWebViewClient(
             "DoUpdateVisitedHistory: Url: '{Url}', IsReload: '{IsReload}', CanGoBack: '{CanGoBack}'",
             url, isReload, canGoBack);
     }
+
+    // Private methods
+
+    private static bool IsAppOrigin(Uri url)
+        => url.Scheme == System.Uri.UriSchemeHttps
+            && url.Host == MauiSettings.LocalHost
+            && url.Port <= 0;
 }

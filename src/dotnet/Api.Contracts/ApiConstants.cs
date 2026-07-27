@@ -13,4 +13,9 @@ public static class ApiConstants
         public static readonly int High = 0; // Seemingly a better option than e.g., 256 or so
         public static readonly int Low = 128;
     }
+
+    public static class Rpc
+    {
+        public const int MaxArgumentDataSize = 8 * 1024 * 1024;
+    }
 }

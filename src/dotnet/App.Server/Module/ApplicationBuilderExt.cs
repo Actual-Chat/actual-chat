@@ -26,6 +26,26 @@ public static partial class ApplicationBuilderExt
             return next();
         });
 
+    public static IApplicationBuilder UseResponseHeaders(this IApplicationBuilder app)
+        => app.Use((context, next) => {
+            context.Response.OnStarting(static state => {
+                var httpContext = (HttpContext)state;
+                var response = httpContext.Response;
+                var headers = response.Headers;
+                headers.XContentTypeOptions = "nosniff";
+                headers.XFrameOptions = "DENY";
+                headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+                // The full policy is nonce-bearing & sizeable, so it's added to documents only
+                if (response.ContentType?.StartsWith("text/html", StringComparison.OrdinalIgnoreCase) == true) {
+                    var policy = httpContext.RequestServices.GetRequiredService<ContentSecurityPolicy>();
+                    headers.ContentSecurityPolicy = policy.Get(ContentSecurityPolicy.GetNonce(httpContext));
+                }
+                return Task.CompletedTask;
+            }, context);
+
+            return next();
+        });
+
     public static IApplicationBuilder UseBaseUrl(this IApplicationBuilder app, string baseUrl)
     {
         var baseUri = baseUrl.ToUri();

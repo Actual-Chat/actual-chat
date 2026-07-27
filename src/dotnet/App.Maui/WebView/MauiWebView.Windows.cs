@@ -96,11 +96,19 @@ public partial class MauiWebView
 
     private static void OnPermissionRequested(CoreWebView2 sender, CoreWebView2PermissionRequestedEventArgs args)
     {
-        if (args.PermissionKind != CoreWebView2PermissionKind.Microphone && args.PermissionKind != CoreWebView2PermissionKind.Camera)
+        if (args.PermissionKind is not (CoreWebView2PermissionKind.Microphone or CoreWebView2PermissionKind.Camera))
             return;
 
         if (!args.IsUserInitiated)
             return; // use default permission handler for non-user requests
+
+        // Only our own WebView origin (https://0.0.0.1, i.e. MauiSettings.LocalHost) is pre-granted;
+        // anything else falls through to the default handler, which prompts.
+        if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri)
+            || uri.Scheme != Uri.UriSchemeHttps
+            || uri.Host != MauiSettings.LocalHost
+            || !uri.IsDefaultPort)
+            return;
 
         args.State = CoreWebView2PermissionState.Allow;
         args.Handled = true;
