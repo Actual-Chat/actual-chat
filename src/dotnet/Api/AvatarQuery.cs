@@ -9,6 +9,9 @@ namespace ActualChat;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record AvatarQuery : IValidatableObject
 {
+    public static readonly ImmutableArray<int> SupportedSizes = [40, 80, 160];
+    public const int MaxTitleLength = 32;
+
     [DataMember, MemoryPackOrder(0), Key(0)]
     [Required]
     public required AvatarKind Kind { get; init; }
@@ -28,14 +31,14 @@ public sealed partial record AvatarQuery : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (Format == AvatarFormat.Png && Size.HasValue)
-        {
-            if (Size.Value != 40 && Size.Value != 80 && Size.Value != 160)
-            {
-                yield return new ValidationResult(
-                    "Size must be 40, 80, or 160 for PNG format.",
-                    [nameof(Size)]);
-            }
-        }
+        if (Size is { } size && !SupportedSizes.Contains(size))
+            yield return new ValidationResult(
+                $"Size must be one of: {string.Join(", ", SupportedSizes)}.",
+                [nameof(Size)]);
+
+        if (Title is { } title && title.Length > MaxTitleLength)
+            yield return new ValidationResult(
+                $"Title must be at most {MaxTitleLength} characters long.",
+                [nameof(Title)]);
     }
 }

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ActualChat.AspNetCore;
 using ActualChat.Controllers;
 using ActualChat.Resilience;
@@ -94,8 +95,6 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
         string? title = null,
         CancellationToken cancellationToken = default)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
         var query = new AvatarQuery {
             Kind = kind,
             Key = key,
@@ -103,6 +102,16 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             Size = size,
             Title = title,
         };
+        // TryValidateModel short-circuits here: the scalar parameters above already
+        // filled ModelState, so its root entry is no longer Unvalidated.
+        var validationResults = new List<ValidationResult>();
+        if (!Validator.TryValidateObject(query, new ValidationContext(query), validationResults, true)) {
+            foreach (var validationResult in validationResults)
+                ModelState.AddModelError(
+                    validationResult.MemberNames.FirstOrDefault() ?? "",
+                    validationResult.ErrorMessage ?? "Invalid value.");
+            return BadRequest(ModelState);
+        }
 
         var filePath = await AvatarPictures.Get(query, cancellationToken).ConfigureAwait(false);
         return PhysicalFile(filePath, MediaMimeTypes.GetMimeType(filePath));

@@ -376,19 +376,17 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
 
         var rootChatId = chatId.RootChatId;
+        var avatar = await Avatars.GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
         var author = await GetOwn(session, rootChatId, cancellationToken).ConfigureAwait(false);
-        if (author == null || author.AvatarId == command.AvatarId)
+        if (author == null || author.AvatarId == avatar.Id)
             return;
 
         var authorDiff = new AuthorDiff() {
-            AvatarId = avatarId,
+            AvatarId = avatar.Id,
         };
-        if (author.IsAnonymous) {
-            var avatar = await Avatars.GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
-            if (!avatar.IsAnonymous)
-                // Revealing the anonymous author
-                authorDiff = authorDiff with { IsAnonymous = false };
-        }
+        if (author.IsAnonymous && !avatar.IsAnonymous)
+            // Revealing the anonymous author
+            authorDiff = authorDiff with { IsAnonymous = false };
 
         var upsertCommand = new AuthorsBackend_Upsert(
             rootChatId, author.Id, null, author.Version,

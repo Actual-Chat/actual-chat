@@ -11,11 +11,12 @@ namespace ActualChat.Media;
 
 public class ImageGrabber(IServiceProvider services)
 {
+    public const string HttpClientName = nameof(ImageGrabber);
     private MediaSettings Settings => field ??= services.GetRequiredService<MediaSettings>();
     private IMediaBackend MediaBackend => field ??= services.GetRequiredService<IMediaBackend>();
     private IGrabStatusesBackend GrabStatusesBackend => field ??= services.GetRequiredService<IGrabStatusesBackend>();
     private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
-    private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient(Crawler.HttpClientName);
+    private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient(HttpClientName);
     private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
     private IMeshLocks MeshLocks => field ??= services.MeshLocks().WithKeyPrefix(nameof(ImageGrabber));
     private ICommander Commander => field ??= services.Commander();
@@ -85,8 +86,10 @@ public class ImageGrabber(IServiceProvider services)
                 return media.Id;
         }
 
-        // TODO: image size limit
-        var downloadedFile = await DownloadImageToFile(new Uri(imageUrl), cancellationToken).ConfigureAwait(false);
+        if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri) || !EgressHttpHandler.IsHttpUri(uri))
+            return null;
+
+        var downloadedFile = await DownloadImageToFile(uri, cancellationToken).ConfigureAwait(false);
         if (downloadedFile is null)
             return null;
 

@@ -8,12 +8,128 @@ namespace ActualChat.Media.UnitTests;
 
 public class EgressGuardTest
 {
-    private readonly EgressGuard _sut = new (new HostInfo {
-            Environment = Environments.Production,
-            IsTested = true,
-        },
-        new MediaSettings(),
-        NullLogger<EgressGuard>.Instance);
+    private readonly EgressGuard _sut = NewGuard();
+
+    [Fact]
+    public async Task DoesNotFollowRedirectToPrivateAddress()
+    {
+        // arrange
+        var handler = new RedirectHandlerMock(request => request.RequestUri!.AbsolutePath switch {
+            "/start" => new (HttpStatusCode.Redirect) {
+                Headers = {
+                    Location = new ("http://127.0.0.1/final"),
+                },
+            },
+            _ => new (HttpStatusCode.OK),
+        });
+        using var client = NewHttpClient(handler);
+
+        // act
+        var act = () => client.GetAsync("https://public.example/start");
+
+        // assert
+        await act.Should().ThrowAsync<HttpRequestException>();
+        handler.RequestCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void RefusesNonHttpScheme()
+    {
+        // act
+        var graph = OpenGraphParser.Parse("""
+            <html>
+            <head>
+                <title>Title</title>
+                <meta property="og:image" content="file:///etc/hosts">
+            </head>
+            </html>
+            """);
+
+        // assert
+        graph.Should().NotBeNull();
+        graph!.ImageUrl.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FollowsOrdinaryRedirect()
+    {
+        // arrange
+        var handler = new RedirectHandlerMock(request => request.RequestUri!.AbsolutePath switch {
+            "/start" => new (HttpStatusCode.Redirect) {
+                Headers = {
+                    Location = new ("https://public.example/final"),
+                },
+            },
+            _ => new (HttpStatusCode.OK) {
+                Content = new StringContent("ok"),
+            },
+        });
+        using var client = NewHttpClient(handler);
+
+        // act
+        var result = await client.GetStringAsync("http://public.example/start");
+
+        // assert
+        result.Should().Be("ok");
+        handler.RequestCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ValidatesResolvedAddressBeforeConnecting()
+    {
+        // arrange
+        var validatedAddresses = new List<IPAddress>();
+        var options = new EgressHttpHandler.Options(
+            _ => true,
+            (_, address) => {
+                validatedAddresses.Add(address);
+                return false;
+            });
+        using var client = new HttpClient(new EgressHttpHandler(options));
+
+        // act
+        var act = () => client.GetAsync("http://localhost:1");
+
+        // assert
+        await act.Should().ThrowAsync<HttpRequestException>();
+        validatedAddresses.Should().NotBeEmpty();
+        validatedAddresses.Should().OnlyContain(x => IPAddress.IsLoopback(x));
+    }
+
+    [Fact]
+    public void UsesConfiguredDomainDenylist()
+    {
+        // arrange
+        var sut = NewGuard(new MediaSettings {
+            CrawlingDomainDenylist = ["blocked.example"],
+        });
+
+        // act
+        var result = sut.IsAllowedUri(new ("https://blocked.example/path"));
+
+        // assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RefusesResponseOverLimit()
+    {
+        // arrange
+        var handler = new RedirectHandlerMock(_ => new (HttpStatusCode.OK) {
+            Content = new StringContent("abc"),
+        });
+        var guard = NewGuard();
+        var options = new EgressHttpHandler.Options(guard.IsAllowedUri, guard.IsAllowedAddress) {
+            MaxResponseContentLength = 2,
+        };
+        using var client = new HttpClient(new EgressHttpHandler(options, handler));
+
+        // act
+        var act = () => client.GetStringAsync("https://public.example/data");
+
+        // assert
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
 
     [Fact]
     public async Task RefusesGifRequestPastBudget()
@@ -78,6 +194,47 @@ public class EgressGuardTest
         var result = await _sut.IsAllowed(host);
         result.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task DomainDenyListBlocksMatchingHost()
+    {
+        // arrange
+        var sut = NewGuard(new MediaSettings {
+            CrawlingDomainDenylist = ["actual.chat"],
+            CrawlingCidrDenylist = ["10.0.0.0/8"],
+        });
+
+        // act
+        var isDeniedHostAllowed = await sut.IsAllowed("actual.chat");
+        var isDeniedSubdomainAllowed = await sut.IsAllowed("cdn.actual.chat");
+        var isOtherHostAllowed = await sut.IsAllowed("voxt.ai");
+
+        // assert
+        isDeniedHostAllowed.Should().BeFalse();
+        isDeniedSubdomainAllowed.Should().BeFalse();
+        isOtherHostAllowed.Should().BeTrue();
+    }
+
+    // Private methods
+
+    private static EgressGuard NewGuard(MediaSettings? settings = null)
+        => new (new HostInfo {
+            Environment = Environments.Production,
+            IsTested = true,
+        },
+        settings ?? new MediaSettings {
+            CrawlingHostAllowList = ["public.example"],
+        },
+        NullLogger<EgressGuard>.Instance);
+
+    private static HttpClient NewHttpClient(HttpMessageHandler innerHandler)
+    {
+        var guard = NewGuard();
+        var options = new EgressHttpHandler.Options(guard.IsAllowedUri, guard.IsAllowedAddress);
+        return new HttpClient(new EgressHttpHandler(options, innerHandler));
+    }
+
+    // Nested types
 
     private sealed class RedirectHandlerMock(Func<HttpRequestMessage, HttpResponseMessage> getResponse)
         : HttpMessageHandler

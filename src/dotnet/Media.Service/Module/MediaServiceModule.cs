@@ -33,7 +33,8 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
 
         // GIFs
         rpcHost.AddApi<IGifs, Gifs>();
-        services.AddHttpClient(Gifs.HttpClientName);
+        services.AddSingleton<EgressGuard>();
+        AddEgressHttpClient(services, Gifs.HttpClientName);
 
         if (isBackendClient)
             return;
@@ -41,14 +42,17 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         // The services below are used only when this module operates in non-client mode
 
         // Internal services
-        services.AddHttpClient(Crawler.HttpClientName)
+        AddEgressHttpClient(services, Crawler.HttpClientName)
+            .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
+        AddEgressHttpClient(services, RobotsFiles.HttpClientName)
+            .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
+        AddEgressHttpClient(services, ImageGrabber.HttpClientName)
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
         services.AddSingleton<Crawler>();
         services.AddSingleton<RobotsFiles>();
         services.AddSingleton<ICrawlingHandler, WebSiteHandler>();
         services.AddSingleton<ICrawlingHandler, ImageLinkHandler>();
         services.AddSingleton<ImageGrabber>();
-        services.AddSingleton<EgressGuard>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
@@ -73,4 +77,14 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         // Uploads
         services.AddSingleton<UploadsStorage>();
     }
+
+    // Private methods
+
+    private static IHttpClientBuilder AddEgressHttpClient(IServiceCollection services, string name)
+        => services.AddHttpClient(name)
+            .ConfigurePrimaryHttpMessageHandler(c => {
+                var guard = c.GetRequiredService<EgressGuard>();
+                var options = new EgressHttpHandler.Options(guard.IsAllowedUri, guard.IsAllowedAddress);
+                return new EgressHttpHandler(options);
+            });
 }

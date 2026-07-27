@@ -8,6 +8,7 @@ public class RobotsFiles(
     IHttpClientFactory httpClientFactory,
     ILogger<Crawler> log)
 {
+    public const string HttpClientName = nameof(RobotsFiles);
     private readonly AsyncLockSet<string> _locks = new (LockReentryMode.Unchecked,
         AsyncLockSet<string>.DefaultConcurrencyLevel,
         AsyncLockSet<string>.DefaultCapacity,
@@ -16,7 +17,7 @@ public class RobotsFiles(
         new (10_000, comparer: StringComparer.OrdinalIgnoreCase);
 
     private ILogger? DebugLog { get; } = log.IfEnabled(LogLevel.Debug, Constants.DebugMode.RobotsFiles);
-    private RobotsFileParser RobotsParser => field ??= new (httpClientFactory.CreateClient(Crawler.HttpClientName));
+    private RobotsFileParser RobotsParser => field ??= new (httpClientFactory.CreateClient(HttpClientName));
 
     public async Task<RobotsFile> Get(Uri uri, CancellationToken cancellationToken)
     {

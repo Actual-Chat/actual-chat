@@ -216,6 +216,99 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
         response.Headers.CacheControl.MaxAge!.Value.TotalDays.Should().BeGreaterThanOrEqualTo(29);
     }
 
+    [Theory]
+    [InlineData(40)]
+    [InlineData(80)]
+    [InlineData(160)]
+    public async Task AcceptsSupportedSizes(int size)
+    {
+        // arrange
+        using var client = AppHost.NewHttpClient();
+
+        // act
+        var pngResponse = await client.GetAsync($"/api/avatars/marble/sizes{size}?format=png&size={size}");
+        var svgResponse = await client.GetAsync($"/api/avatars/marble/sizes{size}?size={size}");
+
+        // assert
+        pngResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        pngResponse.Content.Headers.ContentType?.MediaType.Should().Be("image/png");
+        svgResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        svgResponse.Content.Headers.ContentType?.MediaType.Should().Be("image/svg+xml");
+    }
+
+    [Fact]
+    public async Task AcceptsMissingSize()
+    {
+        // arrange
+        using var client = AppHost.NewHttpClient();
+
+        // act
+        var pngResponse = await client.GetAsync("/api/avatars/marble/nosize?format=png");
+        var svgResponse = await client.GetAsync("/api/avatars/marble/nosize");
+
+        // assert
+        pngResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        pngResponse.Content.Headers.ContentType?.MediaType.Should().Be("image/png");
+        svgResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        svgResponse.Content.Headers.ContentType?.MediaType.Should().Be("image/svg+xml");
+    }
+
+    [Theory]
+    [InlineData("png")]
+    [InlineData("svg")]
+    public async Task RejectsUnsupportedSize(string format)
+    {
+        // arrange
+        using var client = AppHost.NewHttpClient();
+
+        // act
+        var response = await client.GetAsync($"/api/avatars/marble/badsize?format={format}&size=200");
+
+        // assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task RejectsOversizedSize()
+    {
+        // arrange
+        using var client = AppHost.NewHttpClient();
+
+        // act
+        var response = await client.GetAsync("/api/avatars/marble/hugesize?format=png&size=20000");
+
+        // assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task RejectsOverlongTitle()
+    {
+        // arrange
+        using var client = AppHost.NewHttpClient();
+        var title = new string('A', AvatarQuery.MaxTitleLength + 1);
+
+        // act
+        var response = await client.GetAsync($"/api/avatars/marble/longtitle?title={title}");
+
+        // assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AcceptsTitleAtMaxLength()
+    {
+        // arrange
+        using var client = AppHost.NewHttpClient();
+        var title = new string('A', AvatarQuery.MaxTitleLength);
+
+        // act
+        var response = await client.GetAsync($"/api/avatars/marble/maxtitle?title={title}");
+
+        // assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     [Fact]
     public async Task ShouldReturnNotFoundForEmptyKey()
     {

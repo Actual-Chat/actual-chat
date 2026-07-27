@@ -16,26 +16,53 @@ public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<Egre
     private IPNetwork[] SpecialSubnets => field ??= [..SpecialAddresses.Subnets.Union(settings.CrawlingCidrDenylist).Select(IPNetwork.Parse)];
 
     private string[] DomainDenyList => field ??= [
-        ..DomainDenyListPrefix.Union(settings.CrawlingCidrDenylist, StringComparer.OrdinalIgnoreCase),
+        ..DomainDenyListPrefix.Union(settings.CrawlingDomainDenylist, StringComparer.OrdinalIgnoreCase),
     ];
 
     public async Task<bool> IsAllowed(string host, CancellationToken cancellationToken = default)
     {
-        if (hostInfo is { IsDevelopmentInstance: true, IsTested: false })
+        if (IsDevelopmentInstanceBypassEnabled)
             return true;
 
         if (AllowedHostWildcards.Any(x => x.IsMatch(host)))
             return true;
 
-        if (IPAddress.TryParse(host, out _))
-            return false; // Don't crawl raw IP addresses - they rarely produce useful link previews
-
-        if (!IsAllowedDomain(host))
+        if (!IsAllowedHost(host))
             return false;
 
         var addresses = await Resolve(host, cancellationToken).ConfigureAwait(false);
-        return addresses.Length != 0 && addresses.All(IsAllowedIpAddress);
+        return addresses.Length != 0 && addresses.All(x => IsAllowedAddress(host, x));
     }
+
+    public bool IsAllowedUri(Uri uri)
+    {
+        if (!EgressHttpHandler.IsHttpUri(uri))
+            return false;
+
+        if (IsDevelopmentInstanceBypassEnabled)
+            return true;
+
+        return IsAllowedHost(uri.DnsSafeHost);
+    }
+
+    public bool IsAllowedAddress(string host, IPAddress address)
+    {
+        if (IsDevelopmentInstanceBypassEnabled)
+            return true;
+
+        if (AllowedHostWildcards.Any(x => x.IsMatch(host)))
+            return true;
+
+        return IsAllowedHost(host) && IsAllowedIpAddress(address);
+    }
+
+    // Private methods
+
+    private bool IsDevelopmentInstanceBypassEnabled
+        => hostInfo is { IsDevelopmentInstance: true, IsTested: false };
+
+    private bool IsAllowedHost(string host)
+        => !IPAddress.TryParse(host, out _) && IsAllowedDomain(host);
 
     private bool IsAllowedDomain(string host)
         => !DomainDenyList.Any(domain => host.EndsWith(domain, StringComparison.OrdinalIgnoreCase));

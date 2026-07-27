@@ -31,6 +31,50 @@ public class AvatarsTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact(Timeout = 30_000)]
+    public async Task CreatedAvatarBelongsToCurrentAccount()
+    {
+        // arrange
+        await using var other = AppHost.NewWebClientTester(Out);
+        var account = await Tester.SignInAsUniqueBob();
+        var otherAccount = await other.SignInAsUniqueAlice();
+
+        // act
+        var avatar = await Tester.Commander.Call(new Avatars_Change(Session, Symbol.Empty, null,
+            Change.Create(new AvatarDiff {
+                Name = "Test Avatar",
+                UserId = otherAccount.Id,
+            })));
+
+        // assert
+        avatar.UserId.Should().Be(account.Id);
+        avatar.UserId.Should().NotBe(otherAccount.Id);
+    }
+
+    [Fact(Timeout = 30_000)]
+    public async Task CannotSelectAvatarOfAnotherAccount()
+    {
+        // arrange
+        await using var other = AppHost.NewWebClientTester(Out);
+        await Tester.SignInAsUniqueBob();
+        await other.SignInAsUniqueAlice();
+        var ownAvatar = await Tester.Commander.Call(new Avatars_Change(Session, Symbol.Empty, null,
+            Change.Create(new AvatarDiff { Name = "Own Avatar" })));
+        var otherAvatar = await other.Commander.Call(new Avatars_Change(other.Session, Symbol.Empty, null,
+            Change.Create(new AvatarDiff { Name = "Other Avatar" })));
+        var (chatId, _) = await Tester.CreateChat(true);
+
+        // act
+        var exception = await Record.ExceptionAsync(
+            () => Tester.Commander.Call(new Authors_SetAvatar(Session, chatId, otherAvatar.Id)));
+        await Tester.Commander.Call(new Authors_SetAvatar(Session, chatId, ownAvatar.Id));
+        var author = await Tester.Authors.GetOwn(Session, chatId, default).Require();
+
+        // assert
+        exception.Should().BeAssignableTo<NotFoundException>();
+        author.AvatarId.Should().Be(ownAvatar.Id);
+    }
+
+    [Fact(Timeout = 30_000)]
     public async Task ShouldApplyOnlyChangedFieldsOnUpdate()
     {
         // arrange

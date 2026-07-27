@@ -65,14 +65,15 @@ public static class OpenGraphParser
                 return "";
 
             if (uri.IsAbsoluteUri)
-                return uri.AbsoluteUri;
+                return EgressHttpHandler.IsHttpUri(uri) ? uri.AbsoluteUri : "";
 
             // NOTE(DF): Despite that image/video urls in Open Graph should be absolute urls, there are websites that use relative urls.
             // Try to convert relative urls to absolute ones to get better preview.
             if (BaseUrl is null)
                 return "";
 
-            return new Uri(BaseUrl, uri).AbsoluteUri;
+            var absoluteUri = new Uri(BaseUrl, uri);
+            return EgressHttpHandler.IsHttpUri(absoluteUri) ? absoluteUri.AbsoluteUri : "";
         }
     }
 }

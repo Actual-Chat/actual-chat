@@ -7,7 +7,6 @@ namespace ActualChat.Media;
 /// Crawls web URLs to extract metadata for link previews.
 /// </summary>
 public sealed class Crawler(
-    EgressGuard egressGuard,
     IHttpClientFactory httpClientFactory,
     IEnumerable<ICrawlingHandler> handlers,
     MediaSettings settings,
@@ -30,13 +29,10 @@ public sealed class Crawler(
     {
         using var cts = cancellationToken.CreateLinkedTokenSource(settings.CrawlTimeout);
         try {
-            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !EgressHttpHandler.IsHttpUri(uri)) {
                 DebugLog?.LogError("Invalid URL: {Url}", url);
                 return CrawledLink.None;
             }
-
-            if (!await egressGuard.IsAllowed(uri.DnsSafeHost, cts.Token).ConfigureAwait(false))
-                return CrawledLink.None;
 
             var userAgents = await ListSupportedUserAgents(uri, cts.Token).ConfigureAwait(false);
             if (userAgents.Count == 0)

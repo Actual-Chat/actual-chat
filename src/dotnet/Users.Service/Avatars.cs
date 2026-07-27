@@ -54,7 +54,7 @@ public class Avatars(IServiceProvider services) : IAvatars
         if (change.IsCreate(out var diff)) {
             // Create: fill in missing properties from account avatar
             var accountAvatar = new AvatarFull(account.Id).WithMissingPropertiesFrom(account.Avatar);
-            diff = diff.WithMissingPropertiesFrom(accountAvatar);
+            diff = diff.WithMissingPropertiesFrom(accountAvatar) with { UserId = account.Id };
             change = new Change<AvatarDiff> { Create = diff };
         }
         else
