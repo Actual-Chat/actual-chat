@@ -59,6 +59,12 @@ features:
   current audio pipeline: microphone capture, VAD, Opus encoding,
   publish/persist/transcribe, fan-out, replay, playback.
 
+## Cross-cutting
+
+- [Compute-method invalidation map](./invalidation-map.md) — where invalidations
+  originate, how they amplify, which edges are conditional, and where
+  `ConsolidationDelay` cuts a cascade that is effectively a no-op.
+
 ## Related Projects
 
 - [ActualLab.Fusion](https://github.com/ActualLab/Fusion) - The real-time state synchronization framework powering Voxt
