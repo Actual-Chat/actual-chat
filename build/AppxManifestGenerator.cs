@@ -8,14 +8,14 @@ namespace Build;
 
 public static class AppxManifestGenerator
 {
-    public static async Task Generate(bool isProduction, CancellationToken cancellationToken)
+    public static async Task Generate(bool isProduction, bool isDevMaui, CancellationToken cancellationToken)
     {
         var version= await GetVersion(cancellationToken).ConfigureAwait(false);
         var appVersion = $"{version.ToString(3)}.0";
         await Generate(appVersion,
             isProduction ? "" : ".Dev",
             isProduction ? "" : " Dev",
-            isProduction ? Constants.AppSchemes.Prod : Constants.AppSchemes.Dev,
+            isDevMaui ? Constants.AppSchemes.Dev : Constants.AppSchemes.Prod,
             cancellationToken).ConfigureAwait(false);
         Utils.SetGithubOutput("AppVersion", appVersion);
     }
