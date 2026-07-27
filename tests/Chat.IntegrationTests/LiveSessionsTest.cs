@@ -463,9 +463,12 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // act — a second distinct peer latches the session
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_030), null, true, default);
 
-        // assert — the live block now appears in the range meta
-        var metaAfter = await conversations.GetRangeMeta(chatId, tileStart, default);
-        metaAfter.ConversationLidRanges.Should().Contain(r => r.Contains(live.StartEntryLid));
+        // assert — the live block now appears in the range meta (ConversationsBackend consolidates its
+        // live-session reads, so a real change lands one recompute later rather than synchronously)
+        await ComputedTest.When(async ct => {
+            var metaAfter = await conversations.GetRangeMeta(chatId, tileStart, ct);
+            metaAfter.ConversationLidRanges.Should().Contain(r => r.Contains(live.StartEntryLid));
+        });
     }
 
     [Fact]
@@ -495,8 +498,10 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // assert — the live block is now present, re-keyed by the latch to the chat end (VisibleStartLid)
         var latched = await backend.GetState(chatId, default);
         latched.Should().NotBeNull();
-        var tileAfter = await conversations.GetTile(chatId, tileRange, default);
-        tileAfter.Should().Contain(c => c.Id == latched!.ConversationId);
+        await ComputedTest.When(async ct => {
+            var tileAfter = await conversations.GetTile(chatId, tileRange, ct);
+            tileAfter.Should().Contain(c => c.Id == latched!.ConversationId);
+        });
     }
 
     [Fact]

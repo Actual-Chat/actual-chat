@@ -79,10 +79,17 @@ so the server is not slow; it is thrashing its cache while the client queues.
 
 ## Constraints discovered during design
 
-1. **Fusion invalidation is eager and transitive with no value diffing**
+1. ~~**Fusion invalidation is eager and transitive with no value diffing**
    (`ActualLab.Fusion/Computed.cs:314-319`). A narrower compute method *derived from*
    `GetState` does not stop the cascade — it is invalidated too. Narrowing only helps if
-   the new method bypasses `GetState` and carries its own invalidation lifecycle.
+   the new method bypasses `GetState` and carries its own invalidation lifecycle.~~
+
+   **Wrong — this is exactly what `ComputedOptions.ConsolidationDelay` exists for.**
+   A consolidating compute method recomputes on its source's invalidation, compares the
+   new output to the old one, and swallows the invalidation when they are equal
+   (`ActualLab.Fusion/ConsolidatingComputed.cs:66-92`). A narrow method *derived from*
+   `GetState` therefore does stop the cascade, with no bypass and no invalidation
+   lifecycle of its own. The implemented design below rests on this.
 
 2. **`Computed.BeginIsolation()` alone is unsafe.** The live block's start jumps at the
    latch and the session can vanish, so "does not intersect now, skip the dependency"
@@ -120,25 +127,73 @@ so the server is not slow; it is thrashing its cache while the client queues.
 
 ## Design
 
-**Extend `ILiveSessionsBackend` with two narrow queries that bypass `GetState`.**
+**Extend `ILiveSessionsBackend` with two narrow `GetState` projections, each derived from a
+consolidating protected method.**
 
 ```
+// ILiveSessionsBackend — the RPC surface, plain compute methods
 Task<long?> GetVisibleStartLid(ChatId chatId, CancellationToken ct);
 Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken ct);
+
+// LiveSessionsBackend — not RPC-visible, so ConsolidationDelay actually applies
+[ComputeMethod(ConsolidationDelay = 0)]
+protected virtual Task<long?> GetConsolidatedVisibleStartLid(ChatId chatId, CancellationToken ct);
+[ComputeMethod(ConsolidationDelay = 0, ConsolidationComparer = typeof(ConversationContentComparer))]
+protected virtual Task<Conversation?> GetConsolidatedLiveConversation(ChatId chatId, CancellationToken ct);
 ```
 
-Both read Redis directly via `SafeGet` rather than calling `GetState`, so they inherit
-none of its invalidations — not the 30s liveness poll, not a summary rewrite that changed
-nothing. They are kept fresh by a new `InvalidateLiveView(chatId)`, called from the five
-writers that can move the block's start or change its card: `OnStreamRegistered`,
-`UpdateSummary`, `StartCall`, `AcceptCall`, and `Close`. The other three state writers
-(`SetRules`, `SetContextStart`, `EvaluateLiveness`) cannot affect either value.
+The protected pair reads `GetState`, so it inherits its invalidation lifecycle — including
+the 30s self-heal poll as a backstop — and no writer has to remember anything. Being
+consolidating, it recomputes on every upstream invalidation and swallows it unless the lid
+actually moved or the card actually changed. The public pair derives from it, so nothing
+is published over RPC on a no-op. `IChatsBackend` and `IConversationsBackend` are
+untouched, and every consumer benefits — the client's `LiveSessionUI` included, not just
+the conversation metadata cache.
 
-`LiveSessionsBackend` is the right owner of that contract: nothing else knows when the
-range moves. `IChatsBackend` and `IConversationsBackend` are untouched.
+**Why the consolidation must sit on a protected method.** Measured, not assumed:
+`ConsolidationDelay` on an *RPC-exposed* compute method is silently ignored — the caller is
+served from a `RemoteComputed`, and `ComputeMethodDef.CreateRemoteComputeMethodFunction`
+never checks `IsConsolidating`, unlike `CreateComputeMethodFunction`. On the very same
+`Distributed` service, a *protected* compute method is computed locally and does produce
+`ConsolidatingComputed`. Verified both ways on `LiveSessionsBackend`:
+`GetConsolidatedVisibleStartLid` → `ConsolidatingComputed`, public `GetVisibleStartLid` →
+`ComputeMethodComputed`. The distinction is RPC visibility, not the service's `Distributed`
+registration. Fusion 14.1.71 turns this misplacement into a startup error, which also
+caught the pre-existing `ConsolidationDelay` on `ILiveSessionsBackend.ListParticipants` /
+`HasRecorder` — inert until then, since both are RPC methods. They now consolidate through
+the same protected-method pattern.
 
-`ConversationsBackend` then depends on the two narrow queries instead of `GetState`. Per
-constraint 7, `GetVisibleStartLid` returns a lid with `[V, +inf)` semantics; the range
+**Why `ConversationContentComparer`.** `Conversation` compares by reference on purpose
+(`Api/Chat/Conversation.cs:39-41`), which is correct when instances flow through from a
+compute method but useless for the live card, which `ToConversation()` rebuilds on every
+recompute. `ComputeMethodAttribute.ConsolidationComparer` (14.1.71) supplies the structural
+comparison per method, so the card stays a plain `Conversation` with no wrapper type.
+`Version` is excluded from it: writes that can't touch the card (`SetRules`,
+`SetContextStart`, closing-grace flips) still bump it. `ApiArrayComparer<T>` does the same
+job for `ListParticipants`, whose `ApiArray<AuthorId>` compares its backing array by
+reference.
+
+**Invalidate the consolidating method, not the public one.** `ConsolidatingComputed` implements
+`IHasInvalidationTarget` with its source as the target, and `Invalidation.Begin()` honours that
+(`ComputedImpl.Helpers.cs:47-48`), so invalidating it reaches the consolidation source and the
+comparison runs as intended. What doesn't work is invalidating the *public* method: that one is
+a plain derived computed, so it invalidates only itself and then re-reads the still-consistent
+consolidating computed, serving the stale value indefinitely. Hence `InvalidateListParticipants`
+/ `InvalidateHasRecorder` target `GetConsolidatedParticipants` / `GetConsolidatedHasRecorder`.
+The live-session projections are unaffected — they derive from `GetState` and invalidate
+transitively.
+
+**Cost.** Consolidation makes invalidation propagation asynchronous — a real change lands
+one recompute later instead of synchronously. `ConsolidationDelay = 0` adds nothing itself
+(`Task.Delay(TimeSpan.Zero)` *is* `Task.CompletedTask`); the latency is the `Task.Run`
+dispatch in `ConsolidatingComputed.OnSourceInvalidated` plus one local `GetState`
+recompute. It also makes that recompute eager — an observed live session now re-reads
+`GetState` on every invalidation whether or not anyone reads downstream. Tests that read
+straight after a write must wait; see `LiveSessionsTest.LiveBlockEnters*` and
+`ConversationCacheTest`.
+
+`ConversationsBackend` calls the two public projections unchanged. Per constraint 7,
+`GetVisibleStartLid` returns a lid with `[V, +inf)` semantics; the range
 *emitted* into `ConversationLidRanges` still needs a finite end for the downstream range
 math (`ChatsBackend.EstimateMinimumCount`), so it is capped at the chat's end via an
 isolated `GetLidRange` read — isolated because depending on the lid range would invalidate
@@ -173,13 +228,18 @@ queries, and ~2 round-trips instead of ~5 on the client.
 
 ## Reuse
 
-Existing abstractions used: `SafeGet` and `ShardOwner.RequireShardOwnership` (the same
-pattern `GetState` uses), `LiveSessionState.EffectiveVisibleStartLid` / `ToConversation()`,
+Existing abstractions used: `ComputedOptions.ConsolidationDelay` (the same mechanism
+`ChatsBackend.GetCurrentYear` and `IUserPresences.GetLastCheckIn` already use),
+`LiveSessionState.EffectiveVisibleStartLid` / `ToConversation()`,
 `ChatsBackend.GetLidRange`, `Range<long>.IntersectWith`, `Collect`, `EnsureMonotonic`.
+
+Two new shared comparers, both placed where the type they compare lives rather than nested
+privately, since any compute method consolidating on these hits the same referential-equality
+wall: `ConversationContentComparer` (`Api/Chat/`, next to `Conversation`) and
+`ApiArrayComparer<T>` (`Core/Comparison/`, next to the existing comparers).
 `ConversationRangeMeta` and `ChatRangeMeta` are unchanged.
 
-No new shared component: the overlay stays inside `ConversationsBackend` and only its
-input changes, so there is nothing to promote to `ActualChat.Core`.
+The overlay itself stays inside `ConversationsBackend` and only its input changes.
 
 ## Testing
 

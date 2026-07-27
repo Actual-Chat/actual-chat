@@ -85,7 +85,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         // solo-era conversation from V on (the UI swaps the regular block for the live one). The emitted
         // range still needs a finite end for the range math downstream, hence the cap at the chat's end;
         // that read is isolated because depending on the lid range would invalidate this on every message.
-        var liveStartLid = await LiveSessionsBackend.GetVisibleStartLid(chatId, cancellationToken).ConfigureAwait(false);
+        var liveStartLid = await LiveSessionsBackend.GetVisibleStartLid(chatId, cancellationToken)
+            .ConfigureAwait(false);
         if (liveStartLid is { } liveStart && idTileRange.End > liveStart) {
             Range<long> chatLidRange;
             using (Computed.BeginIsolation())
@@ -130,7 +131,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // A latched live session owns its range: drop any solo-era conversations it overlaps and inject
         // its synthetic block instead (the UI swaps the regular block for the live one).
-        var liveConversation = await LiveSessionsBackend.GetLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        var liveConversation = await LiveSessionsBackend.GetLiveConversation(chatId, cancellationToken)
+            .ConfigureAwait(false);
         if (liveConversation is not null
             && !liveConversation.EntryLidRange.IntersectWith(lidTileRange).IsEmpty) {
             result = result

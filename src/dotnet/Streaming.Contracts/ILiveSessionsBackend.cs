@@ -12,7 +12,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken);
 
-    // The two below bypass GetState on purpose: their own invalidation lifecycle is far quieter.
+    // The two below drop GetState's churn - see LiveSessionsBackend.GetConsolidatedVisibleStartLid.
     // A latched session owns [lid, +inf) - it always runs to the chat's tail, so there is no end to return.
     [ComputeMethod]
     Task<long?> GetVisibleStartLid(ChatId chatId, CancellationToken cancellationToken);
@@ -20,6 +20,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken);
+    // These two consolidate as well - see LiveSessionsBackend.GetConsolidatedParticipants.
     [ComputeMethod]
     Task<ApiArray<AuthorId>> ListParticipants(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]

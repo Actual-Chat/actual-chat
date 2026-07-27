@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Comparison;
 using ActualChat.Flows;
 using ActualChat.Live;
 using ActualChat.Notifications;
@@ -133,30 +134,19 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             _ = ExpireRings(chatId);
 
         // Required, not merely defensive: IsSessionLive reads raw Redis against a time-based staleness
-        // cutoff, so nothing invalidates this on its own. GetVisibleStartLid/GetLiveConversation bypass
-        // GetState precisely so this poll can't reach the conversation metadata cache.
+        // cutoff, so nothing invalidates this on its own. The churn it creates is filtered before it can
+        // reach the conversation metadata cache - see GetConsolidatedVisibleStartLid.
         computed.Invalidate(SelfHealDelay);
         return state;
     }
 
     // [ComputeMethod]
-    public virtual async Task<long?> GetVisibleStartLid(ChatId chatId, CancellationToken cancellationToken)
-    {
-        // Reads Redis, not GetState, so its liveness poll can't poison the conversation metadata cache;
-        // every writer that moves the start must call InvalidateLiveView.
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-        var state = await SafeGet(chatId).ConfigureAwait(false);
-        return state is { SessionStartedAt: not null } ? state.EffectiveVisibleStartLid : null;
-    }
+    public virtual Task<long?> GetVisibleStartLid(ChatId chatId, CancellationToken cancellationToken)
+        => GetConsolidatedVisibleStartLid(chatId, cancellationToken);
 
     // [ComputeMethod]
-    public virtual async Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken cancellationToken)
-    {
-        // See GetVisibleStartLid - same contract, same reason.
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-        var state = await SafeGet(chatId).ConfigureAwait(false);
-        return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
-    }
+    public virtual Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken cancellationToken)
+        => GetConsolidatedLiveConversation(chatId, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -241,42 +231,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> ListParticipants(
-        ChatId chatId, CancellationToken cancellationToken)
-    {
-        // Captured before the awaits below — see GetState.
-        var computed = Computed.GetCurrent();
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-
-        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
-        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
-        var authorIds = participants
-            .Where(kv => IsFreshParticipant(kv.Value, cutoff))
-            .Select(kv => (Ok: AuthorId.TryParse(kv.Key, out var id), Id: id))
-            .Where(x => x.Ok)
-            .Select(x => x.Id)
-            .ToApiArray();
-        if (authorIds.Count > 0)
-            // Re-check so a stale (left) participant drops without an explicit off signal.
-            computed.Invalidate(SelfHealDelay);
-        return authorIds;
-    }
+    public virtual Task<ApiArray<AuthorId>> ListParticipants(ChatId chatId, CancellationToken cancellationToken)
+        => GetConsolidatedParticipants(chatId, cancellationToken);
 
     // [ComputeMethod]
-    public virtual async Task<bool> HasRecorder(ChatId chatId, CancellationToken cancellationToken)
-    {
-        // Captured before the awaits below — see GetState.
-        var computed = Computed.GetCurrent();
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-
-        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
-        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
-        var hasRecorder = participants.Values.Any(p => IsFreshRecorder(p, cutoff));
-        if (hasRecorder)
-            // Re-check so a stale (crashed) recorder drops without an explicit off signal.
-            computed.Invalidate(SelfHealDelay);
-        return hasRecorder;
-    }
+    public virtual Task<bool> HasRecorder(ChatId chatId, CancellationToken cancellationToken)
+        => GetConsolidatedHasRecorder(chatId, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<CallState?> GetCallState(ChatId chatId, CancellationToken cancellationToken)
@@ -365,7 +325,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // (grouping uses live-stream state, so a stale entry never misgroups an active streamer).
         await EnsureParticipant(chatId, authorId).ConfigureAwait(false);
         InvalidateState(chatId);
-        InvalidateLiveView(chatId);
     }
 
     public virtual async Task SetParticipation(
@@ -497,7 +456,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 state, ConversationNotificationPhase.Titled, $"Voice chat: {summary.Title}", cancellationToken)
                 .ConfigureAwait(false);
         InvalidateState(chatId);
-        InvalidateLiveView(chatId);
     }
 
     public virtual async Task SetContextStart(ChatId chatId, long contextStartLid, CancellationToken cancellationToken)
@@ -571,7 +529,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                         RingTtl)
                     .ConfigureAwait(false);
             InvalidateState(chatId);
-            InvalidateLiveView(chatId);
         }
         if (invitees.Count > 0)
             await Services.Queues()
@@ -618,7 +575,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             }
             conversationId = state?.RingConversationId;
             InvalidateState(chatId);
-            InvalidateLiveView(chatId);
         }
         if (conversationId is { } cid)
             await DismissRing(cid, [inviteeAuthorId], cancellationToken).ConfigureAwait(false);
@@ -709,6 +665,68 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
         if (close)
             await CloseCall(chatId).ConfigureAwait(false);
+    }
+
+    // Protected/internal methods
+
+    [ComputeMethod(ConsolidationDelay = 0)]
+    protected virtual async Task<long?> GetConsolidatedVisibleStartLid(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        // Protected on purpose: ConsolidationDelay applies only to methods computed locally, and an
+        // RPC-visible one is served from a RemoteComputed on the caller's side instead.
+        var state = await GetState(chatId, cancellationToken).ConfigureAwait(false);
+        return state is { SessionStartedAt: not null } ? state.EffectiveVisibleStartLid : null;
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0, ConsolidationComparer = typeof(ConversationContentComparer))]
+    protected virtual async Task<Conversation?> GetConsolidatedLiveConversation(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        // The comparer is required: ToConversation() rebuilds the card, and Conversation compares by reference.
+        var state = await GetState(chatId, cancellationToken).ConfigureAwait(false);
+        return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0.5, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
+    protected virtual async Task<ApiArray<AuthorId>> GetConsolidatedParticipants(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        // Captured before the awaits below — see GetState.
+        var computed = Computed.GetCurrent();
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
+        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        var authorIds = participants
+            .Where(kv => IsFreshParticipant(kv.Value, cutoff))
+            .Select(kv => (Ok: AuthorId.TryParse(kv.Key, out var id), Id: id))
+            .Where(x => x.Ok)
+            .Select(x => x.Id)
+            .ToApiArray();
+        if (authorIds.Count > 0)
+            // Re-check so a stale (left) participant drops without an explicit off signal.
+            computed.Invalidate(SelfHealDelay);
+        return authorIds;
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0.5)]
+    protected virtual async Task<bool> GetConsolidatedHasRecorder(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Captured before the awaits below — see GetState.
+        var computed = Computed.GetCurrent();
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
+        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        var hasRecorder = participants.Values.Any(p => IsFreshRecorder(p, cutoff));
+        if (hasRecorder)
+            // Re-check so a stale (crashed) recorder drops without an explicit off signal.
+            computed.Invalidate(SelfHealDelay);
+        return hasRecorder;
     }
 
     // Private methods
@@ -1061,7 +1079,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
         await _invites.RemoveHashMap(chatId.Value).ConfigureAwait(false);
         InvalidateState(chatId);
-        InvalidateLiveView(chatId);
     }
 
     private Task EnqueueLiveNotification(
@@ -1089,16 +1106,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
     }
 
-    private void InvalidateLiveView(ChatId chatId)
-    {
-        // Must be called by every writer that moves VisibleEntryLidRange or changes ToConversation() -
-        // these two don't depend on GetState, so InvalidateState alone leaves them stale.
-        using (Invalidation.Begin()) {
-            _ = GetVisibleStartLid(chatId, default);
-            _ = GetLiveConversation(chatId, default);
-        }
-    }
-
     private void InvalidateGet(ChatId chatId)
     {
         using (Invalidation.Begin())
@@ -1107,14 +1114,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     private void InvalidateHasRecorder(ChatId chatId)
     {
+        // The consolidating methods, not the public ones: IHasInvalidationTarget redirects to the
+        // consolidation source, while invalidating a plain derived computed can't reach it.
         using (Invalidation.Begin())
-            _ = HasRecorder(chatId, default);
+            _ = GetConsolidatedHasRecorder(chatId, default);
     }
 
     private void InvalidateListParticipants(ChatId chatId)
     {
         using (Invalidation.Begin())
-            _ = ListParticipants(chatId, default);
+            _ = GetConsolidatedParticipants(chatId, default);
     }
 
     // Nested types
