@@ -1,19 +1,19 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, VisualActivityPanelTabSwitch.Model>
+@inherits ComputedStateComponent<AppUIHub, VisualActivity>
 @{
-    var m = State.Value;
-    if (!m.Activity.CanSwitch)
+    var activity = State.Value;
+    if (!activity.CanSwitch)
         return;
 }
 
 <div class="call-map-switch">
     <button type="button"
-            class="c-option @(m.Activity.Tab == VisualActivityTab.Call ? "on" : "")"
+            class="c-option @(activity.Tab == VisualActivityTab.Call ? "on" : "")"
             @onclick="@(() => OnSelect(VisualActivityTab.Call))">
         Call
     </button>
     <button type="button"
-            class="c-option @(m.Activity.Tab == VisualActivityTab.Map ? "on" : "")"
+            class="c-option @(activity.Tab == VisualActivityTab.Map ? "on" : "")"
             @onclick="@(() => OnSelect(VisualActivityTab.Map))">
         Map
     </button>
@@ -25,28 +25,19 @@
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<VisualActivity>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.None,
+            static t => new ComputedState<VisualActivity>.Options() {
+                InitialValue = VisualActivity.None,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var activity = await ChatActivityUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
-        return new (activity);
-    }
+    protected override Task<VisualActivity> ComputeState(CancellationToken cancellationToken)
+        => ChatActivityUI.Get(Chat.Id, cancellationToken);
 
     // Private methods
 
     private void OnSelect(VisualActivityTab tab)
         => ChatActivityUI.SelectTab(Chat.Id, tab);
-
-    // Nested types
-
-    // TODO: use VisualActivity if it's only property
-    public sealed record Model(VisualActivity Activity) {
-        public static readonly Model None = new(VisualActivity.None);
-    }
 }

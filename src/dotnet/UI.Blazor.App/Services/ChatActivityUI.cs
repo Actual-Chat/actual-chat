@@ -28,24 +28,17 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         if (chatId.Value.IsNullOrEmpty())
             return VisualActivity.None;
 
-        // TODO: review this ai slop
-        // The call side keys on watching (the call view is open for this user), not on mere
-        // call activity in the chat — a non-watcher's panel must not flip to an empty call view.
         var isWatching = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
         var isAnyoneSharingLocation = await LocationUI.IsAnyoneSharing(chatId, cancellationToken).ConfigureAwait(false);
         var mode = await GetPanelMode(chatId, cancellationToken).ConfigureAwait(false);
-        // Hidden hides only the map side: the call side collapses to its Live pill (VideoPanel
-        // renders it in the Hidden mode), so HasCall must stay on to keep the pill mounted.
-        // LiveLocationBanner brings the map back, the pill brings the call view back.
-        var hasCall = isWatching;
         var hasMap = isAnyoneSharingLocation && mode is not VisualActivityPanelMode.Hidden;
-        var tab = (hasCall, hasMap) switch {
+        var tab = (isWatching, hasMap) switch {
             (true, false) => VisualActivityTab.Call,
             (false, true) => VisualActivityTab.Map,
             (true, true) => await GetSelectedPanelTab(chatId, cancellationToken).ConfigureAwait(false),
             _ => VisualActivityTab.Call,
         };
-        return new VisualActivity(mode, hasCall, hasMap, tab);
+        return new VisualActivity(mode, isWatching, hasMap, tab);
     }
 
     [ComputeMethod]
