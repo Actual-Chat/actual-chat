@@ -360,11 +360,12 @@ internal static class Program
 
         Target(Targets.PublishWin, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
+            isDevMaui ??= !isProduction;
             await AppxManifestGenerator.Generate(
                 isProduction,
+                isDevMaui.Value,
                 cancellationToken)
                 .ConfigureAwait(false);
-            isDevMaui ??= !isProduction;
             await Cli
                 .Wrap(dotnet)
                 .WithArguments("build",
