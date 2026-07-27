@@ -31,9 +31,12 @@ public partial class App
 
     private void OnAppInstanceActivated(object? sender, AppActivationArguments e)
     {
-        var e2 = e.Data as Windows.ApplicationModel.Activation.LaunchActivatedEventArgs;
-        if (e2 == null)
-            return;
-        AppInstanceActivated.Invoke(e2.Arguments);
+        var arguments = e.Data switch {
+            Windows.ApplicationModel.Activation.LaunchActivatedEventArgs x => x.Arguments,
+            Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs x => x.Uri.AbsoluteUri,
+            _ => null,
+        };
+        if (arguments != null)
+            AppInstanceActivated.Invoke(arguments);
     }
 }
