@@ -25,16 +25,6 @@
             </BadgeContent>
         </AuthorCircle>
         <div class="c-buttons">
-            @if (_enableIncompleteUI) {
-                <ButtonRound
-                    Class="btn-sm"
-                    Tooltip="Show call"
-                    TooltipPosition="FloatingPosition.Top"
-                    Click="OnCallClick">
-                    <i class="icon-phone text-2xl"></i>
-                </ButtonRound>
-            }
-
             @if (OnEditClick.HasDelegate) {
                 <ButtonRound
                     Class="btn-sm"
@@ -81,7 +71,6 @@
 @code {
     private ShareModalModel? _shareModalModel;
     private string? _peerOwnName;
-    private bool _enableIncompleteUI;
 
     private IAuthors Authors => Hub.Authors;
     private IAvatars Avatars => Hub.Avatars;
@@ -90,10 +79,6 @@
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
     [Parameter] public EventCallback OnEditClick { get; set; }
-
-    protected override async Task OnInitializedAsync() {
-        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
-    }
 
     protected override async Task OnParametersSetAsync() {
         var cancellationToken = CancellationToken.None;
@@ -125,11 +110,6 @@
 
     private Task OnShareClick()
         => _shareModalModel is not null ? ShareUI.Share(_shareModalModel) : Task.CompletedTask;
-
-    private async Task OnCallClick() {
-        Modal.Close();
-        await ModalUI.Show(new IncomingCallModal.Model(Author.Id));
-    }
 
     private void OnClose()
         => Modal.Close();
