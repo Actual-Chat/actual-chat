@@ -1,3 +1,5 @@
+using ActualChat.Hosting;
+
 namespace ActualChat.Users.UnitTests;
 
 public class AuthRedirectUrlTest
@@ -24,6 +26,7 @@ public class AuthRedirectUrlTest
     [InlineData("/\n/evil.com", false)] // Embedded newline: same collapse
     [InlineData("/\r/evil.com", false)] // Embedded carriage return: same collapse
     [InlineData("https://voxt.ai/\t/evil.com", false)] // Embedded tab in an otherwise-allowed absolute URL
+    [InlineData("voxt://something-else", false)] // App scheme, but not the auth callback host
     [InlineData("", false)]
     [InlineData(null, false)]
     public void ShouldAllowOnlySafeRedirects(string? redirectUrl, bool isAllowed)
@@ -36,5 +39,34 @@ public class AuthRedirectUrlTest
             result.Should().Be(redirectUrl);
         else
             result.Should().BeNull();
+    }
+
+    [Fact]
+    public void ShouldAllowWorktreeHostOfOwnDeployment()
+    {
+        // arrange
+        var hostInfo = new HostInfo { BaseUrl = "https://wt1.local.voxt.ai/" };
+        var allowedHosts = hostInfo.GetOwnAndKnownHosts();
+
+        // act
+        var result = AuthRedirectUrl.Sanitize("https://wt1.local.voxt.ai/chat", allowedHosts);
+
+        // assert
+        hostInfo.BaseUrlKind.Should().Be(BaseUrlKind.Local);
+        hostInfo.GetHosts().Should().NotContain("wt1.local.voxt.ai");
+        result.Should().Be("https://wt1.local.voxt.ai/chat");
+    }
+
+    [Fact]
+    public void ShouldRejectForeignHostOnWorktreeDeployment()
+    {
+        // arrange
+        var allowedHosts = new HostInfo { BaseUrl = "https://wt1.local.voxt.ai/" }.GetOwnAndKnownHosts();
+
+        // act
+        var result = AuthRedirectUrl.Sanitize("https://wt2.local.voxt.ai/chat", allowedHosts);
+
+        // assert
+        result.Should().BeNull();
     }
 }
