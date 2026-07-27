@@ -9,15 +9,12 @@
 <Banner Class="incoming-call-banner" Severity="BannerSeverity.Info">
     <Body>
         <div class="c-texts" @onclick="@OnExpandClick">
-            <AuthorBadge AuthorId="@call.Caller" ShowPresence="true"/>
-            <div class="c-subtitle">
-                @(call.HasVideo ? "Incoming video call" : "Incoming call")@(m.ChatTitle.IsNullOrEmpty() ? "" : $" · {m.ChatTitle}")
-            </div>
+            <AuthorBadge AuthorId="@call.Caller"/>
         </div>
     </Body>
     <Buttons>
-        <Button Class="btn-transparent unhovered" Click="@OnDeclineClick">Decline</Button>
         <Button Class="btn-transparent unhovered on" Click="@OnAcceptClick">Accept</Button>
+        <Button Class="btn-transparent unhovered" Click="@OnDeclineClick">Decline</Button>
     </Buttons>
 </Banner>
 
@@ -34,14 +31,7 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var call = await IncomingCallUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
-        if (call is null)
-            return ComputedModel.None;
-
-        var chat = await Hub.Chats.Get(Session, call.ChatId, cancellationToken).ConfigureAwait(false);
-        return new ComputedModel {
-            Call = call,
-            ChatTitle = chat is { Kind: not ChatKind.Peer } ? chat.Title : "",
-        };
+        return call is null ? ComputedModel.None : new ComputedModel { Call = call };
     }
 
     private Task OnAcceptClick()
@@ -62,6 +52,5 @@
         public static readonly ComputedModel None = new();
 
         public IncomingCall? Call { get; init; }
-        public string ChatTitle { get; init; } = "";
     }
 }
