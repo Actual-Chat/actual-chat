@@ -139,14 +139,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             Constants.Translation.UITextServiceKey => Settings.Translation.UITextPromptFile,
             _ => Settings.Translation.PromptFile,
         };
-        var path = CoreServerSettings.PromptsDir | promptFile;
-        if (!path.FileExists) {
-            // The prompts dir is deployed separately (configs repo); fall back to the base prompt
-            // so a code deploy that outruns the configs deploy degrades instead of failing.
-            Log.LogWarning("Prompt file {Path} not found, falling back to the base translation prompt", path.Value);
-            path = CoreServerSettings.PromptsDir | Settings.Translation.PromptFile;
-        }
-        return path;
+        return CoreServerSettings.PromptsDir | promptFile;
     }
 
     private PromptExecutionSettings CreateExecutionSettings(string textToTranslate, Language targetLanguage)

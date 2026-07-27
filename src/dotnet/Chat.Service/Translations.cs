@@ -40,9 +40,6 @@ public class Translations(IServiceProvider services) : ITranslations
         UITextKind kind,
         CancellationToken cancellationToken)
     {
-        // This endpoint translates arbitrary caller-supplied text by design. Guardrails: max length
-        // here, global completion rate limiting behind Translator, and the compute cache behind the
-        // backend. TODO: add a per-user rate limit (see docs/plans/server-strings-localization.md §4.1).
         if (text.IsNullOrWhiteSpace() || language.IsAnyEnglish)
             return text;
         if (text.Length > Constants.Translation.MaxTextTranslationLength)
