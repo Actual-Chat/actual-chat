@@ -750,6 +750,11 @@ server invalidations, plus the corresponding DB load.
 > the floor may already recover most of the hit rate, and a 300 s value on a
 > high-cardinality key like `MediaBackend.Get` costs real memory.
 
+> **Applied**, at the values below. §9.1 was *not* applied first, against the sequencing
+> advice at the end of this section — the six methods here return `null` rather than
+> throwing on the not-found path, and neither method driving the spin is among them, but
+> `IAccountsBackend.Get` sits close enough to it to be worth re-measuring.
+
 Not an invalidation fix, but the largest measured win available and the cheapest to
 apply. From §8.1, in descending order of measured waste:
 

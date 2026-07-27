@@ -7,7 +7,7 @@ namespace ActualChat.Users;
 /// </summary>
 public interface IAvatarsBackend : IComputeService, IBackendService
 {
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<AvatarFull?> Get(Symbol avatarId, CancellationToken cancellationToken);
 
     [CommandHandler]

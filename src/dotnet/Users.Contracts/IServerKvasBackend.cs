@@ -7,7 +7,7 @@ namespace ActualChat.Users;
 /// </summary>
 public interface IServerKvasBackend : IComputeService, IBackendService
 {
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<byte[]?> Get(string prefix, string key, CancellationToken cancellationToken = default);
     [ComputeMethod]
     Task<ApiList<(string Key, byte[] Value)>> List(string prefix, CancellationToken cancellationToken = default);

@@ -24,7 +24,8 @@ public interface IChatsBackend : IComputeService, IBackendService
         PrincipalId principalId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod]
+    // Only the tail tile of an active chat is invalidated by traffic; historical ones are immutable.
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<ChatTile> GetTile(
         ChatId chatId,
         Range<long> lidTileRange,
@@ -117,7 +118,7 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task<ChatEntry[]> ListChangedEntries(ChangedEntriesQuery query, CancellationToken cancellationToken);
 
     // entryId routes to its ChatId's shard (ShardKeyResolvers registers ChatEntryId -> ChatId.Value).
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<ChatEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken);
 
     Task<ChatEntry[]> ListNewEntries(

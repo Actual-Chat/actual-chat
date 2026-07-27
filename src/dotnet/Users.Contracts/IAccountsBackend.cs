@@ -7,7 +7,7 @@ namespace ActualChat.Users;
 /// </summary>
 public interface IAccountsBackend : IComputeService, IBackendService
 {
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserId?> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);

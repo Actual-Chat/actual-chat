@@ -7,7 +7,8 @@ namespace ActualChat.Media;
 /// </summary>
 public interface IMediaBackend : IComputeService, IBackendService
 {
-    [ComputeMethod]
+    // Media records are effectively immutable once uploaded, hence the longer floor.
+    [ComputeMethod(MinCacheDuration = 300)]
     Task<Media?> Get(MediaId? mediaId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<MediaFull?> GetFull(MediaId? mediaId, CancellationToken cancellationToken);
