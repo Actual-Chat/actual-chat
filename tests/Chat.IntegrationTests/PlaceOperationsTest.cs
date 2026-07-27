@@ -253,15 +253,22 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             placeIds.Should().BeEmpty();
         });
 
-        place = await places.Get(anotherSession, placeId, default);
-        if (isPublicPlace)
-            place.Should().NotBeNull();
-        else
-            place.Should().BeNull();
+        await ComputedTest.When(async ct => {
+            place = await places.Get(anotherSession, placeId, ct);
+            if (isPublicPlace)
+                place.Should().NotBeNull();
+            else
+                place.Should().BeNull();
+        });
 
         // Re-join again
-        if (!isPublicPlace)
+        if (!isPublicPlace) {
             await tester2.Commander.Call(new Invites_Use(anotherSession, inviteId));
+            await ComputedTest.When(async ct => {
+                var rejoinable = await places.Get(anotherSession, placeId, ct);
+                rejoinable!.Rules.CanJoin().Should().BeTrue();
+            });
+        }
         await commander.Call(new Places_Join(anotherSession, placeId));
 
         await ComputedTest.When(async ct => {
@@ -338,6 +345,14 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             ActualChat.Invite.Invite invite = ActualChat.Invite.ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chat.Id);
             invite = await commander.Call(new Invites_Generate(session, invite));
 
+            // Invites_Use requires place membership, which the just-issued Places_Join grants a
+            // recompute later - ChatsBackend.GetRules consolidates.
+            var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
+            var joiner = await tester2.Accounts.GetOwn(anotherSession, default);
+            await ComputedTest.When(async ct => {
+                var placeRules = await chatsBackend.GetRules(place.Id.RootChatId, joiner.Id, ct);
+                placeRules.IsMember().Should().BeTrue();
+            });
             await commander2.Call(new Invites_Use(anotherSession, invite.Id));
             await commander2.Call(new Authors_Join(anotherSession, chat.Id));
         }
@@ -387,9 +402,12 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         if (addToPlaceMembers) {
             var user2 = await tester2.Accounts.GetOwn(session2, default);
             await commander.Call(new Places_Invite(session, place.Id, [user2.Id]));
+            var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
             await ComputedTest.When(async ct => {
                 var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, ct);
                 placeFromUser2Perspective.Should().NotBeNull();
+                var placeRules = await chatsBackend.GetRules(place.Id.RootChatId, user2.Id, ct);
+                placeRules.IsMember().Should().BeTrue();
             });
         }
 
@@ -856,11 +874,12 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await commander1.Call(new Places_Exclude(session1, user2PlaceMember.Id));
 
-        placeFromUser2Perspective = await tester2.Places.Get(session2, placeId, default).Require(); // Place
-        placeFromUser2Perspective.Rules.Author.Require();
-        placeFromUser2Perspective.Rules.Author.HasLeft.Should().BeTrue();
-        var canJoin = placeFromUser2Perspective.Rules.CanJoin();
-        canJoin.Should().BeTrue();
+        await ComputedTest.When(async ct => {
+            placeFromUser2Perspective = await tester2.Places.Get(session2, placeId, ct).Require();
+            placeFromUser2Perspective.Rules.Author.Require();
+            placeFromUser2Perspective.Rules.Author.HasLeft.Should().BeTrue();
+            placeFromUser2Perspective.Rules.CanJoin().Should().BeTrue();
+        });
 
         contactIds = await contacts.ListIds(session2, placeId, default);
         contactIds.Should().HaveCount(1);

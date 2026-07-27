@@ -311,9 +311,11 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var leaveCommand = new Authors_Leave(session, chatId);
         await commander.Call(leaveCommand);
 
-        var permissions = await chats.GetRules(session, chatId, default);
-        permissions.CanRead().Should().Be(isPublicChat);
-        permissions.CanWrite().Should().BeFalse();
+        await ComputedTest.When(async ct => {
+            var permissions = await chats.GetRules(session, chatId, ct);
+            permissions.CanRead().Should().Be(isPublicChat);
+            permissions.CanWrite().Should().BeFalse();
+        });
 
         var chat = await chats.Get(session, chatId, default);
         if (isPublicChat)
@@ -385,9 +387,11 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         ownerIds = await roles.ListOwnerIds(otherTester.Session, chatId, default);
         ownerIds.Should().Contain(author.Id);
 
-        chat = await chats.Get(otherTester.Session, chatId, default);
-        chat.Should().NotBeNull();
-        chat!.Rules.IsOwner().Should().BeTrue();
+        await ComputedTest.When(async ct => {
+            chat = await chats.Get(otherTester.Session, chatId, ct);
+            chat.Should().NotBeNull();
+            chat!.Rules.IsOwner().Should().BeTrue();
+        });
     }
 
     [Fact]
@@ -477,9 +481,11 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await ownerTester.JoinChat(chatId, inviteId);
 
         var chats = ownerTester.AppServices.GetRequiredService<IChats>();
-        var chat = await chats.Get(ownerTester.Session, chatId, default);
-        chat.Should().NotBeNull();
-        chat!.Rules.IsOwner().Should().BeFalse();
+        await ComputedTest.When(async ct => {
+            var chat = await chats.Get(ownerTester.Session, chatId, ct);
+            chat.Should().NotBeNull();
+            chat!.Rules.IsOwner().Should().BeFalse();
+        });
     }
 
     [Fact]
@@ -552,11 +558,14 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         // Owner should still see the chat (e.g. with direct link)
         var chats = services.GetRequiredService<IChats>();
-        var chat = await chats.Get(session, chatId, default);
-        chat.Should().NotBeNull();
-        chat!.IsArchived.Should().BeTrue();
-        chat.Rules.CanRead().Should().BeTrue();
-        chat.Rules.CanWrite().Should().BeFalse();
+        Chat? chat = null;
+        await ComputedTest.When(async ct => {
+            chat = await chats.Get(session, chatId, ct);
+            chat.Should().NotBeNull();
+            chat!.IsArchived.Should().BeTrue();
+            chat.Rules.CanRead().Should().BeTrue();
+            chat.Rules.CanWrite().Should().BeFalse();
+        });
 
         // But even the owner should not see in its contacts
         await ComputedTest.When(services, async ct => {
@@ -566,8 +575,10 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         });
 
         // Other participants should not see the chat
-        chat = await chats.Get(session2, chatId, default);
-        chat.Should().BeNull();
+        await ComputedTest.When(async ct => {
+            chat = await chats.Get(session2, chatId, ct);
+            chat.Should().BeNull();
+        });
 
         await ComputedTest.When(services, async ct => {
             var contactIds = await contacts.ListIds(session2, null, ct);
