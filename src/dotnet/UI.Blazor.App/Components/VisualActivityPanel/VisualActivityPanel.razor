@@ -4,8 +4,8 @@
     var m = State.Value;
     var isWatching = m.IsWatching;
     var chatContext = m.ChatContext;
-    var showVideo = m.PanelState is { HasCall: true, Tab: VisualActivityTab.Call };
-    var showMap = m.PanelState is { HasMap: true, Tab: VisualActivityTab.Map };
+    var showVideo = m.Activity.HasCall;
+    var showMap = m.Activity.HasMap;
 
     // TODO(DF): move this logic to ChatVideoUI
     // Clear watching when navigating to a different chat.
@@ -120,7 +120,7 @@
     public sealed record Model(
         ChatContext? ChatContext,
         [property: MemberNotNullWhen(true, nameof(Model.ChatContext))] bool IsWatching,
-        VisualActivity PanelState
+        VisualActivity Activity
     ) {
         public static readonly Model None = new(null, false, VisualActivity.None);
     }

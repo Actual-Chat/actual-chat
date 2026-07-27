@@ -36,14 +36,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var state = await ChatActivityUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
-        if (!state.HasBoth)
-            return new Model(false, state.Tab);
-
-        // The switch belongs to the inline panel only — the fullscreen / island /
-        // hidden video panel has its own chrome.
+        var isVisible = state.IsVisible;
+        // TODO: probably must be inside ChatActivityUI since VideoPanel became VisualActivityPanel
         var videoPanelMode = await ChatVideoUI.GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
-        var isVisible = state.Tab != VisualActivityTab.Call || videoPanelMode == VideoPanelMode.Inline;
-        return new Model(isVisible, state.Tab);
+        return new Model(isVisible && videoPanelMode is VideoPanelMode.Inline, state.Tab);
     }
 
     // Private methods

@@ -28,9 +28,9 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
 
         var isWatching = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
         var isAnyoneSharingLocation = await LocationUI.IsAnyoneSharing(chatId, cancellationToken).ConfigureAwait(false);
-        var isPanelVisible = await IsPanelVisible(chatId, cancellationToken).ConfigureAwait(false);
+        var isPanelHidden = await IsPanelHidden(chatId, cancellationToken).ConfigureAwait(false);
         var tab = await GetSelectedPanelTab(chatId, cancellationToken).ConfigureAwait(false);
-        return new VisualActivity(isPanelVisible, isWatching, isAnyoneSharingLocation, tab);
+        return new VisualActivity(isPanelHidden, isWatching, isAnyoneSharingLocation, tab);
     }
 
     [ComputeMethod]
@@ -57,8 +57,8 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
     }
 
     [ComputeMethod]
-    public virtual Task<bool> IsPanelVisible(ChatId chatId, CancellationToken cancellationToken = default)
-        => Task.FromResult(!_hiddenPanelChatIds.ContainsKey(chatId));
+    public virtual Task<bool> IsPanelHidden(ChatId chatId, CancellationToken cancellationToken = default)
+        => Task.FromResult(_hiddenPanelChatIds.ContainsKey(chatId));
 
     [ComputeMethod]
     protected virtual Task<VisualActivityTab> GetSelectedPanelTab(ChatId chatId, CancellationToken cancellationToken)
@@ -83,14 +83,14 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
             return;
 
         using (Invalidation.Begin())
-            _ = IsPanelVisible(chatId, default);
+            _ = IsPanelHidden(chatId, default);
     }
 }
 
-public sealed record VisualActivity(bool IsPanelVisible, bool HasCall, bool HasMap, VisualActivityTab Tab)
+public sealed record VisualActivity(bool IsPanelHidden, bool HasCall, bool HasMap, VisualActivityTab Tab)
 {
     public static readonly VisualActivity None = new(false, false, false, VisualActivityTab.Call);
-    public bool HasBoth => HasCall && HasMap;
+    public bool IsVisible => !IsPanelHidden && (HasCall || HasMap);
 }
 
 // ParticipantCount counts live-session members when IsLiveSession, streaming talkers otherwise.

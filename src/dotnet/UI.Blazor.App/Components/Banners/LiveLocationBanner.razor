@@ -67,8 +67,8 @@
             return Model.None;
 
         var trackingError = await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false);
-        var isPanelVisible = await Hub.ChatActivityUI.IsPanelVisible(chatId, cancellationToken).ConfigureAwait(false);
-        return new Model(participants, trackingError, !isPanelVisible);
+        var isPanelHidden = await Hub.ChatActivityUI.IsPanelHidden(chatId, cancellationToken).ConfigureAwait(false);
+        return new Model(participants, trackingError, isPanelHidden);
     }
 
     // Private methods
