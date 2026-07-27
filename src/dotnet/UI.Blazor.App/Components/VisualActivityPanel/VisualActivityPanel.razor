@@ -4,8 +4,8 @@
     var m = State.Value;
     var isWatching = m.IsWatching;
     var chatContext = m.ChatContext;
-    var showVideo = m.Activity.HasCall;
-    var showMap = m.Activity.HasMap;
+    var showVideo = m.Activity is { HasCall: true, Tab: VisualActivityTab.Call };
+    var showMap = m.Activity is { HasMap: true, Tab: VisualActivityTab.Map };
 
     // TODO(DF): move this logic to ChatVideoUI
     // Clear watching when navigating to a different chat.

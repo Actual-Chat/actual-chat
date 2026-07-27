@@ -128,7 +128,7 @@ export class VideoPanel {
         const wantCompact = this.compactReasons.size > 0;
         if (wantCompact) {
             // Re-force whenever Blazor has cleared the collapsed state but compact is still wanted
-            // (e.g. SetVideoPanelExpanded(true) has the side effect of setting IsCollapsed=false).
+            // (e.g. switching the panel mode to Expanded replaces Collapsed).
             // Skip when minimized: user explicitly swiped the panel down to 0 height, the
             // compact-mode requirement is already satisfied — don't reveal the panel as an
             // island just because the keyboard opened.

@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<AppUIHub, VisualActivityPanelTabSwitch.Model>
 @{
     var m = State.Value;
-    if (!m.IsVisible)
+    if (!m.Activity.CanSwitch)
         return;
 }
 
@@ -22,7 +22,6 @@
 @code {
     private Chat Chat => ChatContext.Chat;
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
-    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
@@ -36,9 +35,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var activity = await ChatActivityUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
-        // TODO: probably must be inside ChatActivityUI since VideoPanel became VisualActivityPanel
-        var videoPanelMode = await ChatVideoUI.GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
-        return new Model(activity.IsVisible && videoPanelMode is VideoPanelMode.Inline, activity);
+        return new (activity);
     }
 
     // Private methods
@@ -48,7 +45,8 @@
 
     // Nested types
 
-    public sealed record Model(bool IsVisible, VisualActivity Activity) {
-        public static readonly Model None = new(false, VisualActivity.None);
+    // TODO: use VisualActivity if it's only property
+    public sealed record Model(VisualActivity Activity) {
+        public static readonly Model None = new(VisualActivity.None);
     }
 }

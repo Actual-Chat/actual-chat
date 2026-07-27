@@ -5,8 +5,8 @@
         return;
 
     var a = Actions;
-    var isExpanded = a.Mode == VideoPanelMode.Expanded;
-    var isCollapsed = a.Mode == VideoPanelMode.Collapsed;
+    var isExpanded = a.Mode == VisualActivityPanelMode.Expanded;
+    var isCollapsed = a.Mode == VisualActivityPanelMode.Collapsed;
     var effectiveChatVisible = IsChatVisible ?? !a.IsNarrow;
     var hasLayoutActions = a.CanToggleFullscreen || a.CanToggleIsland || a.CanMinimize;
     var hasStreamActions = a.CanSwitchCamera || a.CanToggleVideo || a.CanToggleScreenCast;
@@ -113,15 +113,18 @@
     [Parameter] public bool? IsChatVisible { get; set; }
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
 
     private void OnToggleFullscreen()
-        => ChatVideoUI.SetVideoPanelExpanded(Actions?.Mode != VideoPanelMode.Expanded);
+        => ChatActivityUI.TogglePanelMode(ChatId, VisualActivityPanelMode.Expanded,
+            Actions?.Mode != VisualActivityPanelMode.Expanded);
 
     private void OnToggleIsland()
-        => ChatVideoUI.SetVideoPanelCollapsed(Actions?.Mode != VideoPanelMode.Collapsed);
+        => ChatActivityUI.TogglePanelMode(ChatId, VisualActivityPanelMode.Collapsed,
+            Actions?.Mode != VisualActivityPanelMode.Collapsed);
 
     private void OnMinimize()
-        => ChatVideoUI.SetVideoPanelHidden(true);
+        => ChatActivityUI.SetPanelMode(ChatId, VisualActivityPanelMode.Hidden);
 
     private Task OnSwitchCamera()
         => Hub.CameraUI.SwitchCamera();
