@@ -340,7 +340,7 @@ public class AndroidAudioFocusHelper : IDisposable
                 if (hasBluetooth && _audioManager.IsBluetoothScoAvailableOffCall) {
                     _log.LogInformation("Attempting to connect Bluetooth SCO");
 
-                    _pendingScoConnection = new TaskCompletionSource<bool>();
+                    _pendingScoConnection = TaskCompletionSourceExt.New<bool>();
 
                     if (!_isBluetoothScoActive) {
                         _audioManager.StartBluetoothSco();
