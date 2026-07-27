@@ -19,7 +19,7 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
                 // which also removes the system consent alert.
                 PrefersEphemeralWebBrowserSession = true,
             };
-            await WebAuthenticator.Default.AuthenticateAsync(options).WaitAsync(cancellationToken).ConfigureAwait(false);
+            await WebAuthenticator.Default.AuthenticateAsync(options, cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (Exception e) when (e is TaskCanceledException or OperationCanceledException) {
