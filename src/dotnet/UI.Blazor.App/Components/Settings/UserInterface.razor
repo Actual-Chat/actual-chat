@@ -3,10 +3,12 @@
     var m = State.Value;
 }
 
-<TileTopic Topic="@L.Settings_UILanguage"/>
-<Tile>
-    <LanguageSettings/>
-</Tile>
+@if (m.EnableIncompleteUI) {
+    <TileTopic Topic="@L.Settings_UILanguage"/>
+    <Tile>
+        <LanguageSettings/>
+    </Tile>
+}
 
 <TileTopic Topic="@L.UserInterface_Font"/>
 <Tile Class="font-size-tile">
@@ -46,7 +48,8 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var appSettings = await UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
-        return new(account.IsAdmin, appSettings.IsAuthorColorsEnabled ?? true);
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        return new(account.IsAdmin, appSettings.IsAuthorColorsEnabled ?? true, enableIncompleteUI);
     }
 
     private Task OnToggleAuthorColors()
@@ -66,8 +69,8 @@
 
     // Nested types
 
-    public record Model(bool IsAdmin, bool IsAuthorColorsEnabled)
+    public record Model(bool IsAdmin, bool IsAuthorColorsEnabled, bool EnableIncompleteUI)
     {
-        public static readonly Model None = new(false, true);
+        public static readonly Model None = new(false, true, false);
     }
 }

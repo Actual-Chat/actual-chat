@@ -59,6 +59,11 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         if (storedValue is not null)
             return;
 
+        // While incomplete UI is off, DetectUILanguage returns the default w/o detection;
+        // persisting it would prevent detection from running once the feature is enabled.
+        if (!await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
+            return;
+
         await Hub.LocalSettings.Set(nameof(UILanguage), UILanguage.Value, cancellationToken).ConfigureAwait(false);
     }
 
@@ -125,6 +130,9 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 
     private async ValueTask<Language> DetectUILanguage(CancellationToken cancellationToken)
     {
+        if (!await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
+            return DefaultUILanguage;
+
         var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
         foreach (var language in languages)
             if (SupportedUILanguages.FirstOrDefault(l => l.PrimarySubtag == language.PrimarySubtag) is { } uiLanguage)
