@@ -150,11 +150,20 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
-    public virtual async Task<AuthorRules> GetRules(
+    public virtual Task<AuthorRules> GetRules(
+        ChatId chatId,
+        PrincipalId principalId,
+        CancellationToken cancellationToken)
+        => GetConsolidatedRules(chatId, principalId, cancellationToken);
+
+    [ComputeMethod(ConsolidationDelay = 0.2, ConsolidationComparer = typeof(AuthorRulesComparer))]
+    protected virtual async Task<AuthorRules> GetConsolidatedRules(
         ChatId chatId,
         PrincipalId principalId,
         CancellationToken cancellationToken)
     {
+        // Not on GetRules: that one is RPC-exposed, where ConsolidationDelay is a startup error
+        // once this service runs Distributed - which ForceDistributedMode... already flips it to.
         if (chatId is PeerChatId peerChatId) // We don't use actual roles to determine rules in this case
             return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
