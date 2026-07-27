@@ -1,7 +1,9 @@
 ﻿using ActualChat.Live;
 using ActualChat.Streaming;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
+using Microsoft.JSInterop;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -16,6 +18,9 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(45);
     // Give up watching if the call we just started never shows up as dialing.
     private static readonly TimeSpan DialingWaitTimeout = TimeSpan.FromSeconds(15);
+
+    private static readonly string JSStartRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.start";
+    private static readonly string JSStopRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.stop";
 
     private readonly ConcurrentDictionary<ChatId, CancellationTokenSource> _callWatches = new();
 
@@ -218,6 +223,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
 
     private async Task WatchOutgoingCall(ChatId chatId, CancellationToken cancellationToken)
     {
+        var ringbackOn = false;
         try {
             var watchStartedAt = Now;
             var isDialing = false;
@@ -226,8 +232,16 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                 .ConfigureAwait(false);
             while (!cancellationToken.IsCancellationRequested) {
                 var live = computed.Value;
-                if (live is { Kind: LiveSessionKind.Dialing })
+                if (live is { Kind: LiveSessionKind.Dialing }) {
                     isDialing = true;
+                    // The caller hears the ringback for as long as the call is dialing; every exit
+                    // below (answer, remote end, timeout, cancel) unwinds through the finally, which
+                    // stops it.
+                    if (!ringbackOn) {
+                        ringbackOn = true;
+                        StartRingback();
+                    }
+                }
                 else if (isDialing) {
                     // A session that outlives dialing was answered; a vanished one ended without one.
                     if (live is not null)
@@ -245,7 +259,25 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             Log.LogWarning(e, "WatchOutgoingCall failed for chat #{ChatId}", chatId);
         }
         finally {
+            if (ringbackOn)
+                StopRingback();
             _callWatches.TryRemove(chatId, out _);
+        }
+    }
+
+    private void StartRingback()
+        => _ = PlayRingback(true);
+
+    private void StopRingback()
+        => _ = PlayRingback(false);
+
+    private async Task PlayRingback(bool start)
+    {
+        try {
+            await Hub.JS.InvokeVoidAsync(start ? JSStartRingback : JSStopRingback).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Outgoing-call ringback {Action} failed", start ? "start" : "stop");
         }
     }
 
