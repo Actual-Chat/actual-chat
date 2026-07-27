@@ -10,6 +10,10 @@ public static class AuthRedirectUrl
     {
         if (redirectUrl.IsNullOrEmpty())
             return null;
+        // Browsers strip ASCII tab/LF/CR from anywhere in a URL before parsing it (WHATWG URL Standard),
+        // so e.g. "/\t/evil.com" collapses to "//evil.com" client-side even though it looks host-relative here.
+        if (redirectUrl.AsSpan().IndexOfAny('\t', '\n', '\r') >= 0)
+            return null;
         if (!Uri.TryCreate(redirectUrl, UriKind.RelativeOrAbsolute, out var uri))
             return null;
 
