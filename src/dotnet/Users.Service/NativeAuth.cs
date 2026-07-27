@@ -124,6 +124,17 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
         }
     }
 
+    // [CommandHandler]
+    public virtual async Task OnSignOut(NativeAuth_SignOut command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var session = command.Session;
+        var signOutCommand = new AccountsBackend_SignOut(session);
+        await ((Task)Commander.Call(signOutCommand, true, cancellationToken)).ConfigureAwait(false);
+    }
+
     // Private methods
 
     private async Task SignIn(
