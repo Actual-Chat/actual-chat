@@ -824,9 +824,9 @@ public virtual async Task<long> GetReadEntryLid(ChatId chatId, CancellationToken
 
 ### 9.4 `UserPresences.Get` — **done**; small win, and `GetLastCheckIn`'s was removed
 
-> **Applied.** `ConsolidationDelay = 0.5` now sits on `Get` and is gone from
-> `GetLastCheckIn`. Kept at 0.5 s rather than the 1 s suggested below to stay closer
-> to the previous latency budget; the attribute-only change is wire-compatible with
+> **Applied.** `ConsolidationDelay = 1` now sits on `Get` and is gone from
+> `GetLastCheckIn` — the 1 s suggested below, since check-ins really do arrive in
+> bursts worth coalescing. The attribute-only change is wire-compatible with
 > `release/v2.13`.
 
 **Downgraded from the pre-measurement draft.** The a-priori case was that check-ins

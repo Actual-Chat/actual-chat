@@ -690,7 +690,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
     }
 
-    [ComputeMethod(ConsolidationDelay = 0.5, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
+    [ComputeMethod(ConsolidationDelay = 0.2, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
     protected virtual async Task<ApiArray<AuthorId>> GetConsolidatedParticipants(
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -713,7 +713,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return authorIds;
     }
 
-    [ComputeMethod(ConsolidationDelay = 0.5)]
+    [ComputeMethod(ConsolidationDelay = 0.2)]
     protected virtual async Task<bool> GetConsolidatedHasRecorder(ChatId chatId, CancellationToken cancellationToken)
     {
         // Captured before the awaits below — see GetState.

@@ -1,5 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualLab.Fusion.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
@@ -11,7 +10,7 @@ namespace ActualChat.Chat;
 // shared helpers below.
 public partial class ChatsBackend
 {
-    private IFusionTime FusionTime => field ??= Services.GetRequiredService<IFusionTime>();
+    private static readonly TimeSpan MaxYearRecheckPeriod = TimeSpan.FromMinutes(10);
 
     // [ComputeMethod]
     public virtual async Task<ChatContentSkeleton> GetContentPeriods(
@@ -141,18 +140,16 @@ public partial class ChatsBackend
 
     // Protected members
 
-    // Year of the current UTC moment, exposed as a compute method so consumers
-    // (chiefly GetContentPeriods(..., null)) can hang an invalidation chain on
-    // it. IFusionTime.Now ticks on its own update period; ConsolidationDelay
-    // engages Fusion's ConsolidatingComputed<T> wrapper — when the recomputed
-    // year equals the previous one (the common case), the wrapper stays valid
-    // and the cascade stops here. The year-flip is the only tick that actually
-    // propagates.
     [ComputeMethod(ConsolidationDelay = 1)]
-    protected virtual async Task<int> GetCurrentYear()
+    protected virtual Task<int> GetCurrentYear()
     {
-        var now = await FusionTime.Now(TimeSpan.FromMinutes(10)).ConfigureAwait(false);
-        return now.ToDateTime().Year;
+        // The re-arm shortens near the boundary so the flip lands on it, not up to a period late.
+        var computed = Computed.GetCurrent();
+        var utcNow = Clocks.SystemClock.Now.ToDateTime();
+        var year = utcNow.Year;
+        var nextYearStartsAt = new DateTime(year + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        computed.Invalidate(TimeSpanExt.Min(MaxYearRecheckPeriod, nextYearStartsAt - utcNow));
+        return Task.FromResult(year);
     }
 
     [ComputeMethod]
