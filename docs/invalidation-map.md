@@ -136,12 +136,17 @@ Four things that materially affect how you read a report:
 
    **This applies to every consolidated method in §8 and §11.4** — notably
    `Accounts.GetOwn` (4,880 invalidations at peak) and `UserPresences.GetLastCheckIn`.
-   Read those counts as "source + target combined". For `Accounts.GetOwn` the split
-   matters: if its consolidation is working, most of that count is the source
-   spinning on a cached error while the target absorbs it, so the *downstream*
-   damage is smaller than the raw number implies — the wasted recomputes are real,
-   the cascade is not. §9.1 is still the fix; the cascade half of its cost is
-   overstated.
+   Read those counts as "source + target combined".
+
+   How the split falls depends on the error's transiency, because the target keeps
+   only *some* of the source's delays (`ComputeMethodDef.cs:40-46`): it gets
+   `AutoInvalidationDelay` and `TransientErrorInvalidationDelay` forced to `MaxValue`,
+   but **keeps `NonTransientErrorInvalidationDelay`**. So on a *transient* error only
+   the source re-invalidates and the target stays quiet — the count is all source, no
+   cascade. On a *non-transient* one **both** twins re-invalidate on the same horizon,
+   so roughly half the count is the target, and that half did propagate downstream.
+   `Accounts.GetOwn` inherits `SessionsBackend.Get`'s `ArgumentOutOfRangeException`,
+   which is non-transient — so assume the cascade was real, not absorbed.
 
    Fusion `master` now prefixes the consolidation source with `~`, so a future
    report shows `Accounts.GetOwn` and `~Accounts.GetOwn` separately and the split is
