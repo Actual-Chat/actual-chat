@@ -20,9 +20,9 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod(ConsolidationDelay = 0.5)]
+    [ComputeMethod]
     Task<ApiArray<AuthorId>> ListParticipants(ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod(ConsolidationDelay = 0.5)]
+    [ComputeMethod]
     Task<bool> HasRecorder(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<CallState?> GetCallState(ChatId chatId, CancellationToken cancellationToken);
