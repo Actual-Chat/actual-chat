@@ -26,7 +26,9 @@ public static class AuthRedirectUrl
         }
 
         if (Constants.AppSchemes.All.Contains(uri.Scheme))
-            return redirectUrl;
+            return string.Equals(uri.Host, Constants.AppSchemes.AuthCallbackHost, StringComparison.OrdinalIgnoreCase)
+                ? redirectUrl
+                : null;
         if (uri.Scheme is "http" or "https" && allowedHosts.Contains(uri.Host))
             return redirectUrl;
         return null;
