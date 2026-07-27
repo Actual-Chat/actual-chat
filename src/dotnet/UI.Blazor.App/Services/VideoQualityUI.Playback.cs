@@ -49,13 +49,13 @@ public sealed partial class VideoQualityUI
     private readonly Dictionary<StreamId, CpuTimestamp> _playbackLastEvalAt = new();
     private readonly Dictionary<StreamId, PlaybackStatsState> _playbackByStream = new();
     private readonly Lock _playbackLock = new();
-    // Snapshot of the latest panel mode observed by WatchVideoPanelModeEdges.
+    // Snapshot of the latest panel mode observed by WatchPanelMode.
     // Used by GetFreshPlaybackEntries to skip staleness pruning while QC has
     // intentionally paused inbound frames (Hidden/Collapsed) — without that,
     // OnPlaybackStats dries up, entries age out, and resume can't dispatch.
-    private VideoPanelMode _currentPanelMode = VideoPanelMode.Inline;
+    private VisualActivityPanelMode _currentPanelMode = VisualActivityPanelMode.Inline;
     // Snapshot of BackgroundStateTracker.IsBackground observed by WatchBackgroundState.
-    // Hidden tab / backgrounded app pauses every stream just like VideoPanelMode.Hidden.
+    // Hidden tab / backgrounded app pauses every stream just like the Hidden panel mode.
     private volatile bool _isBackground;
     private readonly BandwidthEstimator _inboundBwEstimator;
     private PlaybackQualitySnapshot _playbackSnapshot = PlaybackQualitySnapshot.Empty;
@@ -417,12 +417,12 @@ public sealed partial class VideoQualityUI
         // stream. Hide (or a hidden tab / backgrounded app) pauses every stream.
         // The server filter drops every frame while Paused is in effect, so this
         // also throttles inbound bandwidth.
-        var panelMode = await Hub.ChatVideoUI.GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
-        if (panelMode == VideoPanelMode.Hidden || _isBackground) {
+        var panelMode = await Hub.ChatVideoUI.GetWatchingPanelMode(cancellationToken).ConfigureAwait(false);
+        if (panelMode == VisualActivityPanelMode.Hidden || _isBackground) {
             foreach (var (streamId, _) in entries)
                 requestedMap[streamId.Value] = ReceiveQuality.Paused;
         }
-        else if (panelMode == VideoPanelMode.Collapsed) {
+        else if (panelMode == VisualActivityPanelMode.Collapsed) {
             foreach (var (streamId, state) in entries) {
                 if (state.Snapshot.Priority != PlaybackStreamPriority.Primary)
                     requestedMap[streamId.Value] = ReceiveQuality.Paused;
@@ -824,7 +824,7 @@ public sealed partial class VideoQualityUI
             foreach (var streamId in expiredStallReportIds)
                 _lastStallReportAt.Remove(streamId);
             var isPaused = _isBackground
-                || _currentPanelMode is VideoPanelMode.Hidden or VideoPanelMode.Collapsed;
+                || _currentPanelMode is VisualActivityPanelMode.Hidden or VisualActivityPanelMode.Collapsed;
             if (!isPaused) {
                 var staleStreamIds = _playbackByStream
                     .Where(x => x.Value.LastSeen.Elapsed > PlaybackHealthTtl)

@@ -64,7 +64,6 @@
     private ILocationTracker Tracker => Hub.LocationTracker;
     private LocationUI LocationUI => Hub.LocationUI;
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
-    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
@@ -128,13 +127,11 @@
     private void OnCloseMenu()
         => _isMenuOpen.Value = false;
 
-    private async Task OnHide() {
+    private void OnHide() {
         _isMenuOpen.Value = false;
         // With a call in progress the call view collapses to its Live pill (same as the
         // video ⋮ menu's Hide) instead of vanishing with the map.
-        if (await ChatVideoUI.IsWatching(Chat.Id).ConfigureAwait(true))
-            ChatVideoUI.SetVideoPanelHidden(true);
-        ChatActivityUI.TogglePanel(Chat.Id, false);
+        ChatActivityUI.SetPanelMode(Chat.Id, VisualActivityPanelMode.Hidden);
     }
 
     private async Task OnLocate() {

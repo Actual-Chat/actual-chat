@@ -60,12 +60,17 @@
     var expandedCls = m.IsExpanded ? "expanded" : "";
     var equalLayoutCls = m.IsEqualLayout && m.IsExpanded ? "layout-equal" : "";
     var videoMenuRef = MenuRef.New<VideoPanelMenu>(Chat.Id.Value, ScreenSize.IsNarrow().ToString()).ToString();
+    // TODO: why did it appear here?
+    var cameraMenuRef = MenuRef.New<CameraMenu>(CameraMenuRequester, m.SelectedCameraDeviceId ?? "").ToString();
     var layout = m.Layout;
+    var panelCls = $"video-panel {firstOpenCls} {recordingCls} {remoteStreamsCls} "
+        + $"{collapsedCls} {hiddenCls} {expandedCls} {equalLayoutCls}";
+    var contentLayoutCls = m.IsEqualLayout && m.IsExpanded ? "video-panel-layout__equal" : layout.LayoutClass;
     var isMobileOrNarrow = ScreenSize.IsNarrow() || Hub.BrowserInfo.IsMobile;
 }
 
 <OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
-<div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @collapsedCls @hiddenCls @expandedCls @equalLayoutCls">
+<div @ref="Ref" class="@panelCls">
     <div class="c-container">
         <div class="video-panel-toolbar video-panel-header">
             <div class="header-row">
@@ -85,9 +90,9 @@
                     }
                 </div>
 
-                @if (m.VideoStreamMemberCount > 0 || !string.IsNullOrEmpty(m.FocusedParticipantName)) {
+                @if (m.VideoStreamMemberCount > 0 || !m.FocusedParticipantName.IsNullOrEmpty()) {
                     <div class="c-center">
-                        @if (!string.IsNullOrEmpty(m.FocusedParticipantName)) {
+                        @if (!m.FocusedParticipantName.IsNullOrEmpty()) {
                             <div class="c-member-name">@m.FocusedParticipantName</div>
                         }
                         @if (m.VideoStreamMemberCount > 0) {
@@ -109,7 +114,7 @@
                         Class="btn-video-panel video-panel-collapse-toggle"
                         StopPropagation="true"
                         PreventDefault="true"
-                        Click="@(() => ChatVideoUI.SetVideoPanelExpanded(true))">
+                        Click="@(() => ChatActivityUI.SetPanelMode(Chat.Id, VisualActivityPanelMode.Expanded))">
                         <i class="icon-expand text-lg"></i>
                     </HeaderButton>
                     <HeaderButton
@@ -172,7 +177,7 @@
                     <HeaderButton
                         Click="@OnSwitchCamera"
                         Class="btn-video-panel"
-                        data-menu="@(MenuRef.New<CameraMenu>(CameraMenuRequester, m.SelectedCameraDeviceId ?? "").ToString())"
+                        data-menu="@cameraMenuRef"
                         data-menu-trigger="@MenuTrigger.Secondary"
                         data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
                         <i class="icon-camera-switch text-lg"></i>
@@ -191,55 +196,59 @@
                 </HeaderButton>
             }
         </div>
-        <div class="video-panel-content @(m.IsEqualLayout && m.IsExpanded ? "video-panel-layout__equal" : layout.LayoutClass)" data-menu="@videoMenuRef">
-          <div class="c-grid tiles-@(layout.TileCount)">
-            @if (_showConnecting) {
-                <UITimer Period="@TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
-                <div class="connecting-overlay">
-                    <div class="connecting-spinner"></div>
-                    <span>Connecting...</span>
-                </div>
-            } else if (_endingGraceActive) {
-                <UITimer Period="@TimeSpan.FromMilliseconds(500)" IsRecurring="false" Tick="OnEndingGraceTimeout" />
-            }
-            @foreach (var streamInfo in m.RemoteStreams.OrderBy(s => s.StartedAt).ThenBy(s => s.StreamId.Value, StringComparer.Ordinal)) {
-                var remoteStreamCls = layout.GetRemoteStreamPlayerClass(streamInfo.StreamId);
-                if (string.IsNullOrEmpty(remoteStreamCls)) {
-                    // Hidden slot (e.g. the camera half of an author who's also
-                    // screencasting — it renders as a separate `pip-overlay` sidebar tile).
-                    continue;
+        <div class="video-panel-content @contentLayoutCls" data-menu="@videoMenuRef">
+            <div class="c-grid tiles-@(layout.TileCount)">
+                @if (_showConnecting) {
+                    <UITimer Period="@TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
+                    <div class="connecting-overlay">
+                        <div class="connecting-spinner"></div>
+                        <span>Connecting...</span>
+                    </div>
+                } else if (_endingGraceActive) {
+                    <UITimer Period="@TimeSpan.FromMilliseconds(500)" IsRecurring="false" Tick="OnEndingGraceTimeout" />
                 }
-                if (m.SpeakingAuthorIds is { } speaking && speaking.Contains(streamInfo.AuthorId))
-                    remoteStreamCls += " speaking";
-                <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" Class="@remoteStreamCls"
-                                    OnTileClick="@OnTilePinClick" />
-                var pipStream = layout.GetPipStreamFor(streamInfo.StreamId);
-                if (pipStream is not null) {
+                @foreach (var streamInfo in m.RemoteStreams.OrderBy(s => s.StartedAt).ThenBy(s => s.StreamId.Value)) {
+                    var remoteStreamCls = layout.GetRemoteStreamPlayerClass(streamInfo.StreamId);
+                    if (remoteStreamCls.IsNullOrEmpty()) {
+                        // Hidden slot (e.g. the camera half of an author who's also
+                        // screencasting — it renders as a separate `pip-overlay` sidebar tile).
+                        continue;
+                    }
+                    if (m.SpeakingAuthorIds is { } speaking && speaking.Contains(streamInfo.AuthorId))
+                        remoteStreamCls += " speaking";
                     <RemoteStreamPlayer
-                        @key="@("pip-" + pipStream.StreamId.Value)"
-                        StreamInfo="@pipStream"
-                        Class="pip-overlay" />
+                        @key="streamInfo.StreamId.Value"
+                        StreamInfo="@streamInfo"
+                        Class="@remoteStreamCls"
+                        OnTileClick="@OnTilePinClick" />
+                    var pipStream = layout.GetPipStreamFor(streamInfo.StreamId);
+                    if (pipStream is not null) {
+                        <RemoteStreamPlayer
+                            @key="@("pip-" + pipStream.StreamId.Value)"
+                            StreamInfo="@pipStream"
+                            Class="pip-overlay" />
+                    }
                 }
-            }
-            @* Own screencast is normally not rendered — the primary slot is
-               reserved for whoever is actually talking remotely, and the
-               camera tile shows a screencast indicator when the local user
-               is dual-streaming. The exception is when own-screencast is
-               the only stream in the panel: without this tile the sharing
-               user sees nothing at all. *@
-            @if (isOwnCameraStreaming) {
-                var ownSpeakingCls = m.SpeakingAuthorIds is { } ownSpeaking && m.OwnAuthorId is { } ownAuthorId && ownSpeaking.Contains(ownAuthorId) ? " speaking" : "";
-                <VideoStreamingPreview
-                    @key="@("own-camera-" + Chat.Id.Value)"
-                    SourceKind="@VideoSourceKind.Camera"
-                    Class="@(layout.OwnCameraPreviewClass + ownSpeakingCls)" />
-            } else if (isOwnScreenCasting && !hasRemoteStreams) {
-                <VideoStreamingPreview
-                    @key="@("own-screencast-" + Chat.Id.Value)"
-                    SourceKind="@VideoSourceKind.ScreenCast"
-                    Class="item-focused" />
-            }
-          </div>
+                @* Own screencast is normally not rendered — the primary slot is
+                   reserved for whoever is actually talking remotely, and the
+                   camera tile shows a screencast indicator when the local user
+                   is dual-streaming. The exception is when own-screencast is
+                   the only stream in the panel: without this tile the sharing
+                   user sees nothing at all. *@
+                @if (isOwnCameraStreaming) {
+                    var ownSpeakingCls = m.SpeakingAuthorIds is { } ownSpeaking && m.OwnAuthorId is { } ownAuthorId
+                        && ownSpeaking.Contains(ownAuthorId) ? " speaking" : "";
+                    <VideoStreamingPreview
+                        @key="@("own-camera-" + Chat.Id.Value)"
+                        SourceKind="@VideoSourceKind.Camera"
+                        Class="@(layout.OwnCameraPreviewClass + ownSpeakingCls)" />
+                } else if (isOwnScreenCasting && !hasRemoteStreams) {
+                    <VideoStreamingPreview
+                        @key="@("own-screencast-" + Chat.Id.Value)"
+                        SourceKind="@VideoSourceKind.ScreenCast"
+                        Class="item-focused" />
+                }
+            </div>
         </div>
         @if (m.IsExpanded && isChatVisible && !ScreenSize.IsNarrow() && m.ChatContext is { } chatContext) {
             <div class="video-panel-chat upload-drag-drop-host">
@@ -292,6 +301,7 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private CameraUI CameraUI => Hub.CameraUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
     private IAuthors Authors => Hub.Authors;
     private HistoryStepper HistoryStepper => field ??= Hub.Services.GetRequiredService<HistoryStepper>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
@@ -365,7 +375,7 @@
 
     [JSInvokable]
     public async Task CloseVideoPanel() {
-        ChatVideoUI.SetVideoPanelExpanded(false);
+        ChatActivityUI.TogglePanelMode(Chat.Id, VisualActivityPanelMode.Expanded, false);
         CloseExpandStep();
         ChatVideoUI.StopStreaming();
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -378,9 +388,8 @@
     }
 
     [JSInvokable]
-    public async Task OnExpanded()
-    {
-        ChatVideoUI.SetVideoPanelExpanded(true);
+    public async Task OnExpanded() {
+        ChatActivityUI.SetPanelMode(Chat.Id, VisualActivityPanelMode.Expanded);
         _lastExpanded = true;
         _expandStepRef = HistoryStepper.StepIn("VideoPanel");
         _ = WaitForExpandStepClosed(_expandStepRef);
@@ -388,40 +397,39 @@
     }
 
     [JSInvokable]
-    public async Task OnCollapsed()
-    {
-        ChatVideoUI.SetVideoPanelExpanded(false);
+    public async Task OnCollapsed() {
+        ChatActivityUI.TogglePanelMode(Chat.Id, VisualActivityPanelMode.Expanded, false);
         _lastExpanded = false;
         CloseExpandStep();
         await InvokeAsync(StateHasChanged);
     }
 
     [JSInvokable]
-    public Task OnForceIsland(bool active)
-    {
-        ChatVideoUI.SetVideoPanelCollapsed(active);
+    public Task OnForceIsland(bool active) {
+        ChatActivityUI.TogglePanelMode(Chat.Id, VisualActivityPanelMode.Collapsed, active);
         return Task.CompletedTask;
     }
 
-    private async Task WaitForExpandStepClosed(HistoryStepRef stepRef)
-    {
+    private async Task WaitForExpandStepClosed(HistoryStepRef stepRef) {
         await stepRef.WhenClosed.ConfigureAwait(false);
         await HistoryStepper.Dispatcher.InvokeSafeAsync(() => {
             if (_expandStepRef != stepRef)
                 return; // Already handled
+
             _expandStepRef = null;
             if (!State.Value.IsExpanded)
                 return; // Already collapsed
+
             // Back button pressed — collapse the video panel
             if (JSRef is not null)
                 _ = JSRef.InvokeVoidAsync("collapse");
         }, Log);
     }
 
-    private void CloseExpandStep()
-    {
+    private void CloseExpandStep() {
         if (_expandStepRef is not { } stepRef)
             return;
+
         _expandStepRef = null;
         stepRef.Close();
     }
@@ -444,20 +452,19 @@
         }
         var layout = await _layoutCalculator.GetLayout(cancellationToken).ConfigureAwait(false);
 
-        var isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
-        var isHidden = await ChatVideoUI.GetIsVideoPanelHidden(cancellationToken).ConfigureAwait(false);
-        var isExpanded = await ChatVideoUI.GetIsVideoPanelExpanded(cancellationToken).ConfigureAwait(false);
+        var panelMode = await ChatActivityUI.GetPanelMode(chatId, cancellationToken).ConfigureAwait(false);
+        var isCollapsed = panelMode is VisualActivityPanelMode.Collapsed;
+        var isHidden = panelMode is VisualActivityPanelMode.Hidden;
+        var isExpanded = panelMode is VisualActivityPanelMode.Expanded;
         var isEqualLayout = await ChatVideoUI.GetIsVideoPanelEqualLayout(cancellationToken).ConfigureAwait(false);
         var isChatVisible = await ChatVideoUI.GetIsVideoPanelChatVisible(cancellationToken).ConfigureAwait(false);
 
-        // Get centralized video state (for recording status)
         var isOwnRecording = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var selectedCameraDeviceId = await CameraUI.GetSelectedDeviceId(cancellationToken).ConfigureAwait(false);
 
-        // Get active video streams for this chat
-        var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken);
+        var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
         var videoStreamMemberCount = activeStreams.Count > 0
             ? await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false)
             : 0;
@@ -480,11 +487,13 @@
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         // Name of the currently focused participant — shown above the member count in the header
-        var focusedName = await GetFocusedParticipantName(chatId, layout, remoteStreams, cancellationToken).ConfigureAwait(false);
+        var focusedName = await GetFocusedParticipantName(chatId, layout, remoteStreams, cancellationToken)
+            .ConfigureAwait(false);
         // Authors currently streaming audio (VAD-gated) — includes the local user; used to
         // ring the active speaker(s) in the equal layout, where focus alone can't (it never
         // points at own).
-        var speakingAuthorIds = await Hub.LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        var speakingAuthorIds = await Hub.LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken)
+            .ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthorId = ownAuthor?.Id;
         // Equal layout has no focused tile, so the header name tracks the current speaker
@@ -498,13 +507,6 @@
         var pinnedAuthorId = await _layoutCalculator.GetPinnedAuthor(cancellationToken).ConfigureAwait(false);
         // Author shown in the big tile right now — what the pin button pins when toggled on.
         var focusedAuthorId = GetFocusedRemoteAuthorId(layout, remoteStreams);
-
-#if false
-        Log.LogWarning("[VideoPanel] ComputeState: remoteStreams=[{Streams}], isOwnRecording={IsOwnRecording}, isOwnScreenCasting={IsOwnScreenCasting}",
-            string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
-            isOwnRecording,
-            isOwnScreenCasting);
-#endif
 
         return new Model(
             chatContext,
@@ -531,6 +533,7 @@
         var focused = layout.RemoteStreamPlayerClasses.FirstOrDefault(c => c.Class.Contains("item-focused"));
         if (focused is null)
             return null;
+
         var stream = remoteStreams.FirstOrDefault(s => s.StreamId.Value == focused.StreamId);
         return stream?.AuthorId;
     }
@@ -539,8 +542,7 @@
         ChatId chatId,
         VideoPanelLayout layout,
         VideoStreamInfo[] remoteStreams,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         const string focusedCls = "item-focused";
         if (layout.OwnCameraPreviewClass.Contains(focusedCls))
             return "You";
@@ -553,7 +555,8 @@
         if (focusedStream is null)
             return null;
 
-        var author = await Authors.Get(Session, chatId, focusedStream.AuthorId, cancellationToken).ConfigureAwait(false);
+        var author = await Authors.Get(Session, chatId, focusedStream.AuthorId, cancellationToken)
+            .ConfigureAwait(false);
         return author?.Avatar.Name;
     }
 
@@ -574,12 +577,14 @@
         var m = State.Value;
         if (m.IsEqualLayout || authorId == m.FocusedAuthorId)
             return;
+
         _layoutCalculator?.SetPinnedAuthor(authorId);
     }
 
     private void OnTogglePinClick() {
         if (_layoutCalculator is null)
             return;
+
         var m = State.Value;
         if (m.IsPinned)
             _layoutCalculator.SetPinnedAuthor(null);
@@ -626,8 +631,12 @@
         ChatVideoUI.SetVideoPanelChatVisible(!current);
     }
 
-    private void OnHidePillClick()
-        => ChatVideoUI.SetVideoPanelHidden(false);
+    private void OnHidePillClick() {
+        // The pill belongs to the call view — bring that one back even if the
+        // Map tab was selected when the panel got hidden.
+        ChatActivityUI.TogglePanelMode(Chat.Id, VisualActivityPanelMode.Hidden, false);
+        ChatActivityUI.SelectTab(Chat.Id, VisualActivityTab.Call);
+    }
 
     private async Task OnExpandClick() {
         if (JSRef is not null)

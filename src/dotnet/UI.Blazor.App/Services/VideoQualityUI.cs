@@ -30,7 +30,7 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
 
     private bool _wasConnected = true;
     private int _coldStartTicksRemaining;
-    private readonly TaskCompletionSource _whenActuallyUsed = new();
+    private readonly TaskCompletionSource _whenActuallyUsed = TaskCompletionSourceExt.New();
 
     private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
@@ -77,7 +77,7 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
         await _whenActuallyUsed.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chains = new[] {
             AsyncChain.From(WatchConnectivity),
-            AsyncChain.From(WatchVideoPanelMode),
+            AsyncChain.From(WatchPanelMode),
             AsyncChain.From(WatchBackgroundState),
             AsyncChain.From(WatchThermal),
             AsyncChain.From(RunPlaybackQualityKeepAlive),
@@ -92,14 +92,14 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
 
     // Private methods
 
-    private async Task WatchVideoPanelMode(CancellationToken cancellationToken)
+    private async Task WatchPanelMode(CancellationToken cancellationToken)
     {
         // Pause/resume requests must propagate within a tick — without this, the
         // override sits idle until the next 5s steady-state QC re-evaluation.
         // The cached mode also tells GetFreshPlaybackEntries to keep entries
         // alive while paused (no inbound frames → no OnPlaybackStats refresh).
         var cMode = await Computed
-            .Capture(() => Hub.ChatVideoUI.GetVideoPanelMode(cancellationToken), cancellationToken)
+            .Capture(() => Hub.ChatVideoUI.GetWatchingPanelMode(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         await foreach (var change in cMode.Changes(cancellationToken).ConfigureAwait(false)) {
             bool isResumingPlayback;
@@ -115,8 +115,8 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
         }
     }
 
-    private static bool IsPlaybackPaused(VideoPanelMode mode)
-        => mode is VideoPanelMode.Hidden or VideoPanelMode.Collapsed;
+    private static bool IsPlaybackPaused(VisualActivityPanelMode mode)
+        => mode is VisualActivityPanelMode.Hidden or VisualActivityPanelMode.Collapsed;
 
     private async Task WatchThermal(CancellationToken cancellationToken)
     {
@@ -191,8 +191,10 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
         var age = startedAt.Elapsed;
         if (age < QcStartupCooldown)
             return false;
+
         if (force)
             return true;
+
         var sinceLast = lastEvalAt.Elapsed;
         var required = age < QcSettlingDuration ? QcSettlingInterval : QcSteadyInterval;
         return sinceLast >= required;
