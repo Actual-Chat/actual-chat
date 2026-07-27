@@ -88,7 +88,8 @@ MauiAccountUI.SignOutBackend()
   the host allowlist for redirect validation rather than writing a new one.
 - **`Constants.Hosts`** (`Api/Constants.cs:8`) — the pattern the new
   `Constants.AppSchemes` mirrors.
-- **`NativeAuth` / `INativeAuth`** (`Users.Service/NativeAuth.cs`) — sign-out
+- **`NativeAuth` / `INativeAuth`** (`Users.Service/NativeAuth.cs`,
+  `Api.Contracts/Users/INativeAuth.cs`) — sign-out
   becomes a third command on the existing service, symmetric with
   `OnSignInGoogle` / `OnSignInApple`, reusing its `SessionTemporals` error
   reporting.
@@ -124,7 +125,8 @@ move.
 `Constants.AppSchemes` is genuinely shared — server and client both need it —
 and goes in `Api/Constants.cs` next to `Constants.Hosts`.
 
-`NativeAuth_SignOut` goes in `Users.Contracts/INativeAuth.cs` with its siblings.
+`NativeAuth_SignOut` goes in `Api.Contracts/Users/INativeAuth.cs` with its
+siblings.
 
 ## Sign-in flow
 
@@ -250,8 +252,10 @@ prod-flavor app sign in against `dev.voxt.ai` and vice versa.
 
 - `Api/Constants.cs` — add `Constants.AppSchemes` (`voxt`, `voxt-dev`),
   mirroring `Constants.Hosts`. `MauiSettings.AppScheme` sources from it.
-- `Users.Contracts/INativeAuth.cs` — add the `NativeAuth_SignOut(Session)`
-  record and its `[CommandHandler]` declaration.
+- `Api.Contracts/Users/INativeAuth.cs` — add the `NativeAuth_SignOut(Session)`
+  record and its `[CommandHandler]` declaration. `Api.Contracts/Module/ApiContractsAotSource.g.cs`
+  must then be regenerated via `./update-aot-helpers.cmd`, or the command fails
+  at runtime under AOT.
 - `Users.Service/NativeAuth.cs` — `OnSignOut` runs `AccountsBackend_SignOut`,
   reporting failures through the existing `ReportError` path.
 - `Users.Service/AuthHelper.cs` — validate `redirectUrl` in `IsCloseFlow`:
