@@ -39,7 +39,7 @@ public sealed class AppleTokenEndpointHandlerMock : HttpMessageHandler
 
         if (code == null || !_codes.TryRemove(code, out var claims))
             return BadRequest("unknown authorization code");
-        return Ok(claims);
+        return Ok(claims, clientId);
     }
 
     private static HttpResponseMessage BadRequest(string body)
@@ -47,13 +47,23 @@ public sealed class AppleTokenEndpointHandlerMock : HttpMessageHandler
             Content = new StringContent(body),
         };
 
-    private static HttpResponseMessage Ok((string Sub, string Email) claims)
+    private static HttpResponseMessage Ok((string Sub, string Email) claims, string clientId)
     {
         var header = Convert.ToBase64String("""{"alg":"none","typ":"JWT"}"""u8)
             .TrimEnd('=');
+        var expiresAt = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds();
         var payload = Convert.ToBase64String(
                 Encoding.UTF8.GetBytes(
-                    $$"""{"sub":"{{claims.Sub}}","email":"{{claims.Email}}","email_verified":"true"}"""))
+                    $$"""
+                    {
+                        "iss":"https://appleid.apple.com",
+                        "aud":"{{clientId}}",
+                        "exp":{{expiresAt}},
+                        "sub":"{{claims.Sub}}",
+                        "email":"{{claims.Email}}",
+                        "email_verified":"true"
+                    }
+                    """))
             .TrimEnd('=');
         var idToken = $"{header}.{payload}.";
 

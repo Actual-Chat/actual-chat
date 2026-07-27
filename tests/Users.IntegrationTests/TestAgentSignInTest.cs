@@ -36,10 +36,11 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var email = ActualChat.Email.Parse($"test-{Ulid.NewUlid().ToString().ToLower()}@actual.chat");
         var account = new AccountFull("").WithEmailIdentity(email);
+        var predefinedTotps = ImmutableDictionary<string, int>.Empty;
 
         // act
-        var isAdminOnLocal = AccountsBackend.IsAdmin(account, true);
-        var isAdminElsewhere = AccountsBackend.IsAdmin(account, false);
+        var isAdminOnLocal = AccountsBackend.IsAdmin(account, true, predefinedTotps);
+        var isAdminElsewhere = AccountsBackend.IsAdmin(account, false, predefinedTotps);
 
         // assert
         isAdminOnLocal.Should().BeTrue();
@@ -127,7 +128,7 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
         results.Should().Equal(string.Empty, string.Empty, string.Empty);
     }
 
-    // Helpers
+    // Private methods
 
     private async Task<(AccountFull Account, string Email)> SignInAsTestAgent()
     {

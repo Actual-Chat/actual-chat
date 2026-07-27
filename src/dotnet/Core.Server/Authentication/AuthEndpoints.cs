@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 
 namespace ActualChat.Authentication;
 
@@ -24,7 +25,9 @@ public sealed class AuthEndpoints(AuthEndpoints.Options settings)
         string? returnUrl)
     {
         scheme = scheme.NullIfEmpty() ?? Settings.DefaultSignInScheme;
-        returnUrl ??= "/";
+        returnUrl = LocalUrl.TryParse(returnUrl, new Uri(httpContext.Request.GetEncodedUrl()), out var localUrl)
+            ? localUrl.Value
+            : "/";
         var properties = new AuthenticationProperties { RedirectUri = returnUrl };
         Settings.SignInPropertiesBuilder?.Invoke(httpContext, properties);
         return httpContext.ChallengeAsync(scheme, properties);
@@ -39,7 +42,9 @@ public sealed class AuthEndpoints(AuthEndpoints.Options settings)
         // when the user agent is redirected from the external identity provider
         // after a successful authentication flow (e.g Google or Facebook).
         scheme = scheme.NullIfEmpty() ?? Settings.DefaultSignOutScheme;
-        returnUrl ??= "/";
+        returnUrl = LocalUrl.TryParse(returnUrl, new Uri(httpContext.Request.GetEncodedUrl()), out var localUrl)
+            ? localUrl.Value
+            : "/";
         var properties = new AuthenticationProperties { RedirectUri = returnUrl };
         Settings.SignOutPropertiesBuilder?.Invoke(httpContext, properties);
         return httpContext.SignOutAsync(scheme, properties);

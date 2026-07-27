@@ -20,9 +20,10 @@ internal static class PendingRegistrationExt
         CancellationToken cancellationToken = default)
     {
         var bytes = MessagePackSerializer.Serialize(payload, cancellationToken: cancellationToken);
-        // Base64 has no spaces, which satisfies SecureTokens.Create's input restriction.
         var encoded = Convert.ToBase64String(bytes);
-        var token = await secureTokens.Create(encoded, cancellationToken).ConfigureAwait(false);
+        var token = await secureTokens
+            .Create(SecureTokenKind.PendingRegistration, encoded, cancellationToken)
+            .ConfigureAwait(false);
         return token.Token;
     }
 
@@ -31,7 +32,7 @@ internal static class PendingRegistrationExt
         string token,
         Session expectedSession)
     {
-        var decrypted = secureTokens.TryDecrypt(token);
+        var decrypted = secureTokens.TryDecrypt(SecureTokenKind.PendingRegistration, token);
         if (decrypted is null)
             return null;
 

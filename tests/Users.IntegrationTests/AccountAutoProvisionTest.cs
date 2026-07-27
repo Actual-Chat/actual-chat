@@ -56,4 +56,23 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
             .ExcludingSystemProperties()
             .Excluding(x => x.IsGreetingCompleted));
     }
+
+    [Fact]
+    public async Task GeneratedUserIdsAreUnused()
+    {
+        // arrange
+        const int accountCount = 20;
+
+        // act
+        var userIds = new List<UserId>();
+        for (var i = 0; i < accountCount; i++) {
+            var account = await _tester.SignInAsUniqueBob();
+            userIds.Add(account.Id);
+            await _tester.SignOut();
+        }
+
+        // assert
+        userIds.Should().AllSatisfy(x => x.IsGuest.Should().BeFalse());
+        userIds.Distinct().Should().HaveCount(accountCount);
+    }
 }

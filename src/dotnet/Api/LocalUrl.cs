@@ -17,7 +17,44 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
     [DataMember, MemoryPackOrder(0), Key(0)]
     public string Value => field ?? "/";
 
-    public static LocalUrl Parse(string? s) => new(s);
+    public static LocalUrl Parse(string? s)
+        => TryParse(s, out var result) ? result : throw StandardError.Format<LocalUrl>(s);
+
+    public static bool TryParse(string? s, out LocalUrl result)
+    {
+        result = default;
+        if (s.IsNullOrEmpty())
+            return true;
+
+        if (Uri.TryCreate(s, UriKind.Absolute, out _))
+            return false;
+
+        if (!s.StartsWith('/'))
+            s = "/" + s;
+        if (s.EndsWith('/') && s.Length > 1)
+            s = s[..^1];
+        if (!Uri.TryCreate(s, UriKind.Relative, out _))
+            return false;
+
+        result = new LocalUrl(s, ParseOrNone.Option);
+        return true;
+    }
+
+    public static bool TryParse(string? s, Uri origin, out LocalUrl result)
+    {
+        if (!origin.IsAbsoluteUri)
+            throw new ArgumentOutOfRangeException(nameof(origin));
+        if (!Uri.TryCreate(s, UriKind.Absolute, out var absoluteUrl))
+            return TryParse(s, out result);
+
+        result = default;
+        if (!string.Equals(absoluteUrl.Scheme, origin.Scheme, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(absoluteUrl.IdnHost, origin.IdnHost, StringComparison.OrdinalIgnoreCase)
+            || absoluteUrl.Port != origin.Port)
+            return false;
+
+        return TryParse(absoluteUrl.PathAndQuery + absoluteUrl.Fragment, out result);
+    }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string DisplayText => Value.Length <= 1 ? Value : Value[1..];
@@ -25,16 +62,9 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
     [MemoryPackConstructor, SerializationConstructor]
     public LocalUrl(string? value)
     {
-        // Normalizing it
-        if (value.IsNullOrEmpty()) {
-            Value = "/";
-            return;
-        }
-        if (!value.StartsWith('/'))
-            value = "/" + value;
-        if (value.EndsWith('/') && value.Length > 1)
-            value = value[..^1];
-        Value = value;
+        if (!TryParse(value, out var result))
+            throw StandardError.Format<LocalUrl>(value);
+        Value = result.Value;
     }
 
     public LocalUrl(string value, ParseOrNone _)

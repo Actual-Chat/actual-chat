@@ -13,10 +13,9 @@ public class Gifs(IServiceProvider services) : IGifs
     private IHttpClientFactory HttpClientFactory { get; } = services.GetRequiredService<IHttpClientFactory>();
     private HttpClient HttpClient => field ??= HttpClientFactory.CreateClient(HttpClientName);
     private string ApiKey { get; } = services.GetRequiredService<MediaSettings>().KlipyApiKey;
-    private RateLimitPolicy RateLimitPolicy { get; }
-        = services.GetService<RateLimitPolicy>() ?? RateLimitPolicy.Unlimited;
-    private RateLimitIdentityResolver IdentityResolver { get; }
-        = services.GetService<RateLimitIdentityResolver>() ?? new RateLimitIdentityResolver(services);
+    private RateLimitPolicy RateLimitPolicy => field ??= services.GetRequiredService<RateLimitPolicy>();
+    private RateLimitIdentityResolver IdentityResolver
+        => field ??= services.GetRequiredService<RateLimitIdentityResolver>();
     private ILogger<Gifs> Log { get; } = services.LogFor<Gifs>();
 
     public async Task<GifSearchResult> Search(string query, int page, CancellationToken cancellationToken)

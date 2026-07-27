@@ -13,11 +13,10 @@ namespace ActualChat.Resilience.Internal;
 public sealed class RpcRateLimitMiddleware(IServiceProvider services) : IRpcMiddleware
 {
     private IServiceProvider Services { get; } = services;
-    private RateLimitPolicy Policy => field ??= Services.GetService<RateLimitPolicy>() ?? RateLimitPolicy.Unlimited;
+    private RateLimitPolicy Policy => field ??= Services.GetRequiredService<RateLimitPolicy>();
     private RateLimitIdentityResolver IdentityResolver
-        => field ??= Services.GetService<RateLimitIdentityResolver>() ?? new RateLimitIdentityResolver(Services);
-    private RateLimitClassResolver ClassResolver
-        => field ??= Services.GetService<RateLimitClassResolver>() ?? RateLimitClassResolver.Default;
+        => field ??= Services.GetRequiredService<RateLimitIdentityResolver>();
+    private RateLimitClassResolver ClassResolver => field ??= Services.GetRequiredService<RateLimitClassResolver>();
 
     // Runs after RpcDefaultSessionReplacer, which resolves default sessions to real ones
     public double Priority { get; init; } = RpcInboundMiddlewarePriority.ArgumentValidation - 2;

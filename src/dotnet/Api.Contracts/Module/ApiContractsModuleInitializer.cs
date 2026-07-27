@@ -21,7 +21,7 @@ public static partial class ApiContractsModuleInitializer
 #pragma warning disable CA2000
         Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(24, Alphabet.AlphaNumericDash.Symbols));
 #pragma warning restore CA2000
-        Session.Validator = session => session.Id.Length >= 20;
+        Session.Validator = session => SessionExt.IsValidId(session.Id);
 
         // Backend compute methods rarely set MinCacheDuration, and the Fusion default (zero) keeps
         // nothing alive - so a consistent computed is re-produced per read unless a dependant holds it.

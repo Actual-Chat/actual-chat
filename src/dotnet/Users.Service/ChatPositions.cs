@@ -10,6 +10,7 @@ namespace ActualChat.Users;
 public class ChatPositions(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IChatPositions
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IChatPositionsBackend Backend { get; } = services.GetRequiredService<IChatPositionsBackend>();
 
     // [ComputeMethod]
@@ -29,6 +30,9 @@ public class ChatPositions(IServiceProvider services) : DbServiceBase<UsersDbCon
 
         var (session, chatId, kind, position) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return;
 
         var backendCommand = new ChatPositionsBackend_Set(account.Id, chatId, kind, position);
         await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);

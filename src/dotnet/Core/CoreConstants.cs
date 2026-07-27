@@ -23,6 +23,8 @@ public static partial class CoreConstants
     {
         public const char ApiKeyPrefix = '!';
         public const int IdPrefixLength = 8;
+        public const int MinIdLength = 20;
+        public const int MaxIdLength = 64;
         public static readonly TimeSpan SessionExpirationTime = TimeSpan.FromDays(90);
         public static readonly TimeSpan ApiKeyExpirationTime = TimeSpan.FromDays(365);
         public static readonly TimeSpan MaxApiKeyExpirationTime = TimeSpan.FromDays(365 * 3);

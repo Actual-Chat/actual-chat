@@ -124,6 +124,35 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         updatedAccount.SyncContacts.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task IgnoresServerOwnedFieldsOnUpdate()
+    {
+        // arrange
+        var account = await Tester.SignInAsUniqueBob();
+        await Commander.Call(new AccountsBackend_Update(account with { IsGreetingCompleted = true }, null));
+        await ComputedTest.When(async ct => {
+            var a = await Accounts.GetOwn(Tester.Session, ct);
+            a.IsGreetingCompleted.Should().BeTrue();
+        });
+        account = await Accounts.GetOwn(Tester.Session, default);
+        var createdAt = account.CreatedAt;
+        var newName = UniqueNames.Name("Derived");
+
+        // act
+        var updatedAccountData = account with {
+            Name = newName,
+            CreatedAt = createdAt - TimeSpan.FromDays(365),
+            IsGreetingCompleted = false,
+        };
+        var updateCommand = new Accounts_Update(Tester.Session, updatedAccountData, null);
+        await Tester.Commander.Call(updateCommand);
+
+        // assert
+        var updatedAccount = await WhenOwnAccountUpdated(a => a.Name == newName);
+        updatedAccount.CreatedAt.Should().Be(createdAt);
+        updatedAccount.IsGreetingCompleted.Should().BeTrue();
+    }
+
     // Tests for AccountsBackend.OnUpdate (internal API) - should allow updating Claims and Identities
 
     [Fact]

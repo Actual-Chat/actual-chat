@@ -109,7 +109,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
                 continue;
 
             totalUnreadCount++;
-            if (unreadChats.Count <= takeChats)
+            if (HasUnreadChatCapacity(unreadChats.Count, takeChats))
                 unreadChats.Add(digestChat);
         }
 
@@ -157,6 +157,9 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             return await BuildDigestChat(chatId, now, unreadCount, userLanguage, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    internal static bool HasUnreadChatCapacity(int unreadChatCount, int takeChats)
+        => unreadChatCount < takeChats;
 
     private async Task<DigestParameters> BuildSpecificChatsDigest(
         IEnumerable<ChatId> chatIds,

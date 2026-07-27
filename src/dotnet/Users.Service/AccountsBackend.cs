@@ -18,6 +18,7 @@ namespace ActualChat.Users;
 public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccountsBackend
 {
     private const string AdminEmailDomain = Constants.Team.EmailDomain;
+    private const int ReserveUserIdAttemptCount = 5;
     private static HashSet<string> AdminEmails { get; } = [
         "alex.yakunin@gmail.com",
         "ustinovas@gmail.com",
@@ -293,9 +294,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             var mergedClaims = originalAccount.Claims.WithMany(claims);
             var mergedIdentities = originalAccount.Identities.WithMany(identities);
 
-            // Add email identity for Google / Apple accounts based on email claim
+            // Add email identity for Google / Apple accounts based on a verified email claim
             _ = ActualChat.Email.TryParse(claims.GetValueOrDefault(ClaimTypes.Email, ""), out var claimEmail);
-            if (AuthSchema.IsExternal(authenticatedIdentity.Schema) && claimEmail is not null)
+            if (AuthSchema.IsExternal(authenticatedIdentity.Schema)
+                && AuthSchema.HasVerifiedEmail(claims)
+                && claimEmail is not null)
                 mergedIdentities = mergedIdentities.WithEmailIdentity(claimEmail);
 
             var email = originalAccount.Email.NullIfEmpty() ?? mergedIdentities.GetEmails().FirstOrDefault() ?? "";
@@ -493,13 +496,22 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // Protected/internal methods
 
     internal bool IsAdmin(AccountFull account)
-        => IsAdmin(account, HostInfo.BaseUrlKind == BaseUrlKind.Local);
+        => IsAdmin(account, HostInfo.BaseUrlKind == BaseUrlKind.Local, UsersSettings.PredefinedTotps);
 
-    internal static bool IsAdmin(AccountFull account, bool areTestAgentsAdmins)
+    internal static bool IsAdmin(
+        AccountFull account,
+        bool areTestAgentsAdmins,
+        IReadOnlyDictionary<string, int> predefinedTotps)
     {
         // TODO(AY): Remove the check relying on test/internal auth providers in the production code
         if (account.Identities.HasInternalIdentity() && account.Id == Constants.User.Admin.UserId)
             return true;
+
+        // Phones with a predefined TOTP belong to Apple/Google app review, so they're never admins
+        foreach (var phone in account.Identities.GetPhones()) {
+            if (predefinedTotps.ContainsKey(ActualChat.Phone.NormalizePart(phone.Value)))
+                return false;
+        }
 
         var emails = account.Identities.GetEmails();
         foreach (var email in emails) {
@@ -608,8 +620,14 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private async Task<DbAccount> CreateDbAccount(
         UsersDbContext dbContext, AccountFull account, CancellationToken cancellationToken)
     {
-        // Generate user ID in code - no need for a DB roundtrip
-        var userId = account.Id?.Value.NullIfEmpty() ?? UserId.New().Value;
+        var userId = account.Id?.Value.NullIfEmpty();
+        if (userId is not null) {
+            // A caller-supplied Id is taken as is - only the lock is needed
+            await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            userId = await ReserveUserId(dbContext, cancellationToken).ConfigureAwait(false);
+        }
 
         // Construct display name from claims
         var name = account.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
@@ -626,9 +644,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Id = UserId.Parse(userId),
             Name = name,
         };
-
-        // Acquire lock before creating Account
-        await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
 
         // Handle email identities
         var emailString = account.Claims.GetValueOrDefault(ClaimTypes.Email, "").NullIfEmpty()
@@ -669,5 +684,22 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var accountModel = dbAccount.ToModel(account.Identities, account.Claims);
         context.Operation.AddEvent(new AccountChangedEvent(accountModel, null, ChangeKind.Create));
         return dbAccount;
+    }
+
+    private static async Task<string> ReserveUserId(UsersDbContext dbContext, CancellationToken cancellationToken)
+    {
+        // UserId is 6 random chars: ~8% odds of a collision by 100K accounts.
+        // The lock precedes the probe, so a concurrent creator of the same Id waits rather than races.
+        for (var i = 0; i < ReserveUserIdAttemptCount; i++) {
+            var userId = UserId.New().Value;
+            await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
+            var isUsed = await dbContext.Accounts
+                .AnyAsync(x => x.Id == userId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!isUsed)
+                return userId;
+        }
+
+        throw StandardError.Internal("Couldn't generate an unused UserId.");
     }
 }

@@ -21,6 +21,17 @@ public static class SessionExt
         }
     }
 
+    public static bool IsValidId(string sessionId)
+    {
+        if (sessionId.Length is < CoreConstants.Session.MinIdLength or > CoreConstants.Session.MaxIdLength)
+            return false;
+
+        var id = sessionId.AsSpan();
+        if (id[0] == CoreConstants.Session.ApiKeyPrefix)
+            id = id[1..];
+        return Alphabet.AlphaNumericDash.IsMatch(id);
+    }
+
     public static Session NewApiKey()
         => new (CoreConstants.Session.ApiKeyPrefix + ApiKeyGenerator.Next());
 

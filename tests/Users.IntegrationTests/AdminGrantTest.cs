@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ActualChat.Testing.Host;
+using ActualChat.Users.Module;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 
@@ -53,6 +54,35 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert
         account.Should().NotBeNull();
         account.IsAdmin.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PredefinedPhoneAccountIsNeverAdmin()
+    {
+        // arrange
+        var phone = UniqueNames.Phone();
+        var settings = AppHost.Services.GetRequiredService<UsersSettings>();
+        var oldPredefinedTotps = settings.PredefinedTotps;
+        settings.PredefinedTotps = new Dictionary<string, int> {
+            { ActualChat.Phone.NormalizePart(phone.Value), 111111 },
+        };
+        var accountToSignIn = new AccountFull(UniqueNames.Name("Reviewer"))
+            .WithPhoneIdentity(phone)
+            .WithEmailIdentity(ActualChat.Email.Parse(UniqueNames.Email("reviewer")));
+
+        // act
+        AccountFull account;
+        try {
+            account = await _tester.SignIn(accountToSignIn);
+        }
+        finally {
+            settings.PredefinedTotps = oldPredefinedTotps;
+        }
+
+        // assert
+        account.Identities.GetPhones().Should().Contain(phone);
+        account.Identities.GetEmails().Should().NotBeEmpty();
+        account.IsAdmin.Should().BeFalse();
     }
 
     [Fact]

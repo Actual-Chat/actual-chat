@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using ActualChat.Testing.Host;
+using ActualChat.Users.Db;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -14,7 +16,88 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private IAccounts Accounts => AppHost.Services.GetRequiredService<IAccounts>();
+    private AuthHelper AuthHelper => AppHost.Services.GetRequiredService<AuthHelper>();
+    private DbHub<UsersDbContext> DbHub => AppHost.Services.GetRequiredService<DbHub<UsersDbContext>>();
     private ISessionTemporalsBackend SessionTemporals => AppHost.Services.GetRequiredService<ISessionTemporalsBackend>();
+
+    [Fact]
+    public async Task DoesNotLinkUnverifiedEmail()
+    {
+        // arrange
+        var email = UniqueNames.Email("unverified-link");
+        _ = await RegisterEmailAccount(email);
+        var session = await NewSession();
+        var providerIdentity = new UserIdentity(AuthSchema.Google, UniqueNames.Random());
+        var identity = new ClaimsIdentity(AuthSchema.Google);
+        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, providerIdentity.Value));
+        identity.AddClaim(new Claim(ClaimTypes.Email, email));
+
+        // act
+        await AuthHelper.SignIn(session, new ClaimsPrincipal(identity), CancellationToken.None);
+
+        // assert
+        var ownerId = await GetIdentityOwner(providerIdentity);
+        ownerId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LinksVerifiedEmail()
+    {
+        // arrange
+        var email = UniqueNames.Email("verified-link");
+        var existingAccount = await RegisterEmailAccount(email);
+        var session = await NewSession();
+        var providerIdentity = new UserIdentity(AuthSchema.Google, UniqueNames.Random());
+        var identity = new ClaimsIdentity(AuthSchema.Google);
+        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, providerIdentity.Value));
+        identity.AddClaim(new Claim(ClaimTypes.Email, email));
+        identity.AddClaim(new Claim(AuthSchema.EmailVerifiedClaim, bool.TrueString));
+
+        // act
+        await AuthHelper.SignIn(session, new ClaimsPrincipal(identity), CancellationToken.None);
+
+        // assert
+        var ownerId = await GetIdentityOwner(providerIdentity);
+        ownerId.Should().Be(existingAccount.Id);
+    }
+
+    [Fact]
+    public async Task DoesNotAddUnverifiedEmailIdentity()
+    {
+        // arrange
+        var providerIdentity = new UserIdentity(AuthSchema.Google, UniqueNames.Random());
+        var initialSession = await NewSession();
+        await SignInExternal(initialSession, providerIdentity, null, false);
+        var session = await NewSession();
+        var email = UniqueNames.Email("unverified-identity");
+
+        // act
+        await SignInExternal(session, providerIdentity, email, false);
+
+        // assert
+        var emailIdentity = UserIdentityExt.NewEmailIdentity(ActualChat.Email.Parse(email));
+        var ownerId = await GetIdentityOwner(emailIdentity);
+        ownerId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AddsVerifiedEmailIdentity()
+    {
+        // arrange
+        var providerIdentity = new UserIdentity(AuthSchema.Google, UniqueNames.Random());
+        var initialSession = await NewSession();
+        await SignInExternal(initialSession, providerIdentity, null, false);
+        var session = await NewSession();
+        var email = UniqueNames.Email("verified-identity");
+
+        // act
+        await SignInExternal(session, providerIdentity, email, true);
+
+        // assert
+        var emailIdentity = UserIdentityExt.NewEmailIdentity(ActualChat.Email.Parse(email));
+        var ownerId = await GetIdentityOwner(emailIdentity);
+        ownerId.Should().NotBeNull();
+    }
 
     [Fact]
     public async Task SignInWithNoAccountStashesPendingRegistration()
@@ -103,6 +186,30 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
     }
 
     [Fact]
+    public async Task CancelRegisterRejectsTokenFromDifferentSession()
+    {
+        // arrange — session A produces a token; session B tries to cancel with it
+        var sessionA = await NewSession();
+        var sessionB = await NewSession();
+        var email = UniqueNames.Email("pending-cancel-cross-session");
+        await SignIn(sessionA, email);
+        var info = await GetPendingRegistration(sessionA);
+        info.Should().NotBeNull();
+
+        // act
+        var act = () => Commander.Call(new Accounts_CancelRegister(sessionB, info!.Token));
+
+        // assert
+        await act.Should().ThrowAsync<Exception>(
+            "a PendingRegistration token issued for one session must not be usable from another");
+        (await GetPendingRegistration(sessionA))
+            .Should().NotBeNull("session A's prompt must survive a cancel attempted from another session");
+        var signInErrorB = await SessionTemporals.Get(
+            sessionB, Constants.SessionTemporals.SignInErrorKey, CancellationToken.None);
+        signInErrorB.Should().BeNull();
+    }
+
+    [Fact]
     public async Task SignInForExistingAccountDoesNotStash()
     {
         // arrange — register one user via the new flow
@@ -159,6 +266,42 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
         var session = Session.New();
         await Commander.Call(new SessionsBackend_Upsert(session));
         return session;
+    }
+
+    private async Task<AccountFull> RegisterEmailAccount(string email)
+    {
+        var session = await NewSession();
+        await SignIn(session, email);
+        var info = await GetPendingRegistration(session);
+        await Commander.Call(new Accounts_ConfirmRegister(session, info!.Token));
+        return await Accounts.GetOwn(session, CancellationToken.None);
+    }
+
+    private async Task<UserId?> GetIdentityOwner(UserIdentity identity)
+    {
+        var dbContext = await DbHub.CreateDbContext(CancellationToken.None);
+        await using var _ = dbContext;
+        return await dbContext.GetUserIdByIdentity(identity, false, CancellationToken.None);
+    }
+
+    private async Task SignInExternal(
+        Session session,
+        UserIdentity identity,
+        string? email,
+        bool isVerified)
+    {
+        var claims = ApiMap<string, string>.Empty;
+        if (email is not null)
+            claims = claims.With(ClaimTypes.Email, email);
+        if (isVerified)
+            claims = claims.With(AuthSchema.EmailVerifiedClaim, bool.TrueString);
+        var command = new AccountsBackend_SignIn(
+            session,
+            identity,
+            ApiMap<UserIdentity, string>.Empty,
+            claims,
+            AutoCreate: true);
+        await Commander.Call(command);
     }
 
     private Task SignIn(Session session, string email)

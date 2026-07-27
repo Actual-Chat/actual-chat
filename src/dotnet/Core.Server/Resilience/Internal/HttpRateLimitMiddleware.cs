@@ -11,9 +11,9 @@ namespace ActualChat.Resilience.Internal;
 public sealed class HttpRateLimitMiddleware(RequestDelegate next, IServiceProvider services)
 {
     private RequestDelegate Next { get; } = next;
-    private RateLimitPolicy Policy { get; } = services.GetService<RateLimitPolicy>() ?? RateLimitPolicy.Unlimited;
+    private RateLimitPolicy Policy { get; } = services.GetRequiredService<RateLimitPolicy>();
     private RateLimitIdentityResolver IdentityResolver { get; }
-        = services.GetService<RateLimitIdentityResolver>() ?? new RateLimitIdentityResolver(services);
+        = services.GetRequiredService<RateLimitIdentityResolver>();
 
     public async Task Invoke(HttpContext context)
     {

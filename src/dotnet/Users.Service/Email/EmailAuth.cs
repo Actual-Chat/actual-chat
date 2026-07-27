@@ -27,8 +27,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
     private CaptchaProofValidator CaptchaProofs { get; } = services.GetRequiredService<CaptchaProofValidator>();
-    private RateLimitPolicy RateLimitPolicy { get; }
-        = services.GetService<RateLimitPolicy>() ?? RateLimitPolicy.Unlimited;
+    private RateLimitPolicy RateLimitPolicy => field ??= Services.GetRequiredService<RateLimitPolicy>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
 
     // [ComputeMethod]

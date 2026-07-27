@@ -237,6 +237,7 @@ public class RateLimitBudgetsTest(ITestOutputHelper @out) : TestBase(@out)
             .AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance)
             .AddSingleton(policy)
             .AddSingleton(RateLimitBudgets.Default)
+            .AddSingleton(c => new RateLimitIdentityResolver(c))
             .AddSingleton<RateLimitUserIdResolver>(_ => (_, _) => default)
             .BuildServiceProvider();
         return new HttpRateLimitMiddleware(next, services);

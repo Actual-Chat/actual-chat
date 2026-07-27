@@ -78,6 +78,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 // (e.g., seeding the avatar on first sign-in). Provider-scoped key
                 // ("google/picture") so future providers can carry their own.
                 options.ClaimActions.MapJsonKey(Constants.User.Claims.GooglePicture, "picture");
+                options.ClaimActions.MapJsonKey(
+                    AuthSchema.EmailVerifiedClaim, "email_verified", ClaimValueTypes.Boolean);
             });
             authentication.AddApple(options => {
                 options.Events.OnCreatingTicket = context => {
@@ -135,13 +137,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         if (rpcHost.IsApiHost) {
             services.AddSingleton<AuthHelper>(); // Used by ApiHost-s
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth
-            services.AddSingleton<RateLimitUserIdResolver>(c => { // Used by RpcRateLimitMiddleware
-                var sessionsBackend = c.GetRequiredService<ISessionsBackend>();
-                return async (session, cancellationToken) => {
-                    var sessionInfo = await sessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
-                    return sessionInfo?.UserId;
-                };
-            });
         }
 
         // Sessions

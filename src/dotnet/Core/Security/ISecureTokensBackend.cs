@@ -7,6 +7,15 @@ namespace ActualChat.Security;
 /// </summary>
 public interface ISecureTokensBackend : IBackendService
 {
-    ValueTask<SecureToken> Create(string value, CancellationToken cancellationToken = default);
-    DecryptedSecureToken? TryDecrypt(string token);
+    ValueTask<SecureToken> Create(
+        SecureTokenKind kind,
+        string value,
+        CancellationToken cancellationToken = default);
+    DecryptedSecureToken? TryDecrypt(SecureTokenKind kind, string token);
+}
+
+public enum SecureTokenKind
+{
+    Session = 0,
+    PendingRegistration = 1,
 }

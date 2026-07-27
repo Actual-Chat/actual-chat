@@ -218,9 +218,12 @@ public sealed class AuthHelper
         if (!AuthSchema.IsExternal(authSchema))
             goto exit;
 
-        var existingUserId = await AccountsBackend.GetIdByUserIdentity(identity, cancellationToken).ConfigureAwait(false);
+        var existingUserId = await AccountsBackend
+            .GetIdByUserIdentity(identity, cancellationToken)
+            .ConfigureAwait(false);
         if (existingUserId is not null
-            || httpUser.FindFirstValue(ClaimTypes.Email) is not { } emailClaim
+            || !AuthSchema.HasVerifiedEmail(claims)
+            || claims.GetValueOrDefault(ClaimTypes.Email) is not { } emailClaim
             || !ActualChat.Email.TryParse(emailClaim, out var email))
             goto exit;
 

@@ -143,6 +143,7 @@ public class EgressGuardTest
             .AddLogging()
             .AddSingleton<IHttpClientFactory>(new HttpClientFactoryMock(handler))
             .AddSingleton<RateLimitPolicy>(policy)
+            .AddSingleton(c => new RateLimitIdentityResolver(c))
             .AddSingleton(new MediaSettings { KlipyApiKey = "test-key" })
             .BuildServiceProvider();
         var sut = new Gifs(services);

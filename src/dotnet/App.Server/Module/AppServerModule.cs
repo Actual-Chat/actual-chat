@@ -216,6 +216,13 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             c.GetRequiredService<RedisDb<InfrastructureDbContext>>(),
             c.GetRequiredService<RateLimitBudgets>(),
             c));
+        services.AddSingleton<RateLimitUserIdResolver>(c => {
+            var sessionsBackend = c.GetRequiredService<ISessionsBackend>();
+            return async (session, cancellationToken) => {
+                var sessionInfo = await sessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+                return sessionInfo?.UserId;
+            };
+        });
 
         // Mesh Locks
         var hasKube = IKubeInfo.HasKube();

@@ -96,12 +96,15 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
 
             // Use sub and email from Apple's id_token (received server-to-server),
             // NOT from caller-supplied params which can be spoofed.
-            var (idTokenSub, idTokenEmail) = ParseAppleIdToken(token);
+            var (idTokenSub, idTokenEmail, isEmailVerified) = ParseAppleIdToken(token, options.ClientId);
 
             var identity = new ClaimsIdentity(AuthSchema.Apple);
             identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, idTokenSub));
             if (!idTokenEmail.IsNullOrEmpty())
                 identity.AddClaim(new Claim(ClaimTypes.Email, idTokenEmail));
+            if (isEmailVerified)
+                identity.AddClaim(
+                    new Claim(AuthSchema.EmailVerifiedClaim, bool.TrueString, ClaimValueTypes.Boolean));
             if (!name.IsNullOrEmpty()) {
                 var names = name.Split(' ');
                 switch (names.Length) {
@@ -200,16 +203,27 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
         return result;
     }
 
-    private static (string Sub, string? Email) ParseAppleIdToken(OAuthTokenResponse token)
+    private static (string Sub, string? Email, bool IsEmailVerified) ParseAppleIdToken(
+        OAuthTokenResponse token,
+        string clientId)
     {
         var idToken = token.Response!.RootElement.GetProperty("id_token").GetString()
             ?? throw StandardError.External("Apple id_token is missing from token response.");
 
         var jwt = new JwtSecurityToken(idToken);
+        if (jwt.Issuer != AppleAuthenticationConstants.Audience)
+            throw StandardError.External("Apple id_token has an invalid issuer.");
+        if (!jwt.Audiences.Contains(clientId))
+            throw StandardError.External("Apple id_token has an invalid audience.");
+        var now = DateTime.UtcNow;
+        if (jwt.ValidFrom > now || jwt.ValidTo <= now)
+            throw StandardError.External("Apple id_token is outside its valid lifetime.");
+
         var sub = jwt.Subject
             ?? throw StandardError.External("Apple id_token is missing 'sub' claim.");
         var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-        return (sub, email);
+        var emailVerifiedClaim = jwt.Claims.FirstOrDefault(c => c.Type == AuthSchema.EmailVerifiedClaim)?.Value;
+        return (sub, email, AuthSchema.IsVerifiedEmailClaim(emailVerifiedClaim));
     }
 
     private static async Task<string> Format(HttpResponseMessage response)

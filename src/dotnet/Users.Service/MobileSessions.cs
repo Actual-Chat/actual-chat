@@ -13,9 +13,9 @@ public class MobileSessions(IServiceProvider services) : IMobileSessions
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private ISessionsBackend SessionsBackend { get; } = services.GetRequiredService<ISessionsBackend>();
     private RateLimitPolicy RateLimitPolicy { get; }
-        = services.GetService<RateLimitPolicy>() ?? RateLimitPolicy.Unlimited;
+        = services.GetRequiredService<RateLimitPolicy>();
     private RateLimitIdentityResolver IdentityResolver { get; }
-        = services.GetService<RateLimitIdentityResolver>() ?? new RateLimitIdentityResolver(services);
+        = services.GetRequiredService<RateLimitIdentityResolver>();
     private ICommander Commander { get; } = services.Commander();
 
     // Not a [ComputeMethod]!

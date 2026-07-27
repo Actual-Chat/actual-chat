@@ -35,7 +35,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         TextMessage = services.GetRequiredService<ITextMessageSender>();
         Totps = services.GetRequiredService<TotpCodes>();
         CaptchaProofs = services.GetRequiredService<CaptchaProofValidator>();
-        RateLimitPolicy = services.GetService<RateLimitPolicy>() ?? RateLimitPolicy.Unlimited;
+        RateLimitPolicy = services.GetRequiredService<RateLimitPolicy>();
         RedisDb = services.GetRequiredService<RedisDb<UsersDbContext>>();
     }
 

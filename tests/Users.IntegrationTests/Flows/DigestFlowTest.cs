@@ -7,6 +7,26 @@ namespace ActualChat.Users.IntegrationTests.Flows;
 public class DigestFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(DigestFlowTest)}", TestAppHostOptions.Default, @out)
 {
+    [Theory]
+    [InlineData(4, 4, 0)]
+    [InlineData(5, 5, 0)]
+    [InlineData(6, 5, 1)]
+    public void OmitsEllipsisAtExactLimit(int totalChatCount, int expectedVisibleCount, int expectedOtherCount)
+    {
+        var visibleCount = 0;
+
+        // act
+        for (var i = 0; i < totalChatCount; i++) {
+            if (EmailsBackend.HasUnreadChatCapacity(visibleCount, 5))
+                visibleCount++;
+        }
+        var otherCount = totalChatCount - visibleCount;
+
+        // assert
+        visibleCount.Should().Be(expectedVisibleCount);
+        otherCount.Should().Be(expectedOtherCount);
+    }
+
     [Fact]
     public async Task MigrationFlow_Should_Start_DigestFlow()
     {

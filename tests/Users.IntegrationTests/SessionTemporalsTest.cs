@@ -69,6 +69,44 @@ public class SessionTemporalsTest(AppHostFixture fixture, ITestOutputHelper @out
     }
 
     [Fact]
+    public async Task ClientKeyCannotCollideWithServerKey()
+    {
+        // arrange
+        var backend = AppHost.Services.GetRequiredService<ISessionTemporalsBackend>();
+        var session = Session.New();
+        var serverKey = Constants.SessionTemporals.PendingRegistrationKey;
+        await Commander.Call(new SessionTemporalsBackend_Set(session, serverKey, "server-value"));
+
+        // act
+        await Commander.Call(new SessionTemporals_Set(session, serverKey, "client-value"));
+
+        // assert
+        (await backend.Get(session, serverKey, default)).Should().Be("server-value");
+    }
+
+    [Fact]
+    public async Task ClientKeysRoundTripAndServerKeysStayReadable()
+    {
+        // arrange
+        var sessionTemporals = AppHost.Services.GetRequiredService<ISessionTemporals>();
+        var backend = AppHost.Services.GetRequiredService<ISessionTemporalsBackend>();
+        var session = Session.New();
+        var signInErrorKey = Constants.SessionTemporals.SignInErrorKey;
+        await Commander.Call(new SessionTemporalsBackend_Set(session, signInErrorKey, "boom"));
+
+        // act
+        await Commander.Call(new SessionTemporals_Set(session, "own-key", "own-value"));
+        var ownValue = await sessionTemporals.Get(session, "own-key", default);
+        var signInError = await sessionTemporals.Get(session, signInErrorKey, default);
+        await Commander.Call(new SessionTemporals_Set(session, signInErrorKey, null));
+
+        // assert
+        ownValue.Should().Be("own-value");
+        signInError.Should().Be("boom");
+        (await backend.Get(session, signInErrorKey, default)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task KeyLengthLimitTest()
     {
         var session = Session.New();

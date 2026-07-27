@@ -10,7 +10,7 @@ public class SessionTemporals(IServiceProvider services) : ISessionTemporals
     // [ComputeMethod]
     public virtual async Task<string?> Get(Session session, string key, CancellationToken cancellationToken)
     {
-        var value = await Backend.Get(session, key, cancellationToken).ConfigureAwait(false);
+        var value = await Backend.Get(session, ToReadKey(key), cancellationToken).ConfigureAwait(false);
         // Log.LogWarning("Get: {Session}/{Key} = {Value}", session, key, value ?? "null");
         return value;
     }
@@ -21,7 +21,22 @@ public class SessionTemporals(IServiceProvider services) : ISessionTemporals
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var backendCommand = new SessionTemporalsBackend_Set(command.Session, command.Key, command.Value);
+        var (session, key, value) = command;
+        var backendCommand = new SessionTemporalsBackend_Set(session, ToWriteKey(key, value), value);
         await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private static string ToReadKey(string key)
+        => Constants.SessionTemporals.IsServerKey(key)
+            ? key
+            : Constants.SessionTemporals.ToClientKey(key);
+
+    private static string ToWriteKey(string key, string? value)
+    {
+        // A client may dismiss a server key in its own session, but never write a value into one
+        var isDismissal = value is null && Constants.SessionTemporals.IsServerKey(key);
+        return isDismissal ? key : Constants.SessionTemporals.ToClientKey(key);
     }
 }

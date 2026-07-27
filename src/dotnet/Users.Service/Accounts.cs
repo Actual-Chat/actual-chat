@@ -128,13 +128,18 @@ public class Accounts(IServiceProvider services) : IAccounts
         var (session, account, expectedVersion) = command;
         await this.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
 
-        // Preserve Claims and Identities from existing account
-        // Old apps don't have these properties, so they send empty values
-        // which would otherwise wipe out the existing data
+        // Clients send a whole AccountFull, but only the fields listed below are theirs to set.
+        // Everything else - identities, claims, verification and audit state - is taken from
+        // the stored account, so whatever the client sent for it is ignored rather than rejected.
         var existingAccount = await Backend.Get(account.Id, cancellationToken).Require().ConfigureAwait(false);
-        account = account with {
-            Claims = existingAccount.Claims,
-            Identities = existingAccount.Identities,
+        account = existingAccount with {
+            Status = account.Status,
+            Name = account.Name,
+            Email = account.Email,
+            Phone = account.Phone,
+            TimeZone = account.TimeZone,
+            SyncContacts = account.SyncContacts,
+            AliasId = account.AliasId,
         };
 
         var updateCommand = new AccountsBackend_Update(account, expectedVersion);
@@ -258,10 +263,9 @@ public class Accounts(IServiceProvider services) : IAccounts
         var (session, token) = command;
         session.RequireValid();
 
-        // Verify the token matches the session before clearing — prevents a stale prompt
-        // from cancelling a fresh one. If the token can't be decoded we still clear the
-        // SessionTemporal entry so the user isn't stuck with a stale modal.
-        _ = PendingRegistrationExt.TryDecode(SecureTokensBackend, token, session);
+        // Requiring the token to decode for this session stops a stale prompt from cancelling a fresh one
+        _ = PendingRegistrationExt.TryDecode(SecureTokensBackend, token, session)
+            ?? throw StandardError.Constraint("This registration request has expired. Please try signing in again.");
 
         var clearCmd = new SessionTemporalsBackend_Set(
             session, Constants.SessionTemporals.PendingRegistrationKey, null);
