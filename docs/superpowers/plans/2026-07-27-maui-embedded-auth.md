@@ -408,7 +408,7 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
                 // which also removes the system consent alert.
                 PrefersEphemeralWebBrowserSession = true,
             };
-            await WebAuthenticator.Default.AuthenticateAsync(options).WaitAsync(cancellationToken).ConfigureAwait(false);
+            await WebAuthenticator.Default.AuthenticateAsync(options, cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (Exception e) when (e is TaskCanceledException or OperationCanceledException) {
@@ -594,7 +594,9 @@ namespace ActualChat.App.Maui.Services;
 /// </summary>
 public sealed class MauiWebAuthenticator(IServiceProvider services)
 {
+#if WINDOWS
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(10);
+#endif
 
     private ILogger Log { get; } = services.LogFor<MauiWebAuthenticator>();
 
@@ -611,7 +613,7 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
                 // which also removes the system consent alert.
                 PrefersEphemeralWebBrowserSession = true,
             };
-            await WebAuthenticator.Default.AuthenticateAsync(options).WaitAsync(cancellationToken).ConfigureAwait(false);
+            await WebAuthenticator.Default.AuthenticateAsync(options, cancellationToken).ConfigureAwait(false);
             return true;
 #endif
         }
@@ -639,7 +641,10 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
 
         WinUI.App.AppInstanceActivated += OnActivated;
         try {
-            await Browser.Default.OpenAsync(url, BrowserLaunchMode.External).ConfigureAwait(false);
+            if (!await MauiBrowser.Open(url).ConfigureAwait(false)) {
+                Log.LogError("Failed to launch the browser for web auth");
+                return false;
+            }
             return await callbackSource.Task.WaitAsync(Timeout, cancellationToken).ConfigureAwait(false);
         }
         finally {
