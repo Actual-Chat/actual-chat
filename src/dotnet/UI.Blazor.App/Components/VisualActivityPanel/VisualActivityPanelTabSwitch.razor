@@ -8,12 +8,12 @@
 
 <div class="call-map-switch">
     <button type="button"
-            class="c-option @(m.Tab == VisualActivityTab.Call ? "on" : "")"
+            class="c-option @(m.Activity.Tab == VisualActivityTab.Call ? "on" : "")"
             @onclick="@(() => OnSelect(VisualActivityTab.Call))">
         Call
     </button>
     <button type="button"
-            class="c-option @(m.Tab == VisualActivityTab.Map ? "on" : "")"
+            class="c-option @(m.Activity.Tab == VisualActivityTab.Map ? "on" : "")"
             @onclick="@(() => OnSelect(VisualActivityTab.Map))">
         Map
     </button>
@@ -35,11 +35,10 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var state = await ChatActivityUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
-        var isVisible = state.IsVisible;
+        var activity = await ChatActivityUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
         // TODO: probably must be inside ChatActivityUI since VideoPanel became VisualActivityPanel
         var videoPanelMode = await ChatVideoUI.GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
-        return new Model(isVisible && videoPanelMode is VideoPanelMode.Inline, state.Tab);
+        return new Model(activity.IsVisible && videoPanelMode is VideoPanelMode.Inline, activity);
     }
 
     // Private methods
@@ -49,7 +48,7 @@
 
     // Nested types
 
-    public sealed record Model(bool IsVisible, VisualActivityTab Tab) {
-        public static readonly Model None = new(false, VisualActivityTab.Call);
+    public sealed record Model(bool IsVisible, VisualActivity Activity) {
+        public static readonly Model None = new(false, VisualActivity.None);
     }
 }
