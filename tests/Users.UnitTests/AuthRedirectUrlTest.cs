@@ -20,6 +20,10 @@ public class AuthRedirectUrlTest
     [InlineData("javascript:alert(1)", false)] // Script scheme
     [InlineData("data:text/html,<script>", false)] // Data scheme
     [InlineData("chat", false)] // Relative but not rooted
+    [InlineData("/\t/evil.com", false)] // Embedded tab: browsers strip it, collapsing to "//evil.com"
+    [InlineData("/\n/evil.com", false)] // Embedded newline: same collapse
+    [InlineData("/\r/evil.com", false)] // Embedded carriage return: same collapse
+    [InlineData("https://voxt.ai/\t/evil.com", false)] // Embedded tab in an otherwise-allowed absolute URL
     [InlineData("", false)]
     [InlineData(null, false)]
     public void ShouldAllowOnlySafeRedirects(string? redirectUrl, bool isAllowed)
