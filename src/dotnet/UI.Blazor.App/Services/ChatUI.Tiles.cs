@@ -277,16 +277,27 @@ public partial class ChatUI
             }
 
             var overrides = await ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(false);
-            var changedOverrides = overrides.SymmetricExcept(LastConversationExpansionOverrides)
-                .OrderBy(c => c.StartEntryLid)
-                .ToList();
-            LastConversationExpansionOverrides = overrides;
-            if (changedOverrides.FirstOrDefault() is { } toggledId)
-                // Adjust data query to load tiles around the toggled conversation's entries
-                dataQuery = new ChatDataQuery(
-                    IdTileStack.LastLayer.GetTile(toggledId.StartEntryLid).Range,
-                    -HalfLoadLimit,
-                    HalfLoadLimit);
+            // A prefetch is a speculative background load nothing renders, so it must not consume the
+            // one-shot "just toggled" signal - the rebuild that does render would then never widen its
+            // window to the toggled conversation, and the entries it just revealed would never load.
+            if (!isPrefetch) {
+                var changedOverrides = overrides.SymmetricExcept(LastConversationExpansionOverrides)
+                    .OrderBy(c => c.StartEntryLid)
+                    .ToList();
+                LastConversationExpansionOverrides = overrides;
+                if (changedOverrides.FirstOrDefault() is { } toggledId)
+                    // Extend the data query to cover the toggled conversation's entries. It must extend,
+                    // not replace: a conversation's start sits above everything it contains, so collapsing
+                    // the one you're reading at the chat's tail would otherwise re-centre the window
+                    // ~HalfLoadLimit rows past that start and unload the tail - dropping the very-last
+                    // item, and with it the End sticky edge the view was pinned to.
+                    dataQuery = dataQuery with {
+                        ExistingLidRange = dataQuery.ExistingLidRange
+                            .MinMaxWith(IdTileStack.LastLayer.GetTile(toggledId.StartEntryLid).Range),
+                        StartOffset = -HalfLoadLimit,
+                        EndOffset = HalfLoadLimit,
+                    };
+            }
 
             expandedConversations = defaultExpanded.SymmetricExcept(overrides);
             // A not-joined viewer can expand the live block to read the whole conversation before joining;
