@@ -389,6 +389,47 @@ public sealed partial record MediaBackend_CopyChat(
 }
 ```
 
+#### Method order within a section
+
+The rules above decide *which* section a method lands in. Within a section,
+order by call direction:
+
+- **Never place a callee above its caller.** This is the strong rule: if `A`
+  calls `B` and both live in the same section, `A` comes first. Reading
+  top-to-bottom then follows the flow of control instead of jumping
+  backwards. Mutual recursion is the only real exception — put the entry
+  point first.
+- **When two methods don't call each other, the higher-level one goes
+  first.** The more a method is a general-purpose helper rather than a step
+  in what the class actually does, the lower it belongs.
+- **Pure utilities go last** in their section — small, stateless, "could
+  almost be an extension method" things: comparers, parsers, formatters.
+- **Public methods are the entry points**, so they run roughly in order of
+  use: what an outside caller reaches for first comes first.
+
+Example — `ChatNews`. The public entry point comes first, and each private
+overload precedes the one it calls:
+
+```csharp
+    public ChatNews ToSlim()
+        => LastTextEntry is { } entry ? this with { LastTextEntry = ToSlim(entry) } : this;
+
+    // Private methods
+
+    private static ChatEntry ToSlim(ChatEntry entry)
+        => entry with {
+            // ...
+            Attachments = entry.Attachments.Select(ToSlim).ToArray(),
+        };
+
+    private static ChatEntryAttachment ToSlim(ChatEntryAttachment attachment)
+        => attachment with { /* ... */ };
+```
+
+`MentionCandidateFilters` shows the utility rule: `FilterAndRank` is what the
+type does, so it's first, while `GetKindBasedRank` — a pure ranking helper —
+sits at the very bottom of the private section.
+
 ### Project-Specific Patterns
 
 1. **Primary constructors, dependency injection, lazy DI style**:
