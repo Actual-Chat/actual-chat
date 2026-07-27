@@ -9,7 +9,9 @@ namespace ActualChat.App.Maui.Services;
 /// </summary>
 public sealed class MauiWebAuthenticator(IServiceProvider services)
 {
+#if WINDOWS
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(10);
+#endif
 
     private ILogger Log { get; } = services.LogFor<MauiWebAuthenticator>();
 
@@ -54,7 +56,10 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
 
         WinUI.App.AppInstanceActivated += OnActivated;
         try {
-            await Browser.Default.OpenAsync(url, BrowserLaunchMode.External).ConfigureAwait(false);
+            if (!await MauiBrowser.Open(url).ConfigureAwait(false)) {
+                Log.LogError("Failed to launch the browser for web auth");
+                return false;
+            }
             return await callbackSource.Task.WaitAsync(Timeout, cancellationToken).ConfigureAwait(false);
         }
         finally {
