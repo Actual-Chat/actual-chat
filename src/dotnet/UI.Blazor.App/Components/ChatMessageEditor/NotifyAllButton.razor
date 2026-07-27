@@ -23,11 +23,8 @@
 @code {
     private string AlertTarget => State.Value.AlertTarget;
     private string AlertClass => State.Value.AlertClass;
-    private string AlertInfo => $"<div class='alert-text'>{CoreConstants.AppName} sends regular notifications for every message, but an" +
-                                $" <span class='font-bold'>\"Alert\" is a notification similar to a phone call</span>" +
-                                $" — it’s louder, and the user must swipe it or open the app to stop the sound." +
-                                $" If you don’t need to distract <span class='{AlertClass}'>{AlertTarget}</span> right now, consider not sending it.</div>";
-    private MarkupString MarkupTitle => (MarkupString)$"<p>Are you sure you want to alert <span class='{AlertClass}'>{AlertTarget}</span>?</p>";
+    private RenderFragment AlertInfo => @<AlertConfirmationInfo Target="@AlertTarget" TargetClass="@AlertClass"/>;
+    private RenderFragment AlertTitle => @<p>Are you sure you want to alert <span class="@AlertClass">@AlertTarget</span>?</p>;
     private (ChatEntry, Moment)? _lastKnownOwnUnreadEntryInfo;
 
     private IAuthors Authors => Hub.Authors;
@@ -166,10 +163,6 @@
             return;
         }
 
-        var title = m.IsUnread
-            ? MarkupTitle
-            : (MarkupString)"Your messages have read recently. Do you still want to alert everyone?";
-
         var message = m.IsUnread
             ? $"Are you sure you want to alert {AlertTarget}?"
             : "Your messages have read recently. Do you still want to alert everyone?";
@@ -179,7 +172,7 @@
             NotifyAllInternal) {
             Title = "Alert confirmation",
             ConfirmButtonText = "Alert",
-            MarkupTitle = title,
+            MarkupTitle = m.IsUnread ? AlertTitle : null,
             AdditionalContent = AlertInfo,
             Class = "alert-confirm-modal",
         });

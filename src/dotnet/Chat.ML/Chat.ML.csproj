@@ -1,4 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ActualChat.Chat.IntegrationTests$(AssemblyPublicKey)" />
+  </ItemGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\Api\Api.csproj" />

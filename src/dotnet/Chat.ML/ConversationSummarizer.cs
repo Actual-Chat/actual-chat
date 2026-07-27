@@ -25,7 +25,13 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
     }
 
     public const string ServiceKey = nameof(ConversationSummarizer);
+    internal const int MaxMentionCount = 20;
+    internal const int MaxOutputLength = MaxTitleLength + MaxDescriptionLength + MaxSummaryLength;
 
+    private const int MaxTitleLength = 200;
+    private const int MaxDescriptionLength = 1_000;
+    private const int MaxSummaryLength = 8_000;
+    private static readonly MarkupParser SummaryMarkupParser = new();
     private readonly ChatDialogFormatterOptions _chatDialogFormatterOptions = new () {
         DisplayTimestamp = false,
         DisplayAuthorPerEntry = false,
@@ -106,7 +112,7 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
             title ??= $"Summary of {count} entries with range: {firstEntry.LocalId} - {lastEntry.LocalId}";
             description ??= "";
             summary ??= result;
-            return new ConversationSummary(title, description, summary);
+            return SanitizeSummary(new ConversationSummary(title, description, summary), authorIds);
         }
         catch {
             return new ConversationSummary(
@@ -114,6 +120,20 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
                 "",
                 "Failed to parse response");
         }
+    }
+
+    internal static ConversationSummary SanitizeSummary(
+        ConversationSummary summary,
+        IReadOnlyCollection<AuthorId> authorIds)
+    {
+        var allowedMentionIds = authorIds
+            .Select(MentionRef.NewAuthor)
+            .ToHashSet();
+        var state = new SummaryMarkupState(allowedMentionIds);
+        return new ConversationSummary(
+            SanitizeMarkup(summary.Title, MaxTitleLength, state),
+            SanitizeMarkup(summary.Description, MaxDescriptionLength, state),
+            SanitizeMarkup(summary.Summary, MaxSummaryLength, state));
     }
 
     private async Task<string> BuildAuthorMap(AuthorId[] authorIds)
@@ -269,6 +289,50 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
             ],
         };
         return promptTemplateFactory.Create(promptTemplateConfig);
+    }
+
+    private static string SanitizeMarkup(string value, int maxLength, SummaryMarkupState state)
+    {
+        var markup = SummaryMarkupParser.Parse(value);
+        markup = SummaryMarkupFilter.Instance.Filter(markup, state);
+        markup = MarkupTrimmer.Instance.Trim(markup, maxLength, MentionMarkup.DefaultFormatter);
+        return MarkupFormatter.Default.Format(markup).Truncate(maxLength);
+    }
+
+    // Nested types
+
+    private sealed record SummaryMarkupFilter : MarkupRewriter<SummaryMarkupState>
+    {
+        public static readonly SummaryMarkupFilter Instance = new();
+
+        public Markup Filter(Markup markup, SummaryMarkupState state)
+        {
+            var filterState = state;
+            return Visit(markup, ref filterState);
+        }
+
+        protected override Markup VisitListItem(ListItemMarkup markup, ref SummaryMarkupState state)
+        {
+            var content = Visit(markup.Content, ref state);
+            return content == markup.Content ? markup : new ListItemMarkup(content);
+        }
+
+        protected override Markup VisitMention(MentionMarkup markup, ref SummaryMarkupState state)
+        {
+            if (markup.Id.Kind != MentionKind.Author
+                || !state.AllowedMentionIds.Contains(markup.Id)
+                || state.MentionCount >= MaxMentionCount)
+                return Markup.EmptyText;
+
+            state.MentionCount++;
+            return markup;
+        }
+    }
+
+    private sealed class SummaryMarkupState(HashSet<MentionRef> allowedMentionIds)
+    {
+        public HashSet<MentionRef> AllowedMentionIds { get; } = allowedMentionIds;
+        public int MentionCount { get; set; }
     }
 }
 

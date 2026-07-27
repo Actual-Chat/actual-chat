@@ -55,7 +55,7 @@
 
     protected override async Task OnParametersSetAsync() {
         var url = Markup.Url;
-        _hrefUrl = url;
+        _hrefUrl = GetHrefUrl(Markup);
         _isGifImage = false;
         _gifSrc = "";
         if (Markup.Kind is UrlMarkupKind.Www && UrlMapper.IsTrustedGifUrl(url)) {
@@ -83,6 +83,11 @@
                 break;
         }
     }
+
+    internal static string GetHrefUrl(UrlMarkup markup)
+        => markup.Kind is UrlMarkupKind.Www && markup.Url.StartsWith("www.")
+            ? "https://" + markup.Url
+            : markup.Url;
 
     private LocalUrl? TryGetLocalUrl(string url)
     {

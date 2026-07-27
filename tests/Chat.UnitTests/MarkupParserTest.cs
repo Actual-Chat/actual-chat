@@ -86,6 +86,55 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
         m.Kind.Should().Be(UrlMarkupKind.Www);
     }
 
+    [Theory]
+    [InlineData("https://example.com:8080/x")]
+    [InlineData("http://localhost:5005")]
+    [InlineData("https://example.com:65535/a?b=c")]
+    [InlineData("www.example.com:8443/a")]
+    public void ParsesUrlWithExplicitPort(string input)
+    {
+        // act
+        var p = Parse<ParagraphMarkup>(input, out var text);
+
+        // assert
+        var m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
+        m.Url.Should().Be(text);
+        m.Kind.Should().Be(UrlMarkupKind.Www);
+    }
+
+    [Theory]
+    [InlineData("https://example.com/x")]
+    [InlineData("www.example.com/x")]
+    public void ParsesUrlWithoutPort(string input)
+    {
+        // act
+        var p = Parse<ParagraphMarkup>(input, out var text);
+
+        // assert
+        var m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
+        m.Url.Should().Be(text);
+        m.Kind.Should().Be(UrlMarkupKind.Www);
+    }
+
+    [Theory]
+    [InlineData("https://example.com:65536/x")]
+    [InlineData("https://example.com:99999")]
+    [InlineData("https://example.com:123456/x")]
+    [InlineData("https://example.com:0")]
+    [InlineData("https://example.com:")]
+    [InlineData("https://example.com:1١")] // Arabic-Indic digit one
+    [InlineData("https://example.com:٨٠")]
+    public void DoesNotParseUrlWithInvalidPort(string input)
+    {
+        // Only ASCII 1..65535 counts as a port; anything else leaves the whole token as plain text.
+
+        // act
+        var p = Parse<ParagraphMarkup>(input, out var text);
+
+        // assert
+        p.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+    }
+
     [Fact]
     public void UrlWithQueryAndHashTest()
     {

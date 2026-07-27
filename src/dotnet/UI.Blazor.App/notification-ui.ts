@@ -174,12 +174,25 @@ export class NotificationUI {
             debugLog?.log(`navigator.serviceWorker.message:`, event);
             if (event.origin !== window.location.origin)
                 return;
-            if (event.type !== 'message' && event.data?.type !== 'NOTIFICATION_CLICK')
+            if (event.type !== 'message' || event.data?.type !== 'NOTIFICATION_CLICK')
                 return;
 
-            const url = event.data?.url;
+            const urlPayload = event.data?.url;
+            if (typeof urlPayload !== 'string')
+                return;
+
+            let url: URL;
+            try {
+                url = new URL(urlPayload);
+            }
+            catch {
+                return;
+            }
+            if (url.origin !== window.location.origin || !['http:', 'https:'].includes(url.protocol))
+                return;
+
             // @ts-expect-error TODO: fix errors
-            await this.backendRef.invokeMethodAsync('NavigateToNotificationUrl', url);
+            await this.backendRef.invokeMethodAsync('NavigateToNotificationUrl', url.href);
         });
     }
 

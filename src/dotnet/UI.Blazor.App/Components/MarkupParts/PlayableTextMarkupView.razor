@@ -14,16 +14,15 @@
             @Markup.Text
         else {
             var lastWord = Markup.Words[^1];
-            var brokenLastWord = new MarkupString(InsertBreaks(lastWord.Value, 10));
             var firstPart = Markup.Text[..lastWord.TextRange.Start];
             @firstPart
-            <span class="last-word">@brokenLastWord @LastFragment</span>
+            <span class="last-word"><BreakableWord Text="@lastWord.Value"/> @LastFragment</span>
         }
     } else {
         var wordCount = Markup.Words.Length;
         RenderFragment<int> renderWord = i =>
             @<span class="playable-word @(IsHighlighted(i) ? "highlight" : "")">@if (i == wordCount - 1) {
-                @(new MarkupString(InsertBreaks(Markup.Words[i].Value, 10)))
+                <BreakableWord Text="@Markup.Words[i].Value"/>
             }
             else {
                 @Markup.Words[i].Value
@@ -200,19 +199,6 @@
         await JSRef.DisposeSilentlyAsync("dispose");
         BlazorRef.DisposeSilently();
         await base.DisposeAsync();
-    }
-
-    private static string InsertBreaks(string lastWord, int interval) {
-        if (string.IsNullOrEmpty(lastWord) || lastWord.Length <= interval)
-            return lastWord;
-
-        var sb = new System.Text.StringBuilder(lastWord.Length + lastWord.Length / interval * 5);
-        for (int i = 0; i < lastWord.Length; i++) {
-            sb.Append(lastWord[i]);
-            if ((i + 1) % interval == 0)
-                sb.Append("<wbr>");
-        }
-        return sb.ToString();
     }
 
     // Nested types

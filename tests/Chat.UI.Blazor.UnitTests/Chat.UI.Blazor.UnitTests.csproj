@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="bunit" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\dotnet\UI.Blazor.App\UI.Blazor.App.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>

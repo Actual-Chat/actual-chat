@@ -28,7 +28,7 @@
     <Body>
     <FormBlock Class="confirm-text">
         <div class="c-text">
-            @if (!markupTitle.Value.IsNullOrEmpty()) {
+            @if (markupTitle != null) {
                 @markupTitle
             } else {
                 <p>
@@ -37,9 +37,9 @@
             }
         </div>
     </FormBlock>
-    @if (!additionalContent.IsNullOrEmpty()) {
+    @if (additionalContent != null) {
         <FormBlock>
-            @((MarkupString)additionalContent)
+            @additionalContent
         </FormBlock>
     }
     </Body>
@@ -62,8 +62,8 @@
         public string Title { get; init; } = "";
         public string ConfirmButtonText { get; init; } = "";
         public string CancelButtonText { get; init; } = "";
-        public MarkupString MarkupTitle { get; init; } = default;
-        public string AdditionalContent { get; init; } = "";
+        public RenderFragment? MarkupTitle { get; init; }
+        public RenderFragment? AdditionalContent { get; init; }
         public string Class { get; init; } = "";
     }
 }

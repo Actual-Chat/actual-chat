@@ -8,6 +8,47 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
+    public void LimitsMentionsToKnownAuthors()
+    {
+        // arrange
+        var chatId = ChatId.Parse("the-actual-one");
+        var authorIds = Enumerable.Range(1, ConversationSummarizer.MaxMentionCount + 5)
+            .Select(i => AuthorId.New(chatId, i))
+            .ToArray();
+        var unknownAuthorId = AuthorId.New(chatId, 100);
+        var unknownMention = "@" + MentionRef.NewAuthor(unknownAuthorId).Value;
+        var userMention = "@" + MentionRef.NewUser(UserId.New()).Value;
+        var knownMentions = authorIds.Select(id => "@" + MentionRef.NewAuthor(id).Value);
+        var summary = string.Join(" ", knownMentions.Prepend(userMention).Prepend(unknownMention));
+        var input = new ConversationSummary("", "", summary);
+
+        // act
+        var result = ConversationSummarizer.SanitizeSummary(input, authorIds);
+
+        // assert
+        var mentionIds = MentionExtractor.Instance.GetMentionIds(new MarkupParser().Parse(result.Summary));
+        mentionIds.Should().HaveCount(ConversationSummarizer.MaxMentionCount);
+        mentionIds.Should().OnlyContain(id => authorIds.Select(MentionRef.NewAuthor).Contains(id));
+    }
+
+    [Fact]
+    public void CapsConversationSummaryOutputLength()
+    {
+        // arrange
+        var input = new ConversationSummary(
+            new string('t', ConversationSummarizer.MaxOutputLength),
+            new string('d', ConversationSummarizer.MaxOutputLength),
+            new string('s', ConversationSummarizer.MaxOutputLength));
+
+        // act
+        var result = ConversationSummarizer.SanitizeSummary(input, []);
+
+        // assert
+        (result.Title.Length + result.Description.Length + result.Summary.Length)
+            .Should().BeLessThanOrEqualTo(ConversationSummarizer.MaxOutputLength);
+    }
+
+    [Fact]
     public async Task ShouldResolveChatDialogFormatter()
     {
         // Resolve IChatDialogFormatter — fails if registration is missing

@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using ActualChat.Users.AvatarIcons;
 
 namespace ActualChat.Users.UnitTests;
@@ -153,5 +154,23 @@ public class AvatarSvgGenerationTest
         var svg2 = MarbleAvatars.GenerateSvg(key2);
 
         svg1.Should().NotBe(svg2, "different keys should produce different avatars");
+    }
+
+    [Theory]
+    [InlineData("<b>bold", "&lt;")]
+    [InlineData("&nbsp;", "&amp;")]
+    public void MarbleAvatarShouldGenerateWellFormedSvgForSpecialTitleCharacters(string title, string encoded)
+    {
+        // arrange
+        var key = "specialtitle";
+
+        // act
+        var svg = MarbleAvatars.GenerateSvg(key, title: title);
+
+        // assert
+        var parse = () => XDocument.Parse(svg);
+        parse.Should().NotThrow("title characters must be XML-encoded before reaching the markup");
+        svg.Should().Contain($">{encoded}</text>");
+        svg.Should().NotContain($">{title[0]}</text>");
     }
 }

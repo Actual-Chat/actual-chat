@@ -48,10 +48,7 @@
 </div>
 
 @code {
-    private string AdditionalInfo => $"<div class='alert-text'>{CoreConstants.AppName} sends regular notifications for every message, but an" +
-                                $" <span class='font-bold'>\"Alert\" is a notification similar to a phone call</span>" +
-                                $" — it’s louder, and the user must swipe it or open the app to stop the sound." +
-                                $" If you don’t need to distract mentioned members right now, consider not sending it.</div>";
+    private RenderFragment AdditionalInfo => @<AlertConfirmationInfo Target="mentioned members"/>;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
