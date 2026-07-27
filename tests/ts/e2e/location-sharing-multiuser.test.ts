@@ -65,10 +65,10 @@ async function stopSharingIfAny(page: Page | undefined) {
         await page.keyboard.press('Escape').catch(() => { /* ignore */ });
         await page.waitForTimeout(300);
     }
-    const stopButton = page.locator('.call-map-panel .map-panel .btn-stop-sharing').first();
+    const stopButton = page.locator('.visual-activity-panel .map-panel .btn-stop-sharing').first();
     if (await stopButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
         await stopButton.click().catch(() => { /* ignore */ });
-        await page.locator('.call-map-panel .map-panel').first()
+        await page.locator('.visual-activity-panel .map-panel').first()
             .waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => { /* ignore */ });
     }
 }
@@ -115,8 +115,8 @@ describe('multi-user location sharing', () => {
         await openChat(alice);
         await openChat(bob);
 
-        const alicePanel = alice.locator('.call-map-panel .map-panel').first();
-        const bobPanel = bob.locator('.call-map-panel .map-panel').first();
+        const alicePanel = alice.locator('.visual-activity-panel .map-panel').first();
+        const bobPanel = bob.locator('.visual-activity-panel .map-panel').first();
 
         // act — Alice starts a live share (arm both tile listeners first: each user's
         // inline panel starts fetching tiles as soon as the share reaches them)

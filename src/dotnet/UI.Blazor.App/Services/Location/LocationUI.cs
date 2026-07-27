@@ -22,7 +22,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     public virtual async Task<bool> IsAnyoneSharing(ChatId chatId, CancellationToken cancellationToken)
     {
         var participants = await ListParticipants(chatId, cancellationToken).ConfigureAwait(false);
-        return participants.Any();
+        return participants.Count > 0;
     }
 
     [ComputeMethod]
@@ -168,7 +168,9 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
-    public virtual async Task<GeoPoint?> GetOwnCurrentOrSharedLocation(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<GeoPoint?> GetOwnCurrentOrSharedLocation(
+        ChatId chatId,
+        CancellationToken cancellationToken)
     {
         if (await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false) is { } lastKnown)
             return lastKnown;
