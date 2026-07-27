@@ -46,18 +46,22 @@ public static class IncomingCallRinger
     public static void Stop()
     {
         lock (Lock) {
+            // Released independently: a throwing player must not leave the vibrator buzzing forever.
+            var player = _player;
+            _player = null;
+            var vibrator = _vibrator;
+            _vibrator = null;
             try {
-                if (_player is not null) {
-                    if (_player.IsPlaying)
-                        _player.Stop();
-                    _player.Release();
-                    _player = null;
-                }
-                _vibrator?.Cancel();
-                _vibrator = null;
+                player?.Release(); // Valid from any state, incl. Error - no preceding Stop needed
             }
             catch (Exception e) {
-                Log.LogWarning(e, "Stop failed");
+                Log.LogWarning(e, "Stop: player release failed");
+            }
+            try {
+                vibrator?.Cancel();
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Stop: vibrator cancel failed");
             }
         }
     }

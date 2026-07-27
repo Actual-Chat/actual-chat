@@ -166,23 +166,32 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
         }
 
-        // Accept over the lock screen keeps the call activity visible over the keyguard and starts
-        // audio without unlocking: the mic FGS is allowed because the activity (shown via
-        // SetShowWhenLocked) counts as foreground. Otherwise dismiss the keyguard first, since the
-        // FGS can't start from a background state.
-        var canStartAudio = overLockScreen || Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
-        // Over the lock screen the chat opens only on go-to-chat (after PIN); the in-call screen
-        // covers everything until then. Audio doesn't need the chat route — it's state-driven.
-        if (!overLockScreen)
-            await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
-        if (canStartAudio) {
-            if (await Hub.AudioRecorder.MicrophonePermission.CheckOrRequest(CancellationToken.None).ConfigureAwait(true))
-                await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
-            else
-                // Mic denied: still join the call as a listener.
-                await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
+        // Anything failing past this point must still release _isAccepting: otherwise the over-lock
+        // session reads as active forever and its call screen can never be torn down.
+        try {
+            // Accept over the lock screen keeps the call activity visible over the keyguard and starts
+            // audio without unlocking: the mic FGS is allowed because the activity (shown via
+            // SetShowWhenLocked) counts as foreground. Otherwise dismiss the keyguard first, since the
+            // FGS can't start from a background state.
+            var canStartAudio = overLockScreen
+                || Bridge is null
+                || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+            // Over the lock screen the chat opens only on go-to-chat (after PIN); the in-call screen
+            // covers everything until then. Audio doesn't need the chat route — it's state-driven.
+            if (!overLockScreen)
+                await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
+            if (canStartAudio) {
+                var micPermission = Hub.AudioRecorder.MicrophonePermission;
+                if (await micPermission.CheckOrRequest(CancellationToken.None).ConfigureAwait(true))
+                    await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
+                else
+                    // Mic denied: still join the call as a listener.
+                    await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
+            }
         }
-        _isAccepting.Value = false;
+        finally {
+            _isAccepting.Value = false;
+        }
         _ = withCamera; // Camera-on accept is wired in the camera-preview task.
     }
 
