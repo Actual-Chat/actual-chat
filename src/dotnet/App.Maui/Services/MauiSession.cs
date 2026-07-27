@@ -10,7 +10,8 @@ public sealed class MauiSession(IServiceProvider services)
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<MauiSession>();
 
-    private static volatile Task<Session?> _readSessionTask = null!;
+    private static readonly Lock Lock = new();
+    private static Task<Session?>? _readSessionTask;
 
     private IServiceProvider Services { get; } = services;
     private TrueSessionResolver TrueSessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
@@ -24,10 +25,13 @@ public sealed class MauiSession(IServiceProvider services)
 #endif
 
     public static Task Start()
-        => _readSessionTask = Task.Run(Read);
+        => ReadStored();
 
     public static Task<Session?> ReadStored()
-        => _readSessionTask ?? Task.Run(Read);
+    {
+        lock (Lock)
+            return _readSessionTask ??= Task.Run(Read);
+    }
 
     public Task Acquire()
     {
@@ -37,7 +41,7 @@ public sealed class MauiSession(IServiceProvider services)
         return Task.Run(async () => {
             using var _1 = Tracer.MethodRegion();
 
-            var session = await _readSessionTask.ConfigureAwait(false);
+            var session = await ReadStored().ConfigureAwait(false);
             if (session == null) {
                 // No session -> create one
                 session = await MobileSessions.CreateSession(MauiSettings.AppUserAgent, CancellationToken.None).ConfigureAwait(false);
