@@ -63,7 +63,8 @@ MauiAccountUI.SignInBackend(schema)
 └─ everything else   → MauiWebAuthenticator.Run(url)   ← NEW
                        ├─ iOS/macOS  ASWebAuthenticationSession (ephemeral)
                        ├─ Android    Chrome Custom Tabs
-                       └─ Windows    default browser + AppInstance activation
+                       └─ Windows    default browser + protocol activation
+                                     (declared in Package.appxmanifest)
 
 MauiAccountUI.SignOutBackend()
 ├─ Android → NativeGoogleAuth.SignOut()      (unchanged)
@@ -235,10 +236,15 @@ browser.
   derives from the `MauiSettings.AppScheme` const, so the dev APK filters
   `voxt-dev` and the prod APK filters `voxt`. Package IDs already differ, so
   both coexist.
-- **Windows** — unpackaged (`App.Maui.csproj:814` sets
-  `WindowsPackageType=None`), so registration is `HKCU\Software\Classes`. It
-  must use `MauiSettings.AppScheme` rather than a literal, and must rewrite
-  when the exe path changes, since dev builds move between output directories.
+- **Windows** — the shipped app is **MSIX-packaged** (CI builds
+  `App.Maui_<ver>_x64.msix`); `App.Maui.csproj:814` sets
+  `WindowsPackageType=None` only on the NativeAOT publish path, which is used
+  for iOS. So the scheme must be **declared in `Package.appxmanifest`** as a
+  `uap:Protocol` — a runtime `HKCU\Software\Classes` write would be virtualized
+  into the package-private hive and stay invisible to the shell. The manifest is
+  a static file, so it carries `voxt-dev`, and `build/AppxManifestGenerator`
+  rewrites the protocol name to `voxt` for the prod flavor, mirroring how it
+  already rewrites the package identity name.
 
 ### Server-side allowlist
 
@@ -278,9 +284,11 @@ prod-flavor app sign in against `dev.voxt.ai` and vice versa.
 - `App.Maui/Platforms/Android/` — new `WebAuthCallbackActivity :
   WebAuthenticatorCallbackActivity` with an `[IntentFilter]` on
   `MauiSettings.AppScheme`.
-- `App.Maui/Platforms/Windows/` — register the scheme under
-  `HKCU\Software\Classes` at startup; bridge `App.AppInstanceActivated`
-  (`App.Activation.cs:37`) into `MauiWebAuthenticator`.
+- `App.Maui/Platforms/Windows/Package.appxmanifest` — declare the scheme as a
+  `uap:Protocol` (replacing the `myapp` template placeholder); bridge
+  `App.AppInstanceActivated` (`App.Activation.cs:37`) into `MauiWebAuthenticator`.
+- `build/AppxManifestGenerator.cs` — rewrite the protocol name to `voxt` for the
+  prod flavor.
 - `App.Maui/Platforms/MacCatalyst/Info.plist` — remove the `voxt` entry, leaving
   `voxt-dev`.
 - `App.Maui/WebView/MauiWebView.Navigation.cs` — delete `IsAllowedHostUri` and

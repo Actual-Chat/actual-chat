@@ -78,7 +78,9 @@
 			<string>ai.voxt.dev</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-                <!-- Replaced with voxt for prod instance -->
+                <!-- Replaced with voxt for prod instance by CI; a locally built
+                     prod-flavor app (-p:IsDevMaui=false) keeps voxt-dev here,
+                     so its auth callback won't reach the app -->
 				<string>voxt-dev</string>
 			</array>
 		</dict>
