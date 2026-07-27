@@ -15,6 +15,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     private IServiceProvider Services { get; } = services;
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private LiveStreamAccess Access { get; } = services.GetRequiredService<LiveStreamAccess>();
     private IAudioStreamingBackend Backend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private RemoteAudioStreamCache RemoteAudioCache => field ??= Services.GetRequiredService<RemoteAudioStreamCache>();
@@ -39,9 +40,8 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        // Stream-level access is gated upstream via RegisterMember equivalents.
-        _ = session;
         var parsedStreamId = StreamId.Parse(streamId);
+        await Access.RequireReadAudio(session, parsedStreamId, cancellationToken).ConfigureAwait(false);
         var isLocal = parsedStreamId.NodeRef == MeshWatcher.ThisNode.Ref;
 
         if (isLocal)
@@ -56,10 +56,11 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         string streamId,
         CancellationToken cancellationToken)
     {
-        _ = session;
+        var parsedStreamId = StreamId.Parse(streamId);
+        await Access.RequireReadAudio(session, parsedStreamId, cancellationToken).ConfigureAwait(false);
         RpcStream<TranscriptDiff>? diffs = null;
         try {
-            diffs = await Backend.GetTranscript(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
+            diffs = await Backend.GetTranscript(parsedStreamId, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (RpcReconnectFailedException) { }
@@ -106,7 +107,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     {
         _ = session;
         _ = cancellationToken;
-        AppMeters.AudioLatency.Record(latency.TotalMilliseconds);
+        AppMeters.AudioLatency.Record(ClientStats.AudioLatency(latency).TotalMilliseconds);
         return Task.CompletedTask;
     }
 
@@ -119,7 +120,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
 
-        var muxer = new ListeningStreamMuxer(Services, chatId);
+        var muxer = new ListeningStreamMuxer(Services, session, chatId);
         var stream = ToLiveAsyncEnumerable(muxer, muxer.Output, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }

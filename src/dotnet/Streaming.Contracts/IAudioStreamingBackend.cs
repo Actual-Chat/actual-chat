@@ -14,6 +14,9 @@ namespace ActualChat.Streaming;
 [BackendShardScheme(nameof(ShardScheme.StreamingBackend))]
 public interface IAudioStreamingBackend : IRpcService, IBackendService
 {
+    // Language-suffixed transcript stream ids resolve to their base stream's chat.
+    Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken);
+
     Task<RpcStream<AudioFrame>?> GetAudio(
         StreamId streamId,
         TimeSpan skipTo,

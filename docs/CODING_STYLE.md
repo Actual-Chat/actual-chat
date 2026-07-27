@@ -716,7 +716,7 @@ public override async Task Require(CancellationToken cancellationToken)
 
 ```csharp
 [Obsolete("2025.03: Use GetIdRange without entryKind")]
-[Obsolete("2026.04: Use IStreamServer.GetVideo via RPC")]
+[Obsolete("2026.04: Use ILiveVideoStreams.GetStream via RPC")]
 [Obsolete("2026.04: Old MAUI clients only. Remove once no installed app version targets this route.")]
 ```
 

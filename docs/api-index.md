@@ -180,7 +180,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `INotifications` — push notifications
 - `IInvites` — invite link management
 - `ISearch` — full-text search
-- `IStreamServer`, `IStreamClient` — audio streaming
+- `IStreamClient` — audio streaming
 
 
 ## Backend Contracts (`*.Contracts`)

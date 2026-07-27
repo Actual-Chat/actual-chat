@@ -15,6 +15,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private readonly StreamStore<AudioFrame> _audioStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
+    private readonly ConcurrentDictionary<StreamId, ChatId> _chatIdByStream = new();
 
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger OpenAudioSegmentLog => field ??= Services.LogFor<OpenAudioSegment>();
@@ -47,12 +48,16 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             StreamIdValidator = ValidateStreamId,
             StreamCount = AppMeters.AudioStreamCount,
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
+            OnStreamExpire = ForgetChatIdIfUnused,
             Log = services.LogFor($"{typeFullName}.AudioStreams"),
         };
         _transcriptStreams = new StreamStore<TranscriptDiff> {
             StreamIdValidator = ValidateStreamId,
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
-            OnStreamExpire = id => _translatingStreams.Remove(id, out _),
+            OnStreamExpire = id => {
+                _translatingStreams.Remove(id, out _);
+                ForgetChatIdIfUnused(id);
+            },
             Log = services.LogFor($"{typeFullName}.TranscriptStreams"),
         };
     }
@@ -62,6 +67,9 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         _audioStreams.Dispose();
         _transcriptStreams.Dispose();
     }
+
+    public virtual Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken)
+        => Task.FromResult(_chatIdByStream.GetValueOrDefault(BaseStreamId(streamId)));
 
     public virtual async Task<RpcStream<AudioFrame>?> GetAudio(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
@@ -119,7 +127,23 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         }
     }
 
+    // Protected/internal methods
+
+    internal void RememberChatId(StreamId streamId, ChatId chatId)
+        => _chatIdByStream[BaseStreamId(streamId)] = chatId;
+
     // Private methods
+
+    private void ForgetChatIdIfUnused(StreamId streamId)
+    {
+        // ExpiringEntry self-removes before calling this, so Has already excludes it.
+        var baseStreamId = BaseStreamId(streamId);
+        if (!_audioStreams.Has(baseStreamId) && !_transcriptStreams.Has(baseStreamId))
+            _chatIdByStream.TryRemove(baseStreamId, out _);
+    }
+
+    private static StreamId BaseStreamId(StreamId streamId)
+        => streamId.Language == null ? streamId : StreamId.New(streamId.NodeRef, streamId.LocalId);
 
     private void ValidateStreamId(StreamId streamId)
     {

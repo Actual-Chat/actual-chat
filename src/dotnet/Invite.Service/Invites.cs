@@ -65,7 +65,7 @@ public class Invites(IServiceProvider services) : IInvites
             return null;
 
         var invites = await ListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
-        var invite = ChooseInvite(invites, MinInviteLifespan);
+        var invite = ChooseInvite(invites, Clocks.SystemClock.Now, MinInviteLifespan);
         if (invite == null) {
             invite = ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chatId);
             invite = await Commander
@@ -87,7 +87,7 @@ public class Invites(IServiceProvider services) : IInvites
             return null;
 
         var invites = await ListPlaceInvites(session, placeId, cancellationToken).ConfigureAwait(false);
-        var invite = ChooseInvite(invites, MinInviteLifespan);
+        var invite = ChooseInvite(invites, Clocks.SystemClock.Now, MinInviteLifespan);
         if (invite == null) {
             invite = PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, placeId);
             invite = await Commander
@@ -232,10 +232,12 @@ public class Invites(IServiceProvider services) : IInvites
         return account;
     }
 
-    private Invite? ChooseInvite(Invite[] invites, TimeSpan minInviteLifespan)
+    internal static Invite? ChooseInvite(Invite[] invites, Moment now, TimeSpan minInviteLifespan)
     {
-        var minExpiresAt = Clocks.SystemClock.Now - minInviteLifespan;
-        var invite = invites.Where(x => x.ExpiresOn > minExpiresAt && x.Remaining >= 1).MaxBy(c => c.ExpiresOn);
+        var minExpiresAt = now + minInviteLifespan;
+        var invite = invites
+            .Where(x => (x.ExpiresOn == default || x.ExpiresOn > minExpiresAt) && x.Remaining >= 1)
+            .MaxBy(c => c.ExpiresOn);
         return invite;
     }
 

@@ -42,9 +42,6 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
             services.AddScoped<StreamHub>();
         }
 
-#pragma warning disable CS0618 // Type or member is obsolete
-        rpcHost.AddApi<IStreamServer, StreamServer>();
-#pragma warning restore CS0618 // Type or member is obsolete
         rpcHost.AddApi<ILiveAudioStreams, LiveAudioStreams>();
         rpcHost.AddApi<ILiveVideoStreams, LiveVideoStreams>();
         rpcHost.AddApi<ILiveSessions, LiveSessions>();
@@ -53,6 +50,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
 		rpcHost.AddBackend<ILiveAudioBackend, LiveAudioBackend>();
         rpcHost.AddBackend<ILiveVideoBackend, LiveVideoBackend>();
         rpcHost.AddBackend<ILiveSessionsBackend, LiveSessionsBackend>();
+        services.AddSingleton<LiveStreamAccess>();
         services.AddSingleton<RemoteVideoStreamCache>();
         services.AddSingleton<RemoteAudioStreamCache>();
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now

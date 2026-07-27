@@ -388,7 +388,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `INotifications` - Service for managing user notifications and device registrations.
 - `ISearch` - Service for searching contacts and chat entries.
 - `IStreamClient` - Client-side interface for accessing audio and transcript streams.
-- `IStreamServer` - RPC service for streaming audio and transcripts from server.
 - `IAccounts` - Service for managing user accounts, sessions, and presence.
 - `IAvatars` - Service for managing user avatars.
 - `RecaptchaValidationResult` (record) - Result of a reCAPTCHA validation request.

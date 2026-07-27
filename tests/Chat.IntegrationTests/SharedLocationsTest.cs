@@ -101,6 +101,56 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task OnlyAuthorCanUpdateAndStopLocation()
+    {
+        // arrange
+        var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
+        var (chatId, inviteId) = await Alice.CreateChat(x => x with { Title = "Shared location ownership" });
+        await Bob.JoinChat(chatId, inviteId);
+        var (bobChatId, _) = await Bob.CreateChat(x => x with { Title = "Bob's chat" });
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var originalPoint = new GeoPoint(51.5074, -0.1278);
+        var location = await Alice.ReportLocation(chatId, originalPoint, TimeSpan.FromHours(1), cancellationToken: ct);
+        var alicePoint = new GeoPoint(48.8566, 2.3522);
+
+        // act
+        var bobUpdateError = await Record.ExceptionAsync(
+            () => Bob.ReportLocation(chatId, new GeoPoint(40.7128, -74.0060), id: location.Id, cancellationToken: ct));
+        var bobStopError = await Record.ExceptionAsync(
+            () => Bob.StopSharingLocation(bobChatId, location.Id, ct));
+        var updated = await Alice.ReportLocation(chatId, alicePoint, id: location.Id, cancellationToken: ct);
+        await Alice.StopSharingLocation(chatId, location.Id, ct);
+
+        // assert
+        bobUpdateError.Should().BeOfType<UnauthorizedAccessException>()
+            .Which.Message.Should().Contain("only your own shared locations");
+        bobStopError.Should().BeOfType<UnauthorizedAccessException>()
+            .Which.Message.Should().Contain("only your own shared locations");
+        updated.Point.Should().Be(alicePoint);
+        var stopped = await sharedLocations.Get(Alice.Session, chatId, location.Id, ct);
+        stopped.Should().NotBeNull();
+        stopped.Point.Should().Be(alicePoint);
+        stopped.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CannotAttachLocationFromAnotherChat()
+    {
+        // arrange
+        var (sourceChatId, _) = await Alice.CreateChat(x => x with { Title = "Source location chat" });
+        var (targetChatId, _) = await Alice.CreateChat(x => x with { Title = "Target location chat" });
+        var location = await Alice.ReportLocation(sourceChatId, new GeoPoint(51.5074, -0.1278));
+        var command = new Chats_UpsertEntry(Alice.Session, targetChatId, null) { LocationId = location.Id };
+
+        // act
+        var error = await Record.ExceptionAsync(() => Alice.Commander.Call(command));
+
+        // assert
+        error.Should().BeOfType<UnauthorizedAccessException>();
+    }
+
+    [Fact]
     public async Task NewLiveShareReturnsExistingWhenAlreadySharing()
     {
         // arrange

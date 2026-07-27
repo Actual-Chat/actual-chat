@@ -145,4 +145,34 @@ public class LiveVideoStreamsTest
         VideoStreamingBackend.ComputeDemandSnapshot([ReceiveQuality.Paused])
             .Should().Be(new VideoStreamingBackend.DemandSnapshot(0, false, 1, 1));
     }
+
+    [Fact]
+    public void ClientStatsRejectsNonFiniteValues()
+    {
+        // act + assert
+        ClientStats.Ratio(double.NaN).Should().BeNull();
+        ClientStats.Ratio(double.PositiveInfinity).Should().BeNull();
+        ClientStats.AckAgeMs(double.NaN).Should().BeNull();
+        ClientStats.AckAgeMs(double.NegativeInfinity).Should().BeNull();
+    }
+
+    [Fact]
+    public void ClientStatsClampsOutOfRangeValues()
+    {
+        // act + assert
+        ClientStats.Ratio(-5).Should().Be(0);
+        ClientStats.Ratio(17).Should().Be(1);
+        ClientStats.Ratio(0.25).Should().Be(0.25);
+        ClientStats.AckAgeMs(-1000).Should().Be(-1);
+        ClientStats.AckAgeMs(double.MaxValue).Should().Be(ClientStats.MaxAckAgeMs);
+        ClientStats.LayerCount(-3).Should().Be(0);
+        ClientStats.LayerCount(1000).Should().Be(ClientStats.MaxLayerCount);
+        ClientStats.ByteRate(-1).Should().Be(0);
+        ClientStats.ByteRate(long.MaxValue).Should().Be(ClientStats.MaxByteRate);
+        ClientStats.AudioLatency(TimeSpan.FromSeconds(-10)).Should().Be(TimeSpan.Zero);
+        ClientStats.AudioLatency(TimeSpan.MaxValue).Should().Be(ClientStats.MaxAudioLatency);
+        ClientStats.Quality(new ReceiveQuality(9999, isThumbnail: true))
+            .Should().Be(new ReceiveQuality(ClientStats.MaxLayerId, isThumbnail: true));
+        ClientStats.Quality(ReceiveQuality.Paused).Should().Be(ReceiveQuality.Paused);
+    }
 }

@@ -164,7 +164,7 @@ src/dotnet/
 │  │  ├ LiveAudioStreams.cs
 │  │  ├ AudioProcessorBase.cs, AudioSegmentSaver.cs
 │  │  ├ LiveStreamMuxer.cs, ReplayStreamMuxer.cs
-│  │  ├ StreamStore.cs, StreamHub.cs, StreamServer.cs, RemoteStreamCaches.cs
+│  │  ├ StreamStore.cs, StreamHub.cs, RemoteStreamCaches.cs
 │  │  └ Transcribers/{TranscriberFactory,Google,Deepgram,Fake,OpenAI,DeepgramOffline}*.cs
 │  └ Module/StreamingServiceModule.cs
 └ UI.Blazor.App/

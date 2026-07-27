@@ -27,11 +27,17 @@ public abstract partial record Invite(
     public abstract string GetSearchKey();
 
     public bool CanUse(int useCount = 1)
-        => Remaining >= useCount;
+        => CanUse(Moment.Now, useCount);
+
+    public bool CanUse(Moment now, int useCount = 1)
+        => Remaining >= useCount && (ExpiresOn == default || ExpiresOn > now);
 
     public Invite Use(VersionGenerator<long> versionGenerator, int useCount = 1)
+        => Use(versionGenerator, Moment.Now, useCount);
+
+    public Invite Use(VersionGenerator<long> versionGenerator, Moment now, int useCount = 1)
     {
-        if (!CanUse(useCount))
+        if (!CanUse(now, useCount))
             throw StandardError.Unauthorized("The invite link is already used.");
 
         return this with {

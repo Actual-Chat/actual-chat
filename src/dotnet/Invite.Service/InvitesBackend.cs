@@ -34,12 +34,22 @@ public class InvitesBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
+        var now = Clocks.SystemClock.Now;
+        var nowUtc = now.ToDateTime();
         var dbInvites = await dbContext.Invites
-            .Where(x => x.SearchKey == searchKey && x.Remaining >= minRemaining)
+            .Where(x => x.SearchKey == searchKey
+                && x.Remaining >= minRemaining
+                && (x.ExpiresOn == default || x.ExpiresOn > nowUtc))
             .OrderByDescending(x => x.ExpiresOn)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbInvites.Select(x => x.ToModel()).ToArray();
+        var invites = dbInvites.Select(x => x.ToModel()).ToArray();
+        var nextExpiresOn = invites
+            .Where(x => x.ExpiresOn != default)
+            .Min(x => (Moment?)x.ExpiresOn);
+        if (nextExpiresOn is { } expiresOn)
+            AutoInvalidate(expiresOn, now);
+        return invites;
     }
 
     // [ComputeMethod]
@@ -60,9 +70,11 @@ public class InvitesBackend(IServiceProvider services)
         if (invite is null)
             return null;
 
-        if (!invite.CanUse())
+        var now = Clocks.SystemClock.Now;
+        if (!invite.CanUse(now))
             return null;
 
+        AutoInvalidate(invite.ExpiresOn, now);
         switch (invite) {
         case UserInvite:
             return null;
@@ -166,7 +178,7 @@ public class InvitesBackend(IServiceProvider services)
             ?? throw StandardError.NotFound<Invite>("Invite with the specified code is not found.");
 
         var invite = dbInvite.ToModel();
-        invite = invite.Use(VersionGenerator);
+        invite = invite.Use(VersionGenerator, Clocks.SystemClock.Now);
 
         switch (invite) {
         case UserInvite:
@@ -257,4 +269,10 @@ public class InvitesBackend(IServiceProvider services)
     [ComputeMethod]
     protected virtual Task<Unit> PseudoGetAll(string searchKey)
         => ActualLab.Async.TaskExt.UnitTask;
+
+    private static void AutoInvalidate(Moment expiresOn, Moment now)
+    {
+        if (expiresOn != default && expiresOn > now)
+            Computed.GetCurrent().Invalidate(expiresOn - now);
+    }
 }

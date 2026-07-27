@@ -1,9 +1,9 @@
 // Public surface of the Api layer.
 //
 // Use:
-//     import { Api, streamingApi, streamServer } from 'api';
+//     import { Api, streamingApi } from 'api';
 //     Api.init('Example', { url: 'wss://host/rpc/ws', modules: [streamingApi] });
-//     await streamServer().RequestKeyFrame(streamId);
+//     await streamingApi.liveVideoStreams.RequestKeyFrame(session, streamId);
 
 export { Api, MediaRpcStreamOptions, WorkerKind } from './api.js';
 export type { ApiConnectivityUI, ApiInitOptions, ApiModule, SessionTokenProvider } from './api.js';

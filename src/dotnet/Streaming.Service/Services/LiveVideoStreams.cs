@@ -20,6 +20,7 @@ public class LiveVideoStreams : ILiveVideoStreams
     private IVideoStreamingBackend VideoStreamingBackend { get; }
     private RemoteVideoStreamCache RemoteVideoCache { get; }
     private IChats Chats { get; }
+    private LiveStreamAccess Access { get; }
     private MomentClock SystemClock { get; }
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -39,6 +40,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         VideoStreamingBackend = services.GetRequiredService<IVideoStreamingBackend>();
         RemoteVideoCache = services.GetRequiredService<RemoteVideoStreamCache>();
         Chats = services.GetRequiredService<IChats>();
+        Access = services.GetRequiredService<LiveStreamAccess>();
         SystemClock = Services.Clocks().SystemClock;
 
         _qualityBySessionCleanupTask = BackgroundTask.Run(
@@ -111,7 +113,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        // Stream-level access is gated upstream via List/RegisterMember.
+        await Access.RequireReadVideo(session, streamId, cancellationToken).ConfigureAwait(false);
         var streamIdValue = streamId.Value;
         var isLocal = streamId.NodeRef == MeshWatcher.ThisNode.Ref;
 
@@ -176,7 +178,12 @@ public class LiveVideoStreams : ILiveVideoStreams
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
-        => await VideoStreamingBackend.LastKeyframeRequestAt(streamId, cancellationToken).ConfigureAwait(false);
+    {
+        if (!await Access.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+            return default;
+
+        return await VideoStreamingBackend.LastKeyframeRequestAt(streamId, cancellationToken).ConfigureAwait(false);
+    }
 
     // [ComputeMethod]
     // Cross-node aggregate: delegates to VideoStreamingBackend on the stream's
@@ -185,13 +192,17 @@ public class LiveVideoStreams : ILiveVideoStreams
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
-        // `session` is unused in the result (the aggregate spans every viewer),
-        // so it must NOT take part in the cache key — otherwise a viewer's
-        // ChangePlaybackQuality invalidates its OWN session's key while the
-        // producer subscribes under the producer's session key, and the producer
-        // never sees the change (stuck at its startup value). Delegate to a
-        // session-less inner compute instead.
-        => await MaxRequestedLayerIdByStream(streamId, cancellationToken).ConfigureAwait(false);
+    {
+        if (!await Access.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+            return MaxLayerIdFromMask(0);
+
+        // `session` must NOT reach the aggregate's cache key (the aggregate spans
+        // every viewer) — otherwise a viewer's ChangePlaybackQuality invalidates
+        // its OWN session's key while the producer subscribes under the producer's
+        // session key, and the producer never sees the change (stuck at its startup
+        // value). Delegate to a session-less inner compute instead.
+        return await MaxRequestedLayerIdByStream(streamId, cancellationToken).ConfigureAwait(false);
+    }
 
     [ComputeMethod]
     public virtual async Task<int> MaxRequestedLayerIdByStream(
@@ -207,9 +218,14 @@ public class LiveVideoStreams : ILiveVideoStreams
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
+    {
+        if (!await Access.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+            return 0;
+
         // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
         // every viewer, so delegate to a session-less inner compute.
-        => await RequestedLayersMaskByStream(streamId, cancellationToken).ConfigureAwait(false);
+        return await RequestedLayersMaskByStream(streamId, cancellationToken).ConfigureAwait(false);
+    }
 
     [ComputeMethod]
     public virtual async Task<int> RequestedLayersMaskByStream(
@@ -225,9 +241,14 @@ public class LiveVideoStreams : ILiveVideoStreams
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
+    {
+        if (!await Access.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+            return false;
+
         // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
         // every viewer, so delegate to a session-less inner compute.
-        => await ThumbnailViewersOnlyByStream(streamId, cancellationToken).ConfigureAwait(false);
+        return await ThumbnailViewersOnlyByStream(streamId, cancellationToken).ConfigureAwait(false);
+    }
 
     [ComputeMethod]
     public virtual async Task<bool> ThumbnailViewersOnlyByStream(
@@ -243,9 +264,14 @@ public class LiveVideoStreams : ILiveVideoStreams
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
+    {
+        if (!await Access.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+            return StreamDemandInfo.None;
+
         // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
         // every viewer, so delegate to a session-less inner compute.
-        => await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
+        return await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
+    }
 
     [ComputeMethod]
     public virtual async Task<StreamDemandInfo> DemandInfoByStream(
@@ -253,11 +279,14 @@ public class LiveVideoStreams : ILiveVideoStreams
         CancellationToken cancellationToken)
         => await VideoStreamingBackend.DemandInfo(streamId, cancellationToken).ConfigureAwait(false);
 
-    public Task<StreamDemandStats> GetDemandStats(
+    public async Task<StreamDemandStats> GetDemandStats(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
-        => VideoStreamingBackend.GetDemandStats(streamId, cancellationToken);
+    {
+        await Access.RequireReadVideo(session, streamId, cancellationToken).ConfigureAwait(false);
+        return await VideoStreamingBackend.GetDemandStats(streamId, cancellationToken).ConfigureAwait(false);
+    }
 
     public async Task PushStream(
         Session session,
@@ -287,11 +316,13 @@ public class LiveVideoStreams : ILiveVideoStreams
         }
     }
 
-    public Task RequestKeyFrame(Session session, string streamId, CancellationToken cancellationToken)
+    public async Task RequestKeyFrame(Session session, string streamId, CancellationToken cancellationToken)
     {
-        _ = session;
         var sid = StreamId.Parse(streamId);
-        return RpcNoWait.Tasks.From(VideoStreamingBackend.RequestKeyFrame(sid, cancellationToken));
+        await Access.RequireReadVideo(session, sid, cancellationToken).ConfigureAwait(false);
+        await RpcNoWait.Tasks
+            .From(VideoStreamingBackend.RequestKeyFrame(sid, cancellationToken))
+            .ConfigureAwait(false);
     }
 
     public Task ChangeRecordingQuality(
@@ -303,16 +334,18 @@ public class LiveVideoStreams : ILiveVideoStreams
         DebugLog?.LogDebug("ChangeRecordingQuality: session={Session}, state={State}, info={Info}", session, state, info);
 
         if (info is not null) {
-            AppMeters.VideoSendDropRatio.Record(info.SenderFrameDropRatioEma);
+            if (ClientStats.Ratio(info.SenderFrameDropRatioEma) is { } dropRatio)
+                AppMeters.VideoSendDropRatio.Record(dropRatio);
             // -1 marks "no ACK observed yet" — don't pollute the histogram with a sentinel.
-            if (info.LastAckAgeMs >= 0)
-                AppMeters.VideoSendAckAgeMs.Record(info.LastAckAgeMs);
-            AppMeters.VideoSendThermalLevel.Record((int)info.ThermalLevel);
+            if (ClientStats.AckAgeMs(info.LastAckAgeMs) is { } ackAgeMs && ackAgeMs >= 0)
+                AppMeters.VideoSendAckAgeMs.Record(ackAgeMs);
+            if (Enum.IsDefined(info.ThermalLevel))
+                AppMeters.VideoSendThermalLevel.Record((int)info.ThermalLevel);
             if (!info.IsHardwareAccelerated)
                 AppMeters.VideoSendSoftwareEncode.Add(1);
         }
         if (state is not null)
-            AppMeters.VideoSendLayerCount.Record(state.EffectiveLayerCount);
+            AppMeters.VideoSendLayerCount.Record(ClientStats.LayerCount(state.EffectiveLayerCount));
 
         return RpcNoWait.Tasks.Completed;
     }
@@ -331,6 +364,7 @@ public class LiveVideoStreams : ILiveVideoStreams
             return;
         }
 
+        qualityByStream = await KeepReadableStreams(session, qualityByStream, cancellationToken).ConfigureAwait(false);
         qualityByStream = ApplyStreamCountCap(qualityByStream, info);
         _qualityBySession.TryGetValue(session, out var prevState);
         _qualityBySession[session] = new ReceiveQualityState(qualityByStream, SystemClock.Now);
@@ -354,8 +388,9 @@ public class LiveVideoStreams : ILiveVideoStreams
                 qualityByStream.Count);
 
         if (info is not null) {
-            AppMeters.VideoReceiveCapacityBps.Record(info.EstimatedCapacityBytesPerSec);
-            AppMeters.VideoReceiveAggregateHealth.Record(info.AggregateHealth);
+            AppMeters.VideoReceiveCapacityBps.Record(ClientStats.ByteRate(info.EstimatedCapacityBytesPerSec));
+            if (ClientStats.Ratio(info.AggregateHealth) is { } health)
+                AppMeters.VideoReceiveAggregateHealth.Record(health);
         }
 
         // Request a fresh keyframe whenever a stream's quality envelope is
@@ -389,6 +424,26 @@ public class LiveVideoStreams : ILiveVideoStreams
     }
 
     // Private methods
+
+    private async Task<ApiMap<string, ReceiveQuality>> KeepReadableStreams(
+        Session session,
+        ApiMap<string, ReceiveQuality> qualityByStream,
+        CancellationToken cancellationToken)
+    {
+        // Entries are dropped rather than failing the whole call, so one stale or
+        // unreadable id can't take down the viewer's demand for its other streams.
+        var result = new ApiMap<string, ReceiveQuality>();
+        foreach (var (streamId, quality) in qualityByStream) {
+            if (result.Count >= ClientStats.MaxStreamCount)
+                break;
+
+            if (StreamId.TryParse(streamId, out var parsedStreamId)
+                && await Access.CanReadVideo(session, parsedStreamId, cancellationToken).ConfigureAwait(false))
+                result[streamId] = ClientStats.Quality(quality);
+        }
+
+        return result;
+    }
 
     private async Task<IAsyncEnumerable<VideoFrame>?> GetOrFetchRemoteVideo(
         StreamId streamId, CancellationToken cancellationToken)

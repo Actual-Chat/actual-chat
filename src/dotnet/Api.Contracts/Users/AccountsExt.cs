@@ -25,10 +25,8 @@ public static class AccountsExt
 
         var ownAccount = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustBeActive);
-        if (ownAccount.Id != accessedAccount.Id)
-            ownAccount.Require(AccountFull.MustBeAdmin);
-
-        throw StandardError.Unauthorized("You can't read accounts of other users.");
+        if (ownAccount.Id != accessedAccount.Id && !ownAccount.IsAdmin)
+            throw StandardError.Unauthorized("You can't read accounts of other users.");
     }
 
     public static async Task AssertCanUpdate(

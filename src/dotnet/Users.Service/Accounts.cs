@@ -1,5 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.Geo;
+using ActualChat.Logging;
 using ActualChat.Notifications;
 using ActualChat.Security;
 using UAParser;
@@ -68,6 +69,11 @@ public class Accounts(IServiceProvider services) : IAccounts
 #pragma warning restore CS0809
     {
         var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        LegacyApiUsageLog.Write(
+            Log,
+            $"{nameof(IAccounts)}.{nameof(GetLegacySessionInfo)}",
+            session,
+            sessionInfo?.Description);
         return sessionInfo is null ? null : LegacySessionInfo.From(sessionInfo);
     }
 

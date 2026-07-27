@@ -1,5 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.Hosting;
+using ActualChat.Logging;
 using ActualChat.Transcription;
 
 namespace ActualChat.Chat;
@@ -87,9 +88,21 @@ public partial class Chats(IServiceProvider services) : IChats
 
     // Legacy compat: old clients send ChatEntryKind parameter
     [Obsolete("2026.03: Use GetTile without entryKind")]
-    public virtual Task<ChatTile> GetTile(
+    public virtual async Task<ChatTile> GetTile(
         Session session, ChatId chatId, int entryKind, Range<long> lidTileRange, CancellationToken cancellationToken)
-        => GetTile(session, chatId, lidTileRange, cancellationToken);
+    {
+        var entryPoint = $"{nameof(IChats)}.{nameof(GetTile)}(entryKind)";
+        string? clientInfo = null;
+        try {
+            var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+            clientInfo = sessionInfo?.Description;
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Failed to resolve client version for legacy API {EntryPoint}", entryPoint);
+        }
+        LegacyApiUsageLog.Write(Log, entryPoint, session, clientInfo, $"entryKind={entryKind}");
+        return await GetTile(session, chatId, lidTileRange, cancellationToken).ConfigureAwait(false);
+    }
 
     // [ComputeMethod]
     public virtual async Task<ChatContentSkeleton> GetContentPeriods(
@@ -418,6 +431,7 @@ public partial class Chats(IServiceProvider services) : IChats
         var (session, chatId, localId, text, repliedEntryLid) =
             (command.Session, command.ChatId, command.LocalId, command.Text, command.RepliedEntryLid);
         ThrowIfPlaceRootChat(chatId);
+        text.RequireMaxLength(Constants.Chat.MaxEntryTextLength);
 
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -509,18 +523,23 @@ public partial class Chats(IServiceProvider services) : IChats
             if (commandResult != null)
                 return commandResult;
 
+            SharedLocation? location = null;
+            if (command.LocationId is { } locationId) {
+                location = await SharedLocationsBackend.Get(locationId, cancellationToken).ConfigureAwait(false);
+                if (location is null || location.AuthorId != author.Id || location.ChatId != chatId)
+                    throw StandardError.Unauthorized(
+                        "You can attach only your own shared locations from this chat.");
+            }
+
             // TODO: 2026-07, remove when all clients support location entries.
             // Old clients drop the unknown LocationId and render a blank message; bake a maps-link
             // fallback + upgrade note into the content they already know how to show. LinkPreviewMode.None
             // keeps the note's URLs from turning into preview cards. New clients hide this content.
             var content = text;
             var linkPreviewMode = (LinkPreviewMode?)null;
-            if (command.LocationId is { } locationId && text.IsNullOrWhiteSpace()) {
-                var location = await SharedLocationsBackend.Get(locationId, cancellationToken).ConfigureAwait(false);
-                if (location is not null) {
-                    content = BuildLocationFallbackContent(location);
-                    linkPreviewMode = LinkPreviewMode.None;
-                }
+            if (location is not null && text.IsNullOrWhiteSpace()) {
+                content = BuildLocationFallbackContent(location);
+                linkPreviewMode = LinkPreviewMode.None;
             }
 
             var chatEntryId = ChatEntryId.New(chatId, 0);

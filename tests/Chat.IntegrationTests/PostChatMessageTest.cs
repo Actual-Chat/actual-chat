@@ -25,6 +25,28 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task RejectsOversizedEntry()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        _ = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var realisticText = new string('a', 31_999);
+        var oversizedText = new string('b', Constants.Chat.MaxEntryTextLength + 1);
+        var realisticCommand = new Chats_UpsertEntry(tester.Session, chatId, null) { Text = realisticText };
+        var oversizedCommand = new Chats_UpsertEntry(tester.Session, chatId, null) { Text = oversizedText };
+
+        // act
+        var realisticEntry = await tester.Commander.Call(realisticCommand);
+        var error = await Record.ExceptionAsync(() => tester.Commander.Call(oversizedCommand));
+
+        // assert
+        realisticEntry.Content.Should().Be(realisticText);
+        error.Should().BeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task EditMessage()
     {
         var appHost = AppHost;

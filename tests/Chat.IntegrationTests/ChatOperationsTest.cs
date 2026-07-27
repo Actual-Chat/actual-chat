@@ -283,6 +283,76 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await tester.AssertJoined(chatId);
     }
 
+    [Fact]
+    public async Task CannotUseExpiredInvite()
+    {
+        // arrange
+        await using var ownerTester = AppHost.NewBlazorTester(Out);
+        await ownerTester.SignInAsUniqueAlice();
+        var (chatId, _) = await ownerTester.CreateChat(false);
+        var now = ownerTester.AppServices.GetRequiredService<MomentClockSet>().SystemClock.Now;
+        var invite = await GenerateChatInvite(ownerTester, chatId, now - TimeSpan.FromSeconds(1));
+
+        await using var otherTester = AppHost.NewBlazorTester(Out);
+        await otherTester.SignInAsUniqueBob();
+
+        // act
+        var useInvite = () => otherTester.Commander.Call(
+            new Invites_Use(otherTester.Session, invite.Id),
+            true);
+
+        // assert
+        await useInvite.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [Fact]
+    public async Task UsesUnexpiredInvite()
+    {
+        // arrange
+        await using var ownerTester = AppHost.NewBlazorTester(Out);
+        await ownerTester.SignInAsUniqueAlice();
+        var (chatId, _) = await ownerTester.CreateChat(false);
+        var now = ownerTester.AppServices.GetRequiredService<MomentClockSet>().SystemClock.Now;
+        var invite = await GenerateChatInvite(ownerTester, chatId, now + TimeSpan.FromHours(1));
+
+        await using var otherTester = AppHost.NewBlazorTester(Out);
+        await otherTester.SignInAsUniqueBob();
+
+        // act
+        var usedInvite = await otherTester.Commander.Call(
+            new Invites_Use(otherTester.Session, invite.Id),
+            true);
+
+        // assert
+        usedInvite.Id.Should().Be(invite.Id);
+    }
+
+    [Fact]
+    public async Task StopsListingAndPreviewingInviteAfterExpiry()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueAlice();
+        var (chatId, _) = await tester.CreateChat(false);
+        var services = tester.AppServices;
+        var invites = services.GetRequiredService<IInvites>();
+        var now = services.GetRequiredService<MomentClockSet>().SystemClock.Now;
+        var invite = await GenerateChatInvite(tester, chatId, now + TimeSpan.FromSeconds(2));
+
+        // act
+        var listedBeforeExpiry = await invites.ListChatInvites(tester.Session, chatId, default);
+        var previewBeforeExpiry = await invites.GetInviteChatLinkPreview(tester.Session, invite.Id, default);
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        var listedAfterExpiry = await invites.ListChatInvites(tester.Session, chatId, default);
+        var previewAfterExpiry = await invites.GetInviteChatLinkPreview(tester.Session, invite.Id, default);
+
+        // assert
+        listedBeforeExpiry.Should().Contain(x => x.Id == invite.Id);
+        previewBeforeExpiry.Should().NotBeNull();
+        listedAfterExpiry.Should().NotContain(x => x.Id == invite.Id);
+        previewAfterExpiry.Should().BeNull();
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -588,6 +658,17 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     }
 
     // Private methods
+
+    private static Task<ActualChat.Invite.Invite> GenerateChatInvite(
+        IWebTester tester,
+        ChatId chatId,
+        Moment expiresOn)
+    {
+        ActualChat.Invite.Invite invite = ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chatId) with {
+            ExpiresOn = expiresOn,
+        };
+        return tester.Commander.Call(new Invites_Generate(tester.Session, invite));
+    }
 
     private static async Task AssertNotJoined(IServiceProvider services, Session session, ChatId chatId, Account account)
     {

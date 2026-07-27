@@ -124,6 +124,7 @@ public partial class AudioStreamingBackend
             languages,
             OpenAudioSegmentLog);
         openSegment.SetRecordedAt(recordedAt);
+        RememberChatId(openSegment.StreamId, chatId);
 
         // Register the voice fan-out stream only in voice mode (only voice is fanned out to peers).
         if (mustStreamVoice) {
@@ -245,6 +246,8 @@ public partial class AudioStreamingBackend
                     openSegment, closedSegment, mustStreamVoice, refineTranscriptLanguageTcs.Task, refinedTranscriptTcs);
                 await transcribeTask!.ConfigureAwait(false);
             }
+            // Covers the case when nothing was ever published, so no stream expiry will fire.
+            ForgetChatIdIfUnused(openSegment.StreamId);
         }
     }
 

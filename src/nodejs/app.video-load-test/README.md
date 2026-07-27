@@ -70,7 +70,7 @@ Ctrl+C stops early and prints the report from whatever data was collected.
 |---|---|---|
 | Sign-in | `ICommander.Call(EmailAuth_ValidateTotp)` | Direct RPC call to `IEmailAuth.OnValidateTotp` |
 | Session header | Via .NET `Session` DI resolution | Via `Session` HTTP header on the `ws` WebSocket upgrade |
-| RPC push | `IStreamServer.PushVideo` + `RpcStream.New(IAsyncEnumerable)` | `IStreamServer.PushVideo` + `RpcClientStreamSender<VideoFrameDto>` |
+| RPC push | `ILiveVideoStreams.PushStream` + `RpcStream.New(IAsyncEnumerable)` | `ILiveVideoStreams.PushStream` + `RpcClientStreamSender<VideoFrameDto>` |
 | RPC pull | `ILiveVideoStreams.GetStream` | `ILiveVideoStreams.GetStream` |
 | Discovery | `Computed.Capture(List)` + `WhenInvalidated` | Polling `ILiveVideoStreams.List` every 500 ms until complete |
 | Latency clock | `Stopwatch.GetTimestamp` | `Date.now()` (~1 ms resolution) |

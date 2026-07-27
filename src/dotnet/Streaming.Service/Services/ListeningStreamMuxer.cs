@@ -23,6 +23,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
     private int _nextStreamIndex;
 
     private IServiceProvider Services { get; }
+    private Session Session { get; }
     private ChatId ChatId { get; }
     private ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
@@ -32,9 +33,10 @@ public sealed class ListeningStreamMuxer : WorkerBase
 
     public ChannelReader<MuxedAudioStreamItem> Output => _output.Reader;
 
-    public ListeningStreamMuxer(IServiceProvider services, ChatId chatId)
+    public ListeningStreamMuxer(IServiceProvider services, Session session, ChatId chatId)
     {
         Services = services;
+        Session = session;
         ChatId = chatId;
         _output = ChannelExt.Create<MuxedAudioStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
@@ -143,7 +145,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
             var skipTo = SystemClock.Now - streamInfo.BeginsAt;
             skipTo = (skipTo - Constants.Audio.MaxRealtimeStreamDrift).Positive();
             var rpcStream = await LiveAudioStreams
-                .GetStream(Session.Default, streamId, skipTo, streamStopToken)
+                .GetStream(Session, streamId, skipTo, streamStopToken)
                 .ConfigureAwait(false);
             if (rpcStream == null) {
                 Log.LogWarning("ProcessStream: Stream #{StreamId} not found", streamId);

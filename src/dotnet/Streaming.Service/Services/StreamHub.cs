@@ -9,10 +9,9 @@ using Hub = Microsoft.AspNetCore.SignalR.Hub;
 namespace ActualChat.Streaming.Services;
 
 /// <summary>
-/// SignalR hub for real-time audio streaming from legacy clients.
-/// Video streaming has been migrated to <see cref="IStreamServer"/> over
-/// Fusion RPC; this hub only remains for clients that still push audio
-/// via the obsolete <see cref="ProcessAudioChunks"/> endpoint.
+/// SignalR hub kept only for legacy clients that still push audio via
+/// <see cref="ProcessAudioChunks"/>. Current clients use Fusion RPC —
+/// <see cref="ILiveAudioStreams"/> / <see cref="ILiveVideoStreams"/>.
 /// </summary>
 public class StreamHub(IServiceProvider services) : Hub
 {
@@ -29,7 +28,7 @@ public class StreamHub(IServiceProvider services) : Hub
     public static Task<string> Ping()
         => PongTask;
 
-    [Obsolete("2026.04: Use IStreamServer.PushAudio via RPC")]
+    [Obsolete("2026.04: Use ILiveAudioStreams.PushStream via RPC")]
     public Task ProcessAudioChunks(
         string sessionToken, string? chatId, string? repliedChatEntryId,
         double sourceStartOffsetSeconds, int preSkip,

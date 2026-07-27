@@ -11,6 +11,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private static readonly TimeSpan DemandCleanupPeriod = TimeSpan.FromMinutes(5);
 
     private readonly StreamStore<VideoFrame> _videoStreams;
+    private readonly ConcurrentDictionary<StreamId, ChatId> _chatIdByStream = new();
     private readonly ConcurrentDictionary<StreamId, ConcurrentDictionary<string, SessionDemand>> _demandByStream = new();
     // ReSharper disable once NotAccessedField.Local
     private readonly Task _demandCleanupTask;
@@ -38,6 +39,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             StreamCount = AppMeters.VideoStreamCount,
             ExpirationDelay = Constants.Video.StreamExpirationDelay,
             ReplayTailSize = Constants.Video.ServerReplayTailSize,
+            OnStreamExpire = ForgetChatId,
             Log = services.LogFor($"{typeFullName}.VideoStreams"),
         };
         var stopToken = services.HostLifetime().ApplicationStopping;
@@ -48,6 +50,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     public void Dispose()
         => _videoStreams.Dispose();
+
+    // [ComputeMethod] - invalidated when a stream is published or expires.
+    public virtual Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken)
+        => Task.FromResult(_chatIdByStream.GetValueOrDefault(streamId));
 
     public virtual async Task<RpcStream<VideoFrame>?> GetVideoRaw(StreamId streamId, CancellationToken cancellationToken)
     {
@@ -111,6 +117,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // pull from `videoStream` again, so the far end must stop buffering.
             videoStream.Disconnect();
             delayedCts.CancelAndDisposeSilently();
+            // Nothing published => no stream expiry will fire; ContainsKey first so Has
+            // can't re-throw a stream id validation failure over the original exception.
+            if (_chatIdByStream.ContainsKey(record.StreamId) && !_videoStreams.Has(record.StreamId))
+                ForgetChatId(record.StreamId);
         }
     }
 
@@ -165,6 +175,22 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     // Private methods
 
+    private void RememberChatId(StreamId streamId, ChatId chatId)
+    {
+        _chatIdByStream[streamId] = chatId;
+        using (Invalidation.Begin())
+            _ = GetChatId(streamId, default);
+    }
+
+    private void ForgetChatId(StreamId streamId)
+    {
+        if (!_chatIdByStream.TryRemove(streamId, out _))
+            return;
+
+        using (Invalidation.Begin())
+            _ = GetChatId(streamId, default);
+    }
+
     private async Task PushVideoInternal(
         VideoRecord record,
         IAsyncEnumerable<VideoFrameBundle> videoBundles,
@@ -182,6 +208,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             .ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
         rules.Require(ChatPermissions.WriteVideo);
+        RememberChatId(record.StreamId, record.ChatId);
 
         // A controller disabled video for the session — reject all camera/screen pushes
         // (mirrors the audio force-mute reject), so no one's video reaches the others.

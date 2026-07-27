@@ -1,7 +1,7 @@
-// Streaming RPC module — service contracts (ILiveAudioStreams, ILiveVideoStreams,
-// IStreamServer for v2.6 compat), DTO types, the `StreamingApi` module class,
-// and typed `streamingApi.{liveAudioStreams,liveVideoStreams,streamServer}`
-// accessors on its singleton instance.
+// Streaming RPC module — service contracts (ILiveAudioStreams, ILiveVideoStreams),
+// DTO types, the `StreamingApi` module class, and typed
+// `streamingApi.{liveAudioStreams,liveVideoStreams}` accessors on its
+// singleton instance.
 //
 // Usage:
 //     Api.init('Example', { url, modules: [streamingApi] });
@@ -43,14 +43,6 @@ export const LiveAudioStreamsDef = defineRpcService('ILiveAudioStreams', {
         remoteExecutionMode: StreamPushMode,
     },
     ReportAudioLatency: { args: ['session', 'latency'] },
-});
-
-// --- IStreamServer (v2.6 client compat — audio + transcript only) ---
-export const StreamServerDef = defineRpcService('IStreamServer', {
-    PushAudio: {
-        args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartAt', 'preSkip', 'frameStream'],
-        remoteExecutionMode: StreamPushMode,
-    },
 });
 
 // --- VideoFrame TypeScript interface ---
@@ -220,17 +212,6 @@ export interface LiveAudioStreamsClient {
     ReportAudioLatency(session: string, latencyTicks: Moment): Promise<void>;
 }
 
-// --- Typed proxy for IStreamServer (v2.6 audio path only) ---
-export interface StreamServerClient {
-    PushAudio(
-        session: string,
-        chatId: string,
-        repliedChatEntryId: string | null,
-        sourceStartOffsetSeconds: number,
-        preSkip: number,
-        frameStreamRef: unknown): Promise<void>;
-}
-
 /** Streaming module — pass the `streamingApi` singleton (below) to `Api.init`
  *  and reach typed services through it, e.g.
  *  `streamingApi.liveVideoStreams.PushStream(...)`. */
@@ -241,7 +222,6 @@ class StreamingApi implements ApiModule {
         // works from the very first outbound message.
         hub.registry.registerService(LiveVideoStreamsDef.name, LiveVideoStreamsDef.methods);
         hub.registry.registerService(LiveAudioStreamsDef.name, LiveAudioStreamsDef.methods);
-        hub.registry.registerService(StreamServerDef.name, StreamServerDef.methods);
     }
 
     private _liveVideoStreams: LiveVideoStreamsClient | undefined;
@@ -254,14 +234,6 @@ class StreamingApi implements ApiModule {
     get liveAudioStreams(): LiveAudioStreamsClient {
         return this._liveAudioStreams
             ??= Api.hub.addClient<LiveAudioStreamsClient>(Api.peer, LiveAudioStreamsDef);
-    }
-
-    private _streamServer: StreamServerClient | undefined;
-    /** Typed `IStreamServer` client bound to the shared default peer. v2.6 path
-     *  only — new code should use `liveAudioStreams` / `liveVideoStreams`. */
-    get streamServer(): StreamServerClient {
-        return this._streamServer
-            ??= Api.hub.addClient<StreamServerClient>(Api.peer, StreamServerDef);
     }
 }
 

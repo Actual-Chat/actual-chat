@@ -81,6 +81,9 @@ public class SharedLocationsBackend(IServiceProvider services)
                 .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
                 .ConfigureAwait(false);
         var sharedLocation = dbSharedLocation?.ToModel();
+        if (sharedLocation is not null
+            && (sharedLocation.AuthorId != authorId || sharedLocation.ChatId != chatId))
+            throw StandardError.Unauthorized("You can change only your own shared locations in this chat.");
 
         if (change.IsCreate(out var createDiff)) {
             // The front-end OnChange restricts the duration to the menu options; backend callers are trusted

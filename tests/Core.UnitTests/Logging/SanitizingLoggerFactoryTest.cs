@@ -74,6 +74,26 @@ public class SanitizingLoggerFactoryTest
         log1.Should().NotBeSameAs(log2);
     }
 
+    [Fact]
+    public void LegacyUsageIncludesClientVersionAtWarning()
+    {
+        // arrange
+        var (loggerFactory, messages) = CreateLoggerFactory(useSanitizing: false, minLevel: LogLevel.Warning);
+        var log = loggerFactory.CreateLogger("Test");
+
+        // act
+        LegacyApiUsageLog.Write(
+            log,
+            "ILegacyChats.GetNews",
+            Session.New(),
+            "AndroidApp/2.7.3 Mozilla/5.0");
+
+        // assert
+        messages.Should().ContainSingle()
+            .Which.Should().Contain("ILegacyChats.GetNews")
+            .And.Contain("AndroidApp/2.7.3");
+    }
+
     // Helpers
 
     private static (ILoggerFactory Factory, List<string> Messages) CreateLoggerFactory(
