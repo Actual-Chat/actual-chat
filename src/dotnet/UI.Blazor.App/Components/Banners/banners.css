@@ -123,11 +123,11 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 /* ── Incoming call banner ── */
 
 .incoming-call-banner .c-texts {
-    @apply flex-y gap-0.5;
+    @apply flex-x items-center justify-start;
     @apply cursor-pointer;
 }
-.incoming-call-banner .c-subtitle {
-    @apply text-caption-1 text-03;
+.incoming-call-banner .avatar-badge .c-content {
+    @apply p-0;
 }
 
 /* ── Outgoing-call banner ── */
