@@ -871,6 +871,14 @@ jobs:
           ${{ secrets.GOOGLE_SERVICES_PLIST_PROD }}
           EOF
 
+      - name: PList - set MacCatalyst URL scheme to voxt for prod
+        if: ${{ env.IS_DEV_MAUI == 'false' }}
+        uses: dppeak/update-ios-plist-action@v1.1.0
+        with:
+          info-plist-path: "src/dotnet/App.Maui/Platforms/MacCatalyst/Info.plist"
+          key-value-json: '[{"CFBundleURLTypes": [{"CFBundleTypeRole": "Editor", "CFBundleURLName": "ai.voxt", "CFBundleURLSchemes": ["voxt"]}]}]'
+          print-file: true
+
       # publish-maccatalyst (Release) builds, signs with the Apple Distribution cert,
       # and — via CreatePackage + EnablePackageSigning — emits the installer-signed
       # .pkg directly.
