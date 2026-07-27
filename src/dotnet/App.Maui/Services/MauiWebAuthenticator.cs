@@ -1,11 +1,9 @@
 namespace ActualChat.App.Maui.Services;
 
 /// <summary>
-/// Runs a web authentication flow in the platform's in-app browser
-/// (<c>ASWebAuthenticationSession</c> on Apple platforms, Chrome Custom Tabs on Android),
-/// returning once the server redirects to <see cref="MauiSettings.AuthCallbackUrl"/>.
-/// Windows has no in-app browser, so it falls back to the default browser plus
-/// protocol activation.
+/// Runs a web authentication flow in the platform's in-app browser, completing once
+/// the server redirects to <see cref="MauiSettings.AuthCallbackUrl"/>. Windows has no
+/// in-app browser, so it uses the default browser plus protocol activation.
 /// </summary>
 public sealed class MauiWebAuthenticator(IServiceProvider services)
 {
@@ -15,11 +13,12 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
 
     private ILogger Log { get; } = services.LogFor<MauiWebAuthenticator>();
 
-    public async Task<bool> Run(string url, CancellationToken cancellationToken = default)
+    public async Task<WebAuthResult> Run(string url, string endpoint, CancellationToken cancellationToken = default)
     {
+        // url carries a session token, so it must never be logged — endpoint is logged instead.
         try {
 #if WINDOWS
-            return await RunWindows(url, cancellationToken).ConfigureAwait(false);
+            return await RunWindows(url, endpoint, cancellationToken).ConfigureAwait(false);
 #else
             var options = new WebAuthenticatorOptions {
                 Url = url.ToUri(),
@@ -29,25 +28,31 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
                 PrefersEphemeralWebBrowserSession = true,
             };
             await WebAuthenticator.Default.AuthenticateAsync(options, cancellationToken).ConfigureAwait(false);
-            return true;
+            return WebAuthResult.Completed;
 #endif
         }
-        catch (Exception e) when (e is TaskCanceledException or OperationCanceledException or TimeoutException) {
-            Log.LogInformation("Web auth flow was canceled or timed out");
-            return false;
+        catch (Exception e) when (e is TaskCanceledException or OperationCanceledException) {
+            Log.LogInformation("Web auth flow was canceled (endpoint: {Endpoint}, appKind: {AppKind})",
+                endpoint, MauiSettings.AppKind);
+            return WebAuthResult.Cancelled;
+        }
+        catch (TimeoutException) {
+            Log.LogWarning("Web auth flow timed out (endpoint: {Endpoint}, appKind: {AppKind})",
+                endpoint, MauiSettings.AppKind);
+            return WebAuthResult.Failed;
         }
         catch (Exception e) {
-            Log.LogError(e, "Web auth flow failed");
-            return false;
+            Log.LogError(e, "Web auth flow failed (endpoint: {Endpoint}, appKind: {AppKind})",
+                endpoint, MauiSettings.AppKind);
+            return WebAuthResult.Failed;
         }
     }
 
 #if WINDOWS
     // Private methods
 
-    private async Task<bool> RunWindows(string url, CancellationToken cancellationToken)
+    private async Task<WebAuthResult> RunWindows(string url, string endpoint, CancellationToken cancellationToken)
     {
-        WindowsAppScheme.EnsureRegistered();
         var callbackSource = TaskCompletionSourceExt.New<bool>();
         void OnActivated(string arguments) {
             if (arguments.StartsWith(MauiSettings.AuthCallbackUrl, StringComparison.OrdinalIgnoreCase))
@@ -57,14 +62,26 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
         WinUI.App.AppInstanceActivated += OnActivated;
         try {
             if (!await MauiBrowser.Open(url).ConfigureAwait(false)) {
-                Log.LogError("Failed to launch the browser for web auth");
-                return false;
+                Log.LogError("Failed to launch the browser for web auth (endpoint: {Endpoint})", endpoint);
+                return WebAuthResult.Failed;
             }
-            return await callbackSource.Task.WaitAsync(Timeout, cancellationToken).ConfigureAwait(false);
+            await callbackSource.Task.WaitAsync(Timeout, cancellationToken).ConfigureAwait(false);
+            return WebAuthResult.Completed;
         }
         finally {
             WinUI.App.AppInstanceActivated -= OnActivated;
         }
     }
 #endif
+}
+
+/// <summary>
+/// The outcome of <see cref="MauiWebAuthenticator.Run"/>: <see cref="Cancelled"/> means
+/// the user backed out, <see cref="Failed"/> means the flow never reached the server.
+/// </summary>
+public enum WebAuthResult
+{
+    Completed = 0,
+    Cancelled,
+    Failed,
 }
