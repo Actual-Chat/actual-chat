@@ -120,7 +120,10 @@ public class SessionsBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<SessionInfoFull?> Get(Session session, CancellationToken cancellationToken = default)
     {
-        session.RequireValid();
+        // A normal client state, not an exception: throwing cached an error nothing could invalidate.
+        if (!session.IsValid())
+            return null;
+
         var dbSession = await SessionResolver.Get(DbShard.Single, session.Id, cancellationToken).ConfigureAwait(false);
         return dbSession?.ToModel(Log);
     }

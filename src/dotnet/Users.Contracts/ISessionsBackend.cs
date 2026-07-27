@@ -8,9 +8,7 @@ namespace ActualChat.Users;
 public interface ISessionsBackend : IComputeService, IBackendService
 {
     // Queries
-    // An invalid session throws here, and nothing invalidates that - so the error would otherwise
-    // be re-tried at NonTransientErrorInvalidationDelay for as long as the client keeps asking.
-    [ComputeMethod(MinCacheDuration = 10, NonTransientErrorInvalidationDelay = 120)]
+    [ComputeMethod(MinCacheDuration = 10)]
     Task<SessionInfoFull?> Get(Session session, CancellationToken cancellationToken = default);
 
     // Non-compute methods
