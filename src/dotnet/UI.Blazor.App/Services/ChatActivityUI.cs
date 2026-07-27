@@ -1,3 +1,4 @@
+using ActualChat.Live;
 using ActualChat.Streaming;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -50,12 +51,16 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
             return CallActivity.None;
 
         var liveSession = await LiveSessions.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (liveSession?.Kind == LiveSessionKind.Dialing)
+            // A still-ringing call is not a live conversation yet: only the caller is present, and
+            // surfacing "1 · live" pre-empts the answer. The tile stays silent until the call latches.
+            return CallActivity.None;
         // Count only members actually present now — the Host/Owner group survives a leave, so a
         // Group-based count would keep an exited host; a closing session can also report none left.
         var participantCount = liveSession?.Members.Count(m =>
             m.IsMicOpen || m.HasCamera || m.HasScreenShare || m.IsListening) ?? 0;
         if (participantCount > 0)
-            return Remember(chatId, new CallActivity(IsLiveSession: true, participantCount));
+            return Remember(chatId, new CallActivity(true, IsLiveSession: true, participantCount));
 
         var talkingIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var talkingCount = talkingIds.Length;
@@ -63,7 +68,7 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         if (talkingCount == 0
             && await LiveSessions.HasRecorder(Session, chatId, cancellationToken).ConfigureAwait(false))
             talkingCount = 1;
-        return Remember(chatId, new CallActivity(IsLiveSession: false, talkingCount));
+        return Remember(chatId, new CallActivity(true, IsLiveSession: false, talkingCount));
     }
 
     [ComputeMethod]
@@ -131,7 +136,7 @@ public sealed record VisualActivity(
 
 // ParticipantCount counts live-session members when IsLiveSession, streaming talkers otherwise.
 
-public readonly record struct CallActivity(bool IsLiveSession, int ParticipantCount)
+public readonly record struct CallActivity(bool IsActive, bool IsLiveSession, int ParticipantCount)
 {
     public static readonly CallActivity None = default;
     public bool HasLiveConversation => ParticipantCount > 0;
