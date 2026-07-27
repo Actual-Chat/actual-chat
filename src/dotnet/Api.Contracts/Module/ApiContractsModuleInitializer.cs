@@ -23,6 +23,12 @@ public static partial class ApiContractsModuleInitializer
 #pragma warning restore CA2000
         Session.Validator = session => session.Id.Length >= 20;
 
+        // Backend compute methods rarely set MinCacheDuration, and the Fusion default (zero) keeps
+        // nothing alive - so a consistent computed is re-produced per read unless a dependant holds it.
+        ComputedOptions.Default = ComputedOptions.Default with {
+            MinCacheDuration = TimeSpan.FromSeconds(10),
+        };
+
         // Any AccountException isn't a transient error
         var oldPreferTransient = TransiencyResolvers.PreferTransient;
         TransiencyResolvers.PreferTransient = e => {

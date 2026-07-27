@@ -26,7 +26,9 @@ public interface IAccounts : IComputeService
     Task OnCancelRegister(Accounts_CancelRegister command, CancellationToken cancellationToken);
 
     // Queries
-    [ComputeMethod(MinCacheDuration = 60, ConsolidationDelay = 0.01)]
+    // Inherits SessionsBackend.Get's error for an invalid session, and throws NotFound on its own
+    // when the resolved user has no account - both are permanent for a given session.
+    [ComputeMethod(MinCacheDuration = 60, ConsolidationDelay = 0.01, NonTransientErrorInvalidationDelay = 120)]
     Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 60)]
     Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken);

@@ -4,6 +4,7 @@ using ActualChat.Security;
 using ActualChat.UI;
 using ActualLab.Fusion.Extensions;
 using ActualLab.Fusion.Internal;
+using ActualLab.Resilience;
 using ActualLab.Rpc;
 
 namespace ActualChat.Module;
@@ -37,6 +38,8 @@ public sealed class CoreModule(IServiceProvider moduleServices)
             = TimeSpan.FromMinutes(isApp || HostInfo.IsDevelopmentInstance ? 5 : 10).ToRandom(0.1);
 
         var fusion = services.AddFusion();
+        // Overrides FusionBuilder's TryAddSingleton default (TransiencyResolvers.PreferTransient)
+        services.AddTransiencyResolver<Computed>(_ => ComputedTransiencyResolver.Instance);
         if (isServer) {
             // It's quite important to make sure fusion.WithServiceMode call follows the very first
             // services.AddFusion call, otherwise every fusion.AddService(...) call that happens earlier
