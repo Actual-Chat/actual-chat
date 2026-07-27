@@ -21,7 +21,7 @@
     <OpenTelemetryInstrumentationAspNetCoreVersion>1.15.1</OpenTelemetryInstrumentationAspNetCoreVersion>
     <SentryVersion>5.14.1</SentryVersion>
     <MemoryPackVersion>1.21.4</MemoryPackVersion>
-    <MessagePackVersion>3.1.4</MessagePackVersion>
+    <MessagePackVersion>3.1.8</MessagePackVersion>
     <SemanticKernelVersion>1.76.0</SemanticKernelVersion>
     <XamarinAndroidLifecycle>2.10.0.2</XamarinAndroidLifecycle>
   </PropertyGroup>
