@@ -253,6 +253,9 @@
     var isFailed = closeFlow.Error != null;
     @if (closeFlow.MustClose) {
         <script nonce="@closeFlowNonce">
+            @if (closeFlow.RedirectUrl is { } closeFlowRedirectUrl) {
+                @((MarkupString)$"window.location.href = {JsonSerializer.Serialize(closeFlowRedirectUrl)};")
+            }
             setTimeout(function () {
                 window.open('','_self').close();
             }, 500)
@@ -427,7 +430,10 @@
             _sessionToken = await sessionTokenTask;
             _contentLinkInfo = await linkInfoTask;
         }
-        if (_authState.CloseFlow?.RedirectUrl is { } redirectUrl) {
+        if (_authState.CloseFlow is { RedirectUrl: { } redirectUrl } closeFlow
+            && !(closeFlow.MustClose && AuthRedirectUrl.IsAppScheme(redirectUrl))) {
+            // Windows has no in-app browser to auto-dismiss on the app-scheme redirect, so the
+            // close page must render there and script-navigate instead of getting a 302 here.
             HttpContext.Response.Redirect(redirectUrl, false);
             return;
         }

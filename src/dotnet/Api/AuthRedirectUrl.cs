@@ -25,7 +25,7 @@ public static class AuthRedirectUrl
             return isProtocolRelative ? null : redirectUrl;
         }
 
-        if (Constants.AppSchemes.All.Contains(uri.Scheme))
+        if (IsAppScheme(uri))
             return string.Equals(uri.Host, Constants.AppSchemes.AuthCallbackHost, StringComparison.OrdinalIgnoreCase)
                 ? redirectUrl
                 : null;
@@ -33,4 +33,12 @@ public static class AuthRedirectUrl
             return redirectUrl;
         return null;
     }
+
+    public static bool IsAppScheme(string? url)
+        => Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri) && IsAppScheme(uri);
+
+    // Private methods
+
+    private static bool IsAppScheme(Uri uri)
+        => uri.IsAbsoluteUri && Constants.AppSchemes.All.Contains(uri.Scheme);
 }
