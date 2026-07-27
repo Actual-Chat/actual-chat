@@ -1,9 +1,10 @@
 using Microsoft.Maui.Platform;
+using WinRT.Interop;
 using Window = Microsoft.UI.Xaml.Window;
 
 namespace ActualChat.App.Maui;
 
-internal static class WindowConfigurator
+internal static partial class WindowConfigurator
 {
     public static void Configure(Window window)
     {
@@ -15,10 +16,21 @@ internal static class WindowConfigurator
     {
         WinUI.App.AppInstanceActivated += arguments => {
             window.DispatcherQueue.TryEnqueue(() => {
-                if (arguments.Contains(JumpListManager.QuitArgs))
+                if (arguments.Contains(JumpListManager.QuitArgs)) {
                     App.Current.Quit();
-                else
-                    window.Activate();
+                    return;
+                }
+
+                try {
+                    if (window.GetAppWindow() is { Presenter: Microsoft.UI.Windowing.OverlappedPresenter presenter })
+                        presenter.Restore();
+                }
+                catch {
+                    // In unpackaged/AOT mode, GetAppWindow may fail
+                }
+                window.Activate();
+                // Activate() alone rarely wins the foreground lock from the browser we're returning from.
+                SetForegroundWindow(WindowNative.GetWindowHandle(window));
             });
         };
 
@@ -59,4 +71,8 @@ internal static class WindowConfigurator
             window.Activate();
         }
     }
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool SetForegroundWindow(nint hWnd);
 }
