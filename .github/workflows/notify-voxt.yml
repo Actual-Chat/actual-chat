@@ -9,6 +9,9 @@ on:
       - Run claude tests
       - Build nats docker image
       - Create release branch
+    branches:
+      - dev
+      - 'release/**'
     types: [completed]
 
 permissions:
