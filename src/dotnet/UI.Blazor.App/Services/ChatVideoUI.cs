@@ -1,4 +1,4 @@
-using ActualChat.Streaming;
+﻿using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
@@ -75,7 +75,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // Core state accessors
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<bool> IsVideoAvailable(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);

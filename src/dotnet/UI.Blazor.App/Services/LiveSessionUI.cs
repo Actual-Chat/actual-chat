@@ -1,4 +1,4 @@
-using ActualChat.Live;
+﻿using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
@@ -44,7 +44,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public virtual async Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken)
         => await LiveSessions.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<bool> IsTranscriptionOn(ChatId chatId, CancellationToken cancellationToken)
     {
         var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);

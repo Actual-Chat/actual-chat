@@ -1,4 +1,4 @@
-using ActualChat.Video;
+﻿using ActualChat.Video;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -15,7 +15,7 @@ public partial class ChatVideoUI
             .ConfigureAwait(false);
     }
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken = default)
     {
         if (!await IsVideoAvailable(chatId, cancellationToken).ConfigureAwait(false))

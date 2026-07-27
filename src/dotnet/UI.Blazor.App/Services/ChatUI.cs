@@ -1,4 +1,4 @@
-using ActualChat.Contacts;
+﻿using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
@@ -265,7 +265,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<Trimmed<int>> GetUnreadCount(ChatId chatId, CancellationToken cancellationToken)
     {
         var chatInfo = await Get(chatId, cancellationToken).ConfigureAwait(false);

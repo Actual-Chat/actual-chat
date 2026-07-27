@@ -1,4 +1,4 @@
-using ActualChat.Streaming;
+﻿using ActualChat.Streaming;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -20,14 +20,14 @@ public class LiveStreamUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
         return streams.Select(s => s.AuthorId).Distinct().ToArray();
     }
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<bool> IsAuthorStreaming(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
     {
         var authorIds = await GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         return authorIds.Contains(authorId);
     }
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<bool> IsAnyoneStreaming(ChatId chatId, CancellationToken cancellationToken)
     {
         var authorIds = await GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
