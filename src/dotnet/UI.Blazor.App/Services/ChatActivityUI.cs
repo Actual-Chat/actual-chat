@@ -51,24 +51,34 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
             return CallActivity.None;
 
         var liveSession = await LiveSessions.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (liveSession?.Kind == LiveSessionKind.Dialing)
-            // A still-ringing call is not a live conversation yet: only the caller is present, and
-            // surfacing "1 · live" pre-empts the answer. The tile stays silent until the call latches.
-            return CallActivity.None;
+        // Dialing registers its caller as a recorder right away, so they'd read as a live participant
+        // and surface "1 · live" before anyone answers. Skipping just them keeps the tile silent for a
+        // plain ring while anyone else active in the chat - unrelated to the call - still counts.
+        var isDialing = liveSession?.Kind == LiveSessionKind.Dialing;
+        var dialingHost = isDialing ? liveSession!.Host : default;
         // Count only members actually present now — the Host/Owner group survives a leave, so a
         // Group-based count would keep an exited host; a closing session can also report none left.
         var participantCount = liveSession?.Members.Count(m =>
-            m.IsMicOpen || m.HasCamera || m.HasScreenShare || m.IsListening) ?? 0;
+            m.AuthorId != dialingHost
+            && (m.IsMicOpen || m.HasCamera || m.HasScreenShare || m.IsListening)) ?? 0;
         if (participantCount > 0)
-            return Remember(chatId, new CallActivity(true, IsLiveSession: true, participantCount));
+            return Remember(chatId, new CallActivity(true, IsLiveSession: true, participantCount, isDialing));
 
         var talkingIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        if (isDialing)
+            talkingIds = talkingIds.Where(id => id != dialingHost).ToArray();
+        // HasRecorder isn't attributable to an author, so while dialing it would only re-report the caller.
+        var isTalking = talkingIds.Length > 0
+            || (!isDialing
+            && await LiveSessions.HasRecorder(Session, chatId, cancellationToken).ConfigureAwait(false));
         var talkingCount = talkingIds.Length;
         // Own recorder may not be in the streaming author ids yet — count it as one talker.
         if (talkingCount == 0
             && await LiveSessions.HasRecorder(Session, chatId, cancellationToken).ConfigureAwait(false))
             talkingCount = 1;
-        return Remember(chatId, new CallActivity(true, IsLiveSession: false, talkingCount));
+        return isTalking
+            ? Remember(chatId, new CallActivity(true, IsLiveSession: false, talkingCount, isDialing))
+            : Remember(chatId, new CallActivity(false, IsLiveSession: false, 0, isDialing));
     }
 
     [ComputeMethod]
@@ -136,7 +146,11 @@ public sealed record VisualActivity(
 
 // ParticipantCount counts live-session members when IsLiveSession, streaming talkers otherwise.
 
-public readonly record struct CallActivity(bool IsActive, bool IsLiveSession, int ParticipantCount)
+public readonly record struct CallActivity(
+    bool IsActive,
+    bool IsLiveSession,
+    int ParticipantCount,
+    bool IsDialing = false)
 {
     public static readonly CallActivity None = default;
     public bool HasLiveConversation => ParticipantCount > 0;
