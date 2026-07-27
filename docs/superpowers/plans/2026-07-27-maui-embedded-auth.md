@@ -361,7 +361,7 @@ git commit -m "feat(auth): add NativeAuth_SignOut command"
 - Produces:
   - `MauiSettings.AppScheme` : `const string` (existing name, now sourced from `Constants.AppSchemes`).
   - `MauiSettings.AuthCallbackUrl` : `const string` = `$"{AppScheme}://auth-complete"`.
-  - `ActualChat.App.Maui.Services.MauiWebAuthenticator.Run(string url, CancellationToken cancellationToken = default)` → `Task<bool>`; `true` = flow completed, `false` = user cancelled or it timed out. Task 4 adds the Windows branch; Task 5 calls it.
+  - `ActualChat.App.Maui.Services.MauiWebAuthenticator.Run(string url, string endpoint, CancellationToken cancellationToken = default)` → `Task<WebAuthResult>` (`Completed` / `Cancelled` / `Failed`). Task 4 adds the Windows branch; Task 5 calls it.
 
 - [ ] **Step 1: Add the callback URL to `MauiSettings`**
 
@@ -881,7 +881,7 @@ None of the platform behavior is unit-testable; this matrix is the real acceptan
 | Sign-out | Completes with **no browser or sheet at all**; account becomes guest |
 | Sign in again after sign-out | Google shows the account chooser (`prompt=select_account`) |
 
-**Cross-flavor** — install **both** the dev and prod apps on macOS and on Windows, sign in from each, and confirm each callback reaches the app that started the flow. This is the regression the Task 3 plist fix and the Task 4 per-flavor registry key exist to prevent.
+**Cross-flavor** — install **both** the dev and prod apps on macOS and on Windows, sign in from each, and confirm each callback reaches the app that started the flow. This is the regression the Task 3 plist fix and the manifest-declared, generator-flavored Windows protocol (Task 4) exist to prevent.
 
 **Host override** — in the dev app, point `MauiAppServerInstanceSelector` at a worktree host, then sign in with Google on Android. `NativeGoogleAuth.IsAvailable()` returns `false` under an override (`NativeGoogleAuth.cs:47`), so this must fall through to Custom Tabs rather than the external browser.
 

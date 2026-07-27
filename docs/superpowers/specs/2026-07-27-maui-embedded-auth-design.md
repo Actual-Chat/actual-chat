@@ -274,7 +274,8 @@ prod-flavor app sign in against `dev.voxt.ai` and vice versa.
 ### MAUI
 
 - `App.Maui/Services/MauiWebAuthenticator.cs` — **new**. `Run(string url,
-  CancellationToken)` → `true` on completion, `false` on user cancel.
+  string endpoint, CancellationToken)` → `WebAuthResult` (`Completed` /
+  `Cancelled` / `Failed`).
 - `App.Maui/Services/MauiAccountUI.cs` — `WebSignInOrSignOut` becomes a
   sign-in-only `WebSignIn` that awaits `MauiWebAuthenticator`; new
   `SignOutBackend`. Drops the `UseSystemBrowser` branch.
@@ -316,6 +317,21 @@ Manual matrix — 4 platforms × {Google, Apple} × {completes, user cancels,
 server-side error}, plus sign-out on each platform. Additionally, on macOS and
 Windows, with **both dev and prod apps installed**, confirm each app's callback
 reaches the app that started the flow.
+
+## Deployment ordering
+
+`NativeAuth_SignOut` is a new command this branch introduces; the server must
+ship it before an app built against this branch reaches users. This is the
+natural order anyway — the server deploys continuously while the app sits in
+store review — but it must not be reversed:
+
+| App | Server | Sign-in | Sign-out |
+|---|---|---|---|
+| old | new | works (unaffected) | works (unaffected) |
+| new | old | works (uses only pre-existing endpoints) | fails: `RpcException, Endpoint not found` from `MauiAccountUI.SignOutBackend()` — the old server has no handler for `NativeAuth_SignOut` |
+
+Observed on a locally built app pointed at `dev.voxt.ai` before the server
+redeploy landed.
 
 ## Out of scope
 
