@@ -51,15 +51,17 @@ live while my `CallInvite` is `Ringing` in a `Dialing` session, and disappear on
 any status change — cancel, timeout, decline, or accept on another device — even
 if the dismissal push is lost.
 
-On every platform except Android a second, self-healing trigger was added:
+A second, self-healing trigger backs it up on every platform:
 `INotifications.ListActive` is itself reactive and carries this user's incoming
-rings, so a connected client discovers a ring without waiting on a push. Android
-keeps the push path only (it must work with no live Blazor scope).
+rings, so a connected client discovers a ring without waiting on a push. Off
+Android it is the primary trigger (MAUI desktop has no push at all); on Android
+it is the safety net for a dropped ring push. It covers only a live Blazor scope,
+so a killed app still depends entirely on the push.
 
 ```mermaid
 flowchart LR
     Push[FCM IncomingCall push] --> OnRing
-    ListActive[Notifications.ListActive<br/>non-Android] --> OnRing
+    ListActive[Notifications.ListActive<br/>live scope only] --> OnRing
     ActiveNotif[Active call notifications<br/>Android, app relaunch] --> OnRing
     OnRing[IncomingCallUI.OnRing<br/>candidate chat ids] --> Confirm
     Confirm[GetRingingCall<br/>LiveSessionUI.Get] --> Banner
@@ -96,8 +98,8 @@ nothing triggers it).
   - `SyncRings` — seeds candidates from the platform's still-active call
     notifications on scope start, then follows `GetIncomingCall` to start/stop the
     ringer and prune dead candidates.
-  - `SyncActiveCallNotifications` — non-Android only: follows
-    `Notifications.ListActive` and feeds `OnRing`.
+  - `SyncActiveCallNotifications` — follows `Notifications.ListActive` and feeds
+    `OnRing`; the primary trigger off Android, a dropped-push safety net on it.
   - `ResetOverLockScreen` — tears the over-lock screen down when its session ends
     without the user unlocking (cancel, timeout, remote hang-up).
 
@@ -306,8 +308,12 @@ ended and tear the screen down mid-accept.
 - **Second ring during the first** — `IncomingCallUI` keeps a candidate list; the
   most recent live ring is shown, and an earlier still-live one resurfaces when it
   ends. No queueing beyond that.
-- **Push lost in the foreground** — on Android the call is missed (accepted
-  limitation of push-as-trigger); elsewhere `ListActive` discovery recovers it.
+- **Ring push lost** — `ListActive` discovery recovers it wherever a Blazor scope
+  is alive, on Android too: the in-app ring comes back through
+  `SyncActiveCallNotifications`, and the system notification through
+  `NotificationReconciler` → `AndroidDeviceNotifications`, which re-shows a `call-`
+  tag as a real `CallStyle` ring rather than a silent chat banner. A push lost
+  while the app is **killed** is unrecoverable — no scope, no RPC, no discovery.
 - **Mic denied on accept** — join as listener only.
 - **Own call / own other device** — excluded by the host + invite checks.
 - **Mic FGS rejected over the keyguard** — `AndroidAudioWidget` and
@@ -337,7 +343,8 @@ ended and tear the screen down mid-accept.
 | `ILiveSessions.Get` / `LiveSessionUI.Get` (`[RemoteComputeMethod]`) | reactive source of truth for ring state |
 | `LiveSessionUI.AcceptCall/DeclineCall/LeaveCall`, `AmIInLiveConversation` | call actions and the in-call phase |
 | `ChatAudioUI.SetRecordingChatId/SetListeningState` | actually joining the call |
-| `INotifications.ListActive` | push-free ring discovery off Android |
+| `INotifications.ListActive` | push-free ring discovery; dropped-push safety net |
+| `NotificationReconciler` + `IDeviceNotifications` | re-showing a ring whose push was dropped |
 | `Chat.Rules.CanWriteAudio()` | the peer-call anti-spam gate, client and server |
 | `NotificationHelper.CreateViewIntent/RequestCodeProvider`, `attention_ringtone` | call intents, web ringtone asset |
 | `ChatAttentionService` action + `AlarmReceiver` pattern | `CallActionReceiver` |

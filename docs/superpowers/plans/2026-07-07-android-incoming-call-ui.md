@@ -48,7 +48,8 @@ AndroidX `NotificationCompat` (`CallStyle`).
 |---|---|
 | `LiveSessionUI.Get` / `.AcceptCall` / `.DeclineCall` / `.LeaveCall` / `.AmIInLiveConversation` | ring source of truth, call actions |
 | `ChatAudioUI.SetRecordingChatId` / `.SetListeningState` | actually joining the call audio |
-| `INotifications.ListActive` | push-free ring discovery off Android |
+| `INotifications.ListActive` | push-free ring discovery; dropped-push safety net |
+| `NotificationReconciler` + `IDeviceNotifications` | re-showing a ring whose push was dropped |
 | `Chat.Rules.CanWriteAudio()` | peer-call anti-spam gate, client and server |
 | `Banner` component + `Banners.razor` always-on slot (like `ReconnectBanner`) | banner rendering |
 | `NotificationHelper` (`CreateViewIntent`, `RequestCodeProvider`, `GetImage`) | call intents and avatars |
@@ -407,9 +408,9 @@ logging behind it across `IncomingCallUI`, `IncomingCallNotifications`,
   the same through `onIncomingCallPush`.
 - `NotificationUI.OnIncomingCall` / `OnIncomingCallCancelled` (`[JSInvokable]`)
   forward to `IncomingCallUI.OnRing` / `OnCallDismissed`.
-- `SyncActiveCallNotifications` — non-Android only: follows the reactive
-  `Notifications.ListActive` and seeds `OnRing`, so a connected client discovers a
-  ring with no push at all.
+- `SyncActiveCallNotifications` — follows the reactive `Notifications.ListActive`
+  and seeds `OnRing`, so a connected client discovers a ring with no push at all.
+  Shipped as non-Android only; Task 17 extended it to Android as a safety net.
 - `IncomingCallRingtone` — a looping `HTMLAudioElement` on `attention_ringtone`,
   used by `IncomingCallUI` whenever no `IIncomingCallsBridge` is registered.
 - The banner also renders from `LeftPanelContent` on narrow screens.
@@ -490,6 +491,37 @@ only `StandardError.Constraint` carries user-facing text.
 
 ---
 
+## Task 17: dropped-push safety net on Android
+
+**Files:**
+- `src/dotnet/App.Maui/Platforms/Android/Notifications/AndroidDeviceNotifications.cs`
+- `src/dotnet/App.Maui/Platforms/Android/Notifications/IncomingCallNotifications.cs`
+- `src/dotnet/UI.Blazor.App/Services/IncomingCallUI.cs`
+
+`NotificationReconciler` was already subscribed to `Notifications.ListActive` on
+Android (it needs only `IDeviceNotifications`), so it already re-created a ring
+whose push was dropped — but through `NotificationHelper.ShowChatNotification(…,
+silent: true)`, i.e. as a mute chat banner with no `CallStyle`, no action buttons
+and no full-screen intent. A restored call looked like a silent message.
+
+- `AndroidDeviceNotifications.Reconcile` now routes `call-` tags to
+  `IncomingCallNotifications.Show`, so a healed ring comes back as a real ring.
+  `Show` gained an overload taking the fields of an `ActiveNotificationInfo`
+  instead of a push `NotificationData`, and the tag parsing moved into the shared
+  `IncomingCallNotifications.TryParseCallTag`.
+- `SyncActiveCallNotifications` lost its `if (Bridge is not null) return;`, so the
+  in-app banner and ringer also recover from a dropped push.
+
+Costs nothing extra: the `ListActive` computed was already being captured by
+`NotificationReconciler`, so Fusion reuses it. Covers a live Blazor scope only —
+a push dropped while the app is killed remains unrecoverable.
+
+- [x] `dotnet build App.Maui -f net10.0-android`, `dotnet test tests/Chat.UI.Blazor.UnitTests --filter IncomingCallUITest`
+- [ ] Device check: drop a ring push (airplane mode during `StartCall`, then
+      reconnect) with the app foregrounded and backgrounded
+
+---
+
 ## Manual E2E matrix
 
 Caller: `/test/voice-call` (admin-only) on web, or the chat-header call button.
@@ -519,6 +551,7 @@ Callee: an Android device/emulator, plus a second browser for the web path.
 | 20 | Web tab open | Caller starts call | Banner + looping web ringtone; also discovered with no push (`ListActive`) |
 | 21 | Caller side | Start a call | Ringback tone while dialing; call button hidden while dialing; no "1 · live" in the chat list |
 | 22 | Caller side, peer chat with a non-contact | Try to call | Button disabled with a tooltip; the RPC also refuses |
+| 23 | Foreground / background, ring push dropped | Caller starts call | Ring still appears via `ListActive`: in-app banner + ringer, and the system notification as a full `CallStyle` ring, not a silent banner |
 
 ---
 

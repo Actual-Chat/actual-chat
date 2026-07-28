@@ -43,9 +43,19 @@ public static class IncomingCallNotifications
             return;
         }
 
-        EnsureChannelExists();
         var tag = data.Tag ?? CallTag(chatId);
         var link = data.Link ?? (string)Links.Chat(chatId);
+        Show(chatId, tag, link, data.Title, data.ImageUrl);
+    }
+
+    public static void Show(
+        ChatId chatId,
+        string tag,
+        string link,
+        string? title,
+        string? imageUrl)
+    {
+        EnsureChannelExists();
 
         var contentIntent = NotificationHelper.CreateViewIntent(Context, link)!;
         contentIntent.PutExtra(ChatIdExtraKey, chatId.Value);
@@ -78,9 +88,9 @@ public static class IncomingCallNotifications
             fullScreenIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
         var callerBuilder = new Person.Builder()
-            .SetName(data.Title ?? "Incoming call")!
+            .SetName(title ?? "Incoming call")!
             .SetImportant(true)!;
-        var largeImage = data.ImageUrl.IsNullOrEmpty() ? null : NotificationHelper.GetImage(data.ImageUrl!);
+        var largeImage = imageUrl.IsNullOrEmpty() ? null : NotificationHelper.GetImage(imageUrl!);
         if (largeImage != null)
             callerBuilder.SetIcon(IconCompat.CreateWithBitmap(largeImage));
         var caller = callerBuilder.Build()!;
@@ -136,6 +146,11 @@ public static class IncomingCallNotifications
             "IncomingCallUI.OnRing", whenRendered: true);
     }
 
+    public static ChatId? TryParseCallTag(string? tag)
+        => tag is null || !tag.StartsWith(Constants.Notification.CallTagPrefix)
+            ? null
+            : ChatId.TryParse(tag[Constants.Notification.CallTagPrefix.Length..], allowNull: true);
+
     public static ChatId[] ListActiveCallChatIds()
     {
         var notificationManager = NotificationManagerCompat.From(Context)!;
@@ -144,9 +159,7 @@ public static class IncomingCallNotifications
             return [];
 
         return active
-            .Select(n => n.Tag)
-            .Where(tag => tag != null && tag.StartsWith(Constants.Notification.CallTagPrefix))
-            .Select(tag => ChatId.TryParse(tag![Constants.Notification.CallTagPrefix.Length..], allowNull: true))
+            .Select(n => TryParseCallTag(n.Tag))
             .Where(chatId => chatId is not null)
             .Select(chatId => chatId!)
             .ToArray();
