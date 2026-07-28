@@ -13,6 +13,17 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
     public AndroidLocationTracker(AppUIHub hub) : base(hub)
         => Interlocked.Exchange(ref _instance, this);
 
+    public void Dispose()
+    {
+        Interlocked.CompareExchange(ref _instance, null, this);
+        if (!IsTracking)
+            return;
+
+        IsTracking = false;
+        var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
+        Context.StopService(intent);
+    }
+
     public override async Task Start(CancellationToken cancellationToken)
     {
         if (IsTracking)
@@ -47,18 +58,7 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
         return Task.CompletedTask;
     }
 
-    public void Dispose()
-    {
-        Interlocked.CompareExchange(ref _instance, null, this);
-        if (!IsTracking)
-            return;
-
-        IsTracking = false;
-        var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
-        Context.StopService(intent);
-    }
-
-    // Internal methods
+    // Protected/internal methods
 
     internal static void ReportLocation(GeoPoint point)
         => _instance?.SetLocation(point);

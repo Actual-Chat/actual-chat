@@ -13,11 +13,6 @@ namespace ActualChat.App.Maui.Location;
 [Service(ForegroundServiceType = ForegroundService.TypeLocation)]
 public sealed class AndroidLocationForegroundService : Service, ILocationListener
 {
-    public static class IntentExtras
-    {
-        public const string Accuracy = nameof(Accuracy);
-    }
-
     public const string ActionStart = "ACTION_START";
     private const string ChannelId = "location_sharing";
     private const int NotificationId = 3002;
@@ -37,7 +32,6 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
         StopLocationUpdates();
         base.OnDestroy();
     }
-
     public override IBinder? OnBind(Intent? intent) => null;
 
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
@@ -124,5 +118,12 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
         var channel = new NotificationChannel(ChannelId, "Location sharing", NotificationImportance.Low);
         var manager = (NotificationManager)GetSystemService(NotificationService)!;
         manager.CreateNotificationChannel(channel);
+    }
+
+    // Nested types
+
+    public static class IntentExtras
+    {
+        public const string Accuracy = nameof(Accuracy);
     }
 }

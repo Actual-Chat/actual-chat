@@ -212,13 +212,13 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
     public async Task ShowShareModal(ChatId chatId)
     {
-        var isSharing = await GetOwnLive(chatId, CancellationToken.None).ConfigureAwait(true) is not null;
+        var isSharing = await GetOwnLive(chatId, Hub.StopToken).ConfigureAwait(true) is not null;
         var model = new ShareLocationModal.Model { ChatId = chatId, IsSharing = isSharing };
         var modalRef = await Hub.ModalUI.Show(model, Hub.StopToken).ConfigureAwait(true);
         await modalRef.WhenClosed.ConfigureAwait(true);
 
         if (model.StopRequested) {
-            await StopSharing(chatId, CancellationToken.None).ConfigureAwait(true);
+            await StopSharing(chatId, Hub.StopToken).ConfigureAwait(true);
             return;
         }
 
@@ -226,7 +226,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
                 return;
 
-            await SendCurrentLocation(chatId, CancellationToken.None).ConfigureAwait(true);
+            await SendCurrentLocation(chatId, Hub.StopToken).ConfigureAwait(true);
             return;
         }
 

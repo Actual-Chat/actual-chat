@@ -35,7 +35,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     {
         var share = new ActiveShare(chatId, null, ServerNow, duration);
         lock (_lock)
-            _shares.Value = _shares.Value.Where(x => x.ChatId != chatId).Append(share).ToArray();
+            _shares.Value = [.. _shares.Value.Where(x => x.ChatId != chatId), share];
     }
 
     public async Task StopSharing(ChatId chatId, CancellationToken cancellationToken)
@@ -100,6 +100,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
                     await Tracker.Stop(cancellationToken).ConfigureAwait(false);
                     continue;
                 }
+
                 worker = FuncWorker.Start(ct => ReportLoop(cShares.Value, ct), cancellationToken);
             }
         }
@@ -153,21 +154,12 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         }).ConfigureAwait(false);
     }
 
-    private void SetSharedLocationId(ChatId chatId, SharedLocationId locationId)
-    {
-        lock (_lock)
-            _shares.Value = _shares.Value
-                .Select(x => x.ChatId == chatId && x.LocationId is null
-                    ? x with { LocationId = locationId }
-                    : x)
-                .ToArray();
-    }
-
     private ValueTask<ActiveShare[]> DropExpired(ActiveShare[] shares, CancellationToken cancellationToken)
         => new (shares.Where(x => x.ExpiresAt > ServerNow).ToArray());
 
     private async Task ReportLoop(ActiveShare[] activeShares, CancellationToken cancellationToken)
     {
+        activeShares = await InitializeShares(activeShares, cancellationToken).ConfigureAwait(false);
         await Tracker.Start(cancellationToken).ConfigureAwait(false);
         var timeout = activeShares.Max(x => x.ExpiresAt) - ServerNow;
         using var cts = cancellationToken.CreateLinkedTokenSource(timeout < MaxReportLoopTimeout ? timeout : null);
@@ -183,43 +175,81 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 
         async Task ReportForChats(CancellationToken cancellationToken1) {
             await RestartTrackerIfBroken(cancellationToken1).ConfigureAwait(false);
-            await activeShares.Select(Report).Collect(cancellationToken1).ConfigureAwait(false);
-        }
-
-        // Some trackers can't self-heal: on a fatal failure (permission denied, or Windows where MAUI
-        // shuts the session down) they tear themselves down and report an error instead of recovering.
-        // Starting again picks tracking back up once the user resolves the cause; Start returns right
-        // away while the tracker is still running, so calling it every cycle is cheap.
-        Task RestartTrackerIfBroken(CancellationToken cancellationToken1)
-            => Tracker.Error.Value is null
-                ? Task.CompletedTask
-                : Tracker.Start(cancellationToken1);
-
-        async Task Report(ActiveShare share) {
-            if (share.ExpiresAt <= ServerNow)
-                return;
-
-            // While tracking is broken, stop re-posting the last known point so recipients'
-            // "Updated ..." stops advancing instead of showing a stale fix as fresh.
-            if (Tracker.Error.Value is not null)
-                return;
-
-            var point = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
-            if (point is null)
-                return;
-
-            var diff = new SharedLocationDiff { Point = point, LiveDuration = share.Duration };
-            var change = Change.Upsert(diff, share.LocationId);
-            var shared = await Commander.Call(
-                    new SharedLocations_Change(Session, share.ChatId, share.LocationId, change),
-                    cancellationToken)
+            await activeShares.Select(x => Report(x, cancellationToken1))
+                .Collect(cancellationToken1)
                 .ConfigureAwait(false);
-            if (shared is null || share.LocationId is not null)
-                return;
-
-            var command = new Chats_UpsertEntry(Session, share.ChatId, null) { LocationId = shared.Id };
-            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-            SetSharedLocationId(share.ChatId, shared.Id);
         }
+    }
+
+    // Some trackers can't self-heal: on a fatal failure (permission denied, or Windows where MAUI
+    // shuts the session down) they tear themselves down and report an error instead of recovering.
+    // Starting again picks tracking back up once the user resolves the cause; Start returns right
+    // away while the tracker is still running, so calling it every cycle is cheap.
+    private Task RestartTrackerIfBroken(CancellationToken cancellationToken)
+        => Tracker.Error.Value is null
+            ? Task.CompletedTask
+            : Tracker.Start(cancellationToken);
+
+    private async Task Report(ActiveShare share, CancellationToken cancellationToken) {
+        if (share.ExpiresAt <= ServerNow)
+            return;
+
+        // While tracking is broken, stop re-posting the last known point so recipients'
+        // "Updated ..." stops advancing instead of showing a stale fix as fresh.
+        if (Tracker.Error.Value is not null)
+            return;
+
+        var point = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
+        if (point is null)
+            return;
+
+        await InitializeShare(share, point, cancellationToken).ConfigureAwait(false);
+        var diff = new SharedLocationDiff { Point = point, LiveDuration = share.Duration };
+        var change = Change.Upsert(diff, share.LocationId);
+        await Commander.Call(
+                new SharedLocations_Change(Session, share.ChatId, share.LocationId, change),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<ActiveShare[]> InitializeShares(ActiveShare[] activeShares, CancellationToken cancellationToken) {
+        if (activeShares.All(x => x.LocationId is not null))
+            return activeShares;
+
+        var point = await Tracker.Get(false, cancellationToken).ConfigureAwait(false);
+        if (point is null)
+            return activeShares;
+
+        return await activeShares.Select(x => InitializeShare(x, point, cancellationToken)).Collect(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<ActiveShare> InitializeShare(
+        ActiveShare share, GeoPoint point, CancellationToken cancellationToken1) {
+        if (share.LocationId is not null)
+            return share;
+
+        var diff = new SharedLocationDiff { Point = point, LiveDuration = share.Duration };
+        var change = Change.Create(diff);
+        var sharedLocation = await Commander.Call(
+                new SharedLocations_Change(Session, share.ChatId, null, change),
+                cancellationToken1)
+            .ConfigureAwait(false);
+        if (sharedLocation is null)
+            return share;
+
+        var command = new Chats_UpsertEntry(Session, share.ChatId, null) { LocationId = sharedLocation.Id };
+        await Commander.Call(command, cancellationToken1).ConfigureAwait(false);
+        SetSharedLocationId(share.ChatId, sharedLocation.Id);
+        return share with { LocationId = sharedLocation.Id };
+    }
+
+    private void SetSharedLocationId(ChatId chatId, SharedLocationId locationId)
+    {
+        lock (_lock)
+            _shares.Value = _shares.Value
+                .Select(x => x.ChatId == chatId && x.LocationId is null
+                    ? x with { LocationId = locationId }
+                    : x)
+                .ToArray();
     }
 }
