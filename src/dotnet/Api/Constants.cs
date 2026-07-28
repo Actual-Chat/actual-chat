@@ -60,7 +60,8 @@ public static partial class Constants
         public static readonly TileStack<int> ChatTileStack = TileStacks.Int5To20;
         public static readonly TimeSpan MaxEntryDuration = TimeSpan.FromMinutes(3);
         public static readonly TimeSpan StreamingEntryFixupDelay = MaxEntryDuration + TimeSpan.FromSeconds(30);
-        public const int MaxEntryTextLength = 1_000_000;
+        // 2x the editor's large-paste threshold, which is per paste rather than per message
+        public const int MaxEntryTextLength = 64 * 1024;
         public const int NonContactPeerMessageLimit = 2;
         public const int ReactionFirstAuthorIdsLimit = 10;
         public const int MaxSearchFilterLength = 100;

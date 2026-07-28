@@ -47,10 +47,37 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
             change.RequireValid();
             if (id.UserDeviceId.OwnerId != account.Id)
                 throw Unauthorized();
+
+            if (change.Update.IsSome(out var update) || change.Create.IsSome(out update))
+                RequireValidContact(update);
         }
 
         var bulkChangeCommand = new ExternalContactsBackend_BulkChange(changes);
         return await Commander.Call(bulkChangeCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private static void RequireValidContact(ExternalContactFull contact)
+    {
+        contact.DisplayName.RequireMaxLength(ExternalContacts_BulkChange.MaxNameLength);
+        contact.GivenName.RequireMaxLength(ExternalContacts_BulkChange.MaxNameLength);
+        contact.FamilyName.RequireMaxLength(ExternalContacts_BulkChange.MaxNameLength);
+        contact.MiddleName.RequireMaxLength(ExternalContacts_BulkChange.MaxNameLength);
+        contact.NamePrefix.RequireMaxLength(ExternalContacts_BulkChange.MaxNameLength);
+        contact.NameSuffix.RequireMaxLength(ExternalContacts_BulkChange.MaxNameLength);
+        RequireValidHashes(contact.PhoneHashes);
+        RequireValidHashes(contact.EmailHashes);
+    }
+
+    private static void RequireValidHashes(ApiSet<string> hashes)
+    {
+        if (hashes.Count > ExternalContacts_BulkChange.MaxHashCount)
+            throw StandardError.Constraint(
+                $"A contact cannot have more than {ExternalContacts_BulkChange.MaxHashCount} hashes of one kind.");
+
+        foreach (var hash in hashes)
+            hash.RequireMaxLength(ExternalContacts_BulkChange.MaxHashLength);
     }
 
     private static Exception Unauthorized()

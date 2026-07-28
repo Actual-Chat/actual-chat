@@ -58,6 +58,7 @@ public class ServerKvas : IServerKvas
             return; // It just spawns other commands, so nothing to do here
 
         var (session, key, value) = command;
+        RequireValidItem(key, value);
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
         var setManyCommand = new ServerKvasBackend_SetMany(prefix, (key, value));
         await Commander.Call(setManyCommand, true, cancellationToken).ConfigureAwait(false);
@@ -85,6 +86,12 @@ public class ServerKvas : IServerKvas
             return; // It just spawns other commands, so nothing to do here
 
         var (session, items) = command;
+        var maxItemCount = ServerKvas_SetMany.MaxItemCount;
+        if (items.Length > maxItemCount)
+            throw StandardError.Constraint($"A batch cannot contain more than {maxItemCount} items.");
+
+        foreach (var (key, value) in items)
+            RequireValidItem(key, value);
         var backendItems = items.Select(i => (i.Key, i.Value)).ToArray();
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
         var setManyCommand = new ServerKvasBackend_SetMany(prefix, backendItems);
@@ -209,5 +216,12 @@ public class ServerKvas : IServerKvas
         await Commander.Call(removeOldKeysCommand, true, cancellationToken).ConfigureAwait(false);
 
         return movedKeys;
+    }
+
+    private static void RequireValidItem(string key, byte[]? value)
+    {
+        key.RequireMaxLength(ServerKvas_Set.MaxKeyLength);
+        if (value is { } v && v.Length > ServerKvas_Set.MaxValueLength)
+            throw StandardError.Constraint("Value is too big.");
     }
 }

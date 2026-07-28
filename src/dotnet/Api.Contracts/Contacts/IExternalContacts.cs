@@ -19,6 +19,10 @@ public sealed partial record ExternalContacts_BulkChange(
 ) : ISessionCommand<Result<ExternalContactFull?>[]>, IApiCommand
 {
     public const int MaxChangeCount = 1_000;
+    // The change count alone doesn't bound the batch - each contact carries names and hash sets
+    public const int MaxNameLength = 256;
+    public const int MaxHashCount = 64;
+    public const int MaxHashLength = 64;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

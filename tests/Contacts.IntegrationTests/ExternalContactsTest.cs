@@ -409,6 +409,30 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await act.Should().ThrowAsync<Exception>().WithMessage("*contact batch cannot contain more than*");
     }
 
+    [Fact]
+    public async Task RejectsOversizedContactPayload()
+    {
+        // arrange
+        var account = await _tester.SignInAsUniqueBob();
+        var deviceId = NewDeviceId();
+        var longName = new string('n', ExternalContacts_BulkChange.MaxNameLength + 1);
+        var tooManyHashes = Enumerable
+            .Range(0, ExternalContacts_BulkChange.MaxHashCount + 1)
+            .Select(i => i.Format())
+            .ToApiSet();
+
+        // act
+        var longNameAct = () => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
+            [NewCreation(account, deviceId, x => x with { DisplayName = longName })]));
+        var manyHashesAct = () => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
+            [NewCreation(account, deviceId, x => x with { PhoneHashes = tooManyHashes })]));
+
+        // assert
+        await longNameAct.Should().ThrowAsync<Exception>();
+        await manyHashesAct.Should().ThrowAsync<Exception>()
+            .WithMessage("*cannot have more than*");
+    }
+
     // Private methods
 
     private Task<ExternalContact[]> List(Symbol deviceId)
@@ -450,6 +474,15 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
                 null,
                 Change.Remove<ExternalContactFull>()))
             .ToArray();
+
+    private static ExternalContactChange NewCreation(
+        AccountFull owner,
+        Symbol ownerDeviceId,
+        Func<ExternalContactFull, ExternalContactFull> configure)
+    {
+        var id = ExternalContactId.New(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId());
+        return new ExternalContactChange(id, null, Change.Create(configure.Invoke(new ExternalContactFull(id))));
+    }
 
     private static Symbol NewDeviceId()
         => new (Guid.NewGuid().ToString());

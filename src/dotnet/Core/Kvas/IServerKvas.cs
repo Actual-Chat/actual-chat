@@ -26,7 +26,12 @@ public partial record ServerKvas_Set(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Session Session,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] string Key,
     [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] byte[]? Value
-) : ISessionCommand<Unit>, IApiCommand;
+) : ISessionCommand<Unit>, IApiCommand
+{
+    // Both are far above any settings record this store is meant to hold
+    public const int MaxKeyLength = 1024;
+    public const int MaxValueLength = 64 * 1024;
+}
 
 /// <summary>
 /// Command to set multiple key-value pairs in the server KVAS.
@@ -37,7 +42,10 @@ public partial record ServerKvas_Set(
 public partial record ServerKvas_SetMany(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Session Session,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] params (string Key, byte[]? Value)[] Items
-) : ISessionCommand<Unit>, IApiCommand;
+) : ISessionCommand<Unit>, IApiCommand
+{
+    public const int MaxItemCount = 128;
+}
 
 /// <summary>
 /// Command to migrate guest session keys to an authenticated session.
