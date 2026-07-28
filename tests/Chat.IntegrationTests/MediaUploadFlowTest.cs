@@ -184,6 +184,26 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task RefusesChunkOverMaxChunkSize()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var metadata = new PropertyBag()
+            .Set("FileName", "test.bin")
+            .Set("ContentType", "application/octet-stream");
+        var length = Constants.Uploads.MaxChunkSize + 1L;
+        var uploadId = await tester.Commander.Call(new Uploads_Create(tester.Session, length, "", metadata));
+        var oversizedChunk = new byte[Constants.Uploads.MaxChunkSize + 1];
+
+        // act
+        var act = () => tester.Commander.Call(new Uploads_Append(tester.Session, uploadId, 0, oversizedChunk));
+
+        // assert
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task ConvertToMediaRefIsIdempotent()
     {
         // arrange

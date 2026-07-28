@@ -70,6 +70,9 @@ public class Uploads(IServiceProvider services) : IUploads
     public virtual async Task<long> OnAppend(Uploads_Append command, CancellationToken cancellationToken)
     {
         var (session, uploadId, offset, data) = command;
+        if (data.Length > Constants.Uploads.MaxChunkSize)
+            throw StandardError.Constraint("Upload chunk is too big.");
+
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upload = await Backend.Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
         EnsureCanAccessUpload(upload, user);

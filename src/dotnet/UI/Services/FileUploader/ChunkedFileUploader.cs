@@ -125,7 +125,7 @@ public sealed class ChunkSizeSelectorRecommendation
 internal sealed class ChunkSizeSelector
 {
     private const int MinChunkSize = 256 * 1024; // 256 KB
-    private const int MaxChunkSizeMultiplier = 16; // 8 Mb
+    private const int MaxChunkSizeMultiplier = 16; // 16 x 256 KB = 4 MB, see Constants.Uploads.MaxChunkSize
     private const int MaxChunkUploadDurationMs = 5000; // 5 seconds
 
     private readonly Queue<(int multiplier, long ms)> _lastStats = new();

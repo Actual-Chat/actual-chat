@@ -10,6 +10,11 @@ public static partial class Constants
         // monopolizing the client->server stream).
         public const int SubChunkSize = 16 * 1024; // 16 KB per RpcStream item
 
+        // Upper bound for a single Uploads_Append chunk. Matches the largest chunk
+        // ChunkedFileUploader's selector can pick, which is otherwise a client-side
+        // self-limit the server never checked.
+        public const int MaxChunkSize = 4 * 1024 * 1024; // 4 MB
+
         // RpcStream flow control: client->server upload, must not drop data.
         public const int RpcStreamAckPeriod = 16; // ack every 16 sub-chunks (~256 KB)
         public const int RpcStreamAckAdvance = 256; // 256 sub-chunks credit window (~4 MB)

@@ -13,6 +13,8 @@ namespace ActualChat.Contacts;
 public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
     IExternalContactsBackend
 {
+    // Far above any real address book - it's here so the result can't be unbounded
+    private const int MaxListCount = 25_000;
     private HostId HostId { get; } = services.GetRequiredService<HostId>();
     private ExternalContactHasher Hasher { get; } = services.GetRequiredService<ExternalContactHasher>();
     private IDbEntityResolver<string, DbExternalContact> DbExternalContactResolver { get; }
@@ -40,9 +42,15 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var idPrefix = ExternalContactId.GetFormatPrefix(userDeviceId);
         var dbExternalContacts = await dbContext.ExternalContacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+            .OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.Version, x.Hash })
+            .Take(MaxListCount + 1)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        if (dbExternalContacts.Count > MaxListCount) {
+            Log.LogWarning("List: {UserDeviceId} has over {MaxListCount} external contacts", userDeviceId, MaxListCount);
+            dbExternalContacts.RemoveRange(MaxListCount, dbExternalContacts.Count - MaxListCount);
+        }
 
         return dbExternalContacts.Select(x =>
                 new ExternalContact(ExternalContactId.Parse(x.Id), x.Version) { Hash = new HashString(x.Hash) })
@@ -115,11 +123,18 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         await using var _ = dbContext.ConfigureAwait(false);
 
         var links = GetLinksFor(account);
+        // This grows with how many other address books reference this account, not with its own data
         var externalContactIds = await dbContext.ExternalContactLinks
             .Where(x => links.Contains(x.Value))
+            .OrderBy(x => x.DbExternalContactId)
             .Select(x => x.DbExternalContactId)
+            .Take(MaxListCount + 1)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        if (externalContactIds.Count > MaxListCount) {
+            Log.LogWarning("ListReferencingContactIds: {UserId} is referenced over {MaxListCount} times", userId, MaxListCount);
+            externalContactIds.RemoveRange(MaxListCount, externalContactIds.Count - MaxListCount);
+        }
 
         return [..externalContactIds.Select(ExternalContactId.Parse)];
     }
