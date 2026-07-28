@@ -112,6 +112,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [Computed]
     public virtual async Task<Conversation[]> GetTile(ChatId chatId, Range<long> lidTileRange, CancellationToken cancellationToken)
     {
+        // GetCoveringTiles walks tile by tile, so an arbitrary range is an unbounded loop
+        IdTileStack.LastLayer.AssertIsTile(lidTileRange);
         var idTiles = IdTileStack.LastLayer.GetCoveringTiles(lidTileRange);
         var conversationTiles = await idTiles
             .Select(idTile => GetRangeMeta(chatId, idTile.Range.Start, cancellationToken))
