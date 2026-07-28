@@ -19,7 +19,7 @@ export class IncomingCallRingtone {
         audio.loop = true;
         this.audio = audio;
         debugLog?.log(`${logScope}.start`);
-        audio.play().catch(e => warnLog?.log(`${logScope}.start: play failed`, e));
+        audio.play().catch((e: unknown) => warnLog?.log(`${logScope}.start: play failed`, e));
     }
 
     /** Called by blazor */

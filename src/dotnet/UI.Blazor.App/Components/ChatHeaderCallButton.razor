@@ -30,7 +30,7 @@
             return new Model(false, false, false);
 
         var chatId = Chat.Id;
-        var activity = await ChatActivityUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var activity = await ChatActivityUI.GetCallActivity(chatId, cancellationToken).ConfigureAwait(false);
         // Mirror the server's peer-call gate: a peer call is allowed only while the audio-stream
         // permission is granted (the recipient added the caller or replied, and neither side blocked).
         var canCall = true;
