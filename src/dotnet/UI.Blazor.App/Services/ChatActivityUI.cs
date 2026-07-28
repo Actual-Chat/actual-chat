@@ -110,8 +110,7 @@ public sealed record VisualActivity(
     public static readonly VisualActivity None =
         new(VisualActivityPanelMode.Inline, false, false, VisualActivityTab.Call);
 
-    public bool HasAnyActivity => HasCall || HasMap;
-    public bool CanSwitch => PanelMode == VisualActivityPanelMode.Inline && HasAnyActivity;
+    public bool CanSwitch => PanelMode == VisualActivityPanelMode.Inline && HasCall && HasMap;
 }
 
 // ParticipantCount counts live-session members when IsLiveSession, streaming talkers otherwise.
