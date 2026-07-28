@@ -90,7 +90,8 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     {
         // Runs one ReportLoop worker for the current shares, replacing it whenever the set changes.
         // ReSharper disable once InconsistentlySynchronizedField
-        var changes = _shares.Computed.Changes(cancellationToken);
+        var changes = _shares.Computed.Changes(cancellationToken)
+            .AdjacentDistinctBy(x => x.Value, ActiveSharesComparer.Instance);
         FuncWorker? worker = null;
         try {
             await foreach (var cShares in changes.ConfigureAwait(false)) {
@@ -159,7 +160,14 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 
     private async Task ReportLoop(ActiveShare[] activeShares, CancellationToken cancellationToken)
     {
-        activeShares = await InitializeShares(activeShares, cancellationToken).ConfigureAwait(false);
+        try {
+            // Post entries upfront so their visibility doesn't wait for the first live fix;
+            // on failure ReportForChats picks the pending shares up with retries.
+            activeShares = await InitializeShares(activeShares, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Failed to initialize shares upfront");
+        }
         await Tracker.Start(cancellationToken).ConfigureAwait(false);
         var timeout = activeShares.Max(x => x.ExpiresAt) - ServerNow;
         using var cts = cancellationToken.CreateLinkedTokenSource(timeout < MaxReportLoopTimeout ? timeout : null);
@@ -175,6 +183,9 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 
         async Task ReportForChats(CancellationToken cancellationToken1) {
             await RestartTrackerIfBroken(cancellationToken1).ConfigureAwait(false);
+            // The comparer suppresses ReportLoop restarts on LocationId-only changes,
+            // so the local list is the source of truth for what's already initialized
+            activeShares = await InitializeShares(activeShares, cancellationToken1).ConfigureAwait(false);
             await activeShares.Select(x => Report(x, cancellationToken1))
                 .Collect(cancellationToken1)
                 .ConfigureAwait(false);
@@ -190,7 +201,8 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             ? Task.CompletedTask
             : Tracker.Start(cancellationToken);
 
-    private async Task Report(ActiveShare share, CancellationToken cancellationToken) {
+    private async Task Report(ActiveShare share, CancellationToken cancellationToken)
+    {
         if (share.ExpiresAt <= ServerNow)
             return;
 
@@ -203,16 +215,20 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         if (point is null)
             return;
 
-        await InitializeShare(share, point, cancellationToken).ConfigureAwait(false);
+        // Not initialized yet (InitializeShares failed to get a point or to post); next cycle retries
+        if (share.LocationId is not { } locationId)
+            return;
+
         var diff = new SharedLocationDiff { Point = point, LiveDuration = share.Duration };
-        var change = Change.Upsert(diff, share.LocationId);
+        var change = Change.Upsert(diff, locationId);
         await Commander.Call(
-                new SharedLocations_Change(Session, share.ChatId, share.LocationId, change),
+                new SharedLocations_Change(Session, share.ChatId, locationId, change),
                 cancellationToken)
             .ConfigureAwait(false);
     }
 
-    private async Task<ActiveShare[]> InitializeShares(ActiveShare[] activeShares, CancellationToken cancellationToken) {
+    private async Task<ActiveShare[]> InitializeShares(ActiveShare[] activeShares, CancellationToken cancellationToken)
+    {
         if (activeShares.All(x => x.LocationId is not null))
             return activeShares;
 
@@ -220,11 +236,16 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         if (point is null)
             return activeShares;
 
-        return await activeShares.Select(x => InitializeShare(x, point, cancellationToken)).Collect(cancellationToken).ConfigureAwait(false);
+        return await activeShares.Select(x => InitializeShare(x, point, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<ActiveShare> InitializeShare(
-        ActiveShare share, GeoPoint point, CancellationToken cancellationToken1) {
+        ActiveShare share,
+        GeoPoint point,
+        CancellationToken cancellationToken)
+    {
         if (share.LocationId is not null)
             return share;
 
@@ -232,13 +253,13 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         var change = Change.Create(diff);
         var sharedLocation = await Commander.Call(
                 new SharedLocations_Change(Session, share.ChatId, null, change),
-                cancellationToken1)
+                cancellationToken)
             .ConfigureAwait(false);
         if (sharedLocation is null)
             return share;
 
         var command = new Chats_UpsertEntry(Session, share.ChatId, null) { LocationId = sharedLocation.Id };
-        await Commander.Call(command, cancellationToken1).ConfigureAwait(false);
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         SetSharedLocationId(share.ChatId, sharedLocation.Id);
         return share with { LocationId = sharedLocation.Id };
     }
@@ -251,5 +272,36 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
                     ? x with { LocationId = locationId }
                     : x)
                 .ToArray();
+    }
+
+    // Nested types
+
+    /// <summary>
+    /// Compares share lists ignoring <see cref="ActiveShare.LocationId"/>,
+    /// so a share id assigned mid-run doesn't restart <see cref="ReportLoop"/>.
+    /// </summary>
+    private sealed class ActiveSharesComparer : IEqualityComparer<ActiveShare[]>, IEqualityComparer<ActiveShare>
+    {
+        public static readonly ActiveSharesComparer Instance = new ();
+
+        public bool Equals(ActiveShare[]? x, ActiveShare[]? y)
+            => ReferenceEquals(x, y)
+                || (x is not null && y is not null && x.SequenceEqual(y, this));
+
+        public int GetHashCode(ActiveShare[] obj)
+        {
+            var hashCode = new HashCode();
+            foreach (var share in obj)
+                hashCode.Add(GetHashCode(share));
+            return hashCode.ToHashCode();
+        }
+
+        public bool Equals(ActiveShare? x, ActiveShare? y)
+            => ReferenceEquals(x, y)
+                || (x is not null && y is not null
+                    && x.ChatId == y.ChatId && x.StartedAt == y.StartedAt && x.Duration == y.Duration);
+
+        public int GetHashCode(ActiveShare obj)
+            => HashCode.Combine(obj.ChatId, obj.StartedAt, obj.Duration);
     }
 }

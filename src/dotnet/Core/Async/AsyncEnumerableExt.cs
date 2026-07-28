@@ -53,6 +53,26 @@ public static partial class AsyncEnumerableExt
         }
     }
 
+    public static async IAsyncEnumerable<T> AdjacentDistinctBy<T, TKey>(
+        this IAsyncEnumerable<T> source,
+        Func<T, TKey> selector,
+        IEqualityComparer<TKey>? comparer = null)
+    {
+        comparer ??= EqualityComparer<TKey>.Default;
+        T prev = default!;
+        var isFirst = true;
+        await foreach (var item in source.ConfigureAwait(false)) {
+            if (isFirst) {
+                isFirst = false;
+                yield return item;
+            }
+            else if (!comparer.Equals(selector(prev), selector(item)))
+                yield return item;
+
+            prev = item;
+        }
+    }
+
     // IsNonEmpty
 
     public static async Task<Option<IAsyncEnumerable<T>>> IsNonEmpty<T>(
