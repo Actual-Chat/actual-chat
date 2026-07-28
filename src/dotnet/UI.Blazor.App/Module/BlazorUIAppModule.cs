@@ -28,17 +28,17 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
+        var fusion = services.AddFusion();
+
         // Localization: custom JSON-based localizer (InvariantGlobalization rules out the standard .resx one)
         services.AddScoped<IStringLocalizer<Strings>, AppStringLocalizer>();
         services.AddScoped<IStringLocalizer>(c => c.GetRequiredService<IStringLocalizer<Strings>>());
-        services.AddScoped(c => new LocalizationUI(c.AppUIHub()));
+        fusion.AddService<LocalizationUI>(ServiceLifetime.Scoped);
         // Replaces the base UIActionFailureTracker (registered by fusion.AddBlazor) with one that
         // localizes failure messages before publishing them.
         services.AddScoped<UIActionFailureTracker>(c => new
             LocalizingUIActionFailureTracker(
             c.GetRequiredService<UIActionFailureTracker.Options>(), c));
-
-        var fusion = services.AddFusion();
 
         // Singletons
         fusion.AddService<VirtualListTestService>();
