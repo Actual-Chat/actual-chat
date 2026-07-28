@@ -23,9 +23,6 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
             var options = new WebAuthenticatorOptions {
                 Url = url.ToUri(),
                 CallbackUrl = MauiSettings.AuthCallbackUrl.ToUri(),
-                // Apple-only; keeps the flow out of the shared Safari cookie jar,
-                // which also removes the system consent alert.
-                PrefersEphemeralWebBrowserSession = true,
             };
             await WebAuthenticator.Default.AuthenticateAsync(options, cancellationToken).ConfigureAwait(false);
             return WebAuthResult.Completed;
