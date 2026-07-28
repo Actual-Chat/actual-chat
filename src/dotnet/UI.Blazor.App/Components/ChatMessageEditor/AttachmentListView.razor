@@ -8,11 +8,9 @@
 @if (attachments.Count > 0) {
     <div class="attachment-list-wrapper">
         <div class="c-btn-group">
-            <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove" Click="_ => Clear()">
+            <span class="c-count">@attachments.Count @("file".Pluralize(attachments.Count))</span>
+            <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove btn-sm" Click="_ => Clear()">
                 Remove all
-            </Button>
-            <Button Class="attachment-list-btn btn-primary btn-transparent unhovered c-send" Click="OnSendClick">
-                Send @attachments.Count @("file".Pluralize(attachments.Count))
             </Button>
         </div>
         <HeaderButton Class="remove-all-btn" Click="_ => Clear()">
@@ -43,7 +41,6 @@
 @code {
     private AttachmentListHolder? _holder;
 
-    [Parameter] public EventCallback OnSendClick { get; set; }
     [Parameter] public EventCallback OnAddClick { get; set; }
     [Parameter] public AttachmentListHolder AttachmentListHolder { get; set; } = null!;
 

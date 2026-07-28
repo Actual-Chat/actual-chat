@@ -23,17 +23,57 @@ body.narrow .chat-message-editor > .c-content {
     @apply p-0;
 }
 
+/* Stacks the (wide) related-entry panel above the post-panel in one flex-auto column, so the
+   related panel is exactly the post-panel's width instead of spanning past it to the audio panel.
+   On narrow it's layout-transparent (the related panel renders in the narrow branch), so the
+   mobile DOM stays effectively flat. */
+.c-editor-column {
+    /* min-w-0: as a flex item its default min-width:auto would refuse to shrink below the
+       post-panel's intrinsic width, pushing the column past the right edge. */
+    @apply flex-auto flex-y gap-y-2 min-w-0;
+}
+body.narrow .c-editor-column {
+    @apply contents;
+}
+
 /* Bottom Panel, Mobile, Landscape */
 .post-panel {
     @apply relative z-30;
-    @apply flex-auto flex-x justify-between items-center md:gap-x-2;
+    @apply flex-auto flex-y;
     @apply min-h-12;
-    @apply py-1 md:py-0 px-2;
     @apply border-bg-01 rounded-3xl outline-none;
     @apply bg-post-panel md:bg-input;
-    @apply overflow-hidden;
     @apply break-all;
     transition: border-radius 0.25s ease;
+}
+
+/* Top container: attachments + mention list stacked in one grid cell.
+   The mention list (z above) overlaps the attachments; the taller of the two
+   drives the height, so the panel grows to fit the mention list when it's larger. */
+.c-editor-top {
+    @apply relative grid items-start;
+    @apply md:rounded-t-lg;
+    @apply bg-02;
+    /* minmax(0,1fr) + min-w-0 children clamp the column to the panel width, so a wide
+       attachment row scrolls horizontally instead of stretching the whole panel. */
+    grid-template-columns: minmax(0, 1fr);
+}
+.c-editor-top > * {
+    grid-area: 1 / 1;
+    @apply min-w-0;
+}
+.c-editor-top > .attachment-list-wrapper {
+    @apply z-10;
+}
+.c-editor-top > .mention-list-wrapper {
+    @apply z-20;
+}
+
+/* The input row: left buttons + editor + right buttons. */
+.c-editor-row {
+    @apply relative;
+    @apply flex-auto flex-x justify-between items-center md:gap-x-2;
+    @apply py-0 px-2;
 }
 body.wide .list-view-layout:has(.chat-activity-panel.listening) .post-panel {
     @apply bg-01;
@@ -48,7 +88,14 @@ body.narrow .post-panel {
 
 body.narrow .text-mode .post-panel,
 body.narrow .narrow-panel .post-panel {
-    @apply py-1 pb-10;
+    @apply py-1;
+}
+/* The attach/send buttons are absolute-positioned inside .c-editor-row (its relative ancestor),
+   so the bottom strip they float in must be reserved on that same row - not on the post-panel,
+   or they'd anchor above the strip and the editor text would run under them. */
+body.narrow .text-mode .c-editor-row,
+body.narrow .narrow-panel .c-editor-row {
+    @apply pb-10;
 }
 
 .post-panel .c-right-buttons {
@@ -58,7 +105,6 @@ body.narrow .narrow-panel .post-panel {
 body.narrow .text-mode .post-panel .c-right-buttons,
 body.narrow .narrow-panel .post-panel .c-right-buttons {
     @apply absolute bottom-2 right-2;
-    @apply py-1;
 }
 
 body.narrow .text-mode .post-panel .c-right-buttons .c-incut,
@@ -159,7 +205,7 @@ body.narrow .post-panel .c-left-buttons {
 }
 body.narrow .text-mode .c-left-buttons,
 body.narrow .narrow-panel .c-left-buttons {
-    @apply absolute left-2 bottom-3;
+    @apply absolute left-2 bottom-2;
 }
 body.wide .post-panel .c-left-buttons {
     @apply rounded-full;
@@ -275,8 +321,8 @@ body.hoverable .btn.btn-round.post-panel-btn.post-message:hover,
 .attachment-list-wrapper {
     @apply relative flex-y;
     @apply p-1;
-    @apply bg-02;
-    @apply rounded-xl;
+    @apply bg-03;
+    @apply md:rounded-t-lg;
     animation: show-attachment-list 400ms ease-in-out forwards;
 }
 @keyframes show-attachment-list {
@@ -294,6 +340,7 @@ body.hoverable .btn.btn-round.post-panel-btn.post-message:hover,
     }
 }
 body.narrow .attachment-list-wrapper {
+    @apply pt-0;
     @apply border-none;
     @apply bg-post-panel;
 }
@@ -309,8 +356,11 @@ body.narrow .attachment-list-wrapper {
     @apply px-3;
 }
 .attachment-list-wrapper > .c-btn-group {
-    @apply flex-1 flex-x justify-between;
+    @apply flex-1 flex-x justify-between items-center;
     @apply px-2;
+}
+.attachment-list-wrapper > .c-btn-group > .c-count {
+    @apply text-caption-4 text-audio-panel-button-text md:text-03;
 }
 body.narrow .attachment-list-wrapper > .c-btn-group {
     @apply pb-1;
@@ -508,8 +558,9 @@ body.narrow .narrow-panel .attachment-filename {
     @apply flex-x;
     @apply h-10;
     @apply py-0;
-    @apply outline-none;
+    @apply outline-1 outline-separator outline-offset-0;
     @apply bg-03;
+    outline-style: solid;
 }
 body.narrow .related-chat-entry-panel {
     @apply h-auto;
@@ -599,7 +650,6 @@ body.narrow .related-chat-entry-panel .related-chat-entry .icon-edit {
     @apply bg-03;
     @apply text-base;
     @apply cursor-pointer;
-    @apply md:border-t border-separator;
 }
 .related-chat-entry .btn.btn-round {
     @apply min-w-8 md:min-w-12;
