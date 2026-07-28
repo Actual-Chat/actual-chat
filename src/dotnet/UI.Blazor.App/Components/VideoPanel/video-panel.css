@@ -867,13 +867,6 @@ body.narrow .video-panel-content .video-track-player.pip-overlay .video-particip
 .video-panel-chat .chat-audio-panel {
     @apply hidden;
 }
-.video-panel-chat .mention-list-manager {
-    transition: z-index 0s 400ms;
-}
-.video-panel-chat .mention-list-manager.show-mention-list {
-    @apply z-10;
-    transition: z-index 0s;
-}
 
 @keyframes smoothShowVideoPanel {
     0% {

@@ -1,49 +1,47 @@
-.mention-list-manager {
-    --mention-shadow: var(--post-panel);
-    @apply absolute inset-x-0 top-0 z-20;
-}
-.mention-list-manager > div {
-    @apply absolute inset-x-0 bottom-0;
-}
-@media screen and (min-width: 820px) {
-    .mention-list-manager {
-        --mention-shadow: var(--background-01);
-    }
-}
-
 /* Wrapper holds the chips pill (floating above) and the scrollable list.
-   Pinned to the bottom of .mention-list-manager (replaces the role .mention-list
-   used to play). Children are visually separate: chips are a content-width
-   floating "hover-menu" pill anchored over the top-right of the list. */
+   It lives in the post-panel top container (.c-editor-top) as a grid item stacked
+   over the attachment list. Open: it participates in the grid track, so the panel
+   grows to fit it. Closed: it goes absolute so it no longer contributes height.
+   Chips are a content-width floating "hover-menu" pill anchored over the list's top-right. */
 .mention-list-wrapper {
     @apply relative;
-    @apply bg-01;
-    transform: translateY(0);
-    transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), opacity 150ms ease-out, visibility 0s;
+    /* No transform: the reveal is a bottom-up clip on the inner list (see .mention-list),
+       so the list unfolds from the bottom edge of the attach container instead of sliding
+       up over the input text. The wrapper only fades (carries the chips pill). */
+    transition: opacity 150ms ease-out, visibility 0s;
 }
-/* Firefox workaround: it somehow displays the border otherwise */
 .mention-list-wrapper.non-visible {
+    /* Bottom-anchored so the closing clip folds down onto the container's bottom edge
+       instead of hanging from the top over the editor. Height = its content (the list),
+       which grows upward from that edge. */
+    @apply absolute inset-x-0 bottom-0;
     @apply border-y-0;
     @apply invisible;
     @apply opacity-0;
     @apply pointer-events-none;
-    transform: translateY(100%);
-    transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), opacity 150ms ease-out, visibility 0s 250ms;
+    transition: opacity 150ms ease-out, visibility 0s 250ms;
 }
 .mention-list {
     @apply flex-y;
     @apply p-0.5;
-    @apply rounded-lg;
+    @apply rounded-t-lg;
     @apply overflow-x-hidden overflow-y-auto;
-    @apply bg-input text-03;
+    @apply text-03;
+    /* Opaque card: it overlays the attachment list stacked beneath it in .c-editor-top,
+       so a translucent bg would let the attachments show through. */
+    @apply bg-03;
     /* --mention-list-cap = the visible height cap; --row-count is set per-render (rows or skeletons).
        The list keeps an explicit height (rows * 2.25rem) so it can transition smoothly between sizes. */
     --mention-list-cap: min(10rem, var(--mention-list-max-h, 100vh));
     height: min(calc(var(--row-count, 0) * 2.25rem + 0.25rem), var(--mention-list-cap));
     max-height: var(--mention-list-cap);
-    transition: height 160ms ease-out;
+    clip-path: inset(0 0 0 0);
+    transition: height 160ms ease-out, clip-path 250ms cubic-bezier(0.16, 1, 0.3, 1);
     /* Reveal the thin scrollbar whenever the list overflows (not only on hover). */
     scrollbar-color: var(--scrollbar) transparent;
+}
+.mention-list-wrapper.non-visible .mention-list {
+    clip-path: inset(100% 0 0 0);
 }
 @media (min-width: 768px) {
     .mention-list {
@@ -54,7 +52,7 @@ body.narrow .mention-list {
     @apply rounded-b-none;
     @apply bg-post-panel;
     @apply text-post-panel-text;
-    transition: height 160ms ease-out, max-height 300ms ease-out;
+    transition: height 160ms ease-out, max-height 300ms ease-out, clip-path 250ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 body.narrow .mention-list-wrapper::after {
     @apply content-empty;
@@ -97,7 +95,7 @@ body.hoverable .mention-list .mention-list-item.selected,
 .mention-list .mention-list-item > .c-content {
     @apply flex-x items-center gap-x-2;
     @apply h-9;
-    @apply px-2 md:px-4;
+    @apply px-2;
 }
 .mention-list .mention-list-skeleton {
     @apply opacity-5;

@@ -14,7 +14,6 @@
         @<AttachmentListView
              @key="AttachmentListKey"
              AttachmentListHolder="@_attachmentListHolder"
-             OnSendClick="@(() => Post())"
              OnAddClick="@(() => OnAttachClick(""))"/>;
 }
 
@@ -29,54 +28,60 @@
     <Hotkey Keys="ctrl+e" AriaLabel="Focus message editor" OnTrigger="OnFocusEditorRequested"/>
     <input class="attachment-web-file-picker" type="file" multiple tabindex="-1"/>
     <MentionListManager @key="@MentionListManagerKey">
-        @if (ScreenSize.IsWide()) {
-            @RenderAttachmentListView()
-            <RelatedChatEntryPanel/>
-        }
         <div class="c-content">
-            <div class="post-panel"
-                 data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
-                 data-bubble-priority="150"
-                 data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-                <div class="c-left-buttons">
-                    @if (Chat.Rules.CanUpload()) {
-                        <ButtonRound
-                            data-menu="@(MenuRef.New<ChatMessageEditorMenu>(_editorId))"
-                            data-menu-trigger="@MenuTrigger.Primary"
-                            data-menu-placement="@(FloatingPosition.Top.ToPositionString())"
-                            PointerDownPreventDefault="true"
-                            Class="post-panel-btn attach-btn btn-transparent btn-xxs">
-                            <i class="icon-plus-circle text-2.5xl"></i>
-                        </ButtonRound>
-                    }
-                </div>
-                <label for="message-input" class="message-input-label">
-                    <MarkupEditor
-                        @key="MarkupEditorKey"
-                        @ref="MarkupEditorRef"
-                        MentionResolver="@ChatMarkupHub.MentionResolver"
-                        HtmlConverter="@ChatMarkupHub.EditorHtmlConverter"
-                        Id="message-input"
-                        Class="message-input -flex-y"
-                        ContentClass="no-scrollbar"
-                        Autofocus="Autofocus"
-                        Placeholder="@placeholder"
-                        Post="@Post"
-                        Cancel="@(() => OnCancel())"
-                        OpenPrevious="OnOpenPrevious"/>
-                </label>
-                <div class="c-right-buttons">
-                    <NotifyAllButton Chat="@Chat"/>
-                    <div class="c-incut"></div>
-                    <button class="post-panel-btn post-message btn btn-round btn-transparent btn-xs"
-                            @onmousedown="@(_ => Post())"
-                            @onmousedown:preventDefault="true">
-                        <i class="icon-paper-plane"></i>
-                    </button>
+            <div class="c-editor-column">
+                @if (ScreenSize.IsWide()) {
+                    <RelatedChatEntryPanel/>
+                }
+                <div class="post-panel"
+                     data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
+                     data-bubble-priority="150"
+                     data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+                    <div class="c-editor-top">
+                        @RenderAttachmentListView()
+                        <MentionList/>
+                    </div>
+                    <div class="c-editor-row">
+                        <div class="c-left-buttons">
+                            @if (Chat.Rules.CanUpload()) {
+                                <ButtonRound
+                                    data-menu="@(MenuRef.New<ChatMessageEditorMenu>(_editorId))"
+                                    data-menu-trigger="@MenuTrigger.Primary"
+                                    data-menu-placement="@(FloatingPosition.Top.ToPositionString())"
+                                    PointerDownPreventDefault="true"
+                                    Class="post-panel-btn attach-btn btn-transparent btn-xxs">
+                                    <i class="icon-plus-circle text-2.5xl"></i>
+                                </ButtonRound>
+                            }
+                        </div>
+                        <label for="message-input" class="message-input-label">
+                            <MarkupEditor
+                                @key="MarkupEditorKey"
+                                @ref="MarkupEditorRef"
+                                MentionResolver="@ChatMarkupHub.MentionResolver"
+                                HtmlConverter="@ChatMarkupHub.EditorHtmlConverter"
+                                Id="message-input"
+                                Class="message-input -flex-y"
+                                ContentClass="no-scrollbar"
+                                Autofocus="Autofocus"
+                                Placeholder="@placeholder"
+                                Post="@Post"
+                                Cancel="@(() => OnCancel())"
+                                OpenPrevious="OnOpenPrevious"/>
+                        </label>
+                        <div class="c-right-buttons">
+                            <NotifyAllButton Chat="@Chat"/>
+                            <div class="c-incut"></div>
+                            <button class="post-panel-btn post-message btn btn-round btn-transparent btn-xs"
+                                    @onmousedown="@(_ => Post())"
+                                    @onmousedown:preventDefault="true">
+                                <i class="icon-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             @if (ScreenSize.IsNarrow()) {
-                @RenderAttachmentListView()
                 <div class="rounded-sub-footer">
                     <div class="bg-layer"></div>
                 </div>

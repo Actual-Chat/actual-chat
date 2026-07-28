@@ -1,14 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
 <CascadingValue TValue="MentionListManager" Value="@this" IsFixed="true">
-    <div class="mention-list-manager @_cls">
-        <MentionList @ref="ListRef"/>
-    </div>
     @ChildContent
 </CascadingValue>
 
 @code {
-    private string _cls = "";
+    private bool _isShown;
     private bool _hasOpened;
 
     [Inject] protected StateFactory StateFactory { get; init; } = null!;
@@ -28,6 +25,11 @@
             MentionCandidateFilters.All,
             StateCategories.Get(GetType(), nameof(Filter)));
 
+    // MentionList renders inside the consumer's markup (e.g. the post-panel top container)
+    // and registers itself here so the manager keeps driving Show/Hide/keyboard nav.
+    internal void SetList(MentionList list)
+        => ListRef = list;
+
     public Task<FoundMention[]> Find(string query, int limit, CancellationToken cancellationToken)
         => LocalSearchUI.FindMentions(ChatContext?.Chat.Id, Filter.Value, query, limit, cancellationToken);
 
@@ -35,24 +37,24 @@
         => MentionSelected?.Invoke(mention);
 
     public void Show(string filter) {
-        if (ListRef != null) {
-            if (_cls != "show-mention-list")
-                Filter.Value = MentionCandidateFilters.All;
-            _cls = "show-mention-list";
-            // The filter is set before Open() so the very first visible frame renders with it.
-            ListRef.Filter.Value = filter;
-            ListRef.Open(isFirstOpen: !_hasOpened);
-            _hasOpened = true;
-            StateHasChanged();
-        }
+        if (ListRef == null)
+            return;
+
+        if (!_isShown)
+            Filter.Value = MentionCandidateFilters.All;
+        _isShown = true;
+        // The filter is set before Open() so the very first visible frame renders with it.
+        ListRef.Filter.Value = filter;
+        ListRef.Open(isFirstOpen: !_hasOpened);
+        _hasOpened = true;
     }
 
     public void Hide() {
-        if (ListRef != null) {
-            ListRef.Close();
-            _cls = "";
-            StateHasChanged();
-        }
+        if (ListRef == null)
+            return;
+
+        ListRef.Close();
+        _isShown = false;
     }
 
     public void Dismiss() {

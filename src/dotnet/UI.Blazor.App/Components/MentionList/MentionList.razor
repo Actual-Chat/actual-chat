@@ -153,6 +153,7 @@
         Filter = StateFactory.NewMutable(
             (string?)null,
             StateCategories.Get(GetType(), nameof(Filter)));
+        Manager.SetList(this);
     }
 
     public override async ValueTask DisposeAsync() {

@@ -2,11 +2,8 @@
 @implements IMarkupEditorBackend
 @implements IAsyncDisposable
 @using ActualChat.UI.Blazor.App.Module
-@using ActualChat.UI.Blazor.App.Services
-@using System.Diagnostics.CodeAnalysis
 
 <div @ref="Ref" id="@Id" class="@Class markup-editor">
-    <div class="c-cursor"></div>
     <div class="c-placeholder">@Placeholder</div>
     <div class="editor-content @ContentClass"
          enterkeyhint="enter"

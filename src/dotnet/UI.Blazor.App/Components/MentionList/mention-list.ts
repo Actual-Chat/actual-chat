@@ -4,6 +4,7 @@ export class MentionList {
     private readonly mentionList: HTMLElement;
     private readonly header: HTMLElement | null;
     private readonly editor: HTMLElement | null;
+    private readonly editorRow: HTMLElement | null;
     private readonly resizeObserver: ResizeObserver;
     private readonly onViewportResize = () => this.scheduleMeasure();
     private readonly disposed$: Subject<void> = new Subject<void>();
@@ -17,6 +18,10 @@ export class MentionList {
     constructor(mentionList: HTMLElement) {
         this.mentionList = mentionList;
         this.editor = mentionList.closest<HTMLElement>('.chat-message-editor');
+        // The list now lives inside the post-panel and grows it upward, so the editor top
+        // moves with the list. The input row stays anchored to the panel bottom, so its top
+        // is the stable reference for how much room the list has above it.
+        this.editorRow = this.editor?.querySelector<HTMLElement>('.c-editor-row') ?? null;
         const layout = mentionList.closest('.list-view-layout') ?? document;
         this.header = layout.querySelector<HTMLElement>('.layout-header');
 
@@ -27,8 +32,8 @@ export class MentionList {
         this.resizeObserver = new ResizeObserver(() => this.scheduleMeasure());
         if (this.header)
             this.resizeObserver.observe(this.header);
-        if (this.editor)
-            this.resizeObserver.observe(this.editor);
+        if (this.editorRow)
+            this.resizeObserver.observe(this.editorRow);
         window.visualViewport?.addEventListener('resize', this.onViewportResize);
         this.scheduleMeasure();
     }
@@ -44,9 +49,10 @@ export class MentionList {
     }
 
     private measureAvailable() {
-        if (!this.editor)
+        const anchor = this.editorRow ?? this.editor;
+        if (!anchor)
             return;
-        const editorTop = this.editor.getBoundingClientRect().top;
+        const anchorTop = anchor.getBoundingClientRect().top;
         const headerBottom = this.header?.getBoundingClientRect().bottom ?? 0;
         const listTop = this.mentionList.getBoundingClientRect().top;
         const chips = this.mentionList.parentElement?.querySelector<HTMLElement>('.mention-list-chips');
@@ -55,7 +61,7 @@ export class MentionList {
         const chipsOverhang = chipsRect && chipsRect.height > 0
             ? Math.max(0, listTop - chipsRect.top)
             : 20;
-        const available = Math.max(0, editorTop - headerBottom - 16 - chipsOverhang);
+        const available = Math.max(0, anchorTop - headerBottom - 16 - chipsOverhang);
         this.mentionList.style.setProperty('--mention-list-max-h', `${available}px`);
     }
 
