@@ -63,11 +63,14 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
                 c.Route.Version,
                 ""))
             .ToArray();
+        // Mesh peers only: an API host also holds a peer per connected client, and those
+        // are both far too many to ship and none of a mesh diagnostic's business
         var rpcPeers = RpcHub.InternalServices.Peers.Values
             .Select(c => new { Ref = c.Ref as MeshRpcRef, Peer = c })
+            .Where(c => c.Ref is not null)
             .Select(c => new {
-                SchemeName = c.Ref?.ShardRef.Scheme.Name ?? "",
-                ShardKey = c.Ref?.ShardRef.Key ?? 0,
+                SchemeName = c.Ref!.ShardRef.Scheme.Name,
+                ShardKey = c.Ref!.ShardRef.Key,
                 c.Peer
             })
             .OrderBy(c => c.SchemeName)
