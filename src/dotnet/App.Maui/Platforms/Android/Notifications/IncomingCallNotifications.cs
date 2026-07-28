@@ -13,10 +13,7 @@ namespace ActualChat.App.Maui;
 
 public static class IncomingCallNotifications
 {
-    public const string ChannelId = "incoming_calls_v2";
-    // The v1 channel had its own ringtone; it's deleted so the ring plays from a single source
-    // (the in-app looping ringer) instead of doubling with the channel sound.
-    private const string LegacyChannelId = "incoming_calls";
+    public const string ChannelId = "incoming_calls";
     // Mirrors the server's LiveSessionsBackend.RingTimeout: the banner self-destructs
     // at ring expiry even when the dismissal push never arrives (offline device).
     private static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(40);
@@ -160,7 +157,6 @@ public static class IncomingCallNotifications
     private static void EnsureChannelExists()
     {
         var notificationManager = (NotificationManager)Context.GetSystemService(Context.NotificationService)!;
-        notificationManager.DeleteNotificationChannel(LegacyChannelId);
         var channel = notificationManager.GetNotificationChannel(ChannelId);
         if (channel != null)
             return;

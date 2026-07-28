@@ -15,7 +15,7 @@ or killed, and a lock-screen call screen with accept-over-keyguard.
 `IncomingCallUI` service tracks candidate rings and derives the visible ring from
 the reactive `LiveSessionUI.Get(chatId)` — cancel/timeout/answer-elsewhere all end
 the ring without any further push. Android platform code contributes the FCM
-branch, the silent `incoming_calls_v2` channel, the `CallStyle` notification with
+branch, the silent `incoming_calls` channel, the `CallStyle` notification with
 a full-screen intent, a Decline broadcast receiver that works without Blazor, the
 looping ringer, and the keyguard lifecycle. Web/desktop get the same in-app ring
 through the service worker and `INotifications.ListActive`.
@@ -196,10 +196,10 @@ Produced (consumed by Tasks 6, 7, 10): `ChannelId`, `DeclineAction`,
 `ChatIdExtraKey`, `AcceptExtraKey`, `Show(NotificationData)`, `Dismiss(ChatId)`,
 `ListActiveCallChatIds()`, `CallTag(chatId)` → `"call-{chatId}"`.
 
-Initial version: a plain heads-up notification on an `incoming_calls` channel with
-its own ringtone and manual Accept/Decline actions, shown only when the app was
-**not** in the foreground with a live Blazor scope. Task 10 replaced all three of
-those decisions. The FCM branch:
+Initial version: a plain heads-up notification on the `incoming_calls` channel
+with its own ringtone and manual Accept/Decline actions, shown only when the app
+was **not** in the foreground with a live Blazor scope. Task 10 replaced all three
+of those decisions. The FCM branch:
 
 ```csharp
         if (data.NotificationKind == NotificationKind.IncomingCall) {
@@ -304,9 +304,9 @@ Absorbed the original "stage A" ring surface.
 
 What shipped:
 
-- Channel `incoming_calls_v2` — **silent, non-vibrating**, `Importance.High`; the
-  v1 `incoming_calls` channel is deleted on first use. The in-app ringer is the
-  only sound source, so the channel must not ring on top of it.
+- The `incoming_calls` channel became **silent and non-vibrating**,
+  `Importance.High`. The in-app ringer is the only sound source, so the channel
+  must not ring on top of it.
 - `NotificationCompat.CallStyle.ForIncomingCall(caller, decline, accept)` with a
   `Person` carrying the caller name and avatar; `SetOngoing(true)`,
   `VisibilityPublic`, `CategoryCall`, `SetTimeoutAfter(40 s)`.
