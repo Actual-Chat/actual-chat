@@ -20,23 +20,9 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
 
     public async ValueTask DisposeAsync()
     {
-        var timeout = CoreConstants.DisposeTimeout;
-        try {
-            await _translations.DisposeSilentlyAsync().AsTask().WaitAsync(timeout).ConfigureAwait(false);
-        }
-        catch (TimeoutException) {
-            Log.LogWarning(
-                "{Type}: _translations didn't dispose in {Timeout}, proceeding",
-                GetType().GetName(), timeout);
-        }
-        try {
-            await _languageDetections.DisposeSilentlyAsync().AsTask().WaitAsync(timeout).ConfigureAwait(false);
-        }
-        catch (TimeoutException) {
-            Log.LogWarning(
-                "{Type}: _languageDetections didn't dispose in {Timeout}, proceeding",
-                GetType().GetName(), timeout);
-        }
+        var typeName = GetType().GetName();
+        await _translations.DisposeSilentlyAsync($"{typeName}._translations", Log).ConfigureAwait(false);
+        await _languageDetections.DisposeSilentlyAsync($"{typeName}._languageDetections", Log).ConfigureAwait(false);
     }
 
     public Task<Translation?> GetExisting(TranslationId id, CancellationToken cancellationToken)

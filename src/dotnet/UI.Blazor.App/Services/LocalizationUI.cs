@@ -19,18 +19,8 @@ public class LocalizationUI : UIServiceBase<AppUIHub>, IComputeService, IAsyncDi
     public LocalizationUI(AppUIHub hub) : base(hub)
         => _localizations = new(ConcurrencyLevel, Localize, log: hub.LogFor<ConcurrentProcessor<Key, string>>());
 
-    public async ValueTask DisposeAsync()
-    {
-        var timeout = CoreConstants.DisposeTimeout;
-        try {
-            await _localizations.DisposeSilentlyAsync().AsTask().WaitAsync(timeout).ConfigureAwait(false);
-        }
-        catch (TimeoutException) {
-            Log.LogWarning(
-                "{Type}: _localizations didn't dispose in {Timeout}, proceeding",
-                GetType().GetName(), timeout);
-        }
-    }
+    public ValueTask DisposeAsync()
+        => _localizations.DisposeSilentlyAsync($"{GetType().GetName()}._localizations", Log);
 
     [ComputeMethod]
     public virtual async Task<string> Get(string message, CancellationToken cancellationToken = default)
