@@ -23,6 +23,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private static readonly string JSStopRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.stop";
 
     private readonly ConcurrentDictionary<ChatId, CancellationTokenSource> _callWatches = new();
+    private readonly Lock _ringbackLock = new();
+    private object? _ringbackOwner;
 
     private ILiveSessions LiveSessions => Hub.LiveSessions;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -77,12 +79,13 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            // The server rejects calls the caller isn't allowed to place (e.g. a peer who hasn't added
-            // them), so surface it as a toast instead of letting it reach the ErrorBoundary.
+            // Only StandardError.Constraint (e.g. the peer-call gate) carries user-facing text.
             Log.LogWarning(e, "StartCall failed for chat #{ChatId}", chatId);
-            Hub.ToastUI.Show(e.Message, "icon-phone-hang-up", ToastDismissDelay.Short);
+            var message = e is InvalidOperationException ? e.Message : "Couldn't start the call";
+            Hub.ToastUI.Show(message, "icon-phone-hang-up", ToastDismissDelay.Short);
             return;
         }
+
         StartCallWatch(chatId);
     }
 
@@ -221,7 +224,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         StopCallWatch(chatId);
         var cts = StopToken.CreateLinkedTokenSource();
         _callWatches[chatId] = cts;
-        _ = WatchOutgoingCall(chatId, cts.Token);
+        _ = WatchOutgoingCall(chatId, cts);
     }
 
     private void StopCallWatch(ChatId chatId)
@@ -230,8 +233,9 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             cts.CancelAndDisposeSilently();
     }
 
-    private async Task WatchOutgoingCall(ChatId chatId, CancellationToken cancellationToken)
+    private async Task WatchOutgoingCall(ChatId chatId, CancellationTokenSource cts)
     {
+        var cancellationToken = cts.Token;
         var ringbackOn = false;
         try {
             var watchStartedAt = Now;
@@ -248,7 +252,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                     // stops it.
                     if (!ringbackOn) {
                         ringbackOn = true;
-                        StartRingback();
+                        StartRingback(cts);
                     }
                 }
                 else if (isDialing) {
@@ -269,16 +273,37 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
         finally {
             if (ringbackOn)
-                StopRingback();
-            _callWatches.TryRemove(chatId, out _);
+                StopRingback(cts);
+            // Only our own registration: a restart has already replaced it by the time we unwind.
+            _callWatches.TryRemove(new KeyValuePair<ChatId, CancellationTokenSource>(chatId, cts));
         }
     }
 
-    private void StartRingback()
-        => _ = PlayRingback(true);
+    private void StartRingback(object owner)
+    {
+        // One shared tone: a restarted watch takes it over instead of re-starting it, so the
+        // cancelled watch's teardown can't silence the new one.
+        lock (_ringbackLock) {
+            var wasPlaying = _ringbackOwner is not null;
+            _ringbackOwner = owner;
+            if (wasPlaying)
+                return;
+        }
 
-    private void StopRingback()
-        => _ = PlayRingback(false);
+        _ = PlayRingback(true);
+    }
+
+    private void StopRingback(object owner)
+    {
+        lock (_ringbackLock) {
+            if (!ReferenceEquals(_ringbackOwner, owner))
+                return;
+
+            _ringbackOwner = null;
+        }
+
+        _ = PlayRingback(false);
+    }
 
     private async Task PlayRingback(bool start)
     {

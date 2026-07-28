@@ -145,9 +145,8 @@ onBackgroundMessage(messaging, async payload => {
         }
         // A cancelled/declined/timed-out call: route it to any open tab so the in-app ring banner
         // clears at once over the same channel that delivered the ring, instead of waiting on the
-        // reactive live-session self-heal. Mirrors Android's ClearForegroundCallRings; tag format is
-        // Constants.Notification.CallTagPrefix + chatId.
-        const callTagPrefix = 'call-';
+        // reactive live-session self-heal. Mirrors Android's ClearForegroundCallRings.
+        const callTagPrefix = 'call-'; // Must match Constants.Notification.CallTagPrefix (no AppConstants in a SW)
         const cancelledCallChatIds = tags
             .filter(tag => tag.startsWith(callTagPrefix))
             .map(tag => tag.substring(callTagPrefix.length))

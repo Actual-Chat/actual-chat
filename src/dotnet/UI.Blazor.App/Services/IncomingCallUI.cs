@@ -20,7 +20,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private static readonly string JSStartRingtone = $"{BlazorUIAppModule.ImportName}.IncomingCallRingtone.start";
     private static readonly string JSStopRingtone = $"{BlazorUIAppModule.ImportName}.IncomingCallRingtone.stop";
 
-    private readonly Lock _lock = new();
+    private readonly Lock _ringingLock = new();
     private readonly MutableState<ImmutableList<ChatId>> _ringingChatIds;
     // The chat whose call surfaced over the lock screen; stays set through Accept (so the in-call
     // screen shows over the keyguard) until the user unlocks (GoToChat), hangs up, or the call ends.
@@ -62,7 +62,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
 
         CallDebugLog?.LogInformation("CALL_TRACE: OnRing #{ChatId}, showOverLockScreen={ShowOverLockScreen}", chatId, showOverLockScreen);
-        lock (_lock) {
+        lock (_ringingLock) {
             var chatIds = _ringingChatIds.Value;
             if (!chatIds.Contains(chatId))
                 _ringingChatIds.Value = chatIds.Add(chatId);
@@ -140,7 +140,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return new IncomingCall(live.ChatId, live.Host, live.Rules.VideoAllowed);
     }
 
-    public async Task Accept(ChatId chatId, bool withCamera = false)
+    public async Task Accept(ChatId chatId)
     {
         var overLockScreen = _overLockChatId.Value == chatId;
         var call = await GetRingingCall(chatId, default).ConfigureAwait(true);
@@ -192,7 +192,6 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         finally {
             _isAccepting.Value = false;
         }
-        _ = withCamera; // Camera-on accept is wired in the camera-preview task.
     }
 
     public async Task Decline(ChatId chatId)
@@ -361,13 +360,13 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // Dead rings would otherwise accumulate for the whole scope lifetime; a still-live
         // second ring survives the prune and surfaces once the current one ends.
         ImmutableList<ChatId> chatIds;
-        lock (_lock)
+        lock (_ringingLock)
             chatIds = _ringingChatIds.Value;
         foreach (var chatId in chatIds) {
             if (await GetRingingCall(chatId, cancellationToken).ConfigureAwait(false) is not null)
                 continue;
 
-            lock (_lock)
+            lock (_ringingLock)
                 _ringingChatIds.Value = _ringingChatIds.Value.Remove(chatId);
         }
     }
@@ -398,7 +397,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private void EndRing(ChatId chatId)
     {
-        lock (_lock) {
+        lock (_ringingLock) {
             var chatIds = _ringingChatIds.Value;
             if (chatIds.Contains(chatId))
                 _ringingChatIds.Value = chatIds.Remove(chatId);
