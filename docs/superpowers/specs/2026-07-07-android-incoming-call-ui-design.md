@@ -133,10 +133,8 @@ silent), plus a waveform vibration that respects the device ringer mode
 
 Consequences that shaped the rest of the Android code:
 
-- The notification channel is **silent and non-vibrating**
-  (`incoming_calls_v2`; the v1 `incoming_calls` channel, which carried its own
-  sound, is deleted on first use). Otherwise the channel and the in-app ringer
-  would ring on top of each other.
+- The `incoming_calls` notification channel is **silent and non-vibrating**.
+  Otherwise the channel and the in-app ringer would ring on top of each other.
 - `AndroidAudioFocusHelper.WarmUpAudioMode` consults `IncomingCallRinger.IsPlaying`
   and aborts: flipping the audio mode to `InCommunication` reroutes `STREAM_RING`
   to the earpiece and audibly drops the ring mid-way.
