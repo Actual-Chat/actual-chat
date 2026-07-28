@@ -37,7 +37,14 @@ public class AndroidDeviceNotifications : IDeviceNotifications
             if (shownTags.Contains(tag))
                 continue;
             var info = active.FirstOrDefault(x => x.Tag == tag);
-            if (info != null)
+            if (info == null)
+                continue;
+
+            if (IncomingCallNotifications.TryParseCallTag(tag) is { } callChatId)
+                // A ring must come back as a ring — CallStyle, action buttons, full-screen intent —
+                // and it must alert: unlike a message banner, a silent call is useless.
+                IncomingCallNotifications.Show(callChatId, tag, info.Url, info.Title, info.IconUrl);
+            else
                 // Healing a dropped banner must not alert — it's a reconcile, not a new event.
                 NotificationHelper.ShowChatNotification(info.Tag, info.Title, info.Text, info.IconUrl, info.Url,
                     silent: true, messages: info.Messages.IsEmpty ? null : PushMessage.From(info.Messages));
