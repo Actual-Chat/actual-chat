@@ -1,6 +1,3 @@
-using ActualChat.UI.Blazor.Services;
-using ActualLab.Fusion.UI;
-
 namespace ActualChat.UI.Blazor.App.Services;
 
 // A UIActionFailureTracker that localizes each failure's message before publishing it: the failure
@@ -11,14 +8,12 @@ namespace ActualChat.UI.Blazor.App.Services;
 public sealed class LocalizingUIActionFailureTracker : UIActionFailureTracker
 {
     private static readonly TimeSpan LocalizeTimeout = TimeSpan.FromSeconds(10);
-    private readonly ILiveLocalizer _liveLocalizer;
+
+    private LocalizationUI LocalizationUI => field ??= Services.GetRequiredService<LocalizationUI>();
 
     public LocalizingUIActionFailureTracker(Options settings, IServiceProvider services)
         : base(settings, services, mustStart: false)
-    {
-        _liveLocalizer = services.GetRequiredService<ILiveLocalizer>();
-        Start();
-    }
+        => Start();
 
     protected override bool TryAddFailure(IUIActionResult? result)
     {
@@ -35,7 +30,7 @@ public sealed class LocalizingUIActionFailureTracker : UIActionFailureTracker
         var message = error.Message;
         try {
             using var cts = new CancellationTokenSource(LocalizeTimeout);
-            message = await _liveLocalizer.Localize(error.Message, cts.Token).ConfigureAwait(false);
+            message = await LocalizationUI.Get(error.Message, cts.Token).ConfigureAwait(false);
         }
         catch (Exception e) {
             if (e is not OperationCanceledException)

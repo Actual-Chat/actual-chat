@@ -863,7 +863,7 @@ members (`src/dotnet/UI.Blazor/Resources/AppStrings.cs`), never the raw
 
 **Dynamic text** (server-composed messages that cross RPC, e.g. exception
 messages) is not catalog material — it's localized at runtime via
-`ILiveLocalizer` (AI translation); see `LocalizingUIActionFailureTracker`
+`LocalizationUI.Get` (AI translation); see `LocalizingUIActionFailureTracker`
 for the pattern.
 
 ### Test Conventions

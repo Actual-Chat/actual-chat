@@ -69,8 +69,8 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 
     public void Dispose()
     {
-        Settings.Dispose();
-        UILanguage.Dispose();
+        Settings.DisposeSilently();
+        UILanguage.DisposeSilently();
     }
 
     [ComputeMethod]
@@ -135,7 +135,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 
         var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
         foreach (var language in languages)
-            if (SupportedUILanguages.FirstOrDefault(l => l.PrimarySubtag == language.PrimarySubtag) is { } uiLanguage)
+            if (SupportedUILanguages.FirstOrDefault(l => l.IsoCode == language.IsoCode) is { } uiLanguage)
                 return uiLanguage;
         return DefaultUILanguage;
     }
