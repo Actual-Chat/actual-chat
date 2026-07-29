@@ -19,7 +19,6 @@ public sealed class AuthHelper
     public ICommander Commander { get; }
     public MomentClockSet Clocks { get; }
 
-    private IReadOnlySet<string> AllowedRedirectHosts { get; }
     private ClaimMapper ClaimMapper { get; }
     private ILogger Log { get; }
 
@@ -29,7 +28,6 @@ public sealed class AuthHelper
         Clocks = services.Clocks();
 
         HostInfo = services.HostInfo();
-        AllowedRedirectHosts = HostInfo.GetOwnAndKnownHosts();
         Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         SessionsBackend = services.GetRequiredService<ISessionsBackend>();
@@ -276,7 +274,7 @@ public sealed class AuthHelper
 
         string? redirectUrl = null;
         if (request.Query.TryGetValue("redirectUrl", out var returnUrlValues))
-            redirectUrl = AuthRedirectUrl.Sanitize(returnUrlValues.FirstOrDefault(), AllowedRedirectHosts);
+            redirectUrl = AuthRedirectUrl.Sanitize(returnUrlValues.FirstOrDefault());
 
         var mustClose = true;
         if (request.Query.TryGetValue("mustClose", out var mustCloseValues))

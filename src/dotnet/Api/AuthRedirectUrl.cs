@@ -1,12 +1,12 @@
 namespace ActualChat;
 
 /// <summary>
-/// Allowlist for post-authentication redirect targets, which arrive as
-/// untrusted query parameters on the close-flow endpoint.
+/// Reduces post-authentication redirect targets, which arrive as untrusted query
+/// parameters on the close-flow endpoint, to a URL local to this server.
 /// </summary>
 public static class AuthRedirectUrl
 {
-    public static string? Sanitize(string? redirectUrl, IReadOnlySet<string> allowedHosts)
+    public static string? Sanitize(string? redirectUrl)
     {
         if (redirectUrl.IsNullOrEmpty())
             return null;
@@ -14,24 +14,25 @@ public static class AuthRedirectUrl
         // so e.g. "/\t/evil.com" collapses to "//evil.com" client-side even though it looks host-relative here.
         if (redirectUrl.AsSpan().IndexOfAny('\t', '\n', '\r') >= 0)
             return null;
+        // UriKind.Absolute reads "/chat" as an implicit file path on Unix, so absoluteness is
+        // decided via RelativeOrAbsolute, which answers the same way on every platform.
         if (!Uri.TryCreate(redirectUrl, UriKind.RelativeOrAbsolute, out var uri))
             return null;
 
-        if (!uri.IsAbsoluteUri) {
-            if (redirectUrl[0] != '/')
-                return null;
-            // "//host" and "/\host" are protocol-relative: browsers send them cross-origin.
-            var isProtocolRelative = redirectUrl.Length > 1 && redirectUrl[1] is '/' or '\\';
-            return isProtocolRelative ? null : redirectUrl;
-        }
+        if (!uri.IsAbsoluteUri)
+            return Reduce(redirectUrl);
 
+        // An app scheme hands off to the installed app, so it's the one target that isn't ours to reduce
         if (IsAppScheme(uri))
             return string.Equals(uri.Host, Constants.AppSchemes.AuthCallbackHost, StringComparison.OrdinalIgnoreCase)
                 ? redirectUrl
                 : null;
-        if (uri.Scheme is "http" or "https" && allowedHosts.Contains(uri.Host))
-            return redirectUrl;
-        return null;
+
+        if (uri.Scheme is not ("http" or "https"))
+            return null;
+
+        // Whatever host was asked for, the redirect lands on this one
+        return Reduce(uri.PathAndQuery + uri.Fragment);
     }
 
     public static bool IsAppScheme(string? url)
@@ -41,4 +42,10 @@ public static class AuthRedirectUrl
 
     private static bool IsAppScheme(Uri uri)
         => uri.IsAbsoluteUri && Constants.AppSchemes.All.Contains(uri.Scheme);
+
+    private static string? Reduce(string url)
+    {
+        var localUrl = LocalUrl.Parse(url);
+        return localUrl.IsTrulyLocal() ? localUrl.Value : null;
+    }
 }
