@@ -25,12 +25,12 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
     }
 
     public const string ServiceKey = nameof(ConversationSummarizer);
-    internal const int MaxMentionCount = 20;
+    internal const int MaxMentionCount = 100;
     internal const int MaxOutputLength = MaxTitleLength + MaxDescriptionLength + MaxSummaryLength;
 
     private const int MaxTitleLength = 200;
-    private const int MaxDescriptionLength = 1_000;
-    private const int MaxSummaryLength = 8_000;
+    private const int MaxDescriptionLength = 4_000;
+    private const int MaxSummaryLength = 16_000;
     private static readonly MarkupParser SummaryMarkupParser = new();
     private readonly ChatDialogFormatterOptions _chatDialogFormatterOptions = new () {
         DisplayTimestamp = false,
