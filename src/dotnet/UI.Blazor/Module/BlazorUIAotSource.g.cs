@@ -207,7 +207,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.Chat.FoundMention[], ActualChat.Api]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.Chat.MeshDiagInfo, ActualChat.Api.Contracts]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.Chat.Place, ActualChat.Api]], ActualLab.Fusion.Blazor");
-        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.Live.CallStatus, ActualChat.Api]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.RefUnit, ActualChat.Core]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.AddToContactsBanner+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.AddToContactsButton+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -294,6 +293,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.NotifyCallPanel+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.NotifyMentionedMembers+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.OnboardingModal+ViewModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
+        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.OutgoingCallBanner+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PageHeader+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfo+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
