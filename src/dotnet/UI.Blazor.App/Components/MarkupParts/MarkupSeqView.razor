@@ -1,11 +1,17 @@
 @inherits MarkupViewBase<MarkupSeq>
 @{
     var items = Markup.Items;
+    var lastIndex = items.Length - 1;
+    while (lastIndex > 0 && IsSkippedBlankLine(items, lastIndex))
+        lastIndex--;
 }
 
-@for (var i = 0; i < items.Length; i++) {
+@for (var i = 0; i <= lastIndex; i++) {
+    if (i != lastIndex && IsSkippedBlankLine(items, i))
+        continue;
+
     var item = items[i];
-    @if (i < items.Length - 1 && LastFragment != null) {
+    @if (i < lastIndex && LastFragment != null) {
         <CascadingValue TValue="RenderFragment" Value="@null">
             <MarkupView Markup="@item"/>
         </CascadingValue>
@@ -16,4 +22,28 @@
 
 @code {
     [CascadingParameter] public RenderFragment? LastFragment { get; set; }
+    // Two kinds of blank lines never reach the DOM:
+    // - Any blank line adjacent to a header - a header owns the gap around it, so it looks
+    //   the same whether or not the author left them. Every other block keeps its blank
+    //   lines: before a list they're what separates it from the line introducing it.
+    // - The 2nd and further blank lines of a run, so no message can waste a screen
+    //   of vertical space. Blank lines inside a code block aren't affected: they're
+    //   part of its text, not separate items.
+    private static bool IsSkippedBlankLine(Markup[] items, int index)
+        => items[index] is ParagraphMarkup { IsEmpty: true }
+            && ((index > 0 && items[index - 1] is ParagraphMarkup { IsEmpty: true })
+                || IsHeaderPastBlankLines(items, index, -1)
+                || IsHeaderPastBlankLines(items, index, 1));
+
+    private static bool IsHeaderPastBlankLines(Markup[] items, int index, int step)
+    {
+        for (var i = index + step; i >= 0 && i < items.Length; i += step) {
+            if (items[i] is ParagraphMarkup { IsEmpty: true })
+                continue;
+
+            return items[i] is HeaderMarkup;
+        }
+
+        return false;
+    }
 }

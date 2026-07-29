@@ -12,6 +12,7 @@ public class ParagraphMarkup : BlockMarkup
     }
 
     public Markup Content { get; }
+    public bool IsEmpty => Content is TextMarkup { Text.Length: 0 };
 
     public override string Format()
         => Content.Format();

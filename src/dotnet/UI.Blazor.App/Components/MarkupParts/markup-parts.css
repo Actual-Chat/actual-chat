@@ -321,6 +321,22 @@ ul.list-markup li::before {
     @apply mt-2;
 }
 
+/* A blank line renders as the same gap two adjacent paragraphs get from the rule above,
+   not as a full empty line. It's the only thing that separates a list or a code block from
+   its neighbours, so `a\n- x` stays tight while `a\n\n- x` gets the gap - exactly how two
+   paragraphs behave. Headers are the exception: they own their gap, so MarkupSeqView drops
+   the blank lines around them.
+   It renders empty rather than holding a <br>, so it stays 0-tall and its own margins
+   collapse through it into a single gap instead of stacking on both sides. */
+.chat-message-markup p.paragraph-markup.blank-line-markup {
+    @apply mt-2;
+}
+/* A leading blank line must not collapse its margin out of .chat-message-markup -
+   that would push the neighbouring messages apart. */
+.chat-message-markup p.paragraph-markup.blank-line-markup:first-child {
+    @apply mt-0;
+}
+
 /* Header markup - all levels render at the default text size; level differentiation comes
    from a small color shift toward the surrounding background:
    - Light theme: lighter (less dark) as level grows.
@@ -336,14 +352,26 @@ ul.list-markup li::before {
     --header-markup-color-2: var(--ash-80);
     --header-markup-color-3: var(--ash-60);
 }
+/* A header owns the gap around it: the gap below is half the gap above, so the header binds
+   to what follows. MarkupSeqView drops the blank lines around a header, so `# H` looks the
+   same whether or not the author left them.
+   No white-space:break-spaces here: .plain-text-markup already has it, and on the container
+   it would also preserve the source indentation PlainTextMarkupView emits between its head
+   and last-word spans, indenting a wrapped header. */
 .header-markup {
-    @apply whitespace-break-spaces;
+    --header-markup-gap: 0.75lh;
     word-break: break-word;
     color: var(--header-markup-color-1);
+    margin-top: var(--header-markup-gap);
+    margin-bottom: calc(var(--header-markup-gap) / 2);
 }
-/* Headers read like plain-text lines: no top padding. Only H1 gets a tiny bottom gap. */
-.header-markup-1 {
-    margin-bottom: 0.125lh;
+/* A leading/trailing header must not collapse its margin out of .chat-message-markup -
+   that would push the neighbouring messages apart. */
+.header-markup:first-child {
+    margin-top: 0;
+}
+.header-markup:last-child {
+    margin-bottom: 0;
 }
 .header-markup-2 {
     color: var(--header-markup-color-2);
