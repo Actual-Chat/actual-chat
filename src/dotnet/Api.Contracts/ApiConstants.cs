@@ -1,3 +1,5 @@
+using ActualLab.Rpc.Serialization;
+
 namespace ActualChat;
 
 public static class ApiConstants
@@ -17,5 +19,10 @@ public static class ApiConstants
     public static class Rpc
     {
         public const int MaxArgumentDataSize = 8 * 1024 * 1024;
+
+        // Fusion's own frame limit is ~2x this, and a frame is buffered before the serializer
+        // gets to reject it, so the transport is pinned to the largest message we can produce
+        public static readonly int MaxMessageSize =
+            RpcTextMessageSerializerV3.GetMaxMessageSize(MaxArgumentDataSize);
     }
 }

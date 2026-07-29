@@ -2,6 +2,7 @@ using ActualChat.Aot;
 using ActualLab.Generators;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Clients;
 using ActualLab.Rpc.Serialization;
 
 namespace ActualChat.Module;
@@ -40,6 +41,14 @@ public static partial class ApiContractsModuleInitializer
         // Rpc
         RpcByteMessageSerializer.Defaults.MaxArgumentDataSize = ApiConstants.Rpc.MaxArgumentDataSize;
         RpcTextMessageSerializer.Defaults.MaxArgumentDataSize = ApiConstants.Rpc.MaxArgumentDataSize;
+        // The WebSocket server resolves its transport options through this same factory
+        var transportOptionsFactory = RpcWebSocketClientOptions.Default.WebSocketTransportOptionsFactory;
+        RpcWebSocketClientOptions.Default = RpcWebSocketClientOptions.Default with {
+            WebSocketTransportOptionsFactory = (peer, properties)
+                => transportOptionsFactory.Invoke(peer, properties) with {
+                    MaxMessageSize = ApiConstants.Rpc.MaxMessageSize,
+                },
+        };
         RpcDefaults.ApiVersion = RpcDefaults.BackendVersion = ApiConstants.Version;
 #if false
         // Default caching settings

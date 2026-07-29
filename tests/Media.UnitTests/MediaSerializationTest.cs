@@ -123,8 +123,9 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         // act
         var textLimit = RpcTextMessageSerializer.Defaults.MaxArgumentDataSize;
         var byteLimit = RpcByteMessageSerializer.Defaults.MaxArgumentDataSize;
-        var transportLimit = RpcWebSocketTransport.Options.Default.MaxMessageSize;
-        Out.WriteLine($"text = {textLimit}, byte = {byteLimit}, transport = {transportLimit}");
+        var transportLimit = ApiConstants.Rpc.MaxMessageSize;
+        var frameLimit = RpcWebSocketTransport.Options.Default.MaxMessageSize;
+        Out.WriteLine($"text = {textLimit}, byte = {byteLimit}, transport = {transportLimit}, frame = {frameLimit}");
 
         // assert
         textLimit.Should().Be(ApiConstants.Rpc.MaxArgumentDataSize);
@@ -132,6 +133,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         textLimit.Should().BeLessThan(130_000_000);
         transportLimit.Should().Be(
             RpcTextMessageSerializerV3.GetMaxMessageSize(ApiConstants.Rpc.MaxArgumentDataSize));
+        transportLimit.Should().BeLessThan(frameLimit);
     }
 
     [Fact]
