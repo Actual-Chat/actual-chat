@@ -17,7 +17,6 @@ public sealed class InviteServiceModule(IServiceProvider moduleServices)
         // Invites
         rpcHost.AddApi<IInvites, Invites>();
         rpcHost.AddBackend<IInvitesBackend, InvitesBackend>();
-        rpcHost.AddApi<ILegacyInvites, LegacyInvites>(); // v2.7 wire-format compat
 
         if (isBackendClient)
             return;

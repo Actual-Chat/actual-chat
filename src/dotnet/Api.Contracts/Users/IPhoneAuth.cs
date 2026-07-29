@@ -17,9 +17,6 @@ public interface IPhoneAuth : IComputeService
     Task<bool> OnValidateTotp(PhoneAuth_ValidateTotp command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnVerifyPhone(PhoneAuth_VerifyPhone command, CancellationToken cancellationToken);
-
-    [ComputeMethod, Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
-    Task<string> ValidateCanSendToPhone(Session session, Phone phone, TotpPurpose purpose, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

@@ -109,7 +109,6 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
         var routeNames = new[] {
             "GetEmailValidationMessage",
             "CheckIfBlocked",
-            "ValidateCanSendToEmail",
         };
 
         // act
@@ -125,7 +124,7 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         methods.Should().AllSatisfy(x => x.Should().NotBeNull());
-        results.Should().Equal(string.Empty, string.Empty, string.Empty);
+        results.Should().Equal(string.Empty, string.Empty);
     }
 
     // Private methods

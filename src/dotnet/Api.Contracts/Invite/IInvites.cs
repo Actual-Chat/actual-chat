@@ -5,8 +5,6 @@
 /// </summary>
 public interface IInvites : IComputeService
 {
-    [ComputeMethod, Obsolete("2026.02: User invites feature is removed.")]
-    Task<Invite[]> ListUserInvites(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Invite[]> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]

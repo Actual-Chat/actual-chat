@@ -144,13 +144,6 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
 
     // Legacy methods
 
-    public Task<RpcStream<MuxedAudioStreamItem>> LegacyGetStream(
-        Session session,
-        ChatId chatId,
-        LegacyLiveStreamSettings settings,
-        CancellationToken cancellationToken)
-        => GetListeningStream(session, chatId, cancellationToken);
-
     public Task LegacyChangeSettings(
         Session session,
         ChatId chatId,

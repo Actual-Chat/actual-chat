@@ -33,6 +33,8 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ButtonSquare>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ButtonTile>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.CaptchaView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Card>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.CardItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ChatHeaderSkeleton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ChatPanelSkeleton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Checkbox>();
@@ -526,6 +528,8 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.ButtonSquare), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ButtonTile), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.CaptchaView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.Card), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.CardItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ChatHeaderSkeleton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ChatPanelSkeleton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.Checkbox), AotTypeKind.Component),

@@ -44,12 +44,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
         => GetEmailValidationMessage(session, email, purpose, cancellationToken);
 
-    [Obsolete("2026.03: Use GetEmailValidationMessage.")]
-    // [ComputeMethod]
-    public virtual Task<string> ValidateCanSendToEmail(
-        Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
-        => GetEmailValidationMessage(session, email, purpose, cancellationToken);
-
     // [ComputeMethod]
     public virtual async Task<bool> AccountExists(
         Session session, ActualChat.Email email, CancellationToken cancellationToken)

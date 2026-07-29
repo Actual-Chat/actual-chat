@@ -19,8 +19,6 @@ public interface IEmailAuth : IComputeService
 
     [ComputeMethod, Obsolete("2026.07: Use GetEmailValidationMessage.")]
     Task<string> CheckIfBlocked(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
-    [ComputeMethod, Obsolete("2026.03: Use GetEmailValidationMessage.")]
-    Task<string> ValidateCanSendToEmail(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

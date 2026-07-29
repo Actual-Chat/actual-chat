@@ -86,24 +86,6 @@ public partial class Chats(IServiceProvider services) : IChats
         return await Backend.GetTile(chatId, lidTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
-    // Legacy compat: old clients send ChatEntryKind parameter
-    [Obsolete("2026.03: Use GetTile without entryKind")]
-    public virtual async Task<ChatTile> GetTile(
-        Session session, ChatId chatId, int entryKind, Range<long> lidTileRange, CancellationToken cancellationToken)
-    {
-        var entryPoint = $"{nameof(IChats)}.{nameof(GetTile)}(entryKind)";
-        string? clientInfo = null;
-        try {
-            var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-            clientInfo = sessionInfo?.Description;
-        }
-        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            Log.LogWarning(e, "Failed to resolve client version for legacy API {EntryPoint}", entryPoint);
-        }
-        Log.LogLegacyApiUsage(entryPoint, session, clientInfo, $"entryKind={entryKind}");
-        return await GetTile(session, chatId, lidTileRange, cancellationToken).ConfigureAwait(false);
-    }
-
     // [ComputeMethod]
     public virtual async Task<ChatContentSkeleton> GetContentPeriods(
         Session session,
@@ -173,12 +155,6 @@ public partial class Chats(IServiceProvider services) : IChats
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
         return await Backend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
     }
-
-    // Legacy compat: old clients send ChatEntryKind parameter
-    [Obsolete("2026.03: Use GetIdRange without entryKind")]
-    public virtual Task<Range<long>> GetIdRange(
-        Session session, ChatId chatId, int entryKind, CancellationToken cancellationToken)
-        => GetIdRange(session, chatId, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<AuthorRules> GetRules(

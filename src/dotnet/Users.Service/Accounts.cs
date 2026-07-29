@@ -63,20 +63,6 @@ public class Accounts(IServiceProvider services) : IAccounts
         => SessionsBackend.Get(session, cancellationToken);
 
     // [ComputeMethod]
-#pragma warning disable CS0809
-    [Obsolete("2026.03: Use GetOwnSessionInfo instead.")]
-    public virtual async Task<LegacySessionInfo?> GetLegacySessionInfo(Session session, CancellationToken cancellationToken)
-#pragma warning restore CS0809
-    {
-        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
-        Log.LogLegacyApiUsage(
-            $"{nameof(IAccounts)}.{nameof(GetLegacySessionInfo)}",
-            session,
-            sessionInfo?.Description);
-        return sessionInfo is null ? null : LegacySessionInfo.From(sessionInfo);
-    }
-
-    // [ComputeMethod]
     public virtual async Task<ApiList<SessionInfo>> ListOwnSessions(
         Session session, SessionKind kind, CancellationToken cancellationToken)
     {

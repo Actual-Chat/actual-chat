@@ -36,17 +36,9 @@ public interface IAccounts : IComputeService
     Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10)]
-    [LegacyName("GetSessionInfo_NewUnused", "2.6.9999")]
     Task<SessionInfoFull?> GetSessionInfo(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
     Task<ApiList<SessionInfo>> ListOwnSessions(Session session, SessionKind kind, CancellationToken cancellationToken);
-
-    [Obsolete("2026.03: Use GetSessionInfo instead.")]
-    [LegacyName(nameof(GetSessionInfo), "2.6.9999")]
-    [ComputeMethod(MinCacheDuration = 10)]
-#pragma warning disable CS0809
-    Task<LegacySessionInfo?> GetLegacySessionInfo(Session session, CancellationToken cancellationToken);
-#pragma warning restore CS0809
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

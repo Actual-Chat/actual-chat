@@ -228,7 +228,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Note that it returns (firstId, lastId + 1) range!
     // [ComputeMethod]
-    [LegacyName("GetIdRange", "2.7.9999")]
     public virtual async Task<Range<long>> GetLidRange(
         ChatId chatId,
         bool includeRemoved,

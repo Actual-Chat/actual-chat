@@ -41,28 +41,11 @@ public interface IChats : IComputeService
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(MinCacheDuration = 600)]
-    [Obsolete("2026.03: Use GetIdRange without entryKind")]
-    Task<Range<long>> GetIdRange(
-        Session session,
-        ChatId chatId,
-        int entryKind,
-        CancellationToken cancellationToken);
-
     // Client-side methods always skips entries with IsRemoved flag
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
     Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        Range<long> lidTileRange,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
-    [Obsolete("2026.03: Use GetTile without entryKind")]
-    Task<ChatTile> GetTile(
-        Session session,
-        ChatId chatId,
-        int entryKind,
         Range<long> lidTileRange,
         CancellationToken cancellationToken);
 

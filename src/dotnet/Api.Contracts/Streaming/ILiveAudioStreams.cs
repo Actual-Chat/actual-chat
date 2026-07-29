@@ -9,11 +9,9 @@ namespace ActualChat.Streaming;
 /// RPC service for audio stream push/pull, transcripts, and the multiplexed
 /// real-time / replay live-stream feed.
 /// </summary>
-[LegacyName("ILiveStreams", "2.6.9999")]
 public interface ILiveAudioStreams : IComputeService
 {
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    [LegacyName("ListActiveStreams", "2.6.9999")]
     Task<ApiArray<LiveAudioStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     Task<RpcStream<AudioFrame>?> GetStream(
@@ -53,14 +51,6 @@ public interface ILiveAudioStreams : IComputeService
     Task ReportAudioLatency(Session session, TimeSpan latency, CancellationToken cancellationToken);
 
     // Legacy methods
-
-    [LegacyName("GetStream", "2.7.9999")]
-    [LegacyName("GetLiveStream", "2.6.9999")]
-    Task<RpcStream<MuxedAudioStreamItem>> LegacyGetStream(
-        Session session,
-        ChatId chatId,
-        LegacyLiveStreamSettings settings,
-        CancellationToken cancellationToken);
 
     [LegacyName("ChangeSettings", "2.9.9999")]
     Task LegacyChangeSettings(

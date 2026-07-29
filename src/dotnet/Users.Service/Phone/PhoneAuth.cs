@@ -43,12 +43,6 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     public virtual Task<bool> IsEnabled(CancellationToken cancellationToken)
         => Task.FromResult(HostInfo.IsDevelopmentInstance || Settings.IsTwilioEnabled || Settings.IsSMSToEnabled);
 
-    [Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
-    // [ComputeMethod]
-    public virtual Task<string> ValidateCanSendToPhone(
-        Session session, ActualChat.Phone phone, TotpPurpose purpose, CancellationToken cancellationToken)
-        => CheckIfBlocked(session, phone, purpose, cancellationToken);
-
     // [ComputeMethod]
     public virtual Task<string> CheckIfBlocked(
         Session session,

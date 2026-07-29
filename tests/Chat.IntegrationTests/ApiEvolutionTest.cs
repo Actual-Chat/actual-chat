@@ -30,12 +30,12 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void SessionInfoFormatTest()
     {
-        var s = Serializer.ToTyped<LegacySessionInfo>();
+        var s = Serializer.ToTyped<SessionInfoFull>();
 
-        var si = CreateLegacySessionInfo();
+        var si = CreateSessionInfoFull();
         using var buffer = s.Write(si);
         var bytes = buffer.WrittenMemory.ToArray();
-        WriteLine($"LegacySessionInfo bytes: {bytes.Length}");
+        WriteLine($"SessionInfoFull bytes: {bytes.Length}");
         WriteLine($"Header hex (first 20 bytes): {Convert.ToHexString(bytes.AsSpan(0, Math.Min(20, bytes.Length)))}");
 
         // Header byte = member count
@@ -77,7 +77,7 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
         Directory.CreateDirectory(dir);
 
         SerializeOne(CreateAccountFull(), dir);
-        SerializeOne(CreateLegacySessionInfo(), dir);
+        SerializeOne(CreateSessionInfoFull(), dir);
         SerializeOne(CreateChat(), dir);
         SerializeOne(CreateAuthorRules(), dir);
         SerializeOne(CreateChatNews(), dir);
@@ -106,7 +106,7 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
             v.Name.Should().Be("Test User");
             v.Email.Should().Be("test@example.com");
         });
-        DeserializeOne<LegacySessionInfo>(dir, errors, v => {
+        DeserializeOne<SessionInfoFull>(dir, errors, v => {
             v.IPAddress.Should().Be("127.0.0.1");
         });
         DeserializeOne<ChatModel>(dir, errors, v => {
@@ -226,20 +226,14 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
             Avatar = new Avatar("avatar-1") { Name = "Test User", Bio = "Hello!" },
         };
 
-    #pragma warning disable CS0618
-    private LegacySessionInfo CreateLegacySessionInfo()
-    {
-        var session = Session.New();
-        return new LegacySessionInfo {
-            SessionHash = session.Hash,
+    private SessionInfoFull CreateSessionInfoFull()
+        => new(Session.New()) {
             Version = 1,
             CreatedAt = TestMoment,
             LastSeenAt = TestMoment,
             IPAddress = "127.0.0.1",
-            UserAgent = "TestAgent/1.0",
+            Description = "TestAgent/1.0",
         };
-    }
-    #pragma warning restore CS0618
 
     private ChatModel CreateChat()
         => new(TestChatId, 1) {
