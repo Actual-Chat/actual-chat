@@ -15,7 +15,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Media_Basic()
     {
         var mediaId = MediaId.New(TestUserId.Value, "local1");
-        var media = new Media(mediaId, "content-1", 0, MediaKind.Unknown, new PropertyBag());
+        var media = new Media(mediaId, "content-1", 0, MediaKind.Unknown, new MetadataBag());
 
         var s = media.PassThroughAllSerializers(Out);
         s.Id.Should().Be(media.Id);
@@ -105,7 +105,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void Uploads_Create_Basic()
     {
-        var cmd = new Uploads_Create(TestSession, 1024, "image", new PropertyBag());
+        var cmd = new Uploads_Create(TestSession, 1024, "image", new MetadataBag());
         cmd.AssertPassesThroughAllSerializers();
     }
 

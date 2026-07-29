@@ -124,7 +124,7 @@
             var mediaId = await UICommander.Call(new Media_ReserveMedia(Session, scope));
 
             var tag = $"FileUpload/v1/{scope}";
-            var metadata = new PropertyBag()
+            var metadata = new MetadataBag()
                 .Set("FileName", "avatar-crop.png")
                 .Set("ContentType", "image/png");
             var blobSize = await _jsRef!.InvokeAsync<long>("getCroppedBlobSize").ConfigureAwait(true);

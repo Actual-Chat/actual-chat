@@ -18,9 +18,9 @@ public record Attachment(string FileName, string FileType, long Length, Size2D S
     public string DemandUploadSessionId()
         => !UploadSessionId.IsNullOrEmpty() ? UploadSessionId : throw new InvalidOperationException("Upload session not assigned");
 
-    public PropertyBag GetMetadataForUploadSession()
+    public MetadataBag GetMetadataForUploadSession()
     {
-        var metadata = new PropertyBag()
+        var metadata = new MetadataBag()
             .Set(nameof(Media.Media.FileName), FileName)
             .Set(nameof(Media.Media.ContentType), FileType)
             .Set(nameof(Media.Media.Length), Length);

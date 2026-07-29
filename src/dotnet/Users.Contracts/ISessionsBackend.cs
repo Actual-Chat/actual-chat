@@ -37,7 +37,7 @@ public partial record SessionsBackend_Upsert(
 
     [DataMember, MemoryPackOrder(1), Key(1)] public string? IPAddress { get; init; }
     [DataMember, MemoryPackOrder(2), Key(2)] public string? Description { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(3)] public ImmutableOptionSet Options { get; init; }
+    // Order/Key 3 reserved (was Options, which no caller ever set) — do not reuse.
     [DataMember, MemoryPackOrder(4), Key(4)] public Option<UserId?> UserId { get; init; }
     [DataMember, MemoryPackOrder(5), Key(5)] public UserIdentity? AuthenticatedIdentity { get; init; }
     [DataMember, MemoryPackOrder(6), Key(6)] public Moment? ExpiresAt { get; init; }
@@ -46,12 +46,11 @@ public partial record SessionsBackend_Upsert(
 
     protected virtual bool PrintMembers(StringBuilder builder)
     {
-        // Session redacts itself; Options is whatever the caller put there, and an identity's
-        // value is the provider's secret - only its schema is worth a log line
+        // Session redacts itself, and an identity's value is the provider's secret -
+        // only its schema is worth a log line
         builder.Append("Session = ").Append(Session)
             .Append(", IPAddress = ").Append(IPAddress)
             .Append(", Description = ").Append(Description)
-            .Append(", Options = ").Append(Sanitizer.MaybeSanitize<Sanitizers.Hidden>(Options.ToString()))
             .Append(", UserId = ").Append(UserId)
             .Append(", AuthenticatedIdentity = ").Append(AuthenticatedIdentity?.Schema)
             .Append(", ExpiresAt = ").Append(ExpiresAt);

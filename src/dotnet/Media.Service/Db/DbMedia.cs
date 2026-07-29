@@ -31,7 +31,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Kind = Kind,
             UserId = ActualChat.UserId.ParseNullable(UserId),
             ThumbnailId = MediaId.ParseNullable(ThumbnailId),
-            Metadata = MetadataSerializer.Read(MetadataJson),
+            Metadata = MetadataBagJson.FromJson(MetadataJson),
         };
 
     public void UpdateFrom(MediaFull model)
@@ -49,7 +49,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
         BlobId = model.BlobId;
         Kind = model.Kind;
         ThumbnailId = model.ThumbnailId?.Value ?? "";
-        MetadataJson = MetadataSerializer.Write(model.Metadata);
+        MetadataJson = model.Metadata.ToJson();
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbMedia>

@@ -5,13 +5,13 @@ namespace ActualChat.Media;
 /// </summary>
 public interface IHasMetadata
 {
-    PropertyBag Metadata { get; init; }
+    MetadataBag Metadata { get; init; }
 }
 
 internal static class MetadataExt
 {
-    private static Action<IHasMetadata, PropertyBag> MetadataSetter
-        => field ??= typeof(IHasMetadata).GetProperty("Metadata")!.GetSetter<IHasMetadata, PropertyBag>();
+    private static Action<IHasMetadata, MetadataBag> MetadataSetter
+        => field ??= typeof(IHasMetadata).GetProperty("Metadata")!.GetSetter<IHasMetadata, MetadataBag>();
 
     public static T GetMetadataValue<T>(this IHasMetadata source, T @default = default!, [CallerMemberName] string symbol = "") {
         var value = source.Metadata[symbol];

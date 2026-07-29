@@ -142,7 +142,7 @@ public class UploadOperations(AppUIHub hub)
     private async Task<UploadId> RegisterUploadId(UploadSourceMetadata sourceMetadata, CancellationToken cancellationToken)
     {
         var length = sourceMetadata.Length;
-        var metadata = new PropertyBag()
+        var metadata = new MetadataBag()
             .Set(nameof(ActualChat.Media.Media.FileName), sourceMetadata.FileName.Value)
             .Set(nameof(ActualChat.Media.Media.ContentType), sourceMetadata.ContentType);
         return await Commander.Call(new Uploads_Create(Session, length, "", metadata), cancellationToken).ConfigureAwait(false);

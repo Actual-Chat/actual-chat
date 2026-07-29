@@ -24,7 +24,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
         var testContent = "Hello, this is test content for UploadSession!"u8.ToArray();
         var fileProvider = new DataFileProvider(testContent, "test-upload.txt", "text/plain");
         fileProvider.Initialize(hub.Services);
-        var metadata = new PropertyBag().Set("TestKey", "TestValue");
+        var metadata = new MetadataBag().Set("TestKey", "TestValue");
         var scope = "upload-session-test";
 
         var uploadOperations = new UploadOperations(hub);
@@ -81,7 +81,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
 
         var testContent = "Test content for restore"u8.ToArray();
         var fileProvider = new DataFileProvider(testContent, "restore-test.txt", "text/plain");
-        var metadata = new PropertyBag().Set("TestKey", "TestValue");
+        var metadata = new MetadataBag().Set("TestKey", "TestValue");
 
         var uploadOperations = new UploadOperations(hub);
         var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, uploadOperations.Now(), "restore-test");
@@ -116,7 +116,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
 
         var testContent = "Test content for stale delete"u8.ToArray();
         var fileProvider = new DataFileProvider(testContent, "stale-test.txt", "text/plain");
-        var metadata = new PropertyBag().Set("TestKey", "TestValue");
+        var metadata = new MetadataBag().Set("TestKey", "TestValue");
 
         var uploadOperations = new UploadOperations(hub);
         var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, uploadOperations.Now(), "stale-test");

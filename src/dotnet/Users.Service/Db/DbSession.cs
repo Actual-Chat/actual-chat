@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ActualLab.Versioning;
 
 namespace ActualChat.Users.Db;
@@ -14,7 +14,7 @@ namespace ActualChat.Users.Db;
 [Index(nameof(IPAddress))]
 public class DbSession : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private NewtonsoftJsonSerialized<ImmutableOptionSet> _options = ImmutableOptionSet.Empty;
+    private const string GuestIdKey = "GuestId";
 
     [DbKey, StringLength(256)]
     public string Id { get; set; } = "";
@@ -42,30 +42,31 @@ public class DbSession : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? UserId { get; set; }
 
     public string OptionsJson {
-        get => _options.Data;
-        set => _options = value;
+        get => Options.ToJson();
+        set => Options = ReadOptions(value);
     }
 
     [NotMapped]
-    public ImmutableOptionSet Options {
-        get => _options.Value;
-        set => _options = value;
-    }
+    public MetadataBag Options { get; set; }
 
     [NotMapped]
     public bool IsActive => ExpiresAt >= DateTime.UtcNow;
 
-    public SessionInfoFull ToModel(ILogger? log = null)
-    {
-        try {
-            return ToModelCore();
-        }
-        catch (JsonSerializationException e) {
-            log?.LogError(e, "SessionInfoFull.Options are incompatible with the current codebase, resetting them");
-            Options = ImmutableOptionSet.Empty;
-            return ToModelCore();
-        }
-    }
+    public SessionInfoFull ToModel()
+        => new(new Session(Id)) {
+            Version = Version,
+            IsActive = IsActive,
+            CreatedAt = CreatedAt,
+            LastSeenAt = LastSeenAt,
+            ExpiresAt = ExpiresAt,
+            IPAddress = IPAddress,
+            Description = Description,
+            GuestId = GetGuestId(),
+
+            // Authentication
+            AuthenticatedIdentity = IsActive ? AuthenticatedIdentity : "",
+            UserId = IsActive ? ActualChat.UserId.ParseNullable(UserId) : null,
+        };
 
     public void UpdateFrom(SessionInfoFull source, VersionGenerator<long> versionGenerator)
     {
@@ -79,46 +80,46 @@ public class DbSession : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ExpiresAt = source.ExpiresAt;
         IPAddress = source.IPAddress;
         Description = source.Description;
-        Options = source.Options;
 
         AuthenticatedIdentity = source.AuthenticatedIdentity;
         UserId = source.UserId?.Value;
 
-        // Ensure guestId is set
-        GuestIdOption? guestIdOption = null;
-        try {
-            guestIdOption = Options.Get<GuestIdOption>();
-        }
-        catch {
-            // Intended: GuestId type was changed, so it might throw an error
-        }
-
-        var guestId = guestIdOption?.GuestId;
-        if (guestId?.IsGuest != true) {
-            guestId = ActualChat.UserId.NewGuest();
-            guestIdOption = new GuestIdOption(guestId);
-            Options = Options.Set(guestIdOption);
-        }
+        if (GetGuestId() is null)
+            Options = Options.Set(GuestIdKey, ActualChat.UserId.NewGuest().Value);
     }
 
     // Private methods
 
-    private SessionInfoFull ToModelCore()
-    {
-        var isActive = IsActive;
-        return new SessionInfoFull(new Session(Id)) {
-            Version = Version,
-            IsActive = isActive,
-            CreatedAt = CreatedAt,
-            LastSeenAt = LastSeenAt,
-            ExpiresAt = ExpiresAt,
-            IPAddress = IPAddress,
-            Description = Description,
-            Options = Options,
+    private UserId? GetGuestId()
+        => Options[GuestIdKey] is string value
+            && ActualChat.UserId.TryParse(value, out var guestId)
+            && guestId.IsGuest
+            ? guestId
+            : null;
 
-            // Authentication
-            AuthenticatedIdentity = isActive ? AuthenticatedIdentity : "",
-            UserId = isActive ? ActualChat.UserId.ParseNullable(UserId) : null,
-        };
+    private static MetadataBag ReadOptions(string? json)
+    {
+        try {
+            var options = MetadataBagJson.FromJson(json);
+            return options[GuestIdKey] is null ? ReadLegacyOptions(json) : options;
+        }
+        catch {
+            return ReadLegacyOptions(json);
+        }
+    }
+
+    private static MetadataBag ReadLegacyOptions(string? json)
+    {
+        // Lifting the only entry these rows ever held out by token leaves their "$type" unresolved
+        try {
+            var key = typeof(GuestIdOption).ToIdentifierSymbol().Value;
+            var guestId = JObject.Parse(json!)["Items"]?[key]?["GuestId"]?.Value<string>();
+            return ActualChat.UserId.TryParse(guestId, out var userId) && userId.IsGuest
+                ? MetadataBag.Empty.Set(GuestIdKey, userId.Value)
+                : MetadataBag.Empty;
+        }
+        catch {
+            return MetadataBag.Empty;
+        }
     }
 }

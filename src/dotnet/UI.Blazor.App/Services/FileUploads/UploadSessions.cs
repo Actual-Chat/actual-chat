@@ -20,7 +20,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         _storage = CreateStorage();
     }
 
-    public async Task<string> CreateSession(IFileProvider fileProvider, PropertyBag metadata, string mediaScope)
+    public async Task<string> CreateSession(IFileProvider fileProvider, MetadataBag metadata, string mediaScope)
     {
         if (fileProvider == null)
             throw new ArgumentNullException(nameof(fileProvider));

@@ -31,7 +31,7 @@
 
             // Create Upload
             var tag = $"FileUpload/v1/{Scope}";
-            var metadata = new PropertyBag()
+            var metadata = new MetadataBag()
                 .Set("FileName", source.Metadata.FileName.Value)
                 .Set("ContentType", source.Metadata.ContentType);
             var uploadId = await UICommander.Call(new Uploads_Create(Session, source.Metadata.Length, tag, metadata));

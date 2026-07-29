@@ -26,17 +26,10 @@ public static class SessionInfoFullExt
 
     public static UserId? GetGuestId(this SessionInfoFull? sessionInfo)
     {
-        if (sessionInfo == null)
+        if (sessionInfo is null)
             return null;
 
-        GuestIdOption? guestIdOption = null;
-        try {
-            guestIdOption = sessionInfo.Options.Get<GuestIdOption>();
-        }
-        catch {
-            // Intended: GuestId type was changed, so it might throw an error
-        }
-        var guestId = guestIdOption?.GuestId;
+        var guestId = sessionInfo.GuestId;
         return guestId is { IsGuest: true } ? guestId : null;
     }
 }

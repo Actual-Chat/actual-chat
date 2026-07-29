@@ -44,7 +44,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         progress!.Stage.Should().Be(MediaProcessingStage.Reserved);
 
         // Act 2: Create Upload
-        var metadata = new PropertyBag()
+        var metadata = new MetadataBag()
             .Set("FileName", "test.txt")
             .Set("ContentType", "text/plain");
         var tag = $"MediaUploadTest/v1/{scope}";
@@ -107,7 +107,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
             testData[i] = (byte)(i * 31 + 7);
 
         var mediaId = await commander.Call(new Media_ReserveMedia(session, scope));
-        var metadata = new PropertyBag()
+        var metadata = new MetadataBag()
             .Set("FileName", "test.bin")
             .Set("ContentType", "application/octet-stream");
         var tag = $"MediaUploadStreamTest/v1/{scope}";
@@ -142,7 +142,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         });
         await using var tester = appHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
-        var metadata = new PropertyBag()
+        var metadata = new MetadataBag()
             .Set("FileName", "test.txt")
             .Set("ContentType", "text/plain");
 
@@ -168,7 +168,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         });
         await using var tester = appHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
-        var metadata = new PropertyBag()
+        var metadata = new MetadataBag()
             .Set("FileName", "test.bin")
             .Set("ContentType", "application/octet-stream");
 
@@ -189,7 +189,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
-        var metadata = new PropertyBag()
+        var metadata = new MetadataBag()
             .Set("FileName", "test.bin")
             .Set("ContentType", "application/octet-stream");
         var length = Constants.Uploads.MaxChunkSize + 1L;
@@ -210,7 +210,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         await using var tester = AppHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
         var data = "converted once"u8.ToArray();
-        var metadata = new PropertyBag()
+        var metadata = new MetadataBag()
             .Set("FileName", "test.txt")
             .Set("ContentType", "text/plain");
         var uploadId = await tester.Commander.Call(

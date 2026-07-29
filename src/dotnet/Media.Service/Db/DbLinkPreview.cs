@@ -39,7 +39,7 @@ public class DbLinkPreview : IHasId<string>, IHasVersion<long>, IRequirementTarg
             Description = Description,
             CreatedAt = CreatedAt,
             ModifiedAt = ModifiedAt,
-            Metadata = MetadataSerializer.Read(MetadataJson),
+            Metadata = MetadataBagJson.FromJson(MetadataJson),
         };
 
     public void UpdateFrom(LinkPreview model)
@@ -54,6 +54,6 @@ public class DbLinkPreview : IHasId<string>, IHasVersion<long>, IRequirementTarg
         Description = model.Description;
         CreatedAt = model.CreatedAt;
         ModifiedAt = model.ModifiedAt;
-        MetadataJson = MetadataSerializer.Write(model.Metadata);
+        MetadataJson = model.Metadata.ToJson();
     }
 }

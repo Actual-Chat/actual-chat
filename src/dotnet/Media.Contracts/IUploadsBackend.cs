@@ -35,7 +35,7 @@ public sealed partial record UploadsBackend_Create(
     [property: DataMember, MemoryPackOrder(1), Key(1)] UserId UserId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] long? Length,
     [property: DataMember, MemoryPackOrder(3), Key(3)] string Tag,
-    [property: DataMember, MemoryPackOrder(10), Key(4)] PropertyBag Metadata
+    [property: DataMember, MemoryPackOrder(10), Key(4)] MetadataBag Metadata
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UploadId>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

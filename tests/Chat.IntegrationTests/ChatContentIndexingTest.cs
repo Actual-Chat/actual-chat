@@ -158,7 +158,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
 
         // Complete the upload — the media gets a BlobId.
         var data = "uploaded file content"u8.ToArray();
-        var metadata = new PropertyBag()
+        var metadata = new MetadataBag()
             .Set("FileName", "doc.txt")
             .Set("ContentType", "text/plain");
         var uploadId = await commander.Call(

@@ -14,7 +14,7 @@ public partial record UploadSessionSnapshot
     [DataMember, MemoryPackOrder(6), Key(4)] public UploadId? UploadId { get; set; }
     [DataMember, MemoryPackOrder(7), Key(5)] public MediaRef? MediaRef { get; set; }
     [DataMember, MemoryPackOrder(8), Key(6)] public int DataVersion { get; set; }
-    [DataMember, MemoryPackOrder(9), Key(7)] public PropertyBag Metadata { get; set; }
+    [DataMember, MemoryPackOrder(9), Key(7)] public MetadataBag Metadata { get; set; }
 
     [DataMember, MemoryPackOrder(10), Key(8)] public UploadSessionState CurrentState { get; set; } = UploadSessionState.Created;
     [DataMember, MemoryPackOrder(11), Key(9)] public bool IsFailed { get; set; }

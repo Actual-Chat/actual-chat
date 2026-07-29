@@ -18,8 +18,6 @@ internal partial class BlazorUIAppAotSource
         // Libraries
         CodeKeeper.Keep<PriorityQueue<object, object>>();
         CodeKeeper.Keep<Range<object>>();
-        CodeKeeper.Keep<ImmutableOptionSet>();
-        CodeKeeper.Keep<OptionSet>();
         CodeKeeper.Keep<NewtonsoftJsonSerialized<object>>();
 
         // Blazor framework internals

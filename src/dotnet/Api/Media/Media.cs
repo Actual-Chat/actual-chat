@@ -16,7 +16,7 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
     [DataMember, MemoryPackOrder(1), Key(1)] public string BlobId { get; init; } = "";
     [DataMember, MemoryPackOrder(2), Key(2)] public long Version { get; init; }
     [DataMember, MemoryPackOrder(9), Key(3)] public MediaKind Kind { get; init; }
-    [DataMember, MemoryPackOrder(10), Key(4)] public PropertyBag Metadata { get; init; }
+    [DataMember, MemoryPackOrder(10), Key(4)] public MetadataBag Metadata { get; init; }
 
     // Computed properties
 
@@ -92,7 +92,7 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
         => Id = id;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
-    public Media(MediaId id, string blobId, long version, MediaKind kind, PropertyBag metadata)
+    public Media(MediaId id, string blobId, long version, MediaKind kind, MetadataBag metadata)
     {
         Id = id;
         BlobId = blobId;

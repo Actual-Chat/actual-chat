@@ -22,7 +22,7 @@ public partial record LegacySessionInfo() : IRequirementTarget, IHasVersion<long
     [DataMember(Order = 12), MemoryPackOrder(12), Key(6)] public Moment LastSeenAt { get; init; }
     [DataMember(Order = 13), MemoryPackOrder(13), Key(7)] public string IPAddress { get => field ?? ""; init; } = "";
     [DataMember(Order = 14), MemoryPackOrder(14), Key(8)] public string UserAgent { get => field ?? ""; init; } = "";
-    [DataMember(Order = 15), MemoryPackOrder(15), Key(9)] public ImmutableOptionSet Options { get; init; }
+    // Order 15 / Key 9 reserved (was Options, which carried GuestId) — do not reuse.
 
     public static LegacySessionInfo From(SessionInfoFull sessionInfo)
         => new() {
@@ -35,6 +35,5 @@ public partial record LegacySessionInfo() : IRequirementTarget, IHasVersion<long
             LastSeenAt = sessionInfo.LastSeenAt,
             IPAddress = sessionInfo.IPAddress,
             UserAgent = sessionInfo.Description,
-            Options = sessionInfo.Options,
         };
 }

@@ -46,7 +46,7 @@ public class SessionsBackend(IServiceProvider services)
 
         var dbSession = await GetDbSession(dbContext, session.Id, true, cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
-        var sessionInfo = dbSession?.ToModel(Log)
+        var sessionInfo = dbSession?.ToModel()
             ?? new SessionInfoFull(session) {
                 CreatedAt = now,
                 ExpiresAt = now + (session.Kind is SessionKind.ApiKey
@@ -59,10 +59,8 @@ public class SessionsBackend(IServiceProvider services)
             ExpiresAt = command.ExpiresAt ?? sessionInfo.ExpiresAt,
             IPAddress = command.IPAddress ?? sessionInfo.IPAddress,
             Description = command.Description ?? sessionInfo.Description,
-            Options = command.Options.SetMany(sessionInfo.Options),
             AuthenticatedIdentity = command.AuthenticatedIdentity ?? sessionInfo.AuthenticatedIdentity,
             UserId = command.UserId.IsSome(out var vUserId) ? vUserId : sessionInfo.UserId,
-
         };
         var newUserId = sessionInfo.UserId;
         dbSession = await UpsertDbSession(dbContext, session.Id, sessionInfo, cancellationToken).ConfigureAwait(false);
@@ -88,7 +86,7 @@ public class SessionsBackend(IServiceProvider services)
             }
         }
 
-        sessionInfo = dbSession.ToModel(Log);
+        sessionInfo = dbSession.ToModel();
         return sessionInfo;
     }
 
@@ -125,7 +123,7 @@ public class SessionsBackend(IServiceProvider services)
             return null;
 
         var dbSession = await SessionResolver.Get(DbShard.Single, session.Id, cancellationToken).ConfigureAwait(false);
-        return dbSession?.ToModel(Log);
+        return dbSession?.ToModel();
     }
 
     // Private methods

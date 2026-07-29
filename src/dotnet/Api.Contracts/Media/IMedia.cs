@@ -24,7 +24,7 @@ public sealed partial record Media_ReserveMedia(
     [property: DataMember, MemoryPackOrder(1), Key(1)] string Scope
 ) : ISessionCommand<MediaId>, IApiCommand
 {
-    [DataMember, MemoryPackOrder(2), Key(2)] public PropertyBag Metadata { get; init; } = PropertyBag.Empty;
+    [DataMember, MemoryPackOrder(2), Key(2)] public MetadataBag Metadata { get; init; } = MetadataBag.Empty;
     [DataMember, MemoryPackOrder(3), Key(3)] public MediaKind Kind { get; init; }
 }
 

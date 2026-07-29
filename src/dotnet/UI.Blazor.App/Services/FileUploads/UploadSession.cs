@@ -30,7 +30,7 @@ public class UploadSession
     private Task _runTask = Task.CompletedTask;
     private readonly UploadOperations _uploadOperations;
 
-    public static UploadSessionSnapshot NewUploadSnapshot(IFileProvider fileProvider, PropertyBag metadata,
+    public static UploadSessionSnapshot NewUploadSnapshot(IFileProvider fileProvider, MetadataBag metadata,
         Moment now, string mediaScope)
     {
         var snapshot = new UploadSessionSnapshot {

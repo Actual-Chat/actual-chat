@@ -15,7 +15,7 @@ public sealed class MediaUploadOwnershipTest(AppHostFixture fixture, ITestOutput
         await using var otherUser = AppHost.NewBlazorTester(Out);
         await otherUser.SignInAsUniqueAlice();
         var data = "owner upload"u8.ToArray();
-        var metadata = new PropertyBag()
+        var metadata = new MetadataBag()
             .Set("FileName", "test.txt")
             .Set("ContentType", "text/plain");
         var uploadId = await owner.Commander.Call(new Uploads_Create(owner.Session, data.Length, "", metadata));

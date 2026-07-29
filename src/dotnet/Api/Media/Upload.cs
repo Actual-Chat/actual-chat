@@ -26,7 +26,7 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
     [DataMember, MemoryPackIgnore, Key(5)] public long? Length { get; init; }
     [DataMember, MemoryPackOrder(3), Key(2)] public string Tag { get; init; } = "";
     [DataMember, MemoryPackOrder(4), Key(3)] public string SessionUri { get; init; } = "";
-    [DataMember, MemoryPackOrder(10), Key(4)] public PropertyBag Metadata { get; init; }
+    [DataMember, MemoryPackOrder(10), Key(4)] public MetadataBag Metadata { get; init; }
 
     // Computed properties
 
@@ -42,7 +42,7 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
         init => this.SetMetadataValue(value);
     }
 
-    public Upload(UploadId id, UserId userId, long? length, string tag, PropertyBag metadata)
+    public Upload(UploadId id, UserId userId, long? length, string tag, MetadataBag metadata)
     {
         Id = id;
         UserId = userId;
@@ -55,7 +55,7 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
     private Upload() : this(default!, default!, null, "", default) { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
-    public Upload(UploadId id, UserId userId, string tag, string sessionUri, PropertyBag metadata, long? length)
+    public Upload(UploadId id, UserId userId, string tag, string sessionUri, MetadataBag metadata, long? length)
         : this(id, userId, length, tag, metadata)
         => SessionUri = sessionUri;
 
