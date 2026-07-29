@@ -4,6 +4,11 @@ using System.Net.Sockets;
 
 namespace ActualChat;
 
+/// <summary>
+/// Guards outbound HTTP made on a user's behalf - link previews, Open Graph tags, image grabs.
+/// Every request and every redirect hop is validated against <see cref="Options.IsUriAllowed"/>
+/// and <see cref="Options.IsAddressAllowed"/>, and the response size is capped.
+/// </summary>
 public sealed class EgressHttpHandler : DelegatingHandler
 {
     public sealed record Options(
@@ -37,6 +42,7 @@ public sealed class EgressHttpHandler : DelegatingHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
+        // Redirects are followed here rather than by the inner handler, so every hop is validated
         var currentRequest = request;
         for (var redirectCount = 0;; redirectCount++) {
             var requestUri = currentRequest.RequestUri;
@@ -63,8 +69,8 @@ public sealed class EgressHttpHandler : DelegatingHandler
 
     private static SocketsHttpHandler CreateSocketsHttpHandler(Options settings)
         => new () {
-            AllowAutoRedirect = false,
-            UseProxy = false,
+            AllowAutoRedirect = false, // SendAsync follows them, so each hop gets validated
+            UseProxy = false, // A proxy would connect on our behalf, bypassing ConnectCallback
             ConnectCallback = (context, cancellationToken)
                 => Connect(settings, context.DnsEndPoint, cancellationToken),
         };
@@ -74,6 +80,8 @@ public sealed class EgressHttpHandler : DelegatingHandler
         DnsEndPoint endPoint,
         CancellationToken cancellationToken)
     {
+        // Checking the host name isn't enough: DNS can resolve to a different address on the second
+        // lookup, so the address is checked here, and again below on the socket we actually got.
         var addresses = await Dns.GetHostAddressesAsync(endPoint.Host, cancellationToken).ConfigureAwait(false);
         if (addresses.Length == 0 || addresses.Any(x => !settings.IsAddressAllowed(endPoint.Host, x)))
             throw new HttpRequestException($"Host '{endPoint.Host}' did not resolve to an allowed address.");
@@ -137,19 +145,24 @@ public sealed class EgressHttpHandler : DelegatingHandler
             redirectRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
         redirectRequest.Headers.Authorization = null;
         redirectRequest.Headers.Host = null;
+
         return redirectRequest;
     }
 
     private void LimitResponseContent(HttpResponseMessage response)
     {
+        // Content-Length is a cheap early out, but it can lie or be absent - the wrapper is what enforces
         var content = response.Content;
         if (content.Headers.ContentLength > Settings.MaxResponseContentLength) {
             response.Dispose();
             throw new HttpRequestException(
                 $"Response content length exceeds the {Settings.MaxResponseContentLength}-byte limit.");
         }
+
         response.Content = new SizeLimitedHttpContent(content, Settings.MaxResponseContentLength);
     }
+
+    // Nested types
 
     private sealed class SizeLimitedHttpContent : HttpContent
     {
