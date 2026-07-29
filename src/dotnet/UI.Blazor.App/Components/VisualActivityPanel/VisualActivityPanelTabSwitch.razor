@@ -33,8 +33,13 @@
                 Category = GetStateCategory(t),
             });
 
-    protected override Task<VisualActivity> ComputeState(CancellationToken cancellationToken)
-        => ChatActivityUI.Get(Chat.Id, cancellationToken);
+    protected override async Task<VisualActivity> ComputeState(CancellationToken cancellationToken) {
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        if (!enableIncompleteUI)
+            return VisualActivity.None;
+
+        return await ChatActivityUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
+    }
 
     // Private methods
 

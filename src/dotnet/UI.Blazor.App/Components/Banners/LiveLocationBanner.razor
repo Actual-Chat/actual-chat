@@ -58,6 +58,10 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        if (!enableIncompleteUI)
+            return Model.None;
+
         var chatId = Chat.Id;
         var participants = await LocationUI.ListParticipants(chatId, cancellationToken).ConfigureAwait(false);
         if (participants.Count == 0)
