@@ -140,8 +140,8 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
 
         // Create & sign in the account
         var session = Session.New();
-        var identities = ApiMap<UserIdentity, string>.Empty;
-        var claims = ApiMap<string, string>.Empty;
+        var identities = new ApiMap<UserIdentity, string>();
+        var claims = new ApiMap<string, string>();
 
         if (!userInfo.FirstName.IsNullOrEmpty())
             claims = claims.With(ClaimTypes.GivenName, userInfo.FirstName);

@@ -99,7 +99,7 @@ public static partial class StringExt
         return sb.ToStringAndRelease();
     }
 
-    public static PrivateString ToPrivate(this string source)
+    public static SanitizedString<Sanitizers.PrefixAndLengthHint> ToPrivate(this string source)
         => new(source);
 
     public static string Pluralize(this string source, int count)

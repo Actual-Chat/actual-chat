@@ -209,7 +209,9 @@ public sealed partial record Chats_UpsertEntry(
     [property: DataMember, MemoryPackOrder(2), Key(2)] long? LocalId
 ) : ISessionCommand<ChatEntry>, IApiCommand, ISanitized
 {
-    [DataMember, MemoryPackOrder(3), Key(3)] public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember, MemoryPackOrder(3), Key(3)] public string Text {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    } = "";
     [DataMember, MemoryPackOrder(4), Key(4)] public Option<long?> RepliedEntryLid { get; init; }
     [DataMember, MemoryPackOrder(11), Key(5)] public ChatEntryAttachment[] Attachments { get; init; } = [];
     [DataMember, MemoryPackOrder(12), Key(6)] public bool HasUploadingAttachments { get; init; }

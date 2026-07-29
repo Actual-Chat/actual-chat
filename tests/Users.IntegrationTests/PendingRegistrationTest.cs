@@ -290,7 +290,7 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
         string? email,
         bool isVerified)
     {
-        var claims = ApiMap<string, string>.Empty;
+        var claims = new ApiMap<string, string>();
         if (email is not null)
             claims = claims.With(ClaimTypes.Email, email);
         if (isVerified)
@@ -298,7 +298,7 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
         var command = new AccountsBackend_SignIn(
             session,
             identity,
-            ApiMap<UserIdentity, string>.Empty,
+            new ApiMap<UserIdentity, string>(),
             claims,
             AutoCreate: true);
         await Commander.Call(command);
@@ -307,8 +307,8 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
     private Task SignIn(Session session, string email)
     {
         var emailIdentity = UserIdentityExt.NewEmailIdentity(ActualChat.Email.Parse(email));
-        var identities = ApiMap<UserIdentity, string>.Empty.With(emailIdentity, "");
-        var claims = ApiMap<string, string>.Empty.With(ClaimTypes.Email, email);
+        var identities = new ApiMap<UserIdentity, string>().With(emailIdentity, "");
+        var claims = new ApiMap<string, string>().With(ClaimTypes.Email, email);
         return Commander.Call(new AccountsBackend_SignIn(session, emailIdentity, identities, claims));
     }
 

@@ -9,9 +9,13 @@ public sealed partial record NotificationMessage : ISanitized
     [DataMember(Order = 0), Key(0)]
     public AuthorId AuthorId { get; init; }
     [DataMember(Order = 1), Key(1)]
-    public string AuthorName { get => Sanitizer.MaskPrivate(field); init; } = "";
+    public string AuthorName {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    } = "";
     [DataMember(Order = 2), Key(2)]
-    public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
+    public string Text {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    } = "";
     [DataMember(Order = 3), Key(3)]
     public long EntryLid { get; init; }
     [DataMember(Order = 4), Key(4)]

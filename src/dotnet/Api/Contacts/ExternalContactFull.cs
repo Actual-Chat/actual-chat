@@ -29,8 +29,8 @@ public partial record ExternalContactFull(ExternalContactId Id, long Version = 0
     [DataMember, MemoryPackOrder(5), Key(8)] public string MiddleName { get; init; } = "";
     [DataMember, MemoryPackOrder(6), Key(9)] public string NamePrefix { get; init; } = "";
     [DataMember, MemoryPackOrder(7), Key(10)] public string NameSuffix { get; init; } = "";
-    [DataMember, MemoryPackOrder(8), Key(11)] public ApiSet<string> PhoneHashes { get; init; } = ApiSet<string>.Empty;
-    [DataMember, MemoryPackOrder(9), Key(12)] public ApiSet<string> EmailHashes { get; init; } = ApiSet<string>.Empty;
+    [DataMember, MemoryPackOrder(8), Key(11)] public ApiSet<string> PhoneHashes { get; init; } = new ApiSet<string>();
+    [DataMember, MemoryPackOrder(9), Key(12)] public ApiSet<string> EmailHashes { get; init; } = new ApiSet<string>();
     [DataMember, MemoryPackOrder(10), Key(13)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(11), Key(14)] public Moment ModifiedAt { get; init; }
 }

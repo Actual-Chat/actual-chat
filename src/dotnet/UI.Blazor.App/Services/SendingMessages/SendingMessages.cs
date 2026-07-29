@@ -559,7 +559,9 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         public required Moment Now { get; init; }
         public required ChatId ChatId { get; init; }
         public long? LocalId { get; init; }
-        public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
+        public string Text {
+            get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+        } = "";
         public Option<long?> RepliedEntryLid { get; init; }
         public AttachmentUploads? AttachmentUploads { get; init; }
         public IReadOnlyList<MediaRef> ExistingMedia { get; init; } = [];

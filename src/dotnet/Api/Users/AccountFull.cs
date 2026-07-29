@@ -63,16 +63,16 @@ public sealed partial record AccountFull : Account
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public AccountFull(UserId id, long version = 0) : base(id, version)
     {
-        Identities = ApiMap<UserIdentity, string>.Empty;
-        Claims = ApiMap<string, string>.Empty;
+        Identities = new ApiMap<UserIdentity, string>();
+        Claims = new ApiMap<string, string>();
     }
 
     // Constructor for tests - creates AccountFull with just a name
     public AccountFull(string name) : base(null!, 0)
     {
         Name = name;
-        Identities = ApiMap<UserIdentity, string>.Empty;
-        Claims = ApiMap<string, string>.Empty;
+        Identities = new ApiMap<UserIdentity, string>();
+        Claims = new ApiMap<string, string>();
     }
 
     // This record relies on referential equality

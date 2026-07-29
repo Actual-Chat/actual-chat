@@ -42,7 +42,7 @@ public sealed partial record Transcript(
         => new ("", LinearMap.Zero, []);
 
     public override string ToString()
-        => $"`{Sanitizer.MaskPrivate(Text)}` + {TimeMap}";
+        => $"`{Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(Text)}` + {TimeMap}";
 
     public bool IsIdenticalTo(Transcript other)
         => Text == other.Text

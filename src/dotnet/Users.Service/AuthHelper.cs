@@ -205,7 +205,7 @@ public sealed class AuthHelper
         var claims = httpUser.Claims.ToApiMap(c => c.Type, c => c.Value);
         var id = FirstClaimOrDefault(claims, IdClaimKeys) ?? httpUserIdentityName;
         var identity = new UserIdentity(authSchema, id);
-        var identities = ApiMap<UserIdentity, string>.Empty;
+        var identities = new ApiMap<UserIdentity, string>();
 
         // Map claims using ClaimMapper
         var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value);

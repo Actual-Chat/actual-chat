@@ -26,7 +26,7 @@ public readonly partial record struct StringDiff(
     }
 
     public override string ToString()
-        => IsNone ? "Δ()" : $"Δ({Start}, `{Sanitizer.MaskPrivate(Suffix)}`)";
+        => IsNone ? "Δ()" : $"Δ({Start}, `{Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(Suffix)}`)";
 
     public string ApplyTo(string baseText)
     {

@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
@@ -50,7 +50,7 @@ public abstract class Markup : ISanitized
     }
 
     public override string ToString()
-        => $"{GetType()}({Sanitizer.MaskPrivate(Format())})";
+        => $"{GetType()}({Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(Format())})";
 
     public abstract string Format();
 

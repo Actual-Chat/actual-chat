@@ -58,7 +58,13 @@ export {
 
 export { RpcCallStage } from './rpc-call-stage.js';
 export { RpcCallTimeouts } from './rpc-call-timeouts.js';
-export { RpcError, REMOTE_EXCEPTION_TYPE_REF, toExceptionInfo } from './rpc-error.js';
+export {
+    RpcError,
+    REMOTE_EXCEPTION_TYPE_REF,
+    toExceptionInfo,
+    genericErrorFilter,
+} from './rpc-error.js';
+export type { RpcExceptionInfo, RpcErrorFilter } from './rpc-error.js';
 export { IncreasingSeqCompressor } from './increasing-seq-compressor.js';
 
 export { RpcSystemCallHandler } from './rpc-system-call-handler.js';
@@ -66,7 +72,7 @@ export { RpcSystemCallSender } from './rpc-system-call-sender.js';
 
 export type { RpcObjectId, IRpcObject } from './rpc-object.js';
 export { RpcObjectKind } from './rpc-object.js';
-export { RpcStream, parseStreamRef, resolveStreamRefs } from './rpc-stream.js';
+export { RpcStream, parseStreamRef, toRpcStream } from './rpc-stream.js';
 export type { RpcStreamRef, RpcStreamOptions, RpcStreamSource } from './rpc-stream.js';
 export { RpcStreamSender } from './rpc-stream-sender.js';
 export { RpcRemoteObjectTracker } from './rpc-remote-object-tracker.js';
@@ -86,6 +92,8 @@ export type {
     RpcCallOptions,
     RpcConnectionUrlResolver,
 } from './rpc-peer.js';
+export { computeReconnectProof, isReconnectProofSupported } from './reconnect-proof.js';
+export type { RpcReconnectProofParameters } from './reconnect-proof.js';
 export { RpcHub } from './rpc-hub.js';
 export type { RpcPeerFactory } from './rpc-hub.js';
 export { RpcRefBuilder } from './rpc-ref-builder.js';

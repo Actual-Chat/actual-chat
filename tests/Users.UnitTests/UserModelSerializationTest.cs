@@ -224,7 +224,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void LocalAppSettings_WithCameraMirrorOverrides()
     {
         var settings = new LocalAppSettings {
-            CameraMirrorOverrides = ApiMap<string, bool>.Empty
+            CameraMirrorOverrides = new ApiMap<string, bool>()
                 .With("cam-1", true)
                 .With("cam-2", false),
         };

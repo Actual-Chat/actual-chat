@@ -33,7 +33,7 @@ public class HighlightUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
     [ComputeMethod]
     public virtual Task<SearchQuery> GetSearchQuery(ChatEntryId chatEntryId, CancellationToken cancellationToken)
     {
-        var wordSet = _wordsByChatEntryId.GetValueOrDefault(chatEntryId, ApiSet<string>.Empty);
+        var wordSet = _wordsByChatEntryId.GetValueOrDefault(chatEntryId, new ApiSet<string>());
         var searchQuery = new SearchQuery(wordSet.ToDelimitedString(" "), matchSuffixes: true);
         return Task.FromResult(searchQuery);
     }
@@ -41,7 +41,7 @@ public class HighlightUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
     [ComputeMethod]
     public virtual Task<IReadOnlySet<string>> GetWordSet(ChatEntryId chatEntryId, CancellationToken cancellationToken)
     {
-        var wordSet = _wordsByChatEntryId.GetValueOrDefault(chatEntryId, ApiSet<string>.Empty);
+        var wordSet = _wordsByChatEntryId.GetValueOrDefault(chatEntryId, new ApiSet<string>());
         return Task.FromResult(wordSet);
     }
 }

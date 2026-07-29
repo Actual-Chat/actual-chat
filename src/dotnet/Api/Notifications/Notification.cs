@@ -1,4 +1,3 @@
-using ActualChat.Compliance;
 using ActualLab.Rpc;
 using ActualLab.Versioning;
 
@@ -26,9 +25,13 @@ public abstract partial record Notification(
     ) : IHasId<NotificationId>, IHasVersion<long>, ISanitized
 {
     [DataMember(Order = 2), Key(2)]
-    public string Title { get => Sanitizer.MaskPrivate(field); init; } = "";
+    public string Title {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    } = "";
     [DataMember(Order = 3), Key(3)]
-    public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
+    public string Text {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    } = "";
     [DataMember(Order = 4), Key(4)]
     public string IconUrl { get; init; } = "";
     [DataMember(Order = 5), Key(5)]

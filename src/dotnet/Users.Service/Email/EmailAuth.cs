@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using ActualChat.Hashing;
 using ActualChat.Hosting;
 using ActualChat.Resilience;
@@ -141,8 +141,8 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (!await ValidateCode(session, email.Value, totp, TotpPurpose.SignInEmail, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var identities = ApiMap<UserIdentity, string>.Empty.WithEmailIdentity(email, out var emailIdentity);
-        var claims = ApiMap<string, string>.Empty.With(ClaimTypes.Email, email.Value);
+        var identities = new ApiMap<UserIdentity, string>().WithEmailIdentity(email, out var emailIdentity);
+        var claims = new ApiMap<string, string>().With(ClaimTypes.Email, email.Value);
 
         var signInCommand = new AccountsBackend_SignIn(session, emailIdentity, identities, claims);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);

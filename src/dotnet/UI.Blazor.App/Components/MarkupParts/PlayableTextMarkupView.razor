@@ -210,6 +210,6 @@
 
         public WordPlayback[]? Map { get; init; }
         public bool HasSelection { get; init; }
-        public IReadOnlySet<string> HighlightedWords { get; init; } = ApiSet<string>.Empty;
+        public IReadOnlySet<string> HighlightedWords { get; init; } = new ApiSet<string>();
     }
 }

@@ -56,7 +56,7 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             IsGreetingCompleted = true,
             CreatedAt = new Moment(DateTime.UtcNow),
             TimeZone = "America/New_York",
-            Identities = ApiMap<UserIdentity, string>.Empty
+            Identities = new ApiMap<UserIdentity, string>()
                 .With(new UserIdentity(AuthSchema.Email, "test@example.com"), ""),
         };
 
@@ -70,9 +70,9 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var userId = UserId.New();
         // Note: Using single identity to avoid JSON ordering issues in PassThroughAllSerializers
-        var identities = ApiMap<UserIdentity, string>.Empty
+        var identities = new ApiMap<UserIdentity, string>()
             .With(new UserIdentity("email", "test@example.com"), "secret");
-        var claims = ApiMap<string, string>.Empty
+        var claims = new ApiMap<string, string>()
             .With("email", "test@example.com");
 
         var accountFull = new AccountFull(userId, 1) {
@@ -103,10 +103,10 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         // Test with multiple identities - tests deserialization correctness without strict JSON comparison
         var userId = UserId.New();
-        var identities = ApiMap<UserIdentity, string>.Empty
+        var identities = new ApiMap<UserIdentity, string>()
             .With(new UserIdentity("google", "123456"), "secret1")
             .With(new UserIdentity("email", "test@example.com"), "secret2");
-        var claims = ApiMap<string, string>.Empty
+        var claims = new ApiMap<string, string>()
             .With("email", "test@example.com")
             .With("name", "Test User");
 

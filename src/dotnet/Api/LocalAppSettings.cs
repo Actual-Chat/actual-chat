@@ -18,9 +18,9 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     // deserialization).
     [DataMember, MemoryPackOrder(3), Key(3)]
     public ApiMap<string, bool> CameraMirrorOverrides {
-        get => field ??= ApiMap<string, bool>.Empty;
+        get => field ??= new ApiMap<string, bool>();
         init;
-    } = ApiMap<string, bool>.Empty;
+    } = new ApiMap<string, bool>();
 
     // MemoryPackOrder(4) reserved (was IsVideoDiagnosticsEnabled) — do not reuse.
     [DataMember, MemoryPackOrder(5), Key(5)] public GeoTrackingAccuracy? LocationAccuracy { get; init; }

@@ -9,18 +9,4 @@ public static class LoggingBuilderExt
         services.AddSingleton<TailLoggerSinkSet>(_ => new TailLoggerSinkSet());
         return logging;
     }
-
-    public static ILoggingBuilder AddSanitizingLoggerFactory(
-        this ILoggingBuilder logging,
-        Func<IServiceProvider, bool> mustSanitizePredicate)
-    {
-        logging.Services.AddSingleton<ILoggerFactory>(c => {
-            var mustSanitize = mustSanitizePredicate.Invoke(c);
-            var innerFactory = ActivatorUtilities.CreateInstance<LoggerFactory>(c);
-            return mustSanitize
-                ? new SanitizingLoggerFactory(innerFactory)
-                : innerFactory;
-        });
-        return logging;
-    }
 }

@@ -3,6 +3,7 @@ using ActualChat.Flows.Infrastructure;
 using ActualLab.CommandR.Operations;
 using ActualChat.Hosting;
 using ActualLab.Rpc;
+using System.Text;
 
 namespace ActualChat.Flows;
 
@@ -34,13 +35,24 @@ public interface IFlowBackend : IComputeService, IBackendService
 // - Doesn't run invalidation block (it's an `IDelegatingCommand`).
 // ReSharper disable once InconsistentNaming
 public sealed record Flows_Store(FlowId FlowId, long? ExpectedVersion = null)
-    : IDelegatingCommand<long>, IBackendCommand, IHasNodeRef, INotLogged
+    : IDelegatingCommand<long>, IBackendCommand, IHasNodeRef
 {
     public Flow? Flow { get; init; }
     public OperationEvent[]? Events { get; init; }
 
     // IHasNodeRef implementation - always routes the command to the local node
     NodeRef IHasNodeRef.NodeRef => NodeRef.ThisNodeAlias;
+
+    // Flow and Events are the whole payload - dumping them into a log line is what
+    // this command used to carry INotLogged for
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("FlowId = ").Append(FlowId)
+            .Append(", ExpectedVersion = ").Append(ExpectedVersion)
+            .Append(", Flow = ").Append(Flow?.GetType().GetName())
+            .Append(", Events = ").Append(Events?.Length ?? 0);
+        return true;
+    }
 }
 
 // This command:
@@ -49,8 +61,16 @@ public sealed record Flows_Store(FlowId FlowId, long? ExpectedVersion = null)
 // - Doesn't run invalidation block (it's an `IDelegatingCommand`).
 // ReSharper disable once InconsistentNaming
 public sealed record Flows_ScheduleResume(FlowResumeEvent Item, FlowResumeEvent[]? Items = null)
-    : IDelegatingCommand<long>, IBackendCommand, IHasNodeRef, INotLogged
+    : IDelegatingCommand<long>, IBackendCommand, IHasNodeRef
 {
     // IHasNodeRef implementation - always routes the command to the local node
     NodeRef IHasNodeRef.NodeRef => NodeRef.ThisNodeAlias;
+
+    // The events are the whole payload - see Flows_Store
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("Item = ").Append(Item.FlowId)
+            .Append(", Items = ").Append(Items?.Length ?? 0);
+        return true;
+    }
 }

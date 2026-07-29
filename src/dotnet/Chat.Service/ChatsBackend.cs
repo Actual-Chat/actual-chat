@@ -285,7 +285,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(entryCount, 64);
         if (entryCount <= 0)
-            return ApiSet<AuthorId>.Empty;
+            return new ApiSet<AuthorId>();
 
         var minLid = await GetMinLid(chatId, cancellationToken).ConfigureAwait(false);
         var authors = new ApiSet<AuthorId>();
@@ -305,7 +305,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     break;
             }
         }
-        return remainingCount == 0 ? authors : ApiSet<AuthorId>.Empty;
+        return remainingCount == 0 ? authors : new ApiSet<AuthorId>();
     }
 
     // [ComputeMethod]

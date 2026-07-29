@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using ActualChat.Hashing;
 using ActualChat.Hosting;
 using ActualChat.Resilience;
@@ -146,8 +146,8 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (!await ValidateCode(session, phone, totp, TotpPurpose.SignInPhone, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var identities = ApiMap<UserIdentity, string>.Empty.WithPhoneIdentity(phone, out var phoneIdentity);
-        var claims = ApiMap<string, string>.Empty.With(ClaimTypes.MobilePhone, phone.Value);
+        var identities = new ApiMap<UserIdentity, string>().WithPhoneIdentity(phone, out var phoneIdentity);
+        var claims = new ApiMap<string, string>().With(ClaimTypes.MobilePhone, phone.Value);
 
         var signInCommand = new AccountsBackend_SignIn(session, phoneIdentity, identities, claims);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);

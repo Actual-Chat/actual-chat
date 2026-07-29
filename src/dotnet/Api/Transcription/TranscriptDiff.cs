@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Transcription;
+namespace ActualChat.Transcription;
 
 /// <summary>
 /// Represents incremental changes to a <see cref="Transcript"/>.
@@ -25,7 +25,13 @@ public sealed partial record TranscriptDiff(
     }
 
     public override string ToString()
-        => IsNone ? "Δ()" : $"Δ({Sanitizer.MaskPrivate(TextDiff.ToString())}, {TimeMapDiff})";
+    {
+        if (IsNone)
+            return "Δ()";
+
+        var textDiff = Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(TextDiff.ToString());
+        return $"Δ({textDiff}, {TimeMapDiff})";
+    }
 
     public Transcript ApplyTo(Transcript baseTranscript)
     {

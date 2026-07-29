@@ -294,7 +294,7 @@
     <!-- ActualChat.* -->
     <Using Include="ActualChat" />
     <Using Include="ActualChat.Collections" />
-    <Using Include="ActualChat.Compliance" />
+    <Using Include="ActualLab.Compliance" />
     <Using Include="ActualChat.DependencyInjection" />
     <!-- <Using Include="ActualChat.Diagnostics" /> -->
     <Using Include="ActualChat.Diff" />

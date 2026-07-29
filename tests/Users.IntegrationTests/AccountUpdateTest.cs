@@ -45,7 +45,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Act - update account with empty claims (simulating old app behavior)
         var accountWithEmptyClaims = account with {
             Name = account.Name + " Updated",
-            Claims = ApiMap<string, string>.Empty,
+            Claims = new ApiMap<string, string>(),
         };
         var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyClaims, null);
         await Tester.Commander.Call(updateCommand);
@@ -66,7 +66,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Act - update account with empty identities (simulating old app behavior)
         var accountWithEmptyIdentities = account with {
             Name = account.Name + " Updated",
-            Identities = ApiMap<UserIdentity, string>.Empty,
+            Identities = new ApiMap<UserIdentity, string>(),
         };
         var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyIdentities, null);
         await Tester.Commander.Call(updateCommand);
@@ -89,8 +89,8 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Act - update account with empty claims and identities (simulating old app behavior)
         var accountWithEmptyData = account with {
             Name = account.Name + " Updated",
-            Claims = ApiMap<string, string>.Empty,
-            Identities = ApiMap<UserIdentity, string>.Empty,
+            Claims = new ApiMap<string, string>(),
+            Identities = new ApiMap<UserIdentity, string>(),
         };
         var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyData, null);
         await Tester.Commander.Call(updateCommand);
@@ -213,7 +213,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Act - clear claims via backend (set to empty)
         var accountAfterSetup = await AccountsBackend.Get(account.Id, default);
-        var accountWithEmptyClaims = accountAfterSetup! with { Claims = ApiMap<string, string>.Empty };
+        var accountWithEmptyClaims = accountAfterSetup! with { Claims = new ApiMap<string, string>() };
         var updateCommand = new AccountsBackend_Update(accountWithEmptyClaims, null);
         await Commander.Call(updateCommand);
 
@@ -342,7 +342,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Act - update via public API with empty claims
         var accountWithEmptyClaims = account with {
             Name = account.Name + " DbTest",
-            Claims = ApiMap<string, string>.Empty,
+            Claims = new ApiMap<string, string>(),
         };
         var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyClaims, null);
         await Tester.Commander.Call(updateCommand);
@@ -367,7 +367,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Act - update via public API with empty identities
         var accountWithEmptyIdentities = account with {
             Name = account.Name + " DbTest",
-            Identities = ApiMap<UserIdentity, string>.Empty,
+            Identities = new ApiMap<UserIdentity, string>(),
         };
         var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyIdentities, null);
         await Tester.Commander.Call(updateCommand);

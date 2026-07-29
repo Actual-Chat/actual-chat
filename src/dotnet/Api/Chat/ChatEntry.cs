@@ -50,7 +50,9 @@ public abstract partial record ChatEntry(
     [DataMember(Order = 4), Key(4)] public Moment BeginsAt { get; init; }
     [DataMember(Order = 5), Key(5)] public Moment? EndsAt { get; init; }
     // Content
-    [DataMember(Order = 6), Key(6)] public string Content { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember(Order = 6), Key(6)] public string Content {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    } = "";
     [DataMember(Order = 7), Key(7)] public HashString ContentHash { get; init; }
     [DataMember(Order = 8), Key(8)] public string ContentStreamId { get; init; } = "";
     // Reply
@@ -146,7 +148,9 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember] public AuthorId? AuthorId { get; init; }
     [DataMember] public Moment? BeginsAt { get; init; }
     [DataMember] public Option<Moment?> EndsAt { get; init; }
-    [DataMember] public string? Content { get => Sanitizer.MaskPrivate(field); init; }
+    [DataMember] public string? Content {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    }
     [DataMember] public string? ContentStreamId { get; init; }
     [DataMember] public Option<ChatEntryAudio?> Audio { get; init; }
     [DataMember] public Option<ChatEntryForwarded?> Forwarded { get; init; }

@@ -99,7 +99,9 @@ public sealed partial record SendMessageRequestEntry : IHasId<string>, ISanitize
     [DataMember, MemoryPackOrder(1), Key(1)] public required Moment Now { get; init; }
     [DataMember, MemoryPackOrder(2), Key(2)] public required ChatId ChatId { get; init; }
     [DataMember, MemoryPackOrder(3), Key(3)] public long? LocalId { get; init; }
-    [DataMember, MemoryPackOrder(4), Key(4)] public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember, MemoryPackOrder(4), Key(4)] public string Text {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    } = "";
     [DataMember, MemoryPackOrder(5), Key(5)] public Option<long?> RepliedEntryLid { get; init; }
     [DataMember, MemoryPackOrder(6), Key(6)] public AttachFileRequestEntry[] AttachFileRequests { get; init; } = [];
     [DataMember, MemoryPackOrder(7), Key(7)] public string ClientId { get; init; } = "";

@@ -14,7 +14,10 @@ public sealed partial record Translation(
     [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0
 ) : IHasId<TranslationId>, IHasVersion<long>, IRequirementTarget, ISanitized
 {
-    [DataMember, MemoryPackOrder(2), Key(2)] public string Content { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember, MemoryPackOrder(2), Key(2)]
+    public string Content {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    } = "";
     [DataMember, MemoryPackOrder(3), Key(3)] public HashString SourceContentHash { get; init; }
     [DataMember, MemoryPackOrder(4), Key(4)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(5), Key(5)] public Moment ModifiedAt { get; init; }
@@ -44,7 +47,9 @@ public sealed partial record Translation(
 public sealed partial record TranslationDiff : RecordDiff, ISanitized
 {
     [DataMember, MemoryPackOrder(0)] public long? Version { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string? Content { get => Sanitizer.MaskPrivate(field); init; }
+    [DataMember, MemoryPackOrder(1)] public string? Content {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    }
     [DataMember, MemoryPackOrder(2)] public HashString? SourceContentHash { get; init; }
     [DataMember, MemoryPackOrder(3)] public Option<StreamId?> StreamId { get; init; }
 }

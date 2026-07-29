@@ -1,4 +1,5 @@
 using ActualLab.Rpc;
+using System.Text;
 
 namespace ActualChat.Users;
 
@@ -29,7 +30,7 @@ public interface ISessionsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public partial record SessionsBackend_Upsert(
     [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session
-    ) : ISessionCommand<SessionInfoFull>, IBackendCommand, INotLogged, IHasShardKey<Session>
+    ) : ISessionCommand<SessionInfoFull>, IBackendCommand, ISanitized, IHasShardKey<Session>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Session ShardKey => Session;
@@ -40,4 +41,20 @@ public partial record SessionsBackend_Upsert(
     [DataMember, MemoryPackOrder(4), Key(4)] public Option<UserId?> UserId { get; init; }
     [DataMember, MemoryPackOrder(5), Key(5)] public UserIdentity? AuthenticatedIdentity { get; init; }
     [DataMember, MemoryPackOrder(6), Key(6)] public Moment? ExpiresAt { get; init; }
+
+    // Protected methods
+
+    protected virtual bool PrintMembers(StringBuilder builder)
+    {
+        // Session redacts itself; Options is whatever the caller put there, and an identity's
+        // value is the provider's secret - only its schema is worth a log line
+        builder.Append("Session = ").Append(Session)
+            .Append(", IPAddress = ").Append(IPAddress)
+            .Append(", Description = ").Append(Description)
+            .Append(", Options = ").Append(Sanitizer.MaybeSanitize<Sanitizers.Hidden>(Options.ToString()))
+            .Append(", UserId = ").Append(UserId)
+            .Append(", AuthenticatedIdentity = ").Append(AuthenticatedIdentity?.Schema)
+            .Append(", ExpiresAt = ").Append(ExpiresAt);
+        return true;
+    }
 }

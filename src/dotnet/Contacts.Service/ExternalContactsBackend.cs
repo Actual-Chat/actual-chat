@@ -117,7 +117,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     {
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account is null)
-            return ApiSet<ExternalContactId>.Empty;
+            return new ApiSet<ExternalContactId>();
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);

@@ -234,6 +234,13 @@ public readonly struct RpcHostBuilder
         // Replace RpcWebSocketServerOptions
         Services.ReplaceFactory<RpcWebSocketServerOptions>((_, oldFactory) => oldFactory.Invoke() with {
             ExposeBackend = true,
+            // The WebSocket handshake is exempt from CORS, and GetServerConnection resolves the
+            // session from the cookie - so without a check here any page on any origin could open
+            // an RPC connection carrying the visitor's session (cross-site WebSocket hijacking).
+            // SameOrigin compares Origin against this request's own Host, so every hostname we
+            // serve passes without being listed - voxt.ai, actual.chat, the dev/local ones and the
+            // worktree subdomains alike. Non-browser clients send no Origin and are unaffected.
+            OriginValidator = RpcWebSocketServerOriginValidators.SameOrigin,
             // Media stream connections (any "kind" in the query - e.g. kind=video) opt out of
             // compression: their payloads are already compressed, and excluding them keeps
             // deflate from wasting CPU on them. DisableServerContextTakeover resets the deflate

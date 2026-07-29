@@ -36,8 +36,8 @@ internal sealed partial record HashedExternalContact
     [DataMember, MemoryPackOrder(4)] public string MiddleName { get; init; } = "";
     [DataMember, MemoryPackOrder(5)] public string NamePrefix { get; init; } = "";
     [DataMember, MemoryPackOrder(6)] public string NameSuffix { get; init; } = "";
-    [DataMember, MemoryPackOrder(7)] public ApiSet<string> PhoneHashes { get; init; } = ApiSet<string>.Empty;
-    [DataMember, MemoryPackOrder(8)] public ApiSet<string> EmailHashes { get; init; } = ApiSet<string>.Empty;
+    [DataMember, MemoryPackOrder(7)] public ApiSet<string> PhoneHashes { get; init; } = new ApiSet<string>();
+    [DataMember, MemoryPackOrder(8)] public ApiSet<string> EmailHashes { get; init; } = new ApiSet<string>();
 
     public static HashedExternalContact From(ExternalContactFull externalContactFull)
         => new () {

@@ -48,7 +48,7 @@ public static class TestAuthExt
             ? new UserIdentity("test", Ulid.NewUlid().ToString()!)
             : account.Identities.Keys.First();
         var newIdentities = account.Identities.IsEmpty
-            ? ApiMap<UserIdentity, string>.Empty
+            ? new ApiMap<UserIdentity, string>()
             : account.Identities.Where(x => x.Key != userIdentity).ToApiMap(x => x.Key, x => x.Value);
 
         // Sign out first if already signed in
@@ -80,7 +80,7 @@ public static class TestAuthExt
             ? new UserIdentity("test", Ulid.NewUlid().ToString()!)
             : account.Identities.Keys.First();
         var newIdentities = account.Identities.IsEmpty
-            ? ApiMap<UserIdentity, string>.Empty
+            ? new ApiMap<UserIdentity, string>()
             : account.Identities.Where(x => x.Key != userIdentity).ToApiMap(x => x.Key, x => x.Value);
 
         // Sign out first if already signed in
