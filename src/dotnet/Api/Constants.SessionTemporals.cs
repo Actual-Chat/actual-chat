@@ -14,7 +14,10 @@ public static partial class Constants
         // confirmation prompt. The UI uses this exact string to detect
         // a cancel and reset the sign-in form.
         public const string SignInCanceledMessage = "Sign-in canceled.";
-        private static readonly HashSet<string> ServerKeys = [SignInErrorKey, PendingRegistrationKey];
+        private static readonly HashSet<string> ServerKeys = [
+            SignInErrorKey,
+            PendingRegistrationKey,
+        ];
 
         public static bool IsServerKey(string key)
             => ServerKeys.Contains(key);

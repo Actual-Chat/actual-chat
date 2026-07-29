@@ -12,6 +12,7 @@ public interface IVideoStreamingBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken);
+
     Task<RpcStream<VideoFrame>?> GetVideoRaw(StreamId streamId, CancellationToken cancellationToken);
 
     // Publisher-facing keyframe-request signal, invalidated by RequestKeyFrame.
