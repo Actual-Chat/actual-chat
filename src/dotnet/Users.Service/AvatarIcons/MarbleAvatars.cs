@@ -93,7 +93,7 @@ public static class MarbleAvatars
             ? ""
             : "<feGaussianBlur stdDeviation='7' result='effect1_foregroundBlur' />";
 
-        var displayTitle = string.IsNullOrEmpty(title) ? "" : title[0].ToString().ToUpper().HtmlEncode();
+        var displayTitle = title.IsNullOrEmpty() ? "" : title[0].ToString().ToUpper().HtmlEncode();
 
         return $"""
             <svg viewBox='0 0 {Size} {Size}' fill='none' xmlns='http://www.w3.org/2000/svg' width='{Size}' height='{Size}'>
