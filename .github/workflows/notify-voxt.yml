@@ -24,6 +24,17 @@ jobs:
     if: github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout configs
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CONFIGS_REPO_GITHUB_TOKEN }}
+          fetch-depth: 1
+          repository: Actual-Chat/configs
+          path: configs/
+          sparse-checkout: |
+            ci/
+          sparse-checkout-cone-mode: false
+
       - name: Build message
         id: msg
         env:
@@ -40,12 +51,17 @@ jobs:
         run: |
           short_sha="${SHA:0:7}"
           commit_title="$(printf '%s' "$COMMIT_MSG" | head -n1)"
+          # Voxt user mention (@`Name`u:<userId>) when the actor is mapped; plain login otherwise
+          actor_ref="$(jq -r --arg login "$ACTOR" \
+            '.[$login] // empty | "@`\(.name)`u:\(.userId)"' \
+            configs/ci/github-voxt-users.json 2>/dev/null || true)"
+          actor_ref="${actor_ref:-$ACTOR}"
           failed_jobs="$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --paginate \
             -q '.jobs[] | select(.conclusion == "failure") | .name')"
           {
             echo "text<<VOXT_EOF"
             echo "❌ **$REPO — $WF #$NUM failed**"
-            echo "\`$BRANCH\` · \`$short_sha\` $commit_title · by $ACTOR"
+            echo "\`$BRANCH\` · \`$short_sha\` $commit_title · by $actor_ref"
             if [ -n "$failed_jobs" ]; then
               echo "Failed:"
               printf '%s\n' "$failed_jobs" | while IFS= read -r job; do
