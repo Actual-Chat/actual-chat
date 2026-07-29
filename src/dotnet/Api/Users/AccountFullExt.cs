@@ -59,7 +59,7 @@ public static class AccountFullExt
         };
     }
 
-    // IsXxxVerified
+    // IsXxxVerified - keep derived: Accounts_Update lets clients set Email/Phone, never Identities
 
     public static bool IsPhoneVerified(this AccountFull account)
         => account.Phone is { } phone && phone.IsNormalized() && account.Identities.HasPhone(phone);
