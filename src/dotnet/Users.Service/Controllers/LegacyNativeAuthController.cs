@@ -31,8 +31,7 @@ public sealed class LegacyNativeAuthController(IServiceProvider services) : Cont
     {
         // mustExist is accepted but ignored — sign-in flow now always confirms registration via UI.
         var session = HttpContext.GetSessionFromHeader();
-        LegacyApiUsageLog.Write(
-            Log,
+        Log.LogLegacyApiUsage(
             $"{nameof(LegacyNativeAuthController)}.{nameof(SignInApple)}",
             session,
             GetClientInfo(),
@@ -46,8 +45,7 @@ public sealed class LegacyNativeAuthController(IServiceProvider services) : Cont
     {
         // mustExist is accepted but ignored — sign-in flow now always confirms registration via UI.
         var session = HttpContext.GetSessionFromHeader();
-        LegacyApiUsageLog.Write(
-            Log,
+        Log.LogLegacyApiUsage(
             $"{nameof(LegacyNativeAuthController)}.{nameof(SignInGoogle)}",
             session,
             GetClientInfo(),

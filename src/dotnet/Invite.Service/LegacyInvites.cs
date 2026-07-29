@@ -94,6 +94,6 @@ public class LegacyInvites(IServiceProvider services) : ILegacyInvites
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogWarning(e, "Failed to resolve client version for legacy API {EntryPoint}", entryPoint);
         }
-        LegacyApiUsageLog.Write(Log, entryPoint, session, clientInfo);
+        Log.LogLegacyApiUsage(entryPoint, session, clientInfo);
     }
 }

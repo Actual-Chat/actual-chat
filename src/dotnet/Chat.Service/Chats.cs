@@ -100,7 +100,7 @@ public partial class Chats(IServiceProvider services) : IChats
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogWarning(e, "Failed to resolve client version for legacy API {EntryPoint}", entryPoint);
         }
-        LegacyApiUsageLog.Write(Log, entryPoint, session, clientInfo, $"entryKind={entryKind}");
+        Log.LogLegacyApiUsage(entryPoint, session, clientInfo, $"entryKind={entryKind}");
         return await GetTile(session, chatId, lidTileRange, cancellationToken).ConfigureAwait(false);
     }
 

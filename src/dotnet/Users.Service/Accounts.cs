@@ -69,8 +69,7 @@ public class Accounts(IServiceProvider services) : IAccounts
 #pragma warning restore CS0809
     {
         var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
-        LegacyApiUsageLog.Write(
-            Log,
+        Log.LogLegacyApiUsage(
             $"{nameof(IAccounts)}.{nameof(GetLegacySessionInfo)}",
             session,
             sessionInfo?.Description);

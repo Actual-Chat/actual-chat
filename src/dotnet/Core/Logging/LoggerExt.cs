@@ -1,22 +1,35 @@
+using Microsoft.Extensions.Hosting;
+
 namespace ActualChat.Logging;
 
-public static class LegacyApiUsageLog
+public static class LoggerExt
 {
-    public static void Write(
-        ILogger log,
+    public static bool MustLogLegacyApiUsage { get; set; } = false;
+
+    public static ILogger? UnlessStopping(this ILogger? logger, IHostApplicationLifetime? hostLifetime)
+        => logger is not null && (hostLifetime is null || !hostLifetime.ApplicationStopping.IsCancellationRequested)
+            ? logger
+            : null;
+
+    public static void LogLegacyApiUsage(
+        this ILogger log,
         string entryPoint,
         Session session,
         string? clientInfo,
         string? details = null)
     {
-        var clientVersion = GetClientVersion(clientInfo);
+        if (!MustLogLegacyApiUsage)
+            return;
+
         log.LogWarning(
             "Legacy API {EntryPoint} called by session {SessionId}; client version: {ClientVersion}; details: {Details}",
             entryPoint,
             session.Id,
-            clientVersion,
+            GetClientVersion(clientInfo),
             details ?? "");
     }
+
+    // Private methods
 
     private static string GetClientVersion(string? clientInfo)
     {

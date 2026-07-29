@@ -80,13 +80,19 @@ public class SanitizingLoggerFactoryTest
         // arrange
         var (loggerFactory, messages) = CreateLoggerFactory(useSanitizing: false, minLevel: LogLevel.Warning);
         var log = loggerFactory.CreateLogger("Test");
+        var oldMustLog = LoggerExt.MustLogLegacyApiUsage;
+        LoggerExt.MustLogLegacyApiUsage = true;
 
         // act
-        LegacyApiUsageLog.Write(
-            log,
-            "ILegacyChats.GetNews",
-            Session.New(),
-            "AndroidApp/2.7.3 Mozilla/5.0");
+        try {
+            log.LogLegacyApiUsage(
+                "ILegacyChats.GetNews",
+                Session.New(),
+                "AndroidApp/2.7.3 Mozilla/5.0");
+        }
+        finally {
+            LoggerExt.MustLogLegacyApiUsage = oldMustLog;
+        }
 
         // assert
         messages.Should().ContainSingle()
