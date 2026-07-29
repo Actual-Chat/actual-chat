@@ -106,8 +106,9 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
     {
         var inner = new StringBuilder();
         Visit(markup.Content, ref inner);
+        var newLine = NewLineMarkup.Instance.Text;
         state.Append("> ");
-        state.Append(inner.ToString().Replace("\r\n", "\n").Replace("\n", "\n> "));
+        state.Append(inner.ToString().NormalizeNewLines("\n").Replace("\n", newLine + "> "));
     }
 
     protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)

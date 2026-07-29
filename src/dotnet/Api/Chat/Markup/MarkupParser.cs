@@ -31,6 +31,9 @@ public partial class MarkupParser : IMarkupParser
         if (text.IsNullOrEmpty())
             return EmptyResult;
 
+        // The grammar sees a single line ending style, so any input produces the same markup.
+        // Without this a lone '\r' ends the parse early and silently truncates the message.
+        text = text.NormalizeNewLines(NewLineMarkup.Instance.Text);
         var parser = useUnparsedTextMarkup ? FullWithUnparsedMarkup : FullMarkup;
         var result = parser.Parse(text);
         return result.Success ? result.Value : EmptyResult;

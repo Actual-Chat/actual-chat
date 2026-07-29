@@ -313,6 +313,44 @@ public static partial class StringExt
         return Encoding.UTF8.GetString(bytes);
     }
 
+    // NewLines
+
+    public static string NormalizeNewLines(this string source, string newLine)
+    {
+        if (source.Length == 0 || IsNewLineNormalized(source, newLine))
+            return source;
+
+        var sb = ActualLab.Text.StringBuilderExt.Acquire(source.Length + 16);
+        for (var i = 0; i < source.Length; i++) {
+            var c = source[i];
+            if (c == '\r') {
+                if (i + 1 < source.Length && source[i + 1] == '\n')
+                    i++;
+                sb.Append(newLine);
+            }
+            else if (c == '\n')
+                sb.Append(newLine);
+            else
+                sb.Append(c);
+        }
+
+        return sb.ToStringAndRelease();
+
+        static bool IsNewLineNormalized(string source, string newLine) {
+            for (var i = 0; i < source.Length; i++) {
+                var c = source[i];
+                if (c != '\r' && c != '\n')
+                    continue;
+                if (i + newLine.Length > source.Length || !source.AsSpan(i, newLine.Length).SequenceEqual(newLine))
+                    return false;
+
+                i += newLine.Length - 1;
+            }
+
+            return true;
+        }
+    }
+
     // Indent
 
     public static string Indent(this string s, string indent)

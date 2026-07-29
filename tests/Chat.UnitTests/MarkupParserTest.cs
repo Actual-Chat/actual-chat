@@ -1257,6 +1257,27 @@ code
         MarkupFormatter.Default.Format(seq.Items[1]).Should().Be(tail);
     }
 
+    [Theory]
+    [InlineData("a\nb")]
+    [InlineData("a\n\nb")]
+    [InlineData("a\n\n\n\nb")]
+    [InlineData("# H\n\nbody")]
+    [InlineData("- x\n- y")]
+    [InlineData("> q\n> r")]
+    [InlineData("```\nx\n\ny\n```")]
+    [InlineData("a\n\n\n\n```\nx\n\n\ny\n```\n\nb")]
+    public void NewLineStyleDoesNotAffectParseResult(string lfText)
+    {
+        // act
+        var fromLf = MarkupFormatter.Default.Format(new MarkupParser().Parse(lfText));
+        var fromCrLf = MarkupFormatter.Default.Format(new MarkupParser().Parse(lfText.Replace("\n", "\r\n")));
+        var fromCr = MarkupFormatter.Default.Format(new MarkupParser().Parse(lfText.Replace("\n", "\r")));
+
+        // assert
+        fromCrLf.Should().Be(fromLf);
+        fromCr.Should().Be(fromLf);
+    }
+
     // Helpers
 
     private TResult Parse<TResult>(string text, out string copy)
