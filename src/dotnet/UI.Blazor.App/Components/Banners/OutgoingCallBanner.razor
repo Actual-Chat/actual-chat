@@ -1,8 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Live
-@inherits ComputedStateComponent<AppUIHub, CallStatus>
+@inherits ComputedStateComponent<AppUIHub, OutgoingCallBanner.Model>
 @{
-    var status = State.Value;
+    var m = State.Value;
+    if (!m.EnableIncompleteUI)
+        return;
+
+    var status = m.CallStatus;
 }
 
 <Banner
@@ -29,19 +33,25 @@
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
-    protected override ComputedState<CallStatus>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<CallStatus>.Options() {
-                InitialValue = CallStatus.None,
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override Task<CallStatus> ComputeState(CancellationToken cancellationToken)
-        => LiveSessionUI.GetCallStatus(Chat.Id, cancellationToken);
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        if (!enableIncompleteUI)
+            return Model.None;
+
+        var callStatus = await LiveSessionUI.GetCallStatus(Chat.Id, cancellationToken).ConfigureAwait(false);
+        return new Model(true, callStatus);
+    }
 
     private Task OnClose()
-        => State.Value == CallStatus.Dialing
+        => State.Value.CallStatus == CallStatus.Dialing
             ? LiveSessionUI.CancelCall(Chat.Id, CancellationToken.None)
             : LiveSessionUI.DismissCallStatus(Chat.Id, CancellationToken.None);
 
@@ -59,4 +69,10 @@
         CallStatus.NoAnswer => "icon-phone-missed",
         _ => "icon-phone-call",
     };
+
+    // Nested types
+
+    public sealed record Model(bool EnableIncompleteUI, CallStatus CallStatus) {
+        public static readonly Model None = new(false, CallStatus.None);
+    }
 }
