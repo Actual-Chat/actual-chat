@@ -8,30 +8,40 @@ public class SessionExtTest
     [Fact]
     public void RejectsProtocolRelativeReturnUrl()
     {
+        // arrange
+        var origin = new Uri("https://voxt.ai");
+
         // act
-        var action = () => LocalUrl.Parse("//evil.example");
+        var isParsed = LocalUrl.TryParse("//evil.example", origin, out _);
 
         // assert
-        action.Should().Throw<FormatException>();
+        isParsed.Should().BeFalse();
     }
 
     [Fact]
     public void RejectsForeignAbsoluteReturnUrl()
     {
+        // arrange
+        var origin = new Uri("https://voxt.ai");
+
         // act
-        var action = () => LocalUrl.Parse("https://evil.example");
+        var isParsed = LocalUrl.TryParse("https://evil.example", origin, out _);
 
         // assert
-        action.Should().Throw<FormatException>();
+        isParsed.Should().BeFalse();
     }
 
     [Fact]
     public void AcceptsInAppReturnUrl()
     {
+        // arrange
+        var origin = new Uri("https://voxt.ai");
+
         // act
-        var returnUrl = LocalUrl.Parse("/chat");
+        var isParsed = LocalUrl.TryParse("/chat", origin, out var returnUrl);
 
         // assert
+        isParsed.Should().BeTrue();
         returnUrl.Value.Should().Be("/chat");
     }
 

@@ -21,7 +21,8 @@ public class LinkPreviewUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     [ComputeMethod]
     public virtual async Task<LocalLinkInfo?> TryGetLocal(string url, CancellationToken cancellationToken)
     {
-        if (LocalUrl.FromAbsolute(url, UrlMapper) is not { } localUrlOpt)
+        // The url comes from message markup, so it may carry anything
+        if (LocalUrl.FromAbsolute(url, UrlMapper) is not { } localUrlOpt || !localUrlOpt.IsTrulyLocal())
             return null;
 
         return await GetLocal(localUrlOpt, cancellationToken).ConfigureAwait(false);

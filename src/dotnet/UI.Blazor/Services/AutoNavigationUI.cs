@@ -135,8 +135,13 @@ public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
             localUrl = tempLocalUrl.Value;
         }
         else
-            localUrl = new LocalUrl(url, ParseOrNone.Option);
+            localUrl = new LocalUrl(url);
 
-        return true;
+        // The url comes from notifications and deep links, so it may carry anything
+        if (localUrl.IsTrulyLocal())
+            return true;
+
+        localUrl = Links.Home;
+        return false;
     }
 }

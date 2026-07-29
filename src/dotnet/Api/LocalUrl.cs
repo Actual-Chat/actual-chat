@@ -17,61 +17,36 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
     [DataMember, MemoryPackOrder(0), Key(0)]
     public string Value => field ?? "/";
 
-    public static LocalUrl Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<LocalUrl>(s);
-
-    public static bool TryParse(string? s, out LocalUrl result)
-    {
-        result = default;
-        if (s.IsNullOrEmpty())
-            return true;
-
-        if (Uri.TryCreate(s, UriKind.Absolute, out _))
-            return false;
-
-        if (!s.StartsWith('/'))
-            s = "/" + s;
-        if (s.EndsWith('/') && s.Length > 1)
-            s = s[..^1];
-        if (!Uri.TryCreate(s, UriKind.Relative, out _))
-            return false;
-
-        result = new LocalUrl(s, ParseOrNone.Option);
-        return true;
-    }
+    public static LocalUrl Parse(string? s) => new(s);
 
     public static bool TryParse(string? s, Uri origin, out LocalUrl result)
     {
+        // Drops a matching origin, then requires the remainder to be truly local
         if (!origin.IsAbsoluteUri)
             throw new ArgumentOutOfRangeException(nameof(origin));
-        if (!Uri.TryCreate(s, UriKind.Absolute, out var absoluteUrl))
-            return TryParse(s, out result);
 
         result = default;
-        if (!string.Equals(absoluteUrl.Scheme, origin.Scheme, StringComparison.OrdinalIgnoreCase)
-            || !string.Equals(absoluteUrl.IdnHost, origin.IdnHost, StringComparison.OrdinalIgnoreCase)
-            || absoluteUrl.Port != origin.Port)
+        if (s.IsNullOrEmpty())
             return false;
 
-        return TryParse(absoluteUrl.PathAndQuery + absoluteUrl.Fragment, out result);
+        // UriKind.Absolute reads "/chat" as an implicit file path on Unix, so absoluteness
+        // is decided via RelativeOrAbsolute, which answers the same way on every platform.
+        if (Uri.TryCreate(s, UriKind.RelativeOrAbsolute, out var uri) && uri.IsAbsoluteUri) {
+            if (!string.Equals(uri.Scheme, origin.Scheme, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(uri.IdnHost, origin.IdnHost, StringComparison.OrdinalIgnoreCase)
+                || uri.Port != origin.Port)
+                return false;
+
+            s = uri.PathAndQuery + uri.Fragment;
+        }
+
+        var localUrl = new LocalUrl(s);
+        if (!localUrl.IsTrulyLocal())
+            return false;
+
+        result = localUrl;
+        return true;
     }
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public string DisplayText => Value.Length <= 1 ? Value : Value[1..];
-
-    [MemoryPackConstructor, SerializationConstructor]
-    public LocalUrl(string? value)
-    {
-        if (!TryParse(value, out var result))
-            throw StandardError.Format<LocalUrl>(value);
-        Value = result.Value;
-    }
-
-    public LocalUrl(string value, ParseOrNone _)
-        => Value = value;
-
-    public override string ToString()
-        => Value;
 
     public static LocalUrl? FromAbsolute(string url, UrlMapper mapper)
     {
@@ -82,6 +57,52 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
         var relativeUrl = url[origin.Length..];
         return relativeUrl;
     }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public string DisplayText => Value.Length <= 1 ? Value : Value[1..];
+
+    [MemoryPackConstructor, SerializationConstructor]
+    public LocalUrl(string? value)
+    {
+        if (value.IsNullOrEmpty()) {
+            Value = "/";
+            return;
+        }
+
+        if (!value.StartsWith('/'))
+            value = "/" + value;
+        if (value.EndsWith('/') && value.Length > 1)
+            value = value[..^1];
+        Value = value;
+    }
+
+    public LocalUrl(string value, ParseOrNone _)
+        => Value = value;
+
+    public override string ToString()
+        => Value;
+
+    public bool IsTrulyLocal()
+    {
+        // Browsers strip tab/LF/CR before parsing, and read "//host" and "/\host" as cross-origin
+        var value = Value;
+        if (value.AsSpan().IndexOfAny('\t', '\n', '\r') >= 0)
+            return false;
+        if (value[0] != '/')
+            return false;
+
+        return value.Length == 1 || value[1] is not ('/' or '\\');
+    }
+
+    public LocalUrl AssertLocal()
+        => Value[0] == '/'
+            ? this
+            : throw StandardError.Constraint($"'{Value}' is not a local URL.");
+
+    public LocalUrl AssertTrulyLocal()
+        => IsTrulyLocal()
+            ? this
+            : throw StandardError.Constraint($"'{Value}' is not a truly local URL.");
 
     public string ToAbsolute(UrlMapper urlMapper)
         => urlMapper.ToAbsolute(this);
