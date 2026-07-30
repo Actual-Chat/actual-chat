@@ -57,7 +57,7 @@ public static class MauiSettings
 #else
         AppKind = AppKind.Unknown;
 #endif
-        AppUserAgent = $"{AppKind:G}App/{ApiConstants.FullVersionString}";
+        AppUserAgent = AppKind.ToUserAgent(ApiConstants.FullVersionString);
         MauiHostNameRemapper.Use();
     }
 

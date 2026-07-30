@@ -1,5 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.Geo;
+using ActualChat.Hosting;
 using ActualChat.Logging;
 using ActualChat.Notifications;
 using ActualChat.Security;
@@ -331,20 +332,17 @@ public class Accounts(IServiceProvider services) : IAccounts
 
     private static string? TryParseApp(string description)
     {
-        // Format: "{AppKind}/{version} {optional HTTP UserAgent}"
-        var slashIndex = description.IndexOf('/');
-        if (slashIndex <= 0)
+        // Format: "{AppKind}App/{version} {optional HTTP UserAgent}"
+        if (!AppKindExt.TryParseUserAgent(description, out var appKind))
             return null;
 
-        var prefix = description[..slashIndex];
-        return prefix switch {
-            "AndroidApp" => "Android App",
-            "IosApp" => "iOS App",
-            "WindowsApp" => "Windows App",
-            "MacOSApp" => "macOS App",
-            "WasmApp" => "Web App",
-            "UnknownApp" => "App",
-            _ => null,
+        return appKind switch {
+            AppKind.Android => "Android App",
+            AppKind.Ios => "iOS App",
+            AppKind.Windows => "Windows App",
+            AppKind.MacOS => "macOS App",
+            AppKind.Wasm => "Web App",
+            _ => "App",
         };
     }
 }

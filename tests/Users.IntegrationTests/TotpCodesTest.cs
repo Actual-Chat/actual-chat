@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Resilience;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Module;
@@ -243,6 +244,26 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert
         isProofRequired.Should().BeTrue();
         await send.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task AcceptsRequestWithoutProofFromNativeApp()
+    {
+        // arrange
+        var tester = AppHost.NewWebClientTester(Out);
+        await using var _ = tester.ConfigureAwait(false);
+        await tester.Commander.Call(new SessionsBackend_Upsert(tester.Session) {
+            Description = AppKind.Ios.ToUserAgent("1.0"),
+        });
+        var command = new PhoneAuth_SendTotp(tester.Session, NewPhone(), TotpPurpose.SignInPhone);
+
+        // act
+        var isProofRequired = CaptchaProofs.IsProofRequired;
+        Func<Task> send = () => tester.Commander.Call(command);
+
+        // assert
+        isProofRequired.Should().BeTrue();
+        await send.Should().NotThrowAsync();
     }
 
     [Fact]

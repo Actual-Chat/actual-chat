@@ -4,7 +4,8 @@ namespace ActualChat.Users;
 
 /// <summary>
 /// Verifies the action-bound captcha proof carried by TOTP send commands.
-/// A missing proof is only rejected where <see cref="IsProofRequired"/> holds.
+/// A missing proof is rejected only where <see cref="IsProofRequired"/> holds
+/// and the session isn't a native app one - such apps have no captcha.
 /// </summary>
 public sealed class CaptchaProofValidator(IServiceProvider services)
 {
@@ -13,6 +14,7 @@ public sealed class CaptchaProofValidator(IServiceProvider services)
 
     private HostInfo HostInfo { get; } = services.HostInfo();
     private ICaptcha Captcha => field ??= services.GetRequiredService<ICaptcha>();
+    private ISessionsBackend SessionsBackend => field ??= services.GetRequiredService<ISessionsBackend>();
     private ILogger Log { get; } = services.LogFor<CaptchaProofValidator>();
 
     // TODO(AY): Require it on production too - it's off there while clients released before
@@ -20,6 +22,7 @@ public sealed class CaptchaProofValidator(IServiceProvider services)
     public bool IsProofRequired => HostInfo.BaseUrlKind != BaseUrlKind.Production;
 
     public async Task Require(
+        Session session,
         string? token,
         string? action,
         TotpPurpose purpose,
@@ -27,7 +30,7 @@ public sealed class CaptchaProofValidator(IServiceProvider services)
     {
         var expectedAction = Constants.Recaptcha.Actions.ForPurpose(purpose);
         if (token.IsNullOrEmpty()) {
-            if (IsProofRequired)
+            if (IsProofRequired && !await IsNativeAppSession(session, cancellationToken).ConfigureAwait(false))
                 throw StandardError.Constraint(MissingProofMessage);
 
             return;
@@ -46,5 +49,16 @@ public sealed class CaptchaProofValidator(IServiceProvider services)
         Log.LogWarning("Captcha proof for '{ExpectedAction}' isn't valid: {Error}",
             expectedAction, result.ErrorMessage);
         throw StandardError.Constraint(InvalidProofMessage);
+    }
+
+    // Private methods
+
+    private async Task<bool> IsNativeAppSession(Session session, CancellationToken cancellationToken)
+    {
+        // Native apps host their UI in a WebView w/o reCAPTCHA, so they can never mint a proof;
+        // their sessions are the ones created via IMobileSessions, i.e. carrying an app user agent.
+        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        return AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind)
+            && appKind != AppKind.Wasm;
     }
 }

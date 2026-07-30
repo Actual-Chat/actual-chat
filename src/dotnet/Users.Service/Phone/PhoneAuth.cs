@@ -105,7 +105,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
             return NextSendAt(); // no need to send predefined totp
 
         await CaptchaProofs
-            .Require(captchaToken, captchaAction, purpose, cancellationToken)
+            .Require(session, captchaToken, captchaAction, purpose, cancellationToken)
             .ConfigureAwait(false);
 
         // Throttle the send rate: limit by phone and by session

@@ -79,7 +79,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return NextSendAt();
 
         await CaptchaProofs
-            .Require(command.CaptchaToken, command.CaptchaAction, purpose, cancellationToken)
+            .Require(session, command.CaptchaToken, command.CaptchaAction, purpose, cancellationToken)
             .ConfigureAwait(false);
 
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
