@@ -89,8 +89,6 @@
     <PackageReference Include="Sentry.OpenTelemetry" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
-    <PackageReference Include="sqlite-net-sqlcipher" />
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" />
   </ItemGroup>
 
   <!-- Platform-specific package references -->

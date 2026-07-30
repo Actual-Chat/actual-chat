@@ -3,7 +3,7 @@ namespace ActualChat.Maui.Services;
 /// <summary>
 /// Static background state shared across the Maui layer.
 /// Set by platform-specific code (AppDelegate on iOS, lifecycle events on Android/Windows).
-/// Consumed by <see cref="SQLiteBatchingKvasBackend"/> to suspend/resume when backgrounded.
+/// Consumed by <see cref="KvasarStoreSupport"/> to suspend/resume the Kvasar stores.
 /// </summary>
 public static class MauiBackgroundState
 {

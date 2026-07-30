@@ -45,8 +45,6 @@
     <PackageVersion Include="Plugin.Firebase.Analytics" Version="4.0.0" />
     <PackageVersion Include="Plugin.Firebase.Crashlytics" Version="4.0.0" />
     <PackageVersion Include="Plugin.Maui.Audio" Version="4.0.0" />
-    <PackageVersion Include="sqlite-net-sqlcipher" Version="1.9.172" />
-    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.11" />
     <!-- Android -->
     <PackageVersion Include="Mono.Profiler.Android" Version="7.0.0" />
     <PackageVersion Include="Mono.AotProfiler.Android" Version="9.0.0-preview1" />
@@ -114,6 +112,7 @@
     <PackageVersion Include="ActualLab.Fusion.EntityFramework.Redis" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Fusion.Server" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Interception" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Kvasar" Version="0.3.6" />
     <PackageVersion Include="ActualLab.Redis" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.RestEase" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />

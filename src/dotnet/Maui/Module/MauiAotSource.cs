@@ -1,5 +1,6 @@
 using ActualChat.Aot;
-using ActualChat.Maui.Services;
+using ActualChat.Kvas;
+using ActualChat.UI.Caching;
 
 namespace ActualChat.Maui.Module;
 
@@ -10,9 +11,8 @@ internal class MauiAotSource : IAotSource
         if (CodeKeeper.AlwaysTrue)
             return;
 
-        CodeKeeper.Keep<SQLiteRemoteComputedCache>();
-        CodeKeeper.Keep<SQLiteBatchingKvasBackend>();
-        CodeKeeper.Keep("ActualChat.Maui.Services.SQLiteBatchingKvasBackend+DbHelpers, ActualChat.Maui");
+        CodeKeeper.Keep<KvasarRemoteComputedCache>();
+        CodeKeeper.Keep<KvasarKvas>();
     }
 
     public (Type, AotTypeKind)[] ListTypes() => [];

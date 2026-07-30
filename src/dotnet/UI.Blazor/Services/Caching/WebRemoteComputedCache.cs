@@ -1,3 +1,4 @@
+using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.UI.Caching;
 
@@ -8,7 +9,10 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public sealed class WebRemoteComputedCache : AppRemoteComputedCache
 {
-    public new record Options : AppRemoteComputedCache.Options;
+    public new record Options : AppRemoteComputedCache.Options
+    {
+        public BatchingKvas.Options Batching { get; init; } = new();
+    }
 
     public new Options Settings { get; }
 
@@ -16,7 +20,8 @@ public sealed class WebRemoteComputedCache : AppRemoteComputedCache
         : base(settings, services)
     {
         Settings = settings;
-        Backend = new WebKvasBackend($"{BlazorUICoreModule.ImportName}.remoteComputedCache", services);
-        _ = Reader.Start();
+        Store = new BatchingKvas(settings.Batching, services) {
+            Backend = new WebKvasBackend($"{BlazorUICoreModule.ImportName}.remoteComputedCache", services),
+        }.Start();
     }
 }

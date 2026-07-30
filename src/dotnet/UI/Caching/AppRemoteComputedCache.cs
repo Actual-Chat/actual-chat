@@ -9,38 +9,48 @@ using ActualLab.Rpc.Serialization;
 namespace ActualChat.UI.Caching;
 
 /// <summary>
-/// Abstract base for client-side caching of remote computed values with batched persistence.
+/// Abstract base for client-side caching of remote computed values.
+/// Descendants provide the byte-level storage via <see cref="Store"/>.
 /// </summary>
-public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCache
+public abstract class AppRemoteComputedCache : SafeAsyncDisposableBase, IRemoteComputedCache
 {
-    public new record Options : BatchingKvas.Options
+    public record Options
     {
         public string Version { get; init; } = ApiConstants.VersionString;
-        public ImmutableHashSet<Symbol> ForceFlushFor { get; init; } =
-            ImmutableHashSet<Symbol>.Empty.Add(RpcMethodDef.ComposeFullName(nameof(IAccounts), nameof(IAccounts.GetOwn)));
+        public ImmutableHashSet<Symbol> ForceFlushFor { get; init; } = ImmutableHashSet<Symbol>.Empty
+            .Add(RpcMethodDef.ComposeFullName(nameof(IAccounts), nameof(IAccounts.GetOwn)));
     }
 
-    protected new Options Settings { get; }
+    protected Options Settings { get; }
     protected HashSet<Symbol> ForceFlushFor { get; }
     protected RpcHub Hub { get; }
     protected RpcArgumentSerializer ArgumentSerializer
         => field ??= Hub.SerializationFormats.DefaultFormat.ArgumentSerializer;
     protected RpcMethodResolver AnyMethodResolver
         => field ??= Hub.ServiceRegistry.AnyMethodResolver;
+    protected ILogger Log => field ??= Services.LogFor(GetType());
     protected ILogger? DebugLog
         => Constants.DebugMode.RemoteComputedCache ? Log.IfEnabled(LogLevel.Debug) : null;
 
+    public IServiceProvider Services { get; }
+    public IKvasStore Store { get; protected init; } = null!; // Must be set by descendant!
     public Task WhenInitialized { get; protected set; } = Task.CompletedTask;
 
     protected AppRemoteComputedCache(Options settings, IServiceProvider services)
-        : base(settings, services)
     {
         Settings = settings;
+        Services = services;
         Hub = services.RpcHub();
         ForceFlushFor = [..Settings.ForceFlushFor]; // Read-only copy
     }
 
-    public async ValueTask<RpcCacheEntry?> Get(ComputeMethodInput input, RpcCacheKey key, CancellationToken cancellationToken)
+    protected override Task DisposeAsync(bool disposing)
+        => Store is IAsyncDisposable disposable
+            ? disposable.DisposeAsync().AsTask()
+            : Task.CompletedTask;
+
+    public async ValueTask<RpcCacheEntry?> Get(
+        ComputeMethodInput input, RpcCacheKey key, CancellationToken cancellationToken)
     {
         var methodDef = AnyMethodResolver[key.Name];
         if (methodDef == null)
@@ -67,7 +77,7 @@ public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCach
         if (!WhenInitialized.IsCompleted)
             return null;
 
-        var bytes = await Get(key.ToString(), cancellationToken).ConfigureAwait(false);
+        var bytes = await Store.Get(key.ToString(), cancellationToken).ConfigureAwait(false);
         var cacheValue = FromBytes(bytes);
         DebugLog?.LogDebug("Get({Key}) -> {Result}", key, cacheValue is null ? "miss" : "hit");
         return cacheValue;
@@ -79,9 +89,9 @@ public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCach
             return;
 
         DebugLog?.LogDebug("Set({Key})", key);
-        _ = Set(key.ToString(), ToBytes(value));
+        _ = Store.Set(key.ToString(), ToBytes(value));
         if (ForceFlushFor.Contains(key.Name))
-            _ = Flush();
+            _ = Store.Flush();
     }
 
     public void Remove(RpcCacheKey key)
@@ -90,18 +100,18 @@ public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCach
             return;
 
         DebugLog?.LogDebug("Remove({Key})", key);
-        _ = Set(key.ToString(), null);
+        _ = Store.Set(key.ToString(), null);
         if (ForceFlushFor.Contains(key.Name))
-            _ = Flush();
+            _ = Store.Flush();
     }
 
-    public override Task Clear(CancellationToken cancellationToken = default)
+    public Task Clear(CancellationToken cancellationToken = default)
     {
         if (!WhenInitialized.IsCompleted)
             return Task.CompletedTask;
 
         DebugLog?.LogDebug("Clear()");
-        return base.Clear(cancellationToken);
+        return Store.Clear(cancellationToken);
     }
 
     // Protected methods

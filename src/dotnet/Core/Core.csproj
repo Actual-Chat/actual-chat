@@ -22,6 +22,7 @@
   <ItemGroup>
     <PackageReference Include="ActualLab.Core" />
     <PackageReference Include="ActualLab.Interception" />
+    <PackageReference Include="ActualLab.Kvasar" />
     <PackageReference Include="ActualLab.Rpc" />
     <PackageReference Include="ActualLab.CommandR" />
     <PackageReference Include="ActualLab.Fusion" />
