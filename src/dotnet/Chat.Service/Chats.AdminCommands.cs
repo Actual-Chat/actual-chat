@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Text;
 
@@ -10,8 +9,8 @@ public partial class Chats
     [GeneratedRegex(@"^/lorem-ipsum\s+(\d+)(?:\s+(\d+)\.\.(\d+))?$")]
     private static partial Regex LoremIpsumCommandRegex();
 
-    [GeneratedRegex(@"^/bot-army(?:\s+(\d+))?$")]
-    private static partial Regex BotArmyCommandRegex();
+    [GeneratedRegex(@"^/(?:test-users|bot-army)(?:\s+(\d+))?(?:\s+(\d+))?(?:\s+(\d+))?$")]
+    private static partial Regex TestUsersCommandRegex();
 
     [GeneratedRegex(@"^/pause\s+(\d+)$")]
     private static partial Regex PauseCommandRegex();
@@ -34,9 +33,10 @@ public partial class Chats
         if (match.Success)
             return await HandleLoremIpsum(chatId, author, match, cancellationToken).ConfigureAwait(false);
 
-        match = BotArmyCommandRegex().Match(text);
+        match = TestUsersCommandRegex().Match(text);
         if (match.Success)
-            return await HandleBotArmy(session, chatId, author, account, match, cancellationToken).ConfigureAwait(false);
+            return await HandleTestUsers(session, chatId, author, account, match, cancellationToken)
+                .ConfigureAwait(false);
 
         match = PauseCommandRegex().Match(text);
         if (match.Success)
@@ -109,33 +109,18 @@ public partial class Chats
         return await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<ChatEntry> HandleBotArmy(
-        Session session, ChatId chatId, Author author, AccountFull account, Match match,
-        CancellationToken cancellationToken)
+    private async Task<ChatEntry> HandleTestUsers(
+        Session session, ChatId chatId, Author author,
+        AccountFull account, Match match, CancellationToken cancellationToken)
     {
-        var count = match.Groups[1].Success
-            ? int.Parse(match.Groups[1].Value)
-            : 100;
-        count = Math.Clamp(count, 1, 500);
+        var userCount = ParseArgument(match, 1, 300, 1, 2000);
+        var placeCount = ParseArgument(match, 2, 3, 0, 10);
+        var placeSharePercent = ParseArgument(match, 3, 10, 1, 100);
 
-        var accountsBackend = services.GetRequiredService<IAccountsBackend>();
-        var myId = account.Id;
+        var generator = new TestDataGenerator(services);
+        var options = new TestDataGenerator.Options(userCount, placeCount, placeSharePercent);
+        var message = await generator.Generate(session, account, options, cancellationToken).ConfigureAwait(false);
 
-        var startIndex = 0;
-        while (await accountsBackend.Get(UserId.Parse($"testbot{startIndex}"), cancellationToken).ConfigureAwait(false) != null)
-            startIndex++;
-
-        for (var i = 0; i < count; i++) {
-            var userId = UserId.Parse($"testbot{startIndex + i}");
-            await CreateTestBot(session, userId, cancellationToken).ConfigureAwait(false);
-
-            var contactId = ContactId.NewUser(myId, userId);
-            var contact = new Contact(contactId) { State = ContactState.Regular };
-            var createCmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
-            await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
-        }
-
-        var message = $"Bot army: created {count} bots (testbot{startIndex}..testbot{startIndex + count - 1}), {count} new contacts";
         var chatEntryId = ChatEntryId.New(chatId, 0);
         var upsertCommand = new ChatsBackend_ChangeEntry(
             chatEntryId,
@@ -147,47 +132,12 @@ public partial class Chats
         return await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task CreateTestBot(Session callerSession, UserId userId, CancellationToken cancellationToken)
+    private static int ParseArgument(
+        Match match, int groupIndex,
+        int defaultValue, int min, int max)
     {
-        var accountsBackend = services.GetRequiredService<IAccountsBackend>();
-
-        // Create & sign in the account
-        var botSession = Session.New();
-        var userIdentity = new UserIdentity(UserIdentity.InternalSchema, userId.Value);
-        var signInCommand = new AccountsBackend_SignIn(
-            botSession, userIdentity, new ApiMap<UserIdentity, string>(), new ApiMap<string, string>(),
-            AutoCreate: true);
-        await Commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
-
-        // Fetch & activate
-        var botAccount = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        botAccount.Require();
-        if (botAccount.Status != AccountStatus.Active) {
-            botAccount = botAccount with { Status = AccountStatus.Active };
-            var updateCommand = new AccountsBackend_Update(botAccount, botAccount.Version);
-            await Commander.Call(updateCommand, cancellationToken).ConfigureAwait(false);
-            botAccount = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        }
-        botAccount.Require(AccountFull.MustBeActive);
-
-        // Create avatar
-        var name = $"Robo {RandomNameGenerator.Default.Generate()}";
-        var seed = userId.Value.GetHashCode();
-        var pictureUrl = $"https://api.dicebear.com/7.x/bottts/svg?seed={seed}";
-        var changeAvatarCommand = new Avatars_Change(callerSession, Symbol.Empty, null,
-            Change.Create(new AvatarDiff {
-                Name = name,
-                Bio = $"I'm just a {name} test bot",
-                PictureUrl = pictureUrl,
-            }));
-        var avatar = await Commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
-
-        // Set default avatar
-        var userKvas = ServerKvasBackend.ForUser(botAccount);
-        var userAvatarSettings = new UserAvatarSettings() {
-            DefaultAvatarId = avatar.Id,
-            AvatarIds = [avatar.Id],
-        };
-        await userKvas.UserAvatarSettings().Set(userAvatarSettings, cancellationToken).ConfigureAwait(false);
+        var group = match.Groups[groupIndex];
+        var value = group.Success ? int.Parse(group.Value) : defaultValue;
+        return Math.Clamp(value, min, max);
     }
 }

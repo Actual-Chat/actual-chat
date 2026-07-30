@@ -1,7 +1,5 @@
-using System.Security.Claims;
 using ActualChat.Db;
 using ActualChat.Users.Db;
-using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.Users.Module;
 
@@ -128,83 +126,8 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         return await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<AccountFull> AddInternalAccount(InternalUserInfo userInfo, CancellationToken cancellationToken)
-    {
-        var userId = userInfo.Id;
-        var userName = userInfo.UserNameOrDefault;
-        var commander = Services.Commander();
-        var accountsBackend = Services.GetRequiredService<IAccountsBackend>();
-
-        var isAdmin = userId == Constants.User.Admin.UserId;
-        var userIdentity = new UserIdentity(UserIdentity.InternalSchema, userId.Value);
-
-        // Create & sign in the account
-        var session = Session.New();
-        var identities = new ApiMap<UserIdentity, string>();
-        var claims = new ApiMap<string, string>();
-
-        if (!userInfo.FirstName.IsNullOrEmpty())
-            claims = claims.With(ClaimTypes.GivenName, userInfo.FirstName);
-        if (!userInfo.LastName.IsNullOrEmpty())
-            claims = claims.With(ClaimTypes.Surname, userInfo.LastName);
-        if (!userInfo.Phone.IsNullOrEmpty()) {
-            var phone = ActualChat.Phone.Parse(userInfo.Phone);
-            identities = identities.WithPhoneIdentity(phone);
-            claims = claims.With(ClaimTypes.MobilePhone, phone.Value);
-        }
-        if (!userInfo.Email.IsNullOrEmpty())
-            claims = claims.With(ClaimTypes.Email, userInfo.Email);
-
-        var signInCommand = new AccountsBackend_SignIn(session, userIdentity, identities, claims, AutoCreate: true);
-        await commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
-
-        // Fetch its account
-        var account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        account.Require();
-        if (account.Status != AccountStatus.Active) {
-            account = account with { Status = AccountStatus.Active };
-            var updateCommand = new AccountsBackend_Update(account, account.Version);
-            await commander.Call(updateCommand, cancellationToken).ConfigureAwait(false);
-            account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        }
-        account.Require(isAdmin ? AccountFull.MustBeAdmin : AccountFull.MustBeActive);
-
-        // Create avatar
-        var avatarBio = userInfo.AvatarBio.NullIfEmpty() ?? $"I'm just a {userName} test bot";
-        var avatarMediaId = userInfo.AvatarMediaId;
-        string avatarPictureUrl = "";
-        if (avatarMediaId == null)
-            avatarPictureUrl = userInfo.AvatarPictureUrl.NullIfEmpty() ??
-                $"https://api.dicebear.com/7.x/bottts/svg?seed={userId.Value.GetDjb2HashCode()}";
-
-        var changeAvatarCommand = new Avatars_Change(session, Symbol.Empty, null,
-            Change.Create(new AvatarDiff {
-                Name = userInfo.AvatarNameOrDefault,
-                Bio = avatarBio,
-                MediaId = Option.Some(avatarMediaId),
-                PictureUrl = avatarPictureUrl,
-            }));
-        var avatar = await commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
-
-        // Set this avatar as the default one
-        var serverKvasBackend = Services.GetRequiredService<IServerKvasBackend>();
-        var userKvas = serverKvasBackend.ForUser(account);
-        var userAvatarSettings = new UserAvatarSettings() {
-            DefaultAvatarId = avatar.Id,
-            AvatarIds = [avatar.Id],
-        };
-        await userKvas.UserAvatarSettings().Set(userAvatarSettings, cancellationToken).ConfigureAwait(false);
-
-        // Fetch the final account + do some final checks
-        account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        account.Require(isAdmin ? AccountFull.MustBeAdmin : AccountFull.MustBeActive);
-        if (account.Status != AccountStatus.Active)
-            throw StandardError.Internal("Wrong account status.");
-        if (account.Avatar.Require().Id != avatar.Id)
-            throw StandardError.Internal("Wrong avatar ID.");
-
-        return account;
-    }
+    private Task<AccountFull> AddInternalAccount(InternalUserInfo userInfo, CancellationToken cancellationToken)
+        => InternalAccounts.Create(Services, userInfo, cancellationToken);
 
     private async Task EnsureSherlockPicUpdated(CancellationToken cancellationToken)
     {
@@ -233,22 +156,5 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             }));
         var commander = services.Commander();
         await commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
-    }
-
-    private sealed record InternalUserInfo(
-        UserId Id,
-        string UserName = "",
-        string FirstName = "",
-        string LastName = "",
-        string Phone = "",
-        string Email = "",
-        string AvatarName = "")
-    {
-        public string AvatarBio { get; init; } = "";
-        public MediaId? AvatarMediaId { get; init; }
-        public string AvatarPictureUrl { get; init; } = "";
-
-        public string UserNameOrDefault => !UserName.IsNullOrEmpty() ? UserName : $"{FirstName.ToLower()}_{LastName.ToLower()}";
-        public string AvatarNameOrDefault => AvatarName.NullIfEmpty() ?? $"{FirstName} {LastName}".Trim().NullIfEmpty() ?? UserNameOrDefault;
     }
 }
