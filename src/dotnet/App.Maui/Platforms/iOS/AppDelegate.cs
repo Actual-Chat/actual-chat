@@ -28,8 +28,12 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
         var result = base.FinishedLaunching(application, launchOptions);
 
         // The window is the bottom-most layer and white by default, so it shows through until WebKit paints.
-        if (Window is { } window)
+        Log.LogWarning("DIAGNOSTIC: Window={Window}, RootVC={RootVC}", Window?.ToString() ?? "<null>", Window?.RootViewController?.ToString() ?? "<null>");
+        if (Window is { } window) {
             window.BackgroundColor = UIColor.Red; // DIAGNOSTIC
+            if (window.RootViewController?.View is { } rootView)
+                rootView.BackgroundColor = UIColor.Cyan; // DIAGNOSTIC
+        }
 
         return result;
     }

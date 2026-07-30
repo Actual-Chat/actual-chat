@@ -470,7 +470,7 @@
 
     <!-- Splash Screen -->
     <MauiSplashScreen Include="Resources\Splash\splashscreen_voxt.png">
-      <Color>#0C003D</Color>
+      <Color>#FF6600</Color>
       <BaseSize>200,200</BaseSize>
     </MauiSplashScreen>
 
