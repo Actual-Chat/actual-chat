@@ -379,8 +379,10 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 }
 
 /* Mirrors virtual-list.css's .item:has(.conversation-header) rule - that one only matches the literal
-   conversation-header class, not this component's own live-conversation-header. */
-.virtual-list .c-virtual-container .item:has(.live-conversation-header) {
+   conversation-header class, not this component's own live-conversation-header. Wide screens only:
+   this header is much taller than a regular conversation header, so pinning it on a narrow screen
+   eats too much of the viewport. It scrolls away there; regular headers stay sticky everywhere. */
+body.wide .virtual-list .c-virtual-container .item:has(.live-conversation-header) {
     @apply sticky -top-px z-20;
 }
 
