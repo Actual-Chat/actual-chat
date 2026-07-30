@@ -2,8 +2,10 @@ using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Maui.Services;
 using ActualChat.UI.App.Services;
+using ActualChat.UI.Caching;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.IO;
+using ActualLab.Kvasar;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Maui.Storage;
 
@@ -14,30 +16,35 @@ public class MauiModule(IServiceProvider moduleServices)
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        // RemoteComputedCache
         var appCacheDir = new FilePath(FileSystem.CacheDirectory);
-        services.AddSingleton(_ => new SQLiteRemoteComputedCache.Options() {
-            DbPath = appCacheDir & "CCC.db3",
-            Key = MauiPreferences.DbEncryptionKey,
+        var appDataDir = new FilePath(FileSystem.AppDataDirectory);
+        KvasarStoreSupport.DeleteLegacyDbFiles(ModuleServices,
+            appCacheDir & "CCC.db3",
+            appDataDir & "LocalSettings.db3");
+
+        // RemoteComputedCache
+        services.AddSingleton(_ => new KvasarRemoteComputedCache.Options() {
+            BasePath = appCacheDir & "CCC",
+            EncryptionKey = MauiPreferences.DbEncryptionKey,
         });
         services.AddSingleton<IRemoteComputedCache>(c => {
-            var options = c.GetRequiredService<SQLiteRemoteComputedCache.Options>();
-            var cache = new SQLiteRemoteComputedCache(options, c);
+            var options = c.GetRequiredService<KvasarRemoteComputedCache.Options>();
+            var cache = new KvasarRemoteComputedCache(options, c);
+            cache.Kvas.WithSuspendHandler(c);
             return cache;
         });
 
         // LocalSettings backend override
-        var appDataDir = new FilePath(FileSystem.AppDataDirectory);
-        services.AddSingleton(c => {
-            var dbPath = appDataDir & "LocalSettings.db3";
-            var backend = new SQLiteBatchingKvasBackend(dbPath, "1.0", c, MauiPreferences.DbEncryptionKey);
-            return new LocalSettings.Options() {
-                BackendFactory = _ => backend,
-                ReaderWorkerPolicy = new BatchProcessorWorkerPolicy() {
-                    MinWorkerCount = 2,
-                    MaxWorkerCount = HardwareInfo.ProcessorCount.Clamp(2, 16),
-                },
-            };
+        services.AddSingleton(_ => new LocalSettings.Options() {
+            StoreFactory = c => new KvasarKvas(new KvasarKvas.Options() {
+                BasePath = appDataDir & "LocalSettings",
+                EncryptionKey = MauiPreferences.DbEncryptionKey,
+                Version = "1.0",
+                PageSize = 4 * 1024,
+                PageCacheBytes = 1024 * 1024,
+                // Unlike the computed cache, settings aren't regenerable - don't lose them on power loss.
+                Durability = KvasarDurability.Flushed,
+            }, c).WithSuspendHandler(c),
         });
         // Make LocalSettings singleton
         services.Replace(ServiceDescriptor.Singleton(c

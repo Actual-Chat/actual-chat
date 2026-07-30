@@ -40,7 +40,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 
 ### Key-Value Store (Kvas)
 - `IKvas` — key-value store interface
+- `IKvasStore` — an `IKvas` that owns its storage (list/flush/clear)
 - `BatchingKvas` — batching KVAS with delayed persistence
+- `KvasarKvas` — encrypted file-based KVAS store on `ActualLab.Kvasar` (MAUI)
 - `LocalSettings` — local settings storage via KVAS
 - `StoredState<T>` — state backed by KVAS
 
@@ -239,6 +241,7 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `UICoreModule` — UI core module
 - `ChunkedFileUploader` — resumable file uploads with retry
 - `AppRemoteComputedCache` — client-side computed value cache
+- `KvasarRemoteComputedCache` — Kvasar-backed remote computed cache (MAUI)
 
 
 ## Blazor UI (`ActualChat.UI.Blazor`)
@@ -358,7 +361,7 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 ## MAUI Shared (`ActualChat.Maui`)
 
 - `MauiModule`, `MauiSettings`, `MauiPreferences`, `MauiDiagnostics`, `MauiHostNameRemapper`, `MauiBackgroundState`
-- `SQLiteBatchingKvasBackend`, `SQLiteRemoteComputedCache` — SQLite-backed KVAS/cache
+- `KvasarStoreSupport` — Kvasar store suspend handling + legacy SQLite cleanup
 - Platform-specific extensions for Android (`Android*`) and iOS (`Ios*`, `OSLog*`, `*Ext` for AVFoundation/UIKit)
 
 

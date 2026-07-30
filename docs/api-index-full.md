@@ -74,6 +74,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `BatchingKvas` - Batching KVAS with delayed persistence.
 - `IBatchingKvasBackend` - Backend for batching KVAS.
 - `IKvas` - Key-value store interface.
+- `IKvasStore` - An IKvas that owns its storage, so it can be listed, flushed and cleared.
+- `KvasarKvas` - Encrypted file-based KVAS store built on ActualLab.Kvasar.
 - `IServerKvas` - Server-side KVAS interface.
 - `LocalSettings` - Local settings storage via KVAS.
 - `PrefixedKvas` - KVAS with key prefix.
@@ -964,6 +966,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 ## ActualChat.UI
 
 - `AppRemoteComputedCache` (abstract class) - Client-side computed value cache.
+- `KvasarRemoteComputedCache` - Kvasar-backed remote computed cache used by the MAUI app.
 - `ChunkedFileUploader` - Resumable file uploads with retry.
 - `SystemSettingsUI` - System settings UI.
 - `UICoreModule` - UI core module.
@@ -1132,8 +1135,7 @@ Cross-MAUI-app shared utilities (used by App.Maui and IosShareExt).
 - `WebAuth` - Web authentication settings for MAUI.
 - `IconUI` - Icon UI management.
 - `IconQueryExt` (static class) - Icon query extensions.
-- `SQLiteBatchingKvasBackend` - SQLite-based batching KVAS backend.
-- `SQLiteRemoteComputedCache` - SQLite-based remote computed cache.
+- `KvasarStoreSupport` (static class) - Kvasar store suspend handling and legacy SQLite cleanup.
 - `AndroidIncomingShareSuggestions` - Android incoming share suggestions.
 - `AndroidTaggedLogSink` - Android-specific Serilog sink with tags.
 - `AndroidFirebaseCrashlyticsSink` - Firebase Crashlytics Serilog sink.

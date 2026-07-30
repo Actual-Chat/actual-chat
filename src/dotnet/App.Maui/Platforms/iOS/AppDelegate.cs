@@ -45,7 +45,7 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
 
     public override void DidEnterBackground(UIApplication application)
     {
-        // Hold the assertion until suspend handlers (incl. SQLite WAL checkpoint) finish;
+        // Hold the assertion until suspend handlers (incl. closing the Kvasar stores) finish;
         // otherwise iOS suspends us with file locks held -> 0xdead10cc.
         using (application.BeginBackgroundTaskScope("ActualChat.Suspend"))
             SetBackgroundState(true);

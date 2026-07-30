@@ -4,7 +4,7 @@ public static class UIApplicationExt
 {
     extension(UIApplication application)
     {
-        // Hold around suspend-critical work (e.g. SQLite WAL checkpoint) to avoid 0xdead10cc.
+        // Hold around suspend-critical work (e.g. closing the Kvasar stores) to avoid 0xdead10cc.
         public IDisposable BeginBackgroundTaskScope(string taskName)
             => new BackgroundTaskScope(application, taskName);
     }

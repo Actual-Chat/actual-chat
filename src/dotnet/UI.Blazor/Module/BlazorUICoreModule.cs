@@ -59,7 +59,9 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // Settings
         services.AddScoped(c => new LocalStorage(c.JSRuntime()));
         services.AddSingleton(_ => new LocalSettings.Options() {
-            BackendFactory = c => new WebKvasBackend($"{ImportName}.localSettings", c),
+            StoreFactory = c => new BatchingKvas(new BatchingKvas.Options(), c) {
+                Backend = new WebKvasBackend($"{ImportName}.localSettings", c),
+            }.Start(),
         });
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
         services.AddScoped(c => new UserSettingsUI(c, c.Session()));

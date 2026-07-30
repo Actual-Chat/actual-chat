@@ -5,7 +5,7 @@ namespace ActualChat.Kvas;
 /// <summary>
 /// Key-value store with batched read/write operations and caching.
 /// </summary>
-public class BatchingKvas : SafeAsyncDisposableBase, IKvas
+public class BatchingKvas : SafeAsyncDisposableBase, IKvasStore
 {
     public record Options
     {
@@ -57,6 +57,12 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
     {
         await Writer.DisposeAsync().ConfigureAwait(false);
         await Reader.DisposeAsync().ConfigureAwait(false);
+    }
+
+    public BatchingKvas Start()
+    {
+        _ = Reader.Start();
+        return this;
     }
 
     public async ValueTask<(string Key, byte[] Value)[]> ListAllEntries(CancellationToken cancellationToken = default)

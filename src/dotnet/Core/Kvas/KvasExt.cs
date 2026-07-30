@@ -104,10 +104,10 @@ public static class KvasExt
         return new PrefixedKvas(kvas, prefix);
     }
 
-    // BatchingKvas
+    // IKvasStore
     public static async ValueTask<(string, T)[]> ListAllEntries<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-        (this BatchingKvas kvas, CancellationToken cancellationToken = default)
+        (this IKvasStore kvas, CancellationToken cancellationToken = default)
         where T : class?
     {
         var data = await kvas.ListAllEntries(cancellationToken).ConfigureAwait(false);
