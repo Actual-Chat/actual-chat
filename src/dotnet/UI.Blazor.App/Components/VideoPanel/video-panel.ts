@@ -131,6 +131,7 @@ export class VideoPanel {
     private addCompactReason = (reason: string): void => {
         if (this.compactReasons.has(reason))
             return;
+
         this.compactReasons.add(reason);
         this.syncForcedCollapseToBlazor();
     }
@@ -138,6 +139,7 @@ export class VideoPanel {
     private removeCompactReason = (reason: string): void => {
         if (!this.compactReasons.has(reason))
             return;
+
         this.compactReasons.delete(reason);
         this.syncForcedCollapseToBlazor();
     }
@@ -158,9 +160,11 @@ export class VideoPanel {
         const observer = new MutationObserver(() => {
             if (this.videoPanel.parentElement !== document.body)
                 return;
+
             const cl = this.videoPanel.classList;
             if (cl.contains('expanded') || cl.contains('collapsed') || cl.contains('panel-hidden'))
                 return;
+
             this.teardownIsland();
             this.teardownHidden();
             this.panelMode = 'inline';
@@ -231,13 +235,17 @@ export class VideoPanel {
         const video = container.querySelector<HTMLVideoElement>('video.remote-video');
         if (video && video.style.display !== 'none' && video.videoWidth > 0 && video.videoHeight > 0)
             return { width: video.videoWidth, height: video.videoHeight };
+
         const canvas = container.querySelector<HTMLCanvasElement>('canvas.remote-video');
         if (canvas && canvas.width > 0 && canvas.height > 0)
             return { width: canvas.width, height: canvas.height };
+
         return null;
     }
 
-    private getContentRect(container: HTMLElement): { offsetX: number; offsetY: number; width: number; height: number } {
+    private getContentRect(
+        container: HTMLElement,
+    ): { offsetX: number; offsetY: number; width: number; height: number } {
         const rect = container.getBoundingClientRect();
         const dims = this.getSourceDims(container);
         if (!dims)
