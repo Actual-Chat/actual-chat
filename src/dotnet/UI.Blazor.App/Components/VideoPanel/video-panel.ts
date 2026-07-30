@@ -1,19 +1,7 @@
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { CompactLayout } from 'compact-layout';
-
-// Inline drag constants
-const INLINE_FULL_HEIGHT_REM = 12; // body.narrow min-h-48 max-h-48
-
-
-function getRemSize(): number {
-    return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-}
-
-function vibrate(): void {
-    if ('vibrate' in navigator)
-        navigator.vibrate(10);
-}
+import { attachInlineDrag, InlineDragSource } from '../VisualActivityPanel/inline-drag';
 
 const MIN_SCALE = 1;
 const MAX_SCALE_MOBILE = 4;
@@ -98,7 +86,6 @@ export class VideoPanel {
         }, 1000);
 
         this.initGestures();
-        this.setupDragHandle();
         this.initInlineDrag();
         this.setupHomeGuard();
 
@@ -202,70 +189,12 @@ export class VideoPanel {
         return this.videoPanel.classList.contains('minimized');
     }
 
-    private handleObserver: MutationObserver | null = null;
-    private handleResizeObserver: ResizeObserver | null = null;
-    private handleResizeUnsubscribe: (() => void) | null = null;
-
+    // The handle is owned by VisualActivityPanel (a sibling of the video panel),
+    // so it survives this panel's unmount — e.g. for a still-visible map.
     private setDragHandleVisible(visible: boolean): void {
         const handle = document.querySelector<HTMLElement>('.c-drag-handle');
         if (handle)
             handle.style.display = visible ? '' : 'none';
-    }
-
-    // Move drag handle to document.body and position it via `style.top` below
-    // layout-subheader (or layout-header). Reparenting to body escapes any
-    // ancestor that creates a containing block (filter/transform/opacity), the
-    // same constraint setupIsland() handles for the panel itself.
-    //
-    // The previous implementation used a MutationObserver whose callback called
-    // Element.after(), which mutated the observed subtree and produced a
-    // feedback cascade under heavy SignalR DOM-diff traffic — the cause of the
-    // main-thread BusyHang. Here the callback only writes `style.top` on a node
-    // that lives outside the observed subtree, so no MutationRecord is enqueued
-    // by it and the cascade is structurally impossible.
-    private setupDragHandle(): void {
-        const handle = this.videoPanel.querySelector<HTMLElement>('.c-drag-handle');
-        if (!handle) return;
-
-        document.body.appendChild(handle);
-
-        const updateTop = () => {
-            const subheader = document.querySelector<HTMLElement>('.layout-subheader');
-            const header = document.querySelector<HTMLElement>('.layout-header');
-            const ref = (subheader && subheader.getBoundingClientRect().height > 0) ? subheader : header;
-            if (!ref) return;
-            handle.style.top = `${ref.getBoundingClientRect().bottom}px`;
-        };
-
-        updateTop();
-
-        this.handleResizeObserver = new ResizeObserver(updateTop);
-        const subheader = document.querySelector('.layout-subheader');
-        const header = document.querySelector('.layout-header');
-        if (subheader) this.handleResizeObserver.observe(subheader);
-        if (header) this.handleResizeObserver.observe(header);
-
-        // Catches subheader appearing/disappearing. Callback only writes
-        // style.top — no DOM mutation in observed subtree → no cascade.
-        const layoutParent = header?.parentElement;
-        if (layoutParent) {
-            this.handleObserver = new MutationObserver(updateTop);
-            this.handleObserver.observe(layoutParent, { childList: true });
-        }
-
-        const onResize = () => updateTop();
-        window.addEventListener('resize', onResize);
-        this.handleResizeUnsubscribe = () => window.removeEventListener('resize', onResize);
-    }
-
-    private returnDragHandle(): void {
-        this.handleObserver?.disconnect();
-        this.handleObserver = null;
-        this.handleResizeObserver?.disconnect();
-        this.handleResizeObserver = null;
-        this.handleResizeUnsubscribe?.();
-        this.handleResizeUnsubscribe = null;
-        document.querySelector('.c-drag-handle')?.remove();
     }
 
     private get maxScale(): number {
@@ -985,177 +914,33 @@ export class VideoPanel {
     // region: Inline drag — swipe up to minimize, swipe down to restore
 
     private initInlineDrag(): void {
-        const FADE_START_REM = 3; // c-container starts fading below this height
-
-        let startX = 0;
-        let startY = 0;
-        let startHeight = 0;
-        let dragActive = false;
-        let dragStarted = false;
-        let rejected = false;
-        let container: HTMLElement | null = null;
-
-        const applyVisuals = (height: number, rem: number) => {
-            if (!container) return;
-            const fullHeight = INLINE_FULL_HEIGHT_REM * rem;
-            const progress = height / fullHeight; // 1=full, 0=collapsed
-
-            // Blur increases as panel shrinks
-            const blur = (1 - progress) * 16;
-            container.style.filter = blur > 0.5 ? `blur(${blur}px)` : '';
-
-            // Fade out c-container in the last stretch
-            const fadeStart = FADE_START_REM * rem;
-            if (height < fadeStart) {
-                const t = 1 - height / fadeStart; // 0→1
-                container.style.opacity = `${1 - t}`;
-            } else {
-                container.style.opacity = '';
-            }
-        };
-
-        const cleanupAll = () => {
-            if (container) {
-                container.style.filter = '';
-                container.style.opacity = '';
-            }
-            container = null;
-            handle?.classList.remove('dragging');
-            this.videoPanel.style.minHeight = '';
-            this.videoPanel.style.maxHeight = '';
-            this.videoPanel.style.transition = '';
-        };
-
         const handle = document.querySelector<HTMLElement>('.c-drag-handle');
-        const startDragFrom = (e: TouchEvent) => {
-            // Keyboard up + drag → close keyboard in parallel with the drag.
-            // The viewport meta sets `interactive-widget=resizes-content`, so the
-            // layout viewport grows as the keyboard hides; the panel expands into
-            // that growing area without pushing the editor offscreen.
-            if (this.compactReasons.has('keyboard')) {
-                const active = document.activeElement as HTMLElement | null;
-                if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable))
-                    active.blur();
-            }
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-            startHeight = this.videoPanel.offsetHeight;
-            dragActive = true;
-            dragStarted = false;
-            rejected = false;
-        };
+        const dragSources: InlineDragSource[] = [{
+            element: this.videoPanel,
+            accepts: e => !(e.target as HTMLElement).closest('button, .btn-h'),
+        }];
+        if (handle)
+            dragSources.push({ element: handle });
 
-        // Touch on video panel
-        fromEvent<TouchEvent>(this.videoPanel, 'touchstart', { passive: true } as AddEventListenerOptions)
-            .pipe(
-                takeUntil(this.disposed$),
-                filter(() => this.isInline() && !ScreenSize.isWide()),
-                filter(e => e.touches.length === 1),
-                filter(e => !(e.target as HTMLElement).closest('button, .btn-h')),
-            )
-            .subscribe(startDragFrom);
-
-        // Touch on drag handle (reparented outside video-panel)
-        if (handle) {
-            fromEvent<TouchEvent>(handle, 'touchstart', { passive: true } as AddEventListenerOptions)
-                .pipe(
-                    takeUntil(this.disposed$),
-                    filter(() => this.isInline() && !ScreenSize.isWide()),
-                    filter(e => e.touches.length === 1),
-                )
-                .subscribe(startDragFrom);
-        }
-
-        fromEvent<TouchEvent>(document, 'touchmove', { passive: false } as AddEventListenerOptions)
-            .pipe(
-                takeUntil(this.disposed$),
-                filter(() => dragActive && !rejected),
-            )
-            .subscribe(e => {
-                if (e.touches.length !== 1) return;
-                const dy = e.touches[0].clientY - startY;
-                const dx = e.touches[0].clientX - startX;
-
-                if (!dragStarted) {
-                    const absDy = Math.abs(dy);
-                    const absDx = Math.abs(dx);
-                    if (absDy < 8 && absDx < 8) return;
-                    if (absDx > absDy) {
-                        rejected = true;
-                        return;
-                    }
-                    dragStarted = true;
-                    this.videoPanel.classList.remove('minimized');
-                    handle?.classList.add('dragging');
-                    container = this.videoPanel.querySelector<HTMLElement>('.c-container');
-                    const currentH = this.videoPanel.offsetHeight;
-                    this.videoPanel.style.minHeight = `${currentH}px`;
-                    this.videoPanel.style.maxHeight = `${currentH}px`;
-                    this.videoPanel.style.transition = 'none';
+        attachInlineDrag({
+            panel: this.videoPanel,
+            handle,
+            dragSources,
+            getContent: () => this.videoPanel.querySelector<HTMLElement>('.c-container'),
+            canStart: () => this.isInline() && !ScreenSize.isWide(),
+            onDragStart: () => {
+                // Keyboard up + drag → close keyboard in parallel with the drag.
+                // The viewport meta sets `interactive-widget=resizes-content`, so the
+                // layout viewport grows as the keyboard hides; the panel expands into
+                // that growing area without pushing the editor offscreen.
+                if (this.compactReasons.has('keyboard')) {
+                    const active = document.activeElement as HTMLElement | null;
+                    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable))
+                        active.blur();
                 }
-
-                e.preventDefault();
-
-                const rem = getRemSize();
-                const fullHeight = INLINE_FULL_HEIGHT_REM * rem;
-                const newHeight = Math.max(0, Math.min(fullHeight, startHeight + dy));
-
-                this.videoPanel.style.minHeight = `${newHeight}px`;
-                this.videoPanel.style.maxHeight = `${newHeight}px`;
-                applyVisuals(newHeight, rem);
-            });
-
-        fromEvent<TouchEvent>(document, 'touchend')
-            .pipe(
-                takeUntil(this.disposed$),
-                filter(() => dragActive && dragStarted),
-            )
-            .subscribe(() => {
-                dragActive = false;
-
-                const rem = getRemSize();
-                const fullHeight = INLINE_FULL_HEIGHT_REM * rem;
-                const currentHeight = this.videoPanel.offsetHeight;
-                const midPoint = fullHeight / 2;
-                const targetHeight = currentHeight < midPoint ? 0 : fullHeight;
-                const willMinimize = targetHeight === 0;
-
-                // Snap visuals to target
-                applyVisuals(targetHeight, rem);
-
-                // Animate snap to target height
-                this.videoPanel.style.transition = 'min-height 0.15s ease-out, max-height 0.15s ease-out';
-                void this.videoPanel.offsetHeight;
-                this.videoPanel.style.minHeight = `${targetHeight}px`;
-                this.videoPanel.style.maxHeight = `${targetHeight}px`;
-
-                setTimeout(() => {
-                    cleanupAll();
-                    if (willMinimize)
-                        this.videoPanel.classList.add('minimized');
-                    else
-                        this.videoPanel.classList.remove('minimized');
-                    vibrate();
-                }, 160);
-            });
-
-        fromEvent<TouchEvent>(document, 'touchend')
-            .pipe(
-                takeUntil(this.disposed$),
-                filter(() => dragActive && !dragStarted),
-            )
-            .subscribe(() => { dragActive = false; });
-
-        fromEvent<TouchEvent>(document, 'touchcancel')
-            .pipe(
-                takeUntil(this.disposed$),
-                filter(() => dragActive),
-            )
-            .subscribe(() => {
-                dragActive = false;
-                if (dragStarted)
-                    cleanupAll();
-            });
+            },
+            disposed$: this.disposed$,
+        });
     }
 
     // endregion
@@ -1176,7 +961,8 @@ export class VideoPanel {
         }
         this.teardownIsland();
         this.teardownHidden();
-        this.returnDragHandle();
+        // Clear any display:none this instance set — the handle outlives it
+        this.setDragHandleVisible(true);
         this.collapse();
         this.homeMarker?.parentNode?.removeChild(this.homeMarker);
         this.homeMarker = null;
