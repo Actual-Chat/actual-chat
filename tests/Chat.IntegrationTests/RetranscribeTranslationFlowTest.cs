@@ -19,10 +19,24 @@ public class RetranscribeTranslationFlowTest(
     private ITranslations Translations => Tester.Translations;
 
     [Fact]
-    public async Task ReTranslationUsesRefinedTranscriptAfterFinalization()
+    public Task ReTranslationUsesRefinedTranscriptAfterFinalization()
+        => AssertReTranslationUsesRefinedTranscript(mustFailRealtimeTranslation: false);
+
+    // A failed realtime translation never clears the translation's StreamId, and NeedsTranslation
+    // used to drop the re-translation of any still-streaming translation - which left the entry
+    // with a dangling streaming translation for the whole HangingTimeout.
+    [Fact]
+    public Task ReTranslationRecoversAfterRealtimeTranslationFailure()
+        => AssertReTranslationUsesRefinedTranscript(mustFailRealtimeTranslation: true);
+
+    // Private methods
+
+    private async Task AssertReTranslationUsesRefinedTranscript(bool mustFailRealtimeTranslation)
     {
         // arrange
         FakeRefineTranscriber.Reset();
+        FakeTranslator.Reset();
+        FakeTranslator.MustFailRealtime = mustFailRealtimeTranslation;
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
         var targetLanguage = Languages.Russian;
@@ -73,8 +87,7 @@ public class RetranscribeTranslationFlowTest(
 
         // assert
         // The stored translation must upgrade to the refined transcript's translation on its own
-        // (translateIfMissing: false — no reader pulls it). Before the fix the re-translation was
-        // dropped while the entry was still content-streaming, leaving the realtime translation.
+        // (translateIfMissing: false — no reader pulls it).
         await ComputedTest.When(async ct => {
             var translation = await Translations.Get(session, TranslationId.New(entryId, targetLanguage), false, ct);
             translation.Should().NotBeNull();
@@ -83,8 +96,6 @@ public class RetranscribeTranslationFlowTest(
             translation.SourceContentHash.Should().Be(finalEntry.ContentHash);
         }, TimeSpan.FromSeconds(20));
     }
-
-    // Private methods
 
     private static Task<ChatEntry> WhenStreamingEntry(IChatsBackend chatsBackend, ChatId chatId, StreamId segmentStreamId)
         => ComputedTest.When(async ct => {
@@ -145,13 +156,20 @@ sealed file class FakeTranslator(IServiceProvider services, string serviceKey = 
     : Translator(services, serviceKey)
 {
     public const string Prefix = "T:";
+    public static bool MustFailRealtime { get; set; }
+    private bool IsRealtime { get; } = serviceKey == Constants.Translation.RealtimeServiceKey;
+
+    public static void Reset()
+        => MustFailRealtime = false;
 
     public override Task<string> Translate(
         string textToTranslate,
         Language targetLanguage,
         TranslationResult[] context,
         CancellationToken cancellationToken)
-        => Task.FromResult(Prefix + textToTranslate);
+        => MustFailRealtime && IsRealtime
+            ? Task.FromException<string>(StandardError.External("Realtime translation failed."))
+            : Task.FromResult(Prefix + textToTranslate);
 
     public override async IAsyncEnumerable<StringDiff> Stream(
         string textToTranslate,

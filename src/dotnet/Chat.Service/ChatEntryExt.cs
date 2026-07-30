@@ -21,7 +21,11 @@ public static class ChatEntryExt
         if (translation is null)
             return true;
 
-        if (translation.IsStreaming)
+        // A re-translation is enqueued by the realtime translator itself, once its stream is over,
+        // so a StreamId that's still set at that point means the realtime finalization was lost
+        // (e.g. the translation stream failed). Letting it block the re-translation would leave the
+        // entry with a dangling streaming translation until TranslationCleanupFlow drops it.
+        if (translation.IsStreaming && !isRetranslation)
             return false;
 
         return translation.SourceContentHash != source.ContentHash || isRetranslation;
