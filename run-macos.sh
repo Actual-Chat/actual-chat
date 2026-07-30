@@ -10,10 +10,10 @@ esac
 
 # Build the JS bundle, then the Mac Catalyst app.
 npm run build:Debug || exit 1
-dotnet build src/dotnet/App.Maui/ -f net10.0-maccatalyst -p:RuntimeIdentifier="$RID" || exit 1
+dotnet build src/dotnet/App.Maui/ -f net11.0-maccatalyst -p:RuntimeIdentifier="$RID" || exit 1
 
 # The produced bundle name depends on IsDevMaui ("Voxt (Dev).app" for dev, "Voxt.app" for prod).
-OUT_DIR="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net10.0-maccatalyst_${RID}"
+OUT_DIR="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net11.0-maccatalyst_${RID}"
 APP_PATH="$(ls -d "$OUT_DIR"/*.app 2>/dev/null | head -1)"
 if [ -z "$APP_PATH" ]; then
     echo "error: no .app bundle found in $OUT_DIR" >&2

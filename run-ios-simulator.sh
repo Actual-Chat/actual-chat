@@ -81,7 +81,7 @@ fi
 rm -rf "$SCRIPT_DIR/artifacts/out/nativelibraries"
 
 # Build first (without Run) to allow fixing corrupted native libraries
-dotnet build src/dotnet/App.Maui/ -f net10.0-ios -p:RuntimeIdentifier=$RID -p:_DeviceName=":v2:udid=$BOOTED_UDID"
+dotnet build src/dotnet/App.Maui/ -f net11.0-ios -p:RuntimeIdentifier=$RID -p:_DeviceName=":v2:udid=$BOOTED_UDID"
 
 if [ $? -ne 0 ]; then
     echo "Build failed"
@@ -90,8 +90,8 @@ fi
 
 # Fix corrupted native libraries in the app bundle
 # The codesigning step sometimes corrupts dylib files by writing command-line args instead of signing
-APP_BUNDLE="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net10.0-ios_$RID/ActualChat.app"
-BUILD_OUTPUT="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net10.0-ios_$RID"
+APP_BUNDLE="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net11.0-ios_$RID/ActualChat.app"
+BUILD_OUTPUT="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net11.0-ios_$RID"
 BUNDLE_ID="chat.actual.dev.app"
 
 for dylib in "$APP_BUNDLE"/*.dylib; do

@@ -17,7 +17,7 @@ Build, deploy, and start the ActualChat iOS app on a connected device.
 
 Run the `./run-ios.sh` script which:
 1. Detects the connected iOS device
-2. Builds the iOS app (`net10.0-ios` target)
+2. Builds the iOS app (`net11.0-ios` target)
 3. Deploys to the device
 4. Launches the app with console output
 

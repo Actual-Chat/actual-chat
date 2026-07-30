@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework Condition="!$([MSBuild]::IsOSPlatform('osx'))">net10.0</TargetFramework>
-    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('osx'))">net10.0-ios</TargetFramework>
+    <TargetFramework Condition="!$([MSBuild]::IsOSPlatform('osx'))">net11.0</TargetFramework>
+    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('osx'))">net11.0-ios</TargetFramework>
     <OutputType>Library</OutputType>
     <UseMauiEssentials Condition="$(TargetFramework.Contains('-ios'))">true</UseMauiEssentials>
     <SingleProject Condition="$(TargetFramework.Contains('-ios'))">true</SingleProject>
@@ -35,23 +35,22 @@
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Entitlements.dev.plist</CodesignEntitlements>
     <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Entitlements.prod.plist</CodesignEntitlements>
-    <MtouchLink>SdkOnly</MtouchLink>
+    <!-- 'partial' == what MtouchLink=SdkOnly used to mean; NAOT block below raises it to 'full' -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
     <FirebaseCrashlyticsUploadSymbolsEnabled>false</FirebaseCrashlyticsUploadSymbolsEnabled>
   </PropertyGroup>
 
   <!-- Debug configuration -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <CodesignProvision>chat.actual.dev.app.share</CodesignProvision>
-    <UseInterpreter>true</UseInterpreter>
   </PropertyGroup>
 
-  <!-- Release configuration (default — Mono + interpreter; NAOT block below overrides) -->
+  <!-- Release configuration (CoreCLR + composite R2R; NAOT block below overrides) -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Share Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store Share</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
-    <UseInterpreter>true</UseInterpreter>
-    <MTouchInterpreter>-ActualChat</MTouchInterpreter>
   </PropertyGroup>
 
   <!-- Environment -->
@@ -100,10 +99,8 @@
     <IlcDisableReflection>false</IlcDisableReflection>
     <IlcTrimMetadata>false</IlcTrimMetadata>
 
-    <RunAOTCompilation>false</RunAOTCompilation>
+    <TrimMode>full</TrimMode>
     <PublishReadyToRun>false</PublishReadyToRun>
-    <UseInterpreter>false</UseInterpreter>
-    <MtouchLink>Full</MtouchLink>
 
     <!-- NativeAOT requires the managed-static registrar (default 'static' is rejected) -->
     <Registrar>managed-static</Registrar>
