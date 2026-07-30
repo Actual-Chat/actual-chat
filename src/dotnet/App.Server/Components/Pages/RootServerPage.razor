@@ -182,16 +182,6 @@
 
 @if (_authState.CloseFlow is { } closeFlow) {
     var isFailed = closeFlow.Error != null;
-    @if (closeFlow.MustClose) {
-        <script nonce="@nonce">
-            @if (closeFlow.RedirectUrl is { } closeFlowRedirectUrl) {
-                @((MarkupString)$"window.location.href = {JsonSerializer.Serialize(closeFlowRedirectUrl)};")
-            }
-            setTimeout(function () {
-                window.open('','_self').close();
-            }, 500)
-        </script>
-    }
     <div class="fusion-close" data-flow-name="@closeFlow.Name">
         <div class="c-content">
             @if (!isFailed) {
@@ -221,6 +211,18 @@
             </div>
         </div>
     </div>
+    @if (closeFlow.MustClose) {
+        <script nonce="@nonce">
+            @if (closeFlow.RedirectUrl is { } closeFlowRedirectUrl) {
+                @* A custom scheme with no registered handler (e.g. the app isn't installed) aborts
+                   the document load, so the hand-off waits for everything above to be parsed. *@
+                @((MarkupString)$"addEventListener('load', function () {{ window.location.href = {JsonSerializer.Serialize(closeFlowRedirectUrl)}; }});")
+            }
+            setTimeout(function () {
+                window.open('','_self').close();
+            }, 500)
+        </script>
+    }
 } else {
     <app id="app" class="flex flex-col h-full">
         <WebApp
