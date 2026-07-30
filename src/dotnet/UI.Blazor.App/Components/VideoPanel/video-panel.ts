@@ -187,14 +187,6 @@ export class VideoPanel {
         return this.videoPanel.classList.contains('minimized');
     }
 
-    // The handle is owned by VisualActivityPanel (a sibling of the video panel),
-    // so it survives this panel's unmount — e.g. for a still-visible map.
-    private setDragHandleVisible(visible: boolean): void {
-        const handle = document.querySelector<HTMLElement>('.c-drag-handle');
-        if (handle)
-            handle.style.display = visible ? '' : 'none';
-    }
-
     private get maxScale(): number {
         return document.body.classList.contains('narrow') ? MAX_SCALE_MOBILE : MAX_SCALE_DESKTOP;
     }
@@ -700,11 +692,6 @@ export class VideoPanel {
         const isHidden = this.videoPanel.classList.contains('panel-hidden');
         const newMode: 'inline' | 'island' | 'pill' =
             isCollapsed ? 'island' : (isHidden ? 'pill' : 'inline');
-        // Why: invariant "handle visible ⇔ inline" must hold even when panelMode
-        // is already in sync (e.g. setupHomeGuard's MutationObserver beat us to
-        // teardown and set panelMode='inline' on class removal — without this
-        // call the handle stays display:none after a keyboard close).
-        this.setDragHandleVisible(newMode === 'inline');
         if (newMode === this.panelMode)
             return;
         if (this.panelMode === 'island')
@@ -925,8 +912,6 @@ export class VideoPanel {
         }
         this.teardownIsland();
         this.teardownHidden();
-        // Clear any display:none this instance set — the handle outlives it
-        this.setDragHandleVisible(true);
         this.collapse();
         this.homeMarker?.parentNode?.removeChild(this.homeMarker);
         this.homeMarker = null;
@@ -950,7 +935,6 @@ export class VideoPanel {
         document.body.appendChild(this.videoPanel);
         this.videoPanel.classList.remove('minimized');
         this.videoPanel.classList.add('expanded');
-        this.setDragHandleVisible(false);
         // Freeze narrow/wide state so rotating the device while fullscreen
         // doesn't reflow the hidden app layout underneath (e.g. left panel appearing).
         ScreenSize.freeze();
@@ -969,7 +953,6 @@ export class VideoPanel {
         if (!willReForceIsland)
             this.restoreToParent();
         this.videoPanel.classList.remove('expanded', 'toolbar-hidden');
-        this.setDragHandleVisible(true);
         ScreenSize.unfreeze();
         void this.blazorRef.invokeMethodAsync('OnCollapsed');
         if (willReForceIsland)
@@ -1009,7 +992,6 @@ export class VideoPanel {
             return;
 
         this.closing = true;
-        this.setDragHandleVisible(false);
         this.videoPanel.classList.remove('first-time-open');
         this.videoPanel.classList.add('closing');
 
@@ -1051,7 +1033,6 @@ export class VideoPanel {
         this.closeContent = null;
         this.closeComplete = null;
         this.videoPanel.classList.remove('closing');
-        this.setDragHandleVisible(!this.videoPanel.classList.contains('expanded'));
     }
 
     // endregion
