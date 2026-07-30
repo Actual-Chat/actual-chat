@@ -17,6 +17,13 @@ namespace ActualChat.Rpc;
 [StructLayout(LayoutKind.Auto)]
 public readonly struct RpcHostBuilder
 {
+    private static readonly RpcWebSocketServerOriginValidator AppWebViewOriginValidator =
+        RpcWebSocketServerOriginValidators.Allow(Constants.Origins.AppWebView);
+    private static readonly RpcWebSocketServerOriginValidator AppOriginValidator =
+        (server, context, origin) =>
+            RpcWebSocketServerOriginValidators.SameOrigin.Invoke(server, context, origin)
+            || AppWebViewOriginValidator.Invoke(server, context, origin);
+
     public FusionBuilder Fusion { get; }
     public IServiceCollection Services => Fusion.Services;
     public CommanderBuilder Commander => Fusion.Commander;
@@ -240,7 +247,9 @@ public readonly struct RpcHostBuilder
             // SameOrigin compares Origin against this request's own Host, so every hostname we
             // serve passes without being listed - voxt.ai, actual.chat, the dev/local ones and the
             // worktree subdomains alike. Non-browser clients send no Origin and are unaffected.
-            OriginValidator = RpcWebSocketServerOriginValidators.SameOrigin,
+            // The MAUI app's WebView is the one client that's genuinely cross-origin: its host
+            // page comes from Constants.Origins.AppWebView, never from the server's own host.
+            OriginValidator = AppOriginValidator,
             // Media stream connections (any "kind" in the query - e.g. kind=video) opt out of
             // compression: their payloads are already compressed, and excluding them keeps
             // deflate from wasting CPU on them. DisableServerContextTakeover resets the deflate

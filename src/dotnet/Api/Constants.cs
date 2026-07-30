@@ -31,6 +31,19 @@ public static partial class Constants
             || host.EndsWith(LocalVoxtSuffix, StringComparison.OrdinalIgnoreCase);
     }
 
+    public static class Origins
+    {
+        // Origins of MAUI's BlazorWebView host page - unroutable, so unclaimable by an attacker.
+        public static readonly IReadOnlyList<string> AppWebView = [
+            "http://0.0.0.0",
+            "https://0.0.0.0",
+            "app://0.0.0.0",
+            "http://0.0.0.1",
+            "https://0.0.0.1",
+            "app://0.0.0.1",
+        ];
+    }
+
     public static class Session
     {
         public static readonly string CookieName = "FusionAuth.SessionId";

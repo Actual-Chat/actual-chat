@@ -281,13 +281,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         else
             services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtection));
         services.AddSingleton(new ContentSecurityPolicy(HostInfo));
-        var origins = new List<string> {
-            "http://0.0.0.0",
-            "http://0.0.0.1",
-            "https://0.0.0.0",
-            "https://0.0.0.1",
-            "app://0.0.0.0",
-            "app://0.0.0.1",
+        var origins = new List<string>(Constants.Origins.AppWebView) {
             "http://localhost",
             "https://localhost",
             "app://localhost",
