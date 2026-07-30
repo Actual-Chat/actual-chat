@@ -9,12 +9,14 @@
 @if (place != null) {
     <LeftPanelPlaceContentHeader Place="@place"/>
 } else {
-    <LeftPanelChatContentHeader />
+    <LeftPanelChatContentHeader Title="@(m.IsNotifications ? "Notifications" : "Chats")"/>
 }
-<div class="left-search-panel">
-    <LeftChatSearchInput Place="@place"/>
-    <LeftPlaceSearchOverlayPanel Place="@place"/>
-</div>
+@if (!m.IsNotifications) {
+    <div class="left-search-panel">
+        <LeftChatSearchInput Place="@place"/>
+        <LeftPlaceSearchOverlayPanel Place="@place"/>
+    </div>
+}
 
 @code {
     private IPlaces Places => Hub.Places;
@@ -40,10 +42,11 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var session = Session;
+        var isNotifications = NavbarUI.SelectedGroupId == NavbarGroupIds.Unread;
         var searchPlaceId = await SearchUI.PlaceId.Use(cancellationToken).ConfigureAwait(false);
         var isSearchOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
         if (isSearchOn && searchPlaceId is null)
-            return new Model(null);
+            return new Model(null, isNotifications);
 
         var placeId = NavbarUI.IsPlaceSelected(out var selectedPlaceId)
             ? selectedPlaceId
@@ -54,7 +57,7 @@
         var place = placeId is null
             ? null
             : await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
-        return new Model(place);
+        return new Model(place, isNotifications);
     }
 
     private void OnNavbarSelectedGroupOrTitleChanged(object? s, EventArgs e)
@@ -62,5 +65,5 @@
 
     // Nested types
 
-    public record Model(Place? Place);
+    public record Model(Place? Place, bool IsNotifications = false);
 }

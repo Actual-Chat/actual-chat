@@ -1,0 +1,74 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, NotificationsNavbarWidget.Model>
+@{
+    var m = State.Value;
+    RenderFragment RenderTab(double order, ChatListFilter filter, string title) {
+        var contentVersion = (filter.Id.Value, title);
+        return @<Tab
+                    @key="@filter.Id.Value"
+                    Id="@filter.Id.Value"
+                    Title="@title"
+                    ContentVersion="@contentVersion"
+                    Order="@order"
+                    Class="chats-tab">
+                   <TitleContent>
+                       <span>@title</span>
+                       <NotificationsTabUnreadCount ChatListFilter="@filter"/>
+                   </TitleContent>
+               </Tab>;
+    }
+}
+
+<div class="c-container">
+    <div class="c-all-chats">
+        <TabPanel
+            BottomHill="true"
+            TabsClass="left-panel-tabs"
+            SelectedTabIdChanged="@OnSelectedTabIdChanged">
+            <ChildContent>
+                @if (m.HasAll) {
+                    @RenderTab(0, ChatListFilter.Unread, "All")
+                }
+                @if (m.HasDMs) {
+                    @RenderTab(1, ChatListFilter.UnreadDMs, "DMs")
+                }
+                @if (m.HasMentions) {
+                    @RenderTab(2, ChatListFilter.UnreadMentions, "Mentions")
+                }
+            </ChildContent>
+        </TabPanel>
+        <ChatList @key="@_settings.FilterId.Value" PlaceId="@null" UsePlaceChatListSettings="@false" Settings="@_settings"/>
+    </div>
+</div>
+
+@code {
+    private ChatListSettings _settings = new() { FilterId = ChatListFilter.Unread.Id };
+
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new(),
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var all = await ChatListUI.GetUnreadChatCount(null, ChatListFilter.Unread, cancellationToken).ConfigureAwait(false);
+        var dms = await ChatListUI.GetUnreadChatCount(null, ChatListFilter.UnreadDMs, cancellationToken).ConfigureAwait(false);
+        var mentions = await ChatListUI.GetUnreadChatCount(null, ChatListFilter.UnreadMentions, cancellationToken).ConfigureAwait(false);
+        return new(all > 0, dms > 0, mentions > 0);
+    }
+
+    private void OnSelectedTabIdChanged(string? tabId) {
+        if (tabId.IsNullOrEmpty())
+            return;
+        _settings = new ChatListSettings { FilterId = tabId };
+        StateHasChanged();
+    }
+
+    // Nested types
+
+    public sealed record Model(bool HasAll = false, bool HasDMs = false, bool HasMentions = false);
+}

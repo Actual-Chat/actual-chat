@@ -42,6 +42,9 @@
 .left-panel-buttons > .c-content > .c-buttons {
     @apply flex-y grow items-end gap-y-3 md:gap-y-2;
     @apply w-full;
+    /* Headroom so the topmost button's unread badge (-top-0.5) isn't clipped by overflow-hidden;
+       negative margin cancels the layout shift (same idiom as .navbar-place-buttons/.navbar-chat-buttons). */
+    @apply pt-2 -mt-2;
     @apply overflow-hidden;
 }
 .left-panel-buttons .c-delimiter {
@@ -49,6 +52,9 @@
 }
 .navbar-button.settings-btn {
     @apply my-3 md:my-2;
+}
+.left-panel-buttons > .c-content > .create-btn {
+    @apply mb-0 mt-2;
 }
 .left-panel-content {
     @apply relative;

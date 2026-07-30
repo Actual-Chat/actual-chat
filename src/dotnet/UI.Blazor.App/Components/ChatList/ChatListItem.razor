@@ -70,7 +70,7 @@
                             <UnreadCount
                                 Value="@m.UnreadCount"
                                 NotificationMode="@m.NotificationMode"
-                                HasMentions="m.HasUnreadMentions"/>
+                                HasMentions="@m.HasUnreadOwnMention"/>
                         }
                         @if (m.IsUnreadByOthers && !showEnding) {
                             <ChatMessageSendingStatus
@@ -102,7 +102,7 @@
                         <UnreadCount
                             Value="@m.UnreadCount"
                             NotificationMode="@m.NotificationMode"
-                            HasMentions="@m.HasUnreadMentions"/>
+                            HasMentions="@m.HasUnreadOwnMention"/>
                     }
                     @if (hasButtons) {
                         @if (audioState?.IsRecording == true) {
@@ -119,7 +119,7 @@
                     <UnreadCount
                         Value="@m.UnreadCount"
                         NotificationMode="@m.NotificationMode"
-                        HasMentions="@m.HasUnreadMentions"/>
+                        HasMentions="@m.HasUnreadOwnMention"/>
                     @if (audioState?.IsRecording == true) {
                         <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
                     }
@@ -244,7 +244,7 @@
             NotificationMode = chatInfo.ChatUserSettings.NotificationMode,
             IsSelected = chatState.IsSelected,
             UnreadCount = chatInfo.UnreadCount,
-            HasUnreadMentions = chatInfo.HasUnreadMentions,
+            HasUnreadOwnMention = chatInfo.HasUnreadOwnMention,
             LastTextEntry = lastEntry,
             LastTextEntryText = preview.Text,
             LastTextEntryIcons = lastTextEntryIcons,
@@ -350,7 +350,7 @@
         public CallActivity CallActivity { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
         public Trimmed<int> UnreadCount { get; init; }
-        public bool HasUnreadMentions { get; init; }
+        public bool HasUnreadOwnMention { get; init; }
         public bool IsSelected { get; init; }
         public bool IsLastItemInBlock { get; init; }
         public bool IsFirstItem { get; init; }

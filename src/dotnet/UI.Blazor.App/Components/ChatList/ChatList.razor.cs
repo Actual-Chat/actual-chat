@@ -26,7 +26,8 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
                 : Task.FromResult(-1);
         }
         else {
-            chatListSettings = new ChatListSettings { Order = ChatListOrder.ByAlphabet, FilterId = ChatListFilter.Groups.Id };
+            chatListSettings = Settings
+                ?? new ChatListSettings { Order = ChatListOrder.ByAlphabet, FilterId = ChatListFilter.Groups.Id };
             chatId = null;
             chatIndexTask = Task.FromResult(-1);
         }

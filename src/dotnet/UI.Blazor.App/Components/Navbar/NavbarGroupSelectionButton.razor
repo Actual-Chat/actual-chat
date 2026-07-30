@@ -3,7 +3,7 @@
 @implements IDisposable
 @{
     var isSelected = NavbarUI.SelectedGroupId == Id;
-    var selectedClass = isSelected ? "selected" : "";
+    var selectedClass = $"{(isSelected ? "selected" : "")} {Class}".Trim();
     var buttonClass = $"{(isSelected ? "on" : "")}";
 }
 
@@ -30,6 +30,7 @@
 
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public bool CanMove { get; set; }
     [Parameter] public bool IsRound { get; set; }

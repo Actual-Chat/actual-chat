@@ -510,6 +510,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId) && chatId.Equals(pinnedChatId))
             return;
 
+        if (NavbarUI.IsGroupSelected(NavbarGroupIds.Unread))
+            return; // Keep the Unread group so "Back" returns to the unread panel
+
         var isChatsSelected = NavbarUI.IsGroupSelected(NavbarGroupIds.Chats);
         var isPlaceSelected = NavbarUI.IsPlaceSelected(out var navbarSelectedPlaceId);
         var isPeerChat = chatId.Kind == ChatKind.Peer;

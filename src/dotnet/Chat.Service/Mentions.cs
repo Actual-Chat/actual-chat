@@ -21,6 +21,22 @@ public class Mentions(IServiceProvider services) : DbServiceBase<ChatDbContext>(
         if (author == null)
             return null;
 
-        return await Backend.GetLast(chatId, MentionRef.NewAuthor(author.Id), cancellationToken).ConfigureAwait(false);
+        // A member is mentioned by user ref (u:userId); only anonymous authors & reply-author mentions
+        // use the legacy author ref (a:authorId). We look up both and keep the most recent.
+        var authorMentionTask = Backend.GetLast(chatId, MentionRef.NewAuthor(author.Id), cancellationToken);
+        var userMentionTask = author.UserId.Value.Length != 0
+            ? Backend.GetLast(chatId, MentionRef.NewUser(author.UserId), cancellationToken)
+            : null;
+
+        var authorMention = await authorMentionTask.ConfigureAwait(false);
+        var userMention = userMentionTask != null
+            ? await userMentionTask.ConfigureAwait(false)
+            : null;
+        return Latest(authorMention, userMention);
     }
+
+    private static Mention? Latest(Mention? a, Mention? b)
+        => a == null ? b
+            : b == null ? a
+            : b.EntryId.LocalId > a.EntryId.LocalId ? b : a;
 }
