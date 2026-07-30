@@ -347,8 +347,11 @@
     <!-- Performance-related -->
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
 
-    <!-- Required by https://github.com/AdamEssenmacher/GoogleApisForiOSComponents?tab=readme-ov-file#firebase-crashlytics -->
-    <_ExportSymbolsExplicitly>false</_ExportSymbolsExplicitly>
+    <!-- Was false, per https://github.com/AdamEssenmacher/GoogleApisForiOSComponents?tab=readme-ov-file#firebase-crashlytics,
+         but that leaves the main executable exporting no symbols at all. Mono resolved
+         DllImport("__Internal") anyway; CoreCLR doesn't, so .NET 11 crashes on the very first
+         P/Invoke - DllNotFoundException '__Internal' out of Foundation.NSObject's cctor. -->
+    <_ExportSymbolsExplicitly>true</_ExportSymbolsExplicitly>
 
     <SkipStaticLibraryValidation>true</SkipStaticLibraryValidation>
   </PropertyGroup>
