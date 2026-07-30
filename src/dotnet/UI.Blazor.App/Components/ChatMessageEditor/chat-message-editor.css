@@ -47,9 +47,29 @@ body.narrow .c-editor-column {
     transition: border-radius 0.25s ease;
 }
 
+/* Attachments + mention list + the reply/edit panel float above the input row as an
+   overlay pinned to the panel's top edge, so they grow upward over the chat view instead of
+   adding footer height. The panel keeps only the input row in flow, so long text still grows
+   the panel and pushes the chat view - but attachments/mentions/related never do.
+   Children stack top-down: related on top, then the attachment/mention card flush above the row. */
+.c-editor-overlay {
+    @apply absolute inset-x-0 bottom-full z-20;
+    @apply flex-y gap-y-2;
+    /* Let clicks fall through the transparent gaps between the stacked cards to the chat view;
+       the cards themselves re-enable pointer events. */
+    @apply pointer-events-none;
+}
+.c-editor-overlay > * {
+    @apply pointer-events-auto;
+}
+/* Mobile keeps the related chip tight to the panel (the wide gap reads as detached there). */
+body.narrow .c-editor-overlay {
+    @apply gap-y-0;
+}
+
 /* Top container: attachments + mention list stacked in one grid cell.
    The mention list (z above) overlaps the attachments; the taller of the two
-   drives the height, so the panel grows to fit the mention list when it's larger. */
+   drives the height, so the card grows to fit the mention list when it's larger. */
 .c-editor-top {
     @apply relative grid items-start;
     @apply md:rounded-t-lg;
@@ -68,6 +88,12 @@ body.narrow .c-editor-column {
 .c-editor-top > .mention-list-wrapper {
     @apply z-20;
 }
+/* On mobile the overlay is a self-contained rounded sheet (1rem top). The clip lives on the
+   inner content cards, NOT on .c-editor-top - otherwise it would cut the mention chips pill,
+   which overhangs above the list (-top-7) as a sibling of .mention-list. */
+body.narrow .c-editor-top {
+    @apply rounded-t-2xl;
+}
 
 /* The input row: left buttons + editor + right buttons. */
 .c-editor-row {
@@ -80,6 +106,12 @@ body.wide .list-view-layout:has(.chat-activity-panel.listening) .post-panel {
 }
 .post-panel.sharp-corners {
     @apply rounded-xl;
+}
+/* When the attachment/mention overlay sits flush above the panel, drop the panel's top corners
+   so the card and panel read as one connected surface instead of a rounded notch between them. */
+body.wide .post-panel:has(.attachment-list-wrapper),
+body.wide .post-panel:has(.mention-list-wrapper:not(.non-visible)) {
+    @apply rounded-t-none;
 }
 body.narrow .post-panel {
     @apply py-3;
@@ -341,7 +373,8 @@ body.hoverable .btn.btn-round.post-panel-btn.post-message:hover,
 }
 body.narrow .attachment-list-wrapper {
     @apply pt-0;
-    @apply border-none;
+    @apply border-none rounded-t-2xl;
+    @apply overflow-hidden;
     @apply bg-post-panel;
 }
 .chat-message-editor:not(.narrow-panel) .attachment-list-wrapper .close-keyboard-btn,
@@ -566,7 +599,10 @@ body.narrow .related-chat-entry-panel {
     @apply h-auto;
     @apply p-1;
     @apply overflow-hidden;
-    @apply bg-post-panel;
+    /* On mobile the wrapper is just a transparent holder - only the inner rounded chip
+       (.related-chat-entry) carries a background; drop the panel outline too. */
+    @apply bg-transparent;
+    @apply outline-0;
 }
 .related-chat-entry-panel .related-chat-entry > .c-content {
     @apply flex-1 flex-x items-center gap-x-2;
@@ -702,6 +738,13 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply absolute right-0 bottom-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%);
+}
+/* With a reply/edit panel floating above the input, shrink the sub-footer's corner fillers to a
+   small 0.5rem radius so they hug the bottom corners of the related panel instead of the full 2rem
+   curve (which assumes the post-panel is the topmost element). */
+.chat-message-editor:has(.related-chat-entry-panel) .rounded-sub-footer::before,
+.chat-message-editor:has(.related-chat-entry-panel) .rounded-sub-footer::after {
+    @apply w-2 h-2;
 }
 body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-footer,
 body.narrow .list-view-layout:has(.audio-panel-header) .rounded-sub-footer {

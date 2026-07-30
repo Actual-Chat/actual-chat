@@ -30,16 +30,16 @@
     <MentionListManager @key="@MentionListManagerKey">
         <div class="c-content">
             <div class="c-editor-column">
-                @if (ScreenSize.IsWide()) {
-                    <RelatedChatEntryPanel/>
-                }
                 <div class="post-panel"
                      data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
                      data-bubble-priority="150"
                      data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-                    <div class="c-editor-top">
-                        @RenderAttachmentListView()
-                        <MentionList/>
+                    <div class="c-editor-overlay">
+                        <RelatedChatEntryPanel/>
+                        <div class="c-editor-top">
+                            @RenderAttachmentListView()
+                            <MentionList/>
+                        </div>
                     </div>
                     <div class="c-editor-row">
                         <div class="c-left-buttons">
@@ -85,7 +85,6 @@
                 <div class="rounded-sub-footer">
                     <div class="bg-layer"></div>
                 </div>
-                <RelatedChatEntryPanel/>
             }
             @if (Chat.Rules.CanWriteAudio() || Chat.Rules.CanWriteVideo() || Chat.Rules.CanReadAudio() || Chat.Rules.CanReadVideo()) {
                 <ChatAudioPanel IsNarrow="@ScreenSize.IsNarrow()"/>
