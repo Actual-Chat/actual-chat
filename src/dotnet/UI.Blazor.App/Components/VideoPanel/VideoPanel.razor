@@ -261,19 +261,6 @@
             </div>
         }
     </div>
-    <div class="c-hidden-pill" @onclick="@OnHidePillClick" @onclick:stopPropagation="true">
-        <span class="c-live-dot"></span>
-        <span>Live</span>
-        @if (isOwnStreaming) {
-            <span class="c-divider"></span>
-            @if (isOwnCameraStreaming) {
-                <i class="icon-video text-xl"></i>
-            }
-            @if (isOwnScreenCasting) {
-                <i class="icon-screen-share text-xl"></i>
-            }
-        }
-    </div>
 </div>
 
 @code {
@@ -627,13 +614,6 @@
     private void OnToggleChatVisibilityClick() {
         var current = State.Value.IsChatVisible ?? GetDefaultChatVisibility();
         ChatVideoUI.SetVideoPanelChatVisible(!current);
-    }
-
-    private void OnHidePillClick() {
-        // The pill belongs to the call view — bring that one back even if the
-        // Map tab was selected when the panel got hidden.
-        ChatActivityUI.TogglePanelMode(Chat.Id, VisualActivityPanelMode.Hidden, false);
-        ChatActivityUI.SelectTab(Chat.Id, VisualActivityTab.Call);
     }
 
     private async Task OnExpandClick() {

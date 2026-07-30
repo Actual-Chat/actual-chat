@@ -115,6 +115,57 @@ body.hoverable .map-panel-host .c-menu .c-menu-item:hover:not(:disabled),
     @apply text-headline-1 text-01;
 }
 
+/* ── Activity pill (panel hidden) — desktop-only oval pill under the header,
+      top-right. Click restores the panel to its default inline state. ── */
+
+.activity-pill {
+    @apply hidden;
+}
+body.wide .activity-pill {
+    @apply absolute z-button top-2 right-2;
+    @apply flex-x items-center gap-2;
+    @apply h-10;
+    @apply px-3;
+    @apply rounded-full;
+    background: linear-gradient(180deg, var(--black-40) -20.83%, var(--black-60) 100%);
+    @apply text-headline-1 text-white;
+    @apply cursor-pointer;
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+        0 4px 12px rgba(0, 0, 0, 0.35);
+    /* Why: Blazor renders the pill in the header slot before JS reparents it into
+       `.layout-body-wrapper > .c-container`. For the first frame the pill paints
+       at the wrong position. The 80ms opacity-0 lead-in hides that frame; the
+       remainder fades the pill in once it's in place. */
+    animation: smoothShowActivityPill 0.25s ease-out 0.08s both;
+}
+@keyframes smoothShowActivityPill {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.activity-pill .c-live-dot {
+    @apply w-2 h-2;
+    @apply rounded-full;
+    background: var(--danger);
+    will-change: opacity;
+    contain: layout paint style;
+    /* steps(): every animation tick is a full-screen WebView redraw (even
+       compositor-run ones — the functor redraws whole); ~10Hz reads fine. */
+    animation: pulseLiveDot 2s steps(10) infinite;
+}
+@keyframes pulseLiveDot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+.activity-pill .c-divider {
+    @apply w-0.5 h-4;
+    @apply rounded-full;
+    @apply bg-[var(--white-40)];
+}
+.activity-pill i {
+    @apply text-xl;
+}
+
 /* ── Call/Map switch ── */
 
 .call-map-switch {
