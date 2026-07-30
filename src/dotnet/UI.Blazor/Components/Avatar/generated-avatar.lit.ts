@@ -4,6 +4,8 @@ import { state } from 'lit/decorators.js';
 import { SvgCache } from './svg-cache';
 
 export abstract class GeneratedAvatar extends LitElement {
+    private static readonly pending = new Set<GeneratedAvatar>();
+    private static isFlushScheduled = false;
     @state() private pixelSize = 0;
     @state() private cachedUrl: string | undefined;
     private cachedUrlKey: string | undefined;
@@ -17,14 +19,15 @@ export abstract class GeneratedAvatar extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         this.resizeObserver?.disconnect();
-        this.resizeObserver = new ResizeObserver(() => this.measure());
+        this.resizeObserver = new ResizeObserver(() => GeneratedAvatar.scheduleMeasure(this));
         // Observe the sized parent (.c-content); the host itself may be inline.
         this.resizeObserver.observe(this.parentElement ?? this);
-        this.measure();
+        GeneratedAvatar.scheduleMeasure(this);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        GeneratedAvatar.pending.delete(this);
         this.resizeObserver?.disconnect();
         this.resizeObserver = undefined;
         this.unsubscribe?.();
@@ -57,9 +60,25 @@ export abstract class GeneratedAvatar extends LitElement {
 
     // Private methods
 
-    private measure(): void {
-        // getBoundingClientRect works for inline hosts too, unlike clientWidth.
-        const width = this.getBoundingClientRect().width;
+    // Batched so N avatars cost one layout, not one read-after-write reflow each.
+    private static scheduleMeasure(avatar: GeneratedAvatar): void {
+        GeneratedAvatar.pending.add(avatar);
+        if (GeneratedAvatar.isFlushScheduled)
+            return;
+
+        GeneratedAvatar.isFlushScheduled = true;
+        requestAnimationFrame(() => {
+            GeneratedAvatar.isFlushScheduled = false;
+            const batch = [...GeneratedAvatar.pending];
+            GeneratedAvatar.pending.clear();
+            // getBoundingClientRect works for inline hosts too, unlike clientWidth.
+            const widths = batch.map(x => x.getBoundingClientRect().width);
+            for (let i = 0; i < batch.length; i++)
+                batch[i].applyWidth(widths[i]);
+        });
+    }
+
+    private applyWidth(width: number): void {
         const pixelSize = Math.ceil(width * (window.devicePixelRatio || 1));
         if (pixelSize > 0 && pixelSize !== this.pixelSize)
             this.pixelSize = pixelSize;
