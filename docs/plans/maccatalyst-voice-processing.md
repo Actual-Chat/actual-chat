@@ -125,6 +125,18 @@ still noticeable, the next lever is adding
 `AVAudioSessionCategoryOptions.MixWithOthers` to the Recording category on
 Catalyst.
 
+**Round 6 (2026-07-29):** ducking persisted after recording stopped, until app
+exit. Cause: VP enable was one-shot sticky, and a Recording-bound `VoicePlayer`
+(the round-4 AEC-reference routing) restarts the stopped Recording engine on
+`Play`/`Resume` — with VP still armed, that revived the whole VPIO unit (mic
+live + ducking) with no capture consumer, and nothing ever stopped it again.
+Fix: `AudioEngine.DisableVoiceProcessing` (stop, unwire the capture mixer,
+`setVoiceProcessingEnabled(false)`), called from `StopRecording` on Mac, so VP
+now lives only while the mic does; each capture re-arms it via
+`EnableVoiceProcessing`. Side effect: a revived Recording engine now plays
+without VPIO, so Recording-bound tracks survive a mid-track recording stop
+instead of dying (softens a round-4 accepted limitation).
+
 ## Fallback paths (if the fix regresses)
 
 1. **`AVAudioSinkNode` instead of tap + muted mixer** (exact LiveKit

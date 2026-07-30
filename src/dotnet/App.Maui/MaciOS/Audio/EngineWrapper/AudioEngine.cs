@@ -85,18 +85,8 @@ public class AudioEngine : IDisposable
 
     public void Stop()
     {
-        lock (_lock) {
-            // On Mac Catalyst AVAudioEngine.Stop alone doesn't tear down the VPIO
-            // aggregate device's IO thread, which wedges the HAL transport and makes
-            // the next engine start block for ~15s (kAUStartIO error -66681) —
-            // stop the IO units explicitly first, as LiveKit does.
-            if (OperatingSystem.IsMacCatalyst() && _isVoiceProcessingEnabled) {
-                _engine.InputNode.AudioUnit?.Stop();
-                _engine.OutputNode.AudioUnit?.Stop();
-            }
-            _engine.Stop();
-            _wasStarted = false;
-        }
+        lock (_lock)
+            StopUnsafe();
         _isRunning.Invalidate();
     }
 
@@ -107,8 +97,7 @@ public class AudioEngine : IDisposable
                 return;
 
             // Voice processing can be toggled only while the engine is stopped
-            _engine.Stop();
-            _wasStarted = false;
+            StopUnsafe();
             Input.SetVoiceProcessingEnabled(true);
             if (OperatingSystem.IsMacCatalyst()) {
                 // VP ducks other apps' audio by default — unacceptable on desktop
@@ -117,6 +106,24 @@ public class AudioEngine : IDisposable
                 ConnectVoiceProcessingGraphUnsafe();
             }
             _isVoiceProcessingEnabled = true;
+        }
+        _isRunning.Invalidate();
+    }
+
+    public void DisableVoiceProcessing()
+    {
+        lock (_lock) {
+            if (!_isVoiceProcessingEnabled)
+                return;
+
+            StopUnsafe();
+            if (_vpCaptureMixer != null) {
+                DisposeNodeUnsafe(_vpCaptureMixer);
+                _vpCaptureMixer = null;
+                _vpCaptureFormat = null;
+            }
+            Input.SetVoiceProcessingEnabled(false);
+            _isVoiceProcessingEnabled = false;
         }
         _isRunning.Invalidate();
     }
@@ -184,6 +191,20 @@ public class AudioEngine : IDisposable
     }
 
     // Private methods
+
+    private void StopUnsafe()
+    {
+        // On Mac Catalyst AVAudioEngine.Stop alone doesn't tear down the VPIO
+        // aggregate device's IO thread, which wedges the HAL transport and makes
+        // the next engine start block for ~15s (kAUStartIO error -66681) —
+        // stop the IO units explicitly first, as LiveKit does.
+        if (OperatingSystem.IsMacCatalyst() && _isVoiceProcessingEnabled) {
+            _engine.InputNode.AudioUnit?.Stop();
+            _engine.OutputNode.AudioUnit?.Stop();
+        }
+        _engine.Stop();
+        _wasStarted = false;
+    }
 
     private void ConnectVoiceProcessingGraphUnsafe()
     {
