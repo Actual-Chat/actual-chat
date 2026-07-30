@@ -318,12 +318,14 @@
   </PropertyGroup>
 
   <!-- Android: Tracing mode — records a .nettrace that _Profiling/CreateMibc-A.cmd turns
-       into a .mibc profile for crossgen2 (see <AndroidMibcProfile>) -->
-  <PropertyGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+       into the .mibc fed to crossgen2 via PublishReadyToRunPgoFiles above.
+       Applies to Release too: Build-Tracing-AR.cmd records against the trimmed +
+       R2R'd assemblies the app actually ships, which is what the profile describes. -->
+  <PropertyGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android'))">
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies> <!-- Required to produce .mibc -->
     <AndroidEnableProfiler>true</AndroidEnableProfiler>
   </PropertyGroup>
-  <ItemGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+  <ItemGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android'))">
     <AndroidEnvironment Include="android-tracing-env.txt" />
   </ItemGroup>
 
