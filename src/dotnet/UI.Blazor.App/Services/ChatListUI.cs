@@ -191,7 +191,9 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         CancellationToken cancellationToken = default)
     {
         IReadOnlyDictionary<ChatId, ChatInfo> chatById;
-        if (placeId is not null && filter == ChatListFilter.People)
+        if (filter.AcrossPlace)
+            chatById = await ListAllUnordered(cancellationToken).ConfigureAwait(false);
+        else if (placeId is not null && filter == ChatListFilter.People)
             chatById = await ListMembersOnly(placeId, cancellationToken).ConfigureAwait(false);
         else
             chatById = await ListUnordered(placeId, cancellationToken).ConfigureAwait(false);

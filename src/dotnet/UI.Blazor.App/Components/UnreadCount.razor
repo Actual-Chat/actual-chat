@@ -9,8 +9,8 @@
     var text = HasMentions ? "@" : Value == 0 ? "" : Value.FormatK();
     var isMuted = NotificationMode switch {
         ChatNotificationMode.ImportantOnly => !HasMentions,
-        ChatNotificationMode.Muted => true
-        ,_ => false,
+        ChatNotificationMode.Muted => !HasMentions,
+        _ => false,
         };
     var bgColor = isMuted ? "bg-counter" : "bg-primary";
     var cursorClass = Click.HasDelegate ? "cursor-pointer" : "";

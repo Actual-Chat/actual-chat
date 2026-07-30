@@ -3,7 +3,11 @@
 <div class="left-panel-content-header">
     <div class="c-content">
         <div class="c-title">
-            Chats
+            @Title
         </div>
     </div>
 </div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Chats";
+}

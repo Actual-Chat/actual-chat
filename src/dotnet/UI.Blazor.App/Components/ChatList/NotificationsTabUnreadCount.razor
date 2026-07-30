@@ -1,0 +1,46 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, NotificationsTabUnreadCount.Model>
+@{
+    var m = State.Value;
+    _rendered = m;
+    if (m.Count <= 0)
+        return;
+    var notificationMode = m.IsMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default;
+}
+
+<div class="c-badge">
+    <UnreadCount Value="@m.Count" NotificationMode="@notificationMode"/>
+</div>
+
+@code {
+    private Model? _rendered;
+
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    [Parameter] public ChatListFilter? ChatListFilter { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new(),
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var filter = ChatListFilter ?? ActualChat.UI.Blazor.App.Services.ChatListFilter.Unread;
+        var count = await ChatListUI.GetUnreadChatCount(null, filter, cancellationToken).ConfigureAwait(false);
+        if (count <= 0)
+            return new(count);
+
+        var unmutedCount = await ChatListUI.GetUnmutedUnreadChatCount(null, filter, cancellationToken).ConfigureAwait(false);
+        return new(count, unmutedCount <= 0);
+    }
+
+    protected override bool ShouldRender()
+        => State.HasError || State.Value != _rendered;
+
+    // Nested types
+
+    public sealed record Model(Trimmed<int> Count = default, bool IsMuted = false);
+}

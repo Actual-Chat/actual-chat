@@ -23,6 +23,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public ChatEntry? LastTextEntry => News?.LastTextEntry;
 
     // Computed
+    public bool HasUnreadOwnMention => LastMention is { } m && m.EntryId.LocalId > ReadEntryLid;
     public SearchDocument SearchDocument => field = field.OrNew(Chat.Title);
     public Trimmed<int> UnmutedUnreadCount => ChatUserSettings.NotificationMode switch {
         ChatNotificationMode.ImportantOnly => (HasUnreadMentions ? 1 : 0, MaxUnreadCount),

@@ -10,13 +10,19 @@
         isChats = true;
         placeId = (pinnedChatId as PlaceChatId)?.PlaceId;
     }
+    var isUnread = NavbarUI.SelectedGroupId == NavbarGroupIds.Unread;
+    if (isUnread)
+        isChats = false;
     var isTestPages = NavbarUI.SelectedGroupId == NavbarGroupIds.TestPages;
-    var cls = isChats ? "navbar-chats" : "navbar-pages";
+    var cls = isChats || isUnread ? "navbar-chats" : "navbar-pages";
 }
 
 <div class="navbar-content">
     <div class="navbar-group @cls">
-        @if (isChats) {
+        @if (isUnread) {
+            <NotificationsNavbarWidget/>
+        }
+        else if (isChats) {
             <ChatListNavbarWidget PlaceId="@placeId" />
         }
         else if (isTestPages && m.IsAdmin) {

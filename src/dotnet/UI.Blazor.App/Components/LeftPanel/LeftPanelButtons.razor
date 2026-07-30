@@ -1,4 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, LeftPanelButtons.Model>
+@{
+    var m = State.Value;
+}
 
 <div class="left-panel-buttons">
     <div class="c-spacer"></div>
@@ -20,7 +24,53 @@
         <div class="c-buttons">
             <NavbarButtons/>
         </div>
+        @if (m.IsActive && m.HasUnread) {
+            <NavbarGroupSelectionButton
+                Class="create-btn"
+                Id="@NavbarGroupIds.Unread"
+                Title="@NavbarGroupIds.UnreadTitle"
+                Tooltip="Unread">
+                <ChildContent>
+                    <i class="icon-notify-bell text-2xl font-medium"></i>
+                </ChildContent>
+            </NavbarGroupSelectionButton>
+        }
         <AccountDropdown/>
         <div class="safe-area-bottom"></div>
     </div>
 </div>
+
+@code {
+    private bool _hadUnread;
+
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new(AccountUI.OwnAccount.Value.IsActive()),
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(true);
+        var isActive = account.IsActive();
+        if (!isActive)
+            return new(false);
+
+        var chatById = await ChatListUI.ListUnordered(null, ChatListFilter.Unread, cancellationToken).ConfigureAwait(true);
+        return new(true, chatById.Count > 0);
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        var m = State.Value;
+        // Unread group may stay selected only while unread chats exist; once they're gone we fall back to Chats.
+        if (_hadUnread && !m.HasUnread && NavbarUI.SelectedGroupId == NavbarGroupIds.Unread)
+            NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
+        _hadUnread = m.IsActive && m.HasUnread;
+    }
+
+    // Nested types
+
+    public sealed record Model(bool IsActive = false, bool HasUnread = false);
+}

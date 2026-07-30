@@ -48,12 +48,30 @@
     @apply overflow-y-hidden;
 }
 .navbar-chats .c-active-chats {
+    @apply relative;
     @apply flex-none flex-y;
-    @apply overflow-y-hidden;
+    @apply overflow-visible;
     @apply bg-[var(--active-chats)];
 }
 .navbar-chats .c-active-chats > .c-delimiter {
     @apply hidden;
+}
+/* Floating create button, bottom-right of the chat list. When the Active chats
+   band is present it sits half over its top edge (never fully covering it);
+   otherwise it floats above the list bottom with a margin. */
+.chat-list-fab.btn.btn-round {
+    @apply absolute z-10;
+    @apply right-4 bottom-4;
+    @apply w-14 h-14;
+    @apply bg-[var(--round-right-panel)] text-primary;
+    @apply border border-separator;
+    @apply shadow-md shadow-shadow-main;
+}
+.chat-list-fab.btn.btn-round .btn-content > i {
+    @apply text-2xl;
+}
+.navbar-chats .c-active-chats:has(> .active-chats) .chat-list-fab {
+    @apply bottom-full -mb-7;
 }
 .navbar-chats .chat-list {
     @apply flex-1 flex-y;

@@ -8,7 +8,8 @@
     @apply flex-none flex-x items-center justify-end;
     @apply md:w-16 xl:w-20;
 }
-.navbar-button .btn-square {
+.navbar-button .btn-square,
+.navbar-button .btn-round {
     @apply min-h-0;
     @apply text-primary;
 }

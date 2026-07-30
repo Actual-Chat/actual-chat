@@ -39,6 +39,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
     [Parameter, EditorRequired] public bool UsePlaceChatListSettings { get; set; } = true;
+    [Parameter] public ChatListSettings? Settings { get; set; }
 
     protected override void OnInitialized() {
         DebugLog?.LogDebug("OnInitialized: {List}", ChatListKind.All);
