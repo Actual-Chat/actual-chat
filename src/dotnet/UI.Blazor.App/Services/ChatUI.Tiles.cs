@@ -828,17 +828,25 @@ public partial class ChatUI
             // Paired tuple: a loaded entry shares the card's key lid (V) - emit the card before the entry.
             if (shouldEmitCard && entry != null)
                 EmitConversationCard(conversation!, date);
+            // The first tile widens its request by one tile to learn the preceding entry, so every
+            // emission below is gated on the entry actually falling into this tile's own range.
+            var shouldAddToResult = entry != null && (lidRange.Contains(entry.LocalId) || entry.IsSending);
             if (entry is { IsThreadStart: true }) {
-                var threadChatId = entry.ChatId.CreateThreadId(entry.LocalId);
-                var threadChat = await Chats.Get(Session, threadChatId, cancellationToken).ConfigureAwait(false);
-                if (threadChat is not null) {
-                    var message = new ThreadMessage(entry, threadChat) {
-                        Date = date,
-                        PreviousMessage = prevMessage,
-                        Kind = ChatMessageKind.Thread,
-                    };
-                    messages.Add(message);
-                    prevMessage = message;
+                if (shouldAddToResult) {
+                    var threadChatId = entry.ChatId.CreateThreadId(entry.LocalId);
+                    var threadChat = await Chats.Get(Session, threadChatId, cancellationToken).ConfigureAwait(false);
+                    if (threadChat is not null) {
+                        var message = new ThreadMessage(entry, threadChat) {
+                            Date = date,
+                            PreviousMessage = prevMessage,
+                            Kind = ChatMessageKind.Thread,
+                            // Without this the thread is held by lid alone, and a block whose lid range
+                            // has drifted from its conversation's then drops it - splitting the block.
+                            Conversation = conversations.FirstOrDefault(c => c.EntryLidRange.Contains(entry.LocalId)),
+                        };
+                        messages.Add(message);
+                        prevMessage = message;
+                    }
                 }
             }
             else if (entry != null) {
@@ -860,7 +868,6 @@ public partial class ChatUI
                 var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
                 var isEntryUnread = entry.LocalId > lastReadEntryId && !isClientMsg;
                 var isAudio = entry.HasAudio;
-                var shouldAddToResult = lidRange.Contains(entry.LocalId) || entry.IsSending; // add sending entries
                 var flags = default(ChatMessageFlags);
                 if (isBlockStart)
                     flags |= ChatMessageFlags.BlockStart;

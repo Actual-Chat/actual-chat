@@ -1027,9 +1027,53 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             liveState.Should().BeNull();
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             AssertUniqueRenderKeys(items);
-            items.Items.OfType<ExpandedConversationMessage>()
-                .Should().ContainSingle("a conversation renders as exactly one block");
+            var block = items.Items.OfType<ExpandedConversationMessage>()
+                .Should().ContainSingle("a conversation renders as exactly one block").Subject;
+            var thread = block.Items.OfType<ThreadMessage>()
+                .Should().ContainSingle("the thread start stays inside the block").Subject;
+            thread.Conversation!.Id.Should().Be(block.Conversation!.Id,
+                "the thread carries its conversation, so it is held by id and not by lid alone");
         }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public async Task ThreadOutsideTheRequestedRangeIsNotRendered()
+    {
+        // The first tile widens its request by one tile to learn the preceding entry; a thread start
+        // in that widened part must not leak in as a leading item outside the requested range.
+
+        // arrange - the thread opens a tile, and exactly one more tile follows it, so a tail-pinned
+        // window loads that last tile and reaches the thread's tile only by widening
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "thread-widened-tile-test");
+        var tileSize = (int)ChatUI.IdTileStack.FirstLayer.TileSize;
+        ChatEntry entry;
+        do {
+            entry = await Tester.CreateTextEntry(chat.Id, "filler");
+        } while ((entry.LocalId + 1) % tileSize != 0);
+        var threadStart = await Tester.CreateTextEntry(chat.Id, "thread-start");
+        (threadStart.LocalId % tileSize).Should().Be(0, "the thread must open its own tile");
+        await Tester.Commander.Call(
+            new ChatThreads_Start(Tester.Session, chat.Id, "Thread", "", [threadStart.Id]),
+            CancellationToken.None);
+        ChatEntry lastEntry = null!;
+        for (var i = 0; i < tileSize * 2 - 1; i++)
+            lastEntry = await Tester.CreateTextEntry(chat.Id, $"entry-{i}");
+
+        // act - a window pinned to the chat's tail, far enough down that the thread's tile is only
+        // ever reachable as the widened part of the first loaded tile
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var tailRange = new Range<long>(lastEntry.LocalId, lastEntry.LocalId + 1);
+        var query = new ChatDataQuery(tailRange, 0, 0);
+        var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+
+        // assert
+        AssertUniqueRenderKeys(items);
+        var leaves = items.Items.SelectMany(i => i.GetLeafMessages()).ToList();
+        LeafEntryLids(items).Min().Should().BeGreaterThan(threadStart.LocalId,
+            "the loaded window must start past the thread or this test doesn't bite");
+        leaves.OfType<ThreadMessage>()
+            .Should().BeEmpty("a thread start below the loaded range must not be emitted");
     }
 
     [Fact]
