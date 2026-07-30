@@ -55,7 +55,7 @@ public sealed class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         yield break;
 
         [SuppressMessage("ReSharper", "AccessToDisposedClosure")]
-        int HandleSinkSamples(AudioTimeStamp timestamp, uint frameCount, ref AudioBuffers inputData) {
+        int HandleSinkSamples(AudioTimeStamp timestamp, uint frameCount, AudioBuffers inputData) {
             try {
                 if (frameCount == 0 || frameCount > sinkBuffer!.FrameCapacity)
                     return 0;

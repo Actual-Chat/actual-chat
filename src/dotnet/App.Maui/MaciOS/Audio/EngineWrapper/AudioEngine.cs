@@ -128,10 +128,10 @@ public class AudioEngine : IDisposable
         _isRunning.Invalidate();
     }
 
-    public IDisposable AttachVoiceProcessedInputSink(AVAudioSinkNodeReceiverHandler handler)
+    public IDisposable AttachVoiceProcessedInputSink(AVAudioSinkNodeReceiverHandler2 handler)
     {
         lock (_lock) {
-            if (_vpCaptureMixer == null || _vpCaptureFormat == null)
+            if (_vpCaptureMixer is null || _vpCaptureFormat is null)
                 throw StandardError.Constraint("Voice processing graph is not initialized.");
 
             var sink = new AVAudioSinkNode(handler);
