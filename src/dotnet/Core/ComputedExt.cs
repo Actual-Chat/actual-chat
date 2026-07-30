@@ -15,6 +15,31 @@ public static class ComputedExt
         return Unsafe.As<IState<T>?>(untypedState);
     }
 
+    // Lets a computation depend on something it must not wait for - typically a
+    // RemoteComputedCacheMode.NoCache method, which never completes while offline. The result is used
+    // only if it's already there; otherwise `pendingValue` stands in and `computed` is invalidated once
+    // the real value arrives, so the computation re-runs and picks it up.
+    // Capture `computed` in the *synchronous prefix* of the computation: Fusion clears Computed.Current
+    // past the first await.
+    public static T UseIfReady<T>(this Task<T> task, T pendingValue, Computed? computed)
+    {
+        if (task.IsCompletedSuccessfully)
+            return task.Result;
+
+        if (computed is not null)
+            _ = task.ContinueWith(static (t, state) => {
+                    if (t.IsCompletedSuccessfully)
+                        ((Computed)state!).Invalidate();
+                    else
+                        _ = t.Exception; // Observe it, otherwise it surfaces as UnobservedTaskException
+                },
+                computed,
+                CancellationToken.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default);
+        return pendingValue;
+    }
+
     public static string DebugDump(this Computed computed, int maxDepth = 0)
     {
         var type = computed.GetType();

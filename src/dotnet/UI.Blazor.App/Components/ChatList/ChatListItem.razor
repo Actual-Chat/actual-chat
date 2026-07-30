@@ -209,6 +209,8 @@
         var isFirstItem = IsFirstItem;
         var ownAuthor = chat.Rules.Author;
         var ownAuthorId = ownAuthor?.Id;
+        // Must be read before the first await - Fusion clears Computed.Current past it.
+        var computed = Computed.GetCurrent();
         DebugLog?.LogDebug("-> ComputeState: {ListKind} #{ChatTitle}", listKind, chatTitle);
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null) {
@@ -225,7 +227,12 @@
                 && await IsUnreadByOthers(lastEntry, ownAuthorId, cancellationToken).ConfigureAwait(false);
             lastTextEntryIcons = GetIcons(lastEntry);
         }
-        var callActivity = await Hub.ChatActivityUI.GetCallActivity(chatId, cancellationToken).ConfigureAwait(false);
+        // Call activity resolves through ILiveSessions, which is CacheMode.NoCache, so awaiting it
+        // offline never returns and the whole item would render as Model.None - title only, no last
+        // message, no timestamp. It's an ephemeral overlay: render without it, fill it in when it lands.
+        var callActivity = Hub.ChatActivityUI
+            .GetCallActivity(chatId, cancellationToken)
+            .UseIfReady(CallActivity.None, computed);
 
         return new() {
             ListKind = listKind,
