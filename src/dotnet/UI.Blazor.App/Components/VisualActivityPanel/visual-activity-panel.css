@@ -13,12 +13,12 @@
 .map-panel {
     @apply relative;
     @apply w-full;
-    @apply h-48; /* matches INLINE_FULL_HEIGHT_REM in inline-drag.ts */
+    @apply h-48; /* matches INLINE_FULL_HEIGHT_REM in visual-activity-panel.ts */
     @apply rounded-b-lg;
     @apply overflow-hidden;
     @apply bg-02;
 }
-/* Swiped shut via the drag handle (see map-panel.ts) */
+/* Swiped shut via the drag handle (see visual-activity-panel.ts) */
 .map-panel.minimized {
     @apply h-0;
 }

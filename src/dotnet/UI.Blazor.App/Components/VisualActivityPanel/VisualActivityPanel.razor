@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, VisualActivityPanel.Model>
 @{
     var m = State.Value;
@@ -36,10 +37,12 @@
 
     if (!_isRendered)
         _chatContextToRender = null;
+
+    _isPanelRendered = _chatContextToRender is not null || (showMap && chatContext is not null);
 }
 
-@if (_chatContextToRender is not null || (showMap && chatContext is not null)) {
-    <div class="visual-activity-panel">
+@if (_isPanelRendered) {
+    <div @ref="Ref" class="visual-activity-panel">
         @if (_chatContextToRender is not null) {
             <ErrorBarrier Name="VideoPanel" Kind="ErrorBarrierKind.Medium">
                 <CascadingValue Value="_chatContextToRender">
@@ -63,17 +66,39 @@
 }
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VisualActivityPanel.create";
+
     private ChatId? _lastWatchingChatId;
     private ChatContext? _chatContextToRender;
     private bool _isRendered;
     private bool _isClosing;
+    private bool _isPanelRendered;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
 
+    private ElementReference Ref { get; set; }
+    private IJSObjectReference? JSRef { get; set; }
+
     [CascadingParameter] public ChatContext? ChatContext { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null;
+        await base.DisposeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!_isPanelRendered) {
+            // The panel div isn't rendered, so Ref is stale; drop the JS
+            // counterpart and recreate it when the content comes back.
+            await JSRef.DisposeSilentlyAsync("dispose");
+            JSRef = null;
+        } else
+            JSRef ??= await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
