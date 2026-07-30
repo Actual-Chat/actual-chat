@@ -77,7 +77,10 @@
     {
         var chat = Chat;
         var chatId = chat.Id;
-        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+        var chatStateTask = ChatUI.GetState(chatId, false, cancellationToken);
+        var previewTask = ChatUI.GetPreview(chatId, cancellationToken);
+        var chatState = await chatStateTask.ConfigureAwait(false);
+        var preview = await previewTask.ConfigureAwait(false);
         if (chatState == null)
             return Model.None;
 
@@ -88,7 +91,7 @@
             UnreadCount = chatState.Info.UnreadCount,
             HasUnreadMentions = chatState.Info.HasUnreadMentions,
             LastTextEntry = lastEntry,
-            LastTextEntryText = chatState.Info.LastTextEntryText,
+            LastTextEntryText = preview.Text,
         };
     }
 

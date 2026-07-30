@@ -3,12 +3,17 @@ namespace ActualChat.UI.Blazor.App.Services;
 public sealed record ChatListFilter(
     Symbol Id,
     string Title,
-    Func<ChatInfo, bool>? Filter = null
+    Func<Chat.Chat, bool>? Filter = null
 ) {
     public static readonly ChatListFilter None = new("", "All", _ => true);
-    public static readonly ChatListFilter People = new("@people", "People", c => c.Chat.Kind == ChatKind.Peer);
-    public static readonly ChatListFilter Groups = new("@groups", "Groups", c => c.Chat.Kind != ChatKind.Peer);
+    public static readonly ChatListFilter People = new("@people", "People", c => c.Kind == ChatKind.Peer);
+    public static readonly ChatListFilter Groups = new("@groups", "Groups", c => c.Kind != ChatKind.Peer);
     public static readonly ChatListFilter[] All = [None, Groups, People];
+
+    public bool Invoke(ChatInfo chatInfo)
+        => Filter?.Invoke(chatInfo.Chat) ?? true;
+    public bool Invoke(ContactInfo contactInfo)
+        => Filter?.Invoke(contactInfo.Chat) ?? true;
 
     public override string ToString()
         => $"{GetType()}({Id}, '{Title}')";

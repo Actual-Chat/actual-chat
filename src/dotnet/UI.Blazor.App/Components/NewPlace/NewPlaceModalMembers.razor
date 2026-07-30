@@ -43,8 +43,8 @@
     private ContactSelector? _contactSelectorRef;
     private SearchQuery _searchQuery;
 
-    private IReadOnlyDictionary<ChatId, ChatInfo> AllChats
-        => _contactSelectorRef?.AllChats.Value ?? ImmutableDictionary<ChatId, ChatInfo>.Empty;
+    private IReadOnlyDictionary<ChatId, ContactInfo> AllContacts
+        => _contactSelectorRef?.AllContacts.Value ?? ImmutableDictionary<ChatId, ContactInfo>.Empty;
     private IReadOnlySet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
 
@@ -59,9 +59,9 @@
     }
 
     private async Task OnAdd() {
-        var allChats = AllChats;
+        var allContacts = AllContacts;
         var userIds = SelectedChatIds
-            .Select(chatId => allChats.GetValueOrDefault(chatId)?.Contact.Account)
+            .Select(chatId => allContacts.GetValueOrDefault(chatId)?.Contact.Account)
             .SkipNullItems()
             .Select(c => c.Id)
             .ToArray();
@@ -71,6 +71,7 @@
             if (error != null)
                 return;
         }
+
         await Completed.InvokeAsync(true);
     }
 }

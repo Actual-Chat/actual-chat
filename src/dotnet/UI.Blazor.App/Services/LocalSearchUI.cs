@@ -155,16 +155,38 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     {
         var chats = await ListChats(cancellationToken).ConfigureAwait(false);
         var places = await ListPlaces(cancellationToken).ConfigureAwait(false);
+        var placeChatLists = await places
+            .Select(place => ListPlaceChats(place.Id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
+
         var result = new List<MentionCandidate>();
         foreach (var chat in chats)
             result.Add(ToChatCandidate(chat));
-        foreach (var place in places) {
+        for (var i = 0; i < places.Count; i++) {
+            var place = places[i];
             result.Add(ToPlaceCandidate(place));
-            var placeChats = await ListPlaceChats(place.Id, cancellationToken).ConfigureAwait(false);
-            foreach (var chat in placeChats)
+            foreach (var chat in placeChatLists[i])
                 result.Add(ToPlaceChatCandidate(chat, place));
         }
+
         return result.ToApiArray();
+    }
+
+    [ComputeMethod(MinCacheDuration = 300)]
+    public virtual async Task<IReadOnlyDictionary<ChatId, ContactInfo>> ListContactInfos(
+        PlaceId? placeId, CancellationToken cancellationToken)
+    {
+        // Cached per placeId, so the ContactInfo instances - and their lazily built
+        // SearchDocuments - are reused across keystrokes instead of rebuilt per query.
+        var contacts = await ListContacts(placeId, cancellationToken).ConfigureAwait(false);
+        var result = new Dictionary<ChatId, ContactInfo>(contacts.Count);
+        foreach (var contact in contacts) {
+            if (contact.Chat is not null)
+                result.Add(contact.ChatId, new ContactInfo(contact));
+        }
+
+        return result;
     }
 
     [ComputeMethod]

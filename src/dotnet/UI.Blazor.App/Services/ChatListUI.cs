@@ -196,7 +196,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         else
             chatById = await ListUnordered(placeId, cancellationToken).ConfigureAwait(false);
         return chatById.Values
-            .Where(filter.Filter ?? (_ => true))
+            .Where(filter.Invoke)
             .ToDictionary(c => c.Id, c => c);
     }
 

@@ -36,7 +36,7 @@
                                 <chat-activity-svg size="4" isActive="true"/>
                             } else {
                                 <span class="c-text">
-                                    @m.ChatState.Info.LastTextEntryText
+                                    @m.LastTextEntryText
                                 </span>
                             }
                         </div>
@@ -80,11 +80,13 @@
         var entry = chatState.Info.LastTextEntry;
         if (entry is not null && !entry.IsSystemEntry)
             lastTextEntry = entry;
+        var preview = await ChatUI.GetPreview(chatId, cancellationToken).ConfigureAwait(false);
         var selectedFoundItem = await SearchUI.SelectedItem.Use(cancellationToken).ConfigureAwait(false);
 
         return new() {
             ChatState = chatState,
             TitleMatch = titleMatch ?? SearchMatch.Matchless(chatState.Chat.Title),
+            LastTextEntryText = preview.Text,
             Entry = lastTextEntry,
             Link = Links.Chat(chatId),
             Author = anotherAuthor,
@@ -100,6 +102,7 @@
 
         public ChatState? ChatState { get; init; }
         public SearchMatch TitleMatch { get; init; } = SearchMatch.Empty;
+        public string LastTextEntryText { get; init; } = "";
         public ChatEntry? Entry { get; init; }
         public LocalUrl Link { get; init; }
         public Author? Author { get; init; }

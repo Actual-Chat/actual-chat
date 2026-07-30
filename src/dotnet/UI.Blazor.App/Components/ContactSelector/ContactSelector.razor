@@ -1,5 +1,5 @@
-﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, IReadOnlyList<ChatInfo>>
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, IReadOnlyList<ContactInfo>>
 @using ActualChat.Search
 
 <CascadingValue IsFixed="true" Value="@this">
@@ -7,11 +7,11 @@
 </CascadingValue>
 
 @code {
-    private MutableState<IReadOnlyDictionary<ChatId, ChatInfo>> _allChats = null!;
+    private MutableState<IReadOnlyDictionary<ChatId, ContactInfo>> _allContacts = null!;
     private MutableState<ImmutableHashSet<ChatId>> _selectedChatIds = null!;
     private PlaceId? _placeId;
 
-    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private LocalSearchUI LocalSearchUI => Hub.LocalSearchUI;
 
     [Parameter] public ChatListOrder Order { get; set; } = ChatListOrder.ByOwnUpdateTime;
     [Parameter] public ChatListPreOrder ChatListPreOrder { get; set; } = ChatListPreOrder.ChatList;
@@ -22,8 +22,8 @@
     [Parameter] public EventCallback Changed { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
-    public IState<IReadOnlyDictionary<ChatId, ChatInfo>> AllChats => _allChats;
-    public ComputedState<IReadOnlyList<ChatInfo>> Chats => State;
+    public IState<IReadOnlyDictionary<ChatId, ContactInfo>> AllContacts => _allContacts;
+    public ComputedState<IReadOnlyList<ContactInfo>> Contacts => State;
     public IState<ImmutableHashSet<ChatId>> SelectedChatIds => _selectedChatIds;
 
     public void Toggle(ChatId chatId)
@@ -51,9 +51,9 @@
 
     protected override void OnInitialized() {
         var type = GetType();
-        _allChats = StateFactory.NewMutable(
-            (IReadOnlyDictionary<ChatId, ChatInfo>)ImmutableDictionary<ChatId, ChatInfo>.Empty,
-            StateCategories.Get(type, nameof(AllChats)));
+        _allContacts = StateFactory.NewMutable(
+            (IReadOnlyDictionary<ChatId, ContactInfo>)ImmutableDictionary<ChatId, ContactInfo>.Empty,
+            StateCategories.Get(type, nameof(AllContacts)));
         _selectedChatIds = StateFactory.NewMutable(
             ImmutableHashSet<ChatId>.Empty,
             StateCategories.Get(type, nameof(SelectedChatIds)));
@@ -63,31 +63,34 @@
                 : Task.CompletedTask);
     }
 
-    protected override ComputedState<IReadOnlyList<ChatInfo>>.Options GetStateOptions()
+    protected override ComputedState<IReadOnlyList<ContactInfo>>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<IReadOnlyList<ChatInfo>>.Options() {
-                InitialValue = ImmutableList<ChatInfo>.Empty,
-                UpdateDelayer = FixedDelayer.Get(0.25),
+            static t => new ComputedState<IReadOnlyList<ContactInfo>>.Options() {
+                InitialValue = ImmutableList<ContactInfo>.Empty,
+                UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<IReadOnlyList<ChatInfo>> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<IReadOnlyList<ContactInfo>> ComputeState(CancellationToken cancellationToken) {
         var chatListOrder = Order;
         var chatListPreOrder = ChatListPreOrder;
         var searchQuery = SearchQuery;
         var excludedChats = ExcludeChatIds;
+        var filter = Filter;
 
-        var allChats = await ChatListUI.ListUnordered(_placeId, Filter, cancellationToken).ConfigureAwait(false);
-        _allChats.Value = allChats;
-        var chats = allChats.Values;
+        var allContacts = await LocalSearchUI.ListContactInfos(_placeId, cancellationToken).ConfigureAwait(false);
+        _allContacts.Value = allContacts;
+        IEnumerable<ContactInfo> contacts = allContacts.Values;
         if (excludedChats != null && excludedChats.Count != 0)
-            chats = chats.Where(x => !excludedChats.Contains(x.Id));
+            contacts = contacts.Where(x => !excludedChats.Contains(x.Id));
+        contacts = contacts.Where(filter.Invoke);
         if (UseCanWriteFilter)
-            chats = chats.Where(c => c.Chat.Rules.CanWrite());
+            contacts = contacts.Where(c => c.Chat.Rules.CanWrite());
 
-        chats = chats.OrderBy(chatListOrder, chatListPreOrder);
+        contacts = contacts.OrderBy(chatListOrder, chatListPreOrder);
         if (!searchQuery.IsEmpty)
-            chats = chats.FilterAndOrderBySearchQuery(searchQuery);
-        return chats.ToList();
+            contacts = contacts.FilterAndOrderBySearchQuery(searchQuery);
+
+        return contacts.ToList();
     }
 }

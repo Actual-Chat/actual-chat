@@ -115,10 +115,14 @@
         var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
         var ownAuthorFull = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var selectedFoundItem = await SearchUI.SelectedItem.Use(cancellationToken).ConfigureAwait(false);
+        if (messageMatch is null) {
+            var preview = await ChatUI.GetPreview(chatId, cancellationToken).ConfigureAwait(false);
+            messageMatch = SearchMatch.Matchless(preview.Text);
+        }
 
         return new() {
             ChatState = chatState,
-            MessageMatch = messageMatch ?? SearchMatch.Matchless(chatState.Info.LastTextEntryText),
+            MessageMatch = messageMatch,
             Entry = entry,
             OwnAuthor = ownAuthorFull,
             Place = place,

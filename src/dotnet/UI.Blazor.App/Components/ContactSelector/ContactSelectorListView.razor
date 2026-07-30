@@ -1,25 +1,25 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, object?>
 @{
-    var chats = Selector.Chats.Value;
+    var contacts = Selector.Contacts.Value;
     var selectedChatIds = Selector.SelectedChatIds.Value;
 }
 
 <div class="contact-selector-list" role="listbox" aria-multiselectable="true">
-    @foreach (var chat in chats) {
-        var isSelected = selectedChatIds.Contains(chat.Id);
+    @foreach (var contact in contacts) {
+        var isSelected = selectedChatIds.Contains(contact.Id);
         <div class="contact-selector-list-item"
              role="option"
              tabindex="0"
              aria-selected="@(isSelected ? "true" : "false")"
-             @onclick="() => OnContactClick(chat.Id)">
+             @onclick="() => OnContactClick(contact.Id)">
             <ContactView
-                ChatInfo="chat"
+                ContactInfo="contact"
                 SearchQuery="Selector.SearchQuery"/>
             <Checkbox
                 IsChecked="@isSelected"
                 Class="!flex-none"
-                Change="() => OnContactClick(chat.Id)"/>
+                Change="() => OnContactClick(contact.Id)"/>
         </div>
     }
 </div>
@@ -35,7 +35,7 @@
             });
 
     protected override async Task<object?> ComputeState(CancellationToken cancellationToken) {
-        await Selector.Chats.Use(cancellationToken).ConfigureAwait(false);
+        await Selector.Contacts.Use(cancellationToken).ConfigureAwait(false);
         await Selector.SelectedChatIds.Use(cancellationToken).ConfigureAwait(false);
         return null;
     }

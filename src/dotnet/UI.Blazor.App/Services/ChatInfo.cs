@@ -12,19 +12,15 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public ChatUserSettings ChatUserSettings { get; init; } = ChatUserSettings.Default;
     public ChatNews? News { get; init; }
     public Mention? LastMention { get; init; }
-    public Chat.Chat? LastThread { get; init; }
-    public Author? LastThreadCreator { get; init; }
     public long ReadEntryLid { get; init; }
     public Trimmed<int> UnreadCount { get; init; }
     public bool HasUnreadMentions { get; init; }
-    public string LastTextEntryText { get; init; } = "";
     public bool IsPinnedToNavbar { get; init; }
 
     // Shortcuts
     public ChatId Id => Contact.Id.ChatId;
     public Chat.Chat Chat => Contact.Chat;
     public ChatEntry? LastTextEntry => News?.LastTextEntry;
-    public bool IsThreadStartEntry => LastTextEntry?.IsThreadStart == true;
 
     // Computed
     public SearchDocument SearchDocument => field = field.OrNew(Chat.Title);

@@ -1,25 +1,25 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, object?>
 @{
-    var allChats = Selector.AllChats.Value;
+    var allContacts = Selector.AllContacts.Value;
     var selectedChatIds = Selector.SelectedChatIds.Value;
 }
 
 <div class="contact-selector-wrapper">
     <div class="contact-selector-badges no-scrollbar">
         @foreach (var chatId in selectedChatIds) {
-            var chat = allChats.GetValueOrDefault(chatId);
-            if (chat == null)
+            var contact = allContacts.GetValueOrDefault(chatId);
+            if (contact == null)
                 continue;
 
-            <div class="c-contact" role="button" tabindex="0" @onclick="() => Selector.Remove(chat.Id)">
+            <div class="c-contact" role="button" tabindex="0" @onclick="() => Selector.Remove(contact.Id)">
                 <div class="c-remove">
                     <i class="icon-close c-close"></i>
                     <span class="c-text">Remove</span>
                 </div>
-                <ChatIcon Chat="@chat.Chat" Size="SquareSize.Size6"/>
+                <ChatIcon Chat="@contact.Chat" Size="SquareSize.Size6"/>
                 <div class="c-name">
-                    @chat.Chat.Title
+                    @contact.Chat.Title
                 </div>
             </div>
         }
@@ -37,7 +37,7 @@
             });
 
     protected override async Task<object?> ComputeState(CancellationToken cancellationToken) {
-        await Selector.AllChats.Use(cancellationToken).ConfigureAwait(false);
+        await Selector.AllContacts.Use(cancellationToken).ConfigureAwait(false);
         await Selector.SelectedChatIds.Use(cancellationToken).ConfigureAwait(false);
         return null;
     }

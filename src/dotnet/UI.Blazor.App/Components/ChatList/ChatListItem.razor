@@ -210,11 +210,15 @@
         var ownAuthor = chat.Rules.Author;
         var ownAuthorId = ownAuthor?.Id;
         DebugLog?.LogDebug("-> ComputeState: {ListKind} #{ChatTitle}", listKind, chatTitle);
-        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+        var chatStateTask = ChatUI.GetState(chatId, false, cancellationToken);
+        var previewTask = ChatUI.GetPreview(chatId, cancellationToken);
+        var chatState = await chatStateTask.ConfigureAwait(false);
+        var preview = await previewTask.ConfigureAwait(false);
         if (chatState == null) {
             DebugLog?.LogDebug("<- ComputeState: {ListKind} #{ChatTitle}, No ChatState", listKind, chatTitle);
             return Model.None;
         }
+
         DebugLog?.LogDebug("<- ComputeState: {ListKind} #{ChatTitle}, OK, ChatId={ChatId}", listKind, chatTitle, chatId);
         var chatInfo = chatState.Info;
         var lastEntry = chatInfo.LastTextEntry;
@@ -242,13 +246,13 @@
             UnreadCount = chatInfo.UnreadCount,
             HasUnreadMentions = chatInfo.HasUnreadMentions,
             LastTextEntry = lastEntry,
-            LastTextEntryText = chatInfo.LastTextEntryText,
+            LastTextEntryText = preview.Text,
             LastTextEntryIcons = lastTextEntryIcons,
             IsLastItemInBlock = isLastItemInBlock,
             IsFirstItem = isFirstItem,
             IsUnreadByOthers = isUnreadByOthers,
-            LastThread = chatInfo.LastThread,
-            LastThreadCreator = chatInfo.LastThreadCreator,
+            LastThread = preview.Thread,
+            LastThreadCreator = preview.ThreadCreator,
         };
     }
 

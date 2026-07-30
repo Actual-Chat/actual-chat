@@ -18,6 +18,19 @@ public static class ChatListExt
         return chats;
     }
 
+    public static IEnumerable<ContactInfo> FilterAndOrderBySearchQuery(
+        this IEnumerable<ContactInfo> contacts,
+        SearchQuery query)
+    {
+        if (!query.IsEmpty)
+            contacts = contacts
+                .WithSearchMatchRank(query, c => c.SearchDocument)
+                .Where(x => x.Rank > 0)
+                .OrderBySearchMatchRank()
+                .WithoutSearchMatchRank();
+        return contacts;
+    }
+
     public static IEnumerable<(ChatInfo ChatInfo, double Rank)> FilterBySearchMatchRank(
         this IEnumerable<(ChatInfo ChatInfo, double Rank)> rankedChats,
         ChatId? selectedChatId = null)
@@ -48,6 +61,28 @@ public static class ChatListExt
                 .OrderByDescending(c => c.Contact.IsPinned)
                 .ThenBy(c => c.Chat.Title),
             _ => throw new ArgumentOutOfRangeException(nameof(order)),
+        };
+    }
+
+    public static IEnumerable<ContactInfo> OrderBy(
+        this IEnumerable<ContactInfo> contacts,
+        ChatListOrder order,
+        ChatListPreOrder preOrder)
+    {
+        // Orders needing news/unread state degrade to ByOwnUpdateTime: pickers don't load it.
+        var preOrderedContacts = preOrder switch {
+            ChatListPreOrder.ChatList => contacts.OrderByDescending(c => c.Contact.IsPinned),
+            ChatListPreOrder.None => contacts.ToFakeOrderedEnumerable(),
+            ChatListPreOrder.NotesFirst => contacts.OrderByDescending(
+                c => c.Chat.SystemTag == Constants.Chat.SystemTags.Notes),
+            _ => throw new ArgumentOutOfRangeException(nameof(preOrder)),
+        };
+        return order switch {
+            ChatListOrder.ByAlphabet => preOrderedContacts
+                .OrderByDescending(c => c.Contact.IsPinned)
+                .ThenBy(c => c.Chat.Title),
+            _ => preOrderedContacts
+                .ThenByDescending(c => c.Contact.Version),
         };
     }
 

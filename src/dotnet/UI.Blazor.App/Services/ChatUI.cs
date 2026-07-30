@@ -128,51 +128,13 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
             var navbarSettings = await NavbarUI.Settings.Use(cancellationToken).ConfigureAwait(false);
 
-            var lastTextEntryText = "";
-            Chat.Chat? lastThreadChat = null;
-            Author? lastThreadCreator = null;
-            if (news?.LastTextEntry is { } lastTextEntry) {
-                if (lastTextEntry.IsContentStreaming)
-                    lastTextEntryText = Constants.Messages.RecordingSkeleton;
-                else if (lastTextEntry.IsThreadStart) {
-                    var threadChatId = lastTextEntry.ChatId.CreateThreadId(lastTextEntry.LocalId);
-                    var threadChatTask = Chats.Get(Session, threadChatId, cancellationToken);
-                    var threadCreatorTask = ChatThreads.GetThreadCreator(Session, threadChatId, cancellationToken);
-                    var threadChat = await threadChatTask.ConfigureAwait(false);
-                    var threadCreator = await threadCreatorTask.ConfigureAwait(false);
-                    lastThreadChat = threadChat;
-                    lastThreadCreator = threadCreator;
-                    if (lastThreadChat is not null)
-                        lastTextEntryText = $"Thread '{lastThreadChat.Title}'";
-                }
-                else if (lastTextEntry is { HasLocation: true, LocationId: { } locationId }) {
-                    var isLive = await LocationUI.IsLive(chatId, locationId, cancellationToken).ConfigureAwait(false);
-                    lastTextEntryText = isLive ? "Shared live location" : "Sent a location";
-                }
-                else {
-                    var emoji = Emojis.TryGetByIdOrSymbol(lastTextEntry.Content.Trim());
-                    if (emoji != null)
-                        lastTextEntryText = emoji.Symbol;
-                    else {
-                        var chatMarkupHub = ChatMarkupHubFactory[chatId];
-                        var markup = await chatMarkupHub
-                            .GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken)
-                            .ConfigureAwait(false);
-                        lastTextEntryText = markup.ToReadableText(MarkupConsumer.ChatListItemText);
-                    }
-                }
-            }
-
             var result = new ChatInfo(contact) {
                 News = news,
                 ChatUserSettings = chatUserSettings,
                 LastMention = lastMention,
-                LastThread = lastThreadChat,
-                LastThreadCreator = lastThreadCreator,
                 ReadEntryLid = readEntryLid,
                 UnreadCount = unreadCount,
                 HasUnreadMentions = hasUnreadMentions,
-                LastTextEntryText = lastTextEntryText,
                 IsPinnedToNavbar = navbarSettings.PinnedChats.Contains(chatId),
             };
             return result;
@@ -181,6 +143,46 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             Log.LogError(e, "Get({ChatId}) failed", chatId.Value);
             throw;
         }
+    }
+
+    [ComputeMethod(MinCacheDuration = 300)]
+    public virtual async Task<ChatPreview> GetPreview(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        // Deliberately not a part of Get(): this is per-visible-row work, and keeping it out
+        // also stops a preview change from invalidating the whole chat list.
+        var news = await Chats.GetNews(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (news?.LastTextEntry is not { } lastTextEntry)
+            return ChatPreview.None;
+        if (lastTextEntry.IsContentStreaming)
+            return new ChatPreview { Text = Constants.Messages.RecordingSkeleton };
+
+        if (lastTextEntry.IsThreadStart) {
+            var threadChatId = lastTextEntry.ChatId.CreateThreadId(lastTextEntry.LocalId);
+            var threadChatTask = Chats.Get(Session, threadChatId, cancellationToken);
+            var threadCreatorTask = ChatThreads.GetThreadCreator(Session, threadChatId, cancellationToken);
+            var threadChat = await threadChatTask.ConfigureAwait(false);
+            var threadCreator = await threadCreatorTask.ConfigureAwait(false);
+            return new ChatPreview {
+                Text = threadChat is not null ? $"Thread '{threadChat.Title}'" : "",
+                Thread = threadChat,
+                ThreadCreator = threadCreator,
+            };
+        }
+
+        if (lastTextEntry is { HasLocation: true, LocationId: { } locationId }) {
+            var isLive = await LocationUI.IsLive(chatId, locationId, cancellationToken).ConfigureAwait(false);
+            return new ChatPreview { Text = isLive ? "Shared live location" : "Sent a location" };
+        }
+
+        var emoji = Emojis.TryGetByIdOrSymbol(lastTextEntry.Content.Trim());
+        if (emoji is not null)
+            return new ChatPreview { Text = emoji.Symbol };
+
+        var chatMarkupHub = ChatMarkupHubFactory[chatId];
+        var markup = await chatMarkupHub
+            .GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken)
+            .ConfigureAwait(false);
+        return new ChatPreview { Text = markup.ToReadableText(MarkupConsumer.ChatListItemText) };
     }
 
     [ComputeMethod]
