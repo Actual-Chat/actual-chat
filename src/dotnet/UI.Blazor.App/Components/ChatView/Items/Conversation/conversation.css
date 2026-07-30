@@ -65,6 +65,14 @@
 .c-live-card .c-lc-title chat-activity-panel-icon-svg {
     @apply flex-none flex items-center;
 }
+/* Nobody is streaming: the equalizer holds its shape but stops moving - here the motion itself is the
+   "someone is talking" signal, and unlike the activity panel's copy this icon is on screen for the
+   whole session, so an always-on animation is a permanent compositor tick for no information.
+   !important: `.equalizer.active .bar.bar-1` re-declares the animation shorthand at equal specificity. */
+.live-conversation-header.quiet .equalizer .bar,
+.c-live-card.quiet .c-lc-title .equalizer .bar {
+    animation: none !important;
+}
 .c-live-card .c-lc-name {
     @apply flex-1 min-w-0;
     @apply text-01 text-base font-medium leading-5;

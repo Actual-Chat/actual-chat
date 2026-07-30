@@ -4,7 +4,11 @@
 @{
     var s = State.Value;
     var title = s.Title.IsNullOrEmpty() ? s.ParticipantsText : s.Title;
-    var cls = s.IsDissolving ? "live-conversation-header dissolving" : "live-conversation-header";
+    var cls = "live-conversation-header";
+    if (s.IsDissolving)
+        cls += " dissolving";
+    if (!s.IsAnyoneTalking)
+        cls += " quiet";
 }
 <div class="@cls">
     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
@@ -25,6 +29,7 @@
 @code {
     private IAuthors Authors => Hub.Authors;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private LiveBlockUI LiveBlockUI => Hub.LiveBlockUI;
     private ConversationUI ConversationUI => Hub.ConversationUI;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -67,9 +72,12 @@
         var canExpand = isLive && !isVoiceOnly && rawLive is { SessionStartedAt: not null };
         var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
         var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
+        var isAnyoneTalking = isLive
+            && await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(true);
         return new LiveConversationHeaderState(
             translated.Title.Text, participantsText, hasFoldedEntries, isExpanded, isJoined,
-            blockState.Overlay != null, blockState.Overlay?.IsDissolving ?? false, canExpand);
+            blockState.Overlay != null, blockState.Overlay?.IsDissolving ?? false, canExpand,
+            isAnyoneTalking);
     }
 
     private void Toggle()

@@ -17,4 +17,5 @@ public sealed record ConversationLiveState(
     IReadOnlyList<PreviewEntry>? TailPreview = null,
     bool HasSummary = false,
     int SwallowedCount = 0,
-    int RevealBatch = 0);
+    int RevealBatch = 0,
+    bool IsAnyoneTalking = false);

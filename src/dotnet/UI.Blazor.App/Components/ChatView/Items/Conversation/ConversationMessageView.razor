@@ -35,7 +35,7 @@
             || (!state.IsExpanded && state.SwallowedCount > 0)
             || state.TailPreview is { Count: > 0 };
         if (showLiveCard) {
-            <div class="c-live-card">
+            <div class="@(state.IsAnyoneTalking ? "c-live-card" : "c-live-card quiet")">
                 @if (!Message.HasSplitHeader && hasLiveTitle) {
                     <div class="c-lc-title">
                         <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
@@ -161,6 +161,7 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private IAuthors Authors => Hub.Authors;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private LiveBlockUI LiveBlockUI => Hub.LiveBlockUI;
     private TranscriptUI TranscriptUI => Hub.TranscriptUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
@@ -240,9 +241,11 @@
                 revealBatch = Math.Min(Math.Max(5, ((visibleCount + 4) / 5) * 5), swallowedCount);
             }
         }
+        var isAnyoneTalking = isLive
+            && await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(true);
         return new ConversationLiveState(
             translated, isLive, isJoined, isVoiceOnly, participantsText, hasFoldedEntries,
-            isExpanded, tailPreview, hasSummary, swallowedCount, revealBatch);
+            isExpanded, tailPreview, hasSummary, swallowedCount, revealBatch, isAnyoneTalking);
     }
 
     private async Task<IReadOnlyList<PreviewEntry>> GetTailPreview(
