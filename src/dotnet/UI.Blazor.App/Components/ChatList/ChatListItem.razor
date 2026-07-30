@@ -209,8 +209,6 @@
         var isFirstItem = IsFirstItem;
         var ownAuthor = chat.Rules.Author;
         var ownAuthorId = ownAuthor?.Id;
-        // Must be read before the first await - Fusion clears Computed.Current past it.
-        var computed = Computed.GetCurrent();
         DebugLog?.LogDebug("-> ComputeState: {ListKind} #{ChatTitle}", listKind, chatTitle);
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null) {
@@ -232,7 +230,7 @@
         // message, no timestamp. It's an ephemeral overlay: render without it, fill it in when it lands.
         var callActivity = Hub.ChatActivityUI
             .GetCallActivity(chatId, cancellationToken)
-            .UseIfReady(CallActivity.None, computed);
+            .UseIfReady(CallActivity.None, Computed.GetCurrent());
 
         return new() {
             ListKind = listKind,

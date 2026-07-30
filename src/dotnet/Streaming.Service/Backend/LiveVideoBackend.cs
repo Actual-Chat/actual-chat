@@ -191,8 +191,6 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     [ComputeMethod]
     protected virtual async Task<ApiArray<VideoStreamInfo>> ListRaw(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Fusion keeps Computed.Current set only for the synchronous prefix of a compute
-        // method, so capture it here — reading it past the await below throws "Computed.Current is null".
         var computed = Computed.GetCurrent();
         if (_listRawPrimer.TryUsePrimed(chatId, out var primed))
             return WithAutoInvalidation(primed);

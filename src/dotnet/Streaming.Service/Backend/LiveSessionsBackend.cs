@@ -91,8 +91,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // [ComputeMethod]
     public virtual async Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Fusion keeps Computed.Current set only for the synchronous prefix of a compute
-        // method, so capture it here — reading it past an await throws "Computed.Current is null".
         var computed = Computed.GetCurrent();
         var startedAt = CpuTimestamp.Now;
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
