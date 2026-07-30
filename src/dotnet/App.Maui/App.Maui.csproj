@@ -305,10 +305,15 @@
     <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
     <!-- ReadyToRun: composite, and full rather than partial. MAUI 11 defaults to
          crossgen2's partial mode, driven by the generic .mibc profiles it ships; those
-         are recorded from template apps and cover almost none of our startup path,
-         which shrank the composite image 107MB to 5MB and cost ~20-25% of startup time.
-         Revisit once we feed our own Android-recorded .mibc via _ReadyToRunPgoFiles;
-         then partial gets us the smaller app *and* the startup, and this can go. -->
+         are recorded from template apps and cover only 18% of the methods we actually
+         run at startup, which shrank the composite image 107MB to 5MB and cost ~20-25%
+         of startup time.
+
+         Measured with our own profile driving partial (_Profiling/android.mibc):
+         15.4MB composite / 76.9MB APK vs 116MB / 104MB here, and startup came out the
+         same. We ship full anyway: equal startup for 27MB is a bad trade when the full
+         image also means less JIT for the whole session, not just the first screen:
+         fewer compilation pauses, smoother scrolling and navigation later on. -->
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
     <_MauiPublishReadyToRunPartial>false</_MauiPublishReadyToRunPartial>
