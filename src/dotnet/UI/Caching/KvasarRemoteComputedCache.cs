@@ -14,7 +14,8 @@ public sealed class KvasarRemoteComputedCache : AppRemoteComputedCache
     {
         public required FilePath BasePath { get; init; }
         public required byte[] EncryptionKey { get; init; }
-        public int PageSize { get; init; } = 16 * 1024;
+        // 32 KiB is the best page size per Kvasar's benchmarks, Android is a deliberate exception
+        public int PageSize { get; init; } = (OSInfo.IsAndroid ? 16 : 32) * 1024;
         public long PageCacheBytes { get; init; } = 16 * 1024 * 1024;
         public TimeSpan FlushDelay { get; init; } = TimeSpan.FromSeconds(0.5);
     }
