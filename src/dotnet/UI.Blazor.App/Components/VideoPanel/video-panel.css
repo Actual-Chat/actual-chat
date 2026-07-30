@@ -109,9 +109,6 @@ body.wide .video-panel.panel-hidden {
 .video-panel.panel-hidden > .c-container {
     @apply hidden;
 }
-.video-panel.panel-hidden > .c-drag-handle {
-    @apply hidden;
-}
 .video-panel.panel-hidden .c-hidden-pill {
     @apply flex-x items-center gap-2;
     @apply h-full;
@@ -188,7 +185,7 @@ body.wide .video-panel.expanded .video-panel-content {
     @apply justify-start;
 }
 /* Default (inline) state — not collapsed, not expanded.
-   Fixed 12rem height (matches INLINE_FULL_HEIGHT_REM in video-panel.ts).
+   Fixed 12rem height (matches INLINE_FULL_HEIGHT_REM in inline-drag.ts).
    When sidebar has 3 tiles they shrink vertically (flex-shrink default) and
    render as rectangles rather than pushing panel height. */
 body.narrow .video-panel:not(.collapsed):not(.expanded),
@@ -202,30 +199,6 @@ body.narrow .video-panel.minimized:not(.collapsed):not(.expanded) {
 }
 .video-panel.minimized > .c-container {
     @apply hidden;
-}
-/* Drag handle — reparented to body, fixed-positioned below subheader/header. */
-/* JS sets `top` (see setupDragHandle in video-panel.ts). */
-.c-drag-handle {
-    @apply fixed z-10;
-    @apply h-8 w-64;
-    @apply cursor-grab;
-    left: 50%;
-    transform: translateX(-50%);
-}
-body.wide .c-drag-handle {
-    @apply hidden;
-}
-.c-drag-handle > .c-bar {
-    @apply absolute bottom-6 left-1/2 -translate-x-1/2;
-    @apply w-32 h-1 rounded-full;
-    @apply opacity-70;
-    background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
-    transition: width 0.15s ease-out, height 0.15s ease-out, opacity 0.15s ease-out;
-}
-.c-drag-handle:active > .c-bar,
-.c-drag-handle.dragging > .c-bar {
-    @apply w-40 h-1.5;
-    @apply opacity-100;
 }
 body.wide .video-panel:not(.collapsed):not(.expanded):not(.panel-hidden) {
     @apply min-h-112 max-h-112;

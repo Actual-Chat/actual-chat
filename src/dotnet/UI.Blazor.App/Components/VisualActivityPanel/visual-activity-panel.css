@@ -13,10 +13,14 @@
 .map-panel {
     @apply relative;
     @apply w-full;
-    @apply h-48;
+    @apply h-48; /* matches INLINE_FULL_HEIGHT_REM in inline-drag.ts */
     @apply rounded-b-lg;
     @apply overflow-hidden;
     @apply bg-02;
+}
+/* Swiped shut via the drag handle (see map-panel.ts) */
+.map-panel.minimized {
+    @apply h-0;
 }
 .map-panel .c-map {
     @apply w-full h-full;
@@ -135,4 +139,35 @@ body.hoverable .map-panel-host .c-menu .c-menu-item:hover:not(:disabled),
 .call-map-switch .c-option.on {
     background: var(--blue-50-10);
     color: var(--blue-50);
+}
+
+/* ── Drag handle ── */
+
+/* video-panel.ts wires the drag gesture and hides it in non-inline panel modes. */
+.visual-activity-panel > .c-drag-handle {
+    @apply absolute z-10;
+    @apply h-8 w-64;
+    @apply cursor-grab;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+body.wide .visual-activity-panel > .c-drag-handle {
+    @apply hidden;
+}
+/* The Call/Map switch hangs half its height below the panel edge — clear it */
+.visual-activity-panel:has(.call-map-switch) > .c-drag-handle {
+    top: calc(100% + 1rem);
+}
+.visual-activity-panel > .c-drag-handle > .c-bar {
+    @apply absolute bottom-6 left-1/2 -translate-x-1/2;
+    @apply w-32 h-1 rounded-full;
+    @apply opacity-70;
+    background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
+    transition: width 0.15s ease-out, height 0.15s ease-out, opacity 0.15s ease-out;
+}
+.visual-activity-panel > .c-drag-handle:active > .c-bar,
+.visual-activity-panel > .c-drag-handle.dragging > .c-bar {
+    @apply w-40 h-1.5;
+    @apply opacity-100;
 }

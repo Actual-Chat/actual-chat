@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, MapPanel.Model?>
 @{
     var m = State.Value;
@@ -6,7 +7,7 @@
         return;
 }
 
-<div class="map-panel-host">
+<div @ref="Ref" class="map-panel-host">
     <div class="map-panel">
         <MapView
             @ref="_mapView"
@@ -57,6 +58,8 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.MapPanel.create";
+
     private MutableState<bool> _isMenuOpen = null!;
     private MapView? _mapView;
 
@@ -65,7 +68,26 @@
     private LocationUI LocationUI => Hub.LocationUI;
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
 
+    private ElementReference Ref { get; set; }
+    private IJSObjectReference? JSRef { get; set; }
+
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null;
+        await base.DisposeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (State.Value is null) {
+            // The host div isn't rendered, so Ref is stale; drop the JS
+            // counterpart and recreate it when the content comes back.
+            await JSRef.DisposeSilentlyAsync("dispose");
+            JSRef = null;
+        } else
+            JSRef ??= await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+    }
 
     protected override void OnInitialized()
         => _isMenuOpen = StateFactory.NewMutable(
