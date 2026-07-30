@@ -1116,16 +1116,26 @@ public partial class ChatUI
         foreach (var item in messages) {
             var conversation = item.Conversation;
             var isLiveBlock = liveBlockId != null && blockConversation?.Id == liveBlockId;
+            // A Conversation-less item is held by its lid alone, so the live block's range must cover the
+            // conversation as well: the frozen BlockEndLid stops at the summary that was live when the
+            // viewer left, and a later summary stretches the conversation past it. An item in that gap
+            // would otherwise end the block and let the items after it open a second one - two blocks
+            // under one "{V}-conversation-block" @key, which tears the render down.
+            var blockRange = blockConversation == null
+                ? default
+                : isLiveBlock
+                    ? new Range<long>(
+                        Math.Min(liveBlockRange.Start, blockConversation.EntryLidRange.Start),
+                        Math.Max(liveBlockRange.End, blockConversation.EntryLidRange.End))
+                    : blockConversation.EntryLidRange;
             var belongs = blockConversation != null
                 && (conversation != null
                     ? conversation.Id == blockConversation.Id
-                    : isLiveBlock
-                        // Range.Contains excludes End, so a still-live [V, ∞) range needs the open-ended form -
-                        // a closed block's range carries a real BlockEndLid and uses Contains as usual.
-                        ? liveBlockRange.End == long.MaxValue
-                            ? item.Id >= liveBlockRange.Start
-                            : liveBlockRange.Contains(item.Id)
-                        : blockConversation.EntryLidRange.Contains(item.Id));
+                    // Range.Contains excludes End, so a still-live [V, ∞) range needs the open-ended form -
+                    // a closed block's range carries a real BlockEndLid and uses Contains as usual.
+                    : blockRange.End == long.MaxValue
+                        ? item.Id >= blockRange.Start
+                        : blockRange.Contains(item.Id));
             if (belongs) {
                 blockItems.Add(item);
                 continue;

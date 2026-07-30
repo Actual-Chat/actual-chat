@@ -1,3 +1,4 @@
+using System.Text;
 using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
@@ -887,6 +888,150 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(15));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StopKeepsRenderKeysUnique(bool hasPreLatchContext)
+    {
+        // Every snapshot along the live -> ordinary conversation switch must stay @key-unique.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, $"stop-dup-key-test-{hasPreLatchContext}");
+        var context0 = await Tester.CreateTextEntry(chat.Id, "context-0");
+        await Tester.CreateTextEntry(chat.Id, "context-1");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_240);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        var tileSize = (int)ChatUI.IdTileStack.FirstLayer.TileSize;
+        ChatEntry lastFolded = null!;
+        for (var i = 0; i < tileSize * 3; i++)
+            lastFolded = await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = lastFolded.LocalId, MessageCount = tileSize * 3, IsExpandedByDefault = true,
+            }, CancellationToken.None);
+        for (var i = 0; i < tileSize; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+
+        using var cts = new CancellationTokenSource();
+        var samplerTask = Task.Run(async () => {
+            while (!cts.IsCancellationRequested) {
+                var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+                AssertUniqueRenderKeys(items);
+                await Task.Delay(TimeSpan.FromMilliseconds(20), CancellationToken.None);
+            }
+        }, CancellationToken.None);
+
+        // act
+        if (hasPreLatchContext)
+            await liveBackend.SetContextStart(chat.Id, context0.LocalId, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+        await chatAudioUI.SetListeningState(chat.Id, false);
+        InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"after-close-{i}");
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        chatUI.ToggleExpandConversation(ConversationId.New(chat.Id, v));
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        chatUI.ToggleExpandConversation(ConversationId.New(chat.Id,
+            hasPreLatchContext ? context0.LocalId : v));
+
+        // assert
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        cts.Cancel();
+        await samplerTask;
+    }
+
+    [Fact]
+    public async Task ThreadInsideFrozenBlockKeepsSingleBlock()
+    {
+        // A thread start carries no Conversation, so inside a frozen block it is held by the block's
+        // lid range alone - and that range stops at the frozen BlockEndLid while the conversation
+        // itself keeps growing. Everything past the thread must stay in the same block.
+
+        // arrange - joined live session with a landed summary
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "frozen-thread-split-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_250);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+
+        // the tail the viewer sees before leaving: a thread start, then one more message
+        await Tester.CreateTextEntry(chat.Id, "tail-0");
+        var threadStart = await Tester.CreateTextEntry(chat.Id, "thread-start");
+        var lastEntry = await Tester.CreateTextEntry(chat.Id, "tail-1");
+        await Tester.Commander.Call(
+            new ChatThreads_Start(Tester.Session, chat.Id, "Thread", "", [threadStart.Id]),
+            CancellationToken.None);
+
+        // act - leave (freezing BlockEndLid at the summarized end), then a later summary stretches
+        // the conversation past that frozen end, and the session closes
+        await chatAudioUI.SetListeningState(chat.Id, false);
+        InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d2", Summary = "s2",
+                EndEntryLid = lastEntry.LocalId, MessageCount = 6, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var liveState = await liveBackend.GetState(chat.Id, ct);
+            liveState.Should().BeNull();
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            AssertUniqueRenderKeys(items);
+            items.Items.OfType<ExpandedConversationMessage>()
+                .Should().ContainSingle("a conversation renders as exactly one block");
+        }, TimeSpan.FromSeconds(15));
+    }
+
     [Fact]
     public async Task TierOneCloseDissolvesBeforeVanishing()
     {
@@ -1454,6 +1599,54 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // without depending on that worker's timing within this test's lifetime.
         using (Invalidation.Begin())
             _ = chatAudioUI.GetState(chatId);
+    }
+
+    private static void AssertUniqueRenderKeys(ChatItems items)
+    {
+        AssertUniqueKeys(items.Items.Select(i => ((IVirtualListItem)i).RenderKey), "list", items);
+        foreach (var block in items.Items.OfType<ExpandedConversationMessage>())
+            AssertUniqueKeys(block.Items.Select(i => i.Key.Value), $"block {block.Key}", items);
+
+        // Stronger than @key uniqueness: a conversation owns exactly one start and one end band
+        // anywhere in the tree, even when the two land in different sibling lists.
+        var leaves = items.Items.SelectMany(i => i.GetLeafMessages()).ToList();
+        AssertUniqueKeys(
+            leaves.Where(m => m.Kind == ChatMessageKind.ConversationEnd)
+                .Select(m => m.Conversation!.Id.Value),
+            "conversation ends",
+            items);
+        AssertUniqueKeys(
+            leaves.Where(m => m.Kind == ChatMessageKind.ConversationStart)
+                .Select(m => m.Conversation!.Id.Value),
+            "conversation starts",
+            items);
+    }
+
+    private static void AssertUniqueKeys(IEnumerable<string> keys, string scope, ChatItems items)
+    {
+        var duplicates = keys.GroupBy(k => k).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        if (duplicates.Count == 0)
+            return;
+
+        throw new InvalidOperationException(
+            $"Duplicate @key(s) in {scope}: {duplicates.ToDelimitedString()}\n{Dump(items)}");
+    }
+
+    private static string Dump(ChatItems items)
+    {
+        var sb = new StringBuilder();
+        foreach (var item in items.Items) {
+            sb.AppendLine($"{item.GetType().Name} #{item.Key} c={item.Conversation?.Id.Value ?? "-"}");
+            if (item is IVirtualListGroup<ChatMessage> group)
+                foreach (var child in group.Items)
+                    sb.AppendLine(
+                        $"    {child.GetType().Name} #{child.Key} c={child.Conversation?.Id.Value ?? "-"}");
+            else if (item is IVirtualListGroup<ChatEntryMessage> entryGroup)
+                foreach (var child in entryGroup.Items)
+                    sb.AppendLine($"    {child.GetType().Name} #{child.Key}");
+        }
+
+        return sb.ToString();
     }
 
     private static List<long> LeafEntryLids(ChatItems items)
