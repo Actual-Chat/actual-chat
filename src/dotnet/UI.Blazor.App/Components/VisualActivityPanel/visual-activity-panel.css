@@ -143,7 +143,8 @@ body.hoverable .map-panel-host .c-menu .c-menu-item:hover:not(:disabled),
 
 /* ── Drag handle ── */
 
-/* video-panel.ts wires the drag gesture and hides it in non-inline panel modes. */
+/* visual-activity-panel.ts wires the drag gesture; Blazor renders the handle
+   only in the Inline, non-closing state. */
 .visual-activity-panel > .c-drag-handle {
     @apply absolute z-10;
     @apply h-8 w-64;
@@ -158,6 +159,14 @@ body.wide .visual-activity-panel > .c-drag-handle {
 /* The Call/Map switch hangs half its height below the panel edge — clear it */
 .visual-activity-panel:has(.call-map-switch) > .c-drag-handle {
     top: calc(100% + 1rem);
+}
+/* TODO: remove if minimizing changes panel mode to hidden */
+/* Panel swiped shut: the switch goes with it, the handle moves back up */
+.visual-activity-panel:has(.minimized) .call-map-switch {
+    @apply hidden;
+}
+.visual-activity-panel:has(.minimized) > .c-drag-handle {
+    top: 100%;
 }
 .visual-activity-panel > .c-drag-handle > .c-bar {
     @apply absolute bottom-6 left-1/2 -translate-x-1/2;
