@@ -112,7 +112,7 @@
     <PackageVersion Include="ActualLab.Fusion.EntityFramework.Redis" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Fusion.Server" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Interception" Version="$(ActualLabFusionVersion)" />
-    <PackageVersion Include="ActualLab.Kvasar" Version="0.3.7" />
+    <PackageVersion Include="ActualLab.Kvasar" Version="0.3.10" />
     <PackageVersion Include="ActualLab.Redis" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.RestEase" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />
