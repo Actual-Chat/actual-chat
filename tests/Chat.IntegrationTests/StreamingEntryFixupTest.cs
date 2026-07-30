@@ -80,6 +80,37 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task FixupFlowRescansPastAFreshStreamingEntry()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var chatId = await CreateUserChat(tester);
+        var clocks = tester.AppServices.Clocks();
+        var fresh = await tester.CreateStreamingEntry(chatId, Languages.English, content: "fresh");
+        await RunFixupFlow(chatId, tester);
+
+        // act
+        // The fresh entry pins the flow's cursor, so this later one is only ever
+        // reached if the next run rescans from the pinned position rather than past it.
+        var stale = await tester.CreateStreamingEntry(
+            chatId,
+            Languages.English,
+            beginsAt: clocks.SystemClock.Now - StaleDelta,
+            content: "stale after fresh");
+        await RunFixupFlow(chatId, tester);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var current = await tester.Chats.GetEntry(tester.Session, stale.ChatEntrySlim.Id, ct);
+            current.Should().NotBeNull();
+            current!.IsContentStreaming.Should().BeFalse();
+        }, WaitTimeout);
+        var freshNow = await tester.Chats.GetEntry(tester.Session, fresh.ChatEntrySlim.Id, CancellationToken.None);
+        freshNow.Should().NotBeNull();
+        freshNow!.IsContentStreaming.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task RemoveStreamingEntrySucceeds()
     {
         // arrange

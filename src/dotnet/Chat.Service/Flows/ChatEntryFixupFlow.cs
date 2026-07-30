@@ -15,11 +15,20 @@ namespace ActualChat.Chat.Flows;
 // forward each run. The cursor stops at the first streaming-but-not-yet-stale
 // entry — subsequent runs resume from there, so steady-state cost is a few
 // tiles per kick instead of a full table scan.
+//
+// A run must fit into QueuesExt.QueueTimeout: a timed-out Resume commits
+// nothing, so the cursor stays put and the next run repeats the same work
+// forever. Hence MaxTilesPerRun/MaxRunDuration - on overrun the run commits
+// what it scanned and stages an immediate self-resume to continue. ScanLid
+// carries the sweep position across those resumes: LastScannedLid can't,
+// since it stays pinned to the first entry that may still need fixing.
 [Flow(DelayQuanta = 30)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ChatEntryFixupFlow : Flow<Unit>
 {
+    private const int MaxTilesPerRun = 500;
     private static readonly TileLayer<long> IdTileLayer = Constants.Chat.ServerIdTileStack.FirstLayer;
+    private static readonly TimeSpan MaxRunDuration = TimeSpan.FromSeconds(7);
 
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private ICommander Commander => field ??= Services.Commander();
@@ -34,6 +43,8 @@ public partial class ChatEntryFixupFlow : Flow<Unit>
     public long TotalClosed { get; set; }
     [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public long TotalRemoved { get; set; }
+    [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
+    public long ScanLid { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
@@ -42,15 +53,30 @@ public partial class ChatEntryFixupFlow : Flow<Unit>
         LastRunAt = now;
 
         var lidRange = await ChatsBackend.GetLidRange(ChatId, false, cancellationToken).ConfigureAwait(false);
-        var startLid = Math.Max(LastScannedLid, lidRange.Start);
-        if (startLid >= lidRange.End)
+        var cursorLid = Math.Max(LastScannedLid, lidRange.Start);
+        var startLid = Math.Max(ScanLid, cursorLid);
+        if (startLid >= lidRange.End) {
+            ScanLid = 0;
             return;
+        }
 
         var closedCount = 0;
         var removedCount = 0;
-        var cursor = startLid;
-        var cursorAdvancing = true;
+        var cursor = cursorLid;
+        // Mid-sweep runs resume past an already pinned cursor
+        var cursorAdvancing = startLid == cursorLid;
+        var tilesScanned = 0;
+        var isIncomplete = false;
+        var scanLid = startLid;
         for (var idTile = IdTileLayer.GetTile(startLid); idTile.Start < lidRange.End; idTile = idTile.Next()) {
+            var isOverBudget = tilesScanned > 0 && Hub.SystemNow - ResumedAt >= MaxRunDuration;
+            if (tilesScanned >= MaxTilesPerRun || isOverBudget) {
+                isIncomplete = true;
+                break;
+            }
+
+            tilesScanned++;
+            scanLid = Math.Min(idTile.End, lidRange.End);
             var tile = await ChatsBackend.GetTile(ChatId, idTile.Range, false, cancellationToken).ConfigureAwait(false);
             foreach (var entry in tile.Entries) {
                 if (entry.LocalId < startLid)
@@ -90,12 +116,23 @@ public partial class ChatEntryFixupFlow : Flow<Unit>
                     cursorAdvancing = false;
                 }
             }
+
+            // Skips gaps the per-entry update can't
+            if (cursorAdvancing)
+                cursor = scanLid;
         }
 
         LastScannedLid = cursor;
+        ScanLid = isIncomplete ? scanLid : 0;
         TotalClosed += closedCount;
         TotalRemoved += removedCount;
         if (closedCount > 0 || removedCount > 0)
-            Console.Log($"Fix-up done: closed {closedCount}, removed {removedCount}; cursor {cursor}; totals {TotalClosed}/{TotalRemoved}");
+            Console.Log($"Fix-up done: closed {closedCount}, removed {removedCount}; "
+                + $"cursor {cursor}; totals {TotalClosed}/{TotalRemoved}");
+
+        if (isIncomplete) {
+            Console.Log($"Scanned {tilesScanned} tiles up to {scanLid} of {lidRange.End}, cursor {cursor} - resuming");
+            Runtime.StageResume();
+        }
     }
 }
