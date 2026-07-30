@@ -23,6 +23,15 @@ public class MauiThemeHandler
 
     protected ILogger Log => _log ??= StaticLog.Factory.CreateLogger(GetType());
 
+    public string TopBarColor {
+        get {
+            // --background-01 (see getColors in theme.ts), restored from preferences in the ctor,
+            // so it's known before the web app loads.
+            var items = _colors.Split(';');
+            return items[0].Trim();
+        }
+    }
+
     protected MauiThemeHandler()
     {
         _serialized = MauiPreferences.Theme;

@@ -22,6 +22,7 @@ public static partial class MauiProgram
         services.AddScoped<IMauiLogAccessor>(c => new WindowsLogAccessor(c));
         services.AddScoped<IAudioCapture>(c => new WindowsAudioCapture(c.LogFor<WindowsAudioCapture>()));
         services.AddScoped<ClipboardUI>(c => new WindowsClipboardUI(c.UIHub()));
+        services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

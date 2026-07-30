@@ -13,7 +13,7 @@ public partial class App
             if (t.GetAwaiter().GetResult())
                 Environment.Exit(0);
             else
-                base.OnLaunched(args);
+                WindowsSplashScreen.Show(() => base.OnLaunched(args));
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 

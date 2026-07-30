@@ -10,6 +10,20 @@ internal static partial class WindowConfigurator
     {
         ConfigureMinimization(window);
         ConfigureStartupSize(window);
+        WindowsSplashScreen.Attach(window);
+    }
+
+    public static void BringToForeground(Window window)
+    {
+        window.Activate();
+        try {
+            // Activate() alone rarely wins the foreground lock - from the browser we're returning
+            // from, or from whatever Windows picks when the splash window above us closes.
+            SetForegroundWindow(WindowNative.GetWindowHandle(window));
+        }
+        catch {
+            // GetWindowHandle may fail in unpackaged/AOT mode, same as GetAppWindow elsewhere here
+        }
     }
 
     private static void ConfigureMinimization(Window window)
@@ -29,14 +43,7 @@ internal static partial class WindowConfigurator
                 catch {
                     // In unpackaged/AOT mode, GetAppWindow may fail
                 }
-                window.Activate();
-                try {
-                    // Activate() alone rarely wins the foreground lock from the browser we're returning from.
-                    SetForegroundWindow(WindowNative.GetWindowHandle(window));
-                }
-                catch {
-                    // GetWindowHandle may fail in unpackaged/AOT mode, same as GetAppWindow above
-                }
+                BringToForeground(window);
             });
         };
 

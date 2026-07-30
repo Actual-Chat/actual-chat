@@ -80,7 +80,12 @@ public class LoadingUI : UIServiceBase<UIHub>
         RenderTime = Tracer.Elapsed;
         Tracer.MethodPoint();
         _whenAppRenderedSource.TrySetResult();
-        RemoveWebSplash();
+
+        // A native splash still covers the screen here, so the fade would be invisible - and this
+        // removal is what releases it. IsMauiApp matters: OSInfo is the .NET runtime's OS, so a
+        // Windows-hosted Blazor Server / Auto session reports IsWindows with no native splash at all.
+        var isCoveredByNativeSplash = HostInfo.HostKind.IsMauiApp() && (OSInfo.IsAndroid || OSInfo.IsWindows);
+        RemoveWebSplash(isCoveredByNativeSplash);
     }
 
     public void MarkChatListLoaded()

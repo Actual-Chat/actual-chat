@@ -1,4 +1,5 @@
 using ObjCRuntime;
+using UIKit;
 using WebKit;
 
 namespace ActualChat.App.Maui;
@@ -6,6 +7,19 @@ namespace ActualChat.App.Maui;
 public partial class CustomBlazorWebViewHandler
 {
     private static int _accessoryViewSwizzled;
+
+    static CustomBlazorWebViewHandler()
+        => BlazorWebViewMapper.AppendToMapping(nameof(MauiSettings.SplashBackgroundColor), (handler, _) => {
+            var webView = handler.PlatformView;
+            webView.Opaque = false;
+            webView.BackgroundColor = UIColor.Clear;
+            webView.ScrollView.BackgroundColor = UIColor.Clear;
+            if (OperatingSystem.IsIOSVersionAtLeast(15))
+                webView.UnderPageBackgroundColor = UIColor.FromRGB(
+                    MauiSettings.SplashBackgroundColor.Red,
+                    MauiSettings.SplashBackgroundColor.Green,
+                    MauiSettings.SplashBackgroundColor.Blue);
+        });
 
     protected override WKWebView CreatePlatformView()
     {

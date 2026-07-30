@@ -147,6 +147,7 @@ export default withMermaid(defineConfig({
               { text: "API Index", link: "/api-index" },
               { text: "AI Agent Guide", link: "/AGENTS" },
               { text: "Safe Areas", link: "/safe-areas" },
+              { text: "Splash Screens", link: "/splash-screen" },
             ],
           },
           {
