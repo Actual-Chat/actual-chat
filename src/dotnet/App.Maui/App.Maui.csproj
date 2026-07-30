@@ -7,9 +7,9 @@
 
   <PropertyGroup>
     <!-- Build Android by default; add iOS / MacCatalyst only on macOS to avoid iOS build issues on Windows CI -->
-    <TargetFrameworks>net10.0-android;</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.22621.0</TargetFrameworks>
+    <TargetFrameworks>net11.0-android;</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net11.0-ios;net11.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net11.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
@@ -53,7 +53,8 @@
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
-  <!-- Runtime settings (intact if it's CoreCLR, i.e. on Android & Windows) -->
+  <!-- CoreCLR runtime settings — .NET 11 runs MAUI on CoreCLR on every platform,
+       so these apply everywhere (they're ignored under Native AOT, which has no JIT) -->
   <PropertyGroup>
     <!-- Reduce work at startup -->
     <TieredCompilation>true</TieredCompilation>
@@ -70,10 +71,7 @@
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
-  <!-- Profiling & tracing -->
-  <PropertyGroup Condition="'$(IsProfilingEnabled)' == ''">
-    <IsProfilingEnabled>false</IsProfilingEnabled>
-  </PropertyGroup>
+  <!-- Tracing: enables the EventPipe diagnostic server so dotnet-trace can attach -->
   <PropertyGroup Condition="'$(IsTracingEnabled)' == ''">
     <IsTracingEnabled>false</IsTracingEnabled>
   </PropertyGroup>
@@ -145,9 +143,7 @@
     <PackageReference Include="banditoth.MAUI.DeviceId" />
     <PackageReference Include="CommunityToolkit.Maui.Core" />
     <PackageReference Include="libphonenumber-csharp" />
-    <!-- Extra packages for .NET 8: -->
     <PackageReference Include="Microsoft.Maui.Controls" />
-    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
@@ -205,14 +201,13 @@
     <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
 
-  <!-- Common Windows, iOS and Android build properties -->
+  <!-- Runtime mode — common to every platform.
+       .NET 11 dropped the Mono path for Android / iOS / Mac Catalyst, so CoreCLR is the
+       only runtime here, exactly as it always was on Windows. That leaves a single
+       axis: CoreCLR (+ ReadyToRun in Release) vs. Native AOT. UseNativeAot=true flips
+       every TFM to NAOT — see the NAOT block at the end of this file. -->
   <PropertyGroup>
-    <!-- UseNativeAot: when true, all platforms use Native AOT in Release instead of CoreCLR/R2R/Mono -->
     <UseNativeAot Condition="'$(UseNativeAot)' == ''">false</UseNativeAot>
-    <!-- This enables CoreCLR (instead of Mono) in Release builds on Android -->
-    <UseCoreClr Condition="'$(UseCoreClr)' == ''">true</UseCoreClr>
-    <UseInterpreter Condition="'$(Configuration)' == 'Debug'">true</UseInterpreter>
-    <UseInterpreter Condition="'$(Configuration)' == 'Release'">false</UseInterpreter>
   </PropertyGroup>
 
   <!-- R2R exclusions (Android + Windows Release). Inert when UseNativeAot=true since
@@ -221,7 +216,7 @@
     <PublishReadyToRunExclude Include="PhoneNumbers.dll" />
   </ItemGroup>
 
-  <!-- Trimming: trimmer root assemblies apply to both R2R/Mono trimming and Native AOT.
+  <!-- Trimming: trimmer root assemblies apply to both R2R trimming and Native AOT.
        Under NAOT, CodeKeeper keeps reflection-referenced types but ILC still needs every
        ctor/method body preserved for COM/JNI/ObjC activation paths — see the Native AOT
        section below for third-party roots. -->
@@ -276,7 +271,6 @@
 
   <!-- Android: Both Debug & Release configurations -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
-    <AndroidUseInterpreter>$(UseInterpreter)</AndroidUseInterpreter>
     <!-- Use SocketsHttpHandler (managed) instead of AndroidMessageHandler (JNI-based).
          SocketsHttpHandler supports HTTP/2 and HTTP/3, avoids JNI overhead,
          and is more stable with CoreCLR on Android. -->
@@ -293,22 +287,18 @@
     <EmbedAssembliesIntoApk Condition="'$(EmbedAssembliesIntoApk)' == ''">False</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
-  <!-- Android: Release configuration (default — Mono AOT or CoreCLR + R2R). The common
-       NAOT block at the end overrides PublishTrimmed/TrimMode/RunAOTCompilation when
+  <!-- Android: Release configuration (CoreCLR + composite partial R2R). The common NAOT
+       block at the end overrides PublishTrimmed / TrimMode / PublishReadyToRun* when
        UseNativeAot=true, so this block always applies in Release. -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
-    <!-- Trimming & AOT -->
+    <!-- Trimming -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
-    <RunAOTCompilation>true</RunAOTCompilation>
-    <!-- Disabled for now, see https://github.com/dotnet/runtime/issues/101135 -->
-    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
-    <!-- Disabled for now - doesn't save much, but a potential source of issues -->
-    <AndroidStripILAfterAOT>false</AndroidStripILAfterAOT>
-    <!-- Disabled for now - no meaningful changes to startup time -->
-    <EnableLLVM>false</EnableLLVM>
+    <!-- ReadyToRun: composite, and partial via the .mibc profiles the Android SDK ships -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
     <!-- -50ms to startup time: -->
     <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
     <!-- Must be commented out: r8/d8 is the default now, specifying them explicitly
@@ -316,107 +306,30 @@
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
     -->
-
-    <!-- Runtime -->
-    <!-- android-env.txt contains MONO_GC_PARAMS, so this has no effect:
-    <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
-    -->
     <!-- When true, fails with No implementation found for void crc6444c698770736d3d5.MainApplication.n_OnAppForegrounded()
     <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
     -->
-
-    <!-- Preloading:
-    1. There are 250 assemblies (bundled), so preloading assemblies hurts the startup.
-       The delay isn't shown in our internal stats, coz it happens before any code runs,
-       but it's percievable - maybe 300ms or so. Thus preloading all assemblies isn't
-       a good option.
-    3. Preloading AOT-d assemblies adds a delay as well, but since the amount of
-       PGO AOT code is much smaller, this delay isn't quite percievable.
-       When AOT code is preloaded, the startup delay is measurably smaller, but
-       not by a lot - maybe 50ms or so.
-    3. We know for sure that not everything we use on startup gets into AOT profiles.
-       E.g. .mibc profiles are recorded with tracing, which definitely skips a
-       decent part of calls. Funny enough, it's the same with .aprof profiles,
-       which are supposed to be perfect.
-    4. Overall, the "fastest" settings seem to be:
-       - AndroidEnablePreloadAssemblies = False // don't preload MSIL code
-       - AndroidAotEnableLazyLoad = False // preload AOT code, though True might make sense here w/ larger AOT
-       The default settings for release builds are:
-       - AndroidEnablePreloadAssemblies = False
-       - AndroidAotEnableLazyLoad = True
-    We tried:
-       - (True, False) - LEAST STABLE - adds maybe 100-150ms or so to startup time, more frequently fails with SIGSEGV on startup
-       - (False, True) - MOSTLY STABLE (default release settings) - seem to seldomly fail with SIGSEGV on startup
-       - (False, False) - MOSTLY STABLE - seem to seldomly fail with SIGSEGV on startup.
-    -->
-    <AndroidEnablePreloadAssemblies>False</AndroidEnablePreloadAssemblies>
-    <AndroidAotEnableLazyLoad>True</AndroidAotEnableLazyLoad>
   </PropertyGroup>
 
-  <!-- Android: CoreCLR mode (instead of Mono). The common NAOT block at the end overrides
-       PublishReadyToRun / PublishReadyToRunComposite when UseNativeAot=true. -->
-  <PropertyGroup Condition="$(UseCoreClr) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <UseMonoRuntime>false</UseMonoRuntime>
-    <RunAOTCompilation>false</RunAOTCompilation>
-    <PublishReadyToRun>true</PublishReadyToRun>
-    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
-  </PropertyGroup>
-
-  <!-- Android: Profile-guided AOT profiles -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
-    <!--
-    These two profiles are different, we can include none, any of them, or both.
-    Using both seems to be the most efficient option in .NET 7.
-    -->
-    <MauiUseDefaultAotProfile>false</MauiUseDefaultAotProfile>
-    <AndroidUseDefaultAotProfile>false</AndroidUseDefaultAotProfile>
-  </PropertyGroup>
-  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release' and !$(IsProfilingEnabled)">
-    <!--
-    // .aprof profile (recorded with IsProfilingEnabled) - doesn't work well:
-    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android.aprof" />
-    // And this causes crash on startup:
-    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/maui-blazor.aotprofile" />
-    // And .mibc profiles (recorded with IsTracingEnabled & converted to .mibc) don't work anyway:
-    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android.mibc" />
-    -->
-  </ItemGroup>
-
-  <!-- Android: AOT profiling mode -->
-  <PropertyGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android'))">
-    <AndroidEnableProfiler>true</AndroidEnableProfiler>
-    <AndroidEmbedProfilers>aot</AndroidEmbedProfilers>
-    <AndroidAotProfilerPort>9999</AndroidAotProfilerPort>
-    <AndroidAotCustomProfilePath>$(MSBuildThisFileDirectory)/_Profiling/android.aprof</AndroidAotCustomProfilePath>
-    <!-- Turn off AOT & JIT compilation -->
-    <PublishTrimmed>false</PublishTrimmed>
-    <UseInterpreter>false</UseInterpreter>
-    <AndroidUseInterpreter>false</AndroidUseInterpreter>
-    <RunAOTCompilation>false</RunAOTCompilation>
-    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
-    <AndroidStripILAfterAOT>false</AndroidStripILAfterAOT>
-    <EnableLLVM>false</EnableLLVM>
-    <AndroidEnablePreloadAssemblies>false</AndroidEnablePreloadAssemblies>
-  </PropertyGroup>
-  <ItemGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android'))">
-    <PackageReference Include="Mono.AotProfiler.Android" />
-  </ItemGroup>
-  <!-- Android: Tracing mode -->
+  <!-- Android: Tracing mode — records a .nettrace that _Profiling/CreateMibc-A.cmd turns
+       into a .mibc profile for crossgen2 (see <AndroidMibcProfile>) -->
   <PropertyGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies> <!-- Required to produce .mibc -->
     <AndroidEnableProfiler>true</AndroidEnableProfiler>
-    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
-    <AndroidUseDefaultAotProfile>false</AndroidUseDefaultAotProfile>
-    <MauiUseDefaultAotProfile>false</MauiUseDefaultAotProfile>
   </PropertyGroup>
   <ItemGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <AndroidEnvironment Include="android-tracing-env.txt" />
   </ItemGroup>
-  <ItemGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
-    <PackageReference Include="Mono.Profiler.Android" />
-  </ItemGroup>
 
-  <!-- iOS build properties -->
+  <!-- Apple build properties -->
+
+  <!-- Apple: trimming. The trimmer always runs on iOS / Mac Catalyst, so the knob is
+       TrimMode, not PublishTrimmed ('partial' == what MtouchLink=SdkOnly used to mean).
+       The NAOT block at the end raises this to 'full'. -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))">
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+  </PropertyGroup>
 
   <!-- iOS: Both Debug & Release configurations -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
@@ -426,36 +339,29 @@
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\iOS\Entitlements.dev.plist</CodesignEntitlements>
     <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\iOS\Entitlements.prod.plist</CodesignEntitlements>
     <!-- Performance-related -->
-    <EnableSGenConc>False</EnableSGenConc>
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
 
     <!-- Required by https://github.com/AdamEssenmacher/GoogleApisForiOSComponents?tab=readme-ov-file#firebase-crashlytics -->
     <_ExportSymbolsExplicitly>false</_ExportSymbolsExplicitly>
 
-    <!--  TODO: can be removed after migrating to 9.0  -->
-    <DynamicCodeSupport>true</DynamicCodeSupport>
     <SkipStaticLibraryValidation>true</SkipStaticLibraryValidation>
   </PropertyGroup>
 
   <!-- iOS: Debug configuration -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net10.0-ios|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-ios|AnyCPU'">
     <CreatePackage>false</CreatePackage>
     <CodesignProvision>chat.actual.dev.app</CodesignProvision>
     <CodesignKey>iPhone Developer</CodesignKey>
     <ProvisioningType>manual</ProvisioningType>
-    <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
-  <!-- iOS: Release configuration (default — Mono + interpreter). The common NAOT block at
-       the end overrides MtouchLink / UseInterpreter when UseNativeAot=true. -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-ios|AnyCPU'">
+  <!-- iOS: Release configuration (CoreCLR + composite R2R; there's no JIT on device, so
+       whatever R2R doesn't cover runs on CoreCLR's interpreter) -->
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-ios|AnyCPU'">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
     <ArchiveOnBuild>true</ArchiveOnBuild>
-    <MtouchLink>SdkOnly</MtouchLink>
-    <UseInterpreter>true</UseInterpreter>
-    <MTouchInterpreter>-ActualChat</MTouchInterpreter>
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
 
@@ -467,28 +373,26 @@
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">maccatalyst-arm64</RuntimeIdentifier>
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacCatalyst\Entitlements.dev.plist</CodesignEntitlements>
     <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\MacCatalyst\Entitlements.prod.plist</CodesignEntitlements>
-    <EnableSGenConc>False</EnableSGenConc>
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
   <!-- Debug: Apple Development cert + development profile (mirrors iOS Debug).
        Profile names below must exist in Apple Developer Console as Mac Catalyst
        subtype; the developer's Mac must be a registered device on them. -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net10.0-maccatalyst|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-maccatalyst|AnyCPU'">
     <CreatePackage>false</CreatePackage>
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">mac.chat.actual.dev.app</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">mac.chat.actual.app</CodesignProvision>
     <CodesignKey>Apple Development</CodesignKey>
     <ProvisioningType>manual</ProvisioningType>
     <EnableCodeSigning>true</EnableCodeSigning>
-    <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
   <!-- Release: App Store / TestFlight signed. Profiles below MUST be the "Mac" type,
        not "Mac Catalyst" — the latter makes dyld reject @rpath for embedded .frameworks
        and crashes the app at launch (dotnet/macios#14686).
        CreatePackage + EnablePackageSigning let the SDK build & sign the .pkg directly. -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-maccatalyst|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-maccatalyst|AnyCPU'">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">Mac App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">Mac App Store</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
@@ -496,9 +400,6 @@
     <EnableCodeSigning>true</EnableCodeSigning>
     <EnablePackageSigning>true</EnablePackageSigning>
     <CreatePackage>true</CreatePackage>
-    <MtouchLink>SdkOnly</MtouchLink>
-    <UseInterpreter>true</UseInterpreter>
-    <MTouchInterpreter>-ActualChat</MTouchInterpreter>
   </PropertyGroup>
 
   <!-- Windows build properties -->
@@ -720,32 +621,6 @@
   -->
   <!-- <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk.Razor" /> -->
 
-  <!--
-  LLVM fails in runtime if it processes System.Net.Sockets.dll.
-  See https://github.com/dotnet/runtime/issues/104599
-  -->
-  <Target Name="_FixAndroidAotInputs" DependsOnTargets="_AndroidAotInputs" BeforeTargets="_AndroidAotCompilation">
-    <ItemGroup Condition="$(EnableLLVM)">
-      <_AndroidAotInputs Remove="$(IntermediateLinkDir)**\System.Net.Sockets.dll" />
-    </ItemGroup>
-  </Target>
-
-  <!--
-  AndroidEnablePreloadAssemblies=True doesn't work without the workaround below.
-  See https://github.com/dotnet/android/issues/8141
-  -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <_AfterAddStaticResources>
-      $(_AfterAddStaticResources);
-      ForcePreloadAssemblies;
-    </_AfterAddStaticResources>
-  </PropertyGroup>
-  <Target Name="ForcePreloadAssemblies">
-    <PropertyGroup>
-      <_AndroidEnablePreloadAssembliesDefault>True</_AndroidEnablePreloadAssembliesDefault>
-    </PropertyGroup>
-  </Target>
-
   <!-- ResolveProjectStaticWebAssets calls DefineStaticWebAssets, which checks every
        Content item exists on disk. wwwroot/index.html is generated below, so it must
        exist before that check runs — much earlier than the Build target. -->
@@ -786,12 +661,12 @@
     </ItemGroup>
   </Target>
 
-  <!-- Native AOT — single source of truth:
-       Per-platform Release blocks above describe the DEFAULT (non-NAOT) Release
-       behavior — Mono AOT / CoreCLR + R2R / interpreter etc. — and run regardless
-       of UseNativeAot. This block then overrides what conflicts with NAOT and sets
-       the NAOT-specific properties for every TFM (Android / iOS / Windows). Add a
-       new NAOT-only knob? It goes here. -->
+  <!-- Native AOT — single source of truth, and the only runtime alternative to CoreCLR:
+       the per-platform Release blocks above describe the default CoreCLR + ReadyToRun
+       behavior and run regardless of UseNativeAot. This block then overrides what
+       conflicts with NAOT and sets the NAOT-specific properties, uniformly for every
+       TFM (Android / iOS / Mac Catalyst / Windows). Add a new NAOT-only knob? It goes
+       here — there are no per-platform NAOT blocks. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release' and $(UseNativeAot) and '$([MSBuild]::GetTargetPlatformIdentifier($(TargetFramework)))' != ''">
     <!-- NAOT mode -->
     <PublishAot>true</PublishAot>
@@ -801,14 +676,9 @@
     <IlcDisableReflection>false</IlcDisableReflection>
     <IlcTrimMetadata>false</IlcTrimMetadata>
 
-    <!-- Disable Mono AOT / R2R / interpreter — all incompatible with NAOT -->
-    <RunAOTCompilation>false</RunAOTCompilation>
+    <!-- R2R is CoreCLR-only and incompatible with NAOT -->
     <PublishReadyToRun>false</PublishReadyToRun>
     <PublishReadyToRunComposite>false</PublishReadyToRunComposite>
-    <UseInterpreter>false</UseInterpreter>
-
-    <!-- iOS-only: full mtouch link replaces the default SdkOnly link -->
-    <MtouchLink Condition="$(TargetFramework.Contains('-ios'))">Full</MtouchLink>
 
     <!-- Windows-only: NAOT publishes a self-contained exe, not an MSIX -->
     <WindowsPackageType Condition="$(TargetFramework.Contains('-windows'))">None</WindowsPackageType>

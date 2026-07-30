@@ -2,17 +2,20 @@
 
 ## Overview
 
-Native AOT compilation produces a single native executable with no JIT dependency.
-This improves startup time, reduces memory usage, and is required for some platforms (e.g., iOS without interpreter).
+Native AOT compilation produces a single native executable with no JIT and no interpreter.
+This improves startup time and reduces memory usage.
 
-We target Native AOT for MAUI apps on all platforms (Windows, Android, iOS).
+We target Native AOT for MAUI apps on all platforms (Windows, Android, iOS, Mac Catalyst).
 The feature is opt-in via `UseNativeAot=true` in the build:
 
 ```bash
-dotnet publish -c Release -f net10.0-windows10.0.22621.0 -p:UseNativeAot=true
+dotnet publish -c Release -f net11.0-windows10.0.22621.0 -p:UseNativeAot=true
 ```
 
-Default builds use CoreCLR+R2R (Windows/Android) or Mono+interpreter (iOS) as before.
+Since .NET 11 there is no Mono path for MAUI: default builds run on CoreCLR + ReadyToRun
+on every platform, and `UseNativeAot=true` switches all of them to Native AOT at once.
+The switch is implemented by a single `PropertyGroup` at the end of `App.Maui.csproj` —
+there are no per-platform NAOT blocks.
 
 ## Architecture
 
@@ -99,7 +102,7 @@ Instead, STJ AOT compatibility is achieved via `CodeKeeper.Keep(string)` calls t
 
 - **Windows Native AOT MAUI app** starts, shows window, loads Blazor UI, connects to RPC, renders chat list and messages, records voice, opens video modal
 - **App.AotHelper** validates all types in both JIT and AOT modes; latest discovery counts: ~267 Serializable + ~620 Components + ~44 API interfaces
-- **Build configuration**: `UseNativeAot` property in `App.Maui.csproj` (default: false) switches between CoreCLR/R2R and Native AOT for all platforms
+- **Build configuration**: `UseNativeAot` property in `App.Maui.csproj` (default: false) switches between CoreCLR + R2R and Native AOT for all platforms
 - **Warning suppressions**: All IL trimming/AOT warnings suppressed globally in `Directory.Build.props`
 - **DynamicDependency cleanup**: All `[DynamicDependency]` attributes replaced with CodeKeeper patterns in AotSource files
 
@@ -144,7 +147,7 @@ When new types are used in JS interop, their STJ converters may need manual `Cod
 
 **Windows**: Requires `WindowsPackageType=None` for unpackaged deployment. MSIX packaging not supported with Native AOT. `App.Maui.csproj` explicitly roots `ActualChat` (our main assembly, output name set via `AssemblyName=$(BaseName)`) with `RootMode="EntryPoint"` — but only under `Condition="$(TargetFramework.Contains('-windows'))"`. On Android the Xamarin.Android linker pipeline rewrites/renames the entry-point assembly before ILLink runs, so an explicit `ActualChat` root there causes `ILLink : error IL1032: Root assembly 'ActualChat' could not be found`.
 
-**Android**: **Not officially supported by NativeAOT as of .NET 10** — see [dotnet/runtime#106748](https://github.com/dotnet/runtime/issues/106748) (status: "Future" milestone, no timeline).
+**Android**: **still experimental** — .NET 11 lands the foundations (a trimmable type map for Android interop, enabled by default for NativeAOT builds), but it isn't a supported configuration yet; see [dotnet/runtime#106748](https://github.com/dotnet/runtime/issues/106748).
 
 Known failures:
 - **android-arm64**: `ilc` fails with `error : Failed to load type 'System.ArraySegment`1' from assembly 'System.Runtime…'`. Root cause is a gap in the `android-arm64` NativeAOT runtime pack's type-forwarding — our report: [dotnet/sdk#54013](https://github.com/dotnet/sdk/issues/54013); related: [dotnet/android#10587](https://github.com/dotnet/android/issues/10587), [dotnet/runtime#76983](https://github.com/dotnet/runtime/issues/76983) (`tls_CurrentThread` symbol also missing). No upstream fix yet.
@@ -154,10 +157,11 @@ Known failures:
 Recommended gating (pick one, depending on whether x64 should still try NativeAOT):
 
 ```xml
-<!-- All Android RIDs: fall back to CoreCLR/Mono -->
+<!-- All Android RIDs: fall back to CoreCLR + R2R -->
 <PropertyGroup Condition="$(UseNativeAot) and $(TargetFramework.Contains('-android'))">
     <PublishAot>false</PublishAot>
-    <UseCoreClr>true</UseCoreClr>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
 </PropertyGroup>
 ```
 
@@ -166,11 +170,12 @@ or, to keep android-x64 on the experimental NativeAOT path and only carve out ar
 ```xml
 <PropertyGroup Condition="$(UseNativeAot) and $(TargetFramework.Contains('-android')) and '$(RuntimeIdentifier)' == 'android-arm64'">
     <PublishAot>false</PublishAot>
-    <UseCoreClr>true</UseCoreClr>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
 </PropertyGroup>
 ```
 
-**iOS**: `PublishAot=true` replaces Mono+interpreter. Not yet tested. iOS already uses AOT (Mono AOT), so Native AOT is a different compilation path.
+**iOS / Mac Catalyst**: `PublishAot=true` replaces CoreCLR + composite R2R. Both platforms lack a JIT, so the default build relies on CoreCLR's interpreter for whatever R2R doesn't cover; Native AOT removes the interpreter entirely, which is why every reflection path has to be covered by CodeKeeper.
 
 **macOS (MacCatalyst)**: `Info.plist` must declare `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` for `getUserMedia` to resolve (already in place); otherwise JS `mediaDevices` calls hang forever from within `WKWebView` with no visible error — the same hang shape as the earlier Windows unpackaged case (see Known Issues #8).
 

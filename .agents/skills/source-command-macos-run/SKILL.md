@@ -23,7 +23,7 @@ Build and launch the ActualChat (Voxt) Mac Catalyst app on the local Mac.
 Run the `./run-macos.sh` script which:
 1. Picks the Mac Catalyst RID for the host CPU (`maccatalyst-arm64` on Apple Silicon, `maccatalyst-x64` on Intel)
 2. Builds the JS bundle (`npm run build:Debug`)
-3. Builds the Mac Catalyst app (`net10.0-maccatalyst` target)
+3. Builds the Mac Catalyst app (`net11.0-maccatalyst` target)
 4. Locates the produced `.app` bundle (`Voxt (Dev).app` for dev, `Voxt.app` for prod)
 5. Terminates any previous instance and launches the app binary directly so logs stream to the terminal
 
@@ -46,7 +46,7 @@ The script outputs:
 ## Troubleshooting
 
 If the script fails:
-- No `.app` found: confirm the build succeeded and check `artifacts/bin/App.Maui/debug_net10.0-maccatalyst_<RID>/`
-- Build errors: build the target on its own with `dotnet build src/dotnet/App.Maui/ -f net10.0-maccatalyst`
+- No `.app` found: confirm the build succeeded and check `artifacts/bin/App.Maui/debug_net11.0-maccatalyst_<RID>/`
+- Build errors: build the target on its own with `dotnet build src/dotnet/App.Maui/ -f net11.0-maccatalyst`
 - Missing workload: run `dotnet workload install maui` (or `maccatalyst`)
 - App talks to the wrong backend: the dev build (`IsDevMaui=true`, the default) targets the dev instance; pass `-p:IsDevMaui=false` to the build for prod

@@ -88,14 +88,14 @@
     <RootNamespace Condition="$(AssemblyName.EndsWith('.Api.Contracts'))">$(AssemblyName.Replace('.Api.Contracts',''))</RootNamespace>
 
     <!-- C# / language settings -->
-    <TargetFramework Condition="!$(IsMauiProject)">net10.0</TargetFramework>
+    <TargetFramework Condition="!$(IsMauiProject)">net11.0</TargetFramework>
     <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Features>strict</Features>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <MauiVersion Condition="$(IsMauiProject)">10.0.70</MauiVersion>
+    <MauiVersion Condition="$(IsMauiProject)">11.0.0-preview.6.26360.8</MauiVersion>
 
     <!-- Globalization: must be invariant in every executable! -->
     <InvariantGlobalization>true</InvariantGlobalization>
@@ -306,6 +306,9 @@
     <Using Include="ActualChat.Performance" />
     <Using Include="ActualChat.Serialization" />
     <Using Include="ActualChat.Validation" />
+    <!-- Resolve ambiguity: .NET 11 added System.ComponentModel.DataAnnotations.AsyncValidationAttribute,
+         which collides with ours in files that import DataAnnotations -->
+    <Using Include="ActualChat.Validation.AsyncValidationAttribute" Alias="AsyncValidationAttribute" />
     <!-- ActualLab.* -->
     <Using Include="ActualLab" />
     <Using Include="ActualLab.Api" />
@@ -341,6 +344,9 @@
     <Using Include="System.Reflection" />
     <Using Include="System.Reactive" /> <!-- Mainly for Unit type -->
     <Using Include="System.Runtime.CompilerServices" />
+    <!-- Resolve ambiguity: .NET 11 added System.Runtime.CompilerServices.UnionAttribute,
+         which collides with MessagePack's [Union] via our global usings -->
+    <Using Include="MessagePack.UnionAttribute" Alias="UnionAttribute" />
     <Using Include="System.Runtime.InteropServices" />
     <Using Include="System.Runtime.Serialization" />
     <Using Include="System.Text.Json" />
