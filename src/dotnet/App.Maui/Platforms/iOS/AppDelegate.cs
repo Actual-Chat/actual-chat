@@ -29,10 +29,7 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
 
         // The window is the bottom-most layer and white by default, so it shows through until WebKit paints.
         if (Window is { } window)
-            window.BackgroundColor = UIColor.FromRGB(
-                MauiSettings.SplashBackgroundColor.Red,
-                MauiSettings.SplashBackgroundColor.Green,
-                MauiSettings.SplashBackgroundColor.Blue);
+            window.BackgroundColor = UIColor.Red; // DIAGNOSTIC
 
         return result;
     }

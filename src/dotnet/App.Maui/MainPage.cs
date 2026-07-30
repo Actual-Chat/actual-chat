@@ -11,7 +11,7 @@ public partial class MainPage : ContentPage
         Interlocked.Exchange(ref _current, this);
 
         // Safe areas handled by CSS via viewport-fit=cover and env(safe-area-inset-*)
-        BackgroundColor = MauiSettings.SplashBackgroundColor;
+        BackgroundColor = Colors.Blue; // DIAGNOSTIC
         RecreateWebView();
 
         Loaded += OnLoaded;

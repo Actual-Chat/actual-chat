@@ -37,7 +37,7 @@ public sealed partial class MauiWebView
 
         BlazorWebView = new BlazorWebView {
             HostPage = "wwwroot/index.html",
-            BackgroundColor = MauiSettings.SplashBackgroundColor,
+            BackgroundColor = Colors.Yellow, // DIAGNOSTIC
         };
         BlazorWebView.BlazorWebViewInitializing += OnInitializing;
         BlazorWebView.BlazorWebViewInitialized += OnInitialized;

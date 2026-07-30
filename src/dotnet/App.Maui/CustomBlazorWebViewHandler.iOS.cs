@@ -11,14 +11,11 @@ public partial class CustomBlazorWebViewHandler
     static CustomBlazorWebViewHandler()
         => BlazorWebViewMapper.AppendToMapping(nameof(MauiSettings.SplashBackgroundColor), (handler, _) => {
             var webView = handler.PlatformView;
-            webView.Opaque = false;
-            webView.BackgroundColor = UIColor.Clear;
-            webView.ScrollView.BackgroundColor = UIColor.Clear;
+            webView.Opaque = true; // DIAGNOSTIC
+            webView.BackgroundColor = UIColor.Green; // DIAGNOSTIC
+            webView.ScrollView.BackgroundColor = UIColor.Green; // DIAGNOSTIC
             if (OperatingSystem.IsIOSVersionAtLeast(15))
-                webView.UnderPageBackgroundColor = UIColor.FromRGB(
-                    MauiSettings.SplashBackgroundColor.Red,
-                    MauiSettings.SplashBackgroundColor.Green,
-                    MauiSettings.SplashBackgroundColor.Blue);
+                webView.UnderPageBackgroundColor = UIColor.Magenta; // DIAGNOSTIC
         });
 
     protected override WKWebView CreatePlatformView()

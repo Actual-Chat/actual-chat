@@ -242,8 +242,9 @@
     <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
   </ItemGroup>
 
-  <!-- Common iOS and Android build properties -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios'))">
+  <!-- Common mobile & Mac Catalyst build properties.
+       Note '-maccatalyst' doesn't contain '-ios', so it needs its own check. -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))">
     <!-- Trimmer settings -->
     <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
     <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
