@@ -30,9 +30,8 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
             return VisualActivity.None;
 
         var isWatching = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
-        var isAnyoneSharingLocation = await LocationUI.IsAnyoneSharing(chatId, cancellationToken).ConfigureAwait(false);
+        var hasMap = await LocationUI.IsAnyoneSharing(chatId, cancellationToken).ConfigureAwait(false);
         var mode = await GetPanelMode(chatId, cancellationToken).ConfigureAwait(false);
-        var hasMap = isAnyoneSharingLocation && mode is not VisualActivityPanelMode.Hidden;
         var tab = (isWatching, hasMap) switch {
             (true, false) => VisualActivityTab.Call,
             (false, true) => VisualActivityTab.Map,

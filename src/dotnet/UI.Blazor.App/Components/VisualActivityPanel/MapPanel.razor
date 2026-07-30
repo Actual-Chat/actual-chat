@@ -129,8 +129,7 @@
 
     private void OnHide() {
         _isMenuOpen.Value = false;
-        // With a call in progress the call view collapses to its Live pill (same as the
-        // video ⋮ menu's Hide) instead of vanishing with the map.
+        // The panel collapses to the ActivityPill (same as the video ⋮ menu's Hide).
         ChatActivityUI.SetPanelMode(Chat.Id, VisualActivityPanelMode.Hidden);
     }
 

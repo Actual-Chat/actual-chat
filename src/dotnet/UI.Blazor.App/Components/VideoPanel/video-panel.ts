@@ -56,7 +56,7 @@ export class VideoPanel {
     private islandOrigTop = 0;
     private islandResizeObserver: ResizeObserver | null = null;
     private islandTeardown$: Subject<void> | null = null;
-    private panelMode: 'inline' | 'island' | 'pill' = 'inline';
+    private panelMode: 'inline' | 'island' = 'inline';
     private compactReasons = new Set<string>();
     private forcedCollapseActive = false;
     private closeTimer = 0;
@@ -145,28 +145,27 @@ export class VideoPanel {
     }
 
     // Safety net: if the panel ever ends up under <body> without any of the
-    // state classes that move it there (expanded / collapsed / panel-hidden),
-    // pull it back to its original Razor-rendered home. Catches races where
-    // Blazor's class-attribute rewrite drops a JS-added class but the JS
-    // teardown that would have reparented it never fires.
+    // state classes that move it there (expanded / collapsed), pull it back
+    // to its original Razor-rendered home. Catches races where Blazor's
+    // class-attribute rewrite drops a JS-added class but the JS teardown
+    // that would have reparented it never fires.
     //
-    // Why call both teardowns (both are idempotent): if we did partial
-    // cleanup here and just set panelMode='inline', the subsequent
-    // updatePanelMode() call from Blazor would short-circuit (panelMode
-    // already matches), leaving the stale island ResizeObserver alive — and
-    // the next size change would re-fire positionIslandDefault() and pin
-    // `top/right` back on the inline panel.
+    // Why a full teardown (it's idempotent): if we did partial cleanup here
+    // and just set panelMode='inline', the subsequent updatePanelMode() call
+    // from Blazor would short-circuit (panelMode already matches), leaving
+    // the stale island ResizeObserver alive — and the next size change would
+    // re-fire positionIslandDefault() and pin `top/right` back on the inline
+    // panel.
     private setupHomeGuard(): void {
         const observer = new MutationObserver(() => {
             if (this.videoPanel.parentElement !== document.body)
                 return;
 
             const cl = this.videoPanel.classList;
-            if (cl.contains('expanded') || cl.contains('collapsed') || cl.contains('panel-hidden'))
+            if (cl.contains('expanded') || cl.contains('collapsed'))
                 return;
 
             this.teardownIsland();
-            this.teardownHidden();
             this.panelMode = 'inline';
         });
         observer.observe(this.videoPanel, { attributes: true, attributeFilter: ['class'] });
@@ -691,25 +690,21 @@ export class VideoPanel {
     // region: Collapsed island positioning & drag
 
     // Called from Blazor when collapsed/hidden state changes.
-    // Owns the transition between inline / island (collapsed) / pill (hidden).
-    // Island reparents to <body> for fixed positioning + drag; pill reparents to
-    // .layout-body-wrapper for absolute positioning anchored to the middle panel.
+    // Owns the transition between inline and island (collapsed) — island
+    // reparents to <body> for fixed positioning + drag. The hidden state needs
+    // no JS: `.panel-hidden` hides the panel in place, and the visible remnant
+    // is the separate ActivityPill component.
     public updatePanelMode(): void {
         this.videoPanel.classList.remove('minimized');
         const isCollapsed = this.videoPanel.classList.contains('collapsed');
-        const isHidden = this.videoPanel.classList.contains('panel-hidden');
-        const newMode: 'inline' | 'island' | 'pill' =
-            isCollapsed ? 'island' : (isHidden ? 'pill' : 'inline');
+        const newMode: 'inline' | 'island' = isCollapsed ? 'island' : 'inline';
         if (newMode === this.panelMode)
             return;
+
         if (this.panelMode === 'island')
             this.teardownIsland();
-        else if (this.panelMode === 'pill')
-            this.teardownHidden();
         if (newMode === 'island')
             this.setupIsland();
-        else if (newMode === 'pill')
-            this.setupHidden();
         this.panelMode = newMode;
     }
 
@@ -761,19 +756,6 @@ export class VideoPanel {
         this.videoPanel.style.right = '';
         this.videoPanel.classList.remove('portrait-video');
         this.videoPanel.style.removeProperty('--video-panel-island-aspect');
-        this.restoreToParent();
-    }
-
-    // Hidden pill — reparent to `.layout-body-wrapper > .c-container`, which is
-    // `position: relative` and whose bounds match the middle panel (right edge =
-    // left edge of the right side-nav when open; top edge = below header/subheader).
-    // No JS measurement needed — CSS `position: absolute` does the rest.
-    private setupHidden(): void {
-        const host = document.querySelector('.layout-body-wrapper > .c-container');
-        (host ?? document.body).appendChild(this.videoPanel);
-    }
-
-    private teardownHidden(): void {
         this.restoreToParent();
     }
 
@@ -919,7 +901,6 @@ export class VideoPanel {
             this.singleTapTimer = 0;
         }
         this.teardownIsland();
-        this.teardownHidden();
         this.collapse();
         this.homeMarker?.parentNode?.removeChild(this.homeMarker);
         this.homeMarker = null;

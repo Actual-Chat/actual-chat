@@ -5,8 +5,12 @@
     var m = State.Value;
     var isWatching = m.IsWatching;
     var chatContext = m.ChatContext;
-    var showVideo = m.Activity is { HasCall: true, Tab: VisualActivityTab.Call };
-    var showMap = m.Activity is { HasMap: true, Tab: VisualActivityTab.Map };
+    var isHidden = m.Activity.PanelMode == VisualActivityPanelMode.Hidden;
+    // When hidden, the call view stays mounted regardless of the selected tab —
+    // unmounting VideoPanel would tear down the streams the pill stands for.
+    var showVideo = m.Activity.HasCall && (m.Activity.Tab == VisualActivityTab.Call || isHidden);
+    var showMap = !isHidden && m.Activity is { HasMap: true, Tab: VisualActivityTab.Map };
+    var showPill = isHidden && (m.Activity.HasCall || m.Activity.HasMap);
 
     // TODO(DF): move this logic to ChatVideoUI
     // Clear watching when navigating to a different chat.
@@ -38,7 +42,7 @@
     if (!_isRendered)
         _chatContextToRender = null;
 
-    _isPanelRendered = _chatContextToRender is not null || (showMap && chatContext is not null);
+    _isPanelRendered = _chatContextToRender is not null || ((showMap || showPill) && chatContext is not null);
 }
 
 @if (_isPanelRendered) {
@@ -55,6 +59,11 @@
                     <MapPanel/>
                 </CascadingValue>
             </ErrorBarrier>
+        }
+        @if (showPill && chatContext is not null) {
+            <CascadingValue Value="chatContext">
+                <ActivityPill/>
+            </CascadingValue>
         }
         @if (chatContext is not null) {
             <CascadingValue Value="chatContext">

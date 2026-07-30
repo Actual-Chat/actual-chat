@@ -17,7 +17,7 @@ function vibrate(): void {
 // Owns the panel's drag handle: swipe up minimizes the active inline panel
 // (call or map) to zero height, swipe down restores it; on release the height
 // snaps to the nearest of the two. The video panel's other modes
-// (expanded/island/pill) and the map's own pan gestures stay with the children.
+// (expanded/island/hidden) and the map's own pan gestures stay with the children.
 export class VisualActivityPanel {
     private readonly root: HTMLElement;
     private readonly disposed$ = new Subject<void>();
