@@ -26,12 +26,17 @@ public partial class MauiWebView
         PlatformWebView = platformWebView;
         var webView = (WKWebView)platformWebView;
         WKWebView = webView;
-        webView.Opaque = false;
-        webView.BackgroundColor = UIColor.FromRGB(
+        var backgroundColor = UIColor.FromRGB(
             MauiSettings.SplashBackgroundColor.Red,
             MauiSettings.SplashBackgroundColor.Green,
             MauiSettings.SplashBackgroundColor.Blue);
+        webView.Opaque = false;
+        webView.BackgroundColor = backgroundColor;
         webView.ScrollView.BackgroundColor = UIColor.Clear;
+        // WebKit paints its own surface behind the page - white until the document's
+        // background applies - and that's what flashes when the splash screen goes away.
+        if (OperatingSystem.IsIOSVersionAtLeast(15))
+            webView.UnderPageBackgroundColor = backgroundColor;
         webView.ScrollView.Bounces = false;
         webView.ScrollView.ContentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentBehavior.Never;
         webView.AllowsBackForwardNavigationGestures = false;
