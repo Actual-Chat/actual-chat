@@ -26,7 +26,7 @@ background** instead, falling back to the dark theme's `--background-01`
 
 | | Native splash | Held until app is ready? | Exit animation | Web splash | Transition |
 |---|---|---|---|---|---|
-| **Android** | `SplashTheme` → `Maui.SplashTheme` (window background; system splash on API 31+) | **Yes** — pre-draw hold in `MainActivity.SplashDelayer`, capped at 3s | System default (a hard cut in practice) | Removed **instantly**, at `MarkRendered` | **splash → app** |
+| **Android** | `SplashTheme` → `Maui.SplashTheme` (window background; system splash on API 31+) | **Yes** — pre-draw hold in `MainActivity.SplashDelayer`, capped at 3s | **Ours**, 300ms fade via `SplashExitAnimator` (API 31+; hard cut on 28-30) | Removed **instantly**, at `MarkRendered` | **splash → app** |
 | **iOS / Mac Catalyst** | `MauiSplash.storyboardc` via `UILaunchStoryboardName` | **No** — the system dismisses it once the app finishes launching | None available | Fades out, 350ms | **splash → bg → app** |
 | **Windows** | **Ours** — `WindowsSplashScreen`, a borderless always-on-top window in theme colour | **Yes** — closed on `WhenFirstSplashRemoved`, capped at 3s | **Ours**, 200ms logo fade | Removed **instantly**, behind the splash window | **splash → app** |
 | **Web — WASM (`w`) / Auto (`a`)** | None | n/a | n/a | Fades out, 350ms | **bg → app** |
@@ -212,7 +212,7 @@ may need revisiting.
 | `src/dotnet/App.Maui/App.Maui.csproj` | `<MauiSplashScreen>` — artwork + colour for every native splash |
 | `src/dotnet/Maui/MauiSettings.cs` | `SplashBackgroundColor` (`#0C003D`) |
 | `src/dotnet/App.Maui/MauiThemeHandler.cs` | `TopBarColor` — last known theme background, from preferences |
-| `src/dotnet/App.Maui/Platforms/Android/MainActivity.cs` | `SplashDelayer` — the pre-draw hold |
+| `src/dotnet/App.Maui/Platforms/Android/MainActivity.cs` | `SplashDelayer` (pre-draw hold), `SplashExitAnimator` (300ms exit fade) |
 | `src/dotnet/App.Maui/Platforms/Android/Resources/values/styles.xml` | `SplashTheme` |
 | `src/dotnet/App.Maui/Platforms/iOS/AppDelegate.cs` | Window + root view background |
 | `src/dotnet/App.Maui/Platforms/Windows/WindowsSplashScreen.cs` | The Windows splash window |
