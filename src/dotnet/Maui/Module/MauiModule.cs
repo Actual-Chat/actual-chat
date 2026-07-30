@@ -40,8 +40,8 @@ public class MauiModule(IServiceProvider moduleServices)
                 BasePath = appDataDir & "LocalSettings",
                 EncryptionKey = MauiPreferences.DbEncryptionKey,
                 Version = "1.0",
-                PageSize = 4 * 1024,
-                PageCacheBytes = 1024 * 1024,
+                PageSize = 16 * 1024,
+                PageCacheBytes = 256 * 1024,
                 // Unlike the computed cache, settings aren't regenerable - don't lose them on power loss.
                 Durability = KvasarDurability.Flushed,
             }, c).WithSuspendHandler(c),
