@@ -15,12 +15,12 @@ public static class ComputedExt
         return Unsafe.As<IState<T>?>(untypedState);
     }
 
-    // Lets a computation depend on something it must not wait for - typically a
-    // RemoteComputedCacheMode.NoCache method, which never completes while offline. The result is used
-    // only if it's already there; otherwise `pendingValue` stands in and `computed` is invalidated once
-    // the real value arrives, so the computation re-runs and picks it up.
     public static T UseIfReady<T>(this Task<T> task, T pendingValue, Computed computed)
     {
+        // Lets a computation depend on something it must not wait for - typically a
+        // RemoteComputedCacheMode.NoCache method, which never completes while offline. The result is
+        // used only if it's already there; otherwise `pendingValue` stands in and `computed` is
+        // invalidated once the real value arrives, so the computation re-runs and picks it up.
         if (task.IsCompletedSuccessfully)
             return task.Result;
 
@@ -32,7 +32,7 @@ public static class ComputedExt
             },
             computed,
             CancellationToken.None,
-            TaskContinuationOptions.None,
+            TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
         return pendingValue;
     }
