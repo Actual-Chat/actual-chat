@@ -287,6 +287,13 @@
     <EmbedAssembliesIntoApk Condition="'$(EmbedAssembliesIntoApk)' == ''">False</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
+  <!-- Our own startup profile, recorded on-device via Build-Tracing-A.cmd + Trace-A.cmd
+       and converted by _Profiling/CreateMibc-A.cmd. crossgen2 uses it to lay out the
+       composite image hot-first; MAUI's own profiles are still passed alongside it. -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\android.mibc" />
+  </ItemGroup>
+
   <!-- Android: Release configuration (CoreCLR + composite R2R). The common NAOT
        block at the end overrides PublishTrimmed / TrimMode / PublishReadyToRun* when
        UseNativeAot=true, so this block always applies in Release. -->
