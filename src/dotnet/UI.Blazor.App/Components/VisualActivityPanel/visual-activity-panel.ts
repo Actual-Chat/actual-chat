@@ -42,7 +42,8 @@ export class VisualActivityPanel {
     // Private methods
 
     private initInlineDrag(): void {
-        const handle = this.root.querySelector<HTMLElement>('.c-drag-handle');
+        // Resolved per drag: Blazor re-creates the handle on panel-mode changes
+        const getHandle = () => this.root.querySelector<HTMLElement>('.c-drag-handle');
 
         let panel: HTMLElement | null = null;
         let content: HTMLElement | null = null;
@@ -80,7 +81,7 @@ export class VisualActivityPanel {
                 content.style.opacity = '';
             }
             content = null;
-            handle?.classList.remove('dragging');
+            getHandle()?.classList.remove('dragging');
             if (panel) {
                 panel.style.minHeight = '';
                 panel.style.maxHeight = '';
@@ -106,7 +107,9 @@ export class VisualActivityPanel {
                 // that growing area without pushing the editor offscreen.
                 if (CompactLayout.reasons.has('keyboard')) {
                     const active = document.activeElement as HTMLElement | null;
-                    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable))
+                    const isEditable = active
+                        && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+                    if (isEditable)
                         active.blur();
                 }
 
@@ -143,7 +146,7 @@ export class VisualActivityPanel {
 
                     dragStarted = true;
                     panel.classList.remove('minimized');
-                    handle?.classList.add('dragging');
+                    getHandle()?.classList.add('dragging');
                     content = this.getContent(panel);
                     const currentH = panel.offsetHeight;
                     panel.style.minHeight = `${currentH}px`;
@@ -178,10 +181,7 @@ export class VisualActivityPanel {
                 const targetHeight = currentHeight < midPoint ? 0 : fullHeight;
                 const willMinimize = targetHeight === 0;
 
-                // Snap visuals to target
                 applyVisuals(targetHeight, rem);
-
-                // Animate snap to target height
                 panel.style.transition = 'min-height 0.15s ease-out, max-height 0.15s ease-out';
                 void panel.offsetHeight;
                 panel.style.minHeight = `${targetHeight}px`;
