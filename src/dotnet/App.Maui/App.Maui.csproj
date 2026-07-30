@@ -287,7 +287,7 @@
     <EmbedAssembliesIntoApk Condition="'$(EmbedAssembliesIntoApk)' == ''">False</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
-  <!-- Android: Release configuration (CoreCLR + composite partial R2R). The common NAOT
+  <!-- Android: Release configuration (CoreCLR + composite R2R). The common NAOT
        block at the end overrides PublishTrimmed / TrimMode / PublishReadyToRun* when
        UseNativeAot=true, so this block always applies in Release. -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
@@ -296,9 +296,15 @@
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
-    <!-- ReadyToRun: composite, and partial via the .mibc profiles the Android SDK ships -->
+    <!-- ReadyToRun: composite, and full rather than partial. MAUI 11 defaults to
+         crossgen2's partial mode, driven by the generic .mibc profiles it ships; those
+         are recorded from template apps and cover almost none of our startup path,
+         which shrank the composite image 107MB to 5MB and cost ~20-25% of startup time.
+         Revisit once we feed our own Android-recorded .mibc via _ReadyToRunPgoFiles;
+         then partial gets us the smaller app *and* the startup, and this can go. -->
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
+    <_MauiPublishReadyToRunPartial>false</_MauiPublishReadyToRunPartial>
     <!-- -50ms to startup time: -->
     <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
     <!-- Must be commented out: r8/d8 is the default now, specifying them explicitly
