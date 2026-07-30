@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using ActualChat.App.Maui.Services;
 using Android.App;
 using Android.Content.PM;
@@ -64,6 +65,11 @@ public partial class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
+        // Before base.OnCreate, which calls setContentView - the listener has to be registered
+        // before that for the dismissal logic to see it.
+        if (OperatingSystem.IsAndroidVersionAtLeast(31))
+            SplashScreen!.SetOnExitAnimationListener(new SplashExitAnimator());
+
         using var _1 = Tracer.MethodRegion();
 
         if (!AndroidUtils.IsWebViewAvailable()) {
@@ -203,6 +209,21 @@ public partial class MainActivity : MauiAppCompatActivity
         }
         catch (Exception e) {
             Log.LogWarning(e, "DumpMemoryInfo failed");
+        }
+    }
+
+    [SupportedOSPlatform("android31.0")]
+    private sealed class SplashExitAnimator : JObject, Android.Window.ISplashScreenOnExitAnimationListener
+    {
+        private static readonly TimeSpan FadeDuration = TimeSpan.FromMilliseconds(300);
+
+        public void OnSplashScreenExit(Android.Window.SplashScreenView splashScreenView)
+        {
+            splashScreenView.Animate()!
+                .Alpha(0f)
+                .SetDuration((long)FadeDuration.TotalMilliseconds)!
+                .WithEndAction(new Java.Lang.Runnable(splashScreenView.Remove))!
+                .Start();
         }
     }
 
