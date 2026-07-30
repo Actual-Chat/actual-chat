@@ -80,7 +80,7 @@ export * from './Components/VideoPanel/video-streaming-preview';
 export * from './Components/VideoPanel/video-player';
 export * from './Components/VideoPanel/video-diagnostics';
 export * from './Components/VideoPanel/fps-overlay';
-export * from './Components/VisualActivityPanel/map-panel';
+export * from './Components/VisualActivityPanel/visual-activity-panel';
 export * from './Services/audio-context-source';
 export * from './Services/audio-context-traits';
 export * from './Services/audio-initializer';

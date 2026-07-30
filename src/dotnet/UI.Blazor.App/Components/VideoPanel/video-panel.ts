@@ -1,7 +1,6 @@
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { CompactLayout } from 'compact-layout';
-import { attachInlineDrag, InlineDragSource } from '../VisualActivityPanel/inline-drag';
 
 const MIN_SCALE = 1;
 const MAX_SCALE_MOBILE = 4;
@@ -86,7 +85,6 @@ export class VideoPanel {
         }, 1000);
 
         this.initGestures();
-        this.initInlineDrag();
         this.setupHomeGuard();
 
         // Escape key handler
@@ -907,40 +905,6 @@ export class VideoPanel {
             this.videoPanel.style.top = `${top}px`;
             this.videoPanel.style.right = 'auto';
         }
-    }
-
-    // endregion
-
-    // region: Inline drag — swipe up to minimize, swipe down to restore
-
-    private initInlineDrag(): void {
-        const handle = document.querySelector<HTMLElement>('.c-drag-handle');
-        const dragSources: InlineDragSource[] = [{
-            element: this.videoPanel,
-            accepts: e => !(e.target as HTMLElement).closest('button, .btn-h'),
-        }];
-        if (handle)
-            dragSources.push({ element: handle });
-
-        attachInlineDrag({
-            panel: this.videoPanel,
-            handle,
-            dragSources,
-            getContent: () => this.videoPanel.querySelector<HTMLElement>('.c-container'),
-            canStart: () => this.isInline() && !ScreenSize.isWide(),
-            onDragStart: () => {
-                // Keyboard up + drag → close keyboard in parallel with the drag.
-                // The viewport meta sets `interactive-widget=resizes-content`, so the
-                // layout viewport grows as the keyboard hides; the panel expands into
-                // that growing area without pushing the editor offscreen.
-                if (this.compactReasons.has('keyboard')) {
-                    const active = document.activeElement as HTMLElement | null;
-                    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable))
-                        active.blur();
-                }
-            },
-            disposed$: this.disposed$,
-        });
     }
 
     // endregion

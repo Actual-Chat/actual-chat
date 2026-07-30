@@ -185,7 +185,7 @@ body.wide .video-panel.expanded .video-panel-content {
     @apply justify-start;
 }
 /* Default (inline) state — not collapsed, not expanded.
-   Fixed 12rem height (matches INLINE_FULL_HEIGHT_REM in inline-drag.ts).
+   Fixed 12rem height (matches INLINE_FULL_HEIGHT_REM in visual-activity-panel.ts).
    When sidebar has 3 tiles they shrink vertically (flex-shrink default) and
    render as rectangles rather than pushing panel height. */
 body.narrow .video-panel:not(.collapsed):not(.expanded),
