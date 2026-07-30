@@ -323,12 +323,12 @@
 
   <!-- Apple build properties -->
 
-  <!-- Apple: trimming. The trimmer always runs on iOS / Mac Catalyst, so the knob is
-       TrimMode, not PublishTrimmed ('partial' == what MtouchLink=SdkOnly used to mean).
-       The NAOT block at the end raises this to 'full'. -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))">
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
+  <!-- Apple: trimming. The macios SDK always runs the trimmer and rejects an explicit
+       PublishTrimmed outright ("iOS projects do not support setting 'PublishTrimmed'"),
+       so MtouchLink stays the knob here - None / SdkOnly / Full. The NAOT block at the
+       end raises it to Full. -->
+  <PropertyGroup Condition="($(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))) and !($(UseNativeAot) and '$(Configuration)' == 'Release')">
+    <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
   <!-- iOS: Both Debug & Release configurations -->
@@ -670,11 +670,15 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release' and $(UseNativeAot) and '$([MSBuild]::GetTargetPlatformIdentifier($(TargetFramework)))' != ''">
     <!-- NAOT mode -->
     <PublishAot>true</PublishAot>
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>full</TrimMode>
     <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
     <IlcDisableReflection>false</IlcDisableReflection>
     <IlcTrimMetadata>false</IlcTrimMetadata>
+
+    <!-- Full trimming, spelled per platform: Apple takes MtouchLink, everyone else
+         PublishTrimmed + TrimMode (which the macios SDK refuses). -->
+    <MtouchLink Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))">Full</MtouchLink>
+    <PublishTrimmed Condition="!$(TargetFramework.Contains('-ios')) and !$(TargetFramework.Contains('-maccatalyst'))">true</PublishTrimmed>
+    <TrimMode Condition="!$(TargetFramework.Contains('-ios')) and !$(TargetFramework.Contains('-maccatalyst'))">full</TrimMode>
 
     <!-- R2R is CoreCLR-only and incompatible with NAOT -->
     <PublishReadyToRun>false</PublishReadyToRun>
