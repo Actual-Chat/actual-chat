@@ -27,7 +27,9 @@
 
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
-        <uap:VisualElements />
+        <!--  BackgroundColor is what the shell paints around the splash image; Resizetizer
+              defaults it to "transparent", which resolves to a gray  -->
+        <uap:VisualElements BackgroundColor="#0C003D" />
         <Extensions>
           <!--  Protocol Name is replaced with voxt for the prod flavor by AppxManifestGenerator;
                 a locally built prod-flavor app keeps voxt-dev here and won't be activated  -->

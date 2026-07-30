@@ -25,7 +25,21 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     public override bool FinishedLaunching(UIApplication application, NSDictionary? launchOptions)
     {
         RegisterBadgeNotifications();
-        return base.FinishedLaunching(application, launchOptions);
+        var result = base.FinishedLaunching(application, launchOptions);
+
+        // The root view controller's view is white by default and shows for a frame between the
+        // launch screen and WebKit's first paint - that's the white blink. The window is below it.
+        if (Window is { } window) {
+            var backgroundColor = UIColor.FromRGB(
+                MauiSettings.SplashBackgroundColor.Red,
+                MauiSettings.SplashBackgroundColor.Green,
+                MauiSettings.SplashBackgroundColor.Blue);
+            window.BackgroundColor = backgroundColor;
+            if (window.RootViewController?.View is { } rootView)
+                rootView.BackgroundColor = backgroundColor;
+        }
+
+        return result;
     }
 
     public override bool ContinueUserActivity(

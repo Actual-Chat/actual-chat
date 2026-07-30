@@ -18,26 +18,23 @@ public partial class MauiWebView
 
     public partial void SetPlatformWebView(object platformWebView)
     {
+        // Background & opacity live in CustomBlazorWebViewHandler's mapper - MAUI's own mappers run after this.
         if (ReferenceEquals(PlatformWebView, platformWebView))
             return;
 
         PlatformWebView = platformWebView;
-        WKWebView = (WKWebView)platformWebView;
-        WKWebView.Opaque = false;
-        WKWebView.Appearance.BackgroundColor = UIColor.FromRGB(
-            MauiSettings.SplashBackgroundColor.Red,
-            MauiSettings.SplashBackgroundColor.Green,
-            MauiSettings.SplashBackgroundColor.Blue);
-        WKWebView.ScrollView.Bounces = false;
-        WKWebView.ScrollView.ContentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentBehavior.Never;
-        WKWebView.AllowsBackForwardNavigationGestures = false;
+        var webView = (WKWebView)platformWebView;
+        WKWebView = webView;
+        webView.ScrollView.Bounces = false;
+        webView.ScrollView.ContentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentBehavior.Never;
+        webView.AllowsBackForwardNavigationGestures = false;
 
         // Prevent native scrolling so DOM can handle resizing via interactive-widget=resizes-content
-        WKWebView.ScrollView.ShowsVerticalScrollIndicator = false;
-        WKWebView.ScrollView.ShowsHorizontalScrollIndicator = false;
-        WKWebView.ScrollView.Scrolled += (sender, e) => {
-            if (WKWebView.ScrollView.ContentOffset.X != 0 || WKWebView.ScrollView.ContentOffset.Y != 0) {
-                WKWebView.ScrollView.ContentOffset = new CoreGraphics.CGPoint(0, 0);
+        webView.ScrollView.ShowsVerticalScrollIndicator = false;
+        webView.ScrollView.ShowsHorizontalScrollIndicator = false;
+        webView.ScrollView.Scrolled += (sender, e) => {
+            if (webView.ScrollView.ContentOffset.X != 0 || webView.ScrollView.ContentOffset.Y != 0) {
+                webView.ScrollView.ContentOffset = new CoreGraphics.CGPoint(0, 0);
             }
         };
     }

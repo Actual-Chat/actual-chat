@@ -210,8 +210,10 @@ public partial class MainActivity : MauiAppCompatActivity
     {
         // Cap the pre-draw hold: if the WebView callback never arrives, holding forever starves
         // input dispatch and Android reports a "no focused window" ANR.
-        private static readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(4);
-        private static readonly Task WhenRemoved = MauiLoadingUI.WhenFirstWebViewCreated;
+        private static readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(3);
+        // WhenFirstSplashRemoved, not WhenFirstWebViewCreated: the latter fires when the WebView is
+        // constructed, long before it renders, which is what dropped the logo while the app was blank.
+        private static readonly Task WhenRemoved = MauiLoadingUI.WhenFirstSplashRemoved;
         private readonly CpuTimestamp _startedAt = CpuTimestamp.Now;
 
         public bool OnPreDraw()
