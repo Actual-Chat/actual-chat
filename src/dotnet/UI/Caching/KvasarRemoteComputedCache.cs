@@ -14,7 +14,7 @@ public sealed class KvasarRemoteComputedCache : AppRemoteComputedCache
     {
         public required FilePath BasePath { get; init; }
         public required byte[] EncryptionKey { get; init; }
-        public int PageSize { get; init; } = 32 * 1024;
+        public int PageSize { get; init; } = 16 * 1024;
         public long PageCacheBytes { get; init; } = 16 * 1024 * 1024;
         public TimeSpan FlushDelay { get; init; } = TimeSpan.FromSeconds(0.5);
     }
