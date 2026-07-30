@@ -25,7 +25,16 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     public override bool FinishedLaunching(UIApplication application, NSDictionary? launchOptions)
     {
         RegisterBadgeNotifications();
-        return base.FinishedLaunching(application, launchOptions);
+        var result = base.FinishedLaunching(application, launchOptions);
+
+        // The window is the bottom-most layer and white by default, so it shows through until WebKit paints.
+        if (Window is { } window)
+            window.BackgroundColor = UIColor.FromRGB(
+                MauiSettings.SplashBackgroundColor.Red,
+                MauiSettings.SplashBackgroundColor.Green,
+                MauiSettings.SplashBackgroundColor.Blue);
+
+        return result;
     }
 
     public override bool ContinueUserActivity(

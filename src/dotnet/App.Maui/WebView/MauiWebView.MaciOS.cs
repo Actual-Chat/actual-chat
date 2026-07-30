@@ -18,25 +18,13 @@ public partial class MauiWebView
 
     public partial void SetPlatformWebView(object platformWebView)
     {
-        // Styling goes through a local: the WKWebView property shadows the type, so
-        // WKWebView.Appearance bound to the class-wide proxy rather than this instance.
+        // Background & opacity live in CustomBlazorWebViewHandler's mapper - MAUI's own mappers run after this.
         if (ReferenceEquals(PlatformWebView, platformWebView))
             return;
 
         PlatformWebView = platformWebView;
         var webView = (WKWebView)platformWebView;
         WKWebView = webView;
-        var backgroundColor = UIColor.FromRGB(
-            MauiSettings.SplashBackgroundColor.Red,
-            MauiSettings.SplashBackgroundColor.Green,
-            MauiSettings.SplashBackgroundColor.Blue);
-        webView.Opaque = false;
-        webView.BackgroundColor = backgroundColor;
-        webView.ScrollView.BackgroundColor = UIColor.Clear;
-        // WebKit paints its own surface behind the page - white until the document's
-        // background applies - and that's what flashes when the splash screen goes away.
-        if (OperatingSystem.IsIOSVersionAtLeast(15))
-            webView.UnderPageBackgroundColor = backgroundColor;
         webView.ScrollView.Bounces = false;
         webView.ScrollView.ContentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentBehavior.Never;
         webView.AllowsBackForwardNavigationGestures = false;
