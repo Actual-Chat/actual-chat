@@ -23,6 +23,11 @@
     <IsDevMaui>true</IsDevMaui>
   </PropertyGroup>
 
+  <!-- Must be defined before the first Condition that reads it -->
+  <PropertyGroup>
+    <UseNativeAot Condition="'$(UseNativeAot)' == ''">false</UseNativeAot>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(IsDevMaui)' == 'true'">
     <DefineConstants>$(DefineConstants);IS_DEV_MAUI</DefineConstants>
     <ApplicationId>chat.actual.dev.app.share</ApplicationId>
@@ -35,9 +40,9 @@
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Entitlements.dev.plist</CodesignEntitlements>
     <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Entitlements.prod.plist</CodesignEntitlements>
-    <!-- 'partial' == what MtouchLink=SdkOnly used to mean; NAOT block below raises it to 'full' -->
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
+    <!-- The macios SDK rejects an explicit PublishTrimmed; MtouchLink is the knob.
+         The NAOT block below raises it to Full. -->
+    <MtouchLink Condition="!($(UseNativeAot) and '$(Configuration)' == 'Release')">SdkOnly</MtouchLink>
     <FirebaseCrashlyticsUploadSymbolsEnabled>false</FirebaseCrashlyticsUploadSymbolsEnabled>
   </PropertyGroup>
 
@@ -88,18 +93,13 @@
   </ItemGroup>
 
   <!-- Native AOT — mirrors App.Maui.csproj; keep in sync -->
-  <PropertyGroup>
-    <UseNativeAot Condition="'$(UseNativeAot)' == ''">false</UseNativeAot>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release' and $(UseNativeAot) and $(TargetFramework.Contains('-ios'))">
     <PublishAot>true</PublishAot>
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>full</TrimMode>
     <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
     <IlcDisableReflection>false</IlcDisableReflection>
     <IlcTrimMetadata>false</IlcTrimMetadata>
 
-    <TrimMode>full</TrimMode>
+    <MtouchLink>Full</MtouchLink>
     <PublishReadyToRun>false</PublishReadyToRun>
 
     <!-- NativeAOT requires the managed-static registrar (default 'static' is rejected) -->
