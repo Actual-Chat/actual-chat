@@ -5,17 +5,20 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActualLabFusionVersion>14.2.41</ActualLabFusionVersion>
-    <AspNetCoreVersion>10.0.8</AspNetCoreVersion>
+    <!-- .NET 11 is still in preview: every Microsoft.* package below shares this build number -->
+    <DotNetVersion>11.0.0-preview.6.26359.118</DotNetVersion>
+    <AspNetCoreVersion>$(DotNetVersion)</AspNetCoreVersion>
     <MicrosoftAspNetCoreVersion>2.3.10</MicrosoftAspNetCoreVersion> <!-- Weird, they have the second version -->
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <EntityFrameworkCoreVersion>10.0.8</EntityFrameworkCoreVersion>
-    <EntityFrameworkCoreNpgsqlVersion>10.0.1</EntityFrameworkCoreNpgsqlVersion>
+    <EntityFrameworkCoreVersion>$(DotNetVersion)</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreNpgsqlVersion>11.0.0-preview.6</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>10.0.0</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>10.0.8</MicrosoftExtensionsVersion>
-    <NpgsqlVersion>10.0.1</NpgsqlVersion>
+    <MicrosoftExtensionsVersion>$(DotNetVersion)</MicrosoftExtensionsVersion>
+    <!-- Pinned by Npgsql.EntityFrameworkCore.PostgreSQL 11.0.0-preview.6; there is no Npgsql 11 yet -->
+    <NpgsqlVersion>10.0.3</NpgsqlVersion>
     <RedisVersion>3.0.17</RedisVersion>
-    <SignalRVersion>10.0.8</SignalRVersion>
+    <SignalRVersion>$(DotNetVersion)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.15.3</OpenTelemetryVersion>
     <OpenTelemetryInstrumentationAspNetCoreVersion>1.15.1</OpenTelemetryInstrumentationAspNetCoreVersion>
@@ -33,7 +36,6 @@
   <!-- MAUI-specific packages -->
   <ItemGroup Condition="$(MSBuildProjectName.Contains('Maui'))">
     <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-    <PackageVersion Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.Maui.Essentials" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)" />
@@ -46,8 +48,6 @@
     <PackageVersion Include="Plugin.Firebase.Crashlytics" Version="4.0.0" />
     <PackageVersion Include="Plugin.Maui.Audio" Version="4.0.0" />
     <!-- Android -->
-    <PackageVersion Include="Mono.Profiler.Android" Version="7.0.0" />
-    <PackageVersion Include="Mono.AotProfiler.Android" Version="9.0.0-preview1" />
     <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.18.0" />
     <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.6.0" />
     <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.6.0" />
@@ -261,7 +261,7 @@
     <PackageVersion Include="CliWrap" Version="3.10.1" />
     <PackageVersion Include="Bullseye" Version="4.1.1" />
     <PackageVersion Include="System.CommandLine.DragonFruit" Version="0.3.0-alpha.21216.1" />
-    <PackageVersion Include="System.Management" Version="10.0.2" />
+    <PackageVersion Include="System.Management" Version="$(DotNetVersion)" />
     <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
@@ -272,7 +272,7 @@
     <PackageVersion Include="ILRepack.Lib.MSBuild.Task" Version="2.0.45" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="11.0.100-preview.6.26359.118" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.Playwright" Version="1.60.0" />

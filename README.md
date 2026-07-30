@@ -18,7 +18,7 @@ For comprehensive documentation for developers, see the **[Voxt Documentation](.
 
 | Component | Technology                                              |
 |:----------|---------------------------------------------------------|
-| Backend   | .NET 10, C# 14                                          |
+| Backend   | .NET 11, C# 15                                          |
 | Fusion    | [ActualLab.Fusion](https://github.com/ActualLab/Fusion) |
 | UI        | Blazor (Server/WebAssembly), TypeScript                 |
 | Mobile    | .NET MAUI                                               |
@@ -28,7 +28,7 @@ For comprehensive documentation for developers, see the **[Voxt Documentation](.
 ### Prerequisites
 
 - [Git](https://git-scm.com/downloads)
-- [.NET 10](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 11](https://dotnet.microsoft.com/download/dotnet/11.0)
 - [Docker](https://www.docker.com/get-started)
 - [Node.js 20+](https://nodejs.org/en/)
 

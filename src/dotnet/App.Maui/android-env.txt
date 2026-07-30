@@ -1,2 +1,1 @@
 DOTNET_SYSTEM_NET_DISABLEIPV6=1
-MONO_GC_PARAMS=bridge-implementation=new,major=marksweep,nursery-size=64m,soft-heap-limit=512m

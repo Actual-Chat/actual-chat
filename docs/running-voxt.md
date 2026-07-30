@@ -4,7 +4,7 @@ This guide covers setting up and running Voxt for local development.
 
 ## Prerequisites
 
-- .NET 10 SDK
+- .NET 11 SDK (preview — see `global.json`)
 - Node.js 20+
 - Docker (for PostgreSQL, Redis, NATS)
 - Visual Studio 2022 or JetBrains Rider (recommended)
@@ -169,10 +169,10 @@ To debug the web app on iOS Safari:
 cd src/dotnet/App.Maui
 
 # Production build
-dotnet publish -f:net10.0-android -c:Release /p:IsDevMaui=false
+dotnet publish -f:net11.0-android -c:Release /p:IsDevMaui=false
 
 # Development build
-dotnet publish -f:net10.0-android -c:Release /p:IsDevMaui=true
+dotnet publish -f:net11.0-android -c:Release /p:IsDevMaui=true
 ```
 
 - `IsDevMaui=false`: Production package (`actual.chat.app`) connecting to https://actual.chat

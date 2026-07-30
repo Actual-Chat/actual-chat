@@ -56,8 +56,8 @@ links behave as in production). `IsDevMaui` picks the backend.
 ```bash
 cd src/dotnet/App.Maui
 # Against prod backend (voxt.ai):
-dotnet build -f net10.0-maccatalyst -c Debug -p:IsDevMaui=false -p:RuntimeIdentifier=maccatalyst-arm64
-open ../../../artifacts/bin/App.Maui/debug_net10.0-maccatalyst_maccatalyst-arm64/Voxt.app
+dotnet build -f net11.0-maccatalyst -c Debug -p:IsDevMaui=false -p:RuntimeIdentifier=maccatalyst-arm64
+open ../../../artifacts/bin/App.Maui/debug_net11.0-maccatalyst_maccatalyst-arm64/Voxt.app
 # Against dev backend (dev.voxt.ai): -p:IsDevMaui=true  -> Voxt (Dev).app
 ```
 
@@ -72,7 +72,7 @@ emits the installer-signed `.pkg` directly. No separate packaging step.
 ./run-build.cmd publish-maccatalyst --configuration Release --is-dev-maui true
 # prod:
 ./run-build.cmd publish-maccatalyst --configuration Release --is-dev-maui false
-# -> artifacts/publish/App.Maui/release_net10.0-maccatalyst_maccatalyst-arm64/ActualChat-<version>.pkg
+# -> artifacts/publish/App.Maui/release_net11.0-maccatalyst_maccatalyst-arm64/ActualChat-<version>.pkg
 ```
 
 Upload via Transporter, or:

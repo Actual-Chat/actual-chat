@@ -9,7 +9,7 @@ IMPORTANT: See `README.md` in the root folder to learn what Voxt (formerly Actua
 
 ## Technology Stack
 
-- **Language and Platform**: the project is compiled with .NET 10 (and C# 14)
+- **Language and Platform**: the project is compiled with .NET 11 (and C# 15)
 - **Databases**: PostgreSQL, Redis. See `docker-compose.yml.
 - **UI**: mostly Blazor, with a decent amount of TypeScript.
 - **Testing**: all tests are based on xUnit.
@@ -32,7 +32,7 @@ When creating UI components, see [`docs/development/ui-components.md`](./develop
 
 ## Build Prerequisites
 
-- Install .NET 10
+- Install .NET 11 (preview)
 - Run:
   ```powershell
   dotnet restore
