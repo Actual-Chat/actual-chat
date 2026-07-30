@@ -61,7 +61,12 @@
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
     <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
     <TieredPGO>false</TieredPGO>
-    <!-- GC settings, Server GC adds ~ 80ms to startup -->
+    <!-- Workstation GC. The old note here claimed Server GC costs ~80ms of startup; that
+         predates DATAS (on by default since .NET 9), which starts Server GC with a single
+         heap and grows it on demand rather than one heap per core, so the number no longer
+         describes what we'd get. Staying on Workstation regardless: it's the only choice on
+         iOS and Mac Catalyst, where the macios SDK's _ValidateGarbageCollector target
+         hard errors on Server GC. -->
     <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
 
