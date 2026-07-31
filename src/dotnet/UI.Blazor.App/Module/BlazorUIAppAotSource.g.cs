@@ -20,6 +20,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AccountStatusMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AccountView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ActiveChats>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ActivityPill>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddAvatarBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddChatMembersBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddMemberModal>();
@@ -81,6 +82,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderCallButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderFollowThreadToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderRightPanelToggle>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderStopLocationSharingButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatIcon>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListCreateButton>();
@@ -747,6 +749,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AccountStatusMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AccountView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ActiveChats), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ActivityPill), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddAvatarBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddChatMembersBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddMemberModal), AotTypeKind.Component),
@@ -808,6 +811,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderCallButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderFollowThreadToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderRightPanelToggle), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderStopLocationSharingButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatIcon), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListCreateButton), AotTypeKind.Component),
