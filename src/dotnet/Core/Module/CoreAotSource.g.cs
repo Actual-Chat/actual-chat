@@ -215,13 +215,13 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep("ActualChat.Security.Internal.SecureTokenMessagePackFormatter, ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Serialization.Internal.RangeMessagePackFormatter`1[[ActualChat.Mathematics.Range`1[[System.Int32, System.Private.CoreLib]], ActualChat.Core]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Serialization.Internal.RangeMessagePackFormatter`1[[System.Int32, System.Private.CoreLib]], ActualChat.Core");
+        CodeKeeper.Keep("ActualChat.Serialization.Internal.ShardKeyMessagePackFormatter, ActualChat.Core");
         CodeKeeper.Keep("ActualLab.Fusion.Internal.SessionMessagePackFormatter, ActualLab.Fusion");
         CodeKeeper.Keep("ActualLab.Reflection.Internal.TypeRefMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Serialization.Internal.UnitMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Media_Size2DFormatter1, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_ShardKeyFormatter2, MessagePack.Resolvers.DynamicObjectResolver");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Search.SearchMatchPart, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.Type, System.Private.CoreLib]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.ValueTuple`2[[System.String, System.Private.CoreLib],[System.Byte[], System.Private.CoreLib]], System.Private.CoreLib]], MessagePack");
