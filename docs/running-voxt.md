@@ -49,6 +49,11 @@ Start the required services (PostgreSQL, Redis, NATS):
 docker compose up -d --build --wait
 ```
 
+> Most of what follows is also available through [`b`](./build-tool.md), the
+> repo's build tool — `b server run`, `b app run android`, `b unit-tests` and so
+> on. Run `b` with no arguments for an interactive menu, or `b tree -o` for the
+> full command list.
+
 ## Building
 
 Use the CI solution filter to exclude MAUI projects (unless you have MAUI workloads installed):
