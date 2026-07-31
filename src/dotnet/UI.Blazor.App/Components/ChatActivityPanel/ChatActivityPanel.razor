@@ -8,7 +8,7 @@
 
     var hasCallActivity = m.IsAnyoneTalking || m.HasRemoteStreams || m.IsListening || m.IsRecordingHere
         || m.IsWatchingHere;
-    var isVisible = hasCallActivity || m.IsOwnSharingLocation;
+    var isVisible = hasCallActivity || m.IsSharingOwnLocation;
     if (!isVisible)
         return;
 
@@ -144,11 +144,17 @@
         var isWatchingHere = chat.Id == watchingChatId;
         var canShowAudioDiagnostics = await AudioDiagnosticsUI.IsEnabled(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        var isOwnSharingLocation = enableIncompleteUI
+        var isSharingOwnLocation = enableIncompleteUI
             && await LocationUI.GetOwnLive(chat.Id, cancellationToken).ConfigureAwait(false) is not null;
-        return new (
-            audioState, isAnyoneTalking, hasRemoteStreams,
-            isOwnVideoStreaming, isWatchingHere, canShowAudioDiagnostics, isOwnSharingLocation);
+        return new() {
+            AudioState = audioState,
+            IsAnyoneTalking = isAnyoneTalking,
+            HasRemoteStreams = hasRemoteStreams,
+            IsOwnVideoStreaming = isOwnVideoStreaming,
+            IsWatchingHere = isWatchingHere,
+            CanShowAudioDiagnostics = canShowAudioDiagnostics,
+            IsSharingOwnLocation = isSharingOwnLocation,
+        };
     }
 
     private void OnAudioDiagnosticsClick()
@@ -197,14 +203,15 @@
 
     // Nested types
 
-    public sealed record Model(
-        ChatAudioState AudioState,
-        bool IsAnyoneTalking,
-        bool HasRemoteStreams,
-        bool IsOwnVideoStreaming,
-        bool IsWatchingHere,
-        bool CanShowAudioDiagnostics,
-        bool IsOwnSharingLocation) {
+    public sealed record Model {
+        public required ChatAudioState AudioState { get; init; }
+        public required bool IsAnyoneTalking { get; init; }
+        public required bool HasRemoteStreams { get; init; }
+        public required bool IsOwnVideoStreaming { get; init; }
+        public required bool IsWatchingHere { get; init; }
+        public required bool CanShowAudioDiagnostics { get; init; }
+        public required bool IsSharingOwnLocation { get; init; }
+
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
     }
