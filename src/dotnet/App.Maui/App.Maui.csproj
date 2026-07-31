@@ -221,17 +221,6 @@
     <PublishReadyToRunExclude Include="PhoneNumbers.dll" />
   </ItemGroup>
 
-  <!-- iOS: keep Blazor out of the R2R image. dotnet/runtime#130840 only fires when an
-       R2R-compiled caller reaches an interpreted open-instance delegate over a virtual method,
-       and ComponentProperties.SetProperty - which sets every component parameter - is exactly
-       that caller. Leaving this assembly as IL makes the caller interpreted too, which the
-       issue documents as a working configuration; verified on device. Costs ~17MB off the R2R
-       image and makes Blazor's parameter path interpreted.
-       Revisit once the runtime fix ships - see docs/ios-specific.md. -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) and '$(Configuration)' == 'Release'">
-    <PublishReadyToRunExclude Include="Microsoft.AspNetCore.Components.dll" />
-  </ItemGroup>
-
   <!-- Trimming: trimmer root assemblies apply to both R2R trimming and Native AOT.
        Under NAOT, CodeKeeper keeps reflection-referenced types but ILC still needs every
        ctor/method body preserved for COM/JNI/ObjC activation paths — see the Native AOT
@@ -375,10 +364,22 @@
   </PropertyGroup>
 
   <!-- Excluded under NativeAOT: it has no interpreter, so dynamic code is genuinely
-       unavailable there and every reflection path must be covered by CodeKeeper. -->
+       unavailable there and every reflection path must be covered by CodeKeeper.
+       Overridable via -p:UseInterpreter=false to build the no-dynamic-code variant. -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) and !($(UseNativeAot) and '$(Configuration)' == 'Release')">
-    <UseInterpreter>true</UseInterpreter>
+    <UseInterpreter Condition="'$(UseInterpreter)' == ''">true</UseInterpreter>
   </PropertyGroup>
+
+  <!-- Keep Blazor out of the R2R image whenever the interpreter is on. dotnet/runtime#130840
+       only fires when an R2R-compiled caller reaches an interpreted open-instance delegate over
+       a virtual method, and ComponentProperties.SetProperty - which sets every component
+       parameter - is exactly that caller. Leaving this assembly as IL makes the caller
+       interpreted too, which the issue documents as a working configuration. Costs ~17MB off
+       the R2R image and makes Blazor's parameter path interpreted, so it's pointless without
+       the interpreter - hence the condition. See docs/ios-specific.md. -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) and '$(Configuration)' == 'Release' and '$(UseInterpreter)' == 'true'">
+    <PublishReadyToRunExclude Include="Microsoft.AspNetCore.Components.dll" />
+  </ItemGroup>
 
   <!-- iOS: Both Debug & Release configurations -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
@@ -398,13 +399,11 @@
 
     <SkipStaticLibraryValidation>true</SkipStaticLibraryValidation>
 
-    <!-- Interpreter ON - and it must stay paired with the R2R exclusion below; see
-         docs/ios-specific.md before touching either.
-
-         It gates dynamic code on Apple targets: the macios SDK sets DynamicCodeSupport=false
-         unless UseInterpreter or MtouchInterpreter is set, which unregisters MessagePack's
-         dynamic resolvers. It was off between 4ee086038e and this commit because the CoreCLR
-         interpreter crashed on device (dotnet/runtime#130840). -->
+    <!-- UseInterpreter is set above, together with the R2R exclusion it implies.
+         It also gates dynamic code on Apple targets: the macios SDK sets
+         DynamicCodeSupport=false unless UseInterpreter or MtouchInterpreter is set, which
+         unregisters MessagePack's dynamic resolvers - so turning it off needs every
+         serializable type statically resolvable. See docs/ios-specific.md. -->
   </PropertyGroup>
 
   <!-- iOS: Debug configuration -->
