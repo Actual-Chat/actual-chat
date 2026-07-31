@@ -85,7 +85,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
 
     public override async Task SetParametersAsync(ParameterView parameters)
     {
-        SetParameters(parameters);
+        parameters.SetParameterProperties(this);
         // NOTE: Hub (and other injected services) aren't available yet in the first SetParametersAsync,
         // so we can't use Hub.IsPrerendering here. RendererInfo is set before SetParametersAsync and is
         // per-circuit: IsInteractive is false during prerender SSR, true once the list is interactive.
@@ -102,35 +102,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
             SetState(state, stateOptions);
         }
         await base.SetParametersAsync(ParameterView.Empty);
-    }
-
-    // Blazor's ComponentProperties.SetProperties builds an open-instance delegate per parameter setter.
-    // On iOS with the CoreCLR interpreter that faults for setters declared on a shared-generic type -
-    // VirtualList<TItem> with a reference TItem is VirtualList`1<__Canon> - and the process is then
-    // watchdog-killed (dotnet/runtime#130840). Assigning them here keeps that path out of play.
-    private void SetParameters(ParameterView parameters)
-    {
-        foreach (var parameter in parameters) {
-            switch (parameter.Name) {
-            case nameof(Identity): Identity = (string)parameter.Value; break;
-            case nameof(Class): Class = (string)parameter.Value; break;
-            case nameof(Style): Style = (string)parameter.Value; break;
-            case nameof(DataSource): DataSource = (IVirtualListDataSource<TItem>)parameter.Value; break;
-            case nameof(Item): Item = (RenderFragment<TItem>)parameter.Value; break;
-            case nameof(Skeleton): Skeleton = (RenderFragment<int>?)parameter.Value; break;
-            case nameof(SkeletonBatch): SkeletonBatch = (RenderFragment<int>?)parameter.Value; break;
-            case nameof(SkeletonCount): SkeletonCount = (int)parameter.Value; break;
-            case nameof(SpacerSize): SpacerSize = (double)parameter.Value; break;
-            case nameof(DefaultEdge): DefaultEdge = (VirtualListEdge)parameter.Value; break;
-            case nameof(ExpandMultiplier): ExpandMultiplier = (double)parameter.Value; break;
-            case nameof(IsInfinite): IsInfinite = (bool)parameter.Value; break;
-            case nameof(ShowOverscrollCue): ShowOverscrollCue = (bool)parameter.Value; break;
-            case nameof(RetainedItemCount): RetainedItemCount = (int)parameter.Value; break;
-            case nameof(ItemVisibilityChanged): ItemVisibilityChanged = (Action<VirtualListItemVisibility>?)parameter.Value; break;
-            case nameof(ScreenSize): ScreenSize = (ScreenSize)parameter.Value; break;
-            default: throw StandardError.Internal($"Unknown parameter: '{parameter.Name}'.");
-            }
-        }
     }
 
     public override async ValueTask DisposeAsync()
