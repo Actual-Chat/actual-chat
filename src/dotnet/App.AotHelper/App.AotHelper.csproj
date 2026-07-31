@@ -24,11 +24,6 @@
     <StripSymbols>false</StripSymbols>
   </PropertyGroup>
 
-  <!-- Ensures ArgumentList variants with generics are trimmed in Native AOT -->
-  <ItemGroup>
-    <RuntimeHostConfigurationOption Include="ArgumentList.AllowGenerics" Value="false" Trim="true" />
-  </ItemGroup>
-
   <!-- References: same surface as App.Wasm + App.ConsoleClient -->
   <ItemGroup>
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />

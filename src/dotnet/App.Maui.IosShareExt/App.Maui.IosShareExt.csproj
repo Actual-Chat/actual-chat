@@ -83,6 +83,12 @@
     <BundleResource Include="..\App.Maui\Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
   </ItemGroup>
 
+  <!-- Same as App.Maui: no generic ArgumentList variants, so the trimmer can drop them and
+       R2R stops compiling an instantiation per arity. -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="ArgumentList.AllowGenerics" Value="false" Trim="true" />
+  </ItemGroup>
+
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
     <ProjectReference Include="..\Maui\Maui.csproj" />
