@@ -18,18 +18,6 @@ body.wide .chat-activity-panel {
         var(--indigo-70-10),
         var(--magenta-70-10));
 }
-/* Map-only sharing: the pill chrome above belongs to the call panel, and around
-   a lone stop-sharing icon it's a stray gradient bar - strip it, along with the
-   :after / :before gradient layers further down. */
-body.wide .chat-activity-panel.location-only {
-    @apply h-auto p-0;
-    @apply rounded-none;
-    background: none;
-}
-body.wide .chat-activity-panel.location-only:after,
-body.wide .chat-activity-panel.location-only:before {
-    @apply hidden;
-}
 
 .chat-activity-panel:after,
 .chat-activity-panel:before {
