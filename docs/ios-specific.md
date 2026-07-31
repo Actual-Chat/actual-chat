@@ -12,10 +12,42 @@ reflection and serialization path is covered statically, each platform must keep
 the two available. Turning the safety net off early doesn't make us AOT-ready; it just
 moves the failures in front of users.
 
-In practice: Android and Windows have a JIT, and iOS keeps the interpreter on
-(`UseInterpreter=true` in `App.Maui.csproj`). Native AOT builds have neither by
-definition — that's exactly why they're not production yet, and why
+In practice: Android and Windows have a JIT. **iOS currently has neither** — see
+*The interpreter is off, and why* below — so on iOS the policy is enforced the hard
+way, by making sure nothing needs dynamic code in the first place. Native AOT builds
+have neither by definition either; that's why they're not production yet, and why
 [CodeKeeper](./native-aot.md) coverage is the work that gets us there.
+
+## The interpreter is off, and why
+
+We enabled `UseInterpreter=true` to restore dynamic code, and **backed it out the same
+day**: on .NET 11 preview 6 the CoreCLR interpreter faults on device. Four consecutive
+`0x8BADF00D` watchdog kills, main thread, identical stacks:
+
+```
+InterpExecMethod / ExecuteInterpretedMethod
+  CID_VirtualOpenDelegateDispatchWorker      <- native fault in interpreted code
+    _sigtramp -> invoke_previous_action
+      EEPolicy::LogManagedCallstackForSignal
+        CallStackLogger::PrintStackTrace
+          TypeString::AppendMethodImpl       <- >5s symbolicating -> process killed
+```
+
+The symptom is deceptive: the app paints its UI and then ignores touches. It isn't a
+hang in our code — the main thread is stuck inside CoreCLR's *own* fatal-error handler,
+symbolicating a managed stack on-device, until the watchdog kills the process. A second
+variant shows `PAL_DispatchException` → `cthread_yield` instead.
+
+Retrieve the reports with `idevicecrashreport -u <udid> -k <dir>`; the `termination`
+block carries the `0x8BADF00D` code and `faultingThread` points at thread 0.
+
+Consequence: **iOS has no dynamic-code fallback at all** — no JIT (Apple), no working
+interpreter (this bug). Every serializable type must resolve to a statically emitted
+formatter. That's now true, and it's what makes running without the safety net
+acceptable rather than reckless.
+
+Re-test `UseInterpreter=true` when the runtime updates; if it's fixed, turning it back
+on restores defence in depth.
 
 ### How this went wrong once
 
@@ -39,7 +71,8 @@ MSBuild properties (`Xamarin.Shared.Sdk.targets`):
 We used to set both — `UseInterpreter=true` with `MtouchInterpreter=-ActualChat`, i.e.
 ActualChat assemblies AOT'd and the rest interpreted. The .NET 11 sweep removed them as
 Mono-era cleanup. They are **not** Mono-era: the net11 SDK still reads them, and dropping
-them flipped the flag. `UseInterpreter=true` is now set again for iOS.
+them flipped the flag. We set `UseInterpreter=true` again and then had to remove it —
+the interpreter crashes; see above.
 
 **Android was unaffected.** It permits JIT and was already on CoreCLR before the sweep
 (`UseCoreClr` + `UseMonoRuntime=false`), so `IsDynamicCodeSupported` stayed `true` — which

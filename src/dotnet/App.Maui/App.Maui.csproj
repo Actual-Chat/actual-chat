@@ -363,12 +363,6 @@
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
-  <!-- Excluded under NativeAOT: it has no interpreter, so dynamic code is genuinely
-       unavailable there and every reflection path must be covered by CodeKeeper. -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) and !($(UseNativeAot) and '$(Configuration)' == 'Release')">
-    <UseInterpreter>true</UseInterpreter>
-  </PropertyGroup>
-
   <!-- iOS: Both Debug & Release configurations -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
@@ -387,37 +381,36 @@
 
     <SkipStaticLibraryValidation>true</SkipStaticLibraryValidation>
 
-    <!-- Interpreter ON, deliberately, and it is NOT just a perf knob - it decides whether
-         dynamic code works. The macios SDK gates that on these two properties
+    <!-- NO UseInterpreter / MtouchInterpreter here. We tried turning the interpreter on and had
+         to back it out - see the crash signature below before trying again.
+
+         Why we wanted it: the macios SDK gates dynamic code on exactly these two properties
          (Xamarin.Shared.Sdk.targets):
 
            <DynamicCodeSupport Condition="... '$(MtouchInterpreter)' == '' And '$(UseInterpreter)' != 'true'
                                           And ('$(_PlatformName)' == 'iOS' Or 'tvOS' Or 'MacCatalyst')">false</DynamicCodeSupport>
 
-         Leave both unset and RuntimeFeature.IsDynamicCodeSupported is false in the app's
-         runtimeconfig. That unregisters MessagePack's DynamicObjectResolver /
-         DynamicUnionResolver (see AppMessagePackResolverSettings), so any type lacking a
-         source-generated or attribute-declared formatter throws FormatterNotRegisteredException
-         at runtime instead of getting one emitted - a single missing formatter takes down every
-         RPC call whose argument graph reaches it, surfacing as an ErrorBarrier.
+         With both unset, RuntimeFeature.IsDynamicCodeSupported is false, which unregisters
+         MessagePack's DynamicObjectResolver / DynamicUnionResolver (see AppMessagePackResolverSettings)
+         - so any type without a statically emitted formatter throws FormatterNotRegisteredException.
 
-         The .NET 11 sweep removed these as Mono-era cleanup. They are not Mono-era: the net11
-         SDK still reads them, CoreCLR on iOS ships an interpreter, and dropping them silently
-         flipped IsDynamicCodeSupported true -> false.
+         Why it's off anyway: on .NET 11 preview 6 the CoreCLR interpreter faults on device.
+         Four consecutive 0x8BADF00D watchdog kills, main thread, identical stacks:
 
-         The policy this follows: we are NOT yet ready to ship NativeAOT-style production builds
-         (no JIT and no interpreter). We're close and we want to get there, but until every
-         reflection and serialization path is covered statically, every platform must keep either
-         a JIT or an interpreter available. Turning that safety net off ahead of time doesn't make
-         us AOT-ready, it just moves the failures in front of users. Accepting the interpreter's
-         cost is the right trade - a crash is worse than slower code.
+           InterpExecMethod / ExecuteInterpretedMethod
+             CID_VirtualOpenDelegateDispatchWorker      <- native fault in interpreted code
+               EEPolicy::LogManagedCallstackForSignal
+                 CallStackLogger::PrintStackTrace
+                   TypeString::AppendMethodImpl         <- >5s symbolicating -> killed
 
-         Deliberately NOT scoped to MacCatalyst: macOS allows JIT, so it likely doesn't need the
-         interpreter - but note the SDK condition lists MacCatalyst too, so it currently gets
-         DynamicCodeSupport=false as well and would hit the same failure. Unverified; if it does,
-         prefer setting DynamicCodeSupport=true there over paying for an interpreter it doesn't need.
+         The app painted its UI and then stopped responding to touch, because the main thread was
+         stuck in CoreCLR's own crash logger. Unlike Android, iOS has no JIT to fall back on, so the
+         interpreter is the only dynamic-code path - and it's the thing crashing.
 
-         See docs/ios-specific.md. -->
+         What makes this safe: every known formatter gap is now closed statically (Size2D,
+         Notification, ShardKey, Tile/Maybe/Choice), each with a test that fails without it, so
+         nothing depends on runtime codegen. Keep it that way - fix formatters, don't reach for
+         this switch. See docs/ios-specific.md. -->
   </PropertyGroup>
 
   <!-- iOS: Debug configuration -->
