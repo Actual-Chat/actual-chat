@@ -1,5 +1,6 @@
 using System.Numerics;
 using ActualChat.Mathematics.Internal;
+using ActualChat.Serialization.Internal;
 
 namespace ActualChat.Mathematics;
 
@@ -10,6 +11,7 @@ namespace ActualChat.Mathematics;
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [MessagePackObject(true, AllowPrivate = true)]
+[MessagePackFormatter(typeof(TileMessagePackFormatter<>))]
 public readonly partial struct Tile<T>
     where T : struct, INumber<T>
 {
@@ -39,7 +41,7 @@ public readonly partial struct Tile<T>
     }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
-    private Tile(Range<T> range)
+    internal Tile(Range<T> range)
     {
         Range = range;
         Layer = null!;

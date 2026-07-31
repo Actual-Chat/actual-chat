@@ -1,3 +1,4 @@
+using ActualChat.Serialization.Internal;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat;
@@ -21,6 +22,7 @@ public static class Maybe
 /// </summary>
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[MessagePackFormatter(typeof(MaybeMessagePackFormatter<>))]
 [DebuggerDisplay("{" + nameof(DebugValue) + "}")]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
