@@ -485,7 +485,9 @@ export class ChatMessageEditor {
         mutationList.forEach(m => {
             if (m.type == 'attributes') {
                 const dataValue = m.target.dataset['sideNav'];
-                if (dataValue == 'open' && this.markupEditor.hasFocus()) {
+                // sideNavObserver is created in the ctor, but markupEditor only arrives with
+                // onNestedControlsReady - the observer can fire in between
+                if (dataValue == 'open' && this.markupEditor?.hasFocus()) {
                     this.markupEditor.blur();
                     return;
                 }
