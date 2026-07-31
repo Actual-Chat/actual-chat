@@ -136,7 +136,9 @@ Parsing is case-insensitive.
 - Prefer *delegating* to an existing script over reimplementing it. `b server
   loop` shells out to `server-loop.ps1` because `/server-loop` and other tooling
   reference that script directly; `b app run ios` calls the `scripts/run-ios*.sh`
-  files because they carry real Apple-toolchain logic.
+  files because they carry real Apple-toolchain logic. Scripts `b` delegates to
+  live in `scripts/` and resolve their own paths via `REPO_ROOT`, so they work
+  both from `b` and when a human runs them directly.
 - Prefer *calling a Bullseye target* over re-deriving publish flags. `b app pack`
   runs the same `publish-*` target CI does, so the store artifacts can't drift
   from what ships.

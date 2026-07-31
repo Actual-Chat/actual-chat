@@ -1,9 +1,11 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT" || exit 1
 source "$SCRIPT_DIR/__detect-ios-device.sh"
 
- Build IPA
-"$SCRIPT_DIR/run-build.cmd" publish-ios --configuration Release --is-dev-maui "true"
+# Build IPA
+"$REPO_ROOT/run-build.cmd" publish-ios --configuration Release --is-dev-maui "true"
 if [ $? -ne 0 ]; then
     echo "Build failed"
     exit 1

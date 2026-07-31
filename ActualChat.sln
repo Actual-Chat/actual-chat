@@ -86,9 +86,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		version.json = version.json
 		AGENTS.md = AGENTS.md
 		CLAUDE.md = CLAUDE.md
-		run-ios.sh = run-ios.sh
-		run-ios-release.sh = run-ios-release.sh
-		r-ios-release.sh = r-ios-release.sh
 		run-android.cmd = run-android.cmd
 		npm-build-release.cmd = npm-build-release.cmd
 		.dockerignore = .dockerignore
@@ -101,7 +98,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		postcss-watch-plugin.js = postcss-watch-plugin.js
 		tailwind.config.js = tailwind.config.js
 		tsconfig.json = tsconfig.json
-		__detect-ios-device.sh = __detect-ios-device.sh
 		update-aot-helpers.cmd = update-aot-helpers.cmd
 	EndProjectSection
 EndProject
@@ -420,6 +416,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{BA67
 	ProjectSection(SolutionItems) = preProject
 		scripts\Common.ps1 = scripts\Common.ps1
 		scripts\ServerPorts.ps1 = scripts\ServerPorts.ps1
+		scripts\run-ios.sh = scripts\run-ios.sh
+		scripts\run-ios-release.sh = scripts\run-ios-release.sh
+		scripts\r-ios-release.sh = scripts\r-ios-release.sh
+		scripts\__detect-ios-device.sh = scripts\__detect-ios-device.sh
+		scripts\run-ios-simulator.sh = scripts\run-ios-simulator.sh
+		scripts\run-macos.sh = scripts\run-macos.sh
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ps", "ps", "{E4F7B3A1-6C2D-4E8F-9A1B-3D5C7E9F0B2A}"

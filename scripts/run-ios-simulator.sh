@@ -1,5 +1,7 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT" || exit 1
 
 # Detect architecture
 ARCH=$(uname -m)
@@ -63,7 +65,7 @@ for runtime, devices in data.get('devices', {}).items():
 fi
 
 # Install root CA certificate if not already done for this simulator
-CERT_PATH="$SCRIPT_DIR/.config/local.voxt.ai/ssl/rootCA.crt"
+CERT_PATH="$REPO_ROOT/.config/local.voxt.ai/ssl/rootCA.crt"
 CERT_MARKER="$HOME/.ios-simulator-certs/$BOOTED_UDID"
 
 if [ -f "$CERT_PATH" ]; then
@@ -78,7 +80,7 @@ if [ -f "$CERT_PATH" ]; then
 fi
 
 # Clean stale native artifacts from physical device builds to avoid linker errors
-rm -rf "$SCRIPT_DIR/artifacts/out/nativelibraries"
+rm -rf "$REPO_ROOT/artifacts/out/nativelibraries"
 
 # Build first (without Run) to allow fixing corrupted native libraries
 dotnet build src/dotnet/App.Maui/ -f net11.0-ios -p:RuntimeIdentifier=$RID -p:_DeviceName=":v2:udid=$BOOTED_UDID"
@@ -90,8 +92,8 @@ fi
 
 # Fix corrupted native libraries in the app bundle
 # The codesigning step sometimes corrupts dylib files by writing command-line args instead of signing
-APP_BUNDLE="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net11.0-ios_$RID/ActualChat.app"
-BUILD_OUTPUT="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net11.0-ios_$RID"
+APP_BUNDLE="$REPO_ROOT/artifacts/bin/App.Maui/debug_net11.0-ios_$RID/ActualChat.app"
+BUILD_OUTPUT="$REPO_ROOT/artifacts/bin/App.Maui/debug_net11.0-ios_$RID"
 BUNDLE_ID="chat.actual.dev.app"
 
 for dylib in "$APP_BUNDLE"/*.dylib; do

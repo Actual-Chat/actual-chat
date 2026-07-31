@@ -14,16 +14,16 @@ internal static class MauiApp
     public static CommandPlan GetPlan(AppSettings settings, bool mustLaunch)
     {
         var plan = new CommandPlan();
-        if (!settings.MustSkipWebBuild)
-            plan.AddRun(Utils.FindNpmExe(), ["run", $"build:{settings.ResolvedConfiguration}"]);
-
-        // The Apple scripts build the app themselves, so there's no dotnet step for them.
+        // The Apple scripts build the web assets and the app themselves.
         if (settings.Platform is AppPlatform.Ios or AppPlatform.MacOs) {
             if (mustLaunch)
                 AddScript(plan, settings);
 
             return plan;
         }
+
+        if (!settings.MustSkipWebBuild)
+            plan.AddRun(Utils.FindNpmExe(), ["run", $"build:{settings.ResolvedConfiguration}"]);
 
         AddDotnet(plan, settings);
         // Announced before the launch step, so the path is visible even once the app takes over the console.
@@ -100,11 +100,7 @@ internal static class MauiApp
             { UseSimulator: true } => "run-ios-simulator.sh",
             _ => "run-ios.sh",
         };
-        // Falls back to the repo root while the Apple scripts still live there.
         var scriptPath = Path.Combine("scripts", scriptName);
-        if (!File.Exists(scriptPath))
-            scriptPath = scriptName;
-
         plan.Add(new RunStep("bash", [scriptPath]) { RequiredPath = scriptPath });
     }
 

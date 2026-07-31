@@ -1,6 +1,7 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR" || exit 1
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT" || exit 1
 
 # Mac Catalyst RID follows the host CPU.
 case "$(uname -m)" in
@@ -13,7 +14,7 @@ npm run build:Debug || exit 1
 dotnet build src/dotnet/App.Maui/ -f net11.0-maccatalyst -p:RuntimeIdentifier="$RID" || exit 1
 
 # The produced bundle name depends on IsDevMaui ("Voxt (Dev).app" for dev, "Voxt.app" for prod).
-OUT_DIR="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net11.0-maccatalyst_${RID}"
+OUT_DIR="$REPO_ROOT/artifacts/bin/App.Maui/debug_net11.0-maccatalyst_${RID}"
 APP_PATH="$(ls -d "$OUT_DIR"/*.app 2>/dev/null | head -1)"
 if [ -z "$APP_PATH" ]; then
     echo "error: no .app bundle found in $OUT_DIR" >&2
