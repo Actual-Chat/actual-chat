@@ -1,0 +1,28 @@
+@inherits ComputedStateComponent<AppUIHub, bool>
+@{
+    if (State.IsInitial(out var isOwnSharing))
+        return;
+    if (!isOwnSharing)
+        return;
+}
+
+<HeaderButton
+    Class="btn-stop-location-sharing"
+    Tooltip="Stop location sharing"
+    TooltipPosition="FloatingPosition.Bottom"
+    Click="OnClick">
+    <marker-pin-off-svg></marker-pin-off-svg>
+</HeaderButton>
+
+@code {
+    private LocationUI LocationUI => Hub.LocationUI;
+    private Chat Chat => ChatContext.Chat;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
+        => await LocationUI.GetOwnLive(Chat.Id, cancellationToken).ConfigureAwait(false) is not null;
+
+    private Task OnClick()
+        => LocationUI.StopSharing(Chat.Id, CancellationToken.None);
+}

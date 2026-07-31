@@ -55,6 +55,7 @@
     </div>
     @if (chat is not null) {
         <div class="chat-header-control-panel hideable">
+            <ChatHeaderStopLocationSharingButton/>
             @if (chat.Kind == ChatKind.Peer) {
                 <ChatHeaderCallButton/>
             }
