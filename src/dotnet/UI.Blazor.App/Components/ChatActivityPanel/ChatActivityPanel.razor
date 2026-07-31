@@ -6,7 +6,6 @@
     if (m is null)
         return;
 
-    var hasCallActivity = m.HasCallActivity;
     if (!m.IsVisible)
         return;
 
@@ -15,16 +14,14 @@
     var isRecordingHere = m.IsRecordingHere;
     var isWatchingHere = m.IsWatchingHere;
     var isOwnVideoStreaming = m.IsOwnVideoStreaming;
-    var isParticipating = isListening || isRecordingHere || isOwnVideoStreaming;
     var isActive = m.IsAnyoneTalking;
     var iconMode = m.HasRemoteStreams ? "video" : "audio";
     var tooltip = isListening ? "Listening..." : "Listen";
     var cls = isListening ? " listening" : "";
     if (m.HasRemoteStreams)
         cls += " video-streaming";
-    // not-participating is the narrow "join muted" bordered-box affordance — meaningless
-    // without a call
-    if (hasCallActivity && !isParticipating)
+    // not-participating is the narrow "join muted" bordered-box affordance
+    if (m.CanJoinCall)
         cls += " not-participating";
     if (isWatchingHere)
         cls += " watching";
@@ -46,7 +43,7 @@
     @if (m.HasRemoteStreams) {
         <div class="c-film-strip"></div>
     }
-    @if (hasCallActivity && !isParticipating) {
+    @if (m.CanJoinCall) {
         <div class="c-icon hideable">
             <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive" mode="@iconMode"/>
         </div>
@@ -59,7 +56,7 @@
     }
     <div class="flex-1"></div>
     <div class="c-buttons">
-        @if (hasCallActivity && m.CanShowAudioDiagnostics) {
+        @if (m.CanShowAudioDiagnostics) {
             <HeaderButton
                 Class="c-diagnostics-btn"
                 StopPropagation="true"
@@ -71,8 +68,8 @@
             </HeaderButton>
         }
         <StopLocationSharingButton/>
-        @if (hasCallActivity) {
-            if (!isListening && !isRecordingHere && !isOwnVideoStreaming) {
+        @if (m.HasCallActivity) {
+            if (m.CanJoinCall) {
                 <Button
                     Class="btn-sm btn-transparent unhovered not-listening"
                     StopPropagation="true"
@@ -150,7 +147,7 @@
             HasRemoteStreams = hasRemoteStreams,
             IsOwnVideoStreaming = isOwnVideoStreaming,
             IsWatchingHere = isWatchingHere,
-            CanShowAudioDiagnostics = canShowAudioDiagnostics,
+            IsAudioDiagnosticsEnabled = canShowAudioDiagnostics,
             IsSharingOwnLocation = isSharingOwnLocation,
         };
     }
@@ -207,13 +204,16 @@
         public required bool HasRemoteStreams { get; init; }
         public required bool IsOwnVideoStreaming { get; init; }
         public required bool IsWatchingHere { get; init; }
-        public required bool CanShowAudioDiagnostics { get; init; }
+        public required bool IsAudioDiagnosticsEnabled { get; init; }
         public required bool IsSharingOwnLocation { get; init; }
 
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
+        public bool IsParticipating => IsListening || IsRecordingHere || IsOwnVideoStreaming;
         public bool HasCallActivity => IsAnyoneTalking || HasRemoteStreams || IsListening || IsRecordingHere
             || IsWatchingHere;
+        public bool CanJoinCall => HasCallActivity && !IsParticipating;
         public bool IsVisible => HasCallActivity || IsSharingOwnLocation;
+        public bool CanShowAudioDiagnostics => IsAudioDiagnosticsEnabled && HasCallActivity;
     }
 }
