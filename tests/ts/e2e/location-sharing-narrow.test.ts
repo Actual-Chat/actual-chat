@@ -66,8 +66,8 @@ describe('location sharing (narrow)', () => {
         await modal.locator('.c-share-live').first().click();
         await modal.locator('.c-duration-menu .c-menu-item:has-text("15 minutes")').first().click();
 
-        // assert — the panel appears in its location-only form with the stop button
-        const panel = page.locator('.chat-activity-panel.location-only').first();
+        // assert — the panel appears in its map-only form with the stop button
+        const panel = page.locator('.chat-activity-panel:has(.btn-stop-location-sharing)').first();
         await panel.waitFor({ state: 'visible', timeout: 20_000 });
         await panel.locator('.btn-stop-location-sharing').first()
             .waitFor({ state: 'visible', timeout: 10_000 });
@@ -76,7 +76,7 @@ describe('location sharing (narrow)', () => {
         expect(await page.locator('.chat-activity-panel.not-participating').count()).toBe(0);
         expect(await panel.locator('.not-listening').count()).toBe(0);
         expect(await panel.locator('.btn-h.talking').count()).toBe(0);
-        await page.screenshot({ path: shot('narrow-location-only') });
+        await page.screenshot({ path: shot('narrow-map-only') });
 
         // act + assert — the stop button ends the share and the panel goes with it
         await panel.locator('.btn-stop-location-sharing').first().click();

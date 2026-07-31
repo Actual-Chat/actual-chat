@@ -24,14 +24,12 @@
     var cls = isListening ? " listening" : "";
     if (m.HasRemoteStreams)
         cls += " video-streaming";
-    // location-only replaces not-participating: the latter is the narrow "join muted"
-    // bordered-box affordance, meaningless without a call
+    // not-participating is the narrow "join muted" bordered-box affordance — meaningless
+    // without a call
     if (hasCallActivity && !isParticipating)
         cls += " not-participating";
     if (isWatchingHere)
         cls += " watching";
-    if (!hasCallActivity)
-        cls += " location-only";
     var joinButtonText = "Join muted";
 }
 

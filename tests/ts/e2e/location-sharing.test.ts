@@ -127,7 +127,7 @@ describe('location sharing', () => {
 
         // assert — the chat activity panel shows for the map-only share, reduced to the
         // stop-sharing button (#4088)
-        const activityPanel = page.locator('.chat-activity-panel.location-only').first();
+        const activityPanel = page.locator('.chat-activity-panel:has(.btn-stop-location-sharing)').first();
         await activityPanel.waitFor({ state: 'visible', timeout: 10_000 });
         await activityPanel.locator('.btn-stop-location-sharing').first()
             .waitFor({ state: 'visible', timeout: 10_000 });
