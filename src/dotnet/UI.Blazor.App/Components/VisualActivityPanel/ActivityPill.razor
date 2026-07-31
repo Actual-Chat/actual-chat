@@ -3,7 +3,7 @@
 @inherits ComputedStateComponent<AppUIHub, ActivityPill.Model>
 @{
     var m = State.Value;
-    var hasOwnActivity = m.IsOwnCameraStreaming || m.IsOwnScreenCasting || m.IsOwnSharingLocation;
+    var hasOwnActivity = m.IsOwnCameraStreaming || m.IsOwnScreenCasting || m.IsSharingOwnLocation;
 }
 
 <div @ref="Ref" class="activity-pill" @onclick="@OnClick" @onclick:stopPropagation="true">
@@ -17,7 +17,7 @@
         @if (m.IsOwnScreenCasting) {
             <i class="icon-screen-share"></i>
         }
-        @if (m.IsOwnSharingLocation) {
+        @if (m.IsSharingOwnLocation) {
             <i class="icon-marker-pin"></i>
         }
     }
@@ -62,9 +62,9 @@
             .ConfigureAwait(false);
         var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken)
             .ConfigureAwait(false);
-        var isOwnSharingLocation =
+        var isSharingOwnLocation =
             await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false) is not null;
-        return new Model(activity.HasCall, isOwnCameraStreaming, isOwnScreenCasting, isOwnSharingLocation);
+        return new Model(activity.HasCall, isOwnCameraStreaming, isOwnScreenCasting, isSharingOwnLocation);
     }
 
     // Private methods
@@ -81,7 +81,7 @@
         bool HasCall,
         bool IsOwnCameraStreaming,
         bool IsOwnScreenCasting,
-        bool IsOwnSharingLocation
+        bool IsSharingOwnLocation
     ) {
         public static readonly Model None = new(false, false, false, false);
     }
