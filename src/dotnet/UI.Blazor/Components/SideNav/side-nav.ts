@@ -45,7 +45,8 @@ export class SideNav extends DisposableBag {
 
     public readonly hasHistoryNavigationGesture: boolean;
     public get side(): SideNavSide { return this.options.side; }
-    public get opposite(): SideNav { return this.side == SideNavSide.Left ? SideNav.right : SideNav.left; }
+    // Nullable: SideNav.left/right are cleared to null! on dispose, so only one side may be registered
+    public get opposite(): SideNav | null { return this.side == SideNavSide.Left ? SideNav.right : SideNav.left; }
     public get isOpen() { return this.element.dataset.sideNav === 'open'; }
     public get isPulling() { return this._isPulling; }
     public set isPulling(value: boolean) {
@@ -194,7 +195,7 @@ class SideNavPullDetectGesture extends Gesture {
             if (!prePullDistance)
                 return;
 
-            if (sideNav.opposite.isOpen) {
+            if (sideNav.opposite?.isOpen) {
                 // The other SideNav is open
                 if (!sideNav.isOpen)
                     return; // And this SideNav is closed, so only other SideNav can be pulled
