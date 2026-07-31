@@ -18,7 +18,7 @@
     <PackageReference Include="CliWrap" />
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" />
     <PackageReference Include="Nerdbank.GitVersioning" />
-    <PackageReference Include="System.CommandLine.DragonFruit" />
+    <PackageReference Include="Spectre.Console.Cli" />
     <PackageReference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>

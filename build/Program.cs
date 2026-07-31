@@ -14,8 +14,7 @@ using static Build.CliWrapCommandExtensions;
 namespace Build;
 
 
-// DragonFruit approach doesn't the best option here (for example currently it doesn't support aliases),
-// but it's clean and works, so I've decided to use it.
+// The Bullseye target graph. The CLI surface that drives it lives in Build.Cli.
 internal static class Program
 {
     public static class Targets
@@ -49,26 +48,21 @@ internal static class Program
         public const string Default = "default";
     }
 
-    /// <summary>Build project for repository</summary>
-    /// <param name="arguments">A list of targets to run or list.</param>
-    /// <param name="clear">Clear the console before execution.</param>
-    /// <param name="dryRun">Do a dry run without executing actions.</param>
-    /// <param name="host">Force the mode for a specific host environment (normally auto-detected).</param>
-    /// <param name="listDependencies">List all (or specified) targets and dependencies, then exit.</param>
-    /// <param name="listInputs">List all (or specified) targets and inputs, then exit.</param>
-    /// <param name="listTargets">List all (or specified) targets, then exit.</param>
-    /// <param name="listTree">List all (or specified) targets and dependency trees, then exit.</param>
-    /// <param name="noColor">Disable colored output.</param>
-    /// <param name="noExtendedChars">Gets or sets a value indicating whether to disable extended characters.</param>
-    /// <param name="parallel">Run targets in parallel.</param>
-    /// <param name="skipDependencies">Do not run targets' dependencies.</param>
-    /// <param name="verbose">Enable verbose output.</param>
-    /// <param name="cancellationToken">The terminate program cancellation</param>
-    /// <param name="configuration">The configuration for building</param>
-    /// <param name="isDevMaui">If false then app connects to voxt.ai, it true - to dev.voxt.ai</param>
-    /// <param name="useNativeAot">Build the MAUI app with Native AOT (currently wired for publish-ios only).</param>
-    /// <param name="dumps">Enable test running crash dumps</param>
-    private static async Task<int> Main(
+    internal static Task<int> RunTarget(
+        string target,
+        string configuration,
+        bool? isDevMaui,
+        bool useNativeAot,
+        CancellationToken cancellationToken)
+        => RunTargets(
+            [target],
+            false, false, default, false, false, false, false, false, false, false, false, false,
+            cancellationToken,
+            configuration,
+            isDevMaui,
+            useNativeAot);
+
+    internal static async Task<int> RunTargets(
         string[] arguments,
         bool clear,
         bool dryRun,
