@@ -42,6 +42,12 @@ async function stopSharingIfAny(page: Page) {
         await page.keyboard.press('Escape').catch(() => { /* ignore */ });
         await page.waitForTimeout(300);
     }
+    // A failed hide-flow test leaves the panel collapsed to the pill — restore it first.
+    const pill = page.locator('.activity-pill').first();
+    if (await pill.isVisible({ timeout: 500 }).catch(() => false)) {
+        await pill.click().catch(() => { /* ignore */ });
+        await page.waitForTimeout(500);
+    }
     const stopButton = page.locator('.visual-activity-panel .map-panel .btn-stop-sharing').first();
     if (await stopButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
         await stopButton.click().catch(() => { /* ignore */ });
@@ -119,8 +125,8 @@ describe('location sharing', () => {
         // assert — with only the map activity (no call) the Call/Map switch is hidden (#4067)
         expect(await page.locator('.call-map-switch').count()).toBe(0);
 
-        // assert — the old live-location banner is gone (it remains only for tracking errors)
-        expect(await page.locator('.live-location-banner').isVisible().catch(() => false)).toBe(false);
+        // assert — the activity pill appears only while the panel is hidden
+        expect(await page.locator('.activity-pill').count()).toBe(0);
 
         // assert — the inline panel renders a MapLibre marker on real tiles (not blank: CSP
         // allows the maps host AND the map got a non-zero viewport)
@@ -130,21 +136,23 @@ describe('location sharing', () => {
         await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
         await page.screenshot({ path: shot('loc-panel') });
 
-        // act — hide the panel from its ⋮ menu; the compact banner takes its place
+        // act — hide the panel from its ⋮ menu; the activity pill takes its place (#4088)
         await mapPanel.locator('.c-menu-btn').first().click();
         const panelMenu = page.locator('.map-panel-host .c-menu').first();
         await panelMenu.waitFor({ state: 'visible', timeout: 5_000 });
         await panelMenu.locator('.c-menu-item:has-text("Hide")').first().click();
         await mapPanel.waitFor({ state: 'hidden', timeout: 10_000 });
-        const banner = page.locator('.live-location-banner').first();
-        await banner.waitFor({ state: 'visible', timeout: 10_000 });
-        expect((await banner.innerText()).toLowerCase()).toContain('sharing your location');
+        const pill = page.locator('.activity-pill').first();
+        await pill.waitFor({ state: 'visible', timeout: 10_000 });
+        expect((await pill.innerText()).toLowerCase()).toContain('live');
+        // The own share adds its marker-pin icon to the pill
+        await pill.locator('i.icon-marker-pin').first().waitFor({ state: 'visible', timeout: 10_000 });
         await page.screenshot({ path: shot('loc-panel-hidden') });
 
-        // act — clicking the banner brings the panel back
-        await banner.locator('.c-body').first().click();
+        // act — clicking the pill brings the panel back
+        await pill.click();
         await mapPanel.waitFor({ state: 'visible', timeout: 10_000 });
-        await banner.waitFor({ state: 'hidden', timeout: 10_000 });
+        await pill.waitFor({ state: 'hidden', timeout: 10_000 });
         await mapPanel.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
 
         // act — expand the panel into the full map modal
@@ -265,6 +273,60 @@ describe('location sharing', () => {
         await page.keyboard.press('Escape');
         await mapModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
     }, 180_000);
+
+    it('shows the stop-sharing button in the chat activity panel while sharing (#4088)', async () => {
+        // arrange — open a chat we can post in
+        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
+        await waitForChatReady(page);
+        await skipOnboarding(page);
+
+        const joinButton = page.locator('button:has-text("Join this chat")');
+        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await joinButton.click();
+            await page.waitForTimeout(1500);
+        }
+
+        await waitForEditor(page);
+        await conn.context.setGeolocation(START);
+
+        // arrange — start recording (fake mic): the chat activity panel (the hang-up row
+        // the stop-sharing button sits in) only renders during call activity
+        await conn.context.grantPermissions(['geolocation', 'microphone'], { origin: BASE_URL });
+        await page.locator('.recorder-wrapper button').first().click();
+        const activityPanel = page.locator('.chat-activity-panel').first();
+        await activityPanel.waitFor({ state: 'visible', timeout: 20_000 });
+        expect(await activityPanel.locator('.btn-stop-location-sharing').count()).toBe(0);
+
+        try {
+            // act — start a live share
+            await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
+            await page.locator('.ac-menu-item:has-text("Location")').first().click({ force: true });
+            const modal = page.locator('.share-location-modal').first();
+            await modal.waitFor({ state: 'visible', timeout: 10_000 });
+            await modal.locator('.c-share-live').first().click();
+            await modal.locator('.c-duration-menu .c-menu-item:has-text("15 minutes")').first().click();
+            const mapPanel = page.locator('.visual-activity-panel .map-panel').first();
+            await mapPanel.waitFor({ state: 'visible', timeout: 20_000 });
+
+            // assert — the stop button appears in the activity panel's button row,
+            // next to the audio-diagnostics and hang-up buttons
+            const stopButton = activityPanel.locator('.btn-stop-location-sharing').first();
+            await stopButton.waitFor({ state: 'visible', timeout: 10_000 });
+            await page.screenshot({ path: shot('loc-activity-stop-btn') });
+
+            // act + assert — clicking it stops the share: the map panel and the button both go
+            await stopButton.click();
+            await mapPanel.waitFor({ state: 'hidden', timeout: 20_000 });
+            await expect.poll(
+                async () => activityPanel.locator('.btn-stop-location-sharing').count(),
+                { timeout: 10_000 },
+            ).toBe(0);
+        } finally {
+            // cleanup — hang up so the next test starts without call activity
+            await activityPanel.locator('.btn-h.talking').first().click().catch(() => { /* ignore */ });
+            await activityPanel.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
+        }
+    }, 120_000);
 
     // Every duration option must start a live share (the inline map panel appears), not just
     // the first one. The countdown ring text is duration-specific: minutes for sub-hour
