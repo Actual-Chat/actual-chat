@@ -28,6 +28,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     private IPlaces Places => Hub.Places;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatUI ChatUI => Hub.ChatUI;
+    private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
     private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
@@ -72,7 +73,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     [ComputeMethod]
     public virtual async Task<int> GetCount(PlaceId? placeId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {
-        var chatById = await ListUnordered(placeId, chatListSettings.GetFilter(), cancellationToken).ConfigureAwait(false);
+        var chatById = await ListUnorderedForDisplay(placeId, chatListSettings, cancellationToken).ConfigureAwait(false);
         return chatById.Count;
     }
 
@@ -126,7 +127,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         CancellationToken cancellationToken = default)
     {
         DebugLog?.LogDebug("-> List({PlaceId}, {Settings})", placeId, settings);
-        var chatById = await ListUnordered(placeId, settings.GetFilter(), cancellationToken).ConfigureAwait(false);
+        var chatById = await ListUnorderedForDisplay(placeId, settings, cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug(
             "<- List({PlaceId}, {Settings}): {Count} items",
             placeId, settings, chatById.Count);
@@ -200,6 +201,32 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         return chatById.Values
             .Where(filter.Invoke)
             .ToDictionary(c => c.Id, c => c);
+    }
+
+    // Same as ListUnordered(placeId, filter), but while the notifications panel session is open it
+    // also keeps the chats that were unread when the panel opened (or became unread while it was open),
+    // even after they're read — so read chats don't vanish from the panel until it's closed.
+    [ComputeMethod]
+    protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnorderedForDisplay(
+        PlaceId? placeId,
+        ChatListSettings settings,
+        CancellationToken cancellationToken = default)
+    {
+        var filter = settings.GetFilter();
+        var chatById = await ListUnordered(placeId, filter, cancellationToken).ConfigureAwait(false);
+        if (!filter.AcrossPlace)
+            return chatById;
+
+        var stickyIds = await NotificationsPanelUI.GetSessionSet(filter.Id, cancellationToken).ConfigureAwait(false);
+        if (stickyIds.IsEmpty)
+            return chatById;
+
+        var allById = await ListAllUnordered(cancellationToken).ConfigureAwait(false);
+        var result = new Dictionary<ChatId, ChatInfo>(chatById);
+        foreach (var chatId in stickyIds)
+            if (!result.ContainsKey(chatId) && allById.TryGetValue(chatId, out var chatInfo))
+                result.Add(chatId, chatInfo);
+        return result;
     }
 
     [ComputeMethod]

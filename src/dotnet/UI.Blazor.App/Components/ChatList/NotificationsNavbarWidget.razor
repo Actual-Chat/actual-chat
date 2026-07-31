@@ -45,6 +45,17 @@
     private ChatListSettings _settings = new() { FilterId = ChatListFilter.Unread.Id };
 
     private ChatListUI ChatListUI => Hub.ChatListUI;
+    private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
+
+    protected override void OnInitialized() {
+        NotificationsPanelUI.Open();
+        base.OnInitialized();
+    }
+
+    public override ValueTask DisposeAsync() {
+        NotificationsPanelUI.Close();
+        return base.DisposeAsync();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -55,10 +66,20 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var all = await ChatListUI.GetUnreadChatCount(null, ChatListFilter.Unread, cancellationToken).ConfigureAwait(false);
-        var dms = await ChatListUI.GetUnreadChatCount(null, ChatListFilter.UnreadDMs, cancellationToken).ConfigureAwait(false);
-        var mentions = await ChatListUI.GetUnreadChatCount(null, ChatListFilter.UnreadMentions, cancellationToken).ConfigureAwait(false);
-        return new(all > 0, dms > 0, mentions > 0);
+        var hasAll = await HasTab(ChatListFilter.Unread, cancellationToken).ConfigureAwait(false);
+        var hasDMs = await HasTab(ChatListFilter.UnreadDMs, cancellationToken).ConfigureAwait(false);
+        var hasMentions = await HasTab(ChatListFilter.UnreadMentions, cancellationToken).ConfigureAwait(false);
+        return new(hasAll, hasDMs, hasMentions);
+    }
+
+    // A tab stays visible while the panel session keeps its (possibly already-read) chats,
+    // not only while there are actually-unread ones.
+    private async Task<bool> HasTab(ChatListFilter filter, CancellationToken cancellationToken) {
+        var stickyIds = await NotificationsPanelUI.GetSessionSet(filter.Id, cancellationToken).ConfigureAwait(false);
+        if (!stickyIds.IsEmpty)
+            return true;
+        var count = await ChatListUI.GetUnreadChatCount(null, filter, cancellationToken).ConfigureAwait(false);
+        return count > 0;
     }
 
     private void OnSelectedTabIdChanged(string? tabId) {
