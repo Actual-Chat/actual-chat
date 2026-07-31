@@ -47,6 +47,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddService<ConversationUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
+        fusion.AddService<NotificationsPanelUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
         services.AddAlias<IDebugAudioSync, ChatAudioUI>(ServiceLifetime.Transient);
         fusion.AddService<ChatVideoUI>(ServiceLifetime.Scoped);

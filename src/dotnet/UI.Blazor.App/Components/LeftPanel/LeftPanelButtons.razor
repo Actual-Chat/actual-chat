@@ -24,7 +24,7 @@
         <div class="c-buttons">
             <NavbarButtons/>
         </div>
-        @if (m.IsActive && m.HasUnread) {
+        @if (m.IsActive && (m.HasUnread || m.HasSticky)) {
             <NavbarGroupSelectionButton
                 Class="create-btn"
                 Id="@NavbarGroupIds.Unread"
@@ -45,6 +45,7 @@
 
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private NavbarUI NavbarUI => Hub.NavbarUI;
+    private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -59,18 +60,20 @@
             return new(false);
 
         var chatById = await ChatListUI.ListUnordered(null, ChatListFilter.Unread, cancellationToken).ConfigureAwait(true);
-        return new(true, chatById.Count > 0);
+        var stickyIds = await NotificationsPanelUI.GetSessionSet(ChatListFilter.Unread.Id, cancellationToken).ConfigureAwait(true);
+        return new(true, chatById.Count > 0, !stickyIds.IsEmpty);
     }
 
     protected override void OnAfterRender(bool firstRender) {
         var m = State.Value;
-        // Unread group may stay selected only while unread chats exist; once they're gone we fall back to Chats.
-        if (_hadUnread && !m.HasUnread && NavbarUI.SelectedGroupId == NavbarGroupIds.Unread)
+        // The Unread group stays selected while the panel session keeps chats (even already-read ones);
+        // once there's nothing unread AND the panel session is empty, we fall back to Chats.
+        if (_hadUnread && !m.HasUnread && !m.HasSticky && NavbarUI.SelectedGroupId == NavbarGroupIds.Unread)
             NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
         _hadUnread = m.IsActive && m.HasUnread;
     }
 
     // Nested types
 
-    public sealed record Model(bool IsActive = false, bool HasUnread = false);
+    public sealed record Model(bool IsActive = false, bool HasUnread = false, bool HasSticky = false);
 }
