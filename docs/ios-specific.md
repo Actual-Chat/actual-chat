@@ -12,29 +12,89 @@ reflection and serialization path is covered statically, each platform must keep
 the two available. Turning the safety net off early doesn't make us AOT-ready; it just
 moves the failures in front of users.
 
-In practice: Android and Windows have a JIT. **iOS currently has neither** — see
-*The interpreter is off, and why* below — so on iOS the policy is enforced the hard
-way, by making sure nothing needs dynamic code in the first place. Native AOT builds
-have neither by definition either; that's why they're not production yet, and why
+In practice: Android and Windows have a JIT. **iOS has the CoreCLR interpreter** — always,
+whatever `UseInterpreter` says; see *The interpreter is always on* below. So the policy
+holds on every shipping platform, and it always did: the safety net for code R2R didn't
+precompile has never actually been absent on iOS. Native AOT builds have neither by
+definition; that's why they're not production yet, and why
 [CodeKeeper](./native-aot.md) coverage is the work that gets us there.
 
-## The interpreter is on, but only with Blazor excluded from R2R (interim)
+## The interpreter is always on — `UseInterpreter` only gates dynamic code
 
-Two settings that must move together, both in `App.Maui.csproj`:
+One setting in `App.Maui.csproj`, and no R2R exclusion:
 
 ```xml
-<UseInterpreter>true</UseInterpreter>
-<PublishReadyToRunExclude Include="Microsoft.AspNetCore.Components.dll" />
+<UseInterpreter>false</UseInterpreter>
 ```
 
-Turning the interpreter on alone **crashes the app**. On .NET 11 preview 6 the CoreCLR
-interpreter faults dispatching an open-instance delegate over a virtual or interface
-method when the caller is R2R-compiled ([dotnet/runtime#130840][r]) — four consecutive
-`0x8BADF00D` watchdog kills, main thread:
+**`UseInterpreter` does not turn the CoreCLR interpreter on or off on Apple targets.** The
+interpreter is always there, and it is the *only* code generator on iOS. All the property
+does is gate `DynamicCodeSupport`, i.e. `RuntimeFeature.IsDynamicCodeSupported`. The name
+misleads, which is why this cost us a night.
+
+Evidence, all from the shipped `ios-arm64` build:
+
+- `libcoreclr` contains **no JIT** — zero `CILJit` / `Compiler::compCompile` symbols — but
+  does contain `InterpExecMethod`, `ExecuteInterpretedMethod`, `AllocateInterpreterPrecode`.
+  The same binary ships either way: it comes from the runtime pack, not from our build.
+- `codeman.cpp` hard-wires it whenever no JIT is compiled in, which is exactly iOS:
+  ```cpp
+  #if defined(FEATURE_DYNAMIC_CODE_COMPILED)
+      bool interpreterOnly = CLRConfig::GetConfigValue(CLRConfig::EXTERNAL_InterpMode) == 3;
+  #else
+      bool interpreterOnly = true;      // <- iOS: no JIT linked in
+  #endif
+  ```
+- The macios SDK has no CoreCLR-interpreter knob at all. `UseInterpreter` is an alias for
+  `MtouchInterpreter`, which the linker discards outright when the runtime isn't MonoVM —
+  see [Which `Mtouch*` properties still do something](#which-mtouch-properties-still-do-something-under-coreclr).
+
+**The decisive test**, run on device 2026-07-31: build with `UseInterpreter=false` *and*
+`Microsoft.AspNetCore.Components.dll` excluded from R2R. Blazor then has zero precompiled
+bodies and ships as plain IL, and there is no JIT — so if Blazor renders at all, only the
+interpreter can be running it. It rendered, and did not crash. Rebuild that combination if
+anyone doubts this; it is a one-line change to the exclusion plus `-p:UseInterpreter=false`.
+
+### What the interpreter is actually for
+
+R2R is not Native AOT — there is no whole-program instantiation closure — so generic
+coverage splits:
+
+- **Reference-type `T`: always covered, no codegen needed.** crossgen2 emits one canonical
+  body per generic definition and every reference-type instantiation shares it through the
+  generic dictionary. `MarkupViewBase_1<System___Canon>__set_Markup` is in the image; so is
+  every other `<__Canon>` form. Instantiations built at runtime over reference types reuse
+  these, so `MakeGenericType` over a class is safe.
+- **Value-type `T`: one body per instantiation, only where crossgen2 could see it.** Structs
+  have no shared representation. The image contains e.g.
+  `ReflectionEmitCachingMemberAccessor__CreatePropertySetter<Int32>`, `<Double>`, `<Size2D>`.
+  Anything it couldn't enumerate statically has **no body**.
+
+That second bullet is the gap the interpreter fills, and why `IsDynamicCodeSupported=false`
+is not the same as "nothing can generate code". Libraries stop *choosing* dynamic paths; the
+runtime keeps its ability to execute IL that R2R didn't precompile.
+
+### What dotnet/runtime#130840 actually is
+
+The fault needs **both** halves, which is why it read as "the interpreter crashes":
+
+1. a library builds an open-instance delegate over a property setter declared on a
+   shared-generic type (`Foo<__Canon>`), **and**
+2. the caller invoking it is R2R-compiled.
+
+`IsDynamicCodeSupported=false` removes the first half — libraries stay on their static paths
+and never build the delegate. That is why `UseInterpreter=false` fixes it while leaving the
+interpreter running, and why full R2R is fine again. The old workaround attacked the second
+half instead, by keeping `Microsoft.AspNetCore.Components.dll` out of the R2R image so the
+caller was interpreted too; that cost ~17MB and an interpreted parameter path on every
+render, and is no longer needed.
+
+Diagnosis signature, should it ever return — consecutive `0x8BADF00D` watchdog kills,
+main thread:
 
 ```
 InterpExecMethod / ExecuteInterpretedMethod
-  CID_VirtualOpenDelegateDispatchWorker      <- native fault in interpreted code
+  CID_VirtualOpenDelegateDispatchWorker      <- native fault (PAC failure)
     EEPolicy::LogManagedCallstackForSignal
       CallStackLogger::PrintStackTrace
         TypeString::AppendMethodImpl         <- >5s symbolicating -> process killed
@@ -47,61 +107,36 @@ code hanging — the main thread is stuck in CoreCLR's *own* fatal-error handler
 symbolicating a managed stack on device, until the watchdog fires. Pull the reports with
 `idevicecrashreport -u <udid> -k <dir>`; `faultingThread` points at thread 0.
 
-**Two separate callers reach it, and they needed different fixes.**
+Two callers were seen reaching it while dynamic code was enabled:
 
-The first was ours: `MetadataExt` builds `Action<IHasMetadata, MetadataBag>` from an
-interface property setter via Fusion's `GetSetter`, which is an open-instance delegate
-over an interface method. Fixed upstream in **ActualLab.Fusion 14.2.50** — `MemberInfoExt`
-now declines that shortcut on affected Apple configurations and emits codegen instead.
+- **Ours**: `MetadataExt` builds `Action<IHasMetadata, MetadataBag>` from an interface
+  property setter via Fusion's `GetSetter`. Fixed upstream in **ActualLab.Fusion 14.2.50**.
+- **Blazor's**: `ComponentProperties.SetProperties` builds an open-instance
+  `Action<TTarget,TValue>` for every component parameter setter, so it sits on the path of
+  every render. Seen first for `VirtualList<TItem>`, then — after that one component was
+  worked around — for `MarkupViewBase<TMarkup>.set_Markup`, reached from
+  `MarkupView.BuildRenderTree`.
 
-The second is **Blazor's own**, and no library fix can reach it:
+Six generic types here declare parameters, and all of them would be exposed if dynamic code
+were re-enabled — not the three an earlier pass counted: `VirtualList<TItem>`,
+`MarkupViewBase<TMarkup>`, `ComputedMarkupViewBase<TMarkup, TState>`, `Menu<THub>`,
+`ComputedMenuBase<THub, TState>`, `Step<THub, TModel>`.
 
-```
-ComponentBase.StateHasChanged -> Renderer.ProcessRenderQueue
-  -> ComponentState.SupplyCombinedParameters -> FusionComponentBase.SetParametersAsync
-    -> ComponentProperties.SetProperties -> <SetProperties>g__SetProperty|4_0  -> FAULT
-```
+### Runtime knobs that look like a way out, and aren't
 
-`ComponentProperties` builds an open-instance `Action<TTarget,TValue>` for every component
-parameter setter, so it's on the path of *every* Blazor render. Notably no `[Parameter]` in
-this repo or in Fusion is declared `virtual`, and the component that faulted
-(`VirtualList<TItem>`) is `sealed` — the stack shows `VirtualList_1<System__Canon>`, so
-shared-generic instantiation appears to be what reaches the virtual-dispatch path.
+- **`DOTNET_Interpreter=<method filter>`** cannot force an R2R-compiled method to be
+  interpreted. `MethodDesc::GetPrecompiledCode` returns R2R code and never reaches the
+  interpreter's `compileMethod`, where the filter is consulted. Corroborated by the mode
+  semantics below: the modes that interpret everything have to switch R2R off wholesale.
+- **`DOTNET_InterpMode`** (`0`–`3`; anything else is `NO_WAY("Unsupported value for
+  DOTNET_InterpMode")`): `0` default, interpreter only for methods named by
+  `DOTNET_Interpreter`; `1` everything except R2R code and CoreLib; `2` all but intrinsics,
+  implies `ReadyToRun=0`; `3` interpreter-only, implies `ReadyToRun=0`. Every mode makes
+  *more* code interpreted, never less — none of them removes an R2R→interpreted boundary
+  while keeping R2R.
 
-The fix is to stop that caller being R2R-compiled. The issue states the fault needs an
-R2R caller and passes when the code is interpreted, so excluding
-`Microsoft.AspNetCore.Components.dll` from the R2R image resolves it — verified on device.
-It costs ~17MB off the R2R image (94.5MB → 77.7MB) and makes Blazor's parameter path
-interpreted.
-
-**Remove both together when the runtime fix ships.** Dropping the exclusion alone brings
-the crash back; dropping `UseInterpreter` alone silently disables dynamic code again.
-
-### This is interim, not the answer
-
-It works and it's verified on device, but it buys correctness with an unmeasured perf cost:
-Blazor's parameter-assignment path — which runs on every render — is now interpreted rather
-than precompiled. Startup and render-heavy interactions on iOS should be measured against a
-build without the exclusion before anyone treats this as settled.
-
-Alternatives considered, roughly in order of how attractive they look:
-
-- **Do the parameter assignment ourselves.** `FusionComponentBase.SetParametersAsync` already
-  decides whether `base.SetParametersAsync` runs at all (it short-circuits via
-  `ComponentInfo.ShouldSetParameters`), and `ComponentInfo` already holds per-parameter
-  metadata built on `MemberInfoExt.GetGetter`. Adding setters there and assigning directly
-  would route every Fusion component through the helper that 14.2.50 already guards, and skip
-  `ComponentProperties` entirely — no build flags, no perf cliff on the render path. Covers
-  only components deriving from `FusionComponentBase`, not plain `ComponentBase` ones.
-- **Non-generic component subclasses.** The faulting component was generic
-  (`VirtualList_1<System__Canon>`), so re-declaring parameters on a non-generic descendant
-  would move the setters off shared-generic code. Verbose, and only fixes what you convert.
-- **Patch Blazor's setter cache by reflection.** `ComponentProperties` caches `WritersForType`;
-  injecting setters that use a closed delegate or `PropertyInfo.SetValue` would fix every
-  component at once. `IPropertySetter` is `internal`, so it needs a dynamic assembly with
-  `IgnoresAccessChecksTo` — the most general and the most fragile.
-- **Wait for the runtime fix.** Milestoned 11.0.0, root cause already pinned upstream. If it
-  lands before we ship .NET 11, all of the above becomes moot.
+Both are reachable in a shipped build if ever needed: see
+[Setting process environment variables in the app bundle](#setting-process-environment-variables-in-the-app-bundle).
 
 ## How this went wrong once
 
@@ -125,8 +160,9 @@ MSBuild properties (`Xamarin.Shared.Sdk.targets`):
 We used to set both — `UseInterpreter=true` with `MtouchInterpreter=-ActualChat`, i.e.
 ActualChat assemblies AOT'd and the rest interpreted. The .NET 11 sweep removed them as
 Mono-era cleanup. They are **not** Mono-era: the net11 SDK still reads them, and dropping
-them flipped the flag. We set `UseInterpreter=true` again and then had to remove it —
-the interpreter crashes; see above.
+them flipped the flag. We set `UseInterpreter=true` again, hit #130840, and have now
+settled on `false` deliberately rather than by accident — see above for why that is the
+right setting and not a regression to the state described here.
 
 The nuance is that `MtouchInterpreter` survives only as a build-time input on CoreCLR —
 its actual method filter is discarded. See
