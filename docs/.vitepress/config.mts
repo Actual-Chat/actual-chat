@@ -148,6 +148,7 @@ export default withMermaid(defineConfig({
               { text: "AI Agent Guide", link: "/AGENTS" },
               { text: "Safe Areas", link: "/safe-areas" },
               { text: "Splash Screens", link: "/splash-screen" },
+              { text: "iOS-specific Behavior", link: "/ios-specific" },
             ],
           },
           {
