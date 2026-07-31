@@ -160,11 +160,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
         var host = state.Host ?? state.AuthorIds[0];
         var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
-        var now = Clocks.SystemClock.Now;
+        // Stands in as JoinedAt for stream-only members - they have no participation record to date the
+        // join with. Never Clocks.Now: that makes every recompute a different LiveSession, so no
+        // consumer can consolidate a no-op invalidation away.
+        var startedAt = state.SessionStartedAt ?? state.StartedAt;
 
         var byAuthor = new Dictionary<AuthorId, LiveSessionMember>();
         LiveSessionMember For(AuthorId a)
-            => byAuthor.TryGetValue(a, out var m) ? m : new LiveSessionMember { AuthorId = a, JoinedAt = now };
+            => byAuthor.TryGetValue(a, out var m) ? m : new() { AuthorId = a, JoinedAt = startedAt };
 
         foreach (var s in audio)
             byAuthor[s.AuthorId] = For(s.AuthorId) with { IsMicOpen = true };
@@ -187,7 +190,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 IsMicOpen = m.IsMicOpen || isRecorder,
                 IsListening = m.IsListening || isListener,
                 MicMuted = info.MicMuted,
-                JoinedAt = info.RegisteredAt,
+                // RegisteredAt is a liveness stamp rewritten by every heartbeat - only the fallback
+                // for participation records written before JoinedAt existed.
+                JoinedAt = info.JoinedAt == default ? info.RegisteredAt : info.JoinedAt,
             };
         }
         // Owners are grouped with the host (they can manage the call too).
@@ -217,7 +222,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return new LiveSession {
             ChatId = chatId,
             Host = host,
-            StartedAt = state.SessionStartedAt ?? state.StartedAt,
+            StartedAt = startedAt,
             Rules = state.Rules ?? SessionRules.Default,
             Members = members,
             Conversation = state.IsDialing ? null : state.ToConversation(),
@@ -337,10 +342,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             if (isActive) {
-                // Preserve mute flags across heartbeats / kind changes.
+                // Preserve mute flags and the original join time across heartbeats / kind changes:
+                // RegisteredAt is refreshed by every heartbeat, so it can't double as JoinedAt.
+                var now = Clocks.SystemClock.Now;
                 var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
-                var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
-                    existing?.MicMuted ?? false);
+                var joinedAt = existing is { JoinedAt: var j } && j != default ? j : now;
+                var info = new ParticipationInfo(kind, now, existing?.MicMuted ?? false, joinedAt);
                 await _participants.Set(chatId.Value, authorId.Value, info).ConfigureAwait(false);
                 // The participants hash refreshes its own TTL on write, but the session state key only
                 // does so on Set - which a steady-state session never reaches. Without this the state
@@ -1130,5 +1137,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     public sealed partial record ParticipationInfo(
         [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] ParticipationKind Kind,
         [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] Moment RegisteredAt,
-        [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] bool MicMuted = false);
+        [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] bool MicMuted = false,
+        [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] Moment JoinedAt = default);
 }

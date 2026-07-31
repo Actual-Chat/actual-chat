@@ -158,7 +158,6 @@
     private Model? _renderedModel;
     private ChatEntryId? _hasBeenReadEntryId;
 
-    private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private ChatUI ChatUI => Hub.ChatUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
@@ -212,8 +211,10 @@
         DebugLog?.LogDebug("-> ComputeState: {ListKind} #{ChatTitle}", listKind, chatTitle);
         var chatStateTask = ChatUI.GetState(chatId, false, cancellationToken);
         var previewTask = ChatUI.GetPreview(chatId, cancellationToken);
+        var unreadStateTask = ChatUI.GetUnreadState(chatId, cancellationToken);
         var chatState = await chatStateTask.ConfigureAwait(false);
         var preview = await previewTask.ConfigureAwait(false);
+        var unreadState = await unreadStateTask.ConfigureAwait(false);
         if (chatState == null) {
             DebugLog?.LogDebug("<- ComputeState: {ListKind} #{ChatTitle}, No ChatState", listKind, chatTitle);
             return Model.None;
@@ -232,9 +233,12 @@
         // Call activity resolves through ILiveSessions, which is CacheMode.NoCache, so awaiting it
         // offline never returns and the whole item would render as Model.None - title only, no last
         // message, no timestamp. It's an ephemeral overlay: render without it, fill it in when it lands.
-        var callActivity = Hub.ChatActivityUI
+        // The stand-in is the last known value, not None: on WASM every recompute costs an RPC round
+        // trip, and None renders as "no live conversation" - i.e. a visible dropout of the indicator.
+        var chatActivityUI = Hub.ChatActivityUI;
+        var callActivity = chatActivityUI
             .GetCallActivity(chatId, cancellationToken)
-            .UseIfReady(CallActivity.None, Computed.GetCurrent());
+            .UseIfReady(chatActivityUI.GetLastKnownCallActivity(chatId), Computed.GetCurrent());
 
         return new() {
             ListKind = listKind,
@@ -243,8 +247,8 @@
             CallActivity = callActivity,
             NotificationMode = chatInfo.ChatUserSettings.NotificationMode,
             IsSelected = chatState.IsSelected,
-            UnreadCount = chatInfo.UnreadCount,
-            HasUnreadOwnMention = chatInfo.HasUnreadOwnMention,
+            UnreadCount = unreadState.Count,
+            HasUnreadOwnMention = unreadState.HasOwnMention,
             LastTextEntry = lastEntry,
             LastTextEntryText = preview.Text,
             LastTextEntryIcons = lastTextEntryIcons,
@@ -269,20 +273,14 @@
         if (!await ChatSupportsUnreadStatus(chat, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken)
+        var isUnreadByOthers = await ChatUI
+            .IsUnreadByOthers(entry.Id, ownAuthorId, cancellationToken)
             .ConfigureAwait(false);
-        var canCalculateHasRead = readPositionsStat.CanCalculateHasReadByAnotherAuthor(entry);
-        // Do not show `Unread` label for old messages (before the feature was introduced)
-        // until we have at least more or less good enough read positions stat.
-        if (!canCalculateHasRead)
-            return false;
-
-        var hasBeenRead = readPositionsStat.HasReadByAnotherAuthor(entry, ownAuthorId);
-        if (hasBeenRead) {
+        if (!isUnreadByOthers) {
             // Remember that message has been read, so we don't need to recalculate it on next ComputeState cycle.
             _hasBeenReadEntryId = entry.Id;
         }
-        return !hasBeenRead;
+        return isUnreadByOthers;
     }
 
     private async Task<bool> ChatSupportsUnreadStatus(Chat chat, CancellationToken cancellationToken) {

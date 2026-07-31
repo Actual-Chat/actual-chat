@@ -35,3 +35,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public bool Equals(ChatInfo? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
+
+// The badge-only projection of ChatInfo - value-compared, so ChatUI.GetUnreadState can consolidate it.
+
+public readonly record struct ChatUnreadState(Trimmed<int> Count, bool HasOwnMention);

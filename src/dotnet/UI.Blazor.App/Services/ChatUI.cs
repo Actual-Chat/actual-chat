@@ -270,8 +270,51 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<Trimmed<int>> GetUnreadCount(ChatId chatId, CancellationToken cancellationToken)
     {
+        var unreadState = await GetUnreadState(chatId, cancellationToken).ConfigureAwait(false);
+        return unreadState.Count;
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0.3)]
+    public virtual async Task<ChatUnreadState> GetUnreadState(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Gated and consolidated because the raw count blinks: an incoming message raises it, then the
+        // read position catches up ~1.6s later and drops it back. ChatInfo can carry neither - it holds
+        // a referentially compared ChatEntry, and depending on ItemVisibility there would make every
+        // scroll invalidate the whole row.
         var chatInfo = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        return chatInfo?.UnreadCount ?? new();
+        if (chatInfo == null)
+            return default;
+
+        var isReadingTail = await IsReadingTail(chatId, cancellationToken).ConfigureAwait(false);
+        return isReadingTail
+            ? default
+            : new ChatUnreadState(chatInfo.UnreadCount, chatInfo.HasUnreadOwnMention);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsReadingTail(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (!await IsSelected(chatId).ConfigureAwait(false))
+            return false;
+
+        var itemVisibility = await ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
+        return itemVisibility.ChatId == chatId && itemVisibility.IsEndAnchorVisible;
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0.3)]
+    public virtual async Task<bool> IsUnreadByOthers(
+        ChatEntryId entryId,
+        AuthorId ownAuthorId,
+        CancellationToken cancellationToken)
+    {
+        // Consolidated: every message in the chat rewrites GetReadPositionsStat, but the answer for one
+        // entry changes at most once - when someone else's read position passes it. It stays false for
+        // messages older than the tracking start, which the stat can't judge.
+        var readPositionsStat = await Chats
+            .GetReadPositionsStat(Session, entryId.ChatId, cancellationToken)
+            .ConfigureAwait(false);
+        return readPositionsStat.CanCalculateHasReadByAnotherAuthor(entryId)
+            && !readPositionsStat.HasReadByAnotherAuthor(entryId, ownAuthorId);
     }
 
     [ComputeMethod]

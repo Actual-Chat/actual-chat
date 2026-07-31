@@ -16,6 +16,7 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
 {
     private readonly ConcurrentDictionary<ChatId, VisualActivityTab> _selectedPanelTabs = new();
     private readonly ConcurrentDictionary<ChatId, VisualActivityPanelMode> _panelModes = new();
+    private readonly ConcurrentDictionary<ChatId, CallActivity> _lastCallActivities = new();
 
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ILiveSessions LiveSessions => Hub.LiveSessions;
@@ -41,9 +42,11 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         return new VisualActivity(mode, isWatching, hasMap, tab);
     }
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<CallActivity> GetCallActivity(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Consolidated: stream start/stop, summary flow resumes and heartbeats rewrite the live
+        // session state constantly, and almost none of that changes the two values below.
         if (chatId.Value.IsNullOrEmpty())
             return CallActivity.None;
 
@@ -53,7 +56,7 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         var participantCount = liveSession?.Members.Count(m =>
             m.IsMicOpen || m.HasCamera || m.HasScreenShare || m.IsListening) ?? 0;
         if (participantCount > 0)
-            return new CallActivity(IsLiveSession: true, participantCount);
+            return Remember(chatId, new CallActivity(IsLiveSession: true, participantCount));
 
         var talkingIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var talkingCount = talkingIds.Length;
@@ -61,13 +64,19 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         if (talkingCount == 0
             && await LiveSessions.HasRecorder(Session, chatId, cancellationToken).ConfigureAwait(false))
             talkingCount = 1;
-        return new CallActivity(IsLiveSession: false, talkingCount);
+        return Remember(chatId, new CallActivity(IsLiveSession: false, talkingCount));
     }
 
     [ComputeMethod]
     public virtual Task<VisualActivityPanelMode> GetPanelMode(
         ChatId chatId, CancellationToken cancellationToken = default)
         => Task.FromResult(_panelModes.GetValueOrDefault(chatId));
+
+    public CallActivity GetLastKnownCallActivity(ChatId chatId)
+    {
+        // Stand-in for callers that must not await GetCallActivity - see ComputedExt.UseIfReady.
+        return _lastCallActivities.GetValueOrDefault(chatId);
+    }
 
     [ComputeMethod]
     protected virtual Task<VisualActivityTab> GetSelectedPanelTab(ChatId chatId, CancellationToken cancellationToken)
@@ -101,6 +110,14 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
             SetPanelMode(chatId, mode);
         else if (_panelModes.GetValueOrDefault(chatId) == mode)
             SetPanelMode(chatId, VisualActivityPanelMode.Inline);
+    }
+
+    // Private methods
+
+    private CallActivity Remember(ChatId chatId, CallActivity callActivity)
+    {
+        _lastCallActivities[chatId] = callActivity;
+        return callActivity;
     }
 }
 
