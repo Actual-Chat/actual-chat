@@ -177,7 +177,7 @@ or, to keep android-x64 on the experimental NativeAOT path and only carve out ar
 
 **iOS / Mac Catalyst**: `PublishAot=true` replaces CoreCLR + composite R2R. Both platforms lack a JIT, so the default build relies on CoreCLR's interpreter for whatever R2R doesn't cover; Native AOT removes the interpreter entirely, which is why every reflection path has to be covered by CodeKeeper.
 
-Since .NET 11 dropped Mono for Apple targets, `RuntimeFeature.IsDynamicCodeSupported` is already `false` on the **default** iOS build — so the whole class of "works because something emitted it at runtime" bugs surfaces there first, without opting into Native AOT. Any such failure on iOS is a Native AOT blocker everywhere. See [iOS-specific behavior](./ios-specific.md).
+`RuntimeFeature.IsDynamicCodeSupported` is already `false` on our regular (non-AOT) iOS builds, because we don't set `UseInterpreter` / `MtouchInterpreter` — the macios SDK gates `DynamicCodeSupport` on exactly those. So the whole class of "works because something emitted it at runtime" bugs surfaces on plain iOS builds, well before anyone opts into Native AOT, and any such failure there is an AOT blocker everywhere. See [iOS-specific behavior](./ios-specific.md).
 
 **macOS (MacCatalyst)**: `Info.plist` must declare `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` for `getUserMedia` to resolve (already in place); otherwise JS `mediaDevices` calls hang forever from within `WKWebView` with no visible error — the same hang shape as the earlier Windows unpackaged case (see Known Issues #8).
 

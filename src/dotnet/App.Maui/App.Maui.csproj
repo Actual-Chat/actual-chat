@@ -380,6 +380,29 @@
     <_ExportSymbolsExplicitly>true</_ExportSymbolsExplicitly>
 
     <SkipStaticLibraryValidation>true</SkipStaticLibraryValidation>
+
+    <!-- No UseInterpreter / MtouchInterpreter here, deliberately - don't "restore" them without
+         reading this. The macios SDK gates dynamic code on exactly those two properties
+         (Xamarin.Shared.Sdk.targets):
+
+           <DynamicCodeSupport Condition="... '$(MtouchInterpreter)' == '' And '$(UseInterpreter)' != 'true'
+                                          And ('$(_PlatformName)' == 'iOS' Or 'tvOS' Or 'MacCatalyst')">false</DynamicCodeSupport>
+
+         so leaving them unset means RuntimeFeature.IsDynamicCodeSupported == false in the app's
+         runtimeconfig. We used to set UseInterpreter=true + MtouchInterpreter=-ActualChat (ActualChat
+         assemblies AOT'd, the rest interpreted); the .NET 11 sweep dropped them as Mono-era cleanup,
+         which they are not - the net11 SDK still reads them, and dropping them silently flipped
+         IsDynamicCodeSupported true -> false.
+
+         Consequence: MessagePack's DynamicObjectResolver / DynamicUnionResolver are registered only
+         when dynamic code is supported (see AppMessagePackResolverSettings), so any type without a
+         source-generated or attribute-declared formatter now throws FormatterNotRegisteredException
+         at runtime instead of getting one emitted. That is the intended trade-off: iOS becomes the
+         early warning for gaps that would otherwise only appear under Native AOT, and we skip the
+         interpreter's overhead. It costs a hard failure per missing formatter until each is
+         registered properly - fix the formatter, don't re-enable dynamic code.
+
+         See docs/ios-specific.md. -->
   </PropertyGroup>
 
   <!-- iOS: Debug configuration -->

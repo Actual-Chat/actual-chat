@@ -6,28 +6,35 @@ runtime constraints.
 
 ## The one that matters: no dynamic code
 
-Apple forbids JIT, so since .NET 11 iOS runs **CoreCLR with composite ReadyToRun and
-nothing else**: no JIT, no `Reflection.Emit`, and `RuntimeFeature.IsDynamicCodeSupported`
-is `false`.
+`RuntimeFeature.IsDynamicCodeSupported` is **`false`** on our iOS builds. It was `true`
+before .NET 11 — you can see the flip in the two runtimeconfigs:
 
-That's new. Before .NET 11 the Apple targets ran **Mono with the interpreter enabled**:
-
-```xml
-<!-- removed by the .NET 11 sweep -->
-<UseInterpreter>true</UseInterpreter>
-<MTouchInterpreter>-ActualChat</MTouchInterpreter>
+```
+net10 iOS:  "System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported": true
+net11 iOS:  "System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported": false
 ```
 
-The Mono interpreter supports dynamic code, so anything that fell back to runtime
-codegen worked. .NET 11 dropped Mono for Apple targets and took that crutch with it.
+**This is our setting, not a platform limit.** Apple forbids JIT, but CoreCLR on iOS
+ships an interpreter, and the macios SDK decides dynamic-code support purely from two
+MSBuild properties (`Xamarin.Shared.Sdk.targets`):
 
-**Android is unaffected and always was.** Android permits JIT, and it was already on
-CoreCLR before the sweep (`UseCoreClr` + `UseMonoRuntime=false`), so
-`IsDynamicCodeSupported` is `true` there before and after.
+```xml
+<DynamicCodeSupport Condition="... '$(MtouchInterpreter)' == '' And '$(UseInterpreter)' != 'true'
+                               And ('$(_PlatformName)' == 'iOS' Or 'tvOS' Or 'MacCatalyst')">false</DynamicCodeSupport>
+```
 
-This is the same constraint Native AOT imposes everywhere — see
-[Native AOT](./native-aot.md). iOS reaches it first, on the default build, without
-anyone opting in.
+We used to set both — `UseInterpreter=true` with `MtouchInterpreter=-ActualChat`, i.e.
+ActualChat assemblies AOT'd and the rest interpreted. The .NET 11 sweep removed them as
+Mono-era cleanup. They are **not** Mono-era: the net11 SDK still reads them, and dropping
+them flipped the flag. Setting either one restores dynamic code.
+
+Leaving them unset is now deliberate — see the comment in `App.Maui.csproj`. The point is
+that iOS becomes the early warning for gaps that would otherwise only surface under
+Native AOT, at the cost of a hard failure per gap. See [Native AOT](./native-aot.md).
+
+**Android is unaffected.** It permits JIT and was already on CoreCLR before the sweep
+(`UseCoreClr` + `UseMonoRuntime=false`), so `IsDynamicCodeSupported` is `true` there
+before and after — which is why these bugs show up on iOS first.
 
 ### What breaks: MessagePack formatters
 
@@ -42,8 +49,8 @@ if (RuntimeFeature.IsDynamicCodeSupported) {
 ```
 
 `DynamicObjectResolver` manufactures a formatter at runtime for any type that lacks
-one. On iOS it isn't there, so a type without a source-generated or attribute
-formatter fails — and the failure is loud but indirect:
+one. With dynamic code off it isn't registered, so a type without a source-generated or
+attribute formatter fails — and the failure is loud but indirect:
 
 ```
 INF [FCE] FormatterNotRegisteredException, ActualChat.Media.Size2D is not registered
@@ -65,12 +72,16 @@ Two consequences worth internalising:
 
 - **The bug is never iOS-specific, only iOS-visible.** The same gap exists on Android;
   it's silently paid for with runtime codegen per type. Every one of these is also a
-  Native AOT blocker on every platform.
+  Native AOT blocker on every platform. `Size2D` had carried `[MessagePackObject]` and
+  `[Key(...)]` all along — `DynamicObjectResolver` was simply generating it at runtime,
+  on every platform, unnoticed.
 - **It scales badly.** A single missing formatter produced ~23k first-chance
   exceptions in one short session, because every affected RPC message throws.
 
-Fix by giving the type a real formatter (source-generated, `[MessagePackFormatter]`,
-or an explicit registration) — never by re-enabling dynamic code.
+Fix by giving the type a real formatter (source-generated, `[MessagePackFormatter]`, or
+an explicit registration). Re-enabling dynamic code (`UseInterpreter=true`) would also
+make it go away, but it hides the gap again everywhere and only defers it to the first
+Native AOT build.
 
 ## Other deltas
 
