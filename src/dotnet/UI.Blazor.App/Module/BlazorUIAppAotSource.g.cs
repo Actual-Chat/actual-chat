@@ -82,7 +82,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderCallButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderFollowThreadToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderRightPanelToggle>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderStopLocationSharingButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatIcon>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListCreateButton>();
@@ -390,6 +389,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SpoilerFilterDefs>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StatusBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StopListeningCountdownButton>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StopLocationSharingButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StreamingEntryBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SummarizationTutorialStep>();
@@ -811,7 +811,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderCallButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderFollowThreadToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderRightPanelToggle), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderStopLocationSharingButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatIcon), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListCreateButton), AotTypeKind.Component),
@@ -1119,6 +1118,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.SpoilerFilterDefs), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StatusBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StopListeningCountdownButton), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.StopLocationSharingButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StreamingEntryBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SummarizationTutorialStep), AotTypeKind.Component),

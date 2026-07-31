@@ -216,6 +216,13 @@ body.narrow .layout-header:has(.video-streaming) {
 .chat-activity-panel > .c-buttons > .c-diagnostics-btn {
     @apply cursor-pointer;
 }
+.chat-activity-panel > .c-buttons > .btn-stop-location-sharing,
+body.hoverable .chat-activity-panel > .c-buttons > .btn-stop-location-sharing:hover {
+    @apply text-[var(--magenta-50)];
+}
+.chat-activity-panel > .c-buttons > .btn-stop-location-sharing marker-pin-off-svg {
+    @apply text-2xl md:text-xl;
+}
 .chat-activity-panel > .c-buttons > .btn.btn-transparent:active::after {
     @apply hidden;
 }

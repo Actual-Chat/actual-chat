@@ -55,7 +55,6 @@
     </div>
     @if (chat is not null) {
         <div class="chat-header-control-panel hideable">
-            <ChatHeaderStopLocationSharingButton/>
             @if (chat.Kind == ChatKind.Peer) {
                 <ChatHeaderCallButton/>
             }
@@ -119,8 +118,8 @@
                 }
             }
 
-             await History.NavigateTo(parentChatLink, true);
-             return;
+            await History.NavigateTo(parentChatLink, true);
+            return;
         }
 
         if (ScreenSize.IsNarrow())

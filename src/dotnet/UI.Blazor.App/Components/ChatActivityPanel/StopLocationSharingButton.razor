@@ -1,3 +1,4 @@
+@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, bool>
 @{
     if (State.IsInitial(out var isOwnSharing))
@@ -8,6 +9,8 @@
 
 <HeaderButton
     Class="btn-stop-location-sharing"
+    StopPropagation="true"
+    PreventDefault="true"
     Tooltip="Stop location sharing"
     TooltipPosition="FloatingPosition.Bottom"
     Click="OnClick">
