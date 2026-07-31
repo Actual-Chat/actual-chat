@@ -19,6 +19,20 @@ b app pack ios --prod
 b clean                    # unknown first word -> a Bullseye target
 ```
 
+The app commands differ only in how far down the pipeline they go, and `--launch`
+/ `--no-launch` override the default either way:
+
+| | build | install | launch |
+|---|---|---|---|
+| `b app build` | yes | | |
+| `b app install` | yes | yes | |
+| `b app run` | yes | yes | yes |
+| `b app pack` | store package, no install/launch | | |
+
+iOS and Mac Catalyst delegate to `scripts/run-ios*.sh` / `scripts/run-macos.sh`,
+which build, install and launch as one unit — so `b app install ios` is rejected
+rather than silently launching.
+
 ## Layout
 
 | File | What it is |

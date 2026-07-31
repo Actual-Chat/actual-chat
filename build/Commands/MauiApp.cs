@@ -11,11 +11,17 @@ internal static class MauiApp
     private const string WindowsTargetFramework = $"{TargetFrameworkPrefix}-windows10.0.22621.0";
     private const string ProjectDir = "src/dotnet/App.Maui";
 
-    public static CommandPlan GetPlan(AppSettings settings, bool mustLaunch)
+    public static CommandPlan GetPlan(AppSettings settings, bool isInstalledByDefault, bool isLaunchedByDefault)
     {
+        var mustLaunch = settings.ResolveMustLaunch(isLaunchedByDefault);
+        var mustInstall = settings.ResolveMustInstall(isInstalledByDefault, isLaunchedByDefault);
         var plan = new CommandPlan();
-        // The Apple scripts build the web assets and the app themselves.
+        // The Apple scripts build the web assets and the app themselves, as one unit.
         if (settings.Platform is AppPlatform.Ios or AppPlatform.MacOs) {
+            if (mustInstall && !mustLaunch)
+                throw new WithoutStackException(
+                    $"{settings.Platform} can't install without launching - use 'b app run' or 'b app build'.");
+
             if (mustLaunch)
                 AddScript(plan, settings);
 
@@ -26,9 +32,11 @@ internal static class MauiApp
             plan.AddRun(Utils.FindNpmExe(), ["run", $"build:{settings.ResolvedConfiguration}"]);
 
         AddDotnet(plan, settings);
-        // Announced before the launch step, so the path is visible even once the app takes over the console.
+        // Announced before the install step, so the path stays visible once the app takes over the console.
         if (GetArtifactPath(settings) is { } artifactPath)
             plan.AddOutput(artifactPath);
+        if (mustInstall)
+            AddInstall(plan, settings);
         if (mustLaunch)
             AddLaunch(plan, settings);
 
@@ -78,17 +86,25 @@ internal static class MauiApp
         args.Add($"-p:AndroidSigningStorePass={storePass}");
     }
 
-    private static void AddLaunch(CommandPlan plan, AppSettings settings)
+    private static void AddInstall(CommandPlan plan, AppSettings settings)
     {
-        if (GetArtifactPath(settings) is not { } artifactPath)
+        // Windows runs unpackaged - the build output is already "installed".
+        if (settings.Platform != AppPlatform.Android || GetArtifactPath(settings) is not { } apkPath)
             return;
 
+        plan.Add(new RunStep("adb", ["install", "-r", apkPath]) { RequiredPath = apkPath });
+    }
+
+    private static void AddLaunch(CommandPlan plan, AppSettings settings)
+    {
         switch (settings.Platform) {
         case AppPlatform.Android:
-            plan.Add(new RunStep("adb", ["install", "-r", artifactPath]) { RequiredPath = artifactPath });
+            // monkey launches by package, so the generated MainActivity name isn't needed.
+            plan.AddRun("adb",
+                ["shell", "monkey", "-p", GetAppId(settings), "-c", "android.intent.category.LAUNCHER", "1"]);
             break;
-        case AppPlatform.Windows:
-            plan.Add(new RunStep(artifactPath, []) { RequiredPath = artifactPath });
+        case AppPlatform.Windows when GetArtifactPath(settings) is { } exePath:
+            plan.Add(new RunStep(exePath, []) { RequiredPath = exePath });
             break;
         }
     }

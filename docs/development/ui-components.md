@@ -572,7 +572,7 @@ two kinds of icon must be a `.lit.ts` SVG component instead (see
 Size such a component with `width: 1em; height: 1em` on `:host` and fill with
 `currentColor`, and it stays a drop-in replacement for `<i class="icon-*">`.
 
-Note: `prepare-system-icons.cmd` is a different pipeline — it rasterizes
+Note: `scripts/prepare-system-icons.cmd` is a different pipeline — it rasterizes
 `src/dotnet/Media.Service/Resources/*.svg` (system chat avatars) to PNGs and
 has nothing to do with the icon font.
 

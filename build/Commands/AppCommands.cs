@@ -57,11 +57,11 @@ public class AppSettings : PlanSettings
     public bool MustSkipWebBuild { get; init; }
 
     [CommandOption("-l|--launch")]
-    [Description("Install & launch the app after building (the default for 'app run')")]
+    [Description("Launch the app after installing it (the default for 'app run')")]
     public bool MustLaunch { get; init; }
 
     [CommandOption("--no-launch")]
-    [Description("Build only, don't launch (the default for 'app build')")]
+    [Description("Don't launch the app (the default for 'app build' and 'app install')")]
     public bool MustNotLaunch { get; init; }
 
     public string ResolvedConfiguration => IsRelease ? "Release" : Configuration;
@@ -73,8 +73,11 @@ public class AppSettings : PlanSettings
                 || Platform == AppPlatform.Android
                 || OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Release"));
 
-    public bool ResolveMustLaunch(bool defaultValue)
-        => !MustNotLaunch && (MustLaunch || defaultValue);
+    public bool ResolveMustLaunch(bool isLaunchedByDefault)
+        => !MustNotLaunch && (MustLaunch || isLaunchedByDefault);
+
+    public bool ResolveMustInstall(bool isInstalledByDefault, bool isLaunchedByDefault)
+        => isInstalledByDefault || ResolveMustLaunch(isLaunchedByDefault);
 
     public override ValidationResult Validate()
     {
@@ -104,11 +107,17 @@ public class AppSettings : PlanSettings
 public sealed class AppBuildCommand(CliContext context) : PlanCommand<AppSettings>(context)
 {
     protected override CommandPlan GetPlan(AppSettings settings)
-        => MauiApp.GetPlan(settings, settings.ResolveMustLaunch(false));
+        => MauiApp.GetPlan(settings, false, false);
+}
+
+public sealed class AppInstallCommand(CliContext context) : PlanCommand<AppSettings>(context)
+{
+    protected override CommandPlan GetPlan(AppSettings settings)
+        => MauiApp.GetPlan(settings, true, false);
 }
 
 public sealed class AppRunCommand(CliContext context) : PlanCommand<AppSettings>(context)
 {
     protected override CommandPlan GetPlan(AppSettings settings)
-        => MauiApp.GetPlan(settings, settings.ResolveMustLaunch(true));
+        => MauiApp.GetPlan(settings, true, true);
 }
