@@ -33,9 +33,15 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 
     public void StartSharing(ChatId chatId, TimeSpan duration)
     {
+        // The replaced shares' server rows must be stopped too — dropping them from _shares
+        // orphans the rows otherwise: their ids live only here, so nothing else can end them.
         var share = new ActiveShare(chatId, null, ServerNow, duration);
-        lock (_lock)
+        ActiveShare[] replaced;
+        lock (_lock) {
+            replaced = [.. _shares.Value.Where(x => x.ChatId == chatId)];
             _shares.Value = [.. _shares.Value.Where(x => x.ChatId != chatId), share];
+        }
+        _ = StopServerShares(replaced, StopToken);
     }
 
     public async Task StopSharing(ChatId chatId, CancellationToken cancellationToken)
@@ -47,14 +53,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             stopped = _shares.Value.Where(x => x.ChatId == chatId).ToArray();
             _shares.Value = _shares.Value.Where(x => x.ChatId != chatId).ToArray();
         }
-        foreach (var share in stopped) {
-            if (share.LocationId is not { } locationId)
-                continue;
-
-            var change = Change.Remove<SharedLocationDiff>();
-            var stop = new SharedLocations_Change(Session, chatId, locationId, change);
-            await Commander.Call(stop, cancellationToken).ConfigureAwait(false);
-        }
+        await StopServerShares(stopped, cancellationToken).ConfigureAwait(false);
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
@@ -85,6 +84,18 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     }
 
     // Private methods
+
+    private async Task StopServerShares(ActiveShare[] shares, CancellationToken cancellationToken)
+    {
+        foreach (var share in shares) {
+            if (share.LocationId is not { } locationId)
+                continue;
+
+            var change = Change.Remove<SharedLocationDiff>();
+            var stop = new SharedLocations_Change(Session, share.ChatId, locationId, change);
+            await Commander.Call(stop, cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     private async Task DispatchShares(CancellationToken cancellationToken)
     {
