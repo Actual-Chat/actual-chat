@@ -83,6 +83,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderRightPanelToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatIcon>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatList>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListCreateButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListItemSkeleton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListListenToggle>();
@@ -293,7 +294,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationFeedItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationEntry>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationStack>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsTabUnreadCount>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyAllButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyCallPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyMentionedMembers>();
@@ -582,6 +585,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.PrincipalId>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.PrincipalId>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.PrincipalId>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Serialization.MetadataSchema>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Serialization.MetadataSchema>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Serialization.MetadataSchema>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.SharedLocationId>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.SharedLocationId>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.SharedLocationId>>>>();
@@ -636,30 +642,27 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiOption<global::System.Nullable<global::System.Int64>>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiOption<global::System.Nullable<global::System.Int64>>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiOption<global::System.Nullable<global::System.Int64>>>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>[]>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>[]>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>[]>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.PropertyBag<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.PropertyBag<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.PropertyBag<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualChat.Serialization.MetadataSchema>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualChat.Serialization.MetadataSchema>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualChat.Serialization.MetadataSchema>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualChat.Serialization.MetadataSchema>[]>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualChat.Serialization.MetadataSchema>[]>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.Internal.PropertyBagItem<global::ActualChat.Serialization.MetadataSchema>[]>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.PropertyBag<global::ActualChat.Serialization.MetadataSchema>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.PropertyBag<global::ActualChat.Serialization.MetadataSchema>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Collections.PropertyBag<global::ActualChat.Serialization.MetadataSchema>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.IO.FilePath>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.IO.FilePath>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.IO.FilePath>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Option<global::System.Nullable<global::System.Int64>>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Option<global::System.Nullable<global::System.Int64>>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Option<global::System.Nullable<global::System.Int64>>>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeDecoratingUniSerialized<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly, global::System.Object>>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeDecoratingUniSerialized<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly, global::System.Object>>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeDecoratingUniSerialized<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly, global::System.Object>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeDecoratingUniSerialized<global::ActualChat.Serialization.MetadataSchema, global::System.Object>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeDecoratingUniSerialized<global::ActualChat.Serialization.MetadataSchema, global::System.Object>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeDecoratingUniSerialized<global::ActualChat.Serialization.MetadataSchema, global::System.Object>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeSchema>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeSchema>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeSchema>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.TypeSchema.PrimitiveOnly>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Text.Symbol[]>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Text.Symbol[]>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Text.Symbol[]>>>>();
@@ -697,16 +700,16 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.IO.Internal.FilePathMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Serialization.Internal.OptionMessagePackFormatter`1[[ActualLab.Option`1[[System.Nullable`1[[System.Int64, System.Private.CoreLib]], System.Private.CoreLib]], ActualLab.Core]], ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Serialization.Internal.OptionMessagePackFormatter`1[[System.Nullable`1[[System.Int64, System.Private.CoreLib]], System.Private.CoreLib]], ActualLab.Core");
-        CodeKeeper.Keep("ActualLab.Serialization.Internal.PropertyBagItemMessagePackFormatter`1[[ActualLab.Serialization.TypeSchema+PrimitiveOnly, ActualLab.Core]], ActualLab.Core");
-        CodeKeeper.Keep("ActualLab.Serialization.Internal.PropertyBagMessagePackFormatter`1[[ActualLab.Serialization.TypeSchema+PrimitiveOnly, ActualLab.Core]], ActualLab.Core");
-        CodeKeeper.Keep("ActualLab.Serialization.Internal.TypeDecoratingUniSerializedMessagePackFormatter`2[[ActualLab.Serialization.TypeSchema+PrimitiveOnly, ActualLab.Core],[System.Object, System.Private.CoreLib]], ActualLab.Core");
+        CodeKeeper.Keep("ActualLab.Serialization.Internal.PropertyBagItemMessagePackFormatter`1[[ActualChat.Serialization.MetadataSchema, ActualChat.Core]], ActualLab.Core");
+        CodeKeeper.Keep("ActualLab.Serialization.Internal.PropertyBagMessagePackFormatter`1[[ActualChat.Serialization.MetadataSchema, ActualChat.Core]], ActualLab.Core");
+        CodeKeeper.Keep("ActualLab.Serialization.Internal.TypeDecoratingUniSerializedMessagePackFormatter`2[[ActualChat.Serialization.MetadataSchema, ActualChat.Core],[System.Object, System.Private.CoreLib]], ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Chat.ChatEntryAttachment, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Media.LinkPreview, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Media.MediaRef, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry, ActualChat.UI.Blazor.App]], MessagePack");
-        CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualLab.Collections.Internal.PropertyBagItem`1[[ActualLab.Serialization.TypeSchema+PrimitiveOnly, ActualLab.Core]], ActualLab.Core]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualLab.Collections.Internal.PropertyBagItem`1[[ActualChat.Serialization.MetadataSchema, ActualChat.Core]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualLab.Text.Symbol, ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualLab.IO.FilePath, ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualLab.Time.Moment, ActualLab.Core]], MessagePack");
@@ -807,6 +810,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderRightPanelToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatIcon), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatList), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListCreateButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListItemSkeleton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListListenToggle), AotTypeKind.Component),
@@ -1017,7 +1021,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationFeedItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationEntry), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationStack), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsTabUnreadCount), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyAllButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyCallPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyMentionedMembers), AotTypeKind.Component),

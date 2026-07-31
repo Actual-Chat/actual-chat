@@ -35,6 +35,7 @@ public sealed record AppMessagePackResolverSettings
     private static readonly LazySlim<HashSet<Assembly>> FormatterAssembliesLazy;
 
     public IReadOnlyList<IFormatterResolver> Resolvers { get; init; } = StandardResolvers;
+    public IReadOnlyDictionary<Type, Type> ExtraFormatters { get; init; } = ImmutableDictionary<Type, Type>.Empty;
 
     static AppMessagePackResolverSettings()
     {
@@ -63,6 +64,9 @@ public sealed record AppMessagePackResolverSettings
     {
         var d = new Dictionary<Type, Type>();
         foreach (var kv in Formatters)
+            if (kv.Key.Assembly == assembly)
+                d[kv.Key] = kv.Value;
+        foreach (var kv in ExtraFormatters)
             if (kv.Key.Assembly == assembly)
                 d[kv.Key] = kv.Value;
         var localFormatters = d.Count > 0 ? d.ToFrozenDictionary() : null;

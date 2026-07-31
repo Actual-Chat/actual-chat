@@ -94,6 +94,47 @@ public sealed class MetadataBagJsonTest(ITestOutputHelper @out) : TestBase(@out)
         result.BeginsAt.Should().Be(TestMoment);
     }
 
+    [Fact]
+    public void ReadsLegacyTypeDecoratedSize2D()
+    {
+        // arrange
+        const string json =
+            """
+            {"Items":{"Size":{"$type":"ActualChat.Media.Size2D, ActualChat.Core","Width":640,"Height":480}}}
+            """;
+
+        // act
+        var bag = MetadataBagJson.FromJson(json);
+
+        // assert
+        bag["Size"].Should().Be(new Size2D(640, 480));
+    }
+
+    [Fact]
+    public void RoundTripsSize2D()
+    {
+        // arrange
+        var bag = MetadataBag.Empty.Set("Size", new Size2D(640, 480));
+
+        // act
+        var json = bag.ToJson();
+
+        // assert
+        json.Should().Contain("""ActualChat.Media.Size2D, ActualChat.Core""");
+        MetadataBagJson.FromJson(json)["Size"].Should().Be(new Size2D(640, 480));
+    }
+
+    [Fact]
+    public void ReadsUnknownObjectValueAsMissing()
+    {
+        // act
+        var bag = MetadataBagJson.FromJson("""{"Items":{"Junk":{"A":1},"FileName":"x.png"}}""");
+
+        // assert
+        bag["Junk"].Should().BeNull();
+        bag["FileName"].Should().Be("x.png");
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

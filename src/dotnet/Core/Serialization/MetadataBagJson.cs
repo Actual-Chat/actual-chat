@@ -4,11 +4,14 @@ namespace ActualChat.Serialization;
 
 /// <summary>
 /// Persists a <see cref="MetadataBag"/> as <c>{"Items":{...}}</c> - the shape the legacy
-/// ImmutableOptionSet wrote. Nothing here emits a type name, so nothing here resolves one;
-/// the bag's schema is what keeps the values primitive.
+/// ImmutableOptionSet wrote. Only <see cref="Size2D"/> carries a type name, matching what
+/// Newtonsoft.Json wrote for it; every other value the bag's schema allows is a primitive.
 /// </summary>
 public static class MetadataBagJson
 {
+    // TypeNameAssemblyFormatHandling.Simple, i.e. the exact string legacy rows carry
+    private const string Size2DTypeName = "ActualChat.Media.Size2D, ActualChat.Core";
+
     public static MetadataBag FromJson(string? json)
     {
         if (json.IsNullOrEmpty())
@@ -40,12 +43,21 @@ public static class MetadataBagJson
 
         var items = new Dictionary<string, object>();
         foreach (var item in bag.Items)
-            items.Add(item.Key, item.Value);
+            items.Add(item.Key, FromValue(item.Value));
 
         return JsonSerializer.Serialize(new Envelope { Items = items }, SystemJsonSerializer.Default.Options);
     }
 
     // Private methods
+
+    private static object FromValue(object value)
+        => value is Size2D size
+            ? new Dictionary<string, object> {
+                { "$type", Size2DTypeName },
+                { "Width", size.Width },
+                { "Height", size.Height },
+            }
+            : value;
 
     private static object? ToValue(object? item)
     {
@@ -59,9 +71,16 @@ public static class MetadataBagJson
             JsonValueKind.Number => element.TryGetInt64(out var l) ? (object)l : element.GetDouble(),
             JsonValueKind.True => true,
             JsonValueKind.False => false,
+            JsonValueKind.Object => ToSize2D(element),
             _ => null,
         };
     }
+
+    private static object? ToSize2D(JsonElement element)
+        => element.TryGetProperty("Width", out var width) && width.TryGetInt32(out var w)
+            && element.TryGetProperty("Height", out var height) && height.TryGetInt32(out var h)
+            ? new Size2D(w, h)
+            : null;
 
     // Nested types
 

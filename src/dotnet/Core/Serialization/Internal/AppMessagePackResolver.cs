@@ -34,7 +34,14 @@ public class AppMessagePackResolver : IFormatterResolver
     private static readonly ConcurrentDictionary<Assembly, AppMessagePackResolverAssemblyPlan> Plans = new();
 
     public static readonly IFormatterResolver Instance = new AppMessagePackResolver();
-    public static readonly AppMessagePackResolverSettings Settings = new();
+    public static readonly AppMessagePackResolverSettings Settings = new() {
+        // Size2D is registered here rather than via [MessagePackFormatter] on the type itself,
+        // because AttributeFormatterResolver would then win in AppMessagePackKeylessResolver too
+        // and turn VideoFormat.Size into an array - the TS clients (msgpack6ck) expect a map.
+        ExtraFormatters = new Dictionary<Type, Type> {
+            { typeof(Size2D), typeof(Size2DMessagePackFormatter) },
+        },
+    };
 
     private AppMessagePackResolver()
     { }
