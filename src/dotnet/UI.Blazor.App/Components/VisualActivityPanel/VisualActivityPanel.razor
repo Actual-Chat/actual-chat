@@ -10,7 +10,8 @@
     // unmounting VideoPanel would tear down the streams the pill stands for.
     var showVideo = m.Activity.HasCall && (m.Activity.Tab == VisualActivityTab.Call || isHidden);
     var showMap = !isHidden && m.Activity is { HasMap: true, Tab: VisualActivityTab.Map };
-    var showPill = isHidden && (m.Activity.HasCall || m.Activity.HasMap);
+    // The map half of the pill replaces LiveLocationBanner, which was incomplete-UI-only
+    var showPill = isHidden && (m.Activity.HasCall || (m.Activity.HasMap && m.EnableIncompleteUI));
 
     // TODO(DF): move this logic to ChatVideoUI
     // Clear watching when navigating to a different chat.
@@ -141,7 +142,8 @@
             }
         }
         var panelState = await ChatActivityUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-        return new Model(chatContext, isWatching, panelState);
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        return new Model(chatContext, isWatching, panelState, enableIncompleteUI);
     }
 
     // Private methods
@@ -157,8 +159,9 @@
     public sealed record Model(
         ChatContext? ChatContext,
         [property: MemberNotNullWhen(true, nameof(Model.ChatContext))] bool IsWatching,
-        VisualActivity Activity
+        VisualActivity Activity,
+        bool EnableIncompleteUI
     ) {
-        public static readonly Model None = new(null, false, VisualActivity.None);
+        public static readonly Model None = new(null, false, VisualActivity.None, false);
     }
 }
