@@ -452,6 +452,13 @@
 
   <!-- Windows build properties -->
 
+  <!-- The MSIX packaging targets default this to $(ProjectDir)AppPackages\, which is the one
+       build output that escaped the artifacts/ convention - and it isn't gitignored, so a
+       packaged build leaves ~300MB staged under source control. -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <AppxPackageDir>$(ArtifactsPath)\AppPackages\</AppxPackageDir>
+  </PropertyGroup>
+
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Debug'">
     <!-- <WindowsPackageType>None</WindowsPackageType>-->
   </PropertyGroup>

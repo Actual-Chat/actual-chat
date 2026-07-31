@@ -34,7 +34,7 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
             AppPlatform.Ios => ("publish-ios", $"{publishDir}/release_net11.0-ios_ios-arm64/ActualChat.ipa"),
             AppPlatform.MacOs => ("publish-maccatalyst",
                 $"{publishDir}/release_net11.0-maccatalyst_maccatalyst-arm64/*.pkg"),
-            AppPlatform.Windows => ("publish-win", "src/dotnet/App.Maui/AppPackages/**/App.Maui_*_x64.msix"),
+            AppPlatform.Windows => ("publish-win", "artifacts/AppPackages/**/App.Maui_*_x64.msix"),
             _ => throw new ArgumentOutOfRangeException(nameof(settings)),
         };
     }
