@@ -22,6 +22,18 @@ body.wide .chat-activity-panel {
         var(--indigo-70-10),
         var(--magenta-70-10));
 }
+/* The pill chrome above is sized for the full call panel; around a lone icon
+   button it collapses into a gradient circle, so strip it (incl. the :after /
+   :before gradient layers further down). */
+body.wide .chat-activity-panel.location-only {
+    @apply h-auto p-0;
+    @apply rounded-none;
+    background: none;
+}
+body.wide .chat-activity-panel.location-only:after,
+body.wide .chat-activity-panel.location-only:before {
+    @apply hidden;
+}
 
 .chat-activity-panel:after,
 .chat-activity-panel:before {
