@@ -1115,15 +1115,19 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var chatsBackend = tester.AppServices.GetRequiredService<IChatsBackend>();
 
         // act — a second peer latches the session
+        var chatEnd = (await chatsBackend.GetLidRange(chatId, false, default)).End;
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_021), null, true, default);
+        var chatEndAfter = (await chatsBackend.GetLidRange(chatId, false, default)).End;
 
-        // assert — VisibleStartLid is pinned to the chat end at latch time
-        var chatEnd = (await chatsBackend.GetLidRange(chatId, false, default)).End;
+        // assert — VisibleStartLid is pinned to the chat end at latch time. The join system entry
+        // lands asynchronously, so chat end may grow across the latch: bracket it instead of
+        // matching a single read (chat end only grows).
         var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
         live!.SessionStartedAt.Should().NotBeNull();
-        live.VisibleStartLid.Should().Be(chatEnd);
+        live.VisibleStartLid.Should().BeGreaterThanOrEqualTo(chatEnd);
+        live.VisibleStartLid.Should().BeLessThanOrEqualTo(chatEndAfter);
         live.VisibleStartLid.Should().BeGreaterThan(0);
         live.EffectiveVisibleStartLid.Should().Be(live.VisibleStartLid);
     }
