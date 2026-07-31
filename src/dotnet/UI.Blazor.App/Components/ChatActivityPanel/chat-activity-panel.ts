@@ -144,7 +144,8 @@ export class ChatActivityPanel {
         if (this.disposed$.closed)
             return;
 
-        this.header.classList.remove('expanded', 'collapsed', 'pinned');
+        // Blazor calls dispose() even when init bailed out above on a missing header
+        this.header?.classList.remove('expanded', 'collapsed', 'pinned');
         this.disposed$.next();
         this.disposed$.complete();
     }
