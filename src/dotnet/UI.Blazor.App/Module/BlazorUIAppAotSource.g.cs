@@ -222,7 +222,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveConversationFooterView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveConversationHeaderView>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveLocationBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocalLinkPreview>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationAccuracySelector>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocationMapModal>();
@@ -950,7 +949,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LiveConversationFooterView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LiveConversationHeaderView), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.LiveLocationBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocalLinkPreview), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationAccuracySelector), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocationMapModal), AotTypeKind.Component),
