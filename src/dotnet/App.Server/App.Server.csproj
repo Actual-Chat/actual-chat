@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsPublishable>true</IsPublishable>
-    <!-- Required for .NET 10 to ensure Blazor assets (blazor.web.js) are properly generated with fingerprinting -->
+    <!-- Required since .NET 10 to ensure Blazor assets (blazor.web.js) are properly generated with fingerprinting -->
     <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
   </PropertyGroup>
 

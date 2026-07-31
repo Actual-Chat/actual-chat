@@ -21,7 +21,7 @@ Use:
     <WasmEnableSIMD>true</WasmEnableSIMD>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
-    <!-- Disable WASM hot reload - currently it causes 404 errors in .NET 10 -->
+    <!-- Disable WASM hot reload - caused 404 errors in .NET 10, not re-verified on 11 -->
     <WasmEnableHotReload>false</WasmEnableHotReload>
     <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
   </PropertyGroup>

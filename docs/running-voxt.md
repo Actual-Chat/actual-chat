@@ -184,7 +184,7 @@ dotnet publish -f:net11.0-android -c:Release /p:IsDevMaui=true
 ./run-build.cmd publish-win --configuration Release
 ```
 
-The package will be in `artifacts/app/net9.0-windows10.0.22000.0/win10-x64/AppPackages/`.
+The package will be in `artifacts/publish/App.Maui/release_net11.0-windows10.0.22621.0_win-x64/`.
 
 ## Infrastructure Access
 
