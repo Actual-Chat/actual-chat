@@ -9,7 +9,7 @@ namespace ActualChat.Notifications;
 /// the notification is chat-related.
 /// </summary>
 [RpcSerializable]
-[DataContract]
+[DataContract, MessagePackObject]
 [Union(1, typeof(MessageNotification))]
 [Union(2, typeof(ReplyNotification))]
 [Union(3, typeof(InvitationNotification))]
