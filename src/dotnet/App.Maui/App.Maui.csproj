@@ -346,6 +346,13 @@
     <AndroidEnvironment Include="android-tracing-env.txt" />
   </ItemGroup>
 
+  <!-- Non-generic ArgumentList variants only: the generic ones cost an instantiation per arity
+       in every AOT/R2R image, and the trimmer can drop them entirely once this is off.
+       Trim="true" makes it a trimmer feature switch, not just a runtime one. -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="ArgumentList.AllowGenerics" Value="false" Trim="true" />
+  </ItemGroup>
+
   <!-- Apple build properties -->
 
   <!-- Apple: trimming. The macios SDK always runs the trimmer and rejects an explicit
