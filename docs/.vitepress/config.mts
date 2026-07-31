@@ -149,6 +149,7 @@ export default withMermaid(defineConfig({
               { text: "Safe Areas", link: "/safe-areas" },
               { text: "Splash Screens", link: "/splash-screen" },
               { text: "iOS-specific Behavior", link: "/ios-specific" },
+              { text: "Android-specific Behavior", link: "/android-specific" },
               { text: "Native AOT", link: "/native-aot" },
               { text: "Runtime Async", link: "/runtime-async" },
             ],
