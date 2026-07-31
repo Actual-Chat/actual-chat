@@ -69,6 +69,7 @@
                 <i class="icon-activity"></i>
             </HeaderButton>
         }
+        <StopLocationSharingButton/>
         @if (!isListening && !isRecordingHere && !isOwnVideoStreaming) {
             <Button
                 Class="btn-sm btn-transparent unhovered not-listening"
@@ -136,7 +137,9 @@
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatchingHere = chat.Id == watchingChatId;
         var canShowAudioDiagnostics = await AudioDiagnosticsUI.IsEnabled(cancellationToken).ConfigureAwait(false);
-        return new (audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere, canShowAudioDiagnostics);
+        return new (
+            audioState, isAnyoneTalking, hasRemoteStreams,
+            isOwnVideoStreaming, isWatchingHere, canShowAudioDiagnostics);
     }
 
     private void OnAudioDiagnosticsClick()
@@ -145,21 +148,18 @@
     private async Task OnJoinClick() {
         // User is not participating — join with listening only (no recording, no camera)
         _ = ChatAudioUI.SetListeningState(Chat.Id, true);
-        // Open video panel to see others' streams
-        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(Chat.Id, CancellationToken.None).ConfigureAwait(false);
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(Chat.Id, CancellationToken.None)
+            .ConfigureAwait(false);
         if (isAnyoneVideoStreaming)
             ChatVideoUI.OpenVideoPanel(Chat.Id);
     }
 
     private async Task OnHangUpClick() {
-        // User is already participating — stop everything
         var audioState = await ChatAudioUI.GetState(Chat.Id).ConfigureAwait(false);
         if (audioState.IsRecording)
             StopRecording(Chat.Id);
-        // Stop video recording and watching
         ChatVideoUI.StopStreaming();
         ChatVideoUI.CloseVideoPanel();
-        // Stop listening
         _ = ChatAudioUI.SetListeningState(Chat.Id, false);
     }
 
