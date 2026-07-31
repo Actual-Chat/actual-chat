@@ -621,7 +621,14 @@
   </ItemGroup>
   <!-- Windows -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
-    <Content Include="Platforms\Windows\Assets\**\*.*" />
+    <!-- CopyToPublishDirectory is load-bearing: WindowsSplashScreen resolves splashlogo_*.png
+         from AppContext.BaseDirectory, and both the unpackaged publish and the MSIX are built
+         from the publish output. Without it BitmapImage fails silently and the splash renders
+         with no logo - see docs/splash-screen.md. -->
+    <Content Include="Platforms\Windows\Assets\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <Content Include="..\Core.Audio\APM\runtimes\win-x64\native\webrtc-apm.dll">
       <Link>webrtc-apm.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
