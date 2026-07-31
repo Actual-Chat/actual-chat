@@ -595,7 +595,11 @@ public sealed class VideoRecorder : IAsyncDisposable
                     continue;
 
                 lastCount = count;
-                await _jsRef.InvokeVoidAsync("setRemoteStreamCount", cancellationToken, count)
+                // Dispose nulls _jsRef out while this loop is still iterating
+                if (_jsRef is not { } jsRef)
+                    return;
+
+                await jsRef.InvokeVoidAsync("setRemoteStreamCount", cancellationToken, count)
                     .ConfigureAwait(false);
             }
         }
