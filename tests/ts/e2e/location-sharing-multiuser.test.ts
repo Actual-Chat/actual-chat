@@ -134,8 +134,8 @@ describe('multi-user location sharing', () => {
         expect(await alice.locator('.call-map-switch').count()).toBe(0);
         expect(await bob.locator('.call-map-switch').count()).toBe(0);
 
-        // assert — the old live-location banner stays hidden (the panel replaced it)
-        expect(await alice.locator('.live-location-banner').isVisible().catch(() => false)).toBe(false);
+        // assert — no activity pill while the panel is inline (it appears only when hidden, #4088)
+        expect(await alice.locator('.activity-pill').count()).toBe(0);
 
         // assert — Bob (a viewer) gets the panel with no stop button and a "Share your
         // location" call-to-action instead (#4057)

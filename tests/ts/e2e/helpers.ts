@@ -99,7 +99,11 @@ async function launchHeadless(): Promise<BrowserConnection> {
     try {
         const browser = await chromium.launch({
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            args: [
+                '--no-sandbox', '--disable-setuid-sandbox',
+                // A grantable fake mic, so tests can start recording (call activity)
+                '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+            ],
         });
         const context = await browser.newContext({ ignoreHTTPSErrors: true });
         console.log('Launched headless Chromium');
