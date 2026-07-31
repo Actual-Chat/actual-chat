@@ -128,6 +128,11 @@ Mono-era cleanup. They are **not** Mono-era: the net11 SDK still reads them, and
 them flipped the flag. We set `UseInterpreter=true` again and then had to remove it —
 the interpreter crashes; see above.
 
+The nuance is that `MtouchInterpreter` survives only as a build-time input on CoreCLR —
+its actual method filter is discarded. See
+[Which `Mtouch*` properties still do something](#which-mtouch-properties-still-do-something-under-coreclr)
+below.
+
 **Android was unaffected.** It permits JIT and was already on CoreCLR before the sweep
 (`UseCoreClr` + `UseMonoRuntime=false`), so `IsDynamicCodeSupported` stayed `true` — which
 is why the failure showed up on iOS alone.
@@ -184,6 +189,119 @@ Still fix the type properly — give it a real formatter (source-generated,
 formatter from reaching users; it doesn't make the gap go away, and every such gap is
 still a Native AOT blocker. Getting them all covered is what makes NativeAOT builds
 shippable.
+
+## Which `Mtouch*` properties still do something under CoreCLR
+
+The `Mtouch*` prefix is a Xamarin-era name, which makes the whole family look like
+dead weight now that Apple targets run CoreCLR. Most of it isn't. The net11 iOS SDK
+still imports the legacy Xamarin targets — `Xamarin.Shared.Sdk.targets:2913-2916`
+sets `_TargetsDirectory` to `tools/msbuild/` and imports `Xamarin.iOS.CSharp.targets`
+for every `iOSExecutableProject`, which chains to `tools/msbuild/Xamarin.Shared.props`
+and `Xamarin.Shared.targets`. So a property that appears nowhere under `targets/` can
+still be live.
+
+Audited against `packs/Microsoft.iOS.Sdk.net11.0_26.5/26.5.11720-net11-p6/`.
+`UseMonoRuntime` defaults to `false` there (`Xamarin.Shared.Sdk.props:43`), so CoreCLR
+is the path that matters.
+
+| Property | Under CoreCLR |
+|---|---|
+| `MtouchLink` | **Live.** The trimming knob — see *Other deltas*. `Xamarin.Shared.Sdk.Trimming.props:79` |
+| `MtouchExtraArgs` | **Live.** Feeds `AppBundleExtraOptions` → `ParseBundlerArguments`. `tools/msbuild/Xamarin.Shared.props:117` |
+| `MtouchDebug` | **Live.** Sets `_BundlerDebug`, which drives `DebuggerSupport`, `UseSystemResourceKeys`, `-DDEBUG`. `Xamarin.Shared.Sdk.targets:120` |
+| `MtouchNoSymbolStrip` | **Live.** Native symbol strip, incl. the CoreCLR/R2R frameworks. `tools/msbuild/Xamarin.Shared.props:122`, `Xamarin.Shared.targets:3132` |
+| `MtouchNoDSymUtil` | **Live.** Same shape, for `dsymutil`. `tools/msbuild/Xamarin.Shared.props:130` |
+| `MtouchHttpClientHandler` | **Live.** Picks `NSUrlSessionHandler` / `CFNetworkHandler`; an invalid value is error E7152. `Xamarin.Shared.Sdk.targets:147,659,661,797` |
+| `MtouchSdkVersion` | **Live**, obscure — pins the Xcode SDK version. Never reassigned at target time. `tools/msbuild/Xamarin.Shared.props:42` |
+| `MtouchArch` | **Live as an error only** — build fails telling you to use `RuntimeIdentifier`. `Xamarin.Shared.Sdk.targets:1283-1287` |
+| `MtouchInterpreter` | **Discarded** by the linker; build-time side effects remain. See below |
+| `MtouchUseLlvm` | **Mono-only.** Only reaches `mono_use_llvm`, written `if (app.XamarinRuntime == XamarinRuntime.MonoVM)` |
+| `MtouchFloat32` | **Mono-only.** An AOT-compiler argument (`Application.AotFloat32`) |
+| `MtouchEnableSGenConc` | **Mono-only.** An SGen GC setting |
+
+### `MtouchInterpreter` is accepted, then thrown away
+
+The linker discards it outright — `tools/dotnet-linker/LinkerConfiguration.cs` in
+`dotnet/macios`:
+
+```csharp
+if (Application.XamarinRuntime != XamarinRuntime.MonoVM && Application.UseInterpreter) {
+    Application.Log (4, "The interpreter is enabled, but the current runtime isn't MonoVM. The interpreter settings will be ignored.");
+    Application.UnsetInterpreter ();
+}
+```
+
+Verbosity 4 — you will never see that message in a normal build. So the *method
+filter* half of `MtouchInterpreter=-ActualChat` has been inert since we moved to
+CoreCLR; there is no CoreCLR equivalent of Mono's per-assembly interpreter selection
+anywhere in the SDK.
+
+What survives is the MSBuild side, and only one of those matters. Every other use is
+gated on Mono: `_RunAotCompiler` sits inside `<PropertyGroup Condition="'$(UseMonoRuntime)' == 'true'">`
+(`Xamarin.Shared.Sdk.targets:1316-1320`), which in turn gates the `sealer` trimmer
+optimization (`:770`) and `_IsDedupEnabled` (`:1359`); `_MonoComponent hot_reload`
+(`:488`) is only read by `_ComputeMonoComponents`, itself Mono-gated (`:495`); the
+hot-reload error (`:2861`) and both `Trimming.props` defaults (`:70,72`) carry
+`'$(UseMonoRuntime)' == 'true'` explicitly.
+
+The exception is the one that bit us — `Xamarin.Shared.Sdk.targets:158` has **no**
+runtime guard, so setting `MtouchInterpreter` still suppresses `DynamicCodeSupport=false`
+on CoreCLR. That is the entire remaining effect of the property on our builds, and
+`UseInterpreter=true` reaches the same line (and aliases to `MtouchInterpreter=all` at
+`tools/msbuild/Xamarin.Shared.props:190`).
+
+### Setting process environment variables in the app bundle
+
+There *is* a supported mechanism, and the SDK uses it on the CoreCLR path itself —
+`Xamarin.Shared.Sdk.props:260-262`:
+
+```xml
+<ItemGroup Condition="'$(UseMonoRuntime)' == 'false' And '$(_PlatformName)' != 'macOS' And '$(PublishReadyToRun)' != 'true'">
+    <_BundlerEnvironmentVariables Include="DOTNET_ReadyToRun" Value="0" />
+</ItemGroup>
+```
+
+Adding to that item group is the whole recipe:
+
+```xml
+<ItemGroup>
+    <_BundlerEnvironmentVariables Include="DOTNET_SomeKnob" Value="1" />
+</ItemGroup>
+```
+
+The equivalent through `MtouchExtraArgs` is `--setenv:KEY=VALUE`, parsed by
+`ParseBundlerArguments` and appended to the same item group
+(`tools/msbuild/Xamarin.Shared.targets:2294-2309`). Prefer the item — it skips
+shell-style argument splitting and a first-separator (`:` or `=`) split of the value.
+
+The chain from there, none of it runtime-gated:
+
+1. `Xamarin.Shared.Sdk.targets:683` emits
+   `@(_BundlerEnvironmentVariables -> 'EnvironmentVariable=Overwrite=%(Overwrite)|%(Identity)=%(Value)')`
+   into `_CustomLinkerOptions`.
+2. `dotnet-linker`'s `LinkerConfiguration` parses it into `Application.EnvironmentVariables`.
+3. `GenerateMainStep` (unconditional) has `tools/common/Target.cs` write a literal
+   `setenv("KEY", "VALUE", 1)` per entry into the generated `main.<arch>.mm`, inside
+   `xamarin_setup_impl()` — last, *"so that the app developer can override any other
+   environment variable we set"*.
+4. `runtime/monotouch-main.m` calls `xamarin_setup()` early in `xamarin_main`, **before**
+   `xamarin_bridge_setup()` and `xamarin_vm_initialize()`.
+
+So the variables are in the process environment before CoreCLR initialises, which is
+exactly why the SDK's own `DOTNET_ReadyToRun=0` works. Whether any particular
+`DOTNET_*` knob is honoured is then a dotnet/runtime question — macios only guarantees
+it is set in time.
+
+Two lookalikes that are **not** this:
+
+- `RuntimeEnvironmentVariable` → `MlaunchEnvironmentVariables`
+  (`Microsoft.Sdk.Mobile.targets:99,115`) only applies to `dotnet run` / mlaunch
+  launches. Nothing is written into the bundle.
+- The `-setenv=` launch argument parsed in `runtime/monotouch-main.m` is a
+  debugger/mlaunch channel, not a shipping one.
+
+Nothing writes environment variables into `Info.plist`; the generated `main.mm` is the
+only bundle-baked path.
 
 ## Other deltas
 
