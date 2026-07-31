@@ -29,6 +29,7 @@ public sealed record RunStep(string Executable, IReadOnlyList<string> Arguments)
 {
     public string? WorkingDirectory { get; init; }
     public string? RequiredPath { get; init; }
+    public IReadOnlyDictionary<string, string?> Environment { get; init; } = new Dictionary<string, string?>();
 }
 
 public sealed record ActionStep(string Description, Func<CancellationToken, Task<int>> Run) : PlanStep;
@@ -83,6 +84,9 @@ public sealed class CommandPlan
                 line = line.Replace(secret, "***");
 
             var prefix = x.WorkingDirectory is { } workingDirectory ? $"[grey]({workingDirectory})[/] " : "";
+            foreach (var (key, value) in x.Environment)
+                prefix += $"[grey35]{key}={value}[/] ";
+
             return $"[grey]$[/] {prefix}{line.EscapeMarkup()}";
         }
         default:
@@ -155,6 +159,8 @@ public sealed class CommandPlan
         var command = Cli.Wrap(step.Executable).WithArguments(step.Arguments, false);
         if (step.WorkingDirectory is { } workingDirectory)
             command = command.WithWorkingDirectory(workingDirectory);
+        if (step.Environment.Count != 0)
+            command = command.WithEnvironmentVariables(step.Environment);
 
         var result = await command
             .ToConsole()

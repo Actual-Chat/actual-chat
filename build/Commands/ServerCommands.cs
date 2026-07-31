@@ -3,6 +3,124 @@ using Spectre.Console.Cli;
 
 namespace Build.Commands;
 
+internal static class Server
+{
+    public const string ProjectPath = "src/dotnet/App.Server/App.Server.csproj";
+    public const string PublishDir = "artifacts/publish/App.Server/release";
+    public const string DefaultLogPath = "tmp/server.log";
+    public static string PublishedExeName
+        => OperatingSystem.IsWindows() ? "ActualChat.App.Server.exe" : "ActualChat.App.Server";
+    public static string PublishedExePath => Path.Combine(PublishDir, PublishedExeName);
+}
+
+/// <summary>
+/// Runs the server, either from source or from <c>artifacts/publish</c>.
+/// Replaces run-second.cmd, server-run-logging.cmd and server-run-published.cmd.
+/// </summary>
+public sealed class ServerRunCommand(CliContext context) : PlanCommand<ServerRunCommand.Settings>(context)
+{
+    protected override CommandPlan GetPlan(Settings settings)
+    {
+        var plan = new CommandPlan();
+        var environment = new Dictionary<string, string?> { ["ASPNETCORE_ENVIRONMENT"] = "Development" };
+        if (settings.Urls is { Length: > 0 } urls)
+            environment["ASPNETCORE_URLS"] = urls;
+
+        if (settings.LogPath is { } logPath) {
+            environment["ActualChat_DevLog"] = Path.GetFullPath(logPath);
+            plan.AddAction($"reset the dev log -> {logPath}", _ => ResetLog(logPath));
+        }
+
+        if (settings.IsPublished) {
+            var exePath = Server.PublishedExePath;
+            plan.Add(new RunStep(exePath, settings.ExtraArgs) {
+                RequiredPath = exePath,
+                Environment = environment,
+            });
+
+            return plan;
+        }
+
+        string[] passThrough = settings.ExtraArgs.Length == 0 ? [] : ["--", ..settings.ExtraArgs];
+        plan.Add(new RunStep(Utils.FindDotnetExe(), [
+            "run",
+            "-c", settings.Configuration,
+            "--no-launch-profile",
+            "--project", Server.ProjectPath,
+            ..passThrough,
+        ]) {
+            Environment = environment,
+        });
+
+        return plan;
+    }
+
+    // Private methods
+
+    private static Task<int> ResetLog(string logPath)
+    {
+        if (Path.GetDirectoryName(Path.GetFullPath(logPath)) is { Length: > 0 } directory)
+            Directory.CreateDirectory(directory);
+        if (File.Exists(logPath))
+            File.Delete(logPath);
+
+        return Task.FromResult(0);
+    }
+
+    // Nested types
+
+    public sealed class Settings : PlanSettings
+    {
+        [CommandOption("-c|--configuration <CONFIGURATION>")]
+        [Description("Debug or Release - ignored with --published")]
+        [DefaultValue("Release")]
+        public string Configuration { get; init; } = "Release";
+
+        [CommandOption("--published")]
+        [Description("Run the published build from artifacts/publish instead of from source")]
+        public bool IsPublished { get; init; }
+
+        [CommandOption("--log [PATH]")]
+        [Description("Write the dev log to PATH (default: tmp/server.log)")]
+        public FlagValue<string> Log { get; init; } = new();
+
+        [CommandOption("--urls <URLS>")]
+        [Description("Override ASPNETCORE_URLS, e.g. http://localhost:7086")]
+        public string? Urls { get; init; }
+
+        public string? LogPath => !Log.IsSet
+            ? null
+            : Log.Value is { Length: > 0 } value ? value : Server.DefaultLogPath;
+    }
+}
+
+/// <summary>
+/// Publishes the server into <c>artifacts/publish</c>. Replaces server-publish.cmd.
+/// </summary>
+public sealed class ServerPublishCommand(CliContext context) : PlanCommand<ServerPublishCommand.Settings>(context)
+{
+    protected override CommandPlan GetPlan(Settings settings)
+        => new CommandPlan()
+            .AddRun(Utils.FindDotnetExe(), [
+                "publish", Server.ProjectPath,
+                "-noLogo",
+                "-c", settings.Configuration,
+                "-p:UseAppPack=false",
+                ..settings.ExtraArgs,
+            ])
+            .AddOutput(Server.PublishedExePath);
+
+    // Nested types
+
+    public sealed class Settings : PlanSettings
+    {
+        [CommandOption("-c|--configuration <CONFIGURATION>")]
+        [Description("Debug or Release")]
+        [DefaultValue("Release")]
+        public string Configuration { get; init; } = "Release";
+    }
+}
+
 /// <summary>
 /// Starts <c>server-loop.ps1</c>. The loop itself stays in the script - the
 /// /server-loop skill and other tooling reference it directly.

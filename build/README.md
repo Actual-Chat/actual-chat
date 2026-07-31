@@ -33,6 +33,21 @@ iOS and Mac Catalyst delegate to `scripts/run-ios*.sh` / `scripts/run-macos.sh`,
 which build, install and launch as one unit — so `b app install ios` is rejected
 rather than silently launching.
 
+The server commands:
+
+```
+b server run                              # dotnet run, Release, ASPNETCORE_ENVIRONMENT=Development
+b server run --log                        # ... plus ActualChat_DevLog -> tmp/server.log (reset first)
+b server run --log tmp/other.log          # ... to somewhere else
+b server run --published                  # run artifacts/publish/App.Server/release instead
+b server run --urls http://localhost:7086 # a second instance on another port
+b server publish                          # publish into artifacts/publish
+b server loop                             # hand off to server-loop.ps1
+```
+
+`b server loop` deliberately shells out rather than reimplementing the loop —
+`/server-loop` and other tooling reference that script directly.
+
 ## Layout
 
 | File | What it is |

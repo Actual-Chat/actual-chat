@@ -66,6 +66,13 @@ public static class CliApp
                 .WithDescription("Print the whole command tree");
             c.AddBranch("server", b => {
                 b.SetDescription("Build & run the Voxt server");
+                b.AddCommand<ServerRunCommand>("run")
+                    .WithDescription("Run the server from source, or from artifacts/publish")
+                    .WithExample("server", "run")
+                    .WithExample("server", "run", "--log")
+                    .WithExample("server", "run", "--published", "--log", "tmp/published.log");
+                b.AddCommand<ServerPublishCommand>("publish")
+                    .WithDescription("Publish the server into artifacts/publish");
                 b.AddCommand<ServerLoopCommand>("loop")
                     .WithDescription("Run server-loop.ps1 - the npm build / dotnet build / server run loop");
             });
