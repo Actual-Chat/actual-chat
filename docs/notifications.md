@@ -59,4 +59,3 @@ non-readers — dormant users cost zero work until any engagement clears it.
 | Notification lingers after read | clear-on-read → silent dismissal push; `NotificationReconciler` prune |
 | Duplicate / noisy pushes | soft-buffer coalescing + throttle window in `NotificationsBackend` |
 | Missing in-app feed item | `INotifications.ListActive` projection; `NotificationStack.razor` |
-</content>

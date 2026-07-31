@@ -167,5 +167,3 @@ and Small task lists. Grouped by theme.
 - Use "Auto" render mode (.NET 8) for Blazor components.
 - `SettingsPanel` / `SettingsTab` should inherit/use `TabPanel` / `Tab`.
 - Remove the Kubernetes project?
-</content>
-</invoke>
