@@ -9,10 +9,6 @@
 .chat-activity-panel:not(.listening) {
     @apply bg-transparent;
 }
-/* Map-only sharing — no call content, just the stop-sharing button */
-.chat-activity-panel.location-only {
-    @apply md:w-auto;
-}
 body.wide .chat-activity-panel {
     @apply h-12;
     @apply px-1.5;
@@ -22,9 +18,9 @@ body.wide .chat-activity-panel {
         var(--indigo-70-10),
         var(--magenta-70-10));
 }
-/* The pill chrome above is sized for the full call panel; around a lone icon
-   button it collapses into a gradient circle, so strip it (incl. the :after /
-   :before gradient layers further down). */
+/* Map-only sharing: the pill chrome above belongs to the call panel, and around
+   a lone stop-sharing icon it's a stray gradient bar - strip it, along with the
+   :after / :before gradient layers further down. */
 body.wide .chat-activity-panel.location-only {
     @apply h-auto p-0;
     @apply rounded-none;
