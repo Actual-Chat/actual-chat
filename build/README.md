@@ -41,6 +41,7 @@ b server run --log                        # ... plus ActualChat_DevLog -> tmp/se
 b server run --log tmp/other.log          # ... to somewhere else
 b server run --published                  # run artifacts/publish/App.Server/release instead
 b server run --urls http://localhost:7086 # a second instance on another port
+b server run --open                       # ... and open it in a browser 10s in
 b server publish                          # publish into artifacts/publish
 b server loop                             # hand off to server-loop.ps1
 ```
