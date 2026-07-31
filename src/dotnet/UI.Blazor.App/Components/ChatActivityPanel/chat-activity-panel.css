@@ -234,10 +234,7 @@ body.narrow .layout-header:has(.video-streaming) {
 }
 .chat-activity-panel > .c-buttons > .btn-stop-location-sharing,
 body.hoverable .chat-activity-panel > .c-buttons > .btn-stop-location-sharing:hover {
-    @apply text-[var(--danger-light)];
-}
-.chat-activity-panel > .c-buttons > .btn-stop-location-sharing marker-pin-off-svg {
-    @apply text-2xl md:text-2xl;
+    @apply text-[var(--danger-light)]  text-2xl;
 }
 .chat-activity-panel > .c-buttons > .btn.btn-transparent:active::after {
     @apply hidden;
