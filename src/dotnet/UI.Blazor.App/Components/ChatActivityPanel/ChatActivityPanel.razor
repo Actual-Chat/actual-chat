@@ -6,10 +6,8 @@
     if (m is null)
         return;
 
-    var hasCallActivity = m.IsAnyoneTalking || m.HasRemoteStreams || m.IsListening || m.IsRecordingHere
-        || m.IsWatchingHere;
-    var isVisible = hasCallActivity || m.IsSharingOwnLocation;
-    if (!isVisible)
+    var hasCallActivity = m.HasCallActivity;
+    if (!m.IsVisible)
         return;
 
     var iconSize = ScreenSize.IsNarrow() ? 6 : 8;
@@ -214,5 +212,8 @@
 
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
+        public bool HasCallActivity => IsAnyoneTalking || HasRemoteStreams || IsListening || IsRecordingHere
+            || IsWatchingHere;
+        public bool IsVisible => HasCallActivity || IsSharingOwnLocation;
     }
 }
