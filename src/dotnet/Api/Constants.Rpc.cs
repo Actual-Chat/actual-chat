@@ -17,13 +17,13 @@ public static partial class Constants
             public const bool IsClientSideEnabled = true;
         }
 
-        // RPC transport. Android runs on HTTP/2 while we isolate a suspected WebSocket
-        // regression. It's a runtime check rather than a define because Api is built once and
-        // shared by every platform head, so a per-TFM DefineConstants would never reach it.
+        // Forces HTTP/2 transport for RPC
         public static readonly bool UseHttpClient =
 #if USE_RPC_HTTP_CLIENT
             true;
 #else
+            // Android runs on HTTP/2 while we isolate a suspected
+            // WebSocket regression on .NET 11 & MAUI Android.
             OSInfo.IsAndroid;
 #endif
     }
