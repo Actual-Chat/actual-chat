@@ -6,7 +6,9 @@
     if (m is null)
         return;
 
-    var isVisible = m.IsAnyoneTalking || m.HasRemoteStreams || m.IsListening || m.IsRecordingHere || m.IsWatchingHere;
+    var hasCallActivity = m.IsAnyoneTalking || m.HasRemoteStreams || m.IsListening || m.IsRecordingHere
+        || m.IsWatchingHere;
+    var isVisible = hasCallActivity || m.IsOwnSharingLocation;
     if (!isVisible)
         return;
 
@@ -20,11 +22,16 @@
     var iconMode = m.HasRemoteStreams ? "video" : "audio";
     var tooltip = isListening ? "Listening..." : "Listen";
     var cls = isListening ? " listening" : "";
-    if (m.HasRemoteStreams) cls += " video-streaming";
-    if (!isParticipating)
+    if (m.HasRemoteStreams)
+        cls += " video-streaming";
+    // location-only replaces not-participating: the latter is the narrow "join muted"
+    // bordered-box affordance, meaningless without a call
+    if (hasCallActivity && !isParticipating)
         cls += " not-participating";
     if (isWatchingHere)
         cls += " watching";
+    if (!hasCallActivity)
+        cls += " location-only";
     var joinButtonText = "Join muted";
 }
 
@@ -43,13 +50,11 @@
     @if (m.HasRemoteStreams) {
         <div class="c-film-strip"></div>
     }
-    @if (!isParticipating) {
-        @* Camera/audio icon - shown when not participating *@
+    @if (hasCallActivity && !isParticipating) {
         <div class="c-icon hideable">
             <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive" mode="@iconMode"/>
         </div>
     }
-    @* Talking heads - shown when anyone is talking *@
     @if (m.IsAnyoneTalking) {
         <ChatActivities
             @key="@Chat.Id.Value"
@@ -58,7 +63,7 @@
     }
     <div class="flex-1"></div>
     <div class="c-buttons">
-        @if (m.CanShowAudioDiagnostics) {
+        @if (hasCallActivity && m.CanShowAudioDiagnostics) {
             <HeaderButton
                 Class="c-diagnostics-btn"
                 StopPropagation="true"
@@ -70,28 +75,30 @@
             </HeaderButton>
         }
         <StopLocationSharingButton/>
-        @if (!isListening && !isRecordingHere && !isOwnVideoStreaming) {
-            <Button
-                Class="btn-sm btn-transparent unhovered not-listening"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnJoinClick"
-                Tooltip="@tooltip"
-                TooltipPosition="FloatingPosition.Bottom">
-                @joinButtonText
-            </Button>
-        } else if (isRecordingHere || isOwnVideoStreaming || isWatchingHere) {
-            <HeaderButton
-                Class="talking"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnHangUpClick"
-                Tooltip="@tooltip"
-                TooltipPosition="FloatingPosition.Bottom">
-                <i class="icon-phone-off"></i>
-            </HeaderButton>
-        } else {
-            <StopListeningCountdownButton ChatId="@Chat.Id" Click="@OnStopListeningClick"/>
+        @if (hasCallActivity) {
+            if (!isListening && !isRecordingHere && !isOwnVideoStreaming) {
+                <Button
+                    Class="btn-sm btn-transparent unhovered not-listening"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    Click="@OnJoinClick"
+                    Tooltip="@tooltip"
+                    TooltipPosition="FloatingPosition.Bottom">
+                    @joinButtonText
+                </Button>
+            } else if (isRecordingHere || isOwnVideoStreaming || isWatchingHere) {
+                <HeaderButton
+                    Class="talking"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    Click="@OnHangUpClick"
+                    Tooltip="@tooltip"
+                    TooltipPosition="FloatingPosition.Bottom">
+                    <i class="icon-phone-off"></i>
+                </HeaderButton>
+            } else {
+                <StopListeningCountdownButton ChatId="@Chat.Id" Click="@OnStopListeningClick"/>
+            }
         }
     </div>
 </div>
@@ -108,6 +115,7 @@
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private LocationUI LocationUI => Hub.LocationUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private AudioDiagnosticsUI AudioDiagnosticsUI => Hub.AudioDiagnosticsUI;
 
@@ -137,9 +145,11 @@
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatchingHere = chat.Id == watchingChatId;
         var canShowAudioDiagnostics = await AudioDiagnosticsUI.IsEnabled(cancellationToken).ConfigureAwait(false);
+        var isOwnSharingLocation =
+            await LocationUI.GetOwnLive(chat.Id, cancellationToken).ConfigureAwait(false) is not null;
         return new (
             audioState, isAnyoneTalking, hasRemoteStreams,
-            isOwnVideoStreaming, isWatchingHere, canShowAudioDiagnostics);
+            isOwnVideoStreaming, isWatchingHere, canShowAudioDiagnostics, isOwnSharingLocation);
     }
 
     private void OnAudioDiagnosticsClick()
@@ -194,7 +204,8 @@
         bool HasRemoteStreams,
         bool IsOwnVideoStreaming,
         bool IsWatchingHere,
-        bool CanShowAudioDiagnostics) {
+        bool CanShowAudioDiagnostics,
+        bool IsOwnSharingLocation) {
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
     }

@@ -125,6 +125,13 @@ describe('location sharing', () => {
         // assert — with only the map activity (no call) the Call/Map switch is hidden (#4067)
         expect(await page.locator('.call-map-switch').count()).toBe(0);
 
+        // assert — the chat activity panel shows for the map-only share, reduced to the
+        // stop-sharing button (#4088)
+        const activityPanel = page.locator('.chat-activity-panel.location-only').first();
+        await activityPanel.waitFor({ state: 'visible', timeout: 10_000 });
+        await activityPanel.locator('.btn-stop-location-sharing').first()
+            .waitFor({ state: 'visible', timeout: 10_000 });
+
         // assert — the activity pill appears only while the panel is hidden
         expect(await page.locator('.activity-pill').count()).toBe(0);
 
@@ -189,8 +196,9 @@ describe('location sharing', () => {
         await mapModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
         await mapPanel.locator('.btn-stop-sharing').first().click();
 
-        // assert — the panel disappears once the share is stopped
+        // assert — the panel and the activity strip disappear once the share is stopped
         await mapPanel.waitFor({ state: 'hidden', timeout: 20_000 });
+        await activityPanel.waitFor({ state: 'hidden', timeout: 10_000 });
         await page.screenshot({ path: shot('loc-stopped') });
     }, 180_000);
 
