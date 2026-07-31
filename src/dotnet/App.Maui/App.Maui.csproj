@@ -381,36 +381,11 @@
 
     <SkipStaticLibraryValidation>true</SkipStaticLibraryValidation>
 
-    <!-- NO UseInterpreter / MtouchInterpreter here. We tried turning the interpreter on and had
-         to back it out - see the crash signature below before trying again.
-
-         Why we wanted it: the macios SDK gates dynamic code on exactly these two properties
-         (Xamarin.Shared.Sdk.targets):
-
-           <DynamicCodeSupport Condition="... '$(MtouchInterpreter)' == '' And '$(UseInterpreter)' != 'true'
-                                          And ('$(_PlatformName)' == 'iOS' Or 'tvOS' Or 'MacCatalyst')">false</DynamicCodeSupport>
-
-         With both unset, RuntimeFeature.IsDynamicCodeSupported is false, which unregisters
-         MessagePack's DynamicObjectResolver / DynamicUnionResolver (see AppMessagePackResolverSettings)
-         - so any type without a statically emitted formatter throws FormatterNotRegisteredException.
-
-         Why it's off anyway: on .NET 11 preview 6 the CoreCLR interpreter faults on device.
-         Four consecutive 0x8BADF00D watchdog kills, main thread, identical stacks:
-
-           InterpExecMethod / ExecuteInterpretedMethod
-             CID_VirtualOpenDelegateDispatchWorker      <- native fault in interpreted code
-               EEPolicy::LogManagedCallstackForSignal
-                 CallStackLogger::PrintStackTrace
-                   TypeString::AppendMethodImpl         <- >5s symbolicating -> killed
-
-         The app painted its UI and then stopped responding to touch, because the main thread was
-         stuck in CoreCLR's own crash logger. Unlike Android, iOS has no JIT to fall back on, so the
-         interpreter is the only dynamic-code path - and it's the thing crashing.
-
-         What makes this safe: every known formatter gap is now closed statically (Size2D,
-         Notification, ShardKey, Tile/Maybe/Choice), each with a test that fails without it, so
-         nothing depends on runtime codegen. Keep it that way - fix formatters, don't reach for
-         this switch. See docs/ios-specific.md. -->
+    <!-- No UseInterpreter / MtouchInterpreter here, deliberately - and don't add them back
+         without reading docs/ios-specific.md first. Short version: they're what gates
+         DynamicCodeSupport on Apple targets, but the CoreCLR interpreter crashes on device
+         (.NET 11 preview 6), so we run with no dynamic code and keep every serializable type
+         statically resolvable instead. -->
   </PropertyGroup>
 
   <!-- iOS: Debug configuration -->
