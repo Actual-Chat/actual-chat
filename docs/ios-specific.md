@@ -18,38 +18,92 @@ way, by making sure nothing needs dynamic code in the first place. Native AOT bu
 have neither by definition either; that's why they're not production yet, and why
 [CodeKeeper](./native-aot.md) coverage is the work that gets us there.
 
-## The interpreter is off, and why
+## The interpreter is on, but only with Blazor excluded from R2R (interim)
 
-We enabled `UseInterpreter=true` to restore dynamic code, and **backed it out the same
-day**: on .NET 11 preview 6 the CoreCLR interpreter faults on device. Four consecutive
-`0x8BADF00D` watchdog kills, main thread, identical stacks:
+Two settings that must move together, both in `App.Maui.csproj`:
+
+```xml
+<UseInterpreter>true</UseInterpreter>
+<PublishReadyToRunExclude Include="Microsoft.AspNetCore.Components.dll" />
+```
+
+Turning the interpreter on alone **crashes the app**. On .NET 11 preview 6 the CoreCLR
+interpreter faults dispatching an open-instance delegate over a virtual or interface
+method when the caller is R2R-compiled ([dotnet/runtime#130840][r]) — four consecutive
+`0x8BADF00D` watchdog kills, main thread:
 
 ```
 InterpExecMethod / ExecuteInterpretedMethod
   CID_VirtualOpenDelegateDispatchWorker      <- native fault in interpreted code
-    _sigtramp -> invoke_previous_action
-      EEPolicy::LogManagedCallstackForSignal
-        CallStackLogger::PrintStackTrace
-          TypeString::AppendMethodImpl       <- >5s symbolicating -> process killed
+    EEPolicy::LogManagedCallstackForSignal
+      CallStackLogger::PrintStackTrace
+        TypeString::AppendMethodImpl         <- >5s symbolicating -> process killed
 ```
 
-The symptom is deceptive: the app paints its UI and then ignores touches. It isn't a
-hang in our code — the main thread is stuck inside CoreCLR's *own* fatal-error handler,
-symbolicating a managed stack on-device, until the watchdog kills the process. A second
-variant shows `PAL_DispatchException` → `cthread_yield` instead.
+[r]: https://github.com/dotnet/runtime/issues/130840
 
-Retrieve the reports with `idevicecrashreport -u <udid> -k <dir>`; the `termination`
-block carries the `0x8BADF00D` code and `faultingThread` points at thread 0.
+The symptom is deceptive: the app paints its UI and then ignores touches. That's not our
+code hanging — the main thread is stuck in CoreCLR's *own* fatal-error handler,
+symbolicating a managed stack on device, until the watchdog fires. Pull the reports with
+`idevicecrashreport -u <udid> -k <dir>`; `faultingThread` points at thread 0.
 
-Consequence: **iOS has no dynamic-code fallback at all** — no JIT (Apple), no working
-interpreter (this bug). Every serializable type must resolve to a statically emitted
-formatter. That's now true, and it's what makes running without the safety net
-acceptable rather than reckless.
+**Two separate callers reach it, and they needed different fixes.**
 
-Re-test `UseInterpreter=true` when the runtime updates; if it's fixed, turning it back
-on restores defence in depth.
+The first was ours: `MetadataExt` builds `Action<IHasMetadata, MetadataBag>` from an
+interface property setter via Fusion's `GetSetter`, which is an open-instance delegate
+over an interface method. Fixed upstream in **ActualLab.Fusion 14.2.50** — `MemberInfoExt`
+now declines that shortcut on affected Apple configurations and emits codegen instead.
 
-### How this went wrong once
+The second is **Blazor's own**, and no library fix can reach it:
+
+```
+ComponentBase.StateHasChanged -> Renderer.ProcessRenderQueue
+  -> ComponentState.SupplyCombinedParameters -> FusionComponentBase.SetParametersAsync
+    -> ComponentProperties.SetProperties -> <SetProperties>g__SetProperty|4_0  -> FAULT
+```
+
+`ComponentProperties` builds an open-instance `Action<TTarget,TValue>` for every component
+parameter setter, so it's on the path of *every* Blazor render. Notably no `[Parameter]` in
+this repo or in Fusion is declared `virtual`, and the component that faulted
+(`VirtualList<TItem>`) is `sealed` — the stack shows `VirtualList_1<System__Canon>`, so
+shared-generic instantiation appears to be what reaches the virtual-dispatch path.
+
+The fix is to stop that caller being R2R-compiled. The issue states the fault needs an
+R2R caller and passes when the code is interpreted, so excluding
+`Microsoft.AspNetCore.Components.dll` from the R2R image resolves it — verified on device.
+It costs ~17MB off the R2R image (94.5MB → 77.7MB) and makes Blazor's parameter path
+interpreted.
+
+**Remove both together when the runtime fix ships.** Dropping the exclusion alone brings
+the crash back; dropping `UseInterpreter` alone silently disables dynamic code again.
+
+### This is interim, not the answer
+
+It works and it's verified on device, but it buys correctness with an unmeasured perf cost:
+Blazor's parameter-assignment path — which runs on every render — is now interpreted rather
+than precompiled. Startup and render-heavy interactions on iOS should be measured against a
+build without the exclusion before anyone treats this as settled.
+
+Alternatives considered, roughly in order of how attractive they look:
+
+- **Do the parameter assignment ourselves.** `FusionComponentBase.SetParametersAsync` already
+  decides whether `base.SetParametersAsync` runs at all (it short-circuits via
+  `ComponentInfo.ShouldSetParameters`), and `ComponentInfo` already holds per-parameter
+  metadata built on `MemberInfoExt.GetGetter`. Adding setters there and assigning directly
+  would route every Fusion component through the helper that 14.2.50 already guards, and skip
+  `ComponentProperties` entirely — no build flags, no perf cliff on the render path. Covers
+  only components deriving from `FusionComponentBase`, not plain `ComponentBase` ones.
+- **Non-generic component subclasses.** The faulting component was generic
+  (`VirtualList_1<System__Canon>`), so re-declaring parameters on a non-generic descendant
+  would move the setters off shared-generic code. Verbose, and only fixes what you convert.
+- **Patch Blazor's setter cache by reflection.** `ComponentProperties` caches `WritersForType`;
+  injecting setters that use a closed delegate or `PropertyInfo.SetValue` would fix every
+  component at once. `IPropertySetter` is `internal`, so it needs a dynamic assembly with
+  `IgnoresAccessChecksTo` — the most general and the most fragile.
+- **Wait for the runtime fix.** Milestoned 11.0.0, root cause already pinned upstream. If it
+  lands before we ship .NET 11, all of the above becomes moot.
+
+## How this went wrong once
 
 `RuntimeFeature.IsDynamicCodeSupported` was **`false`** on iOS between the .NET 11 sweep
 and its fix. You can see the flip in the two runtimeconfigs:
