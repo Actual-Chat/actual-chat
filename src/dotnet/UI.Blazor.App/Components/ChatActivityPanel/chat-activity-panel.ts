@@ -145,6 +145,7 @@ export class ChatActivityPanel {
             return;
 
         // Blazor calls dispose() even when init bailed out above on a missing header
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         this.header?.classList.remove('expanded', 'collapsed', 'pinned');
         this.disposed$.next();
         this.disposed$.complete();
