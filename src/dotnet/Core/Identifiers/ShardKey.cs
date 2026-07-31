@@ -8,6 +8,7 @@ namespace ActualChat;
 /// </summary>
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable, MessagePackObject]
+[MessagePackFormatter(typeof(Serialization.Internal.ShardKeyMessagePackFormatter))]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
 public readonly partial record struct ShardKey(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] int Value)
