@@ -363,6 +363,12 @@
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
+  <!-- Excluded under NativeAOT: it has no interpreter, so dynamic code is genuinely
+       unavailable there and every reflection path must be covered by CodeKeeper. -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) and !($(UseNativeAot) and '$(Configuration)' == 'Release')">
+    <UseInterpreter>true</UseInterpreter>
+  </PropertyGroup>
+
   <!-- iOS: Both Debug & Release configurations -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
@@ -381,26 +387,35 @@
 
     <SkipStaticLibraryValidation>true</SkipStaticLibraryValidation>
 
-    <!-- No UseInterpreter / MtouchInterpreter here, deliberately - don't "restore" them without
-         reading this. The macios SDK gates dynamic code on exactly those two properties
+    <!-- Interpreter ON, deliberately, and it is NOT just a perf knob - it decides whether
+         dynamic code works. The macios SDK gates that on these two properties
          (Xamarin.Shared.Sdk.targets):
 
            <DynamicCodeSupport Condition="... '$(MtouchInterpreter)' == '' And '$(UseInterpreter)' != 'true'
                                           And ('$(_PlatformName)' == 'iOS' Or 'tvOS' Or 'MacCatalyst')">false</DynamicCodeSupport>
 
-         so leaving them unset means RuntimeFeature.IsDynamicCodeSupported == false in the app's
-         runtimeconfig. We used to set UseInterpreter=true + MtouchInterpreter=-ActualChat (ActualChat
-         assemblies AOT'd, the rest interpreted); the .NET 11 sweep dropped them as Mono-era cleanup,
-         which they are not - the net11 SDK still reads them, and dropping them silently flipped
-         IsDynamicCodeSupported true -> false.
+         Leave both unset and RuntimeFeature.IsDynamicCodeSupported is false in the app's
+         runtimeconfig. That unregisters MessagePack's DynamicObjectResolver /
+         DynamicUnionResolver (see AppMessagePackResolverSettings), so any type lacking a
+         source-generated or attribute-declared formatter throws FormatterNotRegisteredException
+         at runtime instead of getting one emitted - a single missing formatter takes down every
+         RPC call whose argument graph reaches it, surfacing as an ErrorBarrier.
 
-         Consequence: MessagePack's DynamicObjectResolver / DynamicUnionResolver are registered only
-         when dynamic code is supported (see AppMessagePackResolverSettings), so any type without a
-         source-generated or attribute-declared formatter now throws FormatterNotRegisteredException
-         at runtime instead of getting one emitted. That is the intended trade-off: iOS becomes the
-         early warning for gaps that would otherwise only appear under Native AOT, and we skip the
-         interpreter's overhead. It costs a hard failure per missing formatter until each is
-         registered properly - fix the formatter, don't re-enable dynamic code.
+         The .NET 11 sweep removed these as Mono-era cleanup. They are not Mono-era: the net11
+         SDK still reads them, CoreCLR on iOS ships an interpreter, and dropping them silently
+         flipped IsDynamicCodeSupported true -> false.
+
+         The policy this follows: we are NOT yet ready to ship NativeAOT-style production builds
+         (no JIT and no interpreter). We're close and we want to get there, but until every
+         reflection and serialization path is covered statically, every platform must keep either
+         a JIT or an interpreter available. Turning that safety net off ahead of time doesn't make
+         us AOT-ready, it just moves the failures in front of users. Accepting the interpreter's
+         cost is the right trade - a crash is worse than slower code.
+
+         Deliberately NOT scoped to MacCatalyst: macOS allows JIT, so it likely doesn't need the
+         interpreter - but note the SDK condition lists MacCatalyst too, so it currently gets
+         DynamicCodeSupport=false as well and would hit the same failure. Unverified; if it does,
+         prefer setting DynamicCodeSupport=true there over paying for an interpreter it doesn't need.
 
          See docs/ios-specific.md. -->
   </PropertyGroup>

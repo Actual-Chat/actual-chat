@@ -4,17 +4,30 @@ Things that behave differently on iOS than on every other platform we ship, and 
 reasons why. Mac Catalyst shares most of them — both are Apple targets with the same
 runtime constraints.
 
-## The one that matters: no dynamic code
+## Policy: every platform keeps a JIT or an interpreter
 
-`RuntimeFeature.IsDynamicCodeSupported` is **`false`** on our iOS builds. It was `true`
-before .NET 11 — you can see the flip in the two runtimeconfigs:
+**We are not yet ready to ship NativeAOT-style production builds** — meaning no JIT
+*and* no interpreter. We are close, and it's where we want to end up, but until every
+reflection and serialization path is covered statically, each platform must keep one of
+the two available. Turning the safety net off early doesn't make us AOT-ready; it just
+moves the failures in front of users.
+
+In practice: Android and Windows have a JIT, and iOS keeps the interpreter on
+(`UseInterpreter=true` in `App.Maui.csproj`). Native AOT builds have neither by
+definition — that's exactly why they're not production yet, and why
+[CodeKeeper](./native-aot.md) coverage is the work that gets us there.
+
+### How this went wrong once
+
+`RuntimeFeature.IsDynamicCodeSupported` was **`false`** on iOS between the .NET 11 sweep
+and its fix. You can see the flip in the two runtimeconfigs:
 
 ```
 net10 iOS:  "System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported": true
 net11 iOS:  "System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported": false
 ```
 
-**This is our setting, not a platform limit.** Apple forbids JIT, but CoreCLR on iOS
+**It was our setting, not a platform limit.** Apple forbids JIT, but CoreCLR on iOS
 ships an interpreter, and the macios SDK decides dynamic-code support purely from two
 MSBuild properties (`Xamarin.Shared.Sdk.targets`):
 
@@ -26,15 +39,16 @@ MSBuild properties (`Xamarin.Shared.Sdk.targets`):
 We used to set both — `UseInterpreter=true` with `MtouchInterpreter=-ActualChat`, i.e.
 ActualChat assemblies AOT'd and the rest interpreted. The .NET 11 sweep removed them as
 Mono-era cleanup. They are **not** Mono-era: the net11 SDK still reads them, and dropping
-them flipped the flag. Setting either one restores dynamic code.
+them flipped the flag. `UseInterpreter=true` is now set again for iOS.
 
-Leaving them unset is now deliberate — see the comment in `App.Maui.csproj`. The point is
-that iOS becomes the early warning for gaps that would otherwise only surface under
-Native AOT, at the cost of a hard failure per gap. See [Native AOT](./native-aot.md).
+**Android was unaffected.** It permits JIT and was already on CoreCLR before the sweep
+(`UseCoreClr` + `UseMonoRuntime=false`), so `IsDynamicCodeSupported` stayed `true` — which
+is why the failure showed up on iOS alone.
 
-**Android is unaffected.** It permits JIT and was already on CoreCLR before the sweep
-(`UseCoreClr` + `UseMonoRuntime=false`), so `IsDynamicCodeSupported` is `true` there
-before and after — which is why these bugs show up on iOS first.
+**Mac Catalyst is an open question.** macOS allows JIT, so it probably doesn't need the
+interpreter — but the SDK condition above lists `MacCatalyst`, so it likely gets
+`DynamicCodeSupport=false` too and would fail the same way. Unverified. If it does, prefer
+setting `DynamicCodeSupport=true` there over paying for an interpreter it doesn't need.
 
 ### What breaks: MessagePack formatters
 
@@ -78,10 +92,11 @@ Two consequences worth internalising:
 - **It scales badly.** A single missing formatter produced ~23k first-chance
   exceptions in one short session, because every affected RPC message throws.
 
-Fix by giving the type a real formatter (source-generated, `[MessagePackFormatter]`, or
-an explicit registration). Re-enabling dynamic code (`UseInterpreter=true`) would also
-make it go away, but it hides the gap again everywhere and only defers it to the first
-Native AOT build.
+Still fix the type properly — give it a real formatter (source-generated,
+`[MessagePackFormatter]`, or an explicit registration). The interpreter keeps a missing
+formatter from reaching users; it doesn't make the gap go away, and every such gap is
+still a Native AOT blocker. Getting them all covered is what makes NativeAOT builds
+shippable.
 
 ## Other deltas
 

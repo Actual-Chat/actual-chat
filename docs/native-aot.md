@@ -96,6 +96,22 @@ Instead, STJ AOT compatibility is achieved via `CodeKeeper.Keep(string)` calls t
 
 **TODO**: Investigate whether `JsonSerializerIsReflectionEnabledByDefault=false` works with just the CodeKeeper approach, or if source-gen context injection is needed for full AOT without reflection. May require a custom `IJSRuntime` wrapper that uses our contexts directly instead of going through the `TypeInfoResolverChain`.
 
+## Are we ready to ship it? Not yet
+
+**No.** NativeAOT-style production builds — no JIT and no interpreter — are the goal, not
+the present. We're close, but until every reflection and serialization path is covered
+statically, each platform keeps either a JIT (Android, Windows) or an interpreter (iOS).
+
+That is a deliberate stance, not an oversight. Removing the safety net early doesn't make
+the app AOT-ready; it converts latent gaps into user-visible crashes. A missing MessagePack
+formatter is the canonical example: with dynamic code available it's generated at runtime
+and nobody notices, without it a single one takes down every RPC call whose argument graph
+reaches that type. See [iOS-specific behavior](./ios-specific.md) for a worked case.
+
+The work that changes this answer is the coverage below — CodeKeeper keeps, AotSource
+generation, and formatter/converter registration. When those are complete enough that a
+no-JIT, no-interpreter build runs clean, we can flip the default.
+
 ## Current status (2026-04-21)
 
 ### What works
@@ -177,7 +193,7 @@ or, to keep android-x64 on the experimental NativeAOT path and only carve out ar
 
 **iOS / Mac Catalyst**: `PublishAot=true` replaces CoreCLR + composite R2R. Both platforms lack a JIT, so the default build relies on CoreCLR's interpreter for whatever R2R doesn't cover; Native AOT removes the interpreter entirely, which is why every reflection path has to be covered by CodeKeeper.
 
-`RuntimeFeature.IsDynamicCodeSupported` is already `false` on our regular (non-AOT) iOS builds, because we don't set `UseInterpreter` / `MtouchInterpreter` — the macios SDK gates `DynamicCodeSupport` on exactly those. So the whole class of "works because something emitted it at runtime" bugs surfaces on plain iOS builds, well before anyone opts into Native AOT, and any such failure there is an AOT blocker everywhere. See [iOS-specific behavior](./ios-specific.md).
+iOS keeps `UseInterpreter=true` for this reason — the macios SDK gates `DynamicCodeSupport` on `UseInterpreter` / `MtouchInterpreter`, and with both unset `RuntimeFeature.IsDynamicCodeSupported` goes `false`, which is Native AOT's constraint without Native AOT's static coverage. See [iOS-specific behavior](./ios-specific.md).
 
 **macOS (MacCatalyst)**: `Info.plist` must declare `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` for `getUserMedia` to resolve (already in place); otherwise JS `mediaDevices` calls hang forever from within `WKWebView` with no visible error — the same hang shape as the earlier Windows unpackaged case (see Known Issues #8).
 
