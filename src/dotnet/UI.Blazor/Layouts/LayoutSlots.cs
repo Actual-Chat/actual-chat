@@ -7,5 +7,6 @@ public static class LayoutSlots
     public const string SubHeader = nameof(SubHeader);
     public const string MainFooter = nameof(MainFooter);
     public const string SubFooter = nameof(SubFooter);
+    public const string MainBodyOverlay = nameof(MainBodyOverlay);
     public const string MainRightDrawer = nameof(MainRightDrawer);
 }

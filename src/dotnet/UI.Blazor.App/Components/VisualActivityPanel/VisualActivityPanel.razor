@@ -62,9 +62,12 @@
             </ErrorBarrier>
         }
         @if (showPill && chatContext is not null) {
-            <CascadingValue Value="chatContext">
-                <ActivityPill/>
-            </CascadingValue>
+            @* The pill is positioned against the middle panel, not against this panel *@
+            <RenderIntoSlot Name="@LayoutSlots.MainBodyOverlay">
+                <CascadingValue Value="chatContext">
+                    <ActivityPill/>
+                </CascadingValue>
+            </RenderIntoSlot>
         }
         @if (chatContext is not null) {
             <CascadingValue Value="chatContext">
