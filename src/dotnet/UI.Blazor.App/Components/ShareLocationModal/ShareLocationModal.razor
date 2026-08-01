@@ -22,16 +22,15 @@
                 <i class="icon-close"></i>
             </ButtonRound>
             <div class="c-map-menu">
-                <button type="button" class="c-map-menu-item" @onclick="@OnOpenMapTypeMenu">
-                    <i class="icon-map"></i>
-                </button>
+                @if (m.EnableIncompleteUI) {
+                    <button type="button" class="c-map-menu-item" @onclick="@OnOpenMapTypeMenu">
+                        <i class="icon-map"></i>
+                    </button>
+                }
                 <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
                     <i class="icon-navigation-pointer"></i>
                 </button>
             </div>
-            <ButtonRound Class="c-search">
-                <i class="icon-search"></i>
-            </ButtonRound>
         </div>
         <div class="c-actions">
             <ButtonTile Class="c-send-current" Click="@OnSendCurrent">
@@ -60,7 +59,7 @@
                 }
             </div>
         }
-        @if (m.IsMapTypeMenuOpen) {
+        @if (m is { EnableIncompleteUI: true, IsMapTypeMenuOpen: true }) {
             <div class="c-menu-backdrop" @onclick="@OnCloseMapTypeMenu"></div>
             <div class="c-menu c-map-type-menu">
                 @foreach (var info in MapTypes.All) {
@@ -118,7 +117,14 @@
         var isMapTypeMenuOpen = await _isMapTypeMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var isDurationMenuOpen = await _isDurationMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var ownMarker = await LocationUI.GetOwnMarker(ModalModel.ChatId, cancellationToken).ConfigureAwait(false);
-        return new ComputedModel(ownMarker, mapType, isMapTypeMenuOpen, isDurationMenuOpen);
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        return new ComputedModel {
+            OwnMarker =  ownMarker,
+            IsMapTypeMenuOpen =  isMapTypeMenuOpen,
+            IsDurationMenuOpen =  isDurationMenuOpen,
+            MapType =  mapType,
+            EnableIncompleteUI = enableIncompleteUI,
+        };
     }
 
     // Private methods
@@ -163,13 +169,14 @@
 
     // Nested types
 
-    public sealed record ComputedModel(
-        MapMarker? OwnMarker,
-        MapType MapType = MapType.Map,
-        bool IsMapTypeMenuOpen = false,
-        bool IsDurationMenuOpen = false
-    ) {
-        public static readonly ComputedModel None = new((MapMarker?)null);
+    public sealed record ComputedModel {
+        public static readonly ComputedModel None = new() { OwnMarker = null };
+
+        public required MapMarker? OwnMarker { get; init; }
+        public MapType MapType { get; init; } = MapType.Map;
+        public bool IsMapTypeMenuOpen { get; init; }
+        public bool IsDurationMenuOpen { get; init; }
+        public bool EnableIncompleteUI { get; init; }
     }
 
     public sealed class Model {
