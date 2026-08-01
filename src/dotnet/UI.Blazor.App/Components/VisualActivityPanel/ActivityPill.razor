@@ -1,12 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, ActivityPill.Model>
 @{
     var m = State.Value;
     var hasOwnActivity = m.IsOwnCameraStreaming || m.IsOwnScreenCasting || m.IsSharingOwnLocation;
 }
 
-<div @ref="Ref" class="activity-pill" @onclick="@OnClick" @onclick:stopPropagation="true">
+<div class="activity-pill" @onclick="@OnClick" @onclick:stopPropagation="true">
     <span class="c-live-dot"></span>
     <span>Live</span>
     @if (hasOwnActivity) {
@@ -24,28 +23,12 @@
 </div>
 
 @code {
-    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ActivityPill.create";
-
     private Chat Chat => ChatContext.Chat;
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private LocationUI LocationUI => Hub.LocationUI;
 
-    private ElementReference Ref { get; set; }
-    private IJSObjectReference? JSRef { get; set; }
-
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
-
-    public override async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose");
-        JSRef = null!;
-        await base.DisposeAsync();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender)
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
-    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

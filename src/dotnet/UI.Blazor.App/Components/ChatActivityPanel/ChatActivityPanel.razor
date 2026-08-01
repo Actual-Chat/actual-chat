@@ -158,8 +158,7 @@
     private async Task OnJoinClick() {
         // User is not participating — join with listening only (no recording, no camera)
         _ = ChatAudioUI.SetListeningState(Chat.Id, true);
-        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(Chat.Id, CancellationToken.None)
-            .ConfigureAwait(false);
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(Chat.Id).ConfigureAwait(false);
         if (isAnyoneVideoStreaming)
             ChatVideoUI.OpenVideoPanel(Chat.Id);
     }

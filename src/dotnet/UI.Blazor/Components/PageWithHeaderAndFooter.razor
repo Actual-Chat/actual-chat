@@ -27,6 +27,8 @@
                             @Body
                         </ErrorBarrier>
                     </div>
+                    @* Absolutely positioned content anchored to this container rather than to the body *@
+                    @BodyOverlay
                 </div>
             </div>
         </div>
@@ -49,6 +51,7 @@
     [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public RenderFragment? SubFooter { get; set; }
     [Parameter] public RenderFragment? Body { get; set; }
+    [Parameter] public RenderFragment? BodyOverlay { get; set; }
     [Parameter] public RenderFragment? LeftDrawer { get; set; }
     [Parameter] public RenderFragment? RightDrawer { get; set; }
 }
