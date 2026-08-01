@@ -118,9 +118,12 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         return new LocationCountdown(remaining, location.Duration);
     }
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<bool> IsOwnLive(ChatId chatId, CancellationToken cancellationToken)
-        => await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false) != null;
+    {
+        // Consolidated: any sharer's position fix invalidates GetOwnLive, and almost none of that flips this bool.
+        return await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false) != null;
+    }
 
     [ComputeMethod]
     public virtual async Task<SharedLocation?> GetOwnLive(ChatId chatId, CancellationToken cancellationToken)
