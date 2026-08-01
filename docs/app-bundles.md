@@ -13,34 +13,41 @@ targets, and [Native AOT](./native-aot.md) for the other end of the codegen spec
 
 ## The baseline
 
-The APK measured 98.7 MB compressed (103.9 MB on disk; the AAB was 102.9 MB, and Play's
-split delivery trims `res/` and languages further for real downloads).
+The baseline APK measured 98.7 MB compressed (103.9 MB on disk; the AAB was 102.9 MB, and
+Play's split delivery trims `res/` and languages further for real downloads). The "now"
+column is measured from the APK produced after the changes below —
+**79.3 MB compressed, 79.6 MB on disk.**
 
-| Category | Compressed | Share |
-|---|---|---|
-| Managed assemblies (`lib/arm64-v8a/libassembly-store.so`) | 46.7 MB | 47.3% |
-| wwwroot images + video | 19.5 MB | 19.8% |
-| Java/Kotlin (4× dex) | 9.7 MB | 9.8% |
-| Other native libs (`.so`) | 8.7 MB | 8.8% |
-| JS/CSS sourcemaps | 4.8 MB | 4.9% |
-| Android `res/` + `resources.arsc` | 3.0 MB | 3.0% |
-| wasm + ONNX models | 2.3 MB | 2.4% |
-| Fonts | 2.0 MB | 2.0% |
-| JS | 1.3 MB | 1.3% |
-| CSS, misc | 0.7 MB | 0.7% |
+| Category | Baseline | Share | Now | Share |
+|---|---|---|---|---|
+| Managed assemblies (`lib/arm64-v8a/libassembly-store.so`) | 46.7 MB | 47.3% | 46.7 MB | 58.9% |
+| wwwroot images + video | 19.5 MB | 19.8% | **4.8 MB** | 6.1% |
+| Java/Kotlin (4× dex) | 9.7 MB | 9.8% | 9.7 MB | 12.3% |
+| Other native libs (`.so`) | 8.7 MB | 8.8% | 8.7 MB | 10.9% |
+| JS/CSS sourcemaps | 4.8 MB | 4.9% | **0** | — |
+| Android `res/` + `resources.arsc` | 3.0 MB | 3.0% | 3.0 MB | 3.7% |
+| wasm + ONNX models | 2.3 MB | 2.4% | 2.0 MB | 2.5% |
+| Fonts | 2.0 MB | 2.0% | 2.3 MB | 3.0% |
+| JS | 1.3 MB | 1.3% | 1.4 MB | 1.7% |
+| CSS, misc | 0.7 MB | 0.7% | 0.5 MB | 0.9% |
+| **Total** | **98.7 MB** | | **79.3 MB** | |
 
-Two things follow from that table and drive everything below. Managed code is half the
-package, so the composite ReadyToRun image is the first place to look. But **web assets
-plus sourcemaps were 24.7 MB — over a fifth** — and cutting those costs nothing at
-runtime, which made them the better trade.
+Two things follow from the baseline and drove everything below. Managed code was half the
+package, so the composite ReadyToRun image looked like the first place to go. But **web
+assets plus sourcemaps were 24.7 MB — over a fifth** — and cutting those costs nothing at
+runtime, which made them the better trade. That turned out to be the whole win so far: the
+R2R work is blocked, and managed code is now 59% of a smaller package.
 
-Landed so far: **~19.5 MB**, roughly 20% of the package.
+Landed: **19.4 MB, 19.7% of the package.**
 
-| Change | Saving | Status |
-|---|---|---|
-| Landing images split three ways | 14.7 MB | landed |
-| No production sourcemaps (net of `keepNames`) | 4.8 MB | landed |
-| R2R exclusions | 2.6 MB | **blocked** — crashes crossgen2, see below |
+| Change | Predicted | Measured | Status |
+|---|---|---|---|
+| Landing images split three ways | 14.7 MB | 14.7 MB | landed |
+| No production sourcemaps (net of `keepNames`) | 4.8 MB | 4.7 MB | landed |
+| R2R exclusions | 2.6 MB | — | **blocked** — crashes crossgen2, see below |
+
+Verified in the shipped APK: zero `.map` entries, zero `images/webonly` and `images/unused`
+entries, and `images/landing` down from 16.7 MB to 2.0 MB.
 
 ## Managed code: composite ReadyToRun
 
