@@ -34,13 +34,13 @@ package, so the composite ReadyToRun image is the first place to look. But **web
 plus sourcemaps were 24.7 MB — over a fifth** — and cutting those costs nothing at
 runtime, which made them the better trade.
 
-Landed so far: **~22.1 MB**, roughly 22% of the package.
+Landed so far: **~19.5 MB**, roughly 20% of the package.
 
-| Change | Saving |
-|---|---|
-| R2R exclusions | 2.6 MB |
-| Landing images split three ways | 14.7 MB |
-| No production sourcemaps (net of `keepNames`) | 4.8 MB |
+| Change | Saving | Status |
+|---|---|---|
+| Landing images split three ways | 14.7 MB | landed |
+| No production sourcemaps (net of `keepNames`) | 4.8 MB | landed |
+| R2R exclusions | 2.6 MB | **blocked** — crashes crossgen2, see below |
 
 ## Managed code: composite ReadyToRun
 
@@ -65,31 +65,53 @@ One further constraint: the main exclusion item group is not TFM-conditioned, so
 there apply on all four platforms while the evidence comes from an Android trace. Anything
 platform-specific goes in the Android-only group instead.
 
-### Applied
+### Blocked: crossgen2 crashes on a larger exclusion set
 
-In `App.Maui.csproj`. All platforms, Release only:
+**Only `PhoneNumbers.dll` is active today.** Adding the nine assemblies below at once made
+crossgen2 fail the Android Release publish:
 
-| Assembly | IL code | What it is |
-|---|---|---|
-| `PhoneNumbers` | 813 KB | phone number parsing / formatting (predates this analysis) |
-| `System.Private.Xml` | 627 KB | `XmlReader` / `XmlWriter` / XML serialization |
-| `System.Data.Common` | 265 KB | ADO.NET base types |
-| `Newtonsoft.Json` | 258 KB | JSON.NET, transitive via `ActualLab.Core` and `RestEase` |
-| `RestEase` | 35 KB | REST client generator runtime |
-| `Mjml.Net` + `HtmlPerformanceKit` + `ActualChat.Mjml.Blazor` + `ActualChat.Users.Templates` | 222 KB | email templating |
+```
+error NETSDK1096: Optimizing assemblies for performance failed.
+  at ILCompiler.ReadyToRunVisibilityRootProvider.AddCompilationRoots(IRootingServiceProvider)
+     ReadyToRunVisibilityRootProvider.cs:line 39
+  at ILCompiler.Compilation..ctor(...)  ReadyToRunCodegenCompilation.cs:line 68
+```
 
-Android only:
+The crash is in root enumeration, before any code generation: `AddCompilationRoots` walks
+`_module.GetAllTypes()` for each input module and roots their methods. So it's a
+*version-bubble* problem, not a codegen one — something still in the bubble refers to
+something that left it, and the rooting path doesn't tolerate that.
 
-| Assembly | IL code | What it is |
-|---|---|---|
-| `Sentry.Bindings.Android` | 410 KB | JNI bindings for the Sentry Android SDK |
+Which of the nine is at fault is not yet known. The two framework assemblies are the prime
+suspects: composite builds pass `--inputbubble`, which tells crossgen2 it can see every
+input, and `System.Private.Xml` / `System.Data.Common` sit behind type-forwarding facades
+(`System.Xml.ReaderWriter.dll`, `System.Data.dll`) that stay in the bubble. That would also
+explain why `PhoneNumbers` — a leaf third-party assembly nothing forwards to — has always
+been fine. **Untested.**
 
-**1.77 MB of IL → ~9.8 MB off the composite → ~2.6 MB off the APK.** The all-platform
-subset is 1.37 MB IL; the other platforms should see a proportional cut, though the ratios
-below were measured on Android only.
+| Assembly | IL code | What it is | Scope |
+|---|---|---|---|
+| `System.Private.Xml` | 627 KB | `XmlReader` / `XmlWriter` / XML serialization | all platforms |
+| `System.Data.Common` | 265 KB | ADO.NET base types | all platforms |
+| `Newtonsoft.Json` | 258 KB | JSON.NET, transitive via `ActualLab.Core` and `RestEase` | all platforms |
+| `RestEase` | 35 KB | REST client generator runtime | all platforms |
+| `Mjml.Net` + `HtmlPerformanceKit` + `ActualChat.Mjml.Blazor` + `ActualChat.Users.Templates` | 222 KB | email templating | all platforms |
+| `Sentry.Bindings.Android` | 410 KB | JNI bindings for the Sentry Android SDK | Android |
 
-The mechanism works under composite mode: excluded assemblies are absent from the `R2R/`
-output directory and get packaged straight from `linked/`.
+Together: 1.77 MB of IL → ~9.8 MB off the composite → ~2.6 MB off the APK.
+
+### Adding an exclusion
+
+Add one group at a time and publish between groups — a bad entry fails the build with the
+NETSDK1096 above, and a batch tells you nothing about which entry caused it. Suggested
+order, cheapest suspicion first: leaf third-party assemblies (`Newtonsoft.Json`, `RestEase`,
+`Mjml.Net`, `HtmlPerformanceKit`), then our own (`ActualChat.Mjml.Blazor`,
+`ActualChat.Users.Templates`), then `Sentry.Bindings.Android`, then the two framework
+assemblies last.
+
+When it works, the tell is that the excluded assembly is absent from
+`artifacts/obj/App.Maui/release_net11.0-android_android-arm64/R2R/` and gets packaged
+straight from `linked/` instead.
 
 ### Size model
 

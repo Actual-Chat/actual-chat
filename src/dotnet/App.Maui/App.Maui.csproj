@@ -221,21 +221,12 @@
 
        Excluding an assembly doesn't drop it from the app - only its precompiled native code,
        so whatever runs anyway is JIT'd (Android / Windows) or interpreted (iOS / Mac Catalyst).
-       Every one below executed zero managed methods across a full Android cold start; see
-       docs/app-bundles.md for the measurements and the candidates we didn't take. -->
+
+       Only PhoneNumbers is active: the nine other assemblies docs/app-bundles.md identifies
+       as cold crashed crossgen2 in ReadyToRunVisibilityRootProvider.AddCompilationRoots
+       (NETSDK1096). Re-add them one group at a time - see "Adding an exclusion" there. -->
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <PublishReadyToRunExclude Include="PhoneNumbers.dll" /> <!-- Phone number parsing / formatting -->
-    <PublishReadyToRunExclude Include="System.Private.Xml.dll" /> <!-- XmlReader / XmlWriter / XML serialization -->
-    <PublishReadyToRunExclude Include="System.Data.Common.dll" /> <!-- ADO.NET base types -->
-    <PublishReadyToRunExclude Include="Newtonsoft.Json.dll" /> <!-- JSON.NET; we use System.Text.Json -->
-    <PublishReadyToRunExclude Include="RestEase.dll" /> <!-- REST client generator runtime -->
-    <PublishReadyToRunExclude Include="Mjml.Net.dll" /> <!-- MJML -> HTML email renderer -->
-    <PublishReadyToRunExclude Include="HtmlPerformanceKit.dll" /> <!-- Mjml.Net's HTML parser -->
-    <PublishReadyToRunExclude Include="ActualChat.Mjml.Blazor.dll" /> <!-- Blazor components for MJML emails -->
-    <PublishReadyToRunExclude Include="ActualChat.Users.Templates.dll" /> <!-- Our email templates -->
-  </ItemGroup>
-  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <PublishReadyToRunExclude Include="Sentry.Bindings.Android.dll" /> <!-- JNI bindings for the Sentry Android SDK -->
   </ItemGroup>
 
   <!-- Trimming: trimmer root assemblies apply to both R2R trimming and Native AOT.
