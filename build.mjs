@@ -24,6 +24,12 @@ async function copyAssets() {
         recursive: true,
         filter: (src) => path.basename(src) !== 'unused',
     });
+    // maplibre-gl's default build makes its worker out of stringified functions wrapped in a Blob;
+    // keepNames injects __name calls into those strings, and the worker's scope has no __name.
+    // Its prebuilt CSP worker is a plain file - see the maplibre-gl-csp resolver below.
+    await fs.promises.copyFile(
+        './node_modules/maplibre-gl/dist/maplibre-gl-csp-worker.js',
+        `${outputPath}/maplibreWorker.js`);
     await fs.promises.cp('./resources/sounds/converted', `${outputPath}/sounds`, {
         recursive: true,
         filter: (src) => {
@@ -87,6 +93,17 @@ const options = {
     },
     plugins: [
         postcssPlugin(),
+        {
+            // The CSP build is identical except that it loads its worker from a URL instead of a
+            // Blob - the only variant that survives keepNames. Aliasing here rather than deep-importing
+            // in map-view.ts keeps the package's own types resolving.
+            name: 'maplibre-gl-csp',
+            setup(build) {
+                const cspPath = path.resolve(
+                    import.meta.dirname, 'node_modules/maplibre-gl/dist/maplibre-gl-csp.js');
+                build.onResolve({ filter: /^maplibre-gl$/ }, () => ({ path: cspPath }));
+            },
+        },
         {
             // Treat only this specific MJS as a file, keep all other .mjs as JS
             name: 'ort-wasm-simd-mjs-as-file',

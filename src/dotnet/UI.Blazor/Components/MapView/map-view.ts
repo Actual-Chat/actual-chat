@@ -1,5 +1,17 @@
 import maplibregl, { Map as MlMap, Marker as MlMarker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { Versioning } from 'versioning';
+
+let isWorkerUrlSet = false;
+
+// The build resolves maplibre-gl to its CSP variant, which has no built-in worker URL.
+function setWorkerUrl(): void {
+    if (isWorkerUrlSet)
+        return;
+
+    isWorkerUrlSet = true;
+    maplibregl.setWorkerUrl(Versioning.mapPath('/dist/maplibreWorker.js'));
+}
 
 interface GeoPoint {
     latitude: number;
@@ -101,6 +113,7 @@ export class MapView {
         if (this.map != null || this.isDisposed)
             return;
 
+        setWorkerUrl();
         this.map = new maplibregl.Map({
             container: this.element,
             style: this.options.styleUrl,
