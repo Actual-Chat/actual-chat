@@ -13,18 +13,12 @@ public sealed class FileDownloadUI(UIHub hub)
 
     private UIHub Hub { get; } = hub;
     private IFileSaver? FileSaver { get; } = hub.Services.GetService<IFileSaver>();
-    private IExternalUrlOpener? UrlOpener { get; } = hub.Services.GetService<IExternalUrlOpener>();
 
     public Task Download(string blobId, string fileName, string contentType)
         => DownloadUrl(Hub.UrlMapper.ContentDownloadUrl(blobId), fileName, contentType);
 
     public Task Preview(string blobId)
-    {
-        var url = Hub.UrlMapper.ContentUrl(blobId);
-        return UrlOpener is { } urlOpener
-            ? urlOpener.Open(url)
-            : Hub.JS.InvokeVoidAsync("open", url, "_blank", "noopener").AsTask();
-    }
+        => Hub.OpenExternalUrl(Hub.UrlMapper.ContentUrl(blobId));
 
     public Task DownloadUrl(string url, string fileName, string contentType)
         => FileSaver is { } fileSaver

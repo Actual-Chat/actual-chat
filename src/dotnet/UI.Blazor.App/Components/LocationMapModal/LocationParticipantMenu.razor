@@ -35,7 +35,7 @@
             return;
 
         await WhenClosed.ConfigureAwait(true);
-        await JS.OpenNewWindow(point.ToGoogleMapsUrl()).ConfigureAwait(false);
+        await Hub.OpenExternalUrl(point.ToGoogleMapsUrl()).ConfigureAwait(false);
     }
 
     private async Task OnCopyLink() {
