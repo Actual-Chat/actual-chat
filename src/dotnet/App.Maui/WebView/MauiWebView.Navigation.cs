@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.AspNetCore.Components.WebView;
@@ -77,7 +78,7 @@ public partial class MauiWebView
                 : UrlLoadingStrategy.OpenExternally;
             // TODO: Remove this workaround when MAUI issue is fixed: https://github.com/dotnet/maui/issues/25602
             if (OperatingSystem.IsIOSVersionAtLeast(18) && eventArgs.UrlLoadingStrategy == UrlLoadingStrategy.OpenExternally)
-                _ = ForegroundTask.Run(() => Browser.Default.OpenAsync(uri, BrowserLaunchMode.External));
+                _ = ForegroundTask.Run(() => MauiBrowser.Open(uri.ToString()));
             return false;
         }
 
