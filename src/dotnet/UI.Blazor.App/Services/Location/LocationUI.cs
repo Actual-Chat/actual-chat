@@ -86,16 +86,14 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsLive(ChatId chatId, SharedLocationId id, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsOneTime(ChatId chatId, SharedLocationId id, CancellationToken cancellationToken)
     {
-        // Duration is immutable, so capture Get in isolation — IsLiveShare takes no dependency on it
-        // and won't recompute on the per-fix updates that invalidate Get.
         Computed<SharedLocation?> cLocation;
         using (Computed.BeginIsolation())
             cLocation = await Computed
                 .Capture(() => SharedLocations.Get(Session, chatId, id, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
-        return cLocation.Value is { Duration.Ticks: > 0 };
+        return cLocation.Value?.Duration == TimeSpan.Zero;
     }
 
     [ComputeMethod]
@@ -118,6 +116,10 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         Computed.GetCurrent().Invalidate(delay, false);
         return new LocationCountdown(remaining, location.Duration);
     }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsOwnLive(ChatId chatId, CancellationToken cancellationToken)
+        => await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false) != null;
 
     [ComputeMethod]
     public virtual async Task<SharedLocation?> GetOwnLive(ChatId chatId, CancellationToken cancellationToken)
@@ -203,8 +205,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         if (ownAuthor is null)
             return null;
 
-        var ownLive = await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-        if (ownLive is null)
+        if (!await IsOwnLive(chatId, cancellationToken).ConfigureAwait(false))
             return null;
 
         return await Tracker.Error.Use(cancellationToken).ConfigureAwait(false);
@@ -212,7 +213,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
     public async Task ShowShareModal(ChatId chatId)
     {
-        var isSharing = await GetOwnLive(chatId, Hub.StopToken).ConfigureAwait(true) is not null;
+        var isSharing = await IsOwnLive(chatId, Hub.StopToken).ConfigureAwait(true);
         var model = new ShareLocationModal.Model { ChatId = chatId, IsSharing = isSharing };
         var modalRef = await Hub.ModalUI.Show(model, Hub.StopToken).ConfigureAwait(true);
         await modalRef.WhenClosed.ConfigureAwait(true);

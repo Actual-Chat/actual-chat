@@ -45,6 +45,6 @@
         if (hasRemoteStreams)
             return true;
 
-        return await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false) is not null;
+        return await LocationUI.IsOwnLive(chatId, cancellationToken).ConfigureAwait(false);
     }
 }

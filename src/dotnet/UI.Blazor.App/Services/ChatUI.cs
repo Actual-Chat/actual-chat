@@ -170,8 +170,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
 
         if (lastTextEntry is { HasLocation: true, LocationId: { } locationId }) {
-            var isLive = await LocationUI.IsLive(chatId, locationId, cancellationToken).ConfigureAwait(false);
-            return new ChatPreview { Text = isLive ? "Shared live location" : "Sent a location" };
+            var isOneTime = await LocationUI.IsOneTime(chatId, locationId, cancellationToken).ConfigureAwait(false);
+            return new ChatPreview { Text = isOneTime ? "Sent a location" : "Shared live location" };
         }
 
         var emoji = Emojis.TryGetByIdOrSymbol(lastTextEntry.Content.Trim());
