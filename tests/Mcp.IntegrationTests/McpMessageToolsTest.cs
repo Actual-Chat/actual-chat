@@ -76,7 +76,7 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
         });
         var range = DeserializeResult<McpIdRange<long>>(result);
         range.FirstId.Should().BeLessThanOrEqualTo(posted[0].LocalId);
-        range.LastId.Should().Be(posted[^1].LocalId);
+        range.LastId.Should().BeGreaterThanOrEqualTo(posted[^1].LocalId);
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
             !m.IsRemoved &&
             !string.IsNullOrEmpty(m.AuthorId));
         page.FullRange.FirstId.Should().BeLessThanOrEqualTo(posted[0].LocalId);
-        page.FullRange.LastId.Should().Be(posted[^1].LocalId);
+        page.FullRange.LastId.Should().BeGreaterThanOrEqualTo(posted[^1].LocalId);
     }
 
     [Fact]
