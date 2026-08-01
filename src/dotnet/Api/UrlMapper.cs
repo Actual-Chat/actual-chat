@@ -169,6 +169,11 @@ public sealed partial class UrlMapper
     public string ContentUrl(string contentId)
         => ToAbsolute(ContentBaseUrl, contentId, true);
 
+    // Returns absolute URL that forces a download: content URLs are always cross-origin,
+    // where <a download> is ignored, so only Content-Disposition can trigger one.
+    public string ContentDownloadUrl(string contentId)
+        => ContentUrl(contentId) + "?download=1";
+
     // Returns absolute URL
     public string ImagePreviewUrl(string imageUrl, Vector2 maxResolution)
         => ImagePreviewUrl(imageUrl, (int)maxResolution.X, (int)maxResolution.Y);

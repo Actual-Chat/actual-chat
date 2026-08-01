@@ -81,6 +81,41 @@ public class ContentControllerTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     [Fact]
+    public async Task ServesAttachmentWhenDownloadRequested()
+    {
+        // arrange
+        var blobId = await CreateMedia(
+            TestImages.CreatePng(10, 10),
+            "application/octet-stream",
+            "image.bin");
+        using var httpClient = AppHost.NewHttpClient();
+
+        // act
+        using var response = await httpClient.GetAsync($"api/content/{blobId}?download=1");
+
+        // assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
+        response.Content.Headers.ContentDisposition!.DispositionType.Should().Be("attachment");
+        response.Content.Headers.ContentDisposition.FileName.Should().Contain("image.bin");
+    }
+
+    [Fact]
+    public async Task IgnoresUnrelatedQueryParameters()
+    {
+        // arrange
+        var blobId = await CreateMedia(TestImages.CreatePng(10, 10), "application/octet-stream", "image.bin");
+        using var httpClient = AppHost.NewHttpClient();
+
+        // act
+        using var response = await httpClient.GetAsync($"api/content/{blobId}?v=123");
+
+        // assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentDisposition.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ServesStoredAudioRangeInline()
     {
         // arrange

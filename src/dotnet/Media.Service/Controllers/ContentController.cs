@@ -47,8 +47,14 @@ public sealed class ContentController(IBlobStorages blobStorages, IMediaBackend 
     // Will NOT be cached in memory by response cache middleware
     [CacheControlImmutable(Duration = 2592000 /*30 days*/)]
     [EnableCors("CDN")]
-    public async Task<ActionResult> Download(string blobId, CancellationToken cancellationToken)
+    public async Task<ActionResult> Download(
+        string blobId,
+        [FromQuery] string? download,
+        CancellationToken cancellationToken)
     {
+        // Presence means "download". It's bound as a string rather than a bool so that a stray
+        // value can't trip [ApiController]'s model validation into a 400 on a public CDN URL.
+        var isDownload = download is not null;
         Response.Headers["X-Content-Type-Options"] = "nosniff";
         if (blobId.IsNullOrEmpty())
             return NotFound();
@@ -69,7 +75,7 @@ public sealed class ContentController(IBlobStorages blobStorages, IMediaBackend 
 
         var contentType = await BlobContentTypeDetector.Detect(byteStream, cancellationToken).ConfigureAwait(false)
             ?? MediaTypeNames.Application.Octet;
-        return InlineContentTypes.Contains(contentType)
+        return InlineContentTypes.Contains(contentType) && !isDownload
             ? File(byteStream, contentType, enableRangeProcessing: true)
             : File(byteStream, contentType, media.FileName.NullIfEmpty() ?? "download", enableRangeProcessing: true);
     }

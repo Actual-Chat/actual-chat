@@ -58,7 +58,7 @@
             return Model.None;
 
         return new Model {
-            DownloadUrl = UrlMapper.ContentUrl(attachment.Media.BlobId),
+            DownloadUrl = UrlMapper.ContentDownloadUrl(attachment.Media.BlobId),
             FileName = attachment.Media.FileName,
         };
     }

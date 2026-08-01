@@ -53,7 +53,7 @@
         return new Model {
             Attachment = attachment,
             IsPlaying = isPlaying,
-            DownloadUrl = UrlMapper.ContentUrl(attachment.Media.BlobId),
+            DownloadUrl = UrlMapper.ContentDownloadUrl(attachment.Media.BlobId),
             FileName = attachment.Media.FileName,
         };
     }
