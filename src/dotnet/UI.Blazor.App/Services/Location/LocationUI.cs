@@ -88,12 +88,13 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     [ComputeMethod]
     public virtual async Task<bool> IsOneTime(ChatId chatId, SharedLocationId id, CancellationToken cancellationToken)
     {
+        // Duration is immutable, so capture Get in isolation - no dependency on it, no recompute per fix.
         Computed<SharedLocation?> cLocation;
         using (Computed.BeginIsolation())
             cLocation = await Computed
                 .Capture(() => SharedLocations.Get(Session, chatId, id, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
-        return cLocation.Value?.Duration == TimeSpan.Zero;
+        return cLocation.Value is not { Duration.Ticks: > 0 };
     }
 
     [ComputeMethod]
