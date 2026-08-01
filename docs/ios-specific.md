@@ -138,6 +138,84 @@ were re-enabled — not the three an earlier pass counted: `VirtualList<TItem>`,
 Both are reachable in a shipped build if ever needed: see
 [Setting process environment variables in the app bundle](#setting-process-environment-variables-in-the-app-bundle).
 
+## Shrinking the R2R image, and why we don't
+
+Two ways to precompile less and interpret more were built and measured on device
+(2026-08-01, `net11.0-ios` / `ios-arm64` / Release, dev-signed, clean builds). **Neither
+shipped**, but the mechanics are worth recording because the surrounding docs got them
+wrong, and because the failure mode is not the one you'd expect.
+
+| | baseline | crossgen2 partial | only `ActualChat*`/`ActualLab*` |
+|---|---|---|---|
+| App bundle | 339 MB | **141 MB** | 207 MB |
+| Build | 115 s | 63 s | 71 s |
+| `__managedcode` in the main composite | 59.7 MB | 7.2 MB (**12%**) | 29.0 MB |
+| Assemblies compiled | 183 / 184 | 183 / 184 | **23 / 184** |
+| Launch → WebView | 2.1 s | 1.3 s | not run |
+| Launch → chat list rendered | ~2.3 s | **2.5 s** | not run |
+
+**Partial mode is reachable on Apple targets.** MAUI's `_MauiPublishReadyToRunPartial`
+does not exist in any installed SDK or workload pack — it is a dead property, and the
+claim that partial is Android-only was wrong. crossgen2's own `--partial` works here,
+appended to `PublishReadyToRunCrossgen2CompositeExtraArgs`, with profiles supplied as
+`PublishReadyToRunPgoFiles` items (they reach crossgen2 as `-m:`).
+
+**`--strip-il-bodies` must be turned off for partial.** The SDK adds it to every composite
+build (`PublishReadyToRunStripILBodies`), replacing the IL of compiled methods with
+throwing stubs. That is harmless in full mode and fatal in partial mode, where the whole
+point is that uncompiled methods still have IL for the interpreter to run.
+
+**No PGO profile reaches crossgen2 on iOS today.** The runtime pack ships
+`tools/StandardOptimizationData.mibc`, but it isn't tagged as a `pgodata` asset, so
+`PublishReadyToRunUseRuntimePackOptimizationData` (default `true`) picks up nothing. The
+composite image is laid out without any profile at all.
+
+**`_Profiling/android.mibc` does transfer to `ios-arm64`.** It drives partial mode without
+the generic-instantiation failure that blocks the Windows→Android direction (see the
+comment above `PublishReadyToRunCrossgen2ExtraArgs` in `App.Maui.csproj`). It is still an
+Android recording, so it covers the shared startup path and knows nothing about
+`Microsoft.iOS`, the ObjC registrar, or the Apple audio paths — those run interpreted.
+
+**Excluding most assemblies needs explicit `-r:` references.** For a normal composite build
+the SDK passes crossgen2 *zero* references, because every assembly is an input. Exclude
+enough of them and crossgen2 can no longer resolve even `System.Runtime`:
+
+```
+Failed to load assembly 'System.Runtime'
+  at Internal.TypeSystem.Ecma.EcmaType.InitializeBaseType()
+  at ILCompiler.DependencyAnalysis.ReadyToRun.CopiedFieldRvaNode.GetRvaData(Int32, Int32&)
+  at ILCompiler.ReadyToRunCodegenCompilation.RewriteComponentFile(...)
+```
+
+Feeding the excluded set back as `-r:<path>` through the composite extra args fixes it.
+(The SDK's own `FilterReadyToRunAssemblies=true` — Debug's "user assemblies interpreted"
+mode — never hits this, because it excludes only a couple of dozen assemblies and leaves
+the framework in the image.)
+
+### What actually broke
+
+The partial build **starts fine**: cold start to a rendered chat list is unchanged, with
+88% of the managed code interpreted. Then **opening a chat hangs** — no crash, no error
+barrier, no exception in the WebView console, and the app keeps running. The baseline
+built from the same commit opens chats normally, so this is attributable to partial mode.
+
+Root cause was never established, and the "only ours" variant was never run on device at
+all. If anyone picks this up: opening a chat is the first substantial block of code the
+Android profile never covered, so the natural next step is to force the chat-view
+assemblies back into the image and see whether the hang follows the profile coverage.
+Reach for the syslog channel first — see [Debugging on a device](#debugging-on-a-device).
+
+### The exclusion set fails differently here than on Android
+
+The `PublishReadyToRunExclude` list that crashes crossgen2 on Android with NETSDK1096
+(see [App bundles → Blocked](./app-bundles.md#blocked-crossgen2-crashes-on-a-larger-exclusion-set))
+**does not crash it on iOS.** The build succeeds, the bundle is 8 MB smaller, the app
+installs and launches and renders the chat list — and it is broken. Same root cause,
+silent failure.
+
+The practical consequence: on Apple targets a green build proves nothing about an
+exclusion. Anything re-added to that list has to be exercised on device, not just compiled.
+
 ## How this went wrong once
 
 `RuntimeFeature.IsDynamicCodeSupported` was **`false`** on iOS between the .NET 11 sweep
@@ -352,9 +430,9 @@ ever fails to launch on a P/Invoke, start there.
 rejects an explicit `PublishTrimmed` outright (*"iOS projects do not support setting
 'PublishTrimmed'"*), so the knob is `MtouchLink` — `None` / `SdkOnly` / `Full`.
 
-**ReadyToRun is always full, never partial.** MAUI's `_MauiPublishReadyToRunPartial`
-(which appends `--partial` to crossgen2) is gated on
-`TargetPlatformIdentifier == 'android'`, so it can't affect Apple targets.
+**ReadyToRun is full here, but not because partial is unavailable.** Partial mode works on
+Apple targets and was measured on device; we don't ship it. See
+[Shrinking the R2R image, and why we don't](#shrinking-the-r2r-image-and-why-we-dont).
 
 **The launch surface has to be painted explicitly.** The `UIWindow` and the root view
 controller's view are white by default and show for a frame between the launch
