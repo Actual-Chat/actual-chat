@@ -11,7 +11,7 @@
         Text="Go to message"
         Click="@OnGoToMessage">
     </MenuEntry>
-    @if (!m.DownloadUrl.IsNullOrEmpty()) {
+    @if (!m.BlobId.IsNullOrEmpty()) {
         <MenuEntry
             Icon="icon-download"
             Text="Download"
@@ -58,8 +58,9 @@
             return Model.None;
 
         return new Model {
-            DownloadUrl = UrlMapper.ContentDownloadUrl(attachment.Media.BlobId),
+            BlobId = attachment.Media.BlobId,
             FileName = attachment.Media.FileName,
+            ContentType = attachment.Media.ContentType,
         };
     }
 
@@ -70,17 +71,18 @@
 
     private Task OnDownload() {
         var m = State.Value;
-        if (m.DownloadUrl.IsNullOrEmpty())
+        if (m.BlobId.IsNullOrEmpty())
             return Task.CompletedTask;
 
-        return JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.downloadFile", m.DownloadUrl, m.FileName).AsTask();
+        return Hub.FileDownloadUI.Download(m.BlobId, m.FileName, m.ContentType);
     }
 
     // Nested types
 
     public sealed record Model {
         public static readonly Model None = new();
-        public string DownloadUrl { get; init; } = "";
+        public string BlobId { get; init; } = "";
         public string FileName { get; init; } = "";
+        public string ContentType { get; init; } = "";
     }
 }

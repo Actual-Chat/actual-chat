@@ -1,48 +1,6 @@
 import { getLogs } from 'logging';
-import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 
 const { warnLog } = getLogs('AudioAttachmentPlayer');
-
-export const downloadFile = async (url: string, fileName: string): Promise<void> => {
-    // MAUI registers no DownloadListener (Android) / WKDownloadDelegate (iOS), so a blob download
-    // is silently dropped there. A top-level navigation reaches MAUI's UrlLoading -> OpenExternally;
-    // window.open can't be used - MAUI's OnCreateWindow parses a null URL and throws.
-    if (BrowserInfo.hostKind === 'MauiApp') {
-        window.location.href = url;
-        return;
-    }
-
-    let blob: Blob | null = null;
-    try {
-        const response = await fetch(url);
-        if (response.ok)
-            blob = await response.blob();
-        else
-            warnLog?.log('downloadFile: HTTP', response.status);
-    }
-    catch (e) {
-        warnLog?.log('downloadFile fetch failed:', e);
-    }
-
-    if (!blob) {
-        window.open(url, '_blank', 'noopener');
-        return;
-    }
-
-    const objectUrl = URL.createObjectURL(blob);
-    try {
-        const a = document.createElement('a');
-        a.href = objectUrl;
-        a.download = fileName || '';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-    }
-    finally {
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
-    }
-};
 
 document.addEventListener('input', (e: Event) => {
     const t = e.target;

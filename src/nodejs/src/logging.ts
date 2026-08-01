@@ -41,6 +41,7 @@ export type LogScope =
     | 'BubbleHost'
     | 'ConnectivityUI'
     | 'DelayedInvoker'
+    | 'FileDownload'
     | 'FileUpload'
     | 'EmojiPreview'
     | 'EventHandling'
@@ -150,6 +151,7 @@ const defaults: Record<LogScope, LogLevel> = {
     BubbleHost: LogLevel.Warn,
     ConnectivityUI: LogLevel.Warn,
     DelayedInvoker: LogLevel.Warn,
+    FileDownload: LogLevel.Warn,
     FileUpload: LogLevel.Warn,
     EmojiPreview: LogLevel.Warn,
     EventHandling: LogLevel.Warn,

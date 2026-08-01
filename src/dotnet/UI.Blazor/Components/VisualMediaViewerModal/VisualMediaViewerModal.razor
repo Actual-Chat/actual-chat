@@ -8,9 +8,6 @@
 @{
     var items = ModalModel.Collection.Items;
     var selectedAttachment = items.ElementAtOrDefault(_selectedSlide);
-    var selectedAttachmentUrl = selectedAttachment != null
-        ? UrlMapper.ContentUrl(selectedAttachment.Media.BlobId)
-        : "";
     var selectedAttachmentDownloadUrl = selectedAttachment != null
         ? UrlMapper.ContentDownloadUrl(selectedAttachment.Media.BlobId)
         : "";
@@ -21,7 +18,6 @@
     <VisualMediaViewerHeader
         CloseClick="CloseModal"
         Attachment="@selectedAttachment"
-        ContentUrl="@selectedAttachmentUrl"
         DownloadUrl="@selectedAttachmentDownloadUrl"
         ContentType="@(selectedAttachment?.Media.ContentType ?? "")"/>
     <swiper-container

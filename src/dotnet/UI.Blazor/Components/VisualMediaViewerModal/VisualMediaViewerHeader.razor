@@ -3,10 +3,6 @@
 @using ActualChat.Media
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
-@{
-    var canSave = MediaTypeExt.IsSupportedVisualMedia(ContentType) && !MediaTypeExt.IsSvg(ContentType);
-}
-
 <div class="image-viewer-header">
     @if (_chatEntry != null && _author != null) {
         <HeaderButton Class="mobile bleached" Click="CloseClick">
@@ -40,26 +36,14 @@
             <i class="icon-info"></i>
         </HeaderButton>
         @if (!DownloadUrl.IsNullOrEmpty()) {
-            if (SaveMediaActionHandler != null && canSave) {
-                <a href="#" download class="c-link" @onclick="@SaveMediaActionHandler.Execute" @onclick:preventDefault>
-                    <HeaderButton
-                        Class="bleached"
-                        IsDisabled="@SaveMediaActionHandler.IsBusy"
-                        Tooltip="Download"
-                        TooltipPosition="FloatingPosition.Bottom">
-                        <i class="icon-download"></i>
-                    </HeaderButton>
-                </a>
-            } else {
-                <a href="@DownloadUrl" target="_blank" download class="c-link">
-                    <HeaderButton
-                        Class="bleached"
-                        Tooltip="Download"
-                        TooltipPosition="FloatingPosition.Bottom">
-                        <i class="icon-download"></i>
-                    </HeaderButton>
-                </a>
-            }
+            <HeaderButton
+                Class="bleached"
+                Click="@SaveMediaActionHandler.Execute"
+                IsDisabled="@SaveMediaActionHandler.IsBusy"
+                Tooltip="Download"
+                TooltipPosition="FloatingPosition.Bottom">
+                <i class="icon-download"></i>
+            </HeaderButton>
         }
         <HeaderButton
             Class="desktop bleached"
@@ -81,22 +65,17 @@
     private ShareUI ShareUI => Hub.ShareUI;
     private IAuthors Authors => field ??= Hub.Services.GetRequiredService<IAuthors>();
     private IChats Chats => Hub.Services.GetRequiredService<IChats>();
-    private IUIActionHandler? SaveMediaActionHandler { get; set; }
+    private IUIActionHandler SaveMediaActionHandler { get; set; } = null!;
 
     [Parameter] public ChatEntryAttachment? Attachment { get; set; }
     [Parameter] public EventCallback CloseClick { set; get; }
-    [Parameter] public string ContentUrl { set; get; } = "";
     [Parameter] public string DownloadUrl { set; get; } = "";
     [Parameter] public string ContentType { set; get; } = "";
 
-    protected override void OnInitialized() {
-        var saver = Hub.Services.GetService<IMediaSaver>();
-        if (saver != null) {
-            SaveMediaActionHandler = UIActionHandler.Create(
-                this,
-                () => saver.Save(ContentUrl, ContentType));
-        }
-    }
+    protected override void OnInitialized()
+        => SaveMediaActionHandler = UIActionHandler.Create(
+            this,
+            () => Hub.FileDownloadUI.DownloadUrl(DownloadUrl, Attachment?.Media.FileName ?? "", ContentType));
 
     protected override async Task OnParametersSetAsync() {
         if (Attachment != null) {

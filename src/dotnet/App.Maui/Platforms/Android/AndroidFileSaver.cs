@@ -14,8 +14,8 @@ using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidMediaSaver(IServiceProvider services)
-    : IMediaSaver
+public class AndroidFileSaver(IServiceProvider services)
+    : IFileSaver
 {
     private const string AppSubFolder = CoreConstants.AppName;
 
@@ -23,20 +23,26 @@ public class AndroidMediaSaver(IServiceProvider services)
     private IHttpClientFactory HttpClientFactory => field ??= services.GetRequiredService<IHttpClientFactory>();
     private ILogger Log => field ??= services.LogFor(GetType());
 
-    public async Task Save(string sUri, string contentType)
+    public async Task Save(string url, string fileName, string contentType)
     {
         // TODO(DF): Add special handling to ensure reliable file loading. Provide visual feedback for long loading files.
-        var sourceFile = new File(sUri);
-        var fileName = sourceFile.Name;
+        if (fileName.IsNullOrEmpty())
+            fileName = new File(url).Name;
+
         var succeeded = await BackgroundTask.Run(
-                () => SaveInternally(sUri, contentType, fileName),
+                () => SaveInternally(url, contentType, fileName),
             CancellationToken.None)
             .ConfigureAwait(true); // Continue on Blazor context.
 
+        var target = GetContentKind(contentType) switch {
+            ContentKind.Image or ContentKind.Video => "the gallery",
+            ContentKind.Audio => "Music",
+            _ => "Downloads",
+        };
         if (succeeded)
-            ToastUI.Show("1 file saved to the gallery", "icon-checkmark-circle-2", ToastDismissDelay.Short);
+            ToastUI.Show($"1 file saved to {target}", "icon-checkmark-circle-2", ToastDismissDelay.Short);
         else
-            ToastUI.Show("Failed to save to the gallery", "icon-alert-circle", ToastDismissDelay.Long);
+            ToastUI.Show($"Failed to save to {target}", "icon-alert-circle", ToastDismissDelay.Long);
     }
 
     private async Task<bool> SaveInternally(string sUri, string contentType, string fileName)
@@ -58,7 +64,7 @@ public class AndroidMediaSaver(IServiceProvider services)
     private async Task<Stream?> GetStreamFromUrl(string url)
     {
         try {
-            using var client = HttpClientFactory.CreateClient(nameof(AndroidMediaSaver));
+            using var client = HttpClientFactory.CreateClient(nameof(AndroidFileSaver));
             var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
@@ -84,6 +90,7 @@ public class AndroidMediaSaver(IServiceProvider services)
         var uriToInsert = contentKind switch {
             ContentKind.Image => MediaStore.Images.Media.GetContentUri(MediaStore.VolumeExternalPrimary)!,
             ContentKind.Video => MediaStore.Video.Media.GetContentUri(MediaStore.VolumeExternalPrimary)!,
+            ContentKind.Audio => MediaStore.Audio.Media.GetContentUri(MediaStore.VolumeExternalPrimary)!,
             _ => MediaStore.Downloads.GetContentUri(MediaStore.VolumeExternalPrimary)
         };
         var context = Platform.AppContext;
@@ -109,20 +116,19 @@ public class AndroidMediaSaver(IServiceProvider services)
     }
 
     private static ContentKind GetContentKind(string contentType)
-    {
-        var contentKind = contentType.StartsWith("image/")
-            ? ContentKind.Image
-            : contentType.StartsWith("video/")
-                ? ContentKind.Video
-                : ContentKind.Other;
-        return contentKind;
-    }
+        => contentType switch {
+            _ when contentType.StartsWith("image/") => ContentKind.Image,
+            _ when contentType.StartsWith("video/") => ContentKind.Video,
+            _ when contentType.StartsWith("audio/") => ContentKind.Audio,
+            _ => ContentKind.Other,
+        };
 
     private static string GetSubDirectoryForContentKind(ContentKind contentKind)
     {
         var contentTypeSubDirectory = contentKind switch {
             ContentKind.Image => Environment.DirectoryPictures!,
             ContentKind.Video => Environment.DirectoryMovies!,
+            ContentKind.Audio => Environment.DirectoryMusic!,
             _ => Environment.DirectoryDownloads!
         };
         return contentTypeSubDirectory;
@@ -167,6 +173,7 @@ public class AndroidMediaSaver(IServiceProvider services)
             var uriToInsert = contentKind switch {
                 ContentKind.Image => MediaStore.Images.Media.ExternalContentUri!,
                 ContentKind.Video => MediaStore.Video.Media.ExternalContentUri!,
+                ContentKind.Audio => MediaStore.Audio.Media.ExternalContentUri!,
                 _ => MediaStore.Downloads.ExternalContentUri
             };
             var contentResolver = activity.ContentResolver!;
@@ -209,7 +216,7 @@ public class AndroidMediaSaver(IServiceProvider services)
 
     // Nested types
 
-    private enum ContentKind { Image, Video, Other }
+    private enum ContentKind { Image, Video, Audio, Other }
 
     private class ScanCompletedListener : JObject, MediaScannerConnection.IOnScanCompletedListener
     {

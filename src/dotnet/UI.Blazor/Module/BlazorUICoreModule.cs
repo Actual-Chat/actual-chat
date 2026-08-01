@@ -53,6 +53,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new CaptchaUI(c.UIHub()));
         services.AddScoped(c => new BrowserInfo(c.UIHub()));
         services.AddScoped(c => new WebShareInfo(c.UIHub()));
+        services.AddScoped(c => new FileDownloadUI(c.UIHub()));
         services.AddScoped(_ => new ComponentIdGenerator());
         services.AddScoped(_ => new RenderVars());
 

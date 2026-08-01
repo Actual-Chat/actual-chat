@@ -88,10 +88,11 @@
 
     private Task OnDownload() {
         var m = State.Value;
-        if (m.Attachment is null || m.DownloadUrl.IsNullOrEmpty())
+        if (m.Attachment is not { } attachment)
             return Task.CompletedTask;
 
-        return JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.downloadFile", m.DownloadUrl, m.FileName).AsTask();
+        var media = attachment.Media;
+        return Hub.FileDownloadUI.Download(media.BlobId, media.FileName, media.ContentType);
     }
 
     // Nested types
