@@ -43,10 +43,13 @@ public class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFileSaver
     private async Task SaveViaShareSheet(string url, string fileName, string contentType)
     {
         var tempFilePath = await DownloadToTempFile(url, fileName, contentType).ConfigureAwait(false);
-        await DataTransfer.Share.Default.RequestAsync(new DataTransfer.ShareFileRequest {
-            Title = fileName,
-            File = new DataTransfer.ShareFile(tempFilePath),
-        }).ConfigureAwait(false);
+        // The share sheet is a UIViewController presentation, so it must happen on the main
+        // thread - off it, iOS drops it silently. The await above lands us on a pool thread.
+        await MainThread.InvokeOnMainThreadAsync(
+            () => DataTransfer.Share.Default.RequestAsync(new DataTransfer.ShareFileRequest {
+                Title = fileName,
+                File = new DataTransfer.ShareFile(tempFilePath),
+            })).ConfigureAwait(false);
     }
 
     private Task Save(string tempFilePath, PHAssetResourceType type)
