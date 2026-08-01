@@ -54,7 +54,7 @@
             return;
         }
         await WhenClosed.ConfigureAwait(true);
-        await JS.OpenNewWindow(_url).ConfigureAwait(false);
+        await Hub.OpenExternalUrl(_url).ConfigureAwait(false);
     }
 
     private async Task OnCopy() {
