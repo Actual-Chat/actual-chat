@@ -18,7 +18,12 @@ async function copyAssets() {
     if (fs.existsSync('./firebase.config.json'))
         // only for local-dev build
         await fs.promises.copyFile('./firebase.config.json', `${outputPath}/config/firebase.config.js`, );
-    await fs.promises.cp('./src/nodejs/images', `${outputPath}/images`, { recursive: true });
+    // images/unused holds assets no code references anymore - kept in the repo, published nowhere.
+    // images/webonly is published, but App.Maui.csproj drops it from the app packages.
+    await fs.promises.cp('./src/nodejs/images', `${outputPath}/images`, {
+        recursive: true,
+        filter: (src) => path.basename(src) !== 'unused',
+    });
     await fs.promises.cp('./resources/sounds/converted', `${outputPath}/sounds`, {
         recursive: true,
         filter: (src) => {
