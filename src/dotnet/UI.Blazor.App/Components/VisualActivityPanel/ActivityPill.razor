@@ -45,8 +45,7 @@
             .ConfigureAwait(false);
         var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken)
             .ConfigureAwait(false);
-        var isSharingOwnLocation =
-            await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false) is not null;
+        var isSharingOwnLocation = await LocationUI.IsOwnLive(chatId, cancellationToken).ConfigureAwait(false);
         return new Model(activity.HasCall, isOwnCameraStreaming, isOwnScreenCasting, isSharingOwnLocation);
     }
 

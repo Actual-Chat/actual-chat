@@ -23,8 +23,8 @@
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await LocationUI.GetOwnLive(Chat.Id, cancellationToken).ConfigureAwait(false) is not null;
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => LocationUI.IsOwnLive(Chat.Id, cancellationToken);
 
     private Task OnClick()
         => LocationUI.StopSharing(Chat.Id, CancellationToken.None);
