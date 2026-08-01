@@ -4,6 +4,9 @@ How to profile the Android app, how to read what comes back, and what the last r
 startup profiling actually found. Android is our only mobile target with a real JIT, so
 several conclusions here do **not** transfer to iOS — see [ios-specific.md](./ios-specific.md).
 
+The same traces also drive our R2R exclusion list, which is a size question rather than a
+startup-time one — see [r2r-exclusions.md](./r2r-exclusions.md).
+
 ## Recording a startup profile
 
 ### 1. Build a tracing-enabled APK

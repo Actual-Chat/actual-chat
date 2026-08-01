@@ -152,6 +152,7 @@ export default withMermaid(defineConfig({
               { text: "iOS-specific Behavior", link: "/ios-specific" },
               { text: "Android-specific Behavior", link: "/android-specific" },
               { text: "Native AOT", link: "/native-aot" },
+              { text: "ReadyToRun Exclusions", link: "/r2r-exclusions" },
               { text: "Runtime Async", link: "/runtime-async" },
             ],
           },
