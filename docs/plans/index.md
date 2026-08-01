@@ -75,6 +75,10 @@ account.
 
 ### Platform: macOS / Mac Catalyst
 
+- [Full macOS support](./macos-support.md) — umbrella doc for gaps where Mac
+  Catalyst silently inherits an iOS implementation that doesn't fit macOS.
+  First entry: downloaded files go to Photos or a share sheet instead of
+  `~/Downloads`.
 - [Voice processing](./maccatalyst-voice-processing.md) — restore hardware
   AEC / NS / AGC on Mac Catalyst; currently disabled (the `AVAudioEngine` VP
   downlink has no reference graph), so Mac records without echo cancellation.
