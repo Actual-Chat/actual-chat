@@ -52,7 +52,7 @@ Everything in §9 has shipped. These are the only things left; none blocks anoth
 | 3 | **Confirm which error was spinning.** §9.1 shipped without pinning it down — the fix covers both candidates, so it wasn't blocking, but nobody has seen the actual exception. | §9.1 |
 | 4 | **Client-side measurement.** §9.3 and §9.6 rest on static reasoning; the server logs can't see `ChatUI` / `ChatListUI`. `debugUI.StartFusionMonitor()` closes this. | §11.5 |
 | 5 | **`CanRead` instead of consolidating full rules**, if `GetRules` still churns after §9.8. Suppresses more, costs a call-site migration. | §9.8 |
-| 6 | **`LocationUI.IsLive`** is the last unassessed predicate from §9.6. | §9.6 |
+| 6 | ~~**`LocationUI.IsLive`** is the last unassessed predicate from §9.6.~~ Assessed: `IsOwnLive` is consolidated, `IsOneTime` (ex-`IsLive`) captures its source in isolation. | §9.6 |
 | 7 | **Split `Accounts.GetOwn` from `~Accounts.GetOwn`** when reading the next report — the pre-14.1.71 numbers conflate consolidation source and target. | §1.3 note 3 |
 
 ## 1. Mechanics you need to read the map
@@ -525,8 +525,8 @@ rather than consolidating.
 6. **Branch-conditional reads.** Ordinary `if`/`switch` in a compute method's body
    means the dependency only exists on the taken branch. E.g. `ChatUI.Get` depends
    on `Chats.Get(threadChatId)` + `ChatThreads.GetThreadCreator` **only** when the
-   last entry is a thread start, and on `LocationUI.IsLive` **only** when it has a
-   location (`ChatUI.cs:245-262`). `ChatsBackend.GetRules` takes one of four
+   last entry is a thread start, and on `LocationUI.IsOneTime` **only** when it has a
+   location (`ChatUI.cs:159-175`). `ChatsBackend.GetRules` takes one of four
    disjoint paths by chat kind. These edges are real but data-dependent, and a
    static map necessarily over-approximates them.
 
@@ -920,7 +920,8 @@ rarely moves; skipped where it doesn't:
 | `ChatVideoUI.IsOwnCameraRecording` / `IsOwnScreenCasting` | `bool` | ❌ — read local state set by the user's own click, so a delay lags their own feedback; only upstream is the now-consolidated `IsVideoAvailable` |
 | `TranslationUI.MustTranslate` / `NeedsTranslation` / `IsEnabled` | `bool(?)` | ❌ — derive from settings that rarely change, so there is nothing to suppress |
 | `LiveSessionUI.GetCallStatus` | `CallStatus` | ✅ — consolidated at its source, `ILiveSessions.GetCallStatus` |
-| `LocationUI.IsLive` | `bool` | — not assessed; revisit with §11.5 data |
+| `LocationUI.IsOwnLive` | `bool` | ✅ — collapses `GetOwnLive`, which every sharer's position fix invalidates |
+| `LocationUI.IsOneTime` | `bool` | ❌ — not needed: `Duration` is immutable, so it captures `SharedLocations.Get` in isolation and never sees the fixes |
 
 These are individually small but collectively broad: they're the leaves the Blazor
 components actually subscribe to, so suppressing here prevents re-renders even when
