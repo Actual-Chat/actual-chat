@@ -57,11 +57,13 @@
     @apply hidden;
 }
 /* Floating create button, bottom-right of the chat list. When the Active chats
-   band is present it sits half over its top edge (never fully covering it);
-   otherwise it floats above the list bottom with a margin. */
+   band is present it sits half over its top edge (never fully covering it) and
+   the band's own padding keeps it clear of the bottom safe area; otherwise it
+   floats above the list bottom, clearing the safe area itself. */
 .chat-list-fab.btn.btn-round {
     @apply absolute z-10;
-    @apply right-4 bottom-4;
+    @apply right-4;
+    bottom: calc(1rem + var(--safe-area-bottom));
     @apply w-14 h-14;
     @apply bg-[var(--round-right-panel)] text-primary;
     @apply border border-separator;

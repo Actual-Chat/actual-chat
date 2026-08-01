@@ -193,6 +193,8 @@ On wide (`md+`), side panels are `position: relative` with `left: 0; right: auto
 
 **Search input:** positioned with `top: var(--safe-area-top)` to align below the safe area.
 
+**Create chat/place FAB** (`.chat-list-fab`, bottom-right of the chat list): `bottom: calc(1rem + var(--safe-area-bottom))`. When the Active chats band is present the FAB switches to `bottom: 100%` relative to that band, whose own `padding-bottom: calc(0.5rem + var(--safe-area-bottom))` already clears the inset. The right inset needs no handling here — the panel's right edge is already inset by `.side-nav` (narrow) or the base layout's `.safe-area-right` strip (wide).
+
 ### 5. Right Panel
 
 **Files:** `right-panel.css`, `RightPanelContent.razor`
