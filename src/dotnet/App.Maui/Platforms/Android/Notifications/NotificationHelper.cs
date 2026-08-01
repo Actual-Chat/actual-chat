@@ -44,6 +44,8 @@ public static class NotificationHelper
             contentIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
         var largeImage = imageUrl.IsNullOrEmpty() ? null : GetImage(imageUrl!);
+        var (senderName, conversationTitle) = SplitTitle(title);
+        var style = CreateStyle(senderName, conversationTitle, body, largeImage, messages);
         var builder = new NotificationCompat.Builder(context, Constants.DefaultChannelId)
             .SetContentTitle(title)!
             .SetSmallIcon(Resource.Drawable.notification_app_icon)!
@@ -54,7 +56,10 @@ public static class NotificationHelper
             // A silent update re-posts under the same tag without alerting again.
             .SetSilent(silent)!
             .SetPriority((int)NotificationPriority.High)!;
-        builder.SetStyle(CreateStyle(title, body, largeImage, messages));
+        // MessagingStyle hides both the content title and (on many launchers) its conversation title.
+        if (style is NotificationCompat.MessagingStyle && !conversationTitle.IsNullOrEmpty())
+            builder.SetSubText(conversationTitle);
+        builder.SetStyle(style);
         if (largeImage != null)
             builder.SetLargeIcon(largeImage);
         NotificationManagerCompat.From(context)!.Notify(tag, 0, builder.Build());
@@ -64,10 +69,13 @@ public static class NotificationHelper
     // timestamp) when structured messages are present; single-message and BigTextStyle fallbacks
     // keep old-server pushes and non-chat titles working.
     private static NotificationCompat.Style CreateStyle(
-        string title, string body, Bitmap? largeImage, IReadOnlyList<PushMessage>? messages)
+        string senderName,
+        string? conversationTitle,
+        string body,
+        Bitmap? largeImage,
+        IReadOnlyList<PushMessage>? messages)
     {
         var bigText = new NotificationCompat.BigTextStyle().BigText(body)!;
-        var (senderName, conversationTitle) = SplitTitle(title);
         if (senderName.IsNullOrEmpty())
             return bigText;
 
