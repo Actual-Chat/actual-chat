@@ -47,11 +47,11 @@ adb shell am start -S -W -n chat.actual.dev.app/.MainActivity
 Give the collector a few seconds to bind before `am start`, or the app's connect attempt
 races the router.
 
-`_Profiling/Record-AndroidStartupProfiles.ps1` does all of the above in a loop, so you get
+`scripts/Record-AndroidStartupProfiles.ps1` does all of the above in a loop, so you get
 several cold starts to compare instead of one:
 
 ```bash
-pwsh _Profiling/Record-AndroidStartupProfiles.ps1 -Runs 3 -Duration 00:00:05
+pwsh scripts/Record-AndroidStartupProfiles.ps1 -Runs 3 -Duration 00:00:05
 ```
 
 ### Choosing the profile

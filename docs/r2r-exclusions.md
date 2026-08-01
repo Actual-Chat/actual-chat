@@ -56,7 +56,7 @@ Rule of thumb: **1 MB of excluded IL ≈ 5.5 MB off the composite ≈ 1.5 MB off
 
 ## How the data was gathered
 
-`_Profiling/Trace-A.cmd` records a cold start with
+`src/dotnet/App.Maui/Trace-A.cmd` records a cold start with
 `Microsoft-Windows-DotNETRuntime:0x1F000080018:5` — Loader + Jit keywords, plus the
 end-of-session rundown. That yields `ModuleLoad` for every assembly and
 `MethodLoadVerbose` / `MethodDCStopVerbose` for every method that actually acquired
