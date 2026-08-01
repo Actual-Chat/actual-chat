@@ -45,8 +45,6 @@
         if (hasRemoteStreams)
             return true;
 
-        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        return enableIncompleteUI
-            && await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false) is not null;
+        return await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false) is not null;
     }
 }

@@ -36,21 +36,14 @@
         Text="Mention"
         Click="@OnMentionClick"/>
 
-    @if (_enableIncompleteUI) {
-        <MenuEntry
-            Icon="icon-map-point"
-            Text="Location"
-            Click="@OnShareLocationClick"/>
-    }
+    <MenuEntry
+        Icon="icon-map-point"
+        Text="Location"
+        Click="@OnShareLocationClick"/>
 </div>
 
 @code {
-    private bool _enableIncompleteUI;
-
     private string EditorId => Arguments.Length > 0 ? Arguments[0] : "";
-
-    protected override async Task OnInitializedAsync()
-        => _enableIncompleteUI = await Features.IsIncompleteUIEnabled();
 
     private async Task OnAttachClick(string acceptTypes = "") {
         await WhenClosed.ConfigureAwait(false);

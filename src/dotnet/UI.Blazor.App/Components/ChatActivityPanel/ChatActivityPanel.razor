@@ -137,9 +137,8 @@
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatchingHere = chat.Id == watchingChatId;
         var canShowAudioDiagnostics = await AudioDiagnosticsUI.IsEnabled(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        var isSharingOwnLocation = enableIncompleteUI
-            && await LocationUI.GetOwnLive(chat.Id, cancellationToken).ConfigureAwait(false) is not null;
+        var isSharingOwnLocation = await LocationUI.GetOwnLive(chat.Id, cancellationToken)
+            .ConfigureAwait(false) is not null;
         return new() {
             AudioState = audioState,
             IsAnyoneTalking = isAnyoneTalking,
