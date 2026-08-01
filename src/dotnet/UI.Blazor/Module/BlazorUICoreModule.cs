@@ -106,6 +106,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));
         }
         services.AddScoped(c => new ClipboardUI(c.UIHub()));
+        services.AddScoped(c => new ExternalUrlOpener(c.UIHub()));
         services.AddScoped(c => new InteractiveUI(c.UIHub()));
         services.AddScoped(c => new AutoNavigationUI(c.UIHub()));
         services.AddScoped(_ => new AppNavigationQueue.ContainerDisposalTracker());

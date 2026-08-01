@@ -22,7 +22,6 @@ public static partial class MauiProgram
         services.AddScoped<IMauiLogAccessor>(c => new WindowsLogAccessor(c));
         services.AddScoped<IAudioCapture>(c => new WindowsAudioCapture(c.LogFor<WindowsAudioCapture>()));
         services.AddScoped<ClipboardUI>(c => new WindowsClipboardUI(c.UIHub()));
-        services.AddScoped<IExternalUrlOpener>(_ => new MauiExternalUrlOpener());
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
     }
 

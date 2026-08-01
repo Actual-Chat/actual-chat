@@ -30,7 +30,6 @@ public static partial class MauiProgram
         services.AddScoped<IRecordingPermissionRequester>(_ => new AppleRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
-        services.AddScoped<IExternalUrlOpener>(_ => new MauiExternalUrlOpener());
         services.AddScoped<IFileSaver>(c => new AppleFileSaver(c.UIHub()));
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
         services.AddTransient<IAppIconBadge>(_ => new AppIconBadge());

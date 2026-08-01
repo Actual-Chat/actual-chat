@@ -1,9 +1,13 @@
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.App.Maui.Services;
 
-public sealed class MauiExternalUrlOpener : IExternalUrlOpener
+public sealed class MauiExternalUrlOpener : ExternalUrlOpener
 {
-    public Task Open(string url)
-        => Browser.Default.OpenAsync(url, BrowserLaunchMode.External);
+    [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiExternalUrlOpener))]
+    public MauiExternalUrlOpener(UIHub hub) : base(hub) { }
+
+    public override Task Open(string url)
+        => MauiBrowser.Open(url);
 }

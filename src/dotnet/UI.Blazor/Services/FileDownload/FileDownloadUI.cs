@@ -18,7 +18,7 @@ public sealed class FileDownloadUI(UIHub hub)
         => DownloadUrl(Hub.UrlMapper.ContentDownloadUrl(blobId), fileName, contentType);
 
     public Task Preview(string blobId)
-        => Hub.OpenExternalUrl(Hub.UrlMapper.ContentUrl(blobId));
+        => Hub.ExternalUrlOpener.Open(Hub.UrlMapper.ContentUrl(blobId));
 
     public Task DownloadUrl(string url, string fileName, string contentType)
         => FileSaver is { } fileSaver

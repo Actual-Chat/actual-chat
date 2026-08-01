@@ -33,7 +33,6 @@ public static partial class MauiProgram
 
         services.AddSingleton<IHistoryExitHandler>(_ => new AndroidHistoryExitHandler());
         services.AddSingleton<AndroidContentDownloader>();
-        services.AddScoped<IExternalUrlOpener>(_ => new MauiExternalUrlOpener());
         services.AddScoped<IFileSaver, AndroidFileSaver>();
 
         services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
