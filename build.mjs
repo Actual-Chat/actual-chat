@@ -61,7 +61,12 @@ const options = {
     treeShaking: true,
     minify: isProduction,
     metafile: mustAnalyze,
-    sourcemap: true,
+    // Production ships no .map files - they were ~20MB raw / 4.8MB compressed in the Android APK,
+    // and nothing reads them at runtime. keepNames pays ~1% of bundle size to keep class and
+    // function identifiers through minification, so a raw stack trace still names its frames.
+    // Switch to 'external' + a sentry-cli upload if we ever want line numbers back.
+    keepNames: true,
+    sourcemap: !isProduction,
     outdir: outputPath,
     tsconfig: './tsconfig.json',
     nodePaths: ['./node_modules'],

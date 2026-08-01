@@ -5,7 +5,8 @@ startup profiling actually found. Android is our only mobile target with a real 
 several conclusions here do **not** transfer to iOS — see [ios-specific.md](./ios-specific.md).
 
 The same traces also drive our R2R exclusion list, which is a size question rather than a
-startup-time one — see [r2r-exclusions.md](./r2r-exclusions.md).
+startup-time one — see [app-bundles.md](./app-bundles.md) for that and for everything else
+that makes up the app packages.
 
 ## Recording a startup profile
 

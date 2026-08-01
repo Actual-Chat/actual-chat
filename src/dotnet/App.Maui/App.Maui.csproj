@@ -222,7 +222,7 @@
        Excluding an assembly doesn't drop it from the app - only its precompiled native code,
        so whatever runs anyway is JIT'd (Android / Windows) or interpreted (iOS / Mac Catalyst).
        Every one below executed zero managed methods across a full Android cold start; see
-       docs/r2r-exclusions.md for the measurements and the candidates we didn't take. -->
+       docs/app-bundles.md for the measurements and the candidates we didn't take. -->
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <PublishReadyToRunExclude Include="PhoneNumbers.dll" /> <!-- Phone number parsing / formatting -->
     <PublishReadyToRunExclude Include="System.Private.Xml.dll" /> <!-- XmlReader / XmlWriter / XML serialization -->
@@ -678,6 +678,12 @@
     <Content Remove="Resources\Images\**" />
     <Content Remove="wwwroot\dist\images\webonly\**" />
     <None Remove="wwwroot\dist\images\webonly\**" />
+  </ItemGroup>
+  <!-- npm run build:Release emits no .map files at all; this only catches a Release app package
+       built on top of a debug frontend build, which is the usual local flow. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <Content Remove="wwwroot\dist\**\*.map" />
+    <None Remove="wwwroot\dist\**\*.map" />
   </ItemGroup>
 
   <ItemGroup>
