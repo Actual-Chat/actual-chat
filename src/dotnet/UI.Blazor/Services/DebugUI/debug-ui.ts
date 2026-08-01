@@ -248,6 +248,11 @@ export class DebugUI {
         infoLog?.log(`showSafeAreas: ${show ?? 'default'}`);
     }
 
+    // Flips between forced 34px insets and the real env() values; bound to the dev-only Ctrl+Alt+S hotkey.
+    public static toggleSafeAreas(): void {
+        this.showSafeAreas(document.body.classList.contains('show-safe-areas') ? null : true);
+    }
+
     /** On-demand: toggles the VirtualList consistency checker (see virtual-list-debug.ts).
      *  When on, every live list checks its geometry ~10×/s plus on data-request and render,
      *  logging inconsistencies and accumulating them in globalThis.__vlDebugs[identity]. */

@@ -35,6 +35,8 @@ This adds/removes `show-safe-areas` or `hide-safe-areas` classes on `<body>`, wh
 
 **Use this for:** testing the app after it has fully loaded — navigating between pages, opening dialogs, menus, panels, etc.
 
+**Shortcut:** `Ctrl+Alt+S` (`⌘+⌥+S` on macOS) flips between forced 34px insets and the real `env()` values. It's registered only on development instances (`HostInfo.IsDevelopmentInstance`) and is deliberately omitted from the `Ctrl+/` keyboard shortcuts dialog. See `AlwaysVisibleComponents.razor` and `DebugUI.toggleSafeAreas`.
+
 ### Method 2: CSS override in `main.css` (compile-time, before JS loads)
 
 Uncomment the block near the top of `src/nodejs/styles/main.css`:

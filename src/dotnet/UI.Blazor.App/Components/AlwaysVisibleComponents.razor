@@ -1,4 +1,5 @@
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Module
 @inherits ComponentBase<AppUIHub>
 
 <ModalHost />
@@ -8,6 +9,10 @@
 <Hotkey Keys="ctrl+k" AriaLabel="Quick chat navigation" OnTrigger="OnQuickNav"/>
 <Hotkey Keys="ctrl+/" AriaLabel="Keyboard shortcuts" OnTrigger="OnShortcutsHelp"/>
 <Hotkey Keys="ctrl+shift+l" AriaLabel="Toggle light or dark theme" OnTrigger="OnToggleTheme"/>
+@if (HostInfo.IsDevelopmentInstance) {
+    @* Debug-only, hence intentionally absent from KeyboardShortcutsModal. *@
+    <Hotkey Keys="ctrl+alt+s" AriaLabel="Toggle safe areas" OnTrigger="OnToggleSafeAreas"/>
+}
 @if (!BrowserInfo.IsTouchCapable) {
     <TooltipHost />
 }
@@ -62,6 +67,9 @@
 
     private Task OnToggleTheme()
         => ThemeUI.ToggleTheme().AsTask();
+
+    private Task OnToggleSafeAreas()
+        => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.DebugUI.toggleSafeAreas").AsTask();
 
     private async Task OnShortcutsHelp() {
         if (_isShortcutsHelpOpen)
