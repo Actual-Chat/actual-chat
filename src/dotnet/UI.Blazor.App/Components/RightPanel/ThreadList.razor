@@ -1,15 +1,19 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, ThreadList.Model>
+@inherits ComputedStateComponent<AppUIHub, ThreadList.Model?>
 @{
     var m = State.Value;
 }
 
 <div class="thread-list-tab">
-    <div class="c-content" role="listbox">
-        @foreach (var item in m.ThreadChats) {
-            <ThreadListItem Chat="@item" />
-        }
-    </div>
+    @if (m is { ThreadChats.Count: 0 }) {
+        <div class="c-empty">No threads yet</div>
+    } else if (m is not null) {
+        <div class="c-content" role="listbox">
+            @foreach (var item in m.ThreadChats) {
+                <ThreadListItem Chat="@item" />
+            }
+        </div>
+    }
 </div>
 
 @code {
@@ -19,15 +23,15 @@
     [Parameter] public ChatId? ChatId { get; set; }
     [Parameter] public PlaceId? PlaceId { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.None,
+            static t => new ComputedState<Model?>.Options() {
+                InitialValue = null,
                 UpdateDelayer = FixedDelayer.Get(0.1),
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
         var placeId = PlaceId;
         ChatId[] threadIds;

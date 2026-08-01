@@ -448,6 +448,9 @@ body.hoverable .author-list-tab .avatar-badge:hover {
 .thread-list-tab .c-content {
     @apply flex-y gap-y-1;
 }
+.thread-list-tab .c-empty {
+    @apply p-8 text-center;
+}
 .thread-list-tab .c-content .c-description {
     @apply flex-1 flex-y items-start justify-start gap-1;
     @apply w-full;
