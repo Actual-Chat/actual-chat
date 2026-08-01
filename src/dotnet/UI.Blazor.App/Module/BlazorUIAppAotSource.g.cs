@@ -174,6 +174,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EmptySearchChatContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ExternalImageTest>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FileAttachment>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FileAttachmentMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FileAttachmentTitle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FileAttachmentView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FileList>();
@@ -901,6 +902,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.EmptySearchChatContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ExternalImageTest), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FileAttachment), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.FileAttachmentMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FileAttachmentTitle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FileAttachmentView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FileList), AotTypeKind.Component),

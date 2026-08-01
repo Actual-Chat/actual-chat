@@ -1,0 +1,96 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, FileAttachmentMenu.Model>
+@{
+    var m = State.Value;
+    if (m.Attachment is null)
+        return;
+}
+
+<MenuEntry Class="important-item" Icon="icon-eye" Text="Preview" Click="@OnPreview"/>
+<MenuEntry Icon="icon-share" Text="Share file" Click="@OnShare"/>
+<MenuEntry Icon="icon-link-2" Text="Copy download link" Click="@OnCopyLink"/>
+<MenuEntry Icon="icon-download" Text="Download" Click="@OnDownload"/>
+
+@code {
+    private string _entryId = "";
+    private int _index;
+
+    private IChats Chats => Hub.Chats;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [var entryId, var index])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _entryId = entryId;
+        _index = int.Parse(index);
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (!ChatEntryId.TryParse(_entryId, out var entryId))
+            return Model.None;
+
+        var entry = await Chats.GetEntry(Session, entryId, cancellationToken).ConfigureAwait(false);
+        var attachment = entry?.Attachments.FirstOrDefault(a => a.Index == _index);
+        if (attachment is null)
+            return Model.None;
+
+        return new Model {
+            Attachment = attachment,
+            DownloadUrl = UrlMapper.ContentDownloadUrl(attachment.Media.BlobId),
+        };
+    }
+
+    private Task OnPreview() {
+        var m = State.Value;
+        return m.Attachment is { } attachment
+            ? Hub.FileDownloadUI.Preview(attachment.Media.BlobId)
+            : Task.CompletedTask;
+    }
+
+    private async Task OnShare() {
+        var m = State.Value;
+        if (m.Attachment is not { } a)
+            return;
+
+        var modalModel = new ForwardMessageModal.Model(a.EntryId.ChatId) {
+            Title = "Share file",
+            SubmitTitle = "Send",
+        };
+        var modalRef = await ModalUI.Show(modalModel).ConfigureAwait(true);
+        await modalRef.WhenClosed.ConfigureAwait(true);
+        var selectedChatIds = modalModel.SelectedChatIds;
+        if (selectedChatIds.Count == 0)
+            return;
+
+        var cmd = new Chats_ForwardAttachment(Session, a.EntryId, a.Index, selectedChatIds.ToArray());
+        await UICommander.Run(cmd, CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private Task OnCopyLink()
+        => ClipboardUI.WriteText(State.Value.DownloadUrl).AsTask();
+
+    private Task OnDownload() {
+        var m = State.Value;
+        if (m.Attachment is not { } attachment)
+            return Task.CompletedTask;
+
+        var media = attachment.Media;
+        return Hub.FileDownloadUI.Download(media.BlobId, media.FileName, media.ContentType);
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+        public ChatEntryAttachment? Attachment { get; init; }
+        public string DownloadUrl { get; init; } = "";
+    }
+}

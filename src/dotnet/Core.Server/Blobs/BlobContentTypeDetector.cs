@@ -55,6 +55,8 @@ public static class BlobContentTypeDetector
             return "image/vnd.microsoft.icon";
         if (content.StartsWith("II*\0"u8) || content.StartsWith("MM\0*"u8))
             return "image/tiff";
+        if (content.StartsWith("%PDF-"u8))
+            return "application/pdf";
 
         if (content.Length >= 12 && content.StartsWith("RIFF"u8)) {
             var riffType = content[8..12];

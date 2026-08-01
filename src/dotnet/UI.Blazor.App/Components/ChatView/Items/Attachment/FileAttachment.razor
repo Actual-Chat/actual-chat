@@ -8,37 +8,37 @@
     var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
 }
 
-<a class="file-attachment unfocusable"
-   href="@url"
-   target="_blank"
-   role="button">
-    <div class="c-file-icon @fileCls">
-        @if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
-            <i class="icon-play-fill text-2xl"></i>
-        } else {
-            <i class="icon-file text-xl"></i>
-        }
-    </div>
-    <div class="c-file-info">
-        <FileAttachmentTitle Title="@Attachment.Media.FileName"/>
-        <div class="c-bottom">
-            <div class="c-size">
-                <span>@FileSizeFormatter.Format(fileSize)</span>
-            </div>
-            @if (_isLoaded) {
-                <a class="c-open" href="@url" role="button">
-                    <span>Open in Folder</span>
-                </a>
+<div class="file-attachment with-menu unfocusable">
+    <a class="c-file-link"
+       href="@url"
+       target="_blank"
+       role="button">
+        <div class="c-file-icon @fileCls">
+            @if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
+                <i class="icon-play-fill text-2xl"></i>
+            } else {
+                <i class="icon-file text-xl"></i>
             }
         </div>
-    </div>
-</a>
+        <div class="c-file-info">
+            <FileAttachmentTitle Title="@Attachment.Media.FileName"/>
+            <div class="c-bottom">
+                <div class="c-size">
+                    <span>@FileSizeFormatter.Format(fileSize)</span>
+                </div>
+            </div>
+        </div>
+    </a>
+    <ButtonRound
+        Class="btn-sm btn-transparent"
+        data-menu="@(MenuRef.New<FileAttachmentMenu>(Attachment.EntryId.Value, Attachment.Index.ToString()).ToString())"
+        data-menu-trigger="@MenuTrigger.Primary"
+        data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">
+        <i class="icon-more-vertical text-xl"></i>
+    </ButtonRound>
+</div>
 
 @code {
-    #pragma warning disable 0649
-    private bool _isLoaded;
-    #pragma warning restore 0649
-
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter, EditorRequired]

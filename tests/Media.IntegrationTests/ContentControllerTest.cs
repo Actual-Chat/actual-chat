@@ -81,6 +81,23 @@ public class ContentControllerTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     [Fact]
+    public async Task ServesStoredPdfInline()
+    {
+        // arrange
+        var pdfBytes = "%PDF-1.4\n1 0 obj\n<<>>\nendobj\n"u8.ToArray();
+        var blobId = await CreateMedia(pdfBytes, "application/octet-stream", "doc.bin");
+        using var httpClient = AppHost.NewHttpClient();
+
+        // act
+        using var response = await httpClient.GetAsync($"api/content/{blobId}");
+
+        // assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/pdf");
+        response.Content.Headers.ContentDisposition.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ServesAttachmentWhenDownloadRequested()
     {
         // arrange

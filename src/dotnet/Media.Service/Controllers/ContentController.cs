@@ -8,8 +8,10 @@ namespace ActualChat.Media.Controllers;
 [ApiController, Route("api/content")]
 public sealed class ContentController(IBlobStorages blobStorages, IMediaBackend mediaBackend) : ControllerBase
 {
+    // Everything else gets Content-Disposition: attachment - that's what neutralizes SVG/HTML as XSS.
     private static readonly IReadOnlySet<string> InlineContentTypes =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
+            "application/pdf",
             "image/avif",
             "image/bmp",
             "image/gif",
