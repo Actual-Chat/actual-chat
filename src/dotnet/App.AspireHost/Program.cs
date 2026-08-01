@@ -33,7 +33,7 @@ IResourceBuilder<ProjectResource> AddHost(string name, int port, string role)
 
 int GetBasePort(IConfiguration configuration)
 {
-    // HostSettings__BasePort is set by c.ps1 in .env (e.g. 7090 for worktrees)
+    // HostSettings__BasePort is set by ai.ps1 in .env (e.g. 7090 for worktrees)
     if (int.TryParse(configuration["HostSettings:BasePort"], out var basePort))
         return basePort;
     return 7080; // Default matches nginx config

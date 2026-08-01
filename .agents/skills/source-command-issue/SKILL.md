@@ -79,7 +79,7 @@ Record the created issue number from the response.
 
 ### 5. Add to project board with "In Progress" status
 
-Run the following bash commands (`GH_TOKEN` is set automatically by `c.ps1` from `AC_GITHUB_TOKEN`).
+Run the following bash commands (`GH_TOKEN` is set automatically by `ai.ps1` from `AC_GITHUB_TOKEN`).
 
 #### 4a. Find the org project
 

@@ -2,8 +2,8 @@
  * Playwright test script: Sign in with test account and send a message
  *
  * Prerequisites:
- * - Chrome running with remote debugging: `c chrome` (on Windows host)
- * - Server running: `c os` then `/server-start`
+ * - Chrome running with remote debugging: `ai chrome` (on Windows host)
+ * - Server running: `ai os` then `/server-start`
  * - npm install playwright
  *
  * Usage:

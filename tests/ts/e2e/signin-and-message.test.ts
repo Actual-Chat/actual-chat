@@ -3,7 +3,7 @@
  *
  * Prerequisites:
  * - Server running (or AC_E2E_SERVER=managed)
- * - Optionally, Chrome with remote debugging: `c chrome` (port 9222)
+ * - Optionally, Chrome with remote debugging: `ai chrome` (port 9222)
  *
  * Run:
  *   npx vitest run tests/ts/e2e/signin-and-message.test.ts --config vitest.config.e2e.ts
