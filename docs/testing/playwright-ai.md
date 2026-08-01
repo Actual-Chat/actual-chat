@@ -11,7 +11,7 @@ Connect to Chrome running on the host machine for visual debugging. This allows 
 **Start Chrome with remote debugging:**
 
 ```bash
-c chrome
+ai chrome
 ```
 
 This launches Chrome with:
@@ -83,7 +83,7 @@ await browser.close();
 
 Before running Playwright scripts:
 
-1. **For host browser:** Ensure Chrome is running with `c chrome`
+1. **For host browser:** Ensure Chrome is running with `ai chrome`
 
 2. **For headless in Docker:** No additional setup needed — Playwright and Chromium are pre-installed in the Docker image. Both the global installation (`/usr/lib/node_modules/playwright`) and the project's `node_modules/playwright` are available.
 

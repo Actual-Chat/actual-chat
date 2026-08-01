@@ -101,7 +101,7 @@ Two paths, in increasing convenience:
 
 When the user is running `server-loop`, they're almost certainly also
 running Chrome with remote debugging — most likely launched via
-`c chrome` (one instance, default profile, port 9222) or `c chrome*2`
+`ai chrome` (one instance, default profile, port 9222) or `ai chrome*2`
 (two anonymous-profile instances, ports 9222/9223 — what you want for
 multi-user tests).
 

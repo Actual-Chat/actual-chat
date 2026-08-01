@@ -9,7 +9,7 @@
  *
  * Prerequisites:
  * - Server running (server-loop / run-watch).
- * - Optionally, Chrome with remote debugging: `c chrome` (port 9222) to watch live.
+ * - Optionally, Chrome with remote debugging: `ai chrome` (port 9222) to watch live.
  *
  * Run:
  *   npx vitest run tests/ts/e2e/location-sharing.test.ts --config vitest.config.e2e.ts

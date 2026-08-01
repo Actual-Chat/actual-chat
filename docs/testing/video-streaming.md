@@ -4,7 +4,7 @@ This document describes how to test the video streaming feature (VideoPanel) usi
 
 ## Prerequisites
 
-- Host Chrome running with remote debugging: `c chrome` (port 9222)
+- Host Chrome running with remote debugging: `ai chrome` (port 9222)
 - Server running: `/server-start` or manually via `dotnet run`
 - App accessible at `https://local.voxt.ai`
 

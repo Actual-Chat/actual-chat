@@ -18,7 +18,7 @@ loop manages the .NET server; this skill manages the browser side.
 
 - One Chrome on `:9222`, one MCP at `localhost:8765`. Tools appear in
   Claude as `mcp__chrome1__*` (the older `mcp__chrome-devtools-1__*`
-  names still resolve too). Two browsers? `c chrome*2` on the host gives
+  names still resolve too). Two browsers? `ai chrome*2` on the host gives
   anonymous profiles on `:9222` and `:9223`; the second MCP at
   `localhost:8766` exposes `mcp__chrome2__*`.
 - Sign in instantly with `await debugUI.signIn('+1 555 555 5550')` — the
@@ -97,11 +97,11 @@ the previous snapshot UIDs are tied to the dead Chrome session.
 ### Bring it up (host)
 
 ```pwsh
-c chrome           # 1 instance, default profile, port 9222
-c chrome:50000     # 1 instance, default profile, port 50000
-c chrome*2         # 2 instances, anonymous profiles, ports 9222 & 9223
-c chrome*2:50000   # 2 instances, anonymous profiles, ports 50000 & 50001
-c edge[:PORT][*N]  # same shape for Microsoft Edge (default port 9322)
+ai chrome           # 1 instance, default profile, port 9222
+ai chrome:50000     # 1 instance, default profile, port 50000
+ai chrome*2         # 2 instances, anonymous profiles, ports 9222 & 9223
+ai chrome*2:50000   # 2 instances, anonymous profiles, ports 50000 & 50001
+ai edge[:PORT][*N]  # same shape for Microsoft Edge (default port 9322)
 ```
 
 The `*N` suffix forces **anonymous (per-port) profiles** so cookies don't
@@ -183,7 +183,7 @@ mysterious happens.
   too). Just attach listeners.
 - Same realm, same cookies. Playwright sees what the MCP sees; this
   isn't isolation, it's an extra observer.
-- `connectOverCDP` works because `c chrome` already starts Chrome
+- `connectOverCDP` works because `ai chrome` already starts Chrome
   with `--remote-debugging-port=...`. Same flag the MCP uses.
 
 ## 2. The debugUI helpers (browser console)
@@ -538,11 +538,11 @@ cleanup safety net, not a substitute for stopping deliberately.
 
 The screen-share toggle is in the same row of in-call controls (icon looks
 like a monitor / outward arrows). Clicking it triggers `getDisplayMedia`.
-Because `c.ps1` launches Chrome/Edge with
+Because `ai.ps1` launches Chrome/Edge with
 `--auto-select-desktop-capture-source=Voxt`, the picker is bypassed and the
 Voxt window is auto-selected as the source — what gets shared is whatever
 that Chrome instance is rendering (the call UI itself, by default). See
-`/server-loop` skill / `c.ps1` notes for the flag rationale.
+`/server-loop` skill / `ai.ps1` notes for the flag rationale.
 
 Caveats — same as for the camera/mic flags:
 
@@ -551,7 +551,7 @@ Caveats — same as for the camera/mic flags:
   need a known video feed for the screen-share, point a sibling tab at a
   page playing the file, then switch the auto-select flag to
   `--auto-select-tab-capture-source-by-title=<that title>`.
-- With `c chrome*N` (multiple Voxt-titled windows), the desktop-capture
+- With `ai chrome*N` (multiple Voxt-titled windows), the desktop-capture
   auto-pick may grab a sibling Chrome's window. The tab variant of the flag
   scopes the match to tabs in *the calling browser*, which is usually what
   you want for multi-instance tests.
