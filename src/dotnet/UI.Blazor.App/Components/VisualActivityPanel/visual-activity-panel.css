@@ -115,9 +115,10 @@ body.hoverable .map-panel-host .c-menu .c-menu-item:hover:not(:disabled),
     @apply text-headline-1 text-01;
 }
 
-/* ── Activity pill (panel hidden) — desktop-only oval pill under the header,
-      top-right. Click restores the panel to its default inline state. ── */
+/* ── Activity pill ── */
 
+/* Shown while the panel is hidden: a desktop-only oval pill under the header,
+   top-right; clicking it restores the panel to its default inline state. */
 .activity-pill {
     @apply hidden;
 }

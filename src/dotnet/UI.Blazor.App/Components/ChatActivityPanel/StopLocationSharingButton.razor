@@ -13,13 +13,13 @@
     PreventDefault="true"
     Tooltip="Stop location sharing"
     TooltipPosition="FloatingPosition.Bottom"
-    Click="OnClick">
+    Click="@OnClick">
     <marker-pin-off-svg></marker-pin-off-svg>
 </HeaderButton>
 
 @code {
-    private LocationUI LocationUI => Hub.LocationUI;
     private Chat Chat => ChatContext.Chat;
+    private LocationUI LocationUI => Hub.LocationUI;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 

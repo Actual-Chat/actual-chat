@@ -53,7 +53,7 @@
     // Private methods
 
     private void OnClick() {
-        // The call view wins when both activities are on — same choice the old in-panel pill made.
+        // The call view wins when both activities are on.
         ChatActivityUI.TogglePanelMode(Chat.Id, VisualActivityPanelMode.Hidden, false);
         ChatActivityUI.SelectTab(Chat.Id, State.Value.HasCall ? VisualActivityTab.Call : VisualActivityTab.Map);
     }
