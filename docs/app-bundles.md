@@ -272,6 +272,54 @@ the maps still never enter the package. There is no such upload step today.
 and braces: `npm run build:Release` emits none, but the usual local flow builds a Release
 app package on top of a debug frontend build.
 
+### What a trace actually looks like
+
+Measured over CDP against the installed Android Release APK, not inferred:
+
+```
+TypeError: Cannot read properties of null (reading 'getBlob')
+    at ChunkedFileUpload.startWithReporter (https://0.0.0.1/dist/bundle.js:856:8817)
+
+TypeError: Cannot read properties of null (reading 'slice')
+    at ChunkedFileUpload.uploadChunk (https://0.0.0.1/dist/bundle.js:856:10996)
+
+Error: start: chatId is unspecified.
+    at OpusMediaRecorder.start (https://0.0.0.1/dist/bundle.js:855:9857)
+```
+
+`Class.method` survives; so do exception messages, since string literals aren't minified.
+`opusMediaRecorder.constructor.name` reads back as `OpusMediaRecorder`, and every class on
+the `ui` namespace enumerates with real names and real method lists.
+
+The position is the part that's gone. `bundle.js:856:8817` points into one of ~3,600
+enormous lines, so the column is the only real information in it and it won't lead you to a
+source line.
+
+Caveat on the evidence: each frame above is one app frame deep, because these were thrown
+by calling app entry points straight from the console. `keepNames` tags every function
+individually, so there's no mechanism by which a mid-chain frame would be named differently
+— but that part is inference, not observation.
+
+### Reaching the app's WebView over CDP
+
+Works against a **Release** build with no code change: `<DebuggerSupport>true</DebuggerSupport>`
+for Android leaves WebView contents debuggable. Worth knowing that also holds for store
+builds.
+
+```bash
+adb shell cat /proc/net/unix | grep webview_devtools   # -> @webview_devtools_remote_<pid>
+adb forward tcp:9333 localabstract:webview_devtools_remote_<pid>
+curl -s http://127.0.0.1:9333/json                     # page target + its webSocketDebuggerUrl
+```
+
+Then drive `Runtime.evaluate` over that WebSocket. Any CDP client works; the throws above
+came from a ~40-line `ws`-based script. It has to live inside the repo (`tmp/` is fine) so
+that `ws` resolves from the root `node_modules`.
+
+Address the forward as `127.0.0.1`, not `localhost` — on Windows `localhost` can resolve to
+`::1` while `adb forward` listens on IPv4 only, which hangs rather than failing. Run
+`adb forward --remove tcp:9333` when done.
+
 ## Still on the table
 
 | Candidate | Saving | Note |
