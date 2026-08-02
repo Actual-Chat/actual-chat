@@ -29,8 +29,8 @@ RoboKitty post (steps 6–8). Those are the hard-to-revert, outward-facing parts
   — same path `/my-changes --post` and `/robokitty-post` use. No new HTTP code.
 - Release-notes **style** is defined below; match prior notes' tone, don't
   reinvent a format.
-- The **`configs`** sibling repo (`/proj/configs`) needs a matching
-  `release/vX.Y` branch — CI loads config from it. Don't skip step 3b.
+- The **`configs`** sibling repo needs a matching `release/vX.Y` branch — CI
+  loads config from it. Locate the clone first (step 3); don't skip step 3b.
 
 ## Prerequisites
 
@@ -70,26 +70,63 @@ git branch --list 'release/v*' | tail; git log --oneline -1 dev
 
 **The CI build loads configuration from the `configs` repo's `release/vX.Y`
 branch, so it must exist before you push the app's release branch — otherwise
-the release build the app-branch push triggers fails for lack of config.** The
-repo is a sibling at `../configs` (`/proj/configs`); its remote is
-`git@github.com:Actual-Chat/configs.git`.
+the release build the app-branch push triggers fails for lack of config.** Its
+remote is `git@github.com:Actual-Chat/configs.git`.
 
-Ensure it's cloned, then create `release/vX.Y` from the latest `master` and push:
+**Find the actual clone first — do not assume a path or a folder name.** It
+lives beside this repo, but the folder may be called `configs`,
+`ActualChat.configs`, `actual-chat-configs`, or anything similar, and the
+project root differs per environment (`/proj` in the AgentCli Docker container,
+`D:\Projects` on Windows, `~/Projects` on macOS — see `AC_ProjectRoot`). Match
+on the **remote URL**, which is the only stable identifier:
 
 ```bash
-cd /proj/configs 2>/dev/null || git clone git@github.com:Actual-Chat/configs.git /proj/configs && cd /proj/configs
-git fetch origin
-git switch master && git pull --ff-only
-git switch -c release/vX.Y            # skip if it already exists
-git push origin release/vX.Y
-cd /proj/ActualChat                   # back to the app repo
+root="${AC_ProjectRoot:-$(cd "$(git rev-parse --show-toplevel)/.." && pwd)}"
+configs=""
+for d in "$root"/*/; do
+    url=$(git -C "$d" remote get-url origin 2>/dev/null) || continue
+    case "${url%.git}" in *[:/]Actual-Chat/configs) configs="${d%/}"; break;; esac
+done
+[ -n "$configs" ] || { git clone git@github.com:Actual-Chat/configs.git "$root/configs" && configs="$root/configs"; }
+echo "configs repo: $configs"
+```
+
+Match the remote path **exactly** (after stripping `.git`), not as a
+substring — sibling roots hold near-miss repos that a loose pattern grabs
+instead. The `[:/]` class covers both remote forms
+(`git@github.com:Actual-Chat/configs.git` and
+`https://github.com/Actual-Chat/configs`).
+
+**Verify `$configs` is non-empty before using it.** `git -C ""` silently
+operates on the current directory, so an empty variable turns every command
+below into one that rewrites branches in the *app* repo:
+
+```bash
+[ -n "$configs" ] && git -C "$configs" rev-parse --show-toplevel || { echo "configs repo not found — stop"; }
+```
+
+Then create `release/vX.Y` from the latest `master` and push. Use
+`git -C "$configs"` rather than `cd`, so later steps aren't left running from
+the wrong directory — the non-empty check above is what actually protects the
+app repo:
+
+```bash
+git -C "$configs" fetch origin
+git -C "$configs" switch master && git -C "$configs" pull --ff-only
+git -C "$configs" switch -c release/vX.Y     # skip if it already exists
+git -C "$configs" push -u origin release/vX.Y
 ```
 
 If the SSH remote can't authenticate in this environment, push over HTTPS with
 the token instead:
-`git push "https://x-access-token:${GH_TOKEN}@github.com/Actual-Chat/configs.git" release/vX.Y`.
+`git -C "$configs" push "https://x-access-token:${GH_TOKEN}@github.com/Actual-Chat/configs.git" release/vX.Y`.
 If `release/vX.Y` already exists on origin and equals `origin/master`, it's
 already done — leave it.
+
+Leave the clone on `master` when you're done. `git switch -c` without `-u`
+leaves the new branch untracked, and a checkout parked on a release branch is
+how prompt edits meant for `dev` end up on the wrong branch — `dev` CI reads
+configs `master`, release branches read their own.
 
 ### 3b. Push the app branches
 
@@ -230,7 +267,7 @@ worth mentioning, ask: "would a user notice or care?" If no, fold it into the
 |---|---|
 | Target version | `cat version.json` → drop `-alpha` → `X.Y` |
 | Bump | `dotnet nbgv prepare-release` (on `dev`) |
-| Config branch (first!) | `/proj/configs`: `release/vX.Y` from latest `master`, push — CI loads it |
+| Config branch (first!) | configs clone (locate by remote URL, step 3): `release/vX.Y` from latest `master`, push — CI loads it |
 | Push app branches | `git push origin dev && git push origin release/vX.Y` (after config branch) |
 | Commit log | `git log --format='%s' origin/release/vX.(Y-1)..release/vX.Y` |
 | Notes file | `docs/releases/release-notes-vX.Y.md` |
