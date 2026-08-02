@@ -15,6 +15,8 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
                                        ```
                                        In this code `number = 5`.
                                        """;
+    private const string SpoilerText = "Don't read further: ||the murderer is the butler||. You have been warned!";
+    private const string TwoSpoilersText = "The first answer is ||yes||, and the second one is ||no||.";
 
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
     private Translator Translator => field ??= Tester.AppServices.GetRequiredService<Translator>();
@@ -136,5 +138,110 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
 
         // assert
         translated.Should().BeSimilarTo(expected, minSimilarity);
+    }
+
+    [Theory]
+    [InlineData("ru", SpoilerText, "Не читай дальше: ||убийца — дворецкий||. Ты был предупреждён!", "дворецкий")]
+    [InlineData("fr", SpoilerText, "Ne lisez pas plus loin : ||le meurtrier est le majordome||. Vous êtes prévenu !", "majordome")]
+    public async Task ShouldPreserveSpoiler(
+        string targetLanguage,
+        string text,
+        string expected,
+        string expectedSpoilerWord)
+    {
+        // arrange
+        var minSimilarity = 0.7;
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
+        var cancellationToken = cts.Token;
+
+        // act
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken);
+        WriteLine($"Translated text:\n {translated}");
+
+        // assert
+        Unspoil(translated).Should().BeSimilarTo(Unspoil(expected), minSimilarity);
+        var spoiler = GetSpoilers(translated).Should().ContainSingle().Subject;
+        spoiler.Content.ToReadableText().Should().ContainWord(expectedSpoilerWord);
+    }
+
+    [Theory]
+    [InlineData("ru", "||**Everyone** dies at the end||", "все")]
+    [InlineData("fr", "||**Everyone** dies at the end||", "meurt")]
+    public async Task ShouldPreserveMarkupInsideSpoiler(string targetLanguage, string text, string expectedSpoilerWord)
+    {
+        // arrange
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
+        var cancellationToken = cts.Token;
+
+        // act
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken);
+        WriteLine($"Translated text:\n {translated}");
+
+        // assert
+        var spoiler = GetSpoilers(translated).Should().ContainSingle().Subject;
+        spoiler.Content.Format().Should().Contain("**");
+        spoiler.Content.ToReadableText().Should().ContainWord(expectedSpoilerWord);
+    }
+
+    [Theory]
+    [InlineData("ru", TwoSpoilersText, "Первый ответ — ||да||, а второй — ||нет||.")]
+    [InlineData("fr", TwoSpoilersText, "La première réponse est ||oui||, et la deuxième est ||non||.")]
+    public async Task ShouldPreserveEverySpoiler(string targetLanguage, string text, string expected)
+    {
+        // arrange
+        var minSimilarity = 0.7;
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
+        var cancellationToken = cts.Token;
+
+        // act
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken);
+        WriteLine($"Translated text:\n {translated}");
+
+        // assert
+        Unspoil(translated).Should().BeSimilarTo(Unspoil(expected), minSimilarity);
+        GetSpoilers(translated).Should().HaveCount(GetSpoilers(text).Count);
+    }
+
+    // Private methods
+
+    private static string Unspoil(string text)
+        => text.Replace("||", "");
+
+    private static List<StylizedMarkup> GetSpoilers(string text)
+    {
+        var spoilers = new List<StylizedMarkup>();
+        Collect(new MarkupParser().Parse(text));
+        return spoilers;
+
+        void Collect(Markup markup) {
+            switch (markup) {
+            case StylizedMarkup { Style: TextStyle.Spoiler } spoiler:
+                spoilers.Add(spoiler);
+                break;
+            case StylizedMarkup stylized:
+                Collect(stylized.Content);
+                break;
+            case MarkupSeq seq:
+                foreach (var item in seq.Items)
+                    Collect(item);
+                break;
+            case ParagraphMarkup paragraph:
+                Collect(paragraph.Content);
+                break;
+            case HeaderMarkup header:
+                Collect(header.Content);
+                break;
+            case BlockQuoteMarkup blockQuote:
+                Collect(blockQuote.Content);
+                break;
+            case ListMarkup list:
+                foreach (var item in list.Items)
+                    Collect(item);
+                break;
+            case ListItemMarkup listItem:
+                Collect(listItem.Content);
+                break;
+            }
+        }
     }
 }
