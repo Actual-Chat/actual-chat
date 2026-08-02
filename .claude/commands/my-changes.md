@@ -7,8 +7,8 @@ argument-hint: [time window | starting from <sha> | as table | 2x | compact | mi
 # /my-changes
 
 Summarize commits authored by the **current GitHub user** in the current repo
-(and the sibling `ActualLab.Fusion` repo at `/proj/ActualLab.Fusion`, if
-present), across **all branches**, grouped by category and branch.
+(and the sibling `ActualLab.Fusion` repo, if present — located in step 6),
+across **all branches**, grouped by category and branch.
 
 The unit of summary is a **change**, not a commit:
 
@@ -211,8 +211,8 @@ git log --all --no-merges --since="<window>" --format='%an%x09%ae' \
 ```
 
 (For revision ranges, swap `--all --since=…` for the range; for the
-sibling repo add `-C /proj/ActualLab.Fusion`. Combine both repos' author
-sets before de-duping.)
+sibling repo add `-C "$fusion"` — see step 6 for locating it. Combine both
+repos' author sets before de-duping.)
 
 Coalesce idents for the same human: if two `(name, email)` rows share a
 canonical GitHub login (look up via `gh api -X GET search/users -f q="<email>"`
@@ -287,16 +287,39 @@ For each commit hash:
 
 ### 6. Sibling ActualLab.Fusion repo
 
-If `/proj/ActualLab.Fusion/.git` exists, repeat steps 3–5 against that repo:
+**Locate the clone first — do not assume a path or a folder name.** It sits
+beside this repo, but the project root differs per environment (`/proj` in the
+AgentCli Docker container, `D:\Projects` on Windows, `~/Projects` on macOS —
+see `AC_ProjectRoot`) and the folder name is arbitrary. Match the remote path
+**exactly** — the sibling root holds near-misses (`Fusion.Samples`,
+`Fusion.TownHall`, and archived `servicetitan/Stl.Fusion` clones) that a
+substring pattern grabs instead:
 
 ```bash
-git -C /proj/ActualLab.Fusion log --all --no-merges \
+root="${AC_ProjectRoot:-$(cd "$(git rev-parse --show-toplevel)/.." && pwd)}"
+fusion=""
+for d in "$root"/*/; do
+    url=$(git -C "$d" remote get-url origin 2>/dev/null) || continue
+    case "${url%.git}" in *[:/]ActualLab/Fusion) fusion="${d%/}"; break;; esac
+done
+```
+
+The `[:/]` class covers both remote forms (`git@github.com:ActualLab/Fusion.git`
+and `https://github.com/ActualLab/Fusion`).
+
+**If `$fusion` is empty, skip this step entirely** — do not run the commands
+below. `git -C ""` silently operates on the current directory, so an empty
+variable would report this repo's commits a second time under the
+`ActualLab.Fusion` heading. Otherwise repeat steps 3–5 against it:
+
+```bash
+git -C "$fusion" log --all --no-merges \
   --author="<login>" --author="<name>" --author="<email>" \
   --since="<window>" \
   --format='%H%x09%an%x09%ae%x09%ai%x09%s'
 ```
 
-(Always pass `-C /proj/ActualLab.Fusion` — never `cd` into it.)
+(Always pass `-C "$fusion"` — never `cd` into it.)
 
 Render the resulting changes under a single category named **`ActualLab.Fusion`**,
 still grouped by branch within that category. Place this category at the
@@ -400,8 +423,8 @@ git log <range_or_since> --no-merges \
   | awk '$1 != "-" { add += $1; del += $2 } END { print add, del }'
 ```
 
-Run the same against `/proj/ActualLab.Fusion` with `-C` and add the totals
-before printing the footer.
+Run the same against `$fusion` (step 6) with `-C` and add the totals before
+printing the footer. Skip it if `$fusion` is empty.
 
 The footer is the last thing in the output — no closing prose, no
 trailing summary sentence after it.
