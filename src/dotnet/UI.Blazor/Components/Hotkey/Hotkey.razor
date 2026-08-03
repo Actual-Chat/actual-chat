@@ -1,11 +1,13 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <button class="hotkey" type="button" tabindex="-1"
-        aria-keyshortcuts="@Keys" aria-label="@AriaLabel"
+        aria-keyshortcuts="@(IsChord ? null : Keys)" data-hotkey-chord="@(IsChord ? Keys : null)"
+        aria-label="@AriaLabel"
         @onclick="@OnClick">
 </button>
 
 @code {
+    private bool IsChord => Keys.Contains(' ');
     [Parameter, EditorRequired] public string Keys { get; set; } = "";
     [Parameter] public string AriaLabel { get; set; } = "";
     [Parameter] public EventCallback OnTrigger { get; set; }

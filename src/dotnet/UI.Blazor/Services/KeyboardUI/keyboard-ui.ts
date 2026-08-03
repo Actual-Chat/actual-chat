@@ -1,6 +1,12 @@
 import { focusGroupKeyUX, hotkeyKeyUX, hotkeyMacCompat, startKeyUX } from 'keyux';
+import { DeviceInfo } from 'device-info';
+
+const ChordTimeoutMs = 2000;
+const ModifierKeys = new Set(['Control', 'Alt', 'Shift', 'Meta', 'AltGraph', 'CapsLock']);
 
 let started = false;
+let chordLeader = '';
+let chordTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
 // Bootstraps keyux — app-wide keyboard shortcuts driven by `aria-keyshortcuts`.
 // Escape is handled here rather than via keyux, since keyux ignores it inside
@@ -14,10 +20,47 @@ export function initKeyboardUI(): void {
         hotkeyKeyUX([hotkeyMacCompat()]),
         focusGroupKeyUX(),
     ]);
+    window.addEventListener('keydown', onChord, { capture: true });
     window.addEventListener('keydown', onFocusModality, { capture: true });
     window.addEventListener('pointerdown', onPointerDown, { capture: true });
     window.addEventListener('keydown', onEscape, { capture: true });
     window.addEventListener('keydown', onActivate);
+}
+
+// Two-key chords, which keyux can't express. While armed, the next key is always
+// consumed - Escape included, and it just cancels; a still-held Shift is ignored.
+function onChord(event: KeyboardEvent): void {
+    if (event.isComposing || ModifierKeys.has(event.key))
+        return;
+
+    const codes = getKeyCodes(event);
+    if (chordLeader) {
+        const keys = codes.flatMap(code => code.startsWith('shift+') ? [code, code.slice(6)] : [code]);
+        const target = findChordTarget(keys.map(key => `${chordLeader} ${key}`));
+        endChord();
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        target?.click();
+        return;
+    }
+
+    const leader = findChordLeader(codes);
+    if (!leader)
+        return;
+
+    chordLeader = leader;
+    chordTimeoutHandle = setTimeout(endChord, ChordTimeoutMs);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+}
+
+function endChord(): void {
+    chordLeader = '';
+    if (chordTimeoutHandle === null)
+        return;
+
+    clearTimeout(chordTimeoutHandle);
+    chordTimeoutHandle = null;
 }
 
 // Tracks input modality so the focus ring (gated by body.keyboard-focus in CSS)
@@ -40,6 +83,7 @@ function onFocusModality(event: KeyboardEvent): void {
 
 function onPointerDown(): void {
     document.body.classList.remove('keyboard-focus');
+    endChord();
 }
 
 // Activates a focused custom control by synthesizing a click: role="button"
@@ -74,7 +118,7 @@ function onEscape(event: KeyboardEvent): void {
     if (event.key !== 'Escape' || event.isComposing)
         return;
 
-    const target = findEscapeTarget();
+    const target = findLast('[aria-keyshortcuts="escape" i]');
     if (!target)
         return;
 
@@ -83,14 +127,62 @@ function onEscape(event: KeyboardEvent): void {
     target.click();
 }
 
-// Returns the last (topmost in DOM order) non-inert Escape handler.
-function findEscapeTarget(): HTMLElement | null {
-    const targets = document.querySelectorAll<HTMLElement>('[aria-keyshortcuts="escape" i]');
+// Private methods
+
+function findChordLeader(codes: string[]): string | null {
+    for (const code of codes) {
+        if (findLast(`[data-hotkey-chord^="${code} " i]`))
+            return code;
+    }
+
+    return null;
+}
+
+function findChordTarget(chords: string[]): HTMLElement | null {
+    for (const chord of chords) {
+        const target = findLast(`[data-hotkey-chord="${chord}" i]`);
+        if (target)
+            return target;
+    }
+
+    return null;
+}
+
+// Returns the last (topmost in DOM order) non-inert match.
+function findLast(selector: string): HTMLElement | null {
+    const targets = document.querySelectorAll<HTMLElement>(selector);
     for (let i = targets.length - 1; i >= 0; i--) {
         if (!isInert(targets[i]))
             return targets[i];
     }
+
     return null;
+}
+
+// Mirrors keyux's combo format, incl. its ⌘-for-Ctrl macOS compat and its
+// event.code fallback for non-English layouts.
+function getKeyCodes(event: KeyboardEvent): string[] {
+    let prefix = '';
+    if (event.metaKey)
+        prefix += 'meta+';
+    if (event.ctrlKey)
+        prefix += 'ctrl+';
+    if (event.altKey)
+        prefix += 'alt+';
+    if (event.shiftKey)
+        prefix += 'shift+';
+    if (DeviceInfo.isMacOS && !prefix.includes('meta+ctrl'))
+        prefix = prefix.replace('meta+', 'ctrl+');
+
+    const key = event.key.toLowerCase();
+    const codes = [prefix + key];
+    if (/^(Key.|Digit\d)$/.test(event.code)) {
+        const enKey = event.code.replace(/^Key|^Digit/, '').toLowerCase();
+        if (enKey !== key)
+            codes.push(prefix + enKey);
+    }
+
+    return codes;
 }
 
 function isInert(node: HTMLElement): boolean {
@@ -98,5 +190,6 @@ function isInert(node: HTMLElement): boolean {
         if (e.hasAttribute('inert') || e.getAttribute('aria-hidden') === 'true')
             return true;
     }
+
     return false;
 }

@@ -42,22 +42,6 @@
 
 @code {
     private Section[] _sections = [];
-
-    private RenderFragment RenderKeys(Shortcut shortcut) => @<div class="c-keys">
-        @for (var i = 0; i < shortcut.Combos.Length; i++) {
-            if (i > 0) {
-                <span class="c-sep">/</span>
-            }
-            var combo = shortcut.Combos[i];
-            for (var j = 0; j < combo.Length; j++) {
-                if (j > 0) {
-                    <span class="c-sep">+</span>
-                }
-                <kbd>@combo[j]</kbd>
-            }
-        }
-    </div>;
-
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
@@ -68,7 +52,6 @@
                 new("Jump to chat or person", [[mod, "K"]]),
                 new("Search chats", [[mod, "F"]]),
                 new("Focus message editor", [[mod, "E"]]),
-                new("Toggle light or dark theme", [[mod, "Shift", "L"]]),
                 new("Keyboard shortcuts", [[mod, "/"]]),
                 new("Close dialog, menu, or search", [["Esc"]]),
             ]),
@@ -91,6 +74,23 @@
             ]),
         ];
     }
+
+    // Private methods
+
+    private RenderFragment RenderKeys(Shortcut shortcut) => @<div class="c-keys">
+        @for (var i = 0; i < shortcut.Combos.Length; i++) {
+            if (i > 0) {
+                <span class="c-sep">/</span>
+            }
+            var combo = shortcut.Combos[i];
+            for (var j = 0; j < combo.Length; j++) {
+                if (j > 0) {
+                    <span class="c-sep">+</span>
+                }
+                <kbd>@combo[j]</kbd>
+            }
+        }
+    </div>;
 
     // Nested types
 
