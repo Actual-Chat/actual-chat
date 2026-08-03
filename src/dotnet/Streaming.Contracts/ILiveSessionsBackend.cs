@@ -43,7 +43,12 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
     Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken);
     Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken);
-    Task MuteAll(ChatId chatId, AuthorId exceptAuthorId, bool muted, CancellationToken cancellationToken);
+    Task MuteAll(
+        ChatId chatId,
+        ApiArray<AuthorId> exceptAuthorIds,
+        bool muted,
+        CancellationToken cancellationToken);
+    Task SetHost(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     Task UpdateSummary(
         ChatId chatId,
         LiveSessionSummary summary,

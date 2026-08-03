@@ -22,7 +22,7 @@
     @foreach (var authorId in m.AuthorIds) {
         var isOwn = m.IsOwn(authorId);
         var isOwner = m.IsOwner(authorId);
-        var statusText = FormatStatusText(isOwner, isOwn);
+        var statusText = FormatStatusText(isOwner, m.IsModerator(authorId), isOwn);
         /* At the moment there is no available actions for owners and own membership hence do not show menu  */
         var showMenu = !(isOwn || isOwner);
         var dataMenuAttr = showMenu ? MenuRef.New<EditChatMemberMenu>(authorId.Value).ToString() : null;
@@ -87,6 +87,7 @@
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownerIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var moderatorIds = await Roles.ListModeratorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var authors = (await allAuthorIds
             .Select(async authorId => {
@@ -114,6 +115,7 @@
             MemberCount = allAuthorIds.Length,
             AuthorIds = authors.Select(c => c.Item1).ToArray(),
             OwnerIds = ownerIds,
+            ModeratorIds = moderatorIds,
             OwnAuthorId = ownAuthor?.Id,
         };
 
@@ -124,8 +126,8 @@
     private void OnInviteClick()
         => Context.StepIn(DiveInDialogPage.New<AddMemberModalPage>(ChatId));
 
-    private static string? FormatStatusText(bool isOwner, bool isOwn) {
-        var statusText = isOwner ? "Owner" : null;
+    private static string? FormatStatusText(bool isOwner, bool isModerator, bool isOwn) {
+        var statusText = isOwner ? "Owner" : isModerator ? "Moderator" : null;
         if (isOwn) {
             if (statusText != null)
                 statusText += ", your profile";
@@ -141,10 +143,13 @@
         public int MemberCount { get; init; }
         public AuthorId[] AuthorIds { get; init; } = [];
         public AuthorId[] OwnerIds { get; init; } = [];
+        public AuthorId[] ModeratorIds { get; init; } = [];
         public AuthorId? OwnAuthorId { get; init; }
 
         public bool IsOwner(AuthorId authorId)
             => OwnerIds.Contains(authorId);
+        public bool IsModerator(AuthorId authorId)
+            => ModeratorIds.Contains(authorId);
         public bool IsOwn(AuthorId authorId)
             => OwnAuthorId is not null && OwnAuthorId.Equals(authorId);
     }

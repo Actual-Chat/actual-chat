@@ -18,17 +18,24 @@ public static class EditPlaceMemberCommands
             return null;
         var placeTask = hub.Places.Get(session, placeId, cancellationToken);
         var ownerIdsTask = hub.Places.ListOwnerIds(session, placeId, cancellationToken);
+        var moderatorIdsTask = hub.Places.ListModeratorIds(session, placeId, cancellationToken);
         var ownAuthorTask = hub.Places.GetOwn(session, placeId, cancellationToken);
-        await Task.WhenAll(placeTask, ownerIdsTask, ownerIdsTask);
+        await Task.WhenAll(placeTask, ownerIdsTask, moderatorIdsTask, ownAuthorTask);
         var place = await placeTask;
         var ownerIds = await ownerIdsTask;
+        var moderatorIds = await moderatorIdsTask;
         var ownAuthor = await ownAuthorTask;
 
         var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
         var isOwner = ownerIds.Contains(author.Id);
-        var canPromoteToOwner = !isOwner && place != null && place.Rules.IsOwner();
+        var isModerator = moderatorIds.Contains(author.Id);
+        var ownIsOwner = place != null && place.Rules.IsOwner();
+        var canPromoteToOwner = !isOwner && ownIsOwner;
+        var canSetModerator = !isOwner && ownIsOwner;
         var canRemoveFromGroup = !isOwner && !isOwn;
-        return new EditPlaceMemberModel(author, isOwner, isOwn, canPromoteToOwner, canRemoveFromGroup);
+        return new EditPlaceMemberModel(
+            author, isOwner, isModerator, isOwn,
+            canPromoteToOwner, canSetModerator, canRemoveFromGroup);
     }
 
     public static async Task OnRemoveFromPlaceClick(AppUIHub hub, Author author)
@@ -57,9 +64,26 @@ public static class EditPlaceMemberCommands
         });
     }
 
+    public static async Task OnSetModeratorClick(AppUIHub hub, Author author, bool isModerator)
+    {
+        var authorName = author.Avatar.Name;
+        var command = new Places_ChangeRole(hub.Session, author.Id, SystemRole.Moderator, isModerator);
+        var result = await hub.UICommander.Run(command);
+        if (result.HasError)
+            return;
+
+        var text = isModerator
+            ? $"{authorName} is now a Moderator"
+            : $"{authorName} is no longer a Moderator";
+        hub.ToastUI.Show(text, "icon-star-2", ToastDismissDelay.Short);
+    }
+
+    // Private methods
+
     private static async Task OnPromoteToOwnerConfirmed(AppUIHub hub, AuthorId authorId, string authorName)
     {
-        var result = await hub.UICommander.Run(new Places_PromoteToOwner(hub.Session, authorId));
+        var command = new Places_ChangeRole(hub.Session, authorId, SystemRole.Owner, true);
+        var result = await hub.UICommander.Run(command);
         if (result.HasError)
             return;
 

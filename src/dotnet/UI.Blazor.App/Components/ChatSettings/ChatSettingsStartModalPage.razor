@@ -17,7 +17,7 @@
     var publicChatLabel = !isPlaceChat ? "Public" : "Place";
     var isThread = m.Chat.Id.IsThread();
     var canEditChatPic = !isThread;
-    var canEditChatType = !isThread;
+    var canEditChatType = !isThread && m.IsOwner;
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">

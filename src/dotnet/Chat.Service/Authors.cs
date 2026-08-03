@@ -332,8 +332,11 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat.Rules.Account.Require().Id == author.UserId)
             throw StandardError.Constraint("You can't remove yourself from chat members.");
 
-        var ownerIds = await Roles.ListOwnerIds(session, chatId, cancellationToken).ConfigureAwait(false);
-        var isOwner = ownerIds.Contains(authorId);
+        // Not IRoles.ListOwnerIds: it masks anonymous owners from non-owner callers, which would let
+        // a Moderator exclude one.
+        var isOwner = await RolesBackend
+            .IsInSystemRole(ChatsBackend, authorId, SystemRole.Owner, cancellationToken)
+            .ConfigureAwait(false);
         if (isOwner)
             throw StandardError.Constraint("You can't remove an owner of this chat from chat members.");
 
@@ -395,12 +398,17 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     }
 
     // [CommandHandler]
-    public virtual async Task OnPromoteToOwner(Authors_PromoteToOwner command, CancellationToken cancellationToken)
+    public virtual async Task OnChangeRole(Authors_ChangeRole command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, authorId) = command;
+        var (session, authorId, systemRole, isInRole) = command;
+        if (systemRole is not (SystemRole.Owner or SystemRole.Moderator))
+            throw StandardError.Constraint("This system role uses automatic membership rules.");
+        if (systemRole is SystemRole.Owner && !isInRole)
+            throw StandardError.Constraint("Chat owners can't be demoted.");
+
         var chatId = authorId.ChatId;
         chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -414,23 +422,59 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat.Rules.Account.Require().Id == author.UserId)
             return;
 
-        var ownerRole = await RolesBackend
-            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
-            .Require()
+        await ChangeSystemRoleMembership(chatId, authorId, systemRole, isInRole, cancellationToken)
             .ConfigureAwait(false);
+        if (systemRole is SystemRole.Owner && isInRole) {
+            // Owner implies Moderate, so keeping both would double-list them in the members UI.
+            await ChangeSystemRoleMembership(chatId, authorId, SystemRole.Moderator, false, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
 
+    // [CommandHandler]
+    [Obsolete("2026.08: Use Authors_ChangeRole. Old clients only.")]
+    public virtual async Task OnPromoteToOwner(Authors_PromoteToOwner command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, authorId) = command;
+        var changeRoleCommand = new Authors_ChangeRole(session, authorId, SystemRole.Owner, true);
+        await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task ChangeSystemRoleMembership(
+        ChatId chatId,
+        AuthorId authorId,
+        SystemRole systemRole,
+        bool isInRole,
+        CancellationToken cancellationToken)
+    {
+        Role? role;
+        if (isInRole) {
+            var permissions = systemRole is SystemRole.Owner
+                ? ChatPermissions.Owner
+                : ChatPermissionsExt.Moderator;
+            role = await RolesBackend
+                .GetOrCreateSystem(Commander, chatId, systemRole, permissions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else {
+            role = await RolesBackend.GetSystem(chatId, systemRole, cancellationToken).ConfigureAwait(false);
+            if (role == null)
+                return;
+        }
+
+        var authorIds = isInRole
+            ? new SetDiff<AuthorId[], AuthorId> { AddedItems = [authorId] }
+            : new SetDiff<AuthorId[], AuthorId> { RemovedItems = [authorId] };
         var changeRoleCommand = new RolesBackend_Change(
             chatId,
-            ownerRole.Id,
-            ownerRole.Version,
+            role.Id,
+            role.Version,
             new Change<RoleDiff> {
-                Update = new RoleDiff {
-                    AuthorIds = new SetDiff<AuthorId[], AuthorId> {
-                        AddedItems = [authorId],
-                    },
-                },
+                Update = new RoleDiff { AuthorIds = authorIds },
             });
-
         await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
     }
 

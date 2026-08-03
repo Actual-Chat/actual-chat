@@ -24,12 +24,17 @@ public static class EditChatMemberCommands
         var ownIsOwner = chat.Rules.IsOwner();
         var isOwn = ownAuthor.Id == author.Id;
         var ownerIds = await hub.Roles.ListOwnerIds(session, chatId, cancellationToken);
+        var moderatorIds = await hub.Roles.ListModeratorIds(session, chatId, cancellationToken);
         var isOwner = ownerIds.Contains(author.Id);
+        var isModerator = moderatorIds.Contains(author.Id);
         var isAnonymous = author.IsAnonymous;
         var ownIsAnonymous = ownAuthor.IsAnonymous;
         var canPromoteToOwner = !isOwner && ownIsOwner && !(isAnonymous ^ ownIsAnonymous);
+        var canSetModerator = !isOwner && ownIsOwner;
         var canRemoveFromGroup = !isOwner && !isOwn;
-        return new EditChatMemberModel(author, isOwner, isOwn, canPromoteToOwner, canRemoveFromGroup);
+        return new EditChatMemberModel(
+            author, isOwner, isModerator, isOwn,
+            canPromoteToOwner, canSetModerator, canRemoveFromGroup);
     }
 
     public static async Task OnRemoveFromGroupClick(AppUIHub hub, Author author)
@@ -57,9 +62,26 @@ public static class EditChatMemberCommands
         });
     }
 
+    public static async Task OnSetModeratorClick(AppUIHub hub, Author author, bool isModerator)
+    {
+        var authorName = author.Avatar.Name;
+        var command = new Authors_ChangeRole(hub.Session, author.Id, SystemRole.Moderator, isModerator);
+        var result = await hub.UICommander.Run(command);
+        if (result.HasError)
+            return;
+
+        var text = isModerator
+            ? $"{authorName} is now a Moderator"
+            : $"{authorName} is no longer a Moderator";
+        hub.ToastUI.Show(text, "icon-star-2", ToastDismissDelay.Short);
+    }
+
+    // Private methods
+
     private static async Task OnPromoteToOwnerConfirmed(AppUIHub hub, AuthorId authorId, string authorName)
     {
-        var result = await hub.UICommander.Run(new Authors_PromoteToOwner(hub.Session, authorId));
+        var command = new Authors_ChangeRole(hub.Session, authorId, SystemRole.Owner, true);
+        var result = await hub.UICommander.Run(command);
         if (result.HasError)
             return;
 

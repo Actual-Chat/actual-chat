@@ -6,7 +6,7 @@
     @foreach (var authorId in m.AuthorIds) {
         var isOwn = m.IsOwn(authorId);
         var isOwner = m.IsOwner(authorId);
-        var statusText = FormatStatusText(isOwner, isOwn);
+        var statusText = FormatStatusText(isOwner, m.IsModerator(authorId), isOwn);
         var showMenu = !(isOwn || isOwner);
         var dataMenuAttr = showMenu ? MenuRef.New<EditPlaceMemberMenu>(authorId.Value).ToString() : null;
         <li data-menu="@dataMenuAttr"
@@ -25,8 +25,8 @@
 @code {
     [Parameter, EditorRequired] public PlaceInfo.Model Data { get; set; } = null!;
 
-    private static string? FormatStatusText(bool isOwner, bool isOwn) {
-        var statusText = isOwner ? "Owner" : null;
+    private static string? FormatStatusText(bool isOwner, bool isModerator, bool isOwn) {
+        var statusText = isOwner ? "Owner" : isModerator ? "Moderator" : null;
         if (isOwn) {
             if (statusText != null)
                 statusText += ", your profile";

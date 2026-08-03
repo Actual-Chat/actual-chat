@@ -85,6 +85,12 @@ public class Places(IServiceProvider services) : IPlaces
         return await Roles.ListOwnerIds(session, placeId.RootChatId, cancellationToken).ConfigureAwait(false);
     }
 
+    public virtual async Task<AuthorId[]> ListModeratorIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(placeId);
+        return await Roles.ListModeratorIds(session, placeId.RootChatId, cancellationToken).ConfigureAwait(false);
+    }
+
     public virtual async Task<AuthorFull?> GetOwn(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(placeId);
@@ -121,7 +127,14 @@ public class Places(IServiceProvider services) : IPlaces
             var requiredPermissions = placeChange.Remove
                 ? PlacePermissions.Owner
                 : PlacePermissions.EditProperties;
-            place.Require().Rules.Permissions.Require(requiredPermissions);
+            var existingPlace = place.Require();
+            existingPlace.Rules.Permissions.Require(requiredPermissions);
+            if (placeChange.IsUpdate(out var placeDiff)
+                && !existingPlace.Rules.IsOwner()
+                && placeDiff.RequiresOwner()) {
+                // Moderators get EditProperties, but structural properties stay Owner-only.
+                throw PlacePermissionsExt.NotEnoughPermissions(PlacePermissions.Owner);
+            }
         }
 
         return await Commander.Call(changePlaceCommand, cancellationToken).ConfigureAwait(false);
@@ -175,16 +188,28 @@ public class Places(IServiceProvider services) : IPlaces
     }
 
     // [CommandHandler]
+    public virtual async Task OnChangeRole(Places_ChangeRole command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, authorId, systemRole, isInRole) = command;
+        ThrowIfNonPlaceRootChatAuthor(authorId);
+
+        var changeRoleCommand = new Authors_ChangeRole(session, authorId, systemRole, isInRole);
+        await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    [Obsolete("2026.08: Use Places_ChangeRole. Old clients only.")]
     public virtual async Task OnPromoteToOwner(Places_PromoteToOwner command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
         var (session, authorId) = command;
-        ThrowIfNonPlaceRootChatAuthor(authorId);
-
-        var promoteCommand = new Authors_PromoteToOwner(session, authorId);
-        await Commander.Call(promoteCommand, true, cancellationToken).ConfigureAwait(false);
+        var changeRoleCommand = new Places_ChangeRole(session, authorId, SystemRole.Owner, true);
+        await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

@@ -141,12 +141,14 @@
         var ownAuthor = place.Rules.Author;
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var ownerIds = await Places.ListOwnerIds(Session, placeId, cancellationToken).ConfigureAwait(false);
+        var moderatorIds = await Places.ListModeratorIds(Session, placeId, cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var isPlaceMember = ownAuthor is { HasLeft: false };
         return new() {
             Place = place,
             AuthorIds = allAuthorIds,
             OwnerIds = ownerIds,
+            ModeratorIds = moderatorIds,
             OwnAuthorId = ownAuthor?.Id,
             MemberCount = allAuthorIds.Length,
             EnableIncompleteUI = enableIncompleteUI,
@@ -165,6 +167,7 @@
         public int MemberCount { get; init; }
         public AuthorId[] AuthorIds { get; init; } = [];
         public AuthorId[] OwnerIds { get; init; } = [];
+        public AuthorId[] ModeratorIds { get; init; } = [];
         public AuthorId? OwnAuthorId { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool IsPlaceMember { get; init; }
@@ -172,6 +175,8 @@
 
         public bool IsOwner(AuthorId authorId)
             => OwnerIds.Contains(authorId);
+        public bool IsModerator(AuthorId authorId)
+            => ModeratorIds.Contains(authorId);
         public bool IsOwn(AuthorId authorId)
             => OwnAuthorId is not null && OwnAuthorId.Equals(authorId);
 

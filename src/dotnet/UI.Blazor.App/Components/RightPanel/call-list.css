@@ -82,3 +82,11 @@ body.hoverable .call-list-tab .c-member-row:hover {
 body.hoverable .call-list-tab .c-mic-btn:hover {
     @apply bg-hover;
 }
+.call-list-tab .c-host-btn {
+    @apply flex items-center justify-center;
+    @apply rounded-full;
+    @apply text-02;
+}
+body.hoverable .call-list-tab .c-host-btn:hover {
+    @apply bg-hover;
+}

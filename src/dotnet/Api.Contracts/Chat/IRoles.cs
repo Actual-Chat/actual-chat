@@ -14,6 +14,8 @@ public interface IRoles : IComputeService
     Task<AuthorId[]> ListAuthorIds(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<AuthorId[]> ListOwnerIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<AuthorId[]> ListModeratorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Role> OnChange(Roles_Change command, CancellationToken cancellationToken);

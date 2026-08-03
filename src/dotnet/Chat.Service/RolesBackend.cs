@@ -44,7 +44,9 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var dbRoles = await dbContext.Roles
             .Where(r =>
                 r.ChatId == chatId.Value
-                && (r.SystemRole == SystemRole.None || r.SystemRole == SystemRole.Owner)
+                && (r.SystemRole == SystemRole.None
+                    || r.SystemRole == SystemRole.Owner
+                    || r.SystemRole == SystemRole.Moderator)
                 && dbContext.AuthorRoles.Any(ar => ar.DbAuthorId == authorId.Value && ar.DbRoleId == r.Id))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -176,7 +178,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             }
             else {
                 // Remove
-                if (role.SystemRole is SystemRole.Owner or SystemRole.Anyone)
+                if (role.SystemRole is SystemRole.Owner or SystemRole.Anyone or SystemRole.Moderator)
                     throw StandardError.Constraint("This system role cannot be removed.");
 
                 var dbAuthorRoles = await dbContext.AuthorRoles.ForUpdate()
@@ -190,7 +192,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         // Processing update.AuthorIds
         if (!update.AuthorIds.IsEmpty && !change.IsRemove()) {
-            if (role.SystemRole is not SystemRole.None and not SystemRole.Owner)
+            if (role.SystemRole is not SystemRole.None and not SystemRole.Owner and not SystemRole.Moderator)
                 throw StandardError.Constraint("This system role uses automatic membership rules.");
 
             var existingAuthorIds = (await dbContext.AuthorRoles

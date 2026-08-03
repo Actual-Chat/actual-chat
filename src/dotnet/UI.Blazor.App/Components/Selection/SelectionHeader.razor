@@ -103,6 +103,7 @@
 @code {
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
+    private IRoles Roles => Hub.Roles;
     private SelectionUI SelectionUI => Hub.SelectionUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -122,6 +123,13 @@
         var chatId = selection.First().ChatId;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+
+        var canModerate = chat is { Id.Kind: not ChatKind.Peer }
+            && !chat.Rules.IsOwner()
+            && chat.Rules.CanModerate();
+        var ownerIds = canModerate
+            ? await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false)
+            : [];
 
         var canDelete = true;
         foreach (var chatEntryId in selection) {
@@ -150,10 +158,13 @@
             }
 
             var isOwnEntry = ownAuthor.Id == chatEntry.AuthorId;
-            if (!isOwnEntry) {
-                canDelete = false;
-                break;
-            }
+            if (isOwnEntry)
+                continue;
+            if (canModerate && !ownerIds.Contains(chatEntry.AuthorId))
+                continue;
+
+            canDelete = false;
+            break;
         }
 
         return new Model {

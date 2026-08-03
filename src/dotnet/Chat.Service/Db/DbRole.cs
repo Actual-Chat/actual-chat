@@ -29,6 +29,7 @@ public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool CanEditProperties { get; set; }
     public bool CanEditRoles { get; set; }
     public bool CanSeeMembers { get; set; }
+    public bool CanModerate { get; set; }
 
     public DbRole() { }
     public DbRole(Role model) => UpdateFrom(model);
@@ -52,10 +53,14 @@ public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
             permissions |= ChatPermissions.EditProperties;
         if (CanEditRoles)
             permissions |= ChatPermissions.EditRoles;
+        if (CanModerate)
+            permissions |= ChatPermissions.Moderate;
 
         // Fix system role permissions
         if (SystemRole is SystemRole.Owner)
             permissions = ChatPermissions.Owner;
+        else if (SystemRole is SystemRole.Moderator)
+            permissions = ChatPermissionsExt.Moderator;
 
         return new (RoleId.Parse(Id), Version) {
             SystemRole = SystemRole,
@@ -86,6 +91,7 @@ public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
         CanInvite = model.Permissions.Has(ChatPermissions.Invite);
         CanEditProperties = model.Permissions.Has(ChatPermissions.EditProperties);
         CanEditRoles = model.Permissions.Has(ChatPermissions.EditRoles);
+        CanModerate = model.Permissions.Has(ChatPermissions.Moderate);
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbRole>

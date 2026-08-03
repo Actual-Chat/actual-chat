@@ -41,6 +41,8 @@ public sealed partial record Role(
         var role = this;
         if (role.SystemRole is SystemRole.Owner && !role.Permissions.Has(ChatPermissions.Owner))
             role = role with { Permissions = ChatPermissions.Owner.AddImplied() };
+        if (role.SystemRole is SystemRole.Moderator)
+            role = role with { Permissions = ChatPermissionsExt.Moderator.AddImplied() };
         if (role.SystemRole is not SystemRole.None) {
             var name = role.SystemRole.ToString();
             if (!Equals(role.Name, name))

@@ -7,7 +7,7 @@
     var isForwarded = e.Forwarded is not null;
     var showPlayButton = ScreenSize.IsNarrow() && e.HasAudio && !hasSelection;
     var isTextEntry = !e.IsContentStreaming;
-    var canDelete = CanWrite && (IsOwnEntry || IsOwner || IsPeerChat) && isTextEntry && !hasSelection;
+    var canDelete = CanWrite && (IsOwnEntry || CanModerate || IsPeerChat) && isTextEntry && !hasSelection;
     var canEdit = CanWrite && IsOwnEntry && isTextEntry && !isForwarded && !hasSelection;
     var messageLink = Links.Chat(e.Id).ToAbsolute(UrlMapper);
     var canReply = !e.IsContentStreaming && CanWrite && !IsSystem;
@@ -181,7 +181,7 @@
     [Parameter, EditorRequired] public string? ClickedImageUrl { get; set; }
     [Parameter, EditorRequired] public bool IsSystem { get; set; }
     [Parameter, EditorRequired] public bool IsOwnEntry { get; set; }
-    [Parameter, EditorRequired] public bool IsOwner { get; set; }
+    [Parameter, EditorRequired] public bool CanModerate { get; set; }
     [Parameter, EditorRequired] public bool IsPeerChat { get; set; }
     [Parameter, EditorRequired] public bool CanWrite { get; set; }
 
