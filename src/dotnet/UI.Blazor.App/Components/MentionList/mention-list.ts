@@ -1,4 +1,5 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
+import { HoverSelect } from 'hover-select';
 
 export class MentionList {
     private readonly mentionList: HTMLElement;
@@ -6,16 +7,17 @@ export class MentionList {
     private readonly editor: HTMLElement | null;
     private readonly editorRow: HTMLElement | null;
     private readonly resizeObserver: ResizeObserver;
+    private readonly hoverSelect: HoverSelect;
     private readonly onViewportResize = () => this.scheduleMeasure();
     private readonly disposed$: Subject<void> = new Subject<void>();
     private measureScheduled = false;
     private scrollScheduled = false;
 
-    static create(mentionList: HTMLElement): MentionList {
-        return new MentionList(mentionList);
+    static create(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject): MentionList {
+        return new MentionList(mentionList, blazorRef);
     }
 
-    constructor(mentionList: HTMLElement) {
+    constructor(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.mentionList = mentionList;
         this.editor = mentionList.closest<HTMLElement>('.chat-message-editor');
         // The list now lives inside the post-panel and grows it upward, so the editor top
@@ -28,6 +30,11 @@ export class MentionList {
         fromEvent(this.mentionList, 'scroll')
             .pipe(takeUntil(this.disposed$),
             ).subscribe(() => this.mentionList.classList.add('expanded'));
+
+        this.hoverSelect = new HoverSelect(mentionList, {
+            resolveKey: target => target?.closest<HTMLElement>('.mention-list-item')?.dataset.mentionRef ?? null,
+            onSelect: key => void blazorRef.invokeMethodAsync('OnHoverSelect', key),
+        });
 
         this.resizeObserver = new ResizeObserver(() => this.scheduleMeasure());
         if (this.header)
@@ -89,6 +96,7 @@ export class MentionList {
             return;
 
         this.resizeObserver.disconnect();
+        this.hoverSelect.dispose();
         window.visualViewport?.removeEventListener('resize', this.onViewportResize);
         this.disposed$.next();
         this.disposed$.complete();

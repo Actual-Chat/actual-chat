@@ -62,7 +62,7 @@
                 var isQuoted = targetId is ChatId or PlaceId;
                 <div class="@cls mention-list-item"
                      data-editor-focus="true"
-                     @onmouseover="@(_ => Selection = mention)"
+                     data-mention-ref="@mention.MentionRef.Value"
                      @onclick="@(_ => Manager.SelectMention(mention))">
                     <div class="c-content">
                         @if (targetId is AuthorId authorId) {
@@ -127,6 +127,7 @@
     private bool _loading;
     private bool _isOpen;
     private readonly GatedUpdateDelayer _updateDelayer = new(FixedDelayer.NextTick);
+    private DotNetObjectReference<MentionList>? _blazorRef;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
@@ -134,17 +135,7 @@
     [Parameter] public string Class { get; set; } = "";
 
     public MutableState<string?> Filter { get; private set; } = null!;
-    public FoundMention? Selection {
-        get => _selection;
-        set {
-            if (_selection == value)
-                return;
-
-            _selection = FixSelection(value, State.Value);
-            StateHasChanged();
-            _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
-        }
-    }
+    public FoundMention? Selection => _selection;
 
     protected override void OnInitialized() {
         // Render the loading skeletons even while the computed state is being (re)computed -
@@ -159,12 +150,15 @@
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
+        _blazorRef?.Dispose();
+        _blazorRef = null;
         await base.DisposeAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+            _blazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, _blazorRef);
         }
     }
 
@@ -228,6 +222,18 @@
         _selection = mentions[selectionIndex];
         StateHasChanged();
         _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
+    }
+
+    [JSInvokable]
+    public void OnHoverSelect(string mentionRef) {
+        // Unlike MoveSelection, this one never scrolls: scrolling would move the list under
+        // the resting pointer, which would hover another item and scroll again.
+        var mention = State.Value.FirstOrDefault(o => o.MentionRef.Value == mentionRef);
+        if (mention == null || mention == _selection)
+            return;
+
+        _selection = mention;
+        StateHasChanged();
     }
 
     // Private methods
