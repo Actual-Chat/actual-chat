@@ -258,23 +258,31 @@ public class AndroidAudioWidgetForegroundService : Service
 
     private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, int repeatCount)
     {
-        if (AppScopeAccessor.Current is not { } services)
-            return false;
+        // A throw here would escape into Android's binder dispatch instead of reaching the base
+        // callback - e.g. GetRequiredService on a scope that's concurrently being disposed.
+        try {
+            if (AppScopeAccessor.Current is not { } services)
+                return false;
 
-        var hub = services.GetRequiredService<AppUIHub>();
-        var state = hub.GestureUI.GetHeadsetButtonState();
-        var action = HeadsetButtonPolicy.Decide(
-            key, isDown, repeatCount, state.IsEnabled, state.HasAnswerWindow, state.IsReplyHot);
-        if (action == HeadsetButtonAction.PassThrough)
-            return false;
+            var hub = services.GetRequiredService<AppUIHub>();
+            var state = hub.GestureUI.GetHeadsetButtonState();
+            var action = HeadsetButtonPolicy.Decide(
+                key, isDown, repeatCount, state.IsEnabled, state.HasAnswerWindow, state.IsReplyHot);
+            if (action == HeadsetButtonAction.PassThrough)
+                return false;
 
-        var replyUI = hub.WalkieTalkieReplyUI;
-        var whenHandled = action == HeadsetButtonAction.StopReply
-            ? replyUI.StopReply()
-            : replyUI.RequestReply(CancellationToken.None);
-        _ = BackgroundTask.Run(() => whenHandled, Log, $"{action} from the headset button failed",
-            CancellationToken.None);
-        return true;
+            var replyUI = hub.WalkieTalkieReplyUI;
+            var whenHandled = action == HeadsetButtonAction.StopReply
+                ? replyUI.StopReply()
+                : replyUI.RequestReply(CancellationToken.None);
+            _ = BackgroundTask.Run(() => whenHandled, Log, $"{action} from the headset button failed",
+                CancellationToken.None);
+            return true;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Headset button handling failed");
+            return false;
+        }
     }
 
     private static KeyEvent? GetKeyEvent(Intent? mediaButtonEvent)

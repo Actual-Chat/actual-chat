@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Users;
 using ActualLab.Resilience;
@@ -63,10 +64,11 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
-        // Without an accelerometer no gesture can ever be recognized, and every output of the
-        // loop below is consumed only by sensor callbacks - so it's provably a no-op here.
-        // This is the web/Blazor Server case, where it would otherwise run per circuit.
-        if (!Feed.IsAccelerometerAvailable)
+        // The loop has two consumers: the sensor callbacks below, and GetHeadsetButtonState, which
+        // the native media-button handler reads - so a MAUI host must run it even with no working
+        // accelerometer. Web has neither consumer, and would otherwise run this loop per circuit.
+        var mustRun = Feed.IsAccelerometerAvailable || HostInfo.HostKind.IsMauiApp();
+        if (!mustRun)
             return Task.CompletedTask;
 
         Feed.SampleReceived += OnSample;
