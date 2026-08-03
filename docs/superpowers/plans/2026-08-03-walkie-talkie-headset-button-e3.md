@@ -662,6 +662,42 @@ No new abstraction is introduced beyond `HeadsetButtonPolicy` and `AppScopeAcces
 
 **Reusability of new components.** `HeadsetButtonPolicy` is pure and Android-free by construction, so it sits in `UI.Blazor.App` beside the other trigger policies — that is what makes it testable on a build machine, and E4 can reuse the same shape for iOS. `AppScopeAccessor` is MAUI-bound by definition and stays there; it is a generalisation of an existing ad-hoc fallback rather than a new concept. `StartScopedServices` belongs on `AppScopedServiceStarter` rather than in a new type, because it is a split of that class's existing responsibility and keeping it there makes the WebView/headless divide visible in one file.
 
+## Execution outcome
+
+Seven tasks implemented and reviewed, plus a whole-branch review and one fix wave. What follows is the part that does not live in the diff.
+
+### Device verification — required before this reaches users, in this order
+
+Nothing platform-specific has ever run. `App.Maui.csproj` is outside `ActualChat.CI.slnf`. `scripts/csc-android-probe.sh` now compiles individual Android sources against real Mono.Android reference assemblies — a real advance, and it caught API and namespace questions in three tasks — but it covers no analyzers, no `Microsoft.Maui*` ambiguity, and nothing on-device.
+
+1. **Verify sub-projects B and C's wake path on a device first.** It has never been compiled or run either, and everything here sits on it. Until it is known good, a gesture failure and a wake failure are indistinguishable.
+2. **Build for Android.** First compile of everything in Tasks 3–6 beyond the probe's per-file coverage.
+3. **Before anything else, toggle "Headset button" off and on once in Settings.** A settings blob written by an E2 build predates the member; the nullable fix makes it read as enabled, but confirming the write path removes a whole class of false negative from the items below.
+4. **Press the button *outside* the answer window and confirm play/pause still works.** This is the regression that matters most — the change hijacks a control that already had a job for users who never enabled the feature.
+5. **Verify the load-bearing assumption:** with a PTT chat armed and nothing playing, does the foreground service exist and does the media session receive the press? The design argues yes because PTT chats are force-listened, but that is reasoning, not evidence. If it is wrong the button path needs a session-activation step.
+6. **Do ordinary earbuds actually deliver the press** to this app's session at all?
+7. **Press inside the window** → a reply records and sends; press again → it stops.
+8. **The killed-process case:** wake, then press. This is the point of the sub-project.
+9. **E2's shake and flip after a wake** — they should work for the first time.
+10. **Open the app mid-reply** and confirm the mic closes with a cue rather than a silent cut. Then do the same via the notification's Stop button, which was a second, unhardened door until the final fix wave.
+11. **A long press and a rapid double press** — neither may open-then-close the mic.
+12. **Practice mode must not transmit from the button**, specifically.
+13. **Time how long the button stays live after the last voice.** Availability is bounded by the foreground service's lifetime, not by the 150 s answer window.
+14. **`AreGesturesAlwaysOn = true`** — confirm a press with no incoming voice does *not* open the mic. This was a Critical found in the final review.
+
+### Shipped deliberately, with the reasoning
+
+- **Closing the mic on handoff rather than preserving the recording** across the scope swap. The user loses the tail of a sentence but never the message. Zero-loss handover is a separate design.
+- **Practice mode allows `StopReply` but never `StartReply`** — refusing to close a live mic is the unsafe direction.
+- **`AudioWidget` was dropped from the headless startup list** after it produced three defects, a parked-continuation leak and a stale-`ShowImpl` path, and was shown to have no headless function. The three `HeadlessBlazorScope.Current` guards in `AndroidAudioWidget` were kept as anti-regression.
+- **Parked, low severity:** `WalkieTalkieSession`'s wake-failure and idle-teardown paths hide the foreground service before stopping a hot reply — the ordering the fix wave corrected for `StopHeadless`. Strictly better than before (those paths previously did not stop the reply at all), and closable by forwarding `onStopped` through `StopAndDisposeCurrent`.
+
+### Known gaps
+
+- **`GestureUI`'s publication wiring is untested.** Re-inlining the old `mustSenseStart` copy would pass all 66 unit tests and all 4 integration tests. It is one line at a now-obvious site, but it is the same class of gap that let the Critical survive seven per-task reviews.
+- **Only this branch's integration project was added to the sweep.** `GestureUITest` had been silently red since E2 because no sub-project's verification ran `Chat.UI.Blazor.IntegrationTests`. A follow-up should diff the CI test-project list against what plans actually invoke, rather than fixing one project at a time.
+- **No architecture documentation.** `docs/live-audio/` still has no walkie-talkie coverage for any sub-project.
+
 ## Risks
 
 - **The media session may not exist when the window is open.** Planning decision 1 argues it does, via E2's force-listening. It is the single assumption the button path rests on and it is unverified. Device item 3.
