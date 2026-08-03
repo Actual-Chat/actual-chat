@@ -1,7 +1,7 @@
 # Walkie-Talkie: PTT Settings + Gesture Engine (Sub-Project E2)
 
 Date: 2026-07-26
-Status: Approved design, pre-implementation
+Status: Implemented (device verification pending — see plan Task 10)
 Depends on: Sub-project E1
 (`2026-07-20-walkie-talkie-reply-to-voice-design.md`) — the
 `WalkieTalkieReplyUI.RequestReply`/`StopReply` core, `ReplyTargetResolver`,

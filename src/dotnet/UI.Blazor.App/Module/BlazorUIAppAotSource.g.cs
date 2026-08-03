@@ -333,6 +333,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaybackToggle>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttChatPickerModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PushToTalkPracticePanel>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PushToTalkSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionSelect>();
@@ -436,6 +439,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsListeningModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsStartModalPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WalkieReplyToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebChromeGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebChromeLocationGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent>();
@@ -1064,6 +1068,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaybackToggle), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PttChatPickerModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PushToTalkPracticePanel), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PushToTalkSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionSelect), AotTypeKind.Component),
@@ -1167,6 +1174,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsListeningModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsStartModalPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WalkieReplyToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebChromeGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebChromeLocationGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent), AotTypeKind.Component),
