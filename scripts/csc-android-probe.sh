@@ -20,6 +20,10 @@
 # App.Maui proper (an ambiguity from those namespaces would not show here — check by
 # hand), and anything on-device (e.g. whether an earbud actually delivers a key event).
 #
+# What it requires: a prior `dotnet build ActualChat.CI.slnf` (or a test run), because
+# TESTBIN below is a test project's output folder — without it there is no ActualChat.*/
+# ActualLab.* closure to reference and every project type resolves as missing.
+#
 # This script is hand-tuned to one file's dependency set (imports, stubs, global usings).
 # Pointing it at a different file will likely need edits to SRC, GlobalUsings.cs, and
 # Stubs.cs below — it is a probe technique to copy, not a general-purpose compiler.
@@ -32,12 +36,12 @@ REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 SRC=$REPO/src/dotnet/App.Maui/Platforms/Android/Audio/AndroidAudioWidgetForegroundService.cs
 BASELINE_REF=${1:-}
 
-SDK=$(ls -d /home/undead/.dotnet/sdk/11.0.* | tail -1)
+SDK=$(ls -d $HOME/.dotnet/sdk/11.0.* | tail -1)
 CSC="$SDK/Roslyn/bincore/csc.dll"
-BCLREF=$(ls -d /home/undead/.dotnet/packs/Microsoft.NETCore.App.Ref/11.0.*/ref/net11.0 | tail -1)
-ANDREF=$(ls -d /home/undead/.dotnet/packs/Microsoft.Android.Ref.37/*/ref/net11.0 | tail -1)
-MEDIA=/home/undead/.nuget/packages/xamarin.androidx.media/1.8.0/lib/net10.0-android36.0/Xamarin.AndroidX.Media.dll
-CORE=/home/undead/.nuget/packages/xamarin.androidx.core/1.18.0/lib/net10.0-android36.0/Xamarin.AndroidX.Core.dll
+BCLREF=$(ls -d $HOME/.dotnet/packs/Microsoft.NETCore.App.Ref/11.0.*/ref/net11.0 | tail -1)
+ANDREF=$(ls -d $HOME/.dotnet/packs/Microsoft.Android.Ref.37/*/ref/net11.0 | tail -1)
+MEDIA=$HOME/.nuget/packages/xamarin.androidx.media/1.8.0/lib/net10.0-android36.0/Xamarin.AndroidX.Media.dll
+CORE=$HOME/.nuget/packages/xamarin.androidx.core/1.18.0/lib/net10.0-android36.0/Xamarin.AndroidX.Core.dll
 # Any test bin dir works - it holds the freshly built, real ActualChat.*/ActualLab.* closure.
 TESTBIN=$REPO/artifacts/tests/bin/Chat.UI.Blazor.UnitTests/debug
 
