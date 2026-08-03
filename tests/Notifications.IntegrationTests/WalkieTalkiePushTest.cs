@@ -21,12 +21,12 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
     private IAuthors Authors => Tester.AppServices.GetRequiredService<IAuthors>();
 
     [Fact]
-    public async Task ArmedByAlwaysListenedChatGetsWake()
+    public async Task ArmedByPttChatGetsWake()
     {
         // arrange
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT always-listened");
         var deviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
-        await ArmByAlwaysListened(alice.Id, chatId);
+        await ArmByPtt(alice.Id, chatId);
         Sink.Clear();
 
         // act
@@ -38,12 +38,29 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
     }
 
     [Fact]
-    public async Task ArmedByForeverListeningModeGetsWake()
+    public async Task ForeverListeningWithoutPttGetsNoWake()
     {
         // arrange
-        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT forever-mode");
+        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT listen-only");
         var deviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
-        await ArmByForeverListeningMode(alice.Id, chatId);
+        await SetForeverListeningMode(alice.Id, chatId);
+        Sink.Clear();
+
+        // act
+        await Speak(chatId, bobAuthor.Id);
+
+        // assert
+        await Task.Delay(NoWakeDelay);
+        Sink.Wakes.Should().NotContain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
+    }
+
+    [Fact]
+    public async Task PttWithoutAnyListeningSettingsGetsWake()
+    {
+        // arrange
+        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT ptt-only");
+        var deviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
+        await ArmByPtt(alice.Id, chatId);
         Sink.Clear();
 
         // act
@@ -76,7 +93,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         // arrange
         var (chatId, _, bob, bobAuthor) = await CreateChatWithAliceAndBob("WT speaker-excluded");
         var deviceId = await RegisterDevice(bob.Id, DeviceType.AndroidApp);
-        await ArmByAlwaysListened(bob.Id, chatId);
+        await ArmByPtt(bob.Id, chatId);
         Sink.Clear();
 
         // act
@@ -93,7 +110,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         // arrange
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT active-participant");
         var deviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
-        await ArmByAlwaysListened(alice.Id, chatId);
+        await ArmByPtt(alice.Id, chatId);
         await Tester.SignIn(alice);
         var aliceAuthor = await Authors.EnsureJoined(Tester.Session, chatId, CancellationToken.None);
         await LiveSessionsBackend.SetParticipation(
@@ -114,7 +131,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         // arrange
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT wake-ttl");
         var deviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
-        await ArmByAlwaysListened(alice.Id, chatId);
+        await ArmByPtt(alice.Id, chatId);
         Sink.Clear();
 
         // act
@@ -134,7 +151,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         // arrange
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT web-device");
         var deviceId = await RegisterDevice(alice.Id, DeviceType.WebBrowser);
-        await ArmByAlwaysListened(alice.Id, chatId);
+        await ArmByPtt(alice.Id, chatId);
         Sink.Clear();
 
         // act
@@ -170,7 +187,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         // arrange
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT ios-ptt");
         var deviceId = await RegisterDevice(alice.Id, DeviceType.iOSPttApp);
-        await ArmByAlwaysListened(alice.Id, chatId);
+        await ArmByPtt(alice.Id, chatId);
         ApnsSink.Clear();
 
         // act
@@ -191,7 +208,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT dual-device");
         var androidDeviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
         var pttDeviceId = await RegisterDevice(alice.Id, DeviceType.iOSPttApp);
-        await ArmByAlwaysListened(alice.Id, chatId);
+        await ArmByPtt(alice.Id, chatId);
         Sink.Clear();
         ApnsSink.Clear();
 
@@ -228,11 +245,11 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
     private Task Speak(ChatId chatId, AuthorId authorId)
         => LiveSessionsBackend.OnStreamRegistered(chatId, authorId, null, false, true, CancellationToken.None);
 
-    private Task ArmByAlwaysListened(UserId userId, ChatId chatId)
-        => ServerKvasBackend.ForUser(userId).UserListeningSettings()
-            .Update(x => x.WithAlwaysListeningChat(chatId));
+    private Task ArmByPtt(UserId userId, ChatId chatId)
+        => ServerKvasBackend.ForUser(userId).UserWalkieTalkieSettings()
+            .Update(x => x.WithPttChat(chatId));
 
-    private Task ArmByForeverListeningMode(UserId userId, ChatId chatId)
+    private Task SetForeverListeningMode(UserId userId, ChatId chatId)
         => ServerKvasBackend.ForUser(userId).ChatUserSettings(chatId)
             .Update(x => x with { ListeningMode = ListeningMode.Forever });
 

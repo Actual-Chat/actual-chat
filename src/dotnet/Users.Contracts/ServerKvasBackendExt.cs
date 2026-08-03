@@ -17,16 +17,11 @@ public static class ServerKvasBackendExt
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var kvas = serverKvasBackend.ForUser(userId);
-        var alwaysListened = await kvas.UserListeningSettings()
-            .Get(x => x.AlwaysListenedChatIds, cancellationToken)
+        // PTT is a separate opt-in from "Keep listening": waking a killed device is a
+        // materially different commitment, so it gets its own chat set and its own consent.
+        var pttChatIds = await serverKvasBackend.ForUser(userId).UserWalkieTalkieSettings()
+            .Get(x => x.PttChatIds, cancellationToken)
             .ConfigureAwait(false);
-        if (alwaysListened.Contains(chatId))
-            return true;
-
-        var listeningMode = await kvas.ChatUserSettings(chatId)
-            .Get(x => x.ListeningMode, cancellationToken)
-            .ConfigureAwait(false);
-        return listeningMode == ListeningMode.Forever;
+        return pttChatIds.Contains(chatId);
     }
 }

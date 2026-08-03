@@ -124,8 +124,8 @@ public class ReportPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     private Task Arm(UserId userId, ChatId chatId)
         => AppHost.Services.GetRequiredService<IServerKvasBackend>()
-            .ForUser(userId).ChatUserSettings(chatId)
-            .Update(x => x with { ListeningMode = ListeningMode.Forever });
+            .ForUser(userId).UserWalkieTalkieSettings()
+            .Update(x => x.WithPttChat(chatId));
 
     private async Task<(Chat.Chat Chat, ChatEntry Entry, string StreamId)> CreateChatWithStreamingAudioEntry(
         Session session, string title)
