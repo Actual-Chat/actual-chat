@@ -76,8 +76,10 @@ the part the signature doesn't already carry.
   prose that ages faster than the signature.
 - If a member genuinely needs explanation (per the philosophy above), use a
   regular `//` comment.
-  - **C#**: put the comment at the **top of the method body** (inside the
-    braces).
+  - **C#**: put the comment at the **top of the method body** — inside the
+    braces for a block body, or between the signature and the `=>` line for
+    an expression-bodied member. Never above the declaration, and never
+    switch a member to a block body just to host a comment.
   - **TypeScript**: put the comment **above the method declaration**.
 - If the name already explains what the method does, **omit the comment** —
   don't restate the signature in English.
