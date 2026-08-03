@@ -12,6 +12,7 @@ public static class WalkieTalkieSession
 {
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan TeardownCheckPeriod = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan StopHotReplyTimeout = TimeSpan.FromSeconds(5);
     private const int TeardownIdleChecks = 2;
     private static readonly Lock Lock = new();
     private static Task? _teardownWatcher;
@@ -47,23 +48,63 @@ public static class WalkieTalkieSession
         catch (Exception e) {
             Log.LogError(e, "Walkie-talkie wake failed for chat #{ChatId}", chatId);
             platform.OnWakeFailed(chatId);
-            await HeadlessBlazorScope.DisposeCurrent("wake failed").ConfigureAwait(false);
+            await StopAndDisposeCurrent("wake failed").ConfigureAwait(false);
         }
     }
 
     public static void StopHeadless(WalkieTalkiePlatform platform)
         => _ = BackgroundTask.Run(async () => {
-            if (HeadlessBlazorScope.Current is not { } headless)
+            if (HeadlessBlazorScope.TryDetachCurrent("stopped by the user") is not { } headless)
                 return;
 
             var chatAudioUI = headless.Services.GetRequiredService<AppUIHub>().ChatAudioUI;
             chatAudioUI.StopReplay();
             await chatAudioUI.ClearListeningChats().ConfigureAwait(false);
-            platform.OnHeadlessTeardown();
-            await HeadlessBlazorScope.DisposeCurrent("stopped by the user").ConfigureAwait(false);
+            // The teardown runs between the mic close and the disposal: it stops the mic-typed
+            // foreground service, and doing that first would revoke mic access mid-close.
+            await StopAndDispose(headless, platform.OnHeadlessTeardown).ConfigureAwait(false);
         }, Log, "StopHeadless failed", CancellationToken.None);
 
+    public static Task StopAndDisposeCurrent(string reason)
+        => HeadlessBlazorScope.TryDetachCurrent(reason) is { } scope
+            ? StopAndDispose(scope)
+            : Task.CompletedTask;
+
+    public static async Task StopAndDispose(HeadlessBlazorScope scope, Action? onStopped = null)
+    {
+        // The only disposal door for a headless scope: a scope may hold a hot walkie reply, and
+        // disposing one out from under an open mic drops the entry with nothing recorded.
+        try {
+            var hub = scope.Services.GetRequiredService<AppUIHub>();
+            if (!hub.ChatAudioUI.IsRecording())
+                return;
+
+            Log.LogInformation("Closing a hot walkie reply before disposing the headless scope");
+            using var cts = new CancellationTokenSource(StopHotReplyTimeout);
+            await StopReplyAndWaitForRecorder(hub, cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Couldn't close the hot walkie reply before disposing the headless scope");
+        }
+        finally {
+            onStopped?.Invoke();
+            await scope.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
     // Private methods
+
+    private static async Task StopReplyAndWaitForRecorder(AppUIHub hub, CancellationToken cancellationToken)
+    {
+        // StopReply only writes the "stop recording" intent; RecordChat's own teardown (a
+        // different async flow in the same scope) is what actually closes the mic and plays the
+        // cue. Waiting for ChatId to clear - IsRecording stays false while the engine starts -
+        // is what turns this into a real stop-then-dispose rather than a race with teardown.
+        await hub.WalkieTalkieReplyUI.StopReply().ConfigureAwait(false);
+        await hub.AudioRecorder.State.Computed
+            .When(x => x.ChatId is null, cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     private static async Task StartPlayback(
         IServiceProvider scopedServices,
@@ -136,7 +177,7 @@ public static class WalkieTalkieSession
 
                 Log.LogInformation("Walkie-talkie: headless session is idle, tearing down");
                 platform.OnHeadlessTeardown();
-                await HeadlessBlazorScope.DisposeCurrent("armed (idle)").ConfigureAwait(false);
+                await StopAndDisposeCurrent("armed (idle)").ConfigureAwait(false);
                 return;
             }
         }

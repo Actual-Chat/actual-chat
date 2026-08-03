@@ -23,6 +23,9 @@ public sealed class HeadlessBlazorScope : IAsyncDisposable
 
     public static HeadlessBlazorScope? GetOrCreate()
     {
+        HeadlessBlazorScope result;
+        // Service construction stays outside StaticLock: MainActivity.OnCreate -> TryDetachCurrent
+        // takes it on the Android UI thread, and must not wait on this.
         lock (StaticLock) {
             if (AppServicesAccessor.TryGetScopedServices(out _))
                 return null;
@@ -34,21 +37,19 @@ public sealed class HeadlessBlazorScope : IAsyncDisposable
             // No WebView will ever attach here: make every JS call fail with the
             // JSRuntimeDisconnected the UI code already tolerates (the page-reload path).
             scope.ServiceProvider.GetRequiredService<SafeJSRuntime>().MarkDisconnected();
-            try {
-                AppScopedServiceStarter.StartScopedServices(scope.ServiceProvider);
-            }
-            catch (Exception e) {
-                // A failed trigger startup must not cost us the wake: playback is the primary job.
-                Log.LogWarning(e, "Couldn't start scoped services in the headless scope");
-            }
-            _current = new HeadlessBlazorScope(scope);
+            result = new HeadlessBlazorScope(scope);
+            _current = result;
             Log.LogInformation("Headless scope created");
-            return _current;
         }
+        try {
+            AppScopedServiceStarter.StartScopedServices(result.Services);
+        }
+        catch (Exception e) {
+            // A failed trigger startup must not cost us the wake: playback is the primary job.
+            Log.LogWarning(e, "Couldn't start scoped services in the headless scope");
+        }
+        return result;
     }
-
-    public static Task DisposeCurrent(string reason)
-        => TryDetachCurrent(reason) is { } current ? current.DisposeAsyncCore() : Task.CompletedTask;
 
     public static HeadlessBlazorScope? TryDetachCurrent(string reason)
     {
@@ -61,7 +62,7 @@ public sealed class HeadlessBlazorScope : IAsyncDisposable
             _current = null;
         }
         if (current is not null)
-            Log.LogInformation("Disposing headless scope ({Reason})", reason);
+            Log.LogInformation("Detaching headless scope ({Reason})", reason);
         return current;
     }
 
