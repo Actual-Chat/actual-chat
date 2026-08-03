@@ -7,9 +7,10 @@ namespace ActualChat.App.Maui.Services;
 public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
 {
     // The four Start/Stop methods are called from both the GestureUI worker thread and the
-    // Blazor UI thread, and each is a check-then-set on its flag - the lock keeps the flag and
-    // the hardware from disagreeing. The flag is the intended state, so on iOS it's set here
-    // rather than inside the main-thread dispatch below.
+    // Blazor UI thread (the platform main thread under BlazorWebView), and each is a
+    // check-then-set on its flag - the lock keeps the flag and the hardware from disagreeing.
+    // It's held across the MAUI sensor start/stop calls, which don't block on the main thread.
+    // The flag is the intended state, so on iOS it's set here, not inside the dispatch below.
     private readonly Lock _lock = new();
     private bool _isAccelerometerOn;
     private bool _isProximityOn;
@@ -26,7 +27,8 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
 
             try {
                 Accelerometer.Default.ReadingChanged += OnReadingChanged;
-                // SensorSpeed.UI ~= 60ms/sample; clears the ~166ms bound the 500ms-window detectors need for a 4-6Hz shake.
+                // SensorSpeed.UI ~= 60ms/sample; clears the ~166ms bound the 500ms-window
+                // detectors need for a 4-6Hz shake.
                 Accelerometer.Default.Start(SensorSpeed.UI);
                 _isAccelerometerOn = true;
             }
@@ -153,8 +155,8 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
                     _ => OnProximityChanged(UIKit.UIDevice.CurrentDevice.ProximityState));
             }
             catch (Exception e) {
-                // No rollback of the flag from here: GestureUI states Stop/Start every iteration,
-                // so its next disarm clears it - and the lock stays untaken on the main thread.
+                // No rollback of the flag from here: it leaves proximity dead rather than live,
+                // and GestureUI's next disarm clears the flag so the next arm retries.
                 Log.LogWarning(e, "Failed to start proximity monitoring");
             }
         });

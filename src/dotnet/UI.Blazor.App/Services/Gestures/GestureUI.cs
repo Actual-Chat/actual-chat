@@ -187,9 +187,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
             return;
         }
 
-        var whenHandled = route == GestureRoute.StopReply
-            ? WalkieTalkieReplyUI.StopReply()
-            : WalkieTalkieReplyUI.RequestReply(CancellationToken.None);
+        var whenHandled = route == GestureRoute.StartReply
+            ? WalkieTalkieReplyUI.RequestReply(CancellationToken.None)
+            : WalkieTalkieReplyUI.StopReply();
         _ = BackgroundTask.Run(() => whenHandled, Log, $"{gesture.Kind} handling failed", CancellationToken.None);
     }
 
