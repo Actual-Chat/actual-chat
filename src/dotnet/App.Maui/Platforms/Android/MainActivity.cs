@@ -5,6 +5,7 @@ using Android.App;
 using Android.Content.PM;
 using Android.OS;
 using Android.Content;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using Android.Views;
 using AndroidX.Activity.Result;
@@ -55,6 +56,7 @@ public partial class MainActivity : MauiAppCompatActivity
     public static MainActivity Current => _current
         ?? throw StandardError.Internal($"{nameof(MainActivity)} isn't created yet.");
     public static readonly TimeSpan MaxPermissionRequestDuration = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan StopHotReplyTimeout = TimeSpan.FromSeconds(5);
     private static readonly Tracer Tracer = Tracer.Default[nameof(MainActivity)];
 
     private ActivityResultLauncher _permissionRequestLauncher = null!;
@@ -87,7 +89,7 @@ public partial class MainActivity : MauiAppCompatActivity
         }
 
         BlazorWebViewApp.EnsureStarted();
-        _ = HeadlessBlazorScope.DisposeCurrent("MainActivity.OnCreate");
+        CloseHeadlessScope();
 
         Interlocked.Exchange(ref _current, this);
         // If app is sent to background with back button
@@ -267,6 +269,33 @@ public partial class MainActivity : MauiAppCompatActivity
              .SetMediaType(visualMediaType)
              .Build();
         _pickVisualMediaLauncher.Launch(pickVisualMediaRequest);
+    }
+
+    // A live headless scope means a walkie reply may be recording with no UI on screen; disposing
+    // it outright would cut the mic mid-sentence. StopReply is routed through only when a reply is
+    // actually hot, and disposal always happens in `finally`, so a throwing or hung StopReply still
+    // frees the scope - it just skips the stop cue.
+    private void CloseHeadlessScope()
+    {
+        if (HeadlessBlazorScope.Current is not { } scope) {
+            _ = HeadlessBlazorScope.DisposeCurrent("MainActivity.OnCreate");
+            return;
+        }
+        _ = BackgroundTask.Run(() => StopHotReplyThenDispose(scope), Log, "Failed to close the headless walkie scope");
+    }
+
+    private async Task StopHotReplyThenDispose(HeadlessBlazorScope scope)
+    {
+        try {
+            var hub = scope.Services.GetRequiredService<AppUIHub>();
+            if (hub.ChatAudioUI.IsRecording()) {
+                Log.LogInformation("OnCreate: closing a hot walkie reply before disposing the headless scope");
+                await hub.WalkieTalkieReplyUI.StopReply().WaitAsync(StopHotReplyTimeout).ConfigureAwait(false);
+            }
+        }
+        finally {
+            await scope.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     private void DumpMemoryInfo()
