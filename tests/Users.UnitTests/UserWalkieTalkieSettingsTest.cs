@@ -1,8 +1,11 @@
+using ActualChat.Kvas;
+
 namespace ActualChat.Users.UnitTests;
 
-public class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : TestBase(@out)
+public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
+    private static readonly KvasSerializer MemoryPackKvasSerializer = new() { PreferMemoryPack = true };
 
     [Fact]
     public void Defaults_AreSafe()
@@ -15,7 +18,49 @@ public class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : TestBase(@ou
         settings.AreGesturesAlwaysOn.Should().BeFalse();
         settings.HotWindow.Should().Be(TimeSpan.FromSeconds(60));
         settings.AreAudibleCuesEnabled.Should().BeTrue();
-        settings.IsHeadsetButtonEnabled.Should().BeTrue();
+        (settings.IsHeadsetButtonEnabled ?? true).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ABlobPredatingTheHeadsetButtonReadsAsEnabled()
+    {
+        // arrange
+        var e2Era = new E2UserWalkieTalkieSettings {
+            PttChatIds = [TestChatId],
+            Origin = "test",
+            AreAudibleCuesEnabled = false,
+        };
+
+        // act
+        using var buffer = MemoryPackKvasSerializer.Write(e2Era);
+        var bytes = buffer.WrittenMemory;
+        var settings = MemoryPackKvasSerializer.Read<UserWalkieTalkieSettings>(ref bytes);
+
+        // assert
+        settings.PttChatIds.Should().Equal(e2Era.PttChatIds);
+        settings.AreAudibleCuesEnabled.Should().BeFalse();
+        settings.IsHeadsetButtonEnabled.Should().BeNull("the member is absent from the blob");
+        (settings.IsHeadsetButtonEnabled ?? true).Should().BeTrue("read sites must default it to on");
+    }
+
+    [Fact]
+    public void AMissingMemberIgnoresItsPropertyInitializer()
+    {
+        // Why IsHeadsetButtonEnabled has to be bool?: a member absent from the blob deserializes
+        // as default(T), so a plain `bool ... = true` silently reads as disabled.
+
+        // arrange
+        var truncated = new TruncatedUserWalkieTalkieSettings { PttChatIds = [TestChatId] };
+
+        // act
+        using var buffer = MemoryPackKvasSerializer.Write(truncated);
+        var bytes = buffer.WrittenMemory;
+        var settings = MemoryPackKvasSerializer.Read<UserWalkieTalkieSettings>(ref bytes);
+
+        // assert
+        settings.PttChatIds.Should().Equal(truncated.PttChatIds);
+        settings.AreAudibleCuesEnabled.Should().BeFalse("`= true` does not survive a missing member");
+        settings.HotWindow.Should().Be(TimeSpan.Zero);
     }
 
     [Fact]
@@ -73,5 +118,33 @@ public class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : TestBase(@ou
         assertion(mp, settings);
         var msgp = ((StoredSettings)settings).PassThroughMessagePackByteSerializer(Out);
         assertion(msgp, settings);
+    }
+
+    // Nested types
+
+    // An exact copy of UserWalkieTalkieSettings as E2 shipped it - orders 0..7, no headset button.
+    [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+    public sealed partial record E2UserWalkieTalkieSettings
+    {
+        [DataMember, MemoryPackOrder(0)] public ChatId[] PttChatIds { get; init; } = [];
+        [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
+        [DataMember, MemoryPackOrder(2)] public bool IsFlipToTalkEnabled { get; init; } = true;
+        [DataMember, MemoryPackOrder(3)] public bool IsDoubleShakeEnabled { get; init; } = true;
+        [DataMember, MemoryPackOrder(4)] public ShakeSensitivity ShakeSensitivity { get; init; }
+        [DataMember, MemoryPackOrder(5)] public bool AreGesturesAlwaysOn { get; init; }
+        [DataMember, MemoryPackOrder(6)] public TimeSpan HotWindow { get; init; } = TimeSpan.FromSeconds(60);
+        [DataMember, MemoryPackOrder(7)] public bool AreAudibleCuesEnabled { get; init; } = true;
+    }
+
+    // Stops before HotWindow and AreAudibleCuesEnabled, both of which have property initializers.
+    [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+    public sealed partial record TruncatedUserWalkieTalkieSettings
+    {
+        [DataMember, MemoryPackOrder(0)] public ChatId[] PttChatIds { get; init; } = [];
+        [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
+        [DataMember, MemoryPackOrder(2)] public bool IsFlipToTalkEnabled { get; init; } = true;
+        [DataMember, MemoryPackOrder(3)] public bool IsDoubleShakeEnabled { get; init; } = true;
+        [DataMember, MemoryPackOrder(4)] public ShakeSensitivity ShakeSensitivity { get; init; }
+        [DataMember, MemoryPackOrder(5)] public bool AreGesturesAlwaysOn { get; init; }
     }
 }

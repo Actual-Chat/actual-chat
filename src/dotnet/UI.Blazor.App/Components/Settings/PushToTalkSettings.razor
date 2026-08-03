@@ -55,7 +55,7 @@
             <Icon><i class="icon-headphones-fill text-2xl"></i></Icon>
             <Content>Headset button</Content>
             <Caption>Press the button on your earbuds to reply</Caption>
-            <Right><Toggle IsChecked="@m.Settings.IsHeadsetButtonEnabled"/></Right>
+            <Right><Toggle IsChecked="@(m.Settings.IsHeadsetButtonEnabled ?? true)"/></Right>
         </TileItem>
         @if (hasSensors) {
             @if (m.Settings.IsDoubleShakeEnabled) {
@@ -161,7 +161,9 @@
 
     private Task OnToggleHeadsetButton()
         => UserSettingsUI.UserWalkieTalkieSettings()
-            .Update(x => x with { IsHeadsetButtonEnabled = !x.IsHeadsetButtonEnabled }, CancellationToken.None);
+            .Update(
+                x => x with { IsHeadsetButtonEnabled = !(x.IsHeadsetButtonEnabled ?? true) },
+                CancellationToken.None);
 
     private Task OnToggleAlwaysOn()
         => UserSettingsUI.UserWalkieTalkieSettings()

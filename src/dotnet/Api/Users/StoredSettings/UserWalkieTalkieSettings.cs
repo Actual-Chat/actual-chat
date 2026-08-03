@@ -29,8 +29,9 @@ public sealed partial record UserWalkieTalkieSettings
     public TimeSpan HotWindow { get; init; } = TimeSpan.FromSeconds(60);
     [DataMember, MemoryPackOrder(7), Key(7)]
     public bool AreAudibleCuesEnabled { get; init; } = true;
+    // Nullable, read as `?? true`: a blob predating this member reads it as default, not as `= true`.
     [DataMember, MemoryPackOrder(8), Key(8)]
-    public bool IsHeadsetButtonEnabled { get; init; } = true;
+    public bool? IsHeadsetButtonEnabled { get; init; }
 
     public UserWalkieTalkieSettings WithPttChat(ChatId chatId)
         => this with { PttChatIds = PttChatIds.WithOrSkip(chatId).ToArray() };
