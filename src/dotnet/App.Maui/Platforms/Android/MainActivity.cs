@@ -271,16 +271,14 @@ public partial class MainActivity : MauiAppCompatActivity
         _pickVisualMediaLauncher.Launch(pickVisualMediaRequest);
     }
 
-    // A live headless scope means a walkie reply may be recording with no UI on screen; disposing
-    // it outright would cut the mic mid-sentence. StopReply is routed through only when a reply is
-    // actually hot, and disposal always happens in `finally`, so a throwing or hung StopReply still
-    // frees the scope - it just skips the stop cue.
     private void CloseHeadlessScope()
     {
-        if (HeadlessBlazorScope.Current is not { } scope) {
-            _ = HeadlessBlazorScope.DisposeCurrent("MainActivity.OnCreate");
+        // A live headless scope means a walkie reply may be recording with no UI on screen.
+        // TryDetachCurrent clears _current synchronously - a wake or a headset press racing this
+        // must see no headless scope, not the one that's about to be stopped and disposed.
+        if (HeadlessBlazorScope.TryDetachCurrent("MainActivity.OnCreate") is not { } scope)
             return;
-        }
+
         _ = BackgroundTask.Run(() => StopHotReplyThenDispose(scope), Log, "Failed to close the headless walkie scope");
     }
 
@@ -290,12 +288,26 @@ public partial class MainActivity : MauiAppCompatActivity
             var hub = scope.Services.GetRequiredService<AppUIHub>();
             if (hub.ChatAudioUI.IsRecording()) {
                 Log.LogInformation("OnCreate: closing a hot walkie reply before disposing the headless scope");
-                await hub.WalkieTalkieReplyUI.StopReply().WaitAsync(StopHotReplyTimeout).ConfigureAwait(false);
+                await StopReplyAndWaitForRecorder(hub).WaitAsync(StopHotReplyTimeout).ConfigureAwait(false);
             }
         }
         finally {
+            // Guaranteed regardless of how the block above exits: a throwing or hung stop still
+            // frees the scope - it may just land before AudioRecorder finishes closing the mic.
             await scope.DisposeAsync().ConfigureAwait(false);
         }
+    }
+
+    private static async Task StopReplyAndWaitForRecorder(AppUIHub hub)
+    {
+        // StopReply only writes the "stop recording" intent; RecordChat's own teardown (a
+        // different async flow in the same scope) is what actually closes the mic and plays the
+        // cue. Waiting here, inside the caller's timeout, is what turns this into a real
+        // stop-then-dispose instead of racing the intent write against the scope's teardown.
+        await hub.WalkieTalkieReplyUI.StopReply().ConfigureAwait(false);
+        await hub.AudioRecorder.State.Computed
+            .When(x => !x.IsRecording, CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
     private void DumpMemoryInfo()

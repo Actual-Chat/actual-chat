@@ -48,17 +48,21 @@ public sealed class HeadlessBlazorScope : IAsyncDisposable
     }
 
     public static Task DisposeCurrent(string reason)
+        => TryDetachCurrent(reason) is { } current ? current.DisposeAsyncCore() : Task.CompletedTask;
+
+    public static HeadlessBlazorScope? TryDetachCurrent(string reason)
     {
+        // Clears _current synchronously so every reader (AppScopeAccessor, GetOrCreate's "one at a
+        // time" check, the static Android widgets) sees the handoff immediately, while the caller
+        // disposes the returned instance on its own schedule.
         HeadlessBlazorScope? current;
         lock (StaticLock) {
             current = _current;
             _current = null;
         }
-        if (current is null)
-            return Task.CompletedTask;
-
-        Log.LogInformation("Disposing headless scope ({Reason})", reason);
-        return current.DisposeAsyncCore();
+        if (current is not null)
+            Log.LogInformation("Disposing headless scope ({Reason})", reason);
+        return current;
     }
 
     public ValueTask DisposeAsync()
