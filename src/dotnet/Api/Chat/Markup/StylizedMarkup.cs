@@ -31,13 +31,17 @@ public sealed class StylizedMarkup(Markup content, TextStyle style) : Markup
     public override string Format()
     {
         var markupText = Content.Format();
-        return $"{StyleToken}{markupText}{StyleToken}";
+        return IsIncomplete
+            ? $"{StyleToken}{markupText}"
+            : $"{StyleToken}{markupText}{StyleToken}";
     }
 
     public override Markup Simplify()
     {
         var markup = Content.Simplify();
-        return ReferenceEquals(markup, Content) ? this : new StylizedMarkup(markup, Style);
+        return ReferenceEquals(markup, Content)
+            ? this
+            : new StylizedMarkup(markup, Style) { IsIncomplete = IsIncomplete };
     }
 
     public static string Mask(string text)
