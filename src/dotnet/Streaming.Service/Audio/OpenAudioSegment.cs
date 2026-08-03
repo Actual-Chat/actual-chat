@@ -28,7 +28,7 @@ public sealed class OpenAudioSegment(
     public static StreamId GetStreamId(AudioRecord record, int index)
     {
         var streamId = record.StreamId;
-        return StreamId.New(streamId.NodeRef, $"{streamId.LocalId}-{index.ToString("D4")}");
+        return StreamId.New(streamId.NodeRef, $"{streamId.LocalId}-{index:D4}");
     }
 
     public void SetRecordedAt(Moment? recordedAt)
@@ -56,6 +56,7 @@ public sealed class OpenAudioSegment(
         var recordedAt = RecordedAt.ToResultSynchronously().IsValue(out var r) ? r : null;
         var audibleDuration = AudibleDuration.ToResultSynchronously().IsValue(out var d) ? d : duration;
         var audioSegment = new ClosedAudioSegment(this, recordedAt, duration, audibleDuration);
+        // ReSharper disable once PossiblyImpureMethodCallOnReadonlyVariable
         _closedSegmentSource.SetResult(audioSegment);
     }
 

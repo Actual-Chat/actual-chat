@@ -495,7 +495,6 @@ public partial class ChatAudioUI
     {
         var serverClock = Clocks.ServerClock;
         var cpuClock = Clocks.CpuClock;
-        var watcherStartedAt = serverClock.Now;
         var mustStop = true;
         try {
             while (!cancellationToken.IsCancellationRequested) {
@@ -543,36 +542,35 @@ public partial class ChatAudioUI
         }
 
         async Task WhenIdle(CancellationToken ct) {
-            var cActivity = await Computed
-                .Capture(() => LiveStreamUI.GetLastActivityServerTime(chatId, ct), ct)
+            var cHasActivity = await Computed
+                .Capture(() => LiveStreamUI.HasActivity(chatId, ct), ct)
                 .ConfigureAwait(false);
             var cIsWatching = await Computed
                 .Capture(() => ChatVideoUI.IsWatching(chatId, ct), ct)
                 .ConfigureAwait(false);
+            // Latched on the observed activity edge rather than read from the server, so it can
+            // never carry a timestamp from a prior listening session.
+            var lastActivityAt = serverClock.Now;
 
             while (!ct.IsCancellationRequested) {
-                var lastActivityTime = cActivity.Value;
+                var hasActivity = cHasActivity.Value;
                 var isWatching = cIsWatching.Value;
-                if (lastActivityTime == null || isWatching) {
+                if (hasActivity || isWatching) {
                     // Activity ongoing or video being watched — no timer
+                    lastActivityAt = serverClock.Now;
                     SetStopListeningAt(chatId, null);
                     using var waitCts = ct.CreateLinkedTokenSource();
-                    var whenActivityChange = cActivity.WhenInvalidated(waitCts.Token);
+                    var whenActivityChange = cHasActivity.WhenInvalidated(waitCts.Token);
                     var whenWatchingChange = cIsWatching.WhenInvalidated(waitCts.Token);
                     await Task.WhenAny(whenActivityChange, whenWatchingChange).ConfigureAwait(false);
                     waitCts.CancelAndDisposeSilently();
-                    cActivity = await cActivity.Update(ct).ConfigureAwait(false);
+                    cHasActivity = await cHasActivity.Update(ct).ConfigureAwait(false);
                     cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
                     continue;
                 }
 
-                // Clamp: GetLastActivityServerTime may return a cached value from a prior
-                // listening session (ConsolidationDelay prevents immediate recomputation),
-                // so never use a timestamp older than when this watcher started.
-                var effectiveActivityTime = Moment.Max(lastActivityTime.Value, watcherStartedAt);
-
                 // Idle — compute stop time
-                var stopAt = effectiveActivityTime + options.IdleTimeout;
+                var stopAt = lastActivityAt + options.IdleTimeout;
                 var remaining = (stopAt - serverClock.Now).Positive();
                 if (remaining <= Epsilon)
                     return; // Must stop listening
@@ -581,7 +579,7 @@ public partial class ChatAudioUI
 
                 // Wait for either: activity resumes, watching toggles, or idle timeout expires
                 using var delayCts = ct.CreateLinkedTokenSource();
-                var whenActivityChanges = cActivity.WhenInvalidated(ct);
+                var whenActivityChanges = cHasActivity.WhenInvalidated(ct);
                 var whenWatchingChanges = cIsWatching.WhenInvalidated(ct);
                 var whenTimeout = Task.Delay(remaining, delayCts.Token);
                 await Task.WhenAny(whenActivityChanges, whenWatchingChanges, whenTimeout).ConfigureAwait(false);
@@ -591,7 +589,7 @@ public partial class ChatAudioUI
                     return; // Idle timeout expired — stop listening
 
                 // Activity / watching state changed — refresh and loop
-                cActivity = await cActivity.Update(ct).ConfigureAwait(false);
+                cHasActivity = await cHasActivity.Update(ct).ConfigureAwait(false);
                 cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
             }
         }
@@ -791,22 +789,23 @@ public partial class ChatAudioUI
 
         // We just started, so it's ok to await for the countdown interval first
         await Task.Delay(options.PreCountdownTimeout, cancellationToken).ConfigureAwait(false);
-        var lastTranscribedAt = Clocks.ServerClock.Now; // Reset after pre-countdown wait to avoid stale timestamp on repeat activations
+        var lastActivityAt = Clocks.ServerClock.Now; // Reset after pre-countdown wait to avoid stale timestamp on repeat activations
         while (!cancellationToken.IsCancellationRequested) {
             // If own video is streaming for this chat, treat as activity — don't countdown
             var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false);
             var isWatching = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
             if (ownSourceKind is not null || isWatching) {
-                lastTranscribedAt = Clocks.ServerClock.Now;
+                lastActivityAt = Clocks.ServerClock.Now;
                 yield return null; // No countdown
                 await Task.Delay(options.CheckPeriod, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
-            // GetLastActivityTime returns null when there's ongoing activity, timestamp when idle
-            var lastActivityTime = await LiveStreamUI.GetLastActivityServerTime(chatId, cancellationToken).ConfigureAwait(false);
-            lastTranscribedAt = Moment.Max(lastTranscribedAt, lastActivityTime ?? ServerNow);
-            var idleAt = lastTranscribedAt + options.IdleTimeout;
+            var hasActivity = await LiveStreamUI.HasActivity(chatId, cancellationToken).ConfigureAwait(false);
+            if (hasActivity)
+                lastActivityAt = ServerNow;
+
+            var idleAt = lastActivityAt + options.IdleTimeout;
             var idleDelay = (idleAt - ServerNow).Positive();
             if (idleDelay <= Epsilon) {
                 // We must stop right now
@@ -814,7 +813,7 @@ public partial class ChatAudioUI
                 yield break;
             }
 
-            var countdownAt = lastTranscribedAt + options.PreCountdownTimeout;
+            var countdownAt = lastActivityAt + options.PreCountdownTimeout;
             var countdownDelay = (countdownAt - ServerNow).Positive();
             if (countdownDelay <= Epsilon) {
                 // Start the countdown

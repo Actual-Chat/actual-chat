@@ -51,6 +51,10 @@ account.
 
 ### Audio and video
 
+- [Unified live-activity signal](./live-activity-signal.md) — base the
+  stop-listening / stop-recording idle timers on a single `ILiveSessions`
+  activity bool derived from audio and video presence (not from the
+  transcription/persistence pipeline), and treat a disconnected client as idle.
 - [NAudio replacement](./naudio-replacement.md) — Windows audio capture fails
   under NativeAOT (`InvalidProgramException` in NAudio's WASAPI COM path);
   replace it with an AOT-safe capture path.

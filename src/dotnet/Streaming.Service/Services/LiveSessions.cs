@@ -11,6 +11,8 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     private IServiceProvider Services { get; } = services;
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
+    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
+    private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
     private ILiveSessionsBackend Backend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
 
     // [ComputeMethod]
@@ -37,6 +39,20 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         return await Backend.HasRecorder(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<bool> HasActivity(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        var audioStreams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        if (audioStreams.Count != 0)
+            return true;
+
+        var videoStreams = await LiveVideoBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        return videoStreams.Count != 0;
     }
 
     // [ComputeMethod]
@@ -156,6 +172,8 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
             await Backend.LeaveCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
     }
+
+    // Private methods
 
     private async Task<AuthorId?> RequireOwnAuthorId(
         Session session, ChatId chatId, CancellationToken cancellationToken)

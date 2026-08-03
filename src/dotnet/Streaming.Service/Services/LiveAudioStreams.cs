@@ -42,6 +42,9 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     {
         var parsedStreamId = StreamId.Parse(streamId);
         await Access.RequireReadAudio(session, parsedStreamId, cancellationToken).ConfigureAwait(false);
+        if (await IsTextOnly(parsedStreamId, cancellationToken).ConfigureAwait(false))
+            return null;
+
         var isLocal = parsedStreamId.NodeRef == MeshWatcher.ThisNode.Ref;
 
         if (isLocal)
@@ -152,6 +155,18 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         => Task.CompletedTask; // No-op method
 
     // Private methods
+
+    private async Task<bool> IsTextOnly(StreamId streamId, CancellationToken cancellationToken)
+    {
+        // Isolated: an SSB caller must not depend on this.
+        using var _ = Computed.BeginIsolation();
+        var chatId = await Backend.GetChatId(streamId, cancellationToken).ConfigureAwait(false);
+        if (chatId is not { } || chatId.Value.IsNullOrEmpty())
+            return false;
+
+        var streams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        return streams.Any(x => x.StreamId == streamId.Value && x.IsTextOnly);
+    }
 
     private async Task<IAsyncEnumerable<AudioFrame>?> GetOrFetchRemoteAudio(
         StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)

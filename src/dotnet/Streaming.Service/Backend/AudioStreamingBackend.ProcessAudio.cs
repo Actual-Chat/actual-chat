@@ -126,18 +126,18 @@ public partial class AudioStreamingBackend
         openSegment.SetRecordedAt(recordedAt);
         RememberChatId(openSegment.StreamId, chatId);
 
-        // Register the voice fan-out stream only in voice mode (only voice is fanned out to peers).
-        if (mustStreamVoice) {
-            var streamInfo = new LiveAudioStreamInfo {
-                ChatId = chatId,
-                AuthorId = author.Id,
-                StreamId = openSegment.StreamId.Value,
-                BeginsAt = beginsAt,
-                SourceBeginsAt = sourceBeginsAt,
-                Format = audio.Format,
-            };
-            await LiveAudioBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
-        }
+        // Registered in both modes: this is the chat's live-activity signal, and a JustText
+        // author is just as live as a speaking one. IsTextOnly keeps voice consumers away.
+        var streamInfo = new LiveAudioStreamInfo {
+            ChatId = chatId,
+            AuthorId = author.Id,
+            StreamId = openSegment.StreamId.Value,
+            BeginsAt = beginsAt,
+            SourceBeginsAt = sourceBeginsAt,
+            Format = audio.Format,
+            IsTextOnly = !mustStreamVoice,
+        };
+        await LiveAudioBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
 
         // Join the live session for any live contribution: voice (any chat) or a streamed transcript
         // in a summarized chat. JustText in a plain chat is just a voice-to-text message, not a session.
@@ -205,12 +205,21 @@ public partial class AudioStreamingBackend
         ClosedAudioSegment? closedSegment = null;
         try {
             try {
-                await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
-                Log.LogInformation(
-                    "ProcessAudio: stream #{StreamId} ended normally, duration={Duration:F1}s",
-                    openSegment.StreamId, openSegment.Source.Duration.TotalSeconds);
-                openSegment.Close(openSegment.Source.Duration);
-                closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
+                try {
+                    await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
+                    Log.LogInformation(
+                        "ProcessAudio: stream #{StreamId} ended normally, duration={Duration:F1}s",
+                        openSegment.StreamId, openSegment.Source.Duration.TotalSeconds);
+                    openSegment.Close(openSegment.Source.Duration);
+                    closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
+                }
+                finally {
+                    // Unregisters at end of audio rather than after the blob save below: the chat
+                    // would otherwise keep reporting activity for the whole persistence latency.
+                    await LiveAudioBackend
+                        .Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
 
                 if (mustStreamVoice && mustTranscribe) {
                     // Save audio blob and create Media record - use CancellationToken.None to ensure cleanup
@@ -225,15 +234,7 @@ public partial class AudioStreamingBackend
                     openSegment.StreamId);
             }
             finally {
-                try {
-                    if (mustStreamVoice)
-                        await LiveAudioBackend
-                            .Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None)
-                            .ConfigureAwait(false);
-                }
-                finally {
-                    audioMediaIdTcs.TrySetResult(audioMediaId);
-                }
+                audioMediaIdTcs.TrySetResult(audioMediaId);
             }
         }
         finally {

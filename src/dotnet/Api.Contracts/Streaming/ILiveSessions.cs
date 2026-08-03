@@ -17,6 +17,11 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<bool> HasRecorder(Session session, ChatId chatId, CancellationToken cancellationToken);
+    // The signal behind the idle stop-listening / stop-recording timers. Deliberately unrelated to transcription.
+    // Consolidated: a stream list change that leaves the bool alone must not be pushed to every listener.
+    [ComputeMethod(ConsolidationDelay = 0.5)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<bool> HasActivity(Session session, ChatId chatId, CancellationToken cancellationToken);
     // Consolidated server-side, so a GetCallState or chat-rules change that leaves the status alone
     // isn't pushed to the caller. Zero delay - this is a ring/accept path.
     [ComputeMethod(ConsolidationDelay = 0)]
