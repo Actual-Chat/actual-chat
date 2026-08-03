@@ -782,23 +782,26 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
     private async Task RemovePrivilegedRoles(AuthorId authorId, CancellationToken cancellationToken)
     {
+        await RemoveFromSystemRole(authorId, SystemRole.Owner, cancellationToken).ConfigureAwait(false);
+        await RemoveFromSystemRole(authorId, SystemRole.Moderator, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task RemoveFromSystemRole(
+        AuthorId authorId, SystemRole systemRole, CancellationToken cancellationToken)
+    {
         var chatId = authorId.ChatId;
-        var ownerRole = await RolesBackend
-            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
-            .ConfigureAwait(false);
-        if (ownerRole == null)
+        var role = await RolesBackend.GetSystem(chatId, systemRole, cancellationToken).ConfigureAwait(false);
+        if (role == null)
             return;
 
-        var authorIds = await RolesBackend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
-        var isOwner = authorIds.Contains(authorId);
-        if (!isOwner)
+        var authorIds = await RolesBackend.ListAuthorIds(chatId, role.Id, cancellationToken).ConfigureAwait(false);
+        if (!authorIds.Contains(authorId))
             return;
 
-        // Exclude from chat owners.
         var changeRoleCommand = new RolesBackend_Change(
             chatId,
-            ownerRole.Id,
-            ownerRole.Version,
+            role.Id,
+            role.Version,
             new Change<RoleDiff> {
                 Update = new RoleDiff {
                     AuthorIds = new SetDiff<AuthorId[], AuthorId> {

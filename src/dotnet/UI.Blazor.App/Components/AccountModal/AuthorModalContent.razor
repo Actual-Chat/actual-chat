@@ -24,7 +24,7 @@
 
     @{ var m = EditMemberModel; }
 
-    @if (m != null && (m.CanPromoteToOwner || m.CanRemoveFromGroup) || UsePlaceSettingsToEditMember) {
+    @if (m != null && (m.CanPromoteToOwner || m.CanSetModerator || m.CanRemoveFromGroup) || UsePlaceSettingsToEditMember) {
         <div class="separator"></div>
     }
 
@@ -52,6 +52,20 @@
                 </Content>
                 <Caption>
                     Owners can do anything with this chat, including deleting it. This action cannot be undone.
+                </Caption>
+            </TileItem>
+        }
+
+        @if (m is { CanSetModerator: true }) {
+            <TileItem Class="tile-set-moderator" Click="@(() => OnSetModeratorClick(!m.IsModerator))">
+                <Icon>
+                    <i class="icon-star-2 text-2xl text-03"></i>
+                </Icon>
+                <Content>
+                    @(m.IsModerator ? "Remove Moderator" : "Make Moderator")
+                </Content>
+                <Caption>
+                    Moderators can delete messages, manage calls and members, and edit this chat - but not delete it.
                 </Caption>
             </TileItem>
         }
@@ -90,6 +104,9 @@
 
     private Task OnPromoteToOwner()
         => EditChatMemberCommands.OnPromoteToOwnerClick(Hub, Author);
+
+    private Task OnSetModeratorClick(bool isModerator)
+        => EditChatMemberCommands.OnSetModeratorClick(Hub, Author, isModerator);
 
     private Task OnRemoveFromGroupClick()
         => EditChatMemberCommands.OnRemoveFromGroupClick(Hub, Author);

@@ -195,13 +195,15 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 JoinedAt = info.JoinedAt == default ? info.RegisteredAt : info.JoinedAt,
             };
         }
-        // Owners are grouped with the host (they can manage the call too).
-        var ownerRole = (await RolesBackend.ListSystem(chatId, cancellationToken).ConfigureAwait(false))
-            .FirstOrDefault(r => r.SystemRole == SystemRole.Owner);
-        var ownerIds = ownerRole is null
-            ? new HashSet<AuthorId>()
-            : (await RolesBackend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false))
-                .ToHashSet();
+        // Owners and Moderators are grouped with the host (they can manage the call too).
+        var ownerIds = (await RolesBackend
+            .ListSystemRoleAuthorIds(ChatsBackend, chatId, SystemRole.Owner, cancellationToken)
+            .ConfigureAwait(false))
+            .ToHashSet();
+        var moderatorIds = await RolesBackend
+            .ListSystemRoleAuthorIds(ChatsBackend, chatId, SystemRole.Moderator, cancellationToken)
+            .ConfigureAwait(false);
+        ownerIds.UnionWith(moderatorIds);
 
         var members = byAuthor.Values
             .Select(m => m with {
@@ -415,20 +417,46 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         InvalidateGet(chatId);
     }
 
-    public virtual async Task MuteAll(ChatId chatId, AuthorId exceptAuthorId, bool muted, CancellationToken cancellationToken)
+    public virtual async Task MuteAll(
+        ChatId chatId,
+        ApiArray<AuthorId> exceptAuthorIds,
+        bool muted,
+        CancellationToken cancellationToken)
     {
         // Soft "mute all except the actor": sets MicMuted on every other participant.
         // This is peer-revocable — a muted peer can re-record to unmute themselves.
+        var exceptAuthorIdValues = exceptAuthorIds.Select(x => x.Value).ToHashSet();
         var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
         foreach (var (authorIdValue, info) in participants) {
             if (info is null || info.MicMuted == muted)
                 continue;
-            if (authorIdValue == exceptAuthorId.Value)
+            if (exceptAuthorIdValues.Contains(authorIdValue))
                 continue;
 
             await _participants.Set(chatId.Value, authorIdValue, info with { MicMuted = muted }).ConfigureAwait(false);
         }
         InvalidateGet(chatId);
+    }
+
+    public virtual async Task SetHost(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    {
+        using var _ = Computed.BeginIsolation();
+        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        if (state is null || state.Host == authorId)
+            return;
+
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        if (!participants.ContainsKey(authorId.Value))
+            throw StandardError.Constraint("Only a call participant can become the call host.");
+
+        state = state with {
+            Host = authorId,
+            Version = VersionGenerator.NextVersion(state.Version),
+        };
+        await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
+        InvalidateState(chatId);
     }
 
     public virtual async Task UpdateSummary(
@@ -679,8 +707,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             InvalidateHasRecorder(chatId);
             InvalidateGet(chatId);
             close = await ParticipantCount(chatId).ConfigureAwait(false) < 2;
-            if (!close)
+            if (!close) {
+                if (state.Host == authorId)
+                    await ReassignHost(chatId, state, cancellationToken).ConfigureAwait(false);
                 await EvaluateLiveness(chatId).ConfigureAwait(false);
+            }
         }
         if (close)
             await CloseCall(chatId).ConfigureAwait(false);
@@ -759,6 +790,32 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // Private methods
+
+    private async Task ReassignHost(ChatId chatId, LiveSessionState state, CancellationToken cancellationToken)
+    {
+        // Without this the host slot would keep pointing at someone who already left, and in a call
+        // with no Owner present nobody could take it over.
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        var candidateIds = participants.Keys
+            .Select(x => AuthorId.TryParse(x, out var id) ? id : null)
+            .SkipNullItems()
+            .ToList();
+        if (candidateIds.Count == 0)
+            return;
+
+        var ownerIds = (await RolesBackend
+            .ListSystemRoleAuthorIds(ChatsBackend, chatId, SystemRole.Owner, cancellationToken)
+            .ConfigureAwait(false))
+            .ToHashSet();
+        var newHost = candidateIds.FirstOrDefault(ownerIds.Contains) ?? candidateIds[0];
+        await _redisScope
+            .Set(chatId.Value, state with {
+                Host = newHost,
+                Version = VersionGenerator.NextVersion(state.Version),
+            })
+            .ConfigureAwait(false);
+        InvalidateState(chatId);
+    }
 
     private async Task<LiveSessionState?> SafeGet(ChatId chatId)
     {

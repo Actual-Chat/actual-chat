@@ -12,5 +12,6 @@ public enum SystemRole
     Guest = Anyone + 2, // Unauthenticated user
     User = Anyone + 4, // Authenticated user in non-anonymous mode
     AnonymousUser = Anyone + 4 + 8, // Authenticated user in anonymous mode
+    Moderator = 91,
     Owner = 101,
 }

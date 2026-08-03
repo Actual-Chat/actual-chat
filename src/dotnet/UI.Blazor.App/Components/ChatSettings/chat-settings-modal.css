@@ -185,11 +185,6 @@ body.hoverable .chat-settings-container .tile-item:hover {
 .edit-member-menu .avatar-name {
     @apply font-medium text-02;
 }
-.edit-member-menu .ac-menu-hint {
-    @apply text-caption-6 text-03;
-    @apply whitespace-normal;
-}
-
 .form-block.own-avatar-edit-header,
 .own-avatar-edit-header,
 .form-block.chat-settings-header,

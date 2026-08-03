@@ -39,6 +39,8 @@
             var groups = new List<(string, ICollection<AuthorId>, bool)>();
             if (m.OwnerAuthorIds.Count > 0)
                 groups.Add(("Owners", m.OwnerAuthorIds, false));
+            if (m.ModeratorAuthorIds.Count > 0)
+                groups.Add(("Moderators", m.ModeratorAuthorIds, false));
             if (m.AllAreAnonymous) {
                 if (m.UnreportedAuthorIds.Count > 0)
                     groups.Add(("Unreported", m.UnreportedAuthorIds, false));
@@ -118,6 +120,10 @@
         else
             return Model.None;
 
+        HashSet<AuthorId> moderatorIds = !isPeerChat
+            ? [..await Roles.ListModeratorIds(Session, chatId, cancellationToken).ConfigureAwait(false)]
+            : [];
+        var moderatorAuthors = new List<AuthorInfo>();
         var ownerAuthors = new List<AuthorInfo>();
         var onlineAuthors = new List<AuthorInfo>();
         var offlineAuthors = new List<AuthorInfo>();
@@ -144,11 +150,13 @@
         foreach (var authorInfo in authorInfos) {
             var collection = ownerIds.Contains(authorInfo.Id)
                 ? ownerAuthors
-                : authorInfo.IsAnonymous
-                    ? unreportedAuthors
-                    : authorInfo.Presence is Presence.Online or Presence.Recording or Presence.Away
-                        ? onlineAuthors
-                        : offlineAuthors;
+                : moderatorIds.Contains(authorInfo.Id)
+                    ? moderatorAuthors
+                    : authorInfo.IsAnonymous
+                        ? unreportedAuthors
+                        : authorInfo.Presence is Presence.Online or Presence.Recording or Presence.Away
+                            ? onlineAuthors
+                            : offlineAuthors;
             collection.Add(authorInfo);
         }
 
@@ -160,6 +168,7 @@
             };
 
         ownerAuthors.Sort(comparison);
+        moderatorAuthors.Sort(comparison);
         onlineAuthors.Sort(comparison);
         offlineAuthors.Sort(comparison);
         unreportedAuthors.Sort(comparison);
@@ -172,6 +181,7 @@
             AllAuthorIds = allAuthorIds,
             OwnAuthorId = ownAuthor?.Id,
             OwnerAuthorIds = ownerAuthors.Select(c => c.Id).ToList(),
+            ModeratorAuthorIds = moderatorAuthors.Select(c => c.Id).ToList(),
             OnlineAuthorIds = onlineAuthors.Select(c => c.Id).ToList(),
             OfflineAuthorIds = offlineAuthors.Select(c => c.Id).ToList(),
             UnreportedAuthorIds = unreportedAuthors.Select(c => c.Id).ToList(),
@@ -192,6 +202,7 @@
         public AuthorId? OwnAuthorId { get; init; }
         public IReadOnlyList<AuthorId> AllAuthorIds { get; init; } = [];
         public List<AuthorId> OwnerAuthorIds { get; init; } = [];
+        public List<AuthorId> ModeratorAuthorIds { get; init; } = [];
         public List<AuthorId> OnlineAuthorIds { get; init; } = [];
         public List<AuthorId> OfflineAuthorIds { get; init; } = [];
         public List<AuthorId> UnreportedAuthorIds { get; init; } = [];

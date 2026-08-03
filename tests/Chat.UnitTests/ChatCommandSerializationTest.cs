@@ -67,7 +67,10 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Chats_UpsertEntry_WithReply()
     {
-        var cmd = new Chats_UpsertEntry(TestSession, TestChatId, 1) { Text = "Reply text", RepliedEntryLid = Option.Some<long?>(5) };
+        var cmd = new Chats_UpsertEntry(TestSession, TestChatId, 1) {
+            Text = "Reply text",
+            RepliedEntryLid = Option.Some<long?>(5),
+        };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -178,6 +181,15 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
+    public void Authors_ChangeRole_Basic()
+    {
+        var authorId = AuthorId.New(TestChatId, 5);
+        var cmd = new Authors_ChangeRole(TestSession, authorId, SystemRole.Moderator, true);
+        cmd.AssertPassesThroughSerializers();
+    }
+
+    [Fact]
+    [Obsolete("2026.08: Use Authors_ChangeRole. Old clients only.")]
     public void Authors_PromoteToOwner_Basic()
     {
         var authorId = AuthorId.New(TestChatId, 5);
@@ -267,6 +279,15 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
+    public void Places_ChangeRole_Basic()
+    {
+        var authorId = AuthorId.New(TestChatId, 5);
+        var cmd = new Places_ChangeRole(TestSession, authorId, SystemRole.Moderator, false);
+        cmd.AssertPassesThroughSerializers();
+    }
+
+    [Fact]
+    [Obsolete("2026.08: Use Places_ChangeRole. Old clients only.")]
     public void Places_PromoteToOwner_Basic()
     {
         var authorId = AuthorId.New(TestChatId, 5);

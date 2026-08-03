@@ -42,6 +42,9 @@ public interface IAuthors : IComputeService
     [CommandHandler]
     Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnChangeRole(Authors_ChangeRole command, CancellationToken cancellationToken);
+    [Obsolete("2026.08: Use Authors_ChangeRole. Old clients only.")]
+    [CommandHandler]
     Task OnPromoteToOwner(Authors_PromoteToOwner command, CancellationToken cancellationToken);
 }
 
@@ -93,6 +96,16 @@ public sealed partial record Authors_Join(
 ) : ISessionCommand<AuthorFull>, IApiCommand;
 
 [DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Authors_ChangeRole(
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] AuthorId AuthorId,
+    [property: DataMember, Key(2)] SystemRole SystemRole,
+    [property: DataMember, Key(3)] bool IsInRole
+) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MessagePackObject]
+[Obsolete("2026.08: Use Authors_ChangeRole. Old clients only.")]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Authors_PromoteToOwner(
     [property: DataMember, Key(0)] Session Session,

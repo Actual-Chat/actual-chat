@@ -56,40 +56,14 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     }
 
     // [ComputeMethod]
-    public virtual async Task<AuthorId[]> ListOwnerIds(
+    public virtual Task<AuthorId[]> ListOwnerIds(
         Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (ownAuthor == null)
-            return [];
+        => ListSystemRoleAuthorIds(session, chatId, SystemRole.Owner, cancellationToken);
 
-        var rules = await ChatsBackend.GetRules(chatId, ownAuthor.Id, cancellationToken).ConfigureAwait(false);
-        if (!rules.CanSeeMembers())
-            return [];
-
-        var targetChatId = chatId;
-        if (targetChatId is PlaceChatId { IsRoot: false } placeChatId) {
-            var chat = await ChatsBackend.Get(targetChatId, cancellationToken).ConfigureAwait(false);
-            if (chat == null)
-                return []; // Chat should be not null here, but do check for safety.
-
-            if (chat.IsPublic)
-                targetChatId = placeChatId.PlaceId.RootChatId; // For public place chats take owner list from root place chat.
-        }
-
-        var ownerRole = await Backend
-            .GetSystem(targetChatId, SystemRole.Owner, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
-
-        var authorIds = await Backend.ListAuthorIds(targetChatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
-        if (targetChatId != chatId)
-            authorIds = authorIds.Select(c => ActualChat.Chat.AuthorsBackend.Remap(c, chatId)).ToArray();
-        // Mask anonymous owners
-        if (!rules.IsOwner())
-            authorIds = await MaskAnonymousAuthors(authorIds, cancellationToken).ConfigureAwait(false);
-        return authorIds;
-    }
+    // [ComputeMethod]
+    public virtual Task<AuthorId[]> ListModeratorIds(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+        => ListSystemRoleAuthorIds(session, chatId, SystemRole.Moderator, cancellationToken);
 
     // [CommandHandler]
     public virtual async Task<Role> OnChange(Roles_Change command, CancellationToken cancellationToken)
@@ -105,6 +79,25 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     }
 
     // Private methods
+
+    private async Task<AuthorId[]> ListSystemRoleAuthorIds(
+        Session session, ChatId chatId, SystemRole systemRole, CancellationToken cancellationToken)
+    {
+        var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor == null)
+            return [];
+
+        var rules = await ChatsBackend.GetRules(chatId, ownAuthor.Id, cancellationToken).ConfigureAwait(false);
+        if (!rules.CanSeeMembers())
+            return [];
+
+        var authorIds = await Backend
+            .ListSystemRoleAuthorIds(ChatsBackend, chatId, systemRole, cancellationToken)
+            .ConfigureAwait(false);
+        if (!rules.IsOwner())
+            authorIds = await MaskAnonymousAuthors(authorIds, cancellationToken).ConfigureAwait(false);
+        return authorIds;
+    }
 
     private async Task<bool> IsOwner(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
