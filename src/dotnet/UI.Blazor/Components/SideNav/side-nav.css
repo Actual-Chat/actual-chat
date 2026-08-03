@@ -6,9 +6,11 @@
     @apply text-02 bg-02;
     @apply top-0 bottom-0;
     @apply z-20;
-    @apply md:left-0 md:right-auto md:w-full;
-    left: var(--safe-area-left);
-    right: var(--safe-area-right);
+    /* Narrow only: the panel is fixed there, so it clears the insets itself.
+       On md+ the base layout already did, so the md: reset below must stay after these two. */
+    left: var(--safe-area-left); /* Must go 1st */
+    right: var(--safe-area-right); /* Must go 1st */
+    @apply md:left-0 md:right-auto md:w-full; /* Must go 2nd */
     transform: none;
     touch-action: manipulation;
     will-change: transform; /* Ensures its own composition layer */
