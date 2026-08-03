@@ -15,8 +15,8 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
 
     private readonly GestureRecognizer _recognizer = new(DisarmedOptions);
     private volatile bool _isPracticeMode;
-    private volatile bool _isHeadsetButtonEnabled;
-    private volatile bool _hasAnswerWindow;
+    private bool _isHeadsetButtonEnabled;
+    private bool _hasAnswerWindow;
     private int _sampleCount;
     private TaskCompletionSource _wakeSignal = TaskCompletionSourceExt.New();
 
@@ -60,7 +60,13 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     }
 
     public HeadsetButtonState GetHeadsetButtonState()
-        => new(_isHeadsetButtonEnabled, _hasAnswerWindow, ChatAudioUI.IsRecording());
+    {
+        // The reads are fenced because TrackActivation publishes them from its own thread and
+        // the native media-button handler calls this synchronously, off any of ours.
+        var isEnabled = Volatile.Read(ref _isHeadsetButtonEnabled);
+        var hasAnswerWindow = Volatile.Read(ref _hasAnswerWindow);
+        return new(isEnabled, hasAnswerWindow, ChatAudioUI.IsRecording(), _isPracticeMode);
+    }
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
@@ -132,8 +138,8 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                     Clocks.ServerClock.Now,
                     Constants.Audio.WalkieTalkieReplyRecencyWindow);
                 var mustSenseStop = isFaceDownStopEnabled && (isMicOpen || isPracticeMode);
-                _isHeadsetButtonEnabled = settings.IsHeadsetButtonEnabled;
-                _hasAnswerWindow = mustSenseStart;
+                Volatile.Write(ref _isHeadsetButtonEnabled, settings.IsHeadsetButtonEnabled);
+                Volatile.Write(ref _hasAnswerWindow, mustSenseStart);
 
                 _recognizer.Options = new GestureOptions(
                     settings.IsFlipToTalkEnabled && mustSenseStart,

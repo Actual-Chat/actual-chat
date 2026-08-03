@@ -258,8 +258,10 @@ public class AndroidAudioWidgetForegroundService : Service
 
     private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, int repeatCount)
     {
-        // A throw here would escape into Android's binder dispatch instead of reaching the base
-        // callback - e.g. GetRequiredService on a scope that's concurrently being disposed.
+        // Runs on the main thread: SetCallback binds its Handler to the Looper of the thread that
+        // called it, which is OnStartCommand's. So this must neither block nor throw - a throw
+        // would escape the media-button dispatch instead of reaching the base callback, e.g.
+        // GetRequiredService on a scope that's concurrently being disposed.
         try {
             if (AppScopeAccessor.Current is not { } services)
                 return false;
@@ -267,7 +269,8 @@ public class AndroidAudioWidgetForegroundService : Service
             var hub = services.GetRequiredService<AppUIHub>();
             var state = hub.GestureUI.GetHeadsetButtonState();
             var action = HeadsetButtonPolicy.Decide(
-                key, isDown, repeatCount, state.IsEnabled, state.HasAnswerWindow, state.IsReplyHot);
+                key, isDown, repeatCount, state.IsEnabled,
+                state.HasAnswerWindow, state.IsReplyHot, state.IsPracticeMode);
             if (action == HeadsetButtonAction.PassThrough)
                 return false;
 
