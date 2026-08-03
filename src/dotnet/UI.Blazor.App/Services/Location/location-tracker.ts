@@ -19,7 +19,7 @@ export class LocationTracker {
         return new LocationTracker(blazorRef);
     }
 
-    public static getCurrent(force: boolean): Promise<GeoPoint | null> {
+    public static getCurrent(mustBeFresh: boolean): Promise<GeoPoint | null> {
         return new Promise(resolve => {
             navigator.geolocation.getCurrentPosition(
                 position => {
@@ -29,7 +29,7 @@ export class LocationTracker {
                     });
                 },
                 error => { warnLog?.log('getCurrent error', error); resolve(null); },
-                { enableHighAccuracy: true, maximumAge: force ? 0 : Infinity, timeout: getTimeoutMs });
+                { enableHighAccuracy: true, maximumAge: mustBeFresh ? 0 : Infinity, timeout: getTimeoutMs });
         });
     }
 

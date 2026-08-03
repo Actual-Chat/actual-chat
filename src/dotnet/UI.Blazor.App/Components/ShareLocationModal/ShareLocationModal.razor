@@ -174,7 +174,9 @@
     }
 
     private async Task OnLocate() {
-        if (await Tracker.Get(force: true).ConfigureAwait(true) is not { } point)
+        // TODO: show ui loading state while locating cause it might take a while
+        // TODO: do not use Tracker directly from blazor - use LocationUI
+        if (await Tracker.Get(true, Hub.StopToken).ConfigureAwait(true) is not { } point)
             return;
 
         if (_mapView is { } mapView)
