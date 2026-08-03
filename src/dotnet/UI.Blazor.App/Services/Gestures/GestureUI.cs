@@ -58,8 +58,15 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
+        // Without an accelerometer no gesture can ever be recognized, and every output of the
+        // loop below is consumed only by sensor callbacks - so it's provably a no-op here.
+        // This is the web/Blazor Server case, where it would otherwise run per circuit.
+        if (!Feed.IsAccelerometerAvailable)
+            return Task.CompletedTask;
+
         Feed.SampleReceived += OnSample;
         Feed.ProximityChanged += OnProximityChanged;
+        IncomingVoiceActivityUI.IncomingVoiceStamped += OnIncomingVoiceStamped;
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return AsyncChain.From(TrackActivation)
             .Log(LogLevel.Debug, Log)
@@ -161,6 +168,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
 
     private void OnProximityChanged(bool isCovered)
         => _recognizer.SetProximityCovered(isCovered);
+
+    private void OnIncomingVoiceStamped()
+        => Wake();
 
     private void OnSample(SensorSample sample)
     {

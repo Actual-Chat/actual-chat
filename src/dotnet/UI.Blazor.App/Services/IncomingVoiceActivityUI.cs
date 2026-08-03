@@ -17,6 +17,8 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IAuthors Authors => Hub.Authors;
 
+    public event Action? IncomingVoiceStamped;
+
     public static bool ShouldStamp(bool prevHadOthers, bool nowHasOthers)
         => !prevHadOthers && nowHasOthers;
 
@@ -87,8 +89,12 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
         var prevHadOthers = false;
         await foreach (var change in cHasOthers.Changes(cancellationToken).ConfigureAwait(false)) {
             var nowHasOthers = change.Value;
-            if (ShouldStamp(prevHadOthers, nowHasOthers))
+            if (ShouldStamp(prevHadOthers, nowHasOthers)) {
+                // The stamp opens the answer window, but it's a plain dictionary write - the
+                // event is the only thing that lets GestureUI arm sooner than its next poll.
                 _lastIncomingAt[chatId] = Clocks.ServerClock.Now;
+                IncomingVoiceStamped?.Invoke();
+            }
             prevHadOthers = nowHasOthers;
         }
     }
