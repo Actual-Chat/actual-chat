@@ -17,20 +17,27 @@
                     Center="@m.OwnMarker.Point"
                     Zoom="15"
                     Markers="@([m.OwnMarker])"/>
+            } else if (m.MustRequestPermission) {
+                <button type="button" class="c-permission-prompt" @onclick="@OnEnablePermission">
+                    <i class="icon-marker-pin"></i>
+                    <span>Enable location permission to show map.</span>
+                </button>
             }
             <ButtonRound Class="c-close" Click="@OnClose">
                 <i class="icon-close"></i>
             </ButtonRound>
-            <div class="c-map-menu">
-                @if (m.EnableIncompleteUI) {
-                    <button type="button" class="c-map-menu-item" @onclick="@OnOpenMapTypeMenu">
-                        <i class="icon-map"></i>
+            @if (!m.MustRequestPermission) {
+                <div class="c-map-menu">
+                    @if (m.EnableIncompleteUI) {
+                        <button type="button" class="c-map-menu-item" @onclick="@OnOpenMapTypeMenu">
+                            <i class="icon-map"></i>
+                        </button>
+                    }
+                    <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
+                        <i class="icon-navigation-pointer"></i>
                     </button>
-                }
-                <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
-                    <i class="icon-navigation-pointer"></i>
-                </button>
-            </div>
+                </div>
+            }
         </div>
         <div class="c-actions">
             <ButtonTile Class="c-send-current" Click="@OnSendCurrent">
@@ -88,6 +95,8 @@
 
     private ILocationTracker Tracker => Hub.LocationTracker;
     private LocationUI LocationUI => Hub.LocationUI;
+    private LocationPermissionHandler LocationPermission
+        => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -117,9 +126,11 @@
         var isMapTypeMenuOpen = await _isMapTypeMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var isDurationMenuOpen = await _isDurationMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var ownMarker = await LocationUI.GetOwnMarker(ModalModel.ChatId, cancellationToken).ConfigureAwait(false);
+        var isPermissionGranted = await LocationUI.IsPermissionGranted(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new ComputedModel {
             OwnMarker =  ownMarker,
+            MustRequestPermission = ownMarker is null && isPermissionGranted != true,
             IsMapTypeMenuOpen =  isMapTypeMenuOpen,
             IsDurationMenuOpen =  isDurationMenuOpen,
             MapType =  mapType,
@@ -128,6 +139,9 @@
     }
 
     // Private methods
+
+    private Task OnEnablePermission()
+        => LocationPermission.CheckOrRequest(Hub.StopToken).AsTask();
 
     private void OnClose()
         => Modal.Close();
@@ -173,6 +187,7 @@
         public static readonly ComputedModel None = new() { OwnMarker = null };
 
         public required MapMarker? OwnMarker { get; init; }
+        public bool MustRequestPermission { get; init; }
         public MapType MapType { get; init; } = MapType.Map;
         public bool IsMapTypeMenuOpen { get; init; }
         public bool IsDurationMenuOpen { get; init; }

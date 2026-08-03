@@ -194,10 +194,18 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         if (await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false) is { } lastKnown)
             return lastKnown;
 
-        if (await LocationPermission.Check(cancellationToken).ConfigureAwait(false) != true)
+        if (await IsPermissionGranted(cancellationToken).ConfigureAwait(false) != true)
             return null;
 
         return await Tracker.Get(false, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool?> IsPermissionGranted(CancellationToken cancellationToken)
+    {
+        // null means "undetermined" here: web reports it for "prompt", Android - for a soft denial.
+        var isGranted = await LocationPermission.Cached.Use(cancellationToken).ConfigureAwait(false);
+        return isGranted ?? await LocationPermission.Check(cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
