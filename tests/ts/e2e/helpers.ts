@@ -343,15 +343,19 @@ export async function ensureSignedIn(page: Page, email: string = TEST_EMAIL, otp
 }
 
 /** Fresh, signed-in context for one user with a mocked geolocation — used by multi-user tests
- *  where each participant needs an isolated session and its own browser-level position. */
+ *  where each participant needs an isolated session and its own browser-level position.
+ *  Omit `geo` to leave geolocation ungranted: a fresh context reports "prompt", which is
+ *  the state a phone is in before the user allows location access. */
 export async function newUserContext(
     conn: BrowserConnection,
     email: string,
-    geo: { latitude: number; longitude: number; accuracy?: number },
+    geo?: { latitude: number; longitude: number; accuracy?: number },
 ): Promise<{ context: BrowserContext; page: Page }> {
     const context = await conn.browser.newContext({ ignoreHTTPSErrors: true });
-    await context.grantPermissions(['geolocation'], { origin: BASE_URL });
-    await context.setGeolocation(geo);
+    if (geo) {
+        await context.grantPermissions(['geolocation'], { origin: BASE_URL });
+        await context.setGeolocation(geo);
+    }
     const page = await context.newPage();
     page.on('pageerror', e => console.log(`PAGEERROR[${email}]:`, e.message));
     page.on('console', m => { if (m.type() === 'error') console.log(`CONSOLE.ERROR[${email}]:`, m.text()); });
