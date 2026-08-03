@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using Android.Content;
 using IntentExtras = ActualChat.App.Maui.Audio.AndroidAudioWidgetForegroundService.IntentExtras;
@@ -16,20 +17,45 @@ public class AndroidAudioWidget : AudioWidget
     public AndroidAudioWidget(AppUIHub hub) : base(hub)
     {
         Interlocked.Exchange(ref _instance, this);
-        _ = DispatchToBlazor(_ => HideImpl());
+        _ = DispatchToBlazor(_ => {
+            if (_instance != this)
+                return;
+
+            HideImpl();
+        });
     }
 
-    public static void Pause() => _instance?.InvokeAction(ActionNames.Pause);
-    public static void Resume() => _instance?.InvokeAction(ActionNames.Resume);
+    public static void Pause()
+    {
+        // The wake session drives its own playback and offers no pause/resume, only Stop - and
+        // nothing headless can re-issue ShowImpl to flip the button back to Play, so acting here
+        // would strand the user on a paused stream behind a Pause button.
+        if (HeadlessBlazorScope.Current is not null)
+            return;
+
+        _instance?.InvokeAction(ActionNames.Pause);
+    }
+
+    public static void Resume()
+    {
+        if (HeadlessBlazorScope.Current is not null)
+            return;
+
+        _instance?.InvokeAction(ActionNames.Resume);
+    }
+
     public static void Stop()
     {
-        // In a headless wake session no AndroidAudioWidget instance exists - the wake
-        // handler owns the FGS and the listening state.
-        if (_instance is { } instance)
-            instance.InvokeAction(ActionNames.Stop);
-        else
+        // A headless wake session owns the FGS and the listening state, and can now have an
+        // AndroidAudioWidget instance of its own - so the session decides who stops, not the instance.
+        if (HeadlessBlazorScope.Current is not null) {
             WalkieTalkieWakeHandler.StopHeadlessSession();
+            return;
+        }
+
+        _instance?.InvokeAction(ActionNames.Stop);
     }
+
     public static void Hide() => HideImpl();
 
     protected override void OnStateChanged(AudioWidgetState? state, AudioWidgetState? oldState)
