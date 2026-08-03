@@ -133,7 +133,8 @@ public class IncompleteMarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData("Hello ||")]
     public void OpeningTokenWithNoContentStaysLiteral(string text)
     {
-        // An incomplete span needs non-empty content - see the note in CreateStylized.
+        // An incomplete span needs non-empty content, otherwise a nested empty match would consume
+        // the closing token of the span enclosing it - so a bare trailing token is still text.
 
         // act
         var markup = Parser.Parse(text);
