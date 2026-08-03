@@ -11,6 +11,8 @@ public class AndroidAudioWidget : AudioWidget
     private static volatile bool _isShown;
     private static ILogger? _log;
 
+    private bool _isDisposed;
+
     private static ILogger Log => _log ??= StaticLog.For(typeof(AndroidAudioWidget));
     private static Context Context => Platform.AppContext;
 
@@ -18,7 +20,7 @@ public class AndroidAudioWidget : AudioWidget
     {
         Interlocked.Exchange(ref _instance, this);
         _ = DispatchToBlazor(_ => {
-            if (_instance != this)
+            if (IsStale())
                 return;
 
             HideImpl();
@@ -60,7 +62,7 @@ public class AndroidAudioWidget : AudioWidget
 
     protected override void OnStateChanged(AudioWidgetState? state, AudioWidgetState? oldState)
         => _ = DispatchToBlazor(_ => {
-            if (_instance != this)
+            if (IsStale())
                 return;
 
             if (state is null)
@@ -71,6 +73,9 @@ public class AndroidAudioWidget : AudioWidget
 
     public override void Dispose()
     {
+        // Published before _instance is cleared: a dispatch parked in a headless scope can resume
+        // long after this scope died, and _instance may still point at it.
+        Volatile.Write(ref _isDisposed, true);
         Interlocked.CompareExchange(ref _instance, null, this);
         base.Dispose();
     }
@@ -81,6 +86,9 @@ public class AndroidAudioWidget : AudioWidget
     internal static void MarkForegroundServiceHidden() => _isShown = false;
 
     // Private methods
+
+    private bool IsStale()
+        => Volatile.Read(ref _isDisposed) || _instance != this;
 
     private static void ShowImpl(AudioWidgetState state)
     {
