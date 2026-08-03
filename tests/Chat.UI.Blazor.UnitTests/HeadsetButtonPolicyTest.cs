@@ -4,6 +4,96 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public class HeadsetButtonPolicyTest
 {
+    private static readonly Moment T0 = Moment.EpochStart + TimeSpan.FromDays(20_000);
+    private static readonly TimeSpan Window = TimeSpan.FromSeconds(150);
+    private static readonly ChatId ChatA = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
+    private static readonly ChatId ChatB = ChatId.Parse("bbbbbbbbbbbbbbbbbbbb");
+    private static readonly IReadOnlyDictionary<ChatId, Moment> NoVoice = new Dictionary<ChatId, Moment>();
+    private static readonly IReadOnlyDictionary<ChatId, Moment> RecentVoiceInA =
+        new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromSeconds(20) };
+    private static readonly IReadOnlyDictionary<ChatId, Moment> OldVoiceInA =
+        new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromSeconds(400) };
+    private static readonly IReadOnlyDictionary<ChatId, Moment> RecentVoiceInB =
+        new Dictionary<ChatId, Moment> { [ChatB] = T0 - TimeSpan.FromSeconds(20) };
+
+    [Fact]
+    public void RecentVoiceInAnArmedChatOpensTheWindow()
+        => GetState(new UserWalkieTalkieSettings(), RecentVoiceInA).HasAnswerWindow.Should().BeTrue();
+
+    [Fact]
+    public void StaleVoiceLeavesTheWindowClosed()
+        => GetState(new UserWalkieTalkieSettings(), OldVoiceInA).HasAnswerWindow.Should().BeFalse();
+
+    [Fact]
+    public void VoiceInAnUnarmedChatLeavesTheWindowClosed()
+        => GetState(new UserWalkieTalkieSettings(), RecentVoiceInB).HasAnswerWindow.Should().BeFalse();
+
+    [Fact]
+    public void AnEmptyArmedSetLeavesTheWindowClosed()
+        => GetState(new UserWalkieTalkieSettings(), RecentVoiceInA, pttChatIds: []).HasAnswerWindow.Should().BeFalse();
+
+    [Fact]
+    public void AlwaysOnGesturesNeverOpenTheWindow()
+    {
+        // arrange
+        var settings = new UserWalkieTalkieSettings { AreGesturesAlwaysOn = true };
+
+        // act
+        var withNoVoice = GetState(settings, NoVoice);
+        var withOldVoice = GetState(settings, OldVoiceInA);
+        var mustSenseGestures = GestureActivationPolicy
+            .ShouldSenseStartGestures(true, false, [ChatA], NoVoice, T0, Window);
+
+        // assert
+        withNoVoice.HasAnswerWindow.Should().BeFalse();
+        withOldVoice.HasAnswerWindow.Should().BeFalse();
+        mustSenseGestures.Should().BeTrue("the gesture consumer keeps its always-on behavior");
+    }
+
+    [Fact]
+    public void PracticeModeNeverOpensTheWindow()
+    {
+        // act
+        var state = GetState(new UserWalkieTalkieSettings(), NoVoice, isPracticeMode: true);
+
+        // assert
+        state.HasAnswerWindow.Should().BeFalse();
+        state.IsPracticeMode.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AlwaysOnPlusPracticeModeStillDoesNotStartAReply()
+    {
+        // arrange
+        var settings = new UserWalkieTalkieSettings { AreGesturesAlwaysOn = true };
+
+        // act
+        var state = GetState(settings, NoVoice, isPracticeMode: true);
+
+        // assert
+        Decide(state).Should().Be(HeadsetButtonAction.PassThrough);
+    }
+
+    [Fact]
+    public void AMissingSettingReadsAsEnabled()
+        => GetState(new UserWalkieTalkieSettings { IsHeadsetButtonEnabled = null }, RecentVoiceInA)
+            .IsEnabled.Should().BeTrue();
+
+    [Fact]
+    public void AnExplicitlyDisabledSettingReadsAsDisabled()
+        => GetState(new UserWalkieTalkieSettings { IsHeadsetButtonEnabled = false }, RecentVoiceInA)
+            .IsEnabled.Should().BeFalse();
+
+    [Fact]
+    public void AHotReplyIsCarriedThroughToTheDecision()
+    {
+        // act
+        var state = GetState(new UserWalkieTalkieSettings(), NoVoice, isReplyHot: true);
+
+        // assert
+        Decide(state).Should().Be(HeadsetButtonAction.StopReply);
+    }
+
     [Theory]
     [InlineData(HeadsetKey.Hook)]
     [InlineData(HeadsetKey.PlayPause)]
@@ -86,4 +176,31 @@ public class HeadsetButtonPolicyTest
                 hasAnswerWindow: true, isReplyHot: true, isPracticeMode: true)
             .Should().Be(HeadsetButtonAction.StopReply);
     }
+
+    // Private methods
+
+    private static HeadsetButtonState GetState(
+        UserWalkieTalkieSettings settings,
+        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        IReadOnlyList<ChatId>? pttChatIds = null,
+        bool isReplyHot = false,
+        bool isPracticeMode = false)
+        => HeadsetButtonPolicy.GetState(
+            settings,
+            pttChatIds ?? [ChatA],
+            lastIncomingVoiceAt,
+            T0,
+            Window,
+            isReplyHot,
+            isPracticeMode);
+
+    private static HeadsetButtonAction Decide(HeadsetButtonState state)
+        => HeadsetButtonPolicy.Decide(
+            HeadsetKey.PlayPause,
+            isDown: true,
+            repeatCount: 0,
+            state.IsEnabled,
+            state.HasAnswerWindow,
+            state.IsReplyHot,
+            state.IsPracticeMode);
 }

@@ -130,16 +130,21 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 var settings = await UserSettingsUI.UserWalkieTalkieSettings()
                     .Get(cancellationToken)
                     .ConfigureAwait(false);
+                var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
+                var now = Clocks.ServerClock.Now;
+                var recencyWindow = Constants.Audio.WalkieTalkieReplyRecencyWindow;
                 var mustSenseStart = GestureActivationPolicy.ShouldSenseStartGestures(
                     settings.AreGesturesAlwaysOn,
                     isPracticeMode,
                     pttChatIds,
-                    IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt(),
-                    Clocks.ServerClock.Now,
-                    Constants.Audio.WalkieTalkieReplyRecencyWindow);
+                    lastIncomingVoiceAt,
+                    now,
+                    recencyWindow);
                 var mustSenseStop = isFaceDownStopEnabled && (isMicOpen || isPracticeMode);
-                Volatile.Write(ref _isHeadsetButtonEnabled, settings.IsHeadsetButtonEnabled);
-                Volatile.Write(ref _hasAnswerWindow, mustSenseStart);
+                var buttonState = HeadsetButtonPolicy.GetState(
+                    settings, pttChatIds, lastIncomingVoiceAt, now, recencyWindow, isMicOpen, isPracticeMode);
+                Volatile.Write(ref _isHeadsetButtonEnabled, buttonState.IsEnabled);
+                Volatile.Write(ref _hasAnswerWindow, buttonState.HasAnswerWindow);
 
                 _recognizer.Options = new GestureOptions(
                     settings.IsFlipToTalkEnabled && mustSenseStart,

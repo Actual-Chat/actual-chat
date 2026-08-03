@@ -2,6 +2,20 @@ namespace ActualChat.UI.Blazor.App.Services.Gestures;
 
 public static class GestureActivationPolicy
 {
+    public static bool HasAnswerWindow(
+        IReadOnlyList<ChatId> pttChatIds,
+        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        Moment now,
+        TimeSpan recencyWindow)
+    {
+        var since = now - recencyWindow;
+        foreach (var chatId in pttChatIds)
+            if (lastIncomingVoiceAt.TryGetValue(chatId, out var at) && at > since)
+                return true;
+
+        return false;
+    }
+
     public static bool ShouldSenseStartGestures(
         bool areGesturesAlwaysOn,
         bool isPracticeMode,
@@ -10,6 +24,8 @@ public static class GestureActivationPolicy
         Moment now,
         TimeSpan recencyWindow)
     {
+        // Practice mode and "always on" are properties of the sensors, not of the answer window:
+        // a consumer that must not open the mic on its own has to ask HasAnswerWindow instead.
         if (isPracticeMode)
             return true;
         if (pttChatIds.Count == 0)
@@ -17,12 +33,7 @@ public static class GestureActivationPolicy
         if (areGesturesAlwaysOn)
             return true;
 
-        var since = now - recencyWindow;
-        foreach (var chatId in pttChatIds)
-            if (lastIncomingVoiceAt.TryGetValue(chatId, out var at) && at > since)
-                return true;
-
-        return false;
+        return HasAnswerWindow(pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
     }
 
     public static GestureRoute Route(GestureKind kind, bool isPracticeMode)
