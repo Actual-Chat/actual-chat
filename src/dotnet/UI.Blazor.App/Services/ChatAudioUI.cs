@@ -18,6 +18,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
+    // Boxed because the CLR forbids volatile on Nullable<TimeSpan>; null means "no override".
     private volatile object? _recordingIdleDurationBox;
 
     private IChats Chats => Hub.Chats;

@@ -54,4 +54,31 @@ public class GestureActivationPolicyTest
         => GestureActivationPolicy
             .ShouldSenseStartGestures(false, true, [], NoVoice, T0, Window)
             .Should().BeTrue();
+
+    [Theory]
+    [InlineData(GestureKind.FlipToTalk, GestureRoute.StartReply)]
+    [InlineData(GestureKind.DoubleShake, GestureRoute.StartReply)]
+    [InlineData(GestureKind.FaceDown, GestureRoute.StopReply)]
+    [InlineData(GestureKind.None, GestureRoute.None)]
+    public void RoutesGesturesOutsidePracticeMode(GestureKind kind, GestureRoute expected)
+        => GestureActivationPolicy.Route(kind, false).Should().Be(expected);
+
+    [Fact]
+    public void PracticeModeNeverTransmits()
+    {
+        foreach (var kind in Enum.GetValues<GestureKind>()) {
+            var route = GestureActivationPolicy.Route(kind, true);
+            route.Should().NotBe(GestureRoute.StartReply, $"{kind} must not open the mic in practice mode");
+            route.Should().NotBe(GestureRoute.StopReply, $"{kind} must not touch the mic in practice mode");
+        }
+    }
+
+    [Fact]
+    public void PracticeModeRoutesRealGesturesToThePanel()
+    {
+        GestureActivationPolicy.Route(GestureKind.FlipToTalk, true).Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.DoubleShake, true).Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.FaceDown, true).Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.None, true).Should().Be(GestureRoute.None);
+    }
 }

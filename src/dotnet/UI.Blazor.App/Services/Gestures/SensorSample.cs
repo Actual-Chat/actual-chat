@@ -4,6 +4,7 @@ namespace ActualChat.UI.Blazor.App.Services.Gestures;
 /// One accelerometer reading in g units. MAUI normalizes axes across platforms;
 /// a device lying flat face-up reads Z ≈ -1.
 /// </summary>
+[StructLayout(LayoutKind.Auto)]
 public readonly record struct SensorSample(Moment At, float X, float Y, float Z)
 {
     public float Magnitude => MathF.Sqrt((X * X) + (Y * Y) + (Z * Z));

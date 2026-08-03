@@ -179,13 +179,15 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         if (_recognizer.Process(sample) is not { } gesture)
             return;
 
-        // Practice never transmits: rehearsing a gesture in Settings must not open the mic.
-        if (isPracticeMode) {
+        var route = GestureActivationPolicy.Route(gesture.Kind, isPracticeMode);
+        if (route == GestureRoute.None)
+            return;
+        if (route == GestureRoute.Practice) {
             PracticeGestureDetected?.Invoke(gesture);
             return;
         }
 
-        var whenHandled = gesture.Kind == GestureKind.FaceDown
+        var whenHandled = route == GestureRoute.StopReply
             ? WalkieTalkieReplyUI.StopReply()
             : WalkieTalkieReplyUI.RequestReply(CancellationToken.None);
         _ = BackgroundTask.Run(() => whenHandled, Log, $"{gesture.Kind} handling failed", CancellationToken.None);
@@ -195,7 +197,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     {
         var signal = Volatile.Read(ref _wakeSignal);
         signal.TrySetResult();
-        if (ReferenceEquals(Volatile.Read(ref _wakeSignal), signal))
-            Volatile.Write(ref _wakeSignal, TaskCompletionSourceExt.New());
+        // CompareExchange, so a racing Wake can't replace a signal the loop is already awaiting.
+        Interlocked.CompareExchange(ref _wakeSignal, TaskCompletionSourceExt.New(), signal);
     }
 }

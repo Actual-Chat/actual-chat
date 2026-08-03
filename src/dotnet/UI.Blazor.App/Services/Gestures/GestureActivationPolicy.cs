@@ -24,4 +24,25 @@ public static class GestureActivationPolicy
 
         return false;
     }
+
+    public static GestureRoute Route(GestureKind kind, bool isPracticeMode)
+    {
+        // Practice never transmits: rehearsing a gesture in Settings must not open the mic.
+        if (isPracticeMode)
+            return kind == GestureKind.None ? GestureRoute.None : GestureRoute.Practice;
+
+        return kind switch {
+            GestureKind.FaceDown => GestureRoute.StopReply,
+            GestureKind.FlipToTalk or GestureKind.DoubleShake => GestureRoute.StartReply,
+            _ => GestureRoute.None,
+        };
+    }
+}
+
+public enum GestureRoute
+{
+    None = 0,
+    Practice,
+    StartReply,
+    StopReply,
 }
