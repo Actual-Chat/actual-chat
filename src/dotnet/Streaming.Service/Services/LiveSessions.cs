@@ -173,7 +173,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         return chat.Rules.Author?.Id;
     }
 
-    // Host or chat admin may manage the live session.
+    // Host or chat Owner may manage the live session.
     private async Task RequireManage(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -183,7 +183,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         var live = await Backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (live?.Host is { } host && chat.Rules.Author?.Id is { } actingAuthorId && host == actingAuthorId)
             return;
-        throw StandardError.Constraint("Only the call host or a chat admin can manage the live session.");
+        throw StandardError.Constraint("Only the call host or a chat Owner can manage the live session.");
     }
 
     private static void RequireNotPeerChat(ChatId chatId)
