@@ -60,15 +60,23 @@ public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
         var isSensing = false;
         var isProximityOn = false;
         try {
+            var cSettings = await Computed
+                .Capture(() => UserSettingsUI.UserWalkieTalkieSettings().Get(cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            var cIsFaceDownStopEnabled = await Computed
+                .Capture(
+                    () => UserSettingsUI.UserAppSettings().Get(x => x.IsFaceDownMicStopEnabled ?? false, cancellationToken),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            var cRecordingChatId = await Computed
+                .Capture(ChatAudioUI.GetRecordingChatId, cancellationToken)
+                .ConfigureAwait(false);
+
             while (!cancellationToken.IsCancellationRequested) {
-                var settings = await UserSettingsUI.UserWalkieTalkieSettings()
-                    .Get(cancellationToken)
-                    .ConfigureAwait(false);
-                var isFaceDownStopEnabled = await UserSettingsUI.UserAppSettings()
-                    .Get(x => x.IsFaceDownMicStopEnabled ?? false, cancellationToken)
-                    .ConfigureAwait(false);
+                var settings = cSettings.Value;
+                var isFaceDownStopEnabled = cIsFaceDownStopEnabled.Value;
+                var recordingChatId = cRecordingChatId.Value;
                 var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
-                var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
                 var isMicOpen = recordingChatId is not null;
                 var mustSenseStart = GestureActivationPolicy.ShouldSenseStartGestures(
                     settings.AreGesturesAlwaysOn,
@@ -104,11 +112,22 @@ public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
                 }
 
                 // WalkieTalkieIdleCheckPeriod is the wall-clock floor for the answer-window expiry -
-                // Wake() races it so a local state change (e.g. leaving practice mode) takes effect
-                // on the next scheduler tick instead of waiting out the full period.
-                var whenTimeout = Clocks.CpuClock.Delay(Constants.Audio.WalkieTalkieIdleCheckPeriod, cancellationToken);
+                // everything else races it so a state change takes effect on the next tick instead
+                // of waiting out the full period: Wake() covers local state (IsPracticeMode), the
+                // WhenInvalidated calls cover settings/mic-open changes driven elsewhere.
+                using var waitCts = cancellationToken.CreateLinkedTokenSource();
+                var whenTimeout = Clocks.CpuClock.Delay(Constants.Audio.WalkieTalkieIdleCheckPeriod, waitCts.Token);
                 var whenWoken = Volatile.Read(ref _wakeSignal).Task;
-                await Task.WhenAny(whenTimeout, whenWoken).ConfigureAwait(false);
+                var whenSettingsChanged = cSettings.WhenInvalidated(waitCts.Token);
+                var whenFaceDownStopChanged = cIsFaceDownStopEnabled.WhenInvalidated(waitCts.Token);
+                var whenRecordingChanged = cRecordingChatId.WhenInvalidated(waitCts.Token);
+                await Task.WhenAny(whenTimeout, whenWoken, whenSettingsChanged, whenFaceDownStopChanged, whenRecordingChanged)
+                    .ConfigureAwait(false);
+                waitCts.CancelAndDisposeSilently();
+
+                cSettings = await cSettings.Update(cancellationToken).ConfigureAwait(false);
+                cIsFaceDownStopEnabled = await cIsFaceDownStopEnabled.Update(cancellationToken).ConfigureAwait(false);
+                cRecordingChatId = await cRecordingChatId.Update(cancellationToken).ConfigureAwait(false);
             }
         }
         finally {
@@ -134,7 +153,7 @@ public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
         }
 
         var whenHandled = gesture.Kind == GestureKind.FaceDown
-            ? ChatAudioUI.SetRecordingChatId(null).AsTask()
+            ? WalkieTalkieReplyUI.StopReply()
             : WalkieTalkieReplyUI.RequestReply(CancellationToken.None);
         _ = BackgroundTask.Run(() => whenHandled, Log, $"{gesture.Kind} handling failed", CancellationToken.None);
     }
