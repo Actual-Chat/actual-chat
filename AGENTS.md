@@ -19,6 +19,14 @@ already says; that section explains exactly when a comment is justified and
 when it isn't. Re-read it any time you're tempted to add a `//`, `///`, or
 JSDoc block.
 
+A style hook checks every `.cs`/`.ts`/`.razor`/`.css` edit against
+[docs/CODING_STYLE.md](docs/CODING_STYLE.md). Everything it reports is fixed by
+default, including violations outside the lines you changed. If the user
+explicitly decides to keep offending code as-is, record it in
+[.claude/style-bypasses.md](.claude/style-bypasses.md), in the format described
+there. That file is the only thing the hook skips; without an entry there the
+same violation is reported again on the next edit to that file.
+
 # Type Catalog — Reuse Existing Abstractions (CRITICAL)
 
 This codebase is large and mature. **Reusing what already exists is far more

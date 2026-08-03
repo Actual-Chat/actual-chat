@@ -13,7 +13,7 @@
           {
             "type": "agent",
             "statusMessage": "Checking code style…",
-            "prompt": "Hook input: $ARGUMENTS\n\nTake tool_input.file_path. If it doesn't end in .cs/.ts/.razor/.scss, reply exactly \"No review needed.\" and stop.\n\nElse read docs/CODING_STYLE.md and the file. List only style-guide violations as bullets citing file_path:line. Style only — no logic/naming/correctness. None → reply exactly \"No style violations.\""
+            "prompt": "Hook input: $ARGUMENTS\n\nTake tool_input.file_path. If it doesn't end in .cs/.ts/.razor/.css, reply exactly \"No review needed.\" and stop.\n\nElse read docs/CODING_STYLE.md, .claude/style-bypasses.md and the file. List only style-guide violations as bullets citing file_path:line. Style only — no logic/naming/correctness. None → reply exactly \"No style violations.\"\n\nAll violations must be fixed by default. Mark the ones outside the lines this call changed (tool_input.new_string for Edit, tool_input.content for Write) as \"outside this edit\". Never report anything listed in .claude/style-bypasses.md — those were explicitly declined. End the report with: \"To keep any of these, add it to .claude/style-bypasses.md.\""
           }
         ]
       }
