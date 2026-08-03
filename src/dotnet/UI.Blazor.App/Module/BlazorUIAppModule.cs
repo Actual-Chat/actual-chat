@@ -12,6 +12,7 @@ using ActualChat.UI.Blazor.App.Components.Settings;
 using ActualChat.UI.Blazor.App.Pages.Landing;
 using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.App.Services.Gestures;
 using ActualChat.UI.Blazor.App.Testing;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
@@ -75,6 +76,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<LiveStreamUI>(ServiceLifetime.Scoped);
         fusion.AddService<IncomingVoiceActivityUI>(ServiceLifetime.Scoped);
         fusion.AddService<WalkieTalkieReplyUI>(ServiceLifetime.Scoped);
+        if (!HostInfo.HostKind.IsMauiApp())
+            services.AddScoped(_ => new SensorFeed()); // MauiSensorFeed is registered in MauiAppModule
         fusion.AddService<LiveSessionUI>(ServiceLifetime.Scoped);
         fusion.AddService<LiveBlockUI>(ServiceLifetime.Scoped);
         fusion.AddService<IncomingCallUI>(ServiceLifetime.Scoped);

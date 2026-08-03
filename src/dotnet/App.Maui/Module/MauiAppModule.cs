@@ -15,6 +15,7 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.App.Services.Gestures;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -108,6 +109,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IAudioCapture>(c => new AppleAudioCapture(c.AppUIHub()));
         services.AddScoped<ILocationTracker>(c => new AppleLocationTracker(c.AppUIHub()));
 #endif
+        services.AddScoped<SensorFeed>(c => new MauiSensorFeed(c.AppUIHub()));
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));
 
