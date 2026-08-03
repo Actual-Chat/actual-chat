@@ -1,4 +1,5 @@
 ﻿using ActualChat.Streaming;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -8,10 +9,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public class LiveStreamUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private readonly ConcurrentDictionary<ChatId, Moment> _lastActivityTimes = new();
-
     private ILiveAudioStreams LiveAudioStreams => Hub.LiveAudioStreams;
-    private MomentClock ServerClock => Clocks.ServerClock;
+    private ILiveSessions LiveSessions => Hub.LiveSessions;
+    private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
 
     [ComputeMethod]
     public virtual async Task<AuthorId[]> GetStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken)
@@ -34,14 +34,15 @@ public class LiveStreamUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
         return authorIds.Length > 0;
     }
 
-    [ComputeMethod(ConsolidationDelay = 0.5)] // ConsolidationDelay ensures it gets auto-recomputed
-    public virtual async Task<Moment?> GetLastActivityServerTime(ChatId chatId, CancellationToken cancellationToken)
+    [ComputeMethod(ConsolidationDelay = 0.2)]
+    public virtual async Task<bool> HasActivity(ChatId chatId, CancellationToken cancellationToken)
     {
-        var authorIds = await GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        if (authorIds.Length == 0)
-            return _lastActivityTimes.GetOrAdd(chatId, static (_, self) => self.ServerClock.Now, this);
+        // While the RPC peer is down we stop receiving invalidations, so the last known
+        // server value is unreliable - report idle and let the idle timers run.
+        var isConnected = await ConnectivityUI.IsConnected.Use(cancellationToken).ConfigureAwait(false);
+        if (!isConnected)
+            return false;
 
-        _lastActivityTimes.TryRemove(chatId, out _);
-        return null;
+        return await LiveSessions.HasActivity(Session, chatId, cancellationToken).ConfigureAwait(false);
     }
 }

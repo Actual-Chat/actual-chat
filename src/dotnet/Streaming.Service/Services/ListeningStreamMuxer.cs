@@ -81,6 +81,8 @@ public sealed class ListeningStreamMuxer : WorkerBase
 
                         // Start processing any new streams
                         foreach (var streamInfo in currentStreams) {
+                            if (streamInfo.IsTextOnly)
+                                continue; // Registered for activity tracking only, never published
                             if (_excludedStreamIds.ContainsKey(streamInfo.StreamId))
                                 continue;
                             if (_streamById.ContainsKey(streamInfo.StreamId))

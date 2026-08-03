@@ -24,4 +24,7 @@ public sealed partial record LiveAudioStreamInfo
     // Used by the client A/V catch-up policy. Falls back to BeginsAt when default.
     [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
     public Moment SourceBeginsAt { get; init; }
+    // JustText authors: transcribed, never fanned out. Negative so older entries default to voice.
+    [DataMember(Order = 7), MemoryPackOrder(7), Key(7)]
+    public bool IsTextOnly { get; init; }
 }

@@ -107,18 +107,25 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
         try {
             var state = await _redisScope.Get(chatId.Value).ConfigureAwait(false);
-            if (state is not null) {
-                var alive = state.Streams.Where(info => info.BeginsAt + StreamTtl > now).ToApiArray();
-                if (alive.Count != state.Streams.Count)
-                    state = state with { Streams = alive };
-                return WithAutoInvalidation(state);
-            }
+            if (state is null)
+                // No key means no live streams: Register primes this method, so there's nothing
+                // to recover. Reconstructing here would make every quiet chat depend on its entries.
+                return new State(VersionGenerator.NextVersion(), default);
+
+            var alive = state.Streams.Where(info => info.BeginsAt + StreamTtl > now).ToApiArray();
+            if (alive.Count != state.Streams.Count)
+                state = state with { Streams = alive };
+
+            return WithAutoInvalidation(state);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to read streams from Redis for chat #{ChatId}, falling back to ChatsBackend", chatId);
         }
 
-        // Fallback: reconstruct from ChatsBackend.ListEntries
+        // Fallback: reconstruct from ChatsBackend.ListEntries.
+        // Isolated so the entry tiles it reads never become dependencies of this method -
+        // otherwise a Redis outage would leave every chat invalidating on ordinary text traffic.
+        using var _1 = Computed.BeginIsolation();
         var cutoff = now - Constants.Chat.MaxEntryDuration;
         var entries = await ChatsBackend.ListEntries(chatId, cutoff, cancellationToken).ConfigureAwait(false);
         var byStreamId = new Dictionary<string, LiveAudioStreamInfo>(StringComparer.Ordinal);
