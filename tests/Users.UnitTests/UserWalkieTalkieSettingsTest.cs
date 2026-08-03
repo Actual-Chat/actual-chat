@@ -15,6 +15,7 @@ public class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : TestBase(@ou
         settings.AreGesturesAlwaysOn.Should().BeFalse();
         settings.HotWindow.Should().Be(TimeSpan.FromSeconds(60));
         settings.AreAudibleCuesEnabled.Should().BeTrue();
+        settings.IsHeadsetButtonEnabled.Should().BeTrue();
     }
 
     [Fact]
@@ -35,6 +36,7 @@ public class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : TestBase(@ou
             AreGesturesAlwaysOn = true,
             HotWindow = TimeSpan.FromSeconds(120),
             AreAudibleCuesEnabled = false,
+            IsHeadsetButtonEnabled = false,
             Origin = "test",
         };
         AssertPassesThroughUnionSerializers(settings,
@@ -48,6 +50,7 @@ public class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : TestBase(@ou
                 d.AreGesturesAlwaysOn.Should().Be(o.AreGesturesAlwaysOn);
                 d.HotWindow.Should().Be(o.HotWindow);
                 d.AreAudibleCuesEnabled.Should().Be(o.AreAudibleCuesEnabled);
+                d.IsHeadsetButtonEnabled.Should().Be(o.IsHeadsetButtonEnabled);
             });
     }
 
