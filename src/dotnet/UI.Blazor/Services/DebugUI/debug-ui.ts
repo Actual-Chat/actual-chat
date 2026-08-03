@@ -1,5 +1,6 @@
 import { getLogs } from 'logging';
-import { Api, MediaRpcStreamOptions, streamingApi, toMoment, WorkerKind, type VideoFormatDto, type VideoFrameDto } from 'api';
+import { Api, MediaRpcStreamOptions, streamingApi, toMoment, WorkerKind } from 'api';
+import type { VideoFormatDto, VideoFrameDto } from 'api';
 import { DeviceOrientation, normalizeRotationQuarter, type RotationQuarter } from 'orientation';
 import { RpcStream } from 'actuallab-rpc';
 import { OnDeviceAwake } from 'on-device-awake';
@@ -35,6 +36,7 @@ export class DebugUI {
     private static backendRef: DotNet.DotNetObject = null!;
     private static _eventSnifferInstalled = false;
     private static _audioRecorderOffsetHandler: ((offsetMs: number) => void) | null = null;
+    private static _rotateTimer: number | null = null;
 
     public static init(backendRef1: DotNet.DotNetObject): void {
         infoLog?.log(`init`);
@@ -48,7 +50,7 @@ export class DebugUI {
     public static stopServer(): void {
         infoLog?.log(`stopServer: stopping the server...`);
         void this.backendRef.invokeMethodAsync('StopServer');
-    };
+    }
 
     public static async getThreadPoolSettings(): Promise<string> {
         const settings = await this.backendRef.invokeMethodAsync('GetThreadPoolSettings');
@@ -56,18 +58,19 @@ export class DebugUI {
         return settings as string;
     }
 
-    public static async changeThreadPoolSettings(min: number, minIO: number, max: number, maxIO: number): Promise<string> {
+    public static async changeThreadPoolSettings(
+        min: number, minIO: number, max: number, maxIO: number): Promise<string> {
         await this.backendRef.invokeMethodAsync('ChangeThreadPoolSettings', min, minIO, max, maxIO);
         return await this.getThreadPoolSettings();
-    };
+    }
 
     public static disconnectBlazorRpc(): void {
         void this.backendRef.invokeMethodAsync('DisconnectRpc');
-    };
+    }
 
     public static navigateTo(url: string): void {
         void this.backendRef.invokeMethodAsync('NavigateTo', url);
-    };
+    }
 
     /** Debug-only: force-disconnect the RPC peer for one target — see
      *  {@link Api.disconnect}. Pass `'All'` (or omit) to disconnect every
@@ -80,7 +83,7 @@ export class DebugUI {
         } else {
             Api.disconnect(workerKind);
         }
-    };
+    }
 
     public static fakeSleep(duration = 5): void {
         OnDeviceAwake.fakeSleep(duration * 1000);
@@ -95,21 +98,21 @@ export class DebugUI {
 
     public static resetOnboarding(enable: boolean): void {
         void this.backendRef.invokeMethodAsync('ResetOnboarding', enable);
-    };
+    }
 
     public static resetBubbles(enable: boolean): void {
         void this.backendRef.invokeMethodAsync('ResetBubbles', enable);
-    };
+    }
 
     public static enableAudioSync(enable = true): void {
         void this.backendRef.invokeMethodAsync('EnableAudioSync', enable);
-    };
+    }
 
     public static async getUserId(): Promise<string> {
         const id = await this.backendRef.invokeMethodAsync<string>('GetUserId');
         console.log(`getUserId:`, id);
         return id;
-    };
+    }
 
     public static signIn(
         phoneOrEmail: string,
@@ -123,11 +126,11 @@ export class DebugUI {
             o.skipOnboarding ?? true,
             o.skipBubbles ?? true,
         ) as unknown as Promise<void>;
-    };
+    }
 
     public static signOut(): Promise<void> {
         return this.backendRef.invokeMethodAsync('SignOut') as unknown as Promise<void>;
-    };
+    }
 
     /** Returns the current effective render mode. Reads the `app-server` /
      *  `app-wasm` class that BrowserInfo writes onto `<body>` based on the
@@ -137,23 +140,23 @@ export class DebugUI {
      *  initial server-prerender phase). */
     public static getCurrentRenderMode(): 's' | 'w' {
         return document.body.classList.contains('app-wasm') ? 'w' : 's';
-    };
+    }
 
     public static setRenderMode(mode: 'a' | 's' | 'w'): Promise<void> {
         return this.backendRef.invokeMethodAsync('SetRenderMode', mode) as unknown as Promise<void>;
-    };
+    }
 
     public static showMicTroubleshooter(): void {
         void this.backendRef.invokeMethodAsync('ShowMicTroubleshooter');
-    };
+    }
 
     public static showPhotoTroubleshooter(): void {
         void this.backendRef.invokeMethodAsync('ShowPhotoTroubleshooter');
-    };
+    }
 
     public static showIncomingShareModal(): void {
         void this.backendRef.invokeMethodAsync('ShowIncomingShareModal');
-    };
+    }
 
     /** Drives the recording quality controller through a synthetic
      *  -1 / 0 / +1 signal sweep over `period` seconds. ~10% of time at
@@ -194,6 +197,7 @@ export class DebugUI {
             infoLog?.log(`rotateDevice: stopped`);
             return;
         }
+
         const step: 1 | -1 = rpm > 0 ? 1 : -1;
         // 1 revolution = 4 quarter-turns ⇒ each quarter takes 60_000/(4*|rpm|) ms.
         const intervalMs = Math.max(50, Math.round(60_000 / (4 * Math.abs(rpm))));
@@ -205,13 +209,13 @@ export class DebugUI {
         infoLog?.log(`rotateDevice: rpm=${rpm} intervalMs=${intervalMs} step=${step}`);
     }
 
-    private static _rotateTimer: number | null = null;
-
-    public static killVideoRecording(avgPeriod: VideoTraceKillPeriodInput = 10, killStage: number | string = 3): boolean {
+    public static killVideoRecording(
+        avgPeriod: VideoTraceKillPeriodInput = 10, killStage: number | string = 3): boolean {
         return this.setVideoTraceKill('recording', avgPeriod, killStage);
     }
 
-    public static killVideoPlayback(avgPeriod: VideoTraceKillPeriodInput = 10, killStage: number | string = 63): boolean {
+    public static killVideoPlayback(
+        avgPeriod: VideoTraceKillPeriodInput = 10, killStage: number | string = 63): boolean {
         return this.setVideoTraceKill('playback', avgPeriod, killStage);
     }
 
@@ -230,6 +234,7 @@ export class DebugUI {
             console.warn('setAudioRecorderOffset: handler not registered yet');
             return;
         }
+
         this._audioRecorderOffsetHandler(offsetMs);
     }
 
@@ -248,7 +253,7 @@ export class DebugUI {
         infoLog?.log(`showSafeAreas: ${show ?? 'default'}`);
     }
 
-    // Flips between forced 34px insets and the real env() values; bound to the dev-only Ctrl+Alt+S hotkey.
+    // Flips between forced 34px insets and the real env() values; bound to the dev-only Ctrl+Shift+L, S chord.
     public static toggleSafeAreas(): void {
         this.showSafeAreas(document.body.classList.contains('show-safe-areas') ? null : true);
     }
@@ -263,6 +268,7 @@ export class DebugUI {
             console.warn('virtualListDebug: VirtualList is not loaded yet');
             return;
         }
+
         vl.setDebugEnabled(enable);
         infoLog?.log(`virtualListDebug: ${enable ? 'enabled' : 'disabled'}`);
     }
@@ -279,6 +285,7 @@ export class DebugUI {
             if (clear)
                 d.clear?.();
         }
+
         return all;
     }
 
@@ -312,36 +319,25 @@ export class DebugUI {
             e.late = e.late || r.late;
             byKey.set(r.key, e);
         }
+
         const offenders = [...byKey.values()].sort((a, b) => b.maxAbsDelta - a.maxAbsDelta);
         return { total: all.length, offenders, raw: all };
     }
 
-    private static setVideoTraceKill(
-        kind: VideoTraceKillKind,
-        avgPeriod: VideoTraceKillPeriodInput,
-        killStage: number | string,
-    ): boolean {
-        const hook = (globalThis as VideoTraceKillGlobal).__setVideoTraceKill;
-        if (hook === undefined) {
-            console.warn(`killVideo${kind === 'recording' ? 'Recording' : 'Playback'}: video trace hook is not loaded`);
-            return false;
-        }
-        return hook(kind, avgPeriod, killStage);
-    }
-
     public static startFusionMonitor(): void {
         void this.backendRef.invokeMethodAsync('StartFusionMonitor');
-    };
+    }
 
     public static startTaskMonitor(): void {
         void this.backendRef.invokeMethodAsync('StartTaskMonitor');
-    };
+    }
 
     public static startDOMEventSniffer(): void {
         if (this._eventSnifferInstalled) {
             infoLog?.log('startDOMEventSniffer: already installed');
             return;
         }
+
         this._eventSnifferInstalled = true;
 
         const recentEvents: Record<string, unknown>[] = [];
@@ -349,10 +345,12 @@ export class DebugUI {
 
         const push = (entry: Record<string, unknown>) => {
             recentEvents.push(entry);
-            if (recentEvents.length > MAX) recentEvents.shift();
+            if (recentEvents.length > MAX)
+                recentEvents.shift();
         };
 
-        const snapshot = (): Record<string, unknown>[] => JSON.parse(JSON.stringify(recentEvents)) as Record<string, unknown>[];
+        const snapshot = (): Record<string, unknown>[] =>
+            JSON.parse(JSON.stringify(recentEvents)) as Record<string, unknown>[];
 
         // 1. Blazor-level interception via pre-start hook
         let hasBlazorHook = false;
@@ -481,7 +479,27 @@ export class DebugUI {
             infoLog?.log(`testPushStream: rejected: ${msg}`);
             return `error: ${msg}`;
         } finally {
-            try { stream.disconnect(); } catch { /* ignore */ }
+            try {
+                stream.disconnect();
+            } catch {
+                // Intended: the stream may already be disconnected
+            }
         }
+    }
+
+    // Private methods
+
+    private static setVideoTraceKill(
+        kind: VideoTraceKillKind,
+        avgPeriod: VideoTraceKillPeriodInput,
+        killStage: number | string,
+    ): boolean {
+        const hook = (globalThis as VideoTraceKillGlobal).__setVideoTraceKill;
+        if (hook === undefined) {
+            console.warn(`killVideo${kind === 'recording' ? 'Recording' : 'Playback'}: video trace hook is not loaded`);
+            return false;
+        }
+
+        return hook(kind, avgPeriod, killStage);
     }
 }
