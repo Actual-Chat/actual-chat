@@ -38,21 +38,25 @@
             </ChildContent>
         </SettingsTab>
 
-        <SettingsTab @key="4" TabIndex="4" Title="Application" Id="@SettingsTabId.App" IconClass="icon-settings">
+        <SettingsTab @key="4" TabIndex="4" Title="Push to Talk" Id="@SettingsTabId.PushToTalk" IconClass="icon-talking">
+            <PushToTalkSettings/>
+        </SettingsTab>
+
+        <SettingsTab @key="5" TabIndex="5" Title="Application" Id="@SettingsTabId.App" IconClass="icon-settings">
             <AppSettings/>
         </SettingsTab>
 
         @if (showMyAccount) {
-            <SettingsTab @key="5" TabIndex="5" Title="Sessions" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
+            <SettingsTab @key="6" TabIndex="6" Title="Sessions" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
                 <SessionSettings/>
             </SettingsTab>
-            <SettingsTab @key="6" TabIndex="6" Title="API Keys" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
+            <SettingsTab @key="7" TabIndex="7" Title="API Keys" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
                 <ApiKeySettings/>
             </SettingsTab>
         }
 
         @if (showMyAccount) {
-            <SettingsTab @key="7" TabIndex="7" Title="Privacy" Id="@SettingsTabId.Privacy" IconClass="icon-lock">
+            <SettingsTab @key="8" TabIndex="8" Title="Privacy" Id="@SettingsTabId.Privacy" IconClass="icon-lock">
                 <PrivacySettings/>
             </SettingsTab>
         }

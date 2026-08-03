@@ -18,6 +18,21 @@ body.narrow .close-settings-btn {
     @apply hidden;
 }
 
+/* ── Push to Talk tab ── */
+
+.ptt-practice .c-readout {
+    @apply flex-y gap-y-1 px-4 py-2;
+    @apply text-sm text-03;
+}
+
+.ptt-practice .c-readout > div {
+    @apply font-mono;
+}
+
+.push-to-talk-settings .c-sensitivity {
+    @apply flex-x gap-x-1;
+}
+
 /* ── App Settings tab ── */
 
 .settings-tab .app-settings .tile-item {
