@@ -37,3 +37,5 @@ public enum HeadsetButtonAction
     StartReply,
     StopReply,
 }
+
+public readonly record struct HeadsetButtonState(bool IsEnabled, bool HasAnswerWindow, bool IsReplyHot);

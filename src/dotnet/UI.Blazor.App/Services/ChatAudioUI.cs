@@ -176,6 +176,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return Task.FromResult(recordingChat?.ChatId);
     }
 
+    public bool IsRecording()
+        => ActiveChatsUI.ActiveChats.Value.Any(c => c.IsRecording);
+
     public static RecordingIdleOptions GetRecordingIdleOptions(TimeSpan? idleDuration, AudioSettings audioSettings)
     {
         if (idleDuration is not { } duration)

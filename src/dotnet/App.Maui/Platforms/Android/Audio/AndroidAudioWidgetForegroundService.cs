@@ -1,5 +1,7 @@
 using _Microsoft.Android.Resource.Designer;
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.App.Services.Gestures;
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
@@ -7,6 +9,7 @@ using Android.Graphics;
 using Android.OS;
 using Android.Support.V4.Media;
 using Android.Support.V4.Media.Session;
+using Android.Views;
 using AndroidX.Core.App;
 
 namespace ActualChat.App.Maui.Audio;
@@ -31,7 +34,7 @@ public class AndroidAudioWidgetForegroundService : Service
     private static volatile bool _isStopPending;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
-    private ILogger Log { get; } = StaticLog.For<AndroidAudioWidgetForegroundService>();
+    private static ILogger Log { get; } = StaticLog.For<AndroidAudioWidgetForegroundService>();
 
     public static void OnStartRequested()
     {
@@ -253,9 +256,64 @@ public class AndroidAudioWidgetForegroundService : Service
         manager.CreateNotificationChannel(channel);
     }
 
+    private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, int repeatCount)
+    {
+        if (AppScopeAccessor.Current is not { } services)
+            return false;
+
+        var hub = services.GetRequiredService<AppUIHub>();
+        var state = hub.GestureUI.GetHeadsetButtonState();
+        var action = HeadsetButtonPolicy.Decide(
+            key, isDown, repeatCount, state.IsEnabled, state.HasAnswerWindow, state.IsReplyHot);
+        if (action == HeadsetButtonAction.PassThrough)
+            return false;
+
+        var replyUI = hub.WalkieTalkieReplyUI;
+        var whenHandled = action == HeadsetButtonAction.StopReply
+            ? replyUI.StopReply()
+            : replyUI.RequestReply(CancellationToken.None);
+        _ = BackgroundTask.Run(() => whenHandled, Log, $"{action} from the headset button failed",
+            CancellationToken.None);
+        return true;
+    }
+
+    private static KeyEvent? GetKeyEvent(Intent? mediaButtonEvent)
+    {
+        if (mediaButtonEvent is null)
+            return null;
+
+        var extra = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
+            ? mediaButtonEvent.GetParcelableExtra(Intent.ExtraKeyEvent, Java.Lang.Class.FromType(typeof(KeyEvent)))
+#pragma warning disable CA1422
+            : mediaButtonEvent.GetParcelableExtra(Intent.ExtraKeyEvent);
+#pragma warning restore CA1422
+        return extra as KeyEvent;
+    }
+
     // Nested types
     private class Callback : MediaSessionCompat.Callback
     {
+        public override bool OnMediaButtonEvent(Intent? mediaButtonEvent)
+        {
+            var keyEvent = GetKeyEvent(mediaButtonEvent);
+            if (keyEvent is null)
+                return base.OnMediaButtonEvent(mediaButtonEvent);
+
+            var key = keyEvent.KeyCode switch {
+                Keycode.Headsethook => HeadsetKey.Hook,
+                Keycode.MediaPlayPause => HeadsetKey.PlayPause,
+                _ => HeadsetKey.Unknown,
+            };
+            if (key == HeadsetKey.Unknown)
+                return base.OnMediaButtonEvent(mediaButtonEvent);
+
+            var isDown = keyEvent.Action == KeyEventActions.Down;
+            if (!TryHandleHeadsetButton(key, isDown, keyEvent.RepeatCount))
+                return base.OnMediaButtonEvent(mediaButtonEvent);
+
+            return true;
+        }
+
         public override void OnPlay()
             => AndroidAudioWidget.Resume();
 

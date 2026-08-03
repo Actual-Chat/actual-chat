@@ -14,6 +14,8 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
 
     private readonly GestureRecognizer _recognizer = new(DisarmedOptions);
     private volatile bool _isPracticeMode;
+    private volatile bool _isHeadsetButtonEnabled;
+    private volatile bool _hasAnswerWindow;
     private int _sampleCount;
     private TaskCompletionSource _wakeSignal = TaskCompletionSourceExt.New();
 
@@ -55,6 +57,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
             category: StateCategories.Get(GetType(), nameof(AppSettings)));
         hub.RegisterDisposable(AppSettings);
     }
+
+    public HeadsetButtonState GetHeadsetButtonState()
+        => new(_isHeadsetButtonEnabled, _hasAnswerWindow, ChatAudioUI.IsRecording());
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
@@ -125,6 +130,8 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                     Clocks.ServerClock.Now,
                     Constants.Audio.WalkieTalkieReplyRecencyWindow);
                 var mustSenseStop = isFaceDownStopEnabled && (isMicOpen || isPracticeMode);
+                _isHeadsetButtonEnabled = settings.IsHeadsetButtonEnabled;
+                _hasAnswerWindow = mustSenseStart;
 
                 _recognizer.Options = new GestureOptions(
                     settings.IsFlipToTalkEnabled && mustSenseStart,
