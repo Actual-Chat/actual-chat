@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.App.Services;
+
 namespace ActualChat.App.Maui.Services;
 
 /// <summary>
@@ -32,6 +34,13 @@ public sealed class HeadlessBlazorScope : IAsyncDisposable
             // No WebView will ever attach here: make every JS call fail with the
             // JSRuntimeDisconnected the UI code already tolerates (the page-reload path).
             scope.ServiceProvider.GetRequiredService<SafeJSRuntime>().MarkDisconnected();
+            try {
+                AppScopedServiceStarter.StartScopedServices(scope.ServiceProvider);
+            }
+            catch (Exception e) {
+                // A failed trigger startup must not cost us the wake: playback is the primary job.
+                Log.LogWarning(e, "Couldn't start scoped services in the headless scope");
+            }
             _current = new HeadlessBlazorScope(scope);
             Log.LogInformation("Headless scope created");
             return _current;

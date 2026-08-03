@@ -127,11 +127,8 @@ public sealed class AppScopedServiceStarter
             Hub.Services.GetRequiredService<ConnectivityUI>().Start();
             Hub.Services.GetRequiredService<ReconnectUI>().Start();
             _ = Hub.AudioFocusUI.WarmUp(); // Pre-initialize audio HAL for faster first recording
-            _ = Hub.TuneUI; // Touch. Auto-starts on construction
-            _ = Hub.AudioWidget; // Touch. Auto-starts on construction
+            StartScopedServices(Hub.Services);
             _ = Hub.VideoQualityUI; // Touch. Constructor calls Start(); chains gate on first video activity.
-            _ = Hub.IncomingVoiceActivityUI; // Touch. Auto-starts the incoming-voice tracker
-            Hub.GestureUI.Start();
             Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
             if (!HostInfo.IsProductionInstance)
                 Hub.Services.GetRequiredService<DebugUI>();
@@ -157,6 +154,17 @@ public sealed class AppScopedServiceStarter
             Log.LogError(e, $"{nameof(AfterFirstRender)} failed");
             throw;
         }
+    }
+
+    public static void StartScopedServices(IServiceProvider services)
+    {
+        // Runs for any scope, headless or WebView. Everything here must work with a
+        // disconnected SafeJSRuntime - see HeadlessBlazorScope.
+        var hub = services.GetRequiredService<AppUIHub>();
+        _ = hub.TuneUI;
+        _ = hub.AudioWidget;
+        _ = hub.IncomingVoiceActivityUI;
+        hub.GestureUI.Start();
     }
 
     // Private methods
