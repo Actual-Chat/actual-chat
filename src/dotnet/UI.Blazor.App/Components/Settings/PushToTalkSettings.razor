@@ -12,9 +12,10 @@
 <TileTopic Topic="Push to Talk chats"/>
 <Tile>
     @foreach (var chat in m.Chats) {
+        var isUnavailable = chat.Title is null;
         <TileItem IsHoverable="false">
-            <Icon><i class="icon-talking text-2xl"></i></Icon>
-            <Content>@chat.Title</Content>
+            <Icon><i class="@(isUnavailable ? "icon-alert-circle" : "icon-talking") text-2xl"></i></Icon>
+            <Content>@(chat.Title ?? "Unavailable chat")</Content>
             <Right>
                 <ButtonRound Class="btn-xs btn-danger" Tooltip="Remove" Click="@(() => OnRemove(chat.Id))">
                     <i class="icon-minus-circle text-2xl"></i>
@@ -128,8 +129,7 @@
         var chats = new List<ChatItem>(settings.PttChatIds.Length);
         foreach (var chatId in settings.PttChatIds) {
             var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-            if (chat is not null)
-                chats.Add(new ChatItem(chatId, chat.Title));
+            chats.Add(new ChatItem(chatId, chat?.Title));
         }
         return new Model(settings, chats);
     }
@@ -172,5 +172,5 @@
         public static readonly Model None = new(new UserWalkieTalkieSettings(), []);
     }
 
-    public sealed record ChatItem(ChatId Id, string Title);
+    public sealed record ChatItem(ChatId Id, string? Title);
 }
