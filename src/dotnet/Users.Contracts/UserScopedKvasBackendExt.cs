@@ -33,4 +33,7 @@ public static class UserScopedKvasBackendExt
 
     public static KvasAccessor<UserReactionSettings> UserReactionSettings(this UserScopedKvasBackend kvas)
         => kvas.AccessorFor<UserReactionSettings>();
+
+    public static KvasAccessor<UserWalkieTalkieSettings> UserWalkieTalkieSettings(this UserScopedKvasBackend kvas)
+        => kvas.AccessorFor<UserWalkieTalkieSettings>();
 }

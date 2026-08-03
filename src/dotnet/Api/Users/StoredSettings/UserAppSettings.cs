@@ -16,4 +16,5 @@ public sealed partial record UserAppSettings : StoredSettings, IHasOrigin, IHasK
     [DataMember, MemoryPackOrder(5), Key(5)] public bool? IsAuthorColorsEnabled{ get; init; }
     [DataMember, MemoryPackOrder(6), Key(6)] public bool? IsVideoDiagnosticsEnabled { get; init; }
     [DataMember, MemoryPackOrder(7), Key(7)] public bool? IsAudioDiagnosticsEnabled { get; init; }
+    [DataMember, MemoryPackOrder(8), Key(8)] public bool? IsFaceDownMicStopEnabled { get; init; }
 }
