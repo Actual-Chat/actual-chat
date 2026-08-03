@@ -89,8 +89,10 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        if (chat.Rules.Author?.Id != targetAuthorId)
+        if (chat.Rules.Author?.Id != targetAuthorId) {
+            RequireNotPeerChat(chatId);
             await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
+        }
         await Backend.MutePeer(chatId, targetAuthorId, muted, cancellationToken).ConfigureAwait(false);
     }
 
@@ -98,6 +100,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
+        RequireNotPeerChat(chatId);
         await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat.Rules.Author?.Id is not { } ownAuthorId)
             return;
@@ -173,5 +176,12 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         if (live?.Host is { } host && chat.Rules.Author?.Id is { } actingAuthorId && host == actingAuthorId)
             return;
         throw StandardError.Constraint("Only the call host or a chat admin can manage the live session.");
+    }
+
+    private static void RequireNotPeerChat(ChatId chatId)
+    {
+        // A 1:1 conversation has no host in any meaningful sense - neither side may silence the other.
+        if (chatId is PeerChatId)
+            throw StandardError.Constraint("You cannot mute another participant in a one-on-one chat.");
     }
 }
