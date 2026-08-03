@@ -12,6 +12,18 @@
 .share-location-modal .c-map {
     @apply w-full h-full;
 }
+.share-location-modal .c-permission-prompt {
+    @apply flex-y items-center justify-center gap-y-2;
+    @apply w-full h-full;
+    @apply px-8;
+    @apply text-center;
+}
+.share-location-modal .c-permission-prompt i {
+    @apply text-3xl text-03;
+}
+.share-location-modal .c-permission-prompt span {
+    @apply text-headline-1 text-02;
+}
 .share-location-modal .c-map-area .btn.btn-round {
     @apply absolute;
     @apply w-10 h-10;
