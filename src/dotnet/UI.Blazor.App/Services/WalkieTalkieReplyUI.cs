@@ -47,7 +47,11 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat?.Rules.Author?.Id is { } ownAuthorId)
             await LiveSessionUI.MutePeer(chatId, ownAuthorId, false, cancellationToken).ConfigureAwait(false);
-        await ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk: true).ConfigureAwait(false);
+        var hotWindow = await UserSettingsUI.UserWalkieTalkieSettings()
+            .Get(x => x.HotWindow, cancellationToken)
+            .ConfigureAwait(false);
+        await ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk: true, idleDuration: hotWindow)
+            .ConfigureAwait(false);
 
         StartColdStartWatch(chatId);
     }

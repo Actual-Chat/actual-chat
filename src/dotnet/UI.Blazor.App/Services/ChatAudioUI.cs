@@ -18,6 +18,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
+    private volatile object? _recordingIdleDurationBox;
 
     private IChats Chats => Hub.Chats;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
@@ -174,8 +175,24 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return Task.FromResult(recordingChat?.ChatId);
     }
 
-    public ValueTask SetRecordingChatId(ChatId? chatId, bool isPushToTalk = false)
+    public static RecordingIdleOptions GetRecordingIdleOptions(TimeSpan? idleDuration, AudioSettings audioSettings)
     {
+        if (idleDuration is not { } duration)
+            return new RecordingIdleOptions(
+                Constants.Audio.RecordingDuration,
+                audioSettings.IdleRecordingPreCountdownTimeout,
+                audioSettings.IdleRecordingCheckPeriod);
+
+        var preCountdown = Constants.Audio.RecordingDuration - audioSettings.IdleRecordingPreCountdownTimeout;
+        return new RecordingIdleOptions(
+            duration,
+            (duration - preCountdown).Positive(),
+            audioSettings.IdleRecordingCheckPeriod);
+    }
+
+    public ValueTask SetRecordingChatId(ChatId? chatId, bool isPushToTalk = false, TimeSpan? idleDuration = null)
+    {
+        _recordingIdleDurationBox = chatId is null ? null : (object?)idleDuration;
         if (chatId is not null)
             Hub.AudioAttachmentPlayer.OnConversationJoined();
         return ActiveChatsUI.UpdateActiveChats(activeChats => {

@@ -234,10 +234,7 @@ public partial class ChatAudioUI
                     .ConfigureAwait(false),
                 abortToken);
             whenIdle = ForegroundTask.Run(async () => {
-                var options = new RecordingIdleOptions(
-                    Constants.Audio.RecordingDuration,
-                    AudioSettings.IdleRecordingPreCountdownTimeout,
-                    AudioSettings.IdleRecordingCheckPeriod);
+                var options = GetRecordingIdleOptions((TimeSpan?)_recordingIdleDurationBox, AudioSettings);
                 var streamingIdleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, abortToken);
                 await foreach (var serverStopAt in streamingIdleBoundaries.ConfigureAwait(false))
                     _stopRecordingAt.Value = serverStopAt.Convert(serverClock, cpuClock);
