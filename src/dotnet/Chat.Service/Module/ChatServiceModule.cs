@@ -156,6 +156,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddKeyedSingleton<Translator>(Constants.Translation.RealtimeServiceKey);
         services.AddKeyedSingleton<Translator>(Constants.Translation.UITextServiceKey);
         services.AddSingleton<LanguageDetector>();
+        services.AddSingleton<TextEntryStreamer>();
         services.AddAIServices();
         services.AddChatMLServices();
 
