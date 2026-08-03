@@ -72,6 +72,11 @@ public abstract class TuneUI : ProcessorBase
             _backendRef ??= DotNetObjectReference.Create(this);
             await Hub.JS.InvokeVoidAsync(JSInitMethod, _backendRef, Tunes).ConfigureAwait(false);
         }
+        catch (JSDisconnectedException e) {
+            // The headless walkie-talkie scope marks its runtime disconnected up front, so this
+            // is the expected path on every wake - not something triage should be pointed at.
+            Log.LogWarning(e, "Initialize skipped: the JS runtime is disconnected");
+        }
         catch (Exception e) {
             Log.LogError(e, "Initialize failed");
         }
