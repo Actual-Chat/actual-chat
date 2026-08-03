@@ -79,6 +79,9 @@ public static partial class Constants
         // Much longer than Presence.ActivityPeriod: reading a long message without touching anything
         // is normal, while a user who walked away must stop consuming unread messages.
         public static readonly TimeSpan ReadingGracePeriod = TimeSpan.FromMinutes(3);
+        // Past this age an entry is settled enough that re-animating it would read as a glitch,
+        // so a streamed edit still succeeds but lands as one ordinary update.
+        public static readonly TimeSpan MaxStreamingEditAge = TimeSpan.FromMinutes(15);
         // 2x the editor's large-paste threshold, which is per paste rather than per message
         public const int MaxEntryTextLength = 64 * 1024;
         public const int MaxQuotedTextLength = 1024;
