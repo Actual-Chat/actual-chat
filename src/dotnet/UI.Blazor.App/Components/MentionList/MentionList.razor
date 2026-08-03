@@ -219,24 +219,26 @@
         if (selectionIndex < 0 || selectionIndex >= mentions.Length)
             return;
 
-        _selection = mentions[selectionIndex];
-        StateHasChanged();
-        _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
+        SetSelection(mentions[selectionIndex]);
     }
 
     [JSInvokable]
     public void OnHoverSelect(string mentionRef) {
-        // Unlike MoveSelection, this one never scrolls: scrolling would move the list under
-        // the resting pointer, which would hover another item and scroll again.
         var mention = State.Value.FirstOrDefault(o => o.MentionRef.Value == mentionRef);
         if (mention == null || mention == _selection)
             return;
 
-        _selection = mention;
-        StateHasChanged();
+        SetSelection(mention);
     }
 
     // Private methods
+
+    private void SetSelection(FoundMention mention) {
+        // Scrolling is safe here: HoverSelect ignores pointer events with unchanged coordinates.
+        _selection = mention;
+        StateHasChanged();
+        _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
+    }
 
     private void OnChipClick(Func<MentionCandidate, bool> filter)
         => Manager.Filter.Value = Manager.Filter.Value == filter
