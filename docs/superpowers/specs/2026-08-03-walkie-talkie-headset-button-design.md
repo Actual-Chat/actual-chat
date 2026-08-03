@@ -123,9 +123,12 @@ the button second.
 8. **A handoff mid-recording closes the mic cleanly rather than
    preserving it.** When the user opens the app while a headless reply is
    recording, the headless scope stops its triggers and closes the mic
-   through `StopReply` — the entry finalises and the cue plays — before
-   being disposed. The user loses the tail of a sentence but never loses
-   the message and never gets a silent failure. Preserving the recording
+   through `StopReply` — the entry finalises — before being disposed. The
+   cue is *not* ordered with respect to disposal: both `StopReply`'s cue and
+   `RecordChat`'s `Tune.EndRecording` are fire-and-forget, so a cue may be
+   cut short. Only the mic close and the finalised entry are guaranteed. The
+   user loses the tail of a sentence but never loses the
+   message and never gets a silent failure. Preserving the recording
    across the swap would require two live scopes, which is exactly the
    service-identity problem decision 6 avoids, and would arm two
    `GestureUI` instances at once. Zero-loss handover is a separate design.
@@ -143,7 +146,7 @@ the button second.
               │                               │
               └──────────► StartScopedServices ◄──────────┘
                        (IncomingVoiceActivityUI,
-                        GestureUI, TuneUI, AudioWidget)
+                        GestureUI, TuneUI)
                               │
                         answer window opens
                         when incoming voice
@@ -184,7 +187,12 @@ design that had to start a mic FGS on the press would not work.
 
 1. **`StartScopedServices`** — `UI.Blazor.App/Services/`. The headless-safe
    subset of today's `AppScopedServiceStarter.AfterFirstRender`:
-   `IncomingVoiceActivityUI`, `GestureUI`, `TuneUI`, `AudioWidget`. Called
+   `IncomingVoiceActivityUI`, `GestureUI`, `TuneUI`. `AudioWidget` is
+   deliberately **not** in the list: `WalkieTalkieWakeHandler` owns the
+   foreground service end to end, and every widget output path parks on
+   `DispatchToBlazor` until a WebView publishes, so headlessly it shows
+   nothing, hides nothing, and reacts to nothing. It stays a WebView-scope
+   touch in `AfterFirstRender`. Called
    from `AppBase.razor` as today, and from `HeadlessBlazorScope.GetOrCreate`.
    The JS-bound work — `BrowserInit`, `BrowserInfo.WhenReady`, `ThemeUI`,
    `History`, navigation restore — stays render-driven and is *not* in this
@@ -200,10 +208,16 @@ design that had to start a mic FGS on the press would not work.
    `WalkieTalkieWakeHandler.StopHeadlessSession()` when its instance is
    null. This generalises it and replaces that null-check.
 
-3. **`HeadsetButtonPolicy`** — `UI.Blazor.App/Services/Gestures/`, pure.
-   `(keyCode, isEnabled, hasAnswerWindow, isReplyHot) → Reply | Stop |
-   PassThrough`. Lives beside `GestureActivationPolicy` and takes the same
-   answer-window input that `ShouldSenseStartGestures` uses.
+3. **`HeadsetButtonPolicy`** — `UI.Blazor.App/Services/Gestures/`, pure. Two
+   halves: `GetState` maps settings plus world state to a
+   `HeadsetButtonState`, and `Decide` maps `(keyCode, state) → Reply | Stop
+   | PassThrough`. `GetState` derives its window from
+   `GestureActivationPolicy.HasAnswerWindow` — the recency scan alone — and
+   **not** from `ShouldSenseStartGestures`, which ORs the window with two
+   properties of the *motion-sensor* consumer (`isPracticeMode`,
+   `AreGesturesAlwaysOn`). Either would arm the button with nobody talking;
+   `AreGesturesAlwaysOn` would do so permanently, which is the very design
+   decision 3 rejected.
 
 4. **`Callback.OnMediaButtonEvent`** — the existing nested `Callback` in
    `AndroidAudioWidgetForegroundService`. Extracts the `KeyEvent`, resolves
@@ -211,13 +225,16 @@ design that had to start a mic FGS on the press would not work.
    and consumes the event, or returns `base.OnMediaButtonEvent(intent)` so
    the current play/pause/stop behaviour is untouched.
 
-5. **`UserWalkieTalkieSettings.IsHeadsetButtonEnabled`** — a new member
-   defaulting to `true`, with one row in the Push to Talk settings tab
-   beside the gesture toggles.
+5. **`UserWalkieTalkieSettings.IsHeadsetButtonEnabled`** — a new `bool?`
+   member read as `?? true` (see Testing), with one row in the Push to Talk
+   settings tab beside the gesture toggles.
 
-6. **Handoff** — `MainActivity.OnCreate` currently disposes the headless
-   scope outright. It gains a step: if a reply is recording, stop it
-   through `StopReply` first, then dispose.
+6. **Handoff** — `WalkieTalkieSession.StopAndDispose` is the single
+   disposal door for a headless scope: if a reply is recording, it stops it
+   through `StopReply`, waits for the recorder to release the mic under a 5 s
+   budget, and only then disposes. `MainActivity.OnCreate`, the FGS
+   notification's Stop button, the idle teardown watcher, and the wake-failure
+   path all go through it.
 
 ## Reuse
 
@@ -282,8 +299,13 @@ the first thing to unit-test.
   keycode each → PassThrough; a press while a reply is hot → Stop.
 - The down/up pair yields exactly one decision, and repeat counts are
   ignored.
-- Settings round-trip for the new member, including that a blob written
-  before it existed reads as enabled.
+- Settings round-trip for the new member. A blob written before the member
+  existed deserializes it as `default(T)`, **not** as the property
+  initializer — verified empirically in
+  `UserWalkieTalkieSettingsTest.AMissingMemberIgnoresItsPropertyInitializer`
+  — so the member is `bool?` and every read site applies `?? true`, matching
+  `UserAppSettings.IsFaceDownMicStopEnabled`'s `?? false`. `= true` on a
+  plain `bool` would have shipped a silently dead button to every E2 tester.
 
 **Not testable here, stated plainly rather than mocked:**
 - Whether a given service in `StartScopedServices` actually works without
