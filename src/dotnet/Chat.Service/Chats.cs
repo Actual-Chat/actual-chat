@@ -2,6 +2,7 @@ using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Logging;
 using ActualChat.Transcription;
+using ActualLab.Rpc;
 
 namespace ActualChat.Chat;
 
@@ -20,6 +21,7 @@ public partial class Chats(IServiceProvider services) : IChats
     private IConversationsBackend ConversationsBackend { get; } = services.GetRequiredService<IConversationsBackend>();
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
+    private TextEntryStreamer TextEntryStreamer { get; } = services.GetRequiredService<TextEntryStreamer>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
@@ -30,6 +32,7 @@ public partial class Chats(IServiceProvider services) : IChats
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
 
     private ICommander Commander { get; } = services.Commander();
+    private MomentClockSet Clocks { get; } = services.Clocks();
     private HostInfo HostInfo => field ??= services.HostInfo();
     private ILogger Log { get; } = services.LogFor<Chats>();
 
@@ -396,6 +399,51 @@ public partial class Chats(IServiceProvider services) : IChats
             chatDiff.AllowGuestAuthors.HasValue.RequireFalse("AllowGuestAuthors");
             chatDiff.PlaceId.RequireNull("PlaceId");
         }
+    }
+
+    public virtual async Task<ChatEntry> StreamEntry(
+        Session session,
+        ChatId chatId,
+        long? localId,
+        RpcStream<string> textChunks,
+        CancellationToken cancellationToken)
+    {
+        ThrowIfPlaceRootChat(chatId);
+        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
+
+        if (localId is not { } vLocalId)
+            return await TextEntryStreamer
+                .Stream(chatId, author.Id, textChunks, cancellationToken)
+                .ConfigureAwait(false);
+
+        var entry = await this
+            .GetEntry(session, ChatEntryId.New(chatId, vLocalId), cancellationToken)
+            .Require(ChatEntry.MustNotBeRemoved)
+            .ConfigureAwait(false);
+        if (entry.AuthorId != author.Id)
+            throw StandardError.Unauthorized("You can edit only your own messages.");
+        if (entry.IsContentStreaming)
+            throw StandardError.Constraint("Streaming messages cannot be edited.");
+        if (entry.Forwarded is not null)
+            throw StandardError.Constraint("Forwarded messages cannot be edited.");
+
+        var age = Clocks.SystemClock.Now - entry.BeginsAt;
+        if (age <= Constants.Chat.MaxStreamingEditAge)
+            return await TextEntryStreamer
+                .Stream(chatId, author.Id, entry, textChunks, cancellationToken)
+                .ConfigureAwait(false);
+
+        // Too old to animate: collect everything, then apply it through the ordinary edit path so
+        // the audio, markup and attachment handling there still applies.
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        await foreach (var chunk in textChunks.WithCancellation(cancellationToken).ConfigureAwait(false))
+            sb.Append(chunk);
+        var upsertCommand = new Chats_UpsertEntry(session, chatId, vLocalId) {
+            Text = sb.ToStringAndRelease(),
+        };
+        return await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

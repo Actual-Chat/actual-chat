@@ -117,6 +117,16 @@ public interface IChats : IComputeService
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<ChatEntry> OnUpsertEntry(Chats_UpsertEntry command, CancellationToken cancellationToken);
 
+    // Editing an entry older than Constants.Chat.MaxStreamingEditAge still succeeds, but lands as
+    // one ordinary update rather than re-animating a settled message.
+    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    Task<ChatEntry> StreamEntry(
+        Session session,
+        ChatId chatId,
+        long? localId,
+        RpcStream<string> textChunks,
+        CancellationToken cancellationToken);
+
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity), LegacyName("OnRemoveTextEntry")]
     Task OnRemoveEntry(Chats_RemoveEntry command, CancellationToken cancellationToken);
 
