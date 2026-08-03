@@ -4,6 +4,19 @@
     var m = State.Value;
 }
 
+<TileTopic Topic="Microphone"/>
+
+<Tile>
+    <TileItem Click="@OnToggleFaceDownStop">
+        <Icon><i class="icon-mic-off text-2xl"></i></Icon>
+        <Content>Stop recording when face down</Content>
+        <Caption>Turning the phone face down or pocketing it closes the mic</Caption>
+        <Right>
+            <Toggle IsChecked="@m.IsFaceDownMicStopEnabled"/>
+        </Right>
+    </TileItem>
+</Tile>
+
 <TileTopic Topic="Blocked users"/>
 
 <Tile>
@@ -72,7 +85,10 @@
             var name = contact.PreferredPeerName ?? avatar.Name;
             items.Add(new Item(id, name, avatar));
         }
-        return new Model(items);
+        var isFaceDownMicStopEnabled = await UserSettingsUI.UserAppSettings()
+            .Get(x => x.IsFaceDownMicStopEnabled ?? false, cancellationToken)
+            .ConfigureAwait(false);
+        return new Model(items, isFaceDownMicStopEnabled);
     }
 
     private void OnToggleExpand() {
@@ -83,10 +99,15 @@
     private Task OnUnblock(ContactId contactId)
         => Hub.PeerBlockUI.SetBlocked(contactId, false);
 
+    private Task OnToggleFaceDownStop()
+        => UserSettingsUI.UserAppSettings().Update(
+            x => x with { IsFaceDownMicStopEnabled = !(x.IsFaceDownMicStopEnabled ?? false) },
+            CancellationToken.None);
+
     // Nested types
 
-    public sealed record Model(IReadOnlyList<Item> Items) {
-        public static readonly Model None = new(Array.Empty<Item>());
+    public sealed record Model(IReadOnlyList<Item> Items, bool IsFaceDownMicStopEnabled) {
+        public static readonly Model None = new(Array.Empty<Item>(), false);
     }
 
     public sealed record Item(ContactId ContactId, string Name, Avatar Avatar);
