@@ -17,16 +17,20 @@ public partial class MarkupParser : IMarkupParser
 
     public bool UseUnparsedTextMarkup { get; init; }
     public bool MustSimplify { get; init; } = true;
+    public bool AllowIncompleteMarkup { get; init; }
 
     public Markup Parse(string text)
     {
-        var markup = ParseRaw(text, UseUnparsedTextMarkup);
+        var markup = ParseRaw(text, UseUnparsedTextMarkup, AllowIncompleteMarkup);
         if (MustSimplify)
             markup = markup.Simplify();
         return markup;
     }
 
-    public static Markup ParseRaw(string text, bool useUnparsedTextMarkup = false)
+    public static Markup ParseRaw(
+        string text,
+        bool useUnparsedTextMarkup = false,
+        bool allowIncompleteMarkup = false)
     {
         if (text.IsNullOrEmpty())
             return EmptyResult;
@@ -34,7 +38,12 @@ public partial class MarkupParser : IMarkupParser
         // The grammar sees a single line ending style, so any input produces the same markup.
         // Without this a lone '\r' ends the parse early and silently truncates the message.
         text = text.NormalizeNewLines(NewLineMarkup.Instance.Text);
-        var parser = useUnparsedTextMarkup ? FullWithUnparsedMarkup : FullMarkup;
+        var parser = (useUnparsedTextMarkup, allowIncompleteMarkup) switch {
+            (false, false) => FullMarkup,
+            (true, false) => FullWithUnparsedMarkup,
+            (false, true) => IncompleteMarkup,
+            (true, true) => IncompleteWithUnparsedMarkup,
+        };
         var result = parser.Parse(text);
         return result.Success ? result.Value : EmptyResult;
     }
@@ -170,12 +179,11 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, Markup> Mention =
         SafeTryOneOf(NamedMention, UnnamedMention);
 
-    // Preformatted text
-    private static readonly Parser<char, Markup> PreformattedText =
-        Lookahead(Not(CodeBlockToken.Before(NotPreToken.OrEnd())))
-            .Then(NotPreToken.Or(DoublePreToken).ManyString().Between(PreToken))
-            .Select(s => (Markup)new PreformattedTextMarkup(s))
-            .Debug("`");
+    // Preformatted text opener - the guard keeps a ``` code block fence out of an inline code span
+    private static readonly Parser<char, Pidgin.Unit> PreformattedTextStart =
+        Lookahead(Not(CodeBlockToken.Before(NotPreToken.OrEnd())));
+    private static readonly Parser<char, string> PreformattedTextBody =
+        NotPreToken.Or(DoublePreToken).ManyString();
 
     // Url
     private static Parser<char, Markup> WwwUrl => (
@@ -193,42 +201,11 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, Markup> Url =
         SafeTryOneOf(WwwUrl, Email).Debug("Url");
 
-    // Mention | PreformattedText | Url | WordText
-    private static readonly Parser<char, Markup> NonStylizedMarkup =
-        SafeTryOneOf(Mention, PreformattedText, Url, NonWhitespaceText)
-        .Debug("T");
-
-    // Stylized text
-    private static readonly Parser<char, Markup> BoldMarkup =
-        Rec(() => TextBlock!).Between(Try(BoldToken))
-            .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Bold))
-            .Debug("**");
-    private static readonly Parser<char, Markup> ItalicMarkup =
-        Rec(() => TextBlock!).Between(ItalicToken)
-            .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Italic))
-            .Debug("*");
-    private static readonly Parser<char, Markup> SpoilerMarkup =
-        Rec(() => TextBlock!).Between(Try(SpoilerToken))
-            .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Spoiler))
-            .Debug("||");
-
     // Fallback for single-line content: consume a run of stray '*'/'`'/'@' as plain text when no
     // styled/preformatted/mention/url markup matches. Without it, an unmatched '**' (e.g. the
     // **`a`/`b`** ambiguity) would stall list-item parsing and silently drop the rest of the message.
     private static readonly Parser<char, Markup> StraySpecialText =
         SpecialChar.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, false);
-
-    // Text block for single-line content (list items) - no newlines allowed
-    private static readonly Parser<char, Markup> TextBlockSingleLine =
-        SafeTryOneOf(BoldMarkup, ItalicMarkup, SpoilerMarkup, NonStylizedMarkup, StraySpecialText)
-            .AtLeastOnceSingleLineMarkup()
-            .Debug("<TextSingleLine>");
-
-    // Text block (includes inline newlines for multi-line styled text in paragraphs)
-    private static readonly Parser<char, Markup> TextBlock =
-        SafeTryOneOf(BoldMarkup, ItalicMarkup, SpoilerMarkup, NonStylizedMarkup, InlineNewLine)
-            .AtLeastOnceInlineMarkup()
-            .Debug("<Text>");
 
     // Code block
     private static readonly Parser<char, string> CodeBlockWithLanguageStart =
@@ -285,23 +262,31 @@ public partial class MarkupParser : IMarkupParser
         select (Markup)new CodeBlockMarkup(code.GetValueOrDefault(""), language.TrimEnd())
         ).Debug("<Code>");
 
-    // List block (list items use single-line text block - no newlines within items)
-    private static readonly Parser<char, Markup> UnorderedListItem =
-        from _ in OneOf(Char('-'), Char('*')).Before(WhitespaceChar)
-        from content in TextBlockSingleLine.ManyMarkup()
-        select (Markup)new ListItemMarkup(content);
-    private static readonly Parser<char, Markup> ListBlock = (
-        from first in UnorderedListItem
-        from rest in Try(EndOfLine.Then(UnorderedListItem)).Many()
-        select (Markup)new ListMarkup(
-            new[] { first }.Concat(rest).Select(c => (ListItemMarkup)c).ToArray())
-        ).Debug("<List>");
+    // Block-level pieces that don't depend on any grammar variant, so they're built once rather
+    // than per InternalParsers instance. Everything downstream of TextBlock or of the unparsed
+    // text markup kind does vary, and lives in InternalParsers.Build instead.
 
-    private static readonly Parser<char, Markup> FullWithUnparsedMarkup =
-        new InternalParsers(true).Parser;
+    // A single paragraph line (can be empty - 0 or more chars)
+    private static readonly Parser<char, string> ParagraphLine = NotEndOfLineChar.ManyString();
+
+    // Check if next line starts a block element (CodeBlock, ListBlock, Header, or BlockQuote)
+    private static readonly Parser<char, char> BlockElementAhead =
+        Lookahead(Try(CodeBlockToken.ThenReturn('`'))
+            .Or(Try(OneOf(Char('-'), Char('*')).Before(WhitespaceChar)))
+            .Or(Try(HeaderLevel.ThenReturn('#')))
+            .Or(Try(Char('>').Before(WhitespaceChar))));
+
+    private static readonly Parser<char, string> QuoteContentLine =
+        Char('>').Then(WhitespaceChar).Then(ParagraphLine);
 
     private static readonly Parser<char, Markup> FullMarkup =
-        new InternalParsers(false).Parser;
+        new InternalParsers(false).Build();
+    private static readonly Parser<char, Markup> FullWithUnparsedMarkup =
+        new InternalParsers(true).Build();
+    private static readonly Parser<char, Markup> IncompleteMarkup =
+        new IncompleteInternalParsers(false).Build();
+    private static readonly Parser<char, Markup> IncompleteWithUnparsedMarkup =
+        new IncompleteInternalParsers(true).Build();
 
     // Type initializer
     static MarkupParser()
@@ -318,87 +303,123 @@ public partial class MarkupParser : IMarkupParser
     }
 
     // Nested types
-    private class InternalParsers
+    private class InternalParsers(bool useUnparsedTextMarkup)
     {
-        public readonly Parser<char, Markup> Parser;
+        private bool UseUnparsedTextMarkup { get; } = useUnparsedTextMarkup;
 
-        public InternalParsers(bool useUnparsedTextMarkup)
+        // Assigned by Build before any parsing, and read through Rec(...) so the stylized parsers
+        // can recurse back into the text block that contains them.
+        protected Parser<char, Markup> TextBlock { get; private set; } = null!;
+
+        public Parser<char, Markup> Build()
         {
-            var textMarkupKind = useUnparsedTextMarkup ? TextMarkupKind.Unparsed : TextMarkupKind.Plain;
+            var textMarkupKind = UseUnparsedTextMarkup ? TextMarkupKind.Unparsed : TextMarkupKind.Plain;
+
+            var preformattedText = CreatePreformattedText();
+            var nonStylizedMarkup = SafeTryOneOf(Mention, preformattedText, Url, NonWhitespaceText).Debug("T");
+            var boldMarkup = CreateStylized(Try(BoldToken), TextStyle.Bold).Debug("**");
+            var italicMarkup = CreateStylized(ItalicToken, TextStyle.Italic).Debug("*");
+            var spoilerMarkup = CreateStylized(Try(SpoilerToken), TextStyle.Spoiler).Debug("||");
+
+            // Text block for single-line content (list items) - no newlines allowed
+            var textBlockSingleLine =
+                SafeTryOneOf(boldMarkup, italicMarkup, spoilerMarkup, nonStylizedMarkup, StraySpecialText)
+                    .AtLeastOnceSingleLineMarkup()
+                    .Debug("<TextSingleLine>");
+
+            // Text block (includes inline newlines for multi-line styled text in paragraphs)
+            TextBlock =
+                SafeTryOneOf(boldMarkup, italicMarkup, spoilerMarkup, nonStylizedMarkup, InlineNewLine)
+                    .AtLeastOnceInlineMarkup()
+                    .Debug("<Text>");
+
+            // List block (list items use single-line text block - no newlines within items)
+            var unorderedListItem =
+                from _ in OneOf(Char('-'), Char('*')).Before(WhitespaceChar)
+                from content in textBlockSingleLine.ManyMarkup()
+                select (Markup)new ListItemMarkup(content);
+            var listBlock = (
+                from first in unorderedListItem
+                from rest in Try(EndOfLine.Then(unorderedListItem)).Many()
+                select (Markup)new ListMarkup(
+                    new[] { first }.Concat(rest).Select(c => (ListItemMarkup)c).ToArray())
+                ).Debug("<List>");
+            // Explicitly typed: the query yields TextMarkup, and SafeTryOneOf below needs Markup
             Parser<char, Markup> unparsedTextBlock = (
                 from whitespace in WhitespaceString
                 from special in SpecialChar.AtLeastOnceString()
                 select TextMarkup.New(textMarkupKind, whitespace + special, true)
                 ).Debug("<Unparsed>");
 
-            Parser<char, Markup> inlineParser =
+            var inlineParser =
                 SafeTryOneOf(InlineNewLine, WhitespaceText, TextBlock, unparsedTextBlock).Debug("<InlineElement>")
                     .ManyMarkup().Debug("<Inline>");
 
-            // A single paragraph line (can be empty - 0 or more chars)
-            Parser<char, string> paragraphLine = NotEndOfLineChar.ManyString();
-
-            // Check if next line starts a block element (CodeBlock, ListBlock, Header, or BlockQuote)
-            Parser<char, char> blockElementAhead =
-                Lookahead(Try(CodeBlockToken.ThenReturn('`'))
-                    .Or(Try(OneOf(Char('-'), Char('*')).Before(WhitespaceChar)))
-                    .Or(Try(HeaderLevel.ThenReturn('#')))
-                    .Or(Try(Char('>').Before(WhitespaceChar))));
-
             // Paragraph: collect all content until paragraph break or block element, then parse as inline
             // This allows styled text (**bold**) to span multiple lines
-            Parser<char, Markup> paragraph = (
-                from firstLine in paragraphLine
+            var paragraph = (
+                from firstLine in ParagraphLine
                 from restParts in Try(
                     from nl in EndOfLine
                     from _ in Lookahead(Not(EndOfLine)) // not empty line (paragraph break)
-                    from __ in Lookahead(Not(blockElementAhead)) // not block element ahead
-                    from line in paragraphLine
+                    from __ in Lookahead(Not(BlockElementAhead)) // not block element ahead
+                    from line in ParagraphLine
                     select "\n" + line // preserve newline in content
                 ).Many()
                 select BuildParagraph(firstLine, restParts, inlineParser)
                 ).Debug("<Paragraph>");
 
             // Header: 1-3 '#' followed by whitespace and a single line of inline content
-            Parser<char, Markup> header = (
+            var header = (
                 from level in HeaderLevel
                 from _ in WhitespaceChar.AtLeastOnce()
-                from line in paragraphLine
+                from line in ParagraphLine
                 select BuildHeader(level, line.TrimEnd(), inlineParser)
                 ).Debug("<Header>");
 
             // Block quote: one or more consecutive "> " lines; inner content is inline markup
             // (mentions/styles/urls/emoji/newlines) — no nested block elements like code blocks.
-            Parser<char, string> quoteContentLine =
-                Char('>').Then(WhitespaceChar).Then(paragraphLine);
-            Parser<char, Markup> blockquote = (
-                from firstLine in quoteContentLine
+            var blockquote = (
+                from firstLine in QuoteContentLine
                 from restLines in Try(
                     from nl in EndOfLine
-                    from line in quoteContentLine
+                    from line in QuoteContentLine
                     select "\n" + line
                 ).Many()
                 select BuildBlockQuote(firstLine, restLines, inlineParser)
                 ).Debug("<BlockQuote>");
 
             // Any standalone block (list/code/header/quote, or paragraph including empty/inline-only).
-            Parser<char, Markup> blockOrHeader = SafeTryOneOf(CodeBlock, ListBlock, header, blockquote);
-            Parser<char, Markup> block = SafeTryOneOf(blockOrHeader, paragraph);
+            var blockOrHeader = SafeTryOneOf(CodeBlock, listBlock, header, blockquote);
+            var block = SafeTryOneOf(blockOrHeader, paragraph);
 
             // After the first block, every subsequent block is preceded by one or more
             // newlines. We capture the count and let BuildBlockSequence translate
             // (leadingNewlines − minSep) extra newlines into ParagraphMarkup.Empty
             // entries — one per blank line beyond the minimum block-boundary separator.
-            Parser<char, (int LeadingNewlines, Markup Item)> separatorAndNextBlock =
+            var separatorAndNextBlock =
                 from nls in Try(EndOfLine).AtLeastOnce()
                 from item in block
                 select (nls.Count(), item);
 
-            Parser =
-                from first in block
+            return from first in block
                 from rest in Try(separatorAndNextBlock).Many()
                 select BuildBlockSequence(first, rest);
         }
+
+        // Protected methods
+
+        protected virtual Parser<char, Markup> CreatePreformattedText()
+            => PreformattedTextStart
+                .Then(PreformattedTextBody.Between(PreToken))
+                .Select(s => (Markup)new PreformattedTextMarkup(s))
+                .Debug("`");
+
+        protected virtual Parser<char, Markup> CreateStylized(Parser<char, TextStyle> token, TextStyle style)
+            => Rec(() => TextBlock).Between(token)
+                .Select(t => (Markup)new StylizedMarkup(t, style));
+
+        // Private methods
 
         private static Markup BuildBlockSequence(
             Markup first,
@@ -450,6 +471,44 @@ public partial class MarkupParser : IMarkupParser
         {
             var content = firstLine + string.Concat(restLines);
             return new BlockQuoteMarkup(inlineParser.ParseOrThrow(content));
+        }
+    }
+
+    private sealed class IncompleteInternalParsers(bool useUnparsedTextMarkup)
+        : InternalParsers(useUnparsedTextMarkup)
+    {
+        // Protected methods
+
+        protected override Parser<char, Markup> CreatePreformattedText()
+            => SafeTryOneOf(
+                base.CreatePreformattedText(),
+                PreformattedTextStart
+                    .Then(PreToken)
+                    .Then(PreformattedTextBody)
+                    .Before(End)
+                    .Select(s => (Markup)new PreformattedTextMarkup(s) { IsIncomplete = true })
+                    .Debug("`?"));
+
+        protected override Parser<char, Markup> CreateStylized(Parser<char, TextStyle> token, TextStyle style)
+        {
+            // A two-character closing token can be half-arrived as well ("**bold*", "||secret|").
+            // Consuming that half keeps the span matched; without it the span degrades to literal
+            // text, which for a spoiler means showing what it is meant to hide.
+            var end = style switch {
+                TextStyle.Bold => Char('*').Optional().Then(End),
+                TextStyle.Spoiler => Char('|').Optional().Then(End),
+                _ => End,
+            };
+            // The content must be non-empty: an empty match would let a nested span consume the
+            // closing token of the span that encloses it, turning "**bold**" into an incomplete
+            // bold wrapping an incomplete empty one.
+            return SafeTryOneOf(
+                base.CreateStylized(token, style),
+                token
+                    .Then(Rec(() => TextBlock))
+                    .Before(end)
+                    .Select(t => (Markup)new StylizedMarkup(t, style) { IsIncomplete = true })
+                    .Debug("?"));
         }
     }
 }

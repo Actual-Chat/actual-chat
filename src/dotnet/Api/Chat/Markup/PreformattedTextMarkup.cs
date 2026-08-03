@@ -15,8 +15,11 @@ public sealed class PreformattedTextMarkup(string text) : TextMarkup(text)
     public PreformattedTextMarkup() : this("") { }
 
     public override string Format()
-        => $"`{Text.Replace("`", "``")}`";
+    {
+        var escapedText = Text.Replace("`", "``");
+        return IsIncomplete ? $"`{escapedText}" : $"`{escapedText}`";
+    }
 
     public override TextMarkup WithText(string text)
-        => new PreformattedTextMarkup(text);
+        => new PreformattedTextMarkup(text) { IsIncomplete = IsIncomplete };
 }
