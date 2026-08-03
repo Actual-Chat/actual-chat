@@ -21,6 +21,14 @@ OpenSearch with PostgreSQL full-text search (`tsvector` + GIN) behind
 segmentation) moves to the application level for uniform coverage across the
 top ~50 languages, on a pgvector-ready schema.
 
+### Chat roles — Moderator
+
+[Moderator role](./moderator-role.md) — a third system role between `Anyone` and
+`Owner`: delete/restore anyone's messages, mute and manage calls, kick members,
+edit chat title/picture/description — but no chat deletion, archiving, type
+changes, or role edits. Owners are immune to moderator actions; place-level
+moderators cover every public chat in the place.
+
 ### Distributed services
 
 [Distributed services](./distributed-services.md) — migrate the ~30 `*Backend`
