@@ -1,10 +1,10 @@
 {
   "mcpServers": {
-    "chrome-devtools-1": {
+    "chrome1": {
       "type": "http",
       "url": "http://localhost:8765/mcp"
     },
-    "chrome-devtools-2": {
+    "chrome2": {
       "type": "http",
       "url": "http://localhost:8766/mcp"
     },
