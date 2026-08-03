@@ -15,7 +15,7 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
     private int _lastSign;
     private Moment _debouncedUntil;
 
-    public ShakeSensitivity Sensitivity { get; } = sensitivity;
+    public ShakeSensitivity Sensitivity { get; private set; } = sensitivity;
     public float PeakDeviation { get; private set; }
 
     // Lower sensitivity demands a harder shake, so the firing sets nest: Low ⊆ Medium ⊆ High.
@@ -36,8 +36,17 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
             _ => 0.55f,
         };
 
+    // Process counts alternations inside a sliding ReversalWindow, not over the whole stream, so
+    // equal counts at neighboring sensitivities don't nest: a sample that's sub-threshold at one
+    // sensitivity but not the other can absorb a transition and push the next reversal out of the
+    // window for only one of the two detectors. Strictly decreasing counts give the weaker
+    // sensitivity slack the stronger one lacks, which is what keeps Low ⊆ Medium ⊆ High.
     public static int GetReversalCount(ShakeSensitivity sensitivity)
-        => sensitivity == ShakeSensitivity.Low ? 4 : 3;
+        => sensitivity switch {
+            ShakeSensitivity.Low => 4,
+            ShakeSensitivity.High => 2,
+            _ => 3,
+        };
 
     public bool Process(SensorSample sample)
     {
@@ -74,5 +83,16 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
         _lastSign = 0;
         _debouncedUntil = default;
         PeakDeviation = 0f;
+    }
+
+    public void ChangeSensitivity(ShakeSensitivity newSensitivity)
+    {
+        // Only the sensitivity-relative state (in-progress reversals, current sign) is stale after
+        // a sensitivity change; _debouncedUntil and PeakDeviation still describe real, recent
+        // motion and must survive, or a settings push right after a fire would let the same
+        // gesture fire twice, and the practice panel's meter would blank on every slider drag.
+        Sensitivity = newSensitivity;
+        _reversals.Clear();
+        _lastSign = 0;
     }
 }

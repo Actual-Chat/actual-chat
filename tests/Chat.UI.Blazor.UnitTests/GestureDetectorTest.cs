@@ -146,13 +146,151 @@ public class GestureDetectorTest
     {
         var options = new GestureOptions(true, true, true, ShakeSensitivity.High);
         var r = new GestureRecognizer(options);
-        // A shake that ends face-down must report the stop, never the start.
-        r.Process(FaceDown(0));
-        r.Process(new SensorSample(At(60), 0f, 0f, 3f));
-        r.Process(new SensorSample(At(120), 0f, 0f, -2f));
-        r.Process(new SensorSample(At(180), 0f, 0f, 3f));
-        var e = r.Process(FaceDown(1500));
+        r.SetProximityCovered(true);
+        // Face-down (700ms dwell since t=0) and shake (2 High-sensitivity |a| reversals within
+        // the last 500ms: dip at 650, rise at 700) both complete on the very last sample - it
+        // must report the stop, never the start, because GestureRecognizer.Process evaluates
+        // face-down first.
+        r.Process(new SensorSample(At(0), 0f, 0f, 3f)).Should().BeNull();
+        r.Process(new SensorSample(At(600), 0f, 0f, 1f)).Should().BeNull();
+        r.Process(new SensorSample(At(650), 0f, 0f, 0.2f)).Should().BeNull();
+        var e = r.Process(new SensorSample(At(700), 0f, 0f, 3f));
         e!.Value.Kind.Should().Be(GestureKind.FaceDown);
+    }
+
+    [Fact]
+    public void Shake_DipOnly0_5FiresOnlyAtHigh()
+    {
+        var samples = new[] {
+            new SensorSample(At(0), 0f, -3f, 0f),
+            new SensorSample(At(100), 0f, -0.5f, 0f),
+            new SensorSample(At(200), 0f, -3f, 0f),
+        };
+        HasFired(samples, ShakeSensitivity.Low).Should().BeFalse();
+        HasFired(samples, ShakeSensitivity.Medium).Should().BeFalse();
+        HasFired(samples, ShakeSensitivity.High).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Shake_DipAt0_35FiresAtAllSensitivities()
+    {
+        var samples = new[] {
+            new SensorSample(At(0), 0f, -3f, 0f),
+            new SensorSample(At(80), 0f, -0.35f, 0f),
+            new SensorSample(At(160), 0f, -3f, 0f),
+            new SensorSample(At(240), 0f, -0.35f, 0f),
+            new SensorSample(At(320), 0f, -3f, 0f),
+        };
+        HasFired(samples, ShakeSensitivity.Low).Should().BeTrue();
+        HasFired(samples, ShakeSensitivity.Medium).Should().BeTrue();
+        HasFired(samples, ShakeSensitivity.High).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Shake_RiseAt1_6FiresOnlyAtHigh()
+    {
+        var samples = new[] {
+            new SensorSample(At(0), 0f, 0f, 0f),
+            new SensorSample(At(80), 0f, -1.6f, 0f),
+            new SensorSample(At(160), 0f, 0f, 0f),
+        };
+        HasFired(samples, ShakeSensitivity.Low).Should().BeFalse();
+        HasFired(samples, ShakeSensitivity.Medium).Should().BeFalse();
+        HasFired(samples, ShakeSensitivity.High).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Shake_RiseAt2_3FiresAtAllSensitivities()
+    {
+        var samples = new[] {
+            new SensorSample(At(0), 0f, 0f, 0f),
+            new SensorSample(At(80), 0f, -2.3f, 0f),
+            new SensorSample(At(160), 0f, 0f, 0f),
+            new SensorSample(At(240), 0f, -2.3f, 0f),
+            new SensorSample(At(320), 0f, 0f, 0f),
+        };
+        HasFired(samples, ShakeSensitivity.Low).Should().BeTrue();
+        HasFired(samples, ShakeSensitivity.Medium).Should().BeTrue();
+        HasFired(samples, ShakeSensitivity.High).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Shake_SensitivityNestsAcrossRandomSequences()
+    {
+        var random = new Random(20260803);
+        for (var trial = 0; trial < 5000; trial++) {
+            var sampleCount = random.Next(4, 12);
+            var samples = new SensorSample[sampleCount];
+            var t = 0.0;
+            for (var i = 0; i < sampleCount; i++) {
+                t += 60 + (random.NextDouble() * (700 - 60));
+                var magnitude = (float)(random.NextDouble() * 3.0);
+                samples[i] = new SensorSample(At(t), 0f, -magnitude, 0f);
+            }
+
+            var hasFiredLow = HasFired(samples, ShakeSensitivity.Low);
+            var hasFiredMedium = HasFired(samples, ShakeSensitivity.Medium);
+            var hasFiredHigh = HasFired(samples, ShakeSensitivity.High);
+            if (hasFiredLow)
+                hasFiredMedium.Should().BeTrue($"trial {trial} fired at Low but not Medium");
+            if (hasFiredMedium)
+                hasFiredHigh.Should().BeTrue($"trial {trial} fired at Medium but not High");
+        }
+    }
+
+    [Fact]
+    public void Shake_ChangeSensitivityPreservesDebounceAndPeak()
+    {
+        var d = new ShakeDetector(ShakeSensitivity.High);
+        Shake(d, ShakeSensitivity.High, ShakeDetector.GetReversalCount(ShakeSensitivity.High), stepMs: 60)
+            .Should().BeTrue();
+        var peakBeforeChange = d.PeakDeviation;
+        peakBeforeChange.Should().BeGreaterThan(0f);
+        d.ChangeSensitivity(ShakeSensitivity.Low);
+        d.PeakDeviation.Should().Be(peakBeforeChange);
+        // The debounce set by the High-sensitivity fire must still block a fresh Low-sensitivity
+        // burst that starts well inside the debounce window.
+        Shake(d, ShakeSensitivity.Low, ShakeDetector.GetReversalCount(ShakeSensitivity.Low), stepMs: 60, startMs: 400)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void Recognizer_EnableToggleResetsFaceDownDwell()
+    {
+        var options = new GestureOptions(false, false, true, ShakeSensitivity.Medium);
+        var r = new GestureRecognizer(options);
+        r.Process(new SensorSample(At(0), 0f, 0f, 1f)).Should().BeNull();
+        r.Process(new SensorSample(At(400), 0f, 0f, 1f)).Should().BeNull();
+        r.Options = options with { IsFaceDownEnabled = false };
+        r.Options = options with { IsFaceDownEnabled = true };
+        // Without the reset-on-toggle fix, the stale _heldSince(0) would make this look like the
+        // dwell already elapsed (1000ms since t=0), firing immediately.
+        r.Process(new SensorSample(At(1000), 0f, 0f, 1f)).Should().BeNull();
+        var e = r.Process(new SensorSample(At(1750), 0f, 0f, 1f));
+        e!.Value.Kind.Should().Be(GestureKind.FaceDown);
+    }
+
+    [Fact]
+    public void Recognizer_SampleGapResetsFaceDownDwell()
+    {
+        var options = new GestureOptions(false, false, true, ShakeSensitivity.Medium);
+        var r = new GestureRecognizer(options);
+        r.Process(new SensorSample(At(0), 0f, 0f, 1f)).Should().BeNull();
+        r.Process(new SensorSample(At(400), 0f, 0f, 1f)).Should().BeNull();
+        // A 2.5s gap simulates the app being backgrounded and resumed - without the gap guard,
+        // the stale _heldSince(0) would make this look like the dwell already elapsed.
+        r.Process(new SensorSample(At(2900), 0f, 0f, 1f)).Should().BeNull();
+        var e = r.Process(new SensorSample(At(3650), 0f, 0f, 1f));
+        e!.Value.Kind.Should().Be(GestureKind.FaceDown);
+    }
+
+    private static bool HasFired(IEnumerable<SensorSample> samples, ShakeSensitivity sensitivity)
+    {
+        var detector = new ShakeDetector(sensitivity);
+        var hasFired = false;
+        foreach (var sample in samples)
+            hasFired |= detector.Process(sample);
+        return hasFired;
     }
 
     private static bool Shake(
