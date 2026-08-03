@@ -29,13 +29,17 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
             return; // Already hot - idempotent
 
+        var settings = await UserSettingsUI.UserWalkieTalkieSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
         var armed = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         var focused = ChatUI.SelectedChatId.Value;
         var snapshot = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
         var target = ReplyTargetResolver.Resolve(
             armed, snapshot, focused, Clocks.ServerClock.Now, Constants.Audio.WalkieTalkieReplyRecencyWindow);
         if (target is not { } chatId) {
-            _ = TuneUI.Play(Tune.WalkieReplyNothingHeard);
+            if (settings.AreAudibleCuesEnabled)
+                _ = TuneUI.Play(Tune.WalkieReplyNothingHeard);
             return;
         }
 
@@ -47,10 +51,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat?.Rules.Author?.Id is { } ownAuthorId)
             await LiveSessionUI.MutePeer(chatId, ownAuthorId, false, cancellationToken).ConfigureAwait(false);
-        var hotWindow = await UserSettingsUI.UserWalkieTalkieSettings()
-            .Get(x => x.HotWindow, cancellationToken)
-            .ConfigureAwait(false);
-        await ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk: true, idleDuration: hotWindow)
+        await ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk: true, idleDuration: settings.HotWindow)
             .ConfigureAwait(false);
 
         StartColdStartWatch(chatId);
@@ -66,7 +67,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             return; // Already closed - idempotent
 
         await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
-        _ = TuneUI.Play(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard);
+        _ = PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard);
     }
 
     // Private methods
@@ -144,6 +145,15 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         }
         if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
             await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
-        _ = TuneUI.Play(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard);
+        await PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard).ConfigureAwait(false);
+    }
+
+    private async Task PlayCue(Tune tune)
+    {
+        var areCuesEnabled = await UserSettingsUI.UserWalkieTalkieSettings()
+            .Get(x => x.AreAudibleCuesEnabled, CancellationToken.None)
+            .ConfigureAwait(false);
+        if (areCuesEnabled)
+            await TuneUI.Play(tune).ConfigureAwait(false);
     }
 }
