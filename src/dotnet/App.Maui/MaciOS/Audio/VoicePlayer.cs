@@ -27,7 +27,7 @@ public class VoicePlayer : IDisposable
         // the mic is capturing, voice playback must go through the Recording engine
         // to become the AEC far-end reference (iOS references the whole device output,
         // so the separate Playback engine is fine there).
-        Engine = OperatingSystem.IsMacCatalyst() && engines.Recording.IsRunning.Value
+        Engine = OperatingSystem.IsMacCatalyst() && engines.Recording.IsRunningNow
             ? engines.Recording
             : engines.Playback;
         Node = Engine.NewPlayer(AudioEngine.VoicePlaybackFormat);

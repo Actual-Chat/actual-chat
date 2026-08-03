@@ -24,6 +24,20 @@ public class AudioEngine : IDisposable
     private ILogger Log => field ??= Hub.LogFor(GetType());
     public IState<bool> IsRunning => _isRunning;
 
+    public bool IsRunningNow {
+        get {
+            lock (_lock)
+                return _engine.Running;
+        }
+    }
+
+    public AVAudioFormat? VoiceProcessedInputFormat {
+        get {
+            lock (_lock)
+                return _vpCaptureFormat;
+        }
+    }
+
     public InputNode Input {
         get {
             lock (_lock)

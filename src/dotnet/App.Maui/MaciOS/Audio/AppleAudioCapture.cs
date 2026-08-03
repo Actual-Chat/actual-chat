@@ -23,12 +23,14 @@ public sealed class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         Log.LogInformation("CaptureInternal: starting");
         var engine = AudioEngines.Recording;
         using var outBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
-        // Enabling VP changes the input node's format, so it must precede GetOutputFormat
+        // Enabling VP changes the input node's format, so it must precede the format query
         engine.EnableVoiceProcessing();
-        var hwFormat = engine.Input.GetOutputFormat();
-        using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
+        // On Mac samples arrive through the VP graph's mono sink connection, which may have
+        // fewer channels than the input node's own output format
+        var captureFormat = engine.VoiceProcessedInputFormat ?? engine.Input.GetOutputFormat();
+        using var resampler = ResamplerFactory.Create(captureFormat, AudioEngine.VoiceRecordingFormat);
         using var sinkBuffer = OperatingSystem.IsMacCatalyst()
-            ? new AVAudioPcmBuffer(hwFormat, (uint)hwFormat.SampleRate)
+            ? new AVAudioPcmBuffer(captureFormat, (uint)captureFormat.SampleRate)
             : null;
         using var _2 = OperatingSystem.IsMacCatalyst()
             ? engine.AttachVoiceProcessedInputSink(HandleSinkSamples)
@@ -78,7 +80,7 @@ public sealed class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         void HandleSamples(AVAudioPcmBuffer pcmBuffer, AVAudioTime when) {
             try {
                 var estimatedResampledLength =
-                    pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
+                    pcmBuffer.FrameLength / captureFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
                 if (outBuffer.RemainingCapacity < estimatedResampledLength) {
                     Log.LogWarning("Buffer full, dropping samples");
                     return;
