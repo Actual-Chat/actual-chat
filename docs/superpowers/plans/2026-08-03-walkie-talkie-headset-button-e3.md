@@ -597,8 +597,18 @@ Expected: `0 Error(s)`; clean.
 ```bash
 dotnet test tests/Users.UnitTests/Users.UnitTests.csproj 2>&1 | tail -3
 dotnet test tests/Chat.UI.Blazor.UnitTests/Chat.UI.Blazor.UnitTests.csproj 2>&1 | tail -3
+dotnet test tests/Chat.UI.Blazor.IntegrationTests/Chat.UI.Blazor.IntegrationTests.csproj 2>&1 | tail -3
 ```
 Expected: all PASS. Record the actual counts, not "all green".
+
+**`Chat.UI.Blazor.IntegrationTests` is not optional, and E4 must not drop it again.** It holds the
+only integration coverage of `GestureUI`'s activation loop — the thing E2 wrote after a
+`Computed.Capture` defect made that loop fault on its first statement at ~1 Hz on every circuit.
+Neither E2's nor E3's sweep ran this project, and `GestureUITest` was consequently red from E2's
+own final fix wave (which added the `IsAccelerometerAvailable || IsMauiApp()` gate that stops the
+loop on a web test host) until E3's final fix wave revived it. Two sub-projects hardened that loop
+with its only integration test silently failing. A unit-test-only sweep cannot see this class of
+regression; run this project.
 
 - [ ] **Step 4: Update the spec status**
 
@@ -639,7 +649,7 @@ Nothing in Tasks 3–6 has been compiled, let alone run. Write these up concrete
 |---|---|---|
 | Media-button delivery | `MediaSessionCompat` with `FlagHandlesMediaButtons` | `AndroidAudioWidgetForegroundService.cs:111` |
 | Reply start/stop, target resolution, cold-start dead-man | `WalkieTalkieReplyUI` (E1) | `UI.Blazor.App/Services/` |
-| Answer-window decision | `GestureActivationPolicy.ShouldSenseStartGestures` (E2) | `UI.Blazor.App/Services/Gestures/` |
+| Answer-window decision | `GestureActivationPolicy.HasAnswerWindow` — **not** `ShouldSenseStartGestures`, which ORs the window with the motion sensors' own `isPracticeMode` and `AreGesturesAlwaysOn` | `UI.Blazor.App/Services/Gestures/` |
 | Pure-policy shape and its test style | `GestureActivationPolicy`, `HeadsetButtonPolicy` mirrors it | same folder |
 | Armed chat set / recording state | `ChatAudioUI.GetPttChatIds`, `GetRecordingChatId` | `UI.Blazor.App/Services/ChatAudioUI.cs` |
 | Settings record, storage, tab row | `UserWalkieTalkieSettings` + `PushToTalkSettings.razor` (E2) | `Api/Users/StoredSettings/`, `Components/Settings/` |
