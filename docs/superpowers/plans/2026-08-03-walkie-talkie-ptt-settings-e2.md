@@ -1289,6 +1289,7 @@ public class SensorFeed
 ```csharp
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
+using Microsoft.Maui.Devices.Sensors;
 
 namespace ActualChat.App.Maui.Services;
 
@@ -1456,7 +1457,7 @@ Add `using ActualChat.UI.Blazor.App.Services.Gestures;` to that file's usings.
 Run: `dotnet build ActualChat.CI.slnf 2>&1 | tail -3`
 Expected: `0 Error(s)`.
 
-The CI solution filter does not build the Android/iOS targets, so the `#if ANDROID` / `#if IOS` blocks are **not** compiled here. Note that in the task report as host-deferred; do not attempt an Android or iOS build on this machine (the Android resource designer generates empty on this host — a known, pre-existing condition).
+`App.Maui.csproj` is not in the CI solution filter at all, so **nothing on this machine compiles `MauiSensorFeed.cs`** — not the `#if` blocks, and not even the cross-platform half. For every unqualified type in that file, confirm its namespace is in the file's usings or in `App.Maui`'s global usings (`src/dotnet/App.Maui/GlobalUsings.cs`, `src/dotnet/App.Maui/Directory.Build.props`, repo-root `src/dotnet/Directory.Build.props`). "The API exists" and "this file can see it" are separate claims, and only the compiler normally checks the second one. Note that in the task report as host-deferred; do not attempt an Android or iOS build on this machine (the Android resource designer generates empty on this host — a known, pre-existing condition).
 
 - [ ] **Step 5: Commit**
 
