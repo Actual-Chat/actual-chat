@@ -2449,3 +2449,37 @@ Everything else is inherently local: the settings records belong beside their si
 - **`HotWindow = 120 s` versus server-side stream lifetime.** `AudioSettings.StreamExpirationDelay` is 60 s but governs post-stream finalization, not the idle close, so 120 s should be safe — verify on the device pass that a 120 s window closes cleanly and the entry finalizes.
 - **Heard receipts narrow with the armed predicate** (decision 7). Intended, but it means a user who keeps listening without PTT no longer reports `Heard`. Flag it in the Task 2 report.
 - **First compile of platform code.** Task 6's `#if` blocks and all of sub-projects B/C are unverified on a device. Task 10 step 8 enumerates the debt.
+
+---
+
+## Execution outcome
+
+All ten tasks implemented and reviewed, plus a whole-branch review and one fix wave. What follows is the part that does not live in the diff.
+
+### Device verification — required before this reaches users
+
+Nothing platform-specific has ever been compiled: `App.Maui.csproj` is not in `ActualChat.CI.slnf`, so no build on any machine that worked on this branch has compiled `MauiSensorFeed.cs`, or any `#if ANDROID` / `#if IOS` code in sub-projects B, C or E2. Two defects of exactly that shape were already found and fixed here (a missing `using Microsoft.Maui.Devices.Sensors`, and a settings type missing from `UserSettings.KeyToType` that meant no walkie setting had ever round-tripped on the client path).
+
+Do these in order — the ordering is load-bearing.
+
+1. **Verify sub-projects B and C's wake path on a device first.** They carry the push-wakes-the-device chain that E2's gestures sit on. Until it is known good, every failure below is ambiguous between "the gesture didn't fire" and "the wake never arrived", and the symptom cannot distinguish them.
+2. **Build `net10.0-android` and iOS.** First compile of all of the above. A compile error here invalidates everything after it.
+3. **Practice panel, both platforms.** Does the sample counter move? Do flips and shakes register? Does a lower sensitivity visibly demand a harder shake? **Check the face-down sign convention first** — the code assumes MAUI's face-up ≈ `Z = -1`, and that is the only place in the gesture engine where a sign is load-bearing (flip and shake classification are sign-free by construction). If face-down triggers face-up, the assumption is wrong and `FaceDownDetector` needs correcting, not recalibrating.
+4. **Backgrounded flip inside the answer window.** With the app backgrounded and someone's voice heard within `WalkieTalkieReplyRecencyWindow` (150 s), rotate the phone 90° and back. Expect the mic to open and a reply to send without foregrounding the app. Time it both immediately after voice starts and a few seconds later — the loop is now woken by incoming voice, so both should behave the same; a difference means that wake regressed.
+5. **The flip dwell's feel.** The detector requires ~200 ms settled in landscape and rejects samples more than 0.3 g off gravity, so a *deliberate* rotation fires and a jolt does not. Confirm a natural flip still feels responsive; if it needs two tries, the dwell is too long.
+6. **Face-down stops an ordinary, non-walkie recording** with the Privacy toggle on.
+7. **iOS proximity on hardware** — the pocket path, and that enabling/disabling proximity monitoring behaves across backgrounding.
+8. **Battery: answer-window-only versus `AreGesturesAlwaysOn`**, an hour of normal use each. Confirm always-on is acceptable for someone who opts in, and that the default is negligible for everyone else.
+
+### Shipped deliberately, with the reasoning
+
+- **PTT chats are force-listened** (decision 8) — arming alone starts no player, so a PTT-only chat would wake the device and play nothing. The consequence is that a PTT chat is always-listened while its "Keep listening" toggle reads off, which the per-chat row does not currently say.
+- **Face-down routes through `StopReply`**, so stopping an ordinary recording with the gesture plays a walkie cue. Accepted as cosmetic, in exchange for cancelling the cold-start watchdog — which otherwise fired a phantom cue up to 15 s later and could close a subsequent unrelated recording.
+- **Detector thresholds are seeded, not final.** The practice panel is the tuning surface.
+- Three low-severity items are shipped fail-closed and on the record: an unobserved-task fault on the discarded cue task; a widened iOS proximity-clear window (can only cause a spurious *stop*); and sensor availability sampled once per scope rather than per iteration.
+- Pre-existing and untouched: `MauiSensorFeed` writes its on/off flag before calling `Stop()`, so a throwing `Stop()` leaves the flag and the hardware disagreeing. Fails toward sensors-dead, so the mic stays shut.
+
+### Known gaps
+
+- **No architecture documentation.** `docs/live-audio/` has no walkie-talkie coverage at all — not for E2, not for A–E1. Everything lives in point-in-time spec and plan files, which is not what `CLAUDE.md` points readers at.
+- **`UserWalkieTalkieSettings.WithPttChat` does not enforce `MaxChatCount`.** All three callers do, and they agree — but a fourth writer will get it wrong.
