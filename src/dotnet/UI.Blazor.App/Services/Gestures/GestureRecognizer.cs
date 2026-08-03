@@ -19,6 +19,10 @@ public sealed class GestureRecognizer
     // rather than let it look like a gesture that spans the pause.
     public static readonly TimeSpan SampleGap = TimeSpan.FromSeconds(2);
 
+    // Options is written from the worker's poll-loop thread and Process/Reset/SetProximityCovered
+    // run on the sensor callback thread - the lock keeps the detectors' internal state (e.g.
+    // ShakeDetector's reversal list) from being mutated from both threads at once.
+    private readonly Lock _lock = new();
     private readonly FlipToTalkDetector _flip = new();
     private readonly FaceDownDetector _faceDown = new();
     private readonly ShakeDetector _shake;
@@ -26,21 +30,31 @@ public sealed class GestureRecognizer
     private Moment? _lastSampleAt;
 
     public GestureOptions Options {
-        get => _options;
+        get {
+            lock (_lock)
+                return _options;
+        }
         set {
-            if (value.IsFlipToTalkEnabled != _options.IsFlipToTalkEnabled)
-                _flip.Reset();
-            if (value.IsFaceDownEnabled != _options.IsFaceDownEnabled)
-                _faceDown.Reset();
-            if (value.ShakeSensitivity != _options.ShakeSensitivity)
-                _shake.ChangeSensitivity(value.ShakeSensitivity);
-            if (value.IsDoubleShakeEnabled != _options.IsDoubleShakeEnabled)
-                _shake.Reset();
-            _options = value;
+            lock (_lock) {
+                if (value.IsFlipToTalkEnabled != _options.IsFlipToTalkEnabled)
+                    _flip.Reset();
+                if (value.IsFaceDownEnabled != _options.IsFaceDownEnabled)
+                    _faceDown.Reset();
+                if (value.ShakeSensitivity != _options.ShakeSensitivity)
+                    _shake.ChangeSensitivity(value.ShakeSensitivity);
+                if (value.IsDoubleShakeEnabled != _options.IsDoubleShakeEnabled)
+                    _shake.Reset();
+                _options = value;
+            }
         }
     }
 
-    public float ShakePeakDeviation => _shake.PeakDeviation;
+    public float ShakePeakDeviation {
+        get {
+            lock (_lock)
+                return _shake.PeakDeviation;
+        }
+    }
 
     public GestureRecognizer(GestureOptions options)
     {
@@ -49,25 +63,38 @@ public sealed class GestureRecognizer
     }
 
     public void SetProximityCovered(bool isCovered)
-        => _faceDown.SetProximityCovered(isCovered);
+    {
+        lock (_lock)
+            _faceDown.SetProximityCovered(isCovered);
+    }
 
     public GestureEvent? Process(SensorSample sample)
     {
-        if (_lastSampleAt is { } lastSampleAt && sample.At - lastSampleAt > SampleGap)
-            Reset();
-        _lastSampleAt = sample.At;
+        lock (_lock) {
+            if (_lastSampleAt is { } lastSampleAt && sample.At - lastSampleAt > SampleGap)
+                ResetUnguarded();
+            _lastSampleAt = sample.At;
 
-        if (_options.IsFaceDownEnabled && _faceDown.Process(sample))
-            return new GestureEvent(GestureKind.FaceDown, sample.At);
-        if (_options.IsFlipToTalkEnabled && _flip.Process(sample))
-            return new GestureEvent(GestureKind.FlipToTalk, sample.At);
-        if (_options.IsDoubleShakeEnabled && _shake.Process(sample))
-            return new GestureEvent(GestureKind.DoubleShake, sample.At);
+            if (_options.IsFaceDownEnabled && _faceDown.Process(sample))
+                return new GestureEvent(GestureKind.FaceDown, sample.At);
+            if (_options.IsFlipToTalkEnabled && _flip.Process(sample))
+                return new GestureEvent(GestureKind.FlipToTalk, sample.At);
+            if (_options.IsDoubleShakeEnabled && _shake.Process(sample))
+                return new GestureEvent(GestureKind.DoubleShake, sample.At);
 
-        return null;
+            return null;
+        }
     }
 
     public void Reset()
+    {
+        lock (_lock)
+            ResetUnguarded();
+    }
+
+    // Private methods
+
+    private void ResetUnguarded()
     {
         _flip.Reset();
         _shake.Reset();

@@ -9,10 +9,12 @@ namespace ActualChat.UI.Blazor.App.Services.Gestures;
 /// </summary>
 public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 {
-    private readonly GestureRecognizer _recognizer = new(
-        new GestureOptions(false, false, false, ShakeSensitivity.Medium));
+    private static readonly GestureOptions DisarmedOptions = new(false, false, false, ShakeSensitivity.Medium);
+
+    private readonly GestureRecognizer _recognizer = new(DisarmedOptions);
     private volatile bool _isPracticeMode;
     private int _sampleCount;
+    private TaskCompletionSource _wakeSignal = TaskCompletionSourceExt.New();
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
@@ -29,6 +31,14 @@ public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
         set {
             _isPracticeMode = value;
             _recognizer.Reset();
+            if (!value) {
+                // Disarm synchronously rather than waiting for the poll loop's next tick (up to
+                // WalkieTalkieIdleCheckPeriod) - leaving flip/shake armed after the practice panel
+                // closes would let an ordinary jostle call RequestReply for real.
+                _recognizer.Options = DisarmedOptions;
+                Feed.StopAccelerometer();
+            }
+            Wake();
         }
     }
 
@@ -93,8 +103,12 @@ public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
                         Feed.StopProximity();
                 }
 
-                await Clocks.CpuClock.Delay(Constants.Audio.WalkieTalkieIdleCheckPeriod, cancellationToken)
-                    .ConfigureAwait(false);
+                // WalkieTalkieIdleCheckPeriod is the wall-clock floor for the answer-window expiry -
+                // Wake() races it so a local state change (e.g. leaving practice mode) takes effect
+                // on the next scheduler tick instead of waiting out the full period.
+                var whenTimeout = Clocks.CpuClock.Delay(Constants.Audio.WalkieTalkieIdleCheckPeriod, cancellationToken);
+                var whenWoken = Volatile.Read(ref _wakeSignal).Task;
+                await Task.WhenAny(whenTimeout, whenWoken).ConfigureAwait(false);
             }
         }
         finally {
@@ -109,11 +123,12 @@ public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
     private void OnSample(SensorSample sample)
     {
         Interlocked.Increment(ref _sampleCount);
+        var isPracticeMode = _isPracticeMode;
         if (_recognizer.Process(sample) is not { } gesture)
             return;
 
         // Practice never transmits: rehearsing a gesture in Settings must not open the mic.
-        if (_isPracticeMode) {
+        if (isPracticeMode) {
             PracticeGestureDetected?.Invoke(gesture);
             return;
         }
@@ -122,5 +137,13 @@ public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
             ? ChatAudioUI.SetRecordingChatId(null).AsTask()
             : WalkieTalkieReplyUI.RequestReply(CancellationToken.None);
         _ = BackgroundTask.Run(() => whenHandled, Log, $"{gesture.Kind} handling failed", CancellationToken.None);
+    }
+
+    private void Wake()
+    {
+        var signal = Volatile.Read(ref _wakeSignal);
+        signal.TrySetResult();
+        if (ReferenceEquals(Volatile.Read(ref _wakeSignal), signal))
+            Volatile.Write(ref _wakeSignal, TaskCompletionSourceExt.New());
     }
 }
