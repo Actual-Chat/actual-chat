@@ -62,6 +62,10 @@ account.
 
 ### Chat and UI
 
+- [Streaming markup messages](./streaming-markup-messages.md) — let regular
+  text messages stream their content in (so an LLM reply appears
+  progressively), which needs a partial mode in `MarkupParser` so unterminated
+  markup renders styled instead of literal.
 - [Speech render performance](./speech-render-perf.md) — next-tier CPU/GPU
   reductions during recording (R1/R2 already shipped; desktop holds 60 fps).
 
