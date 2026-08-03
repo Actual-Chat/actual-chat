@@ -1,7 +1,7 @@
 # Walkie-Talkie: Headset Button + Headless Reply Pipeline (Sub-Project E3)
 
 Date: 2026-08-03
-Status: Approved design, pre-implementation
+Status: Implemented (device verification pending — see plan Task 7)
 Depends on: E1 (`2026-07-20-walkie-talkie-reply-to-voice-design.md`) for
 `WalkieTalkieReplyUI.RequestReply`/`StopReply` and `ReplyTargetResolver`;
 E2 (`2026-07-26-walkie-talkie-ptt-settings-design.md`) for `PttChatIds`,
