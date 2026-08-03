@@ -62,6 +62,9 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task MuteAll(ChatId chatId, bool muted, CancellationToken cancellationToken)
         => LiveSessions.MuteAll(Session, chatId, muted, cancellationToken);
 
+    public Task SetHost(ChatId chatId, AuthorId targetAuthorId, CancellationToken cancellationToken)
+        => LiveSessions.SetHost(Session, chatId, targetAuthorId, cancellationToken);
+
     public async Task StartCall(
         ChatId chatId,
         ApiArray<AuthorId> invitees,

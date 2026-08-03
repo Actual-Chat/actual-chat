@@ -6,7 +6,7 @@
     if (State.IsInitial(out var m))
         return;
 
-    if (m.Chat == null || !m.Chat.Rules.CanEditProperties()) {
+    if (m.Chat == null || !m.Chat.Rules.IsOwner()) {
         Context.Close();
         return;
     }

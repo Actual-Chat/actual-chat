@@ -20,6 +20,7 @@ public enum PlacePermissions
     EditProperties = 0x1000,
     EditRoles      = 0x2000,
     EditMembers    = 0x4000,
+    Moderate       = 0x8000, // Implies EditProperties, EditMembers (-> SeeMembers)
 
-    Owner          = 0x10_000, // Implies EditProperties, EditRoles, Invite (-> Join, Read), Write (-> Read)
+    Owner          = 0x10_000, // Implies Moderate, EditRoles, Invite (-> Join, Read), Write (-> Read)
 }

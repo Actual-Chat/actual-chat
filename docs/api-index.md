@@ -120,7 +120,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `ChatEntry` — base for chat entries (TextEntry, SystemEntry)
 - `TextEntry` (record) — text message with markup, attachments, reactions
 - `Place` (record) — community/place information
-- `Role` (record) — role definition with permissions
+- `Role` (record) — role definition with permissions; system roles are `Anyone`,
+  `Guest`/`User`/`AnonymousUser` (automatic membership), and `Moderator`/`Owner`
+  (explicit membership, appointed via `Authors_ChangeRole`)
 
 ### Markup
 - `IMarkupParser` — parses text into markup tree

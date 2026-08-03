@@ -94,7 +94,7 @@ public partial class EditChatTypeModalPage
         var chatId = ChatId;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null || !chat.Rules.CanEditProperties())
+        if (chat == null || !chat.Rules.IsOwner())
             return new ComputedModel { Chat = chat };
 
         List<Invite.Invite> activeInvites;

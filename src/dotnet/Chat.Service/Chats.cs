@@ -331,6 +331,10 @@ public partial class Chats(IServiceProvider services) : IChats
                 chat.Require().Rules.Permissions.Require(requiredPermissions);
 
                 if (change.IsUpdate(out var chatDiff2)) {
+                    // Moderators get EditProperties, but structural properties stay Owner-only.
+                    if (!chat.Rules.IsOwner() && chatDiff2.RequiresOwner())
+                        throw ChatPermissionsExt.NotEnoughPermissions(ChatPermissions.Owner);
+
                     await ValidatePlaceChatChangeConstraints((chat.Id as PlaceChatId)?.PlaceId, chatDiff2)
                         .ConfigureAwait(false);
                     if (chat.Id is PeerChatId)
@@ -1141,8 +1145,10 @@ public partial class Chats(IServiceProvider services) : IChats
             .ConfigureAwait(false);
 
         // Check constraints
-        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner() || chat.Id.Kind == ChatKind.Peer))
+        if (!(textEntry.AuthorId == author.Id || chat.Rules.CanModerate() || chat.Id.Kind == ChatKind.Peer))
             throw StandardError.Unauthorized("You're not allowed to remove this message.");
+        if (await IsOwnerImmune(chat, textEntry.AuthorId, cancellationToken).ConfigureAwait(false))
+            throw StandardError.Unauthorized("You're not allowed to remove an Owner's message.");
 
         await Remove(chatEntryId).ConfigureAwait(false);
         return;
@@ -1166,8 +1172,10 @@ public partial class Chats(IServiceProvider services) : IChats
         if (textEntry == null)
             return;
 
-        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner() || chat.Id.Kind == ChatKind.Peer))
+        if (!(textEntry.AuthorId == author.Id || chat.Rules.CanModerate() || chat.Id.Kind == ChatKind.Peer))
             throw StandardError.Unauthorized("You're not allowed to restore this message.");
+        if (await IsOwnerImmune(chat, textEntry.AuthorId, cancellationToken).ConfigureAwait(false))
+            throw StandardError.Unauthorized("You're not allowed to restore an Owner's message.");
 
         await Restore(chatEntryId).ConfigureAwait(false);
         return;
@@ -1186,5 +1194,16 @@ public partial class Chats(IServiceProvider services) : IChats
             await Get(session, chat.Id, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
             return await Backend.GetRemovedEntry(entryId, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task<bool> IsOwnerImmune(Chat chat, AuthorId targetAuthorId, CancellationToken cancellationToken)
+    {
+        // Moderators may police everyone but chat Owners; Owners themselves aren't restricted.
+        if (chat.Rules.IsOwner() || chat.Id.Kind == ChatKind.Peer)
+            return false;
+
+        return await RolesBackend
+            .IsInSystemRole(Backend, targetAuthorId, SystemRole.Owner, cancellationToken)
+            .ConfigureAwait(false);
     }
 }

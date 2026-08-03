@@ -1100,6 +1100,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("can_leave");
 
+                    b.Property<bool>("CanModerate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_moderate");
+
                     b.Property<bool>("CanRead")
                         .HasColumnType("boolean")
                         .HasColumnName("can_read");

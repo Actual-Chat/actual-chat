@@ -11,7 +11,7 @@
         ClickedCode="@m.Code"
         ClickedImageUrl="@m.ImageUrl"
         IsOwnEntry="m.IsOwnEntry"
-        IsOwner="m.IsOwner"
+        CanModerate="m.CanModerate"
         IsPeerChat="m.IsPeerChat"
         CanWrite="m.CanWrite"
         IsSystem="m.IsSystem">
@@ -31,6 +31,7 @@
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
+    private IRoles Roles => Hub.Roles;
     private SendingMessages SendingMessages => Hub.SendingMessages;
 
     protected override void OnParametersSet() {
@@ -83,6 +84,11 @@
         {
             var requestAuthor = await Authors.GetOwn(Session, chatEntry.ChatId, CancellationToken.None).ConfigureAwait(false);
             var rules = await Chats.GetRules(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
+            // Mirrors the server's Owner immunity, so the menu can't offer a delete that would fail.
+            var isEntryByOwner = !rules.IsOwner()
+                && chatEntry.ChatId.Kind != ChatKind.Peer
+                && (await Roles.ListOwnerIds(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false))
+                    .Contains(chatEntry.AuthorId);
 
             var messageModel = new MessageModel() {
                 Link = link,
@@ -91,7 +97,7 @@
                 ImageUrl = imageUrl,
                 ChatEntry = chatEntry,
                 CanWrite = rules.CanWrite(),
-                IsOwner = rules.IsOwner(),
+                CanModerate = rules.CanModerate() && !isEntryByOwner,
                 IsPeerChat = chatEntry.ChatId.Kind == ChatKind.Peer,
                 IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
             };
@@ -129,7 +135,7 @@
         public string? ImageUrl { get; init; }
         public bool IsOwnEntry { get; init; }
         public bool CanWrite { get; init; }
-        public bool IsOwner { get; init; }
+        public bool CanModerate { get; init; }
         public bool IsPeerChat { get; init; }
         public ChatEntry ChatEntry { get; init; } = null!;
     }

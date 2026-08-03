@@ -18,6 +18,8 @@ public interface IPlaces : IComputeService
     Task<AuthorId[]> ListAuthorIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<AuthorId[]> ListOwnerIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<AuthorId[]> ListModeratorIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<AuthorFull?> GetOwn(Session session, PlaceId placeId, CancellationToken cancellationToken);
@@ -36,6 +38,9 @@ public interface IPlaces : IComputeService
     Task OnExclude(Places_Exclude command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRestore(Places_Restore command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnChangeRole(Places_ChangeRole command, CancellationToken cancellationToken);
+    [Obsolete("2026.08: Use Places_ChangeRole. Old clients only.")]
     [CommandHandler]
     Task OnPromoteToOwner(Places_PromoteToOwner command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -82,6 +87,16 @@ public sealed partial record Places_Restore(
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Places_ChangeRole(
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] AuthorId AuthorId,
+    [property: DataMember, Key(2)] SystemRole SystemRole,
+    [property: DataMember, Key(3)] bool IsInRole
+) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MessagePackObject]
+[Obsolete("2026.08: Use Places_ChangeRole. Old clients only.")]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Places_PromoteToOwner(
     [property: DataMember, Key(0)] Session Session,

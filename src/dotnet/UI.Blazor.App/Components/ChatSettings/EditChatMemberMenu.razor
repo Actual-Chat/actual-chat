@@ -4,7 +4,7 @@
     var m = State.Value;
     if (m == null)
         return;
-    var statusText = m.IsOwner ? "Owner" : null;
+    var statusText = m.IsOwner ? "Owner" : m.IsModerator ? "Moderator" : null;
 }
 
 <div class="edit-member-menu edit-chat-member-menu">
@@ -17,15 +17,16 @@
     @if (m.CanPromoteToOwner) {
         <MenuEntry
             Icon="icon-star"
+            Text="Promote to Owner"
             Click="@(() => OnPromoteToOwnerClick(m.Author))">
-            <TextContent>
-                <div class="flex-y">
-                    <div>Promote to Owner</div>
-                    <div class="ac-menu-hint">
-                        Owners can do anything with this chat, including deleting it. This action cannot be undone.
-                    </div>
-                </div>
-            </TextContent>
+        </MenuEntry>
+    }
+
+    @if (m.CanSetModerator) {
+        <MenuEntry
+            Icon="icon-star-2"
+            Text="@(m.IsModerator ? "Remove Moderator" : "Make Moderator")"
+            Click="@(() => OnSetModeratorClick(m.Author, !m.IsModerator))">
         </MenuEntry>
     }
 
@@ -61,5 +62,10 @@
     private async Task OnPromoteToOwnerClick(Author author) {
         await WhenClosed;
         await EditChatMemberCommands.OnPromoteToOwnerClick(Hub, author);
+    }
+
+    private async Task OnSetModeratorClick(Author author, bool isModerator) {
+        await WhenClosed;
+        await EditChatMemberCommands.OnSetModeratorClick(Hub, author, isModerator);
     }
 }

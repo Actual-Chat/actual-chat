@@ -5,7 +5,7 @@
 #pragma warning disable IL2091
     if (State.IsInitial(out var m))
         return;
-    if (m.Place == null || !m.Place.Rules.CanEditProperties()) {
+    if (m.Place == null || !m.Place.Rules.IsOwner()) {
         Context.Close();
         return;
     }
@@ -14,7 +14,7 @@
 
     Context.Title = "Place Type";
     Context.ContextItems.Set(nameof(PlaceSettingsOwnerModalPage.ComputedModel.Place.IsPublic), m.IsPublic);
-    var canEditProperties = m.Place.Rules.CanEditProperties();
+    var canEditProperties = m.Place.Rules.IsOwner();
 }
 
 <Form Class="h-full" @ref="@_formRef" EditContext="@_editContext">

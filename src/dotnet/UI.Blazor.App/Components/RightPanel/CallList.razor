@@ -67,6 +67,13 @@
                         IsShortPresenceText="true"
                         Click="@_onClickCallback"/>
                     <div class="c-member-state">
+                        @if (m.CanSetHost && member.AuthorId != live.Host
+                            && member.Group != MemberGroup.Exited) {
+                            <button class="c-host-btn" title="Make host"
+                                    @onclick="@(() => OnMakeHostClick(live.ChatId, member))">
+                                <i class="icon-star"></i>
+                            </button>
+                        }
                         @if (member.HasScreenShare) {
                             <i class="icon-screen-share" title="Sharing screen"></i>
                         }
@@ -100,6 +107,7 @@
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
+    private IRoles Roles => Hub.Roles;
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ToastUI ToastUI => Hub.ToastUI;
@@ -128,12 +136,19 @@
 
         var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(true);
         var rules = await Chats.GetRules(Session, ChatId, cancellationToken).ConfigureAwait(true);
-        var isController = rules.IsOwner() || (ownAuthor is not null && live.Host == ownAuthor.Id);
+        var isPeerChat = ChatId is PeerChatId;
+        var isHost = ownAuthor is not null && live.Host == ownAuthor.Id;
+        var ownerIds = isPeerChat
+            ? []
+            : await Roles.ListOwnerIds(Session, ChatId, cancellationToken).ConfigureAwait(true);
         return new Model {
             Session = live,
             OwnAuthorId = ownAuthor?.Id,
-            IsController = isController,
-            IsPeerChat = ChatId is PeerChatId,
+            IsController = rules.CanModerate() || isHost,
+            IsOwner = rules.IsOwner(),
+            IsHost = isHost,
+            IsPeerChat = isPeerChat,
+            OwnerAuthorIds = ownerIds,
         };
     }
 
@@ -144,14 +159,19 @@
 
         var info = m.IsPeerChat
             ? "You can't turn off the other person's microphone in a one-on-one chat."
-            : "Only the call host or a chat Owner can turn off someone's microphone.";
+            : !m.CanMute(member.AuthorId)
+                ? "You can't turn off an Owner's microphone."
+                : "Only the call host, a chat Owner or Moderator can turn off someone's microphone.";
         ToastUI.Show(info, "icon-mic-off", ToastDismissDelay.Short);
         return Task.CompletedTask;
     }
 
+    private Task OnMakeHostClick(ChatId chatId, LiveSessionMember member)
+        => LiveSessionUI.SetHost(chatId, member.AuthorId, CancellationToken.None);
+
     private static bool CanStopRecording(Model m, LiveSessionMember member)
         => member.AuthorId == m.OwnAuthorId
-            || (m.CanMuteOthers && member.Group != MemberGroup.Exited);
+            || (m.CanMuteOthers && m.CanMute(member.AuthorId) && member.Group != MemberGroup.Exited);
 
     private Task ToggleTranscript(LiveSession live)
         => SetVoiceMode(live, !TranscriptOn(live.Rules), VoiceOn(live.Rules));
@@ -194,7 +214,13 @@
         public LiveSession? Session { get; init; }
         public AuthorId? OwnAuthorId { get; init; }
         public bool IsController { get; init; }
+        public bool IsOwner { get; init; }
+        public bool IsHost { get; init; }
         public bool IsPeerChat { get; init; }
+        public IReadOnlyCollection<AuthorId> OwnerAuthorIds { get; init; } = [];
         public bool CanMuteOthers => IsController && !IsPeerChat;
+        public bool CanSetHost => (IsOwner || IsHost) && !IsPeerChat;
+        public bool CanMute(AuthorId authorId)
+            => IsOwner || IsHost || !OwnerAuthorIds.Contains(authorId);
     }
 }

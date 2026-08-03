@@ -1,3 +1,4 @@
+using ActualChat.Chat;
 using ActualChat.Live;
 using ActualChat.Users;
 
@@ -11,6 +12,8 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     private IServiceProvider Services { get; } = services;
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
     private ILiveSessionsBackend Backend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
@@ -92,7 +95,8 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
 
     public async Task SetRules(Session session, ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
     {
-        await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
+        var authority = await GetCallAuthority(session, chatId, cancellationToken).ConfigureAwait(false);
+        authority.RequireManage();
         await Backend.SetRules(chatId, rules, cancellationToken).ConfigureAwait(false);
     }
 
@@ -107,8 +111,12 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         chat.Require();
         if (chat.Rules.Author?.Id != targetAuthorId) {
             RequireNotPeerChat(chatId);
-            await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
+            var authority = await GetCallAuthority(session, chatId, cancellationToken).ConfigureAwait(false);
+            authority.RequireManage();
+            if (!authority.CanMute(await IsOwner(chatId, targetAuthorId, cancellationToken).ConfigureAwait(false)))
+                throw StandardError.Constraint("You can't turn off an Owner's microphone.");
         }
+
         await Backend.MutePeer(chatId, targetAuthorId, muted, cancellationToken).ConfigureAwait(false);
     }
 
@@ -117,11 +125,39 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         RequireNotPeerChat(chatId);
-        await RequireManage(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat.Rules.Author?.Id is not { } ownAuthorId)
+        var authority = await GetCallAuthority(session, chatId, cancellationToken).ConfigureAwait(false);
+        authority.RequireManage();
+        if (authority.OwnAuthorId is not { } ownAuthorId)
             return;
 
-        await Backend.MuteAll(chatId, ownAuthorId, muted, cancellationToken).ConfigureAwait(false);
+        // A Moderator who is neither an Owner nor the host must leave Owners unmuted.
+        var exceptAuthorIds = new ApiArray<AuthorId>([ownAuthorId]);
+        if (!authority.CanMute(isTargetOwner: true)) {
+            var ownerIds = await RolesBackend
+                .ListSystemRoleAuthorIds(ChatsBackend, chatId, SystemRole.Owner, cancellationToken)
+                .ConfigureAwait(false);
+            exceptAuthorIds = exceptAuthorIds.WithMany(ownerIds.Where(x => x != ownAuthorId).ToArray());
+        }
+        await Backend.MuteAll(chatId, exceptAuthorIds, muted, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SetHost(
+        Session session,
+        ChatId chatId,
+        AuthorId targetAuthorId,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        RequireNotPeerChat(chatId);
+
+        // Deliberately not a Moderator power: the host may mute Owners, so letting Moderators
+        // hand out that role would make Owner immunity escapable.
+        var authority = await GetCallAuthority(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (!authority.IsOwner && !authority.IsHost)
+            throw StandardError.Constraint("Only the call host or a chat Owner can change the call host.");
+
+        await Backend.SetHost(chatId, targetAuthorId, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task StartCall(
@@ -183,23 +219,47 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         return chat.Rules.Author?.Id;
     }
 
-    // Host or chat Owner may manage the live session.
-    private async Task RequireManage(Session session, ChatId chatId, CancellationToken cancellationToken)
+    private async Task<CallAuthority> GetCallAuthority(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        if (chat.Rules.IsOwner())
-            return;
+        var ownAuthorId = chat.Rules.Author?.Id;
         var live = await Backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        if (live?.Host is { } host && chat.Rules.Author?.Id is { } actingAuthorId && host == actingAuthorId)
-            return;
-        throw StandardError.Constraint("Only the call host or a chat Owner can manage the live session.");
+        var isHost = ownAuthorId is not null && live?.Host == ownAuthorId;
+        return new CallAuthority(ownAuthorId, chat.Rules.IsOwner(), chat.Rules.CanModerate(), isHost);
     }
+
+    private Task<bool> IsOwner(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+        => RolesBackend.IsInSystemRole(ChatsBackend, authorId, SystemRole.Owner, cancellationToken);
 
     private static void RequireNotPeerChat(ChatId chatId)
     {
         // A 1:1 conversation has no host in any meaningful sense - neither side may silence the other.
         if (chatId is PeerChatId)
             throw StandardError.Constraint("You cannot mute another participant in a one-on-one chat.");
+    }
+
+    // Nested types
+
+    /// <summary>
+    /// The union of the actor's call-authority roles: the host runs this call and may mute anyone,
+    /// while a Moderator polices the chat and may mute anyone but an Owner.
+    /// </summary>
+    private readonly record struct CallAuthority(
+        AuthorId? OwnAuthorId,
+        bool IsOwner,
+        bool CanModerate,
+        bool IsHost)
+    {
+        public void RequireManage()
+        {
+            if (!CanModerate && !IsHost)
+                throw StandardError.Constraint(
+                    "Only the call host, a chat Owner or Moderator can manage the live session.");
+        }
+
+        public bool CanMute(bool isTargetOwner)
+            => IsOwner || IsHost || (CanModerate && !isTargetOwner);
     }
 }
