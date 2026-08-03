@@ -40,11 +40,13 @@
                         @onclick="@(() => ToggleVideo(live))" title="Video">
                     <i class="icon-video"></i>
                 </button>
-                <button class="c-manage-btn @(anyMuted ? "on" : "off")"
-                        @onclick="@(() => ToggleMuteAll(live, !anyMuted))"
-                        title="@(anyMuted ? "Unmute all" : "Mute all")">
-                    <i class="@(anyMuted ? "icon-mic-off" : "icon-mic-2")"></i>
-                </button>
+                @if (m.CanMuteOthers) {
+                    <button class="c-manage-btn @(anyMuted ? "on" : "off")"
+                            @onclick="@(() => ToggleMuteAll(live, !anyMuted))"
+                            title="@(anyMuted ? "Unmute all" : "Mute all")">
+                        <i class="@(anyMuted ? "icon-mic-off" : "icon-mic-2")"></i>
+                    </button>
+                }
             </div>
         </div>
     }
@@ -74,16 +76,13 @@
                         @{
                             var isRecording = member.IsMicOpen && !member.MicMuted;
                             var isListening = member.MicMuted || member.IsListening;
-                            var canStop = m.IsController && member.Group != MemberGroup.Exited;
                         }
-                        @if (isRecording && canStop) {
-                            <button class="c-mic-btn" title="Turn off recording"
-                                    @onclick="@(() => OnStopRecording(live.ChatId, member))">
+                        @if (isRecording) {
+                            var micTitle = CanStopRecording(m, member) ? "Turn off recording" : "Recording";
+                            <button class="c-mic-btn" title="@micTitle"
+                                    @onclick="@(() => OnMicClick(live.ChatId, m, member))">
                                 <i class="icon-mic-2 recording"></i>
                             </button>
-                        }
-                        else if (isRecording) {
-                            <i class="icon-mic-2 recording" title="Recording"></i>
                         }
                         else if (isListening) {
                             <i class="icon-listen listening" title="Listening"></i>
@@ -103,6 +102,7 @@
     private IAuthors Authors => Hub.Authors;
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private ToastUI ToastUI => Hub.ToastUI;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
@@ -129,11 +129,29 @@
         var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(true);
         var rules = await Chats.GetRules(Session, ChatId, cancellationToken).ConfigureAwait(true);
         var isController = rules.IsOwner() || (ownAuthor is not null && live.Host == ownAuthor.Id);
-        return new Model { Session = live, OwnAuthorId = ownAuthor?.Id, IsController = isController };
+        return new Model {
+            Session = live,
+            OwnAuthorId = ownAuthor?.Id,
+            IsController = isController,
+            IsPeerChat = ChatId is PeerChatId,
+        };
     }
 
-    private Task OnStopRecording(ChatId chatId, LiveSessionMember member)
-        => LiveSessionUI.MutePeer(chatId, member.AuthorId, true, CancellationToken.None);
+    private Task OnMicClick(ChatId chatId, Model m, LiveSessionMember member) {
+        // Turning a mic off is the only outcome here - nothing in this component ever unmutes another member.
+        if (CanStopRecording(m, member))
+            return LiveSessionUI.MutePeer(chatId, member.AuthorId, true, CancellationToken.None);
+
+        var info = m.IsPeerChat
+            ? "You can't turn off the other person's microphone in a one-on-one chat."
+            : "Only the call host or a chat admin can turn off someone's microphone.";
+        ToastUI.Show(info, "icon-mic-off", ToastDismissDelay.Short);
+        return Task.CompletedTask;
+    }
+
+    private static bool CanStopRecording(Model m, LiveSessionMember member)
+        => member.AuthorId == m.OwnAuthorId
+            || (m.CanMuteOthers && member.Group != MemberGroup.Exited);
 
     private Task ToggleTranscript(LiveSession live)
         => SetVoiceMode(live, !TranscriptOn(live.Rules), VoiceOn(live.Rules));
@@ -176,5 +194,7 @@
         public LiveSession? Session { get; init; }
         public AuthorId? OwnAuthorId { get; init; }
         public bool IsController { get; init; }
+        public bool IsPeerChat { get; init; }
+        public bool CanMuteOthers => IsController && !IsPeerChat;
     }
 }
