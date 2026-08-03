@@ -144,7 +144,7 @@
 
         var info = m.IsPeerChat
             ? "You can't turn off the other person's microphone in a one-on-one chat."
-            : "Only the call host or a chat admin can turn off someone's microphone.";
+            : "Only the call host or a chat Owner can turn off someone's microphone.";
         ToastUI.Show(info, "icon-mic-off", ToastDismissDelay.Short);
         return Task.CompletedTask;
     }
