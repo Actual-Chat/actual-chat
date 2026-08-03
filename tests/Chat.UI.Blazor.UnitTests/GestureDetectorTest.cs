@@ -24,12 +24,54 @@ public class GestureDetectorTest
     }
 
     [Fact]
-    public void Flip_DoesNotFireOnHalfRotation()
+    public void Flip_FiresOnRealisticRotation()
     {
+        // A deliberate flip at SensorSpeed.UI's ~60ms cadence: the samples taken while the phone
+        // is actually turning are dynamic and get skipped, so only the settled ones classify.
         var d = new FlipToTalkDetector();
         d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(Landscape(300)).Should().BeFalse();
-        d.Process(Landscape(5000)).Should().BeFalse();
+        d.Process(Portrait(60)).Should().BeFalse();
+        d.Process(new SensorSample(At(120), -1.6f, -1.0f, 0.5f)).Should().BeFalse();
+        foreach (var atMs in new[] { 180, 240, 300, 360, 420 })
+            d.Process(Landscape(atMs)).Should().BeFalse($"landscape at {atMs}ms is not the end of a flip");
+        d.Process(new SensorSample(At(480), -1.3f, -1.4f, 0.3f)).Should().BeFalse();
+        d.Process(Portrait(540)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Flip_DoesNotFireOnHalfRotation()
+    {
+        // Portrait -> landscape held well past the dwell is only half a flip: without a return
+        // to portrait no sample may fire, however many landscape readings arrive.
+        var d = new FlipToTalkDetector();
+        d.Process(Portrait(0)).Should().BeFalse();
+        for (var atMs = 60; atMs <= 5000; atMs += 60)
+            d.Process(Landscape(atMs)).Should().BeFalse($"landscape at {atMs}ms is not a flip");
+    }
+
+    [Fact]
+    public void Flip_DoesNotFireOnBriefLandscapeBlip()
+    {
+        // One landscape sample is a blip, not a rotation - the dwell is what tells them apart.
+        var d = new FlipToTalkDetector();
+        d.Process(Portrait(0)).Should().BeFalse();
+        d.Process(Landscape(60)).Should().BeFalse();
+        d.Process(Portrait(120)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Flip_DoesNotFireOnLateralJolt()
+    {
+        // An arm swing pushes |X| past the dominance threshold while |a| is nowhere near 1g:
+        // that's hand acceleration, not gravity, so it must not read as landscape.
+        var d = new FlipToTalkDetector();
+        d.Process(Portrait(0)).Should().BeFalse();
+        d.Process(new SensorSample(At(60), -1.4f, -1.1f, 0.3f)).Should().BeFalse();
+        d.Process(new SensorSample(At(120), -2.2f, -0.6f, 0.2f)).Should().BeFalse();
+        d.Process(new SensorSample(At(180), -1.5f, -0.9f, 0.1f)).Should().BeFalse();
+        d.Process(new SensorSample(At(240), -1.2f, -1.3f, 0.2f)).Should().BeFalse();
+        d.Process(Portrait(300)).Should().BeFalse();
+        d.Process(Portrait(360)).Should().BeFalse();
     }
 
     [Fact]
@@ -38,6 +80,7 @@ public class GestureDetectorTest
         var d = new FlipToTalkDetector();
         d.Process(Portrait(0)).Should().BeFalse();
         d.Process(Landscape(300)).Should().BeFalse();
+        d.Process(Landscape(600)).Should().BeFalse();
         d.Process(Portrait(4000)).Should().BeFalse();
     }
 
@@ -47,8 +90,9 @@ public class GestureDetectorTest
         var d = new FlipToTalkDetector();
         d.Process(Portrait(0)).Should().BeFalse();
         d.Process(Landscape(200)).Should().BeFalse();
-        d.Process(FaceUp(400)).Should().BeFalse();
-        d.Process(Portrait(600)).Should().BeFalse();
+        d.Process(Landscape(500)).Should().BeFalse();
+        d.Process(FaceUp(700)).Should().BeFalse();
+        d.Process(Portrait(900)).Should().BeFalse();
     }
 
     [Fact]
