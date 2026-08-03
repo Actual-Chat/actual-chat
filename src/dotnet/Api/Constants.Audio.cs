@@ -69,6 +69,9 @@ public static partial class Constants
         // Invariant: must stay > the server's NotificationsSettings.WalkieTalkieWakeTtl (30s).
         public static readonly TimeSpan WalkieTalkieIdleTimeout = TimeSpan.FromMinutes(5);
         public static readonly TimeSpan WalkieTalkieIdleCheckPeriod = TimeSpan.FromSeconds(15);
+        // Debounces GestureUI's activation loop: its inputs invalidate far more often than the
+        // idle-check period, and it runs on battery-sensitive mobile clients.
+        public static readonly TimeSpan WalkieTalkieGestureCheckMinPeriod = TimeSpan.FromSeconds(0.25);
         // Matches the wake push's FCM TTL; older wakes skip replay-from-start and go live.
         public static readonly TimeSpan WalkieTalkieStaleWakeAge = TimeSpan.FromSeconds(60);
         public static readonly TimeSpan WalkieTalkieReplyColdStartTimeout = TimeSpan.FromSeconds(15);

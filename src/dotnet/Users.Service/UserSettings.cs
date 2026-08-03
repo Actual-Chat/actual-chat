@@ -133,6 +133,7 @@ public class UserSettings : IUserSettings
         [nameof(UserTranscodingTestSettings)] = typeof(UserTranscodingTestSettings),
         [nameof(FakeDeviceContactOptions)] = typeof(FakeDeviceContactOptions),
         [nameof(UserReplaySettings)] = typeof(UserReplaySettings),
+        [nameof(UserWalkieTalkieSettings)] = typeof(UserWalkieTalkieSettings),
         [nameof(RecentMentions)] = typeof(RecentMentions),
         [nameof(RecentGifs)] = typeof(RecentGifs),
     };

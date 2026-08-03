@@ -1,3 +1,4 @@
+using ActualChat.Kvas;
 using ActualChat.Users;
 using ActualLab.Resilience;
 
@@ -7,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services.Gestures;
 /// Owns the sensor subscription lifecycle and turns recognized gestures into
 /// walkie-talkie reply start/stop. Sensors are live only while a reply is plausible.
 /// </summary>
-public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
+public sealed class GestureUI : UIWorkerBase<AppUIHub>
 {
     private static readonly GestureOptions DisarmedOptions = new(false, false, false, ShakeSensitivity.Medium);
 
@@ -19,9 +20,10 @@ public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
     private WalkieTalkieReplyUI WalkieTalkieReplyUI => Hub.WalkieTalkieReplyUI;
-    private UserSettingsUI UserSettingsUI => Hub.UserSettingsUI;
 
-    public SensorFeed Feed { get; } = hub.Services.GetRequiredService<SensorFeed>();
+    public SensorFeed Feed { get; }
+    public SyncedState<UserAppSettings> AppSettings { get; }
+    public GestureOptions RecognizerOptions => _recognizer.Options;
     public float ShakePeakDeviation => _recognizer.ShakePeakDeviation;
     public int SampleCount => Volatile.Read(ref _sampleCount);
     public event Action<GestureEvent>? PracticeGestureDetected;
@@ -32,14 +34,26 @@ public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
             _isPracticeMode = value;
             _recognizer.Reset();
             if (!value) {
-                // Disarm synchronously rather than waiting for the poll loop's next tick (up to
-                // WalkieTalkieIdleCheckPeriod) - leaving flip/shake armed after the practice panel
-                // closes would let an ordinary jostle call RequestReply for real.
+                // Disarm synchronously rather than waiting for the poll loop's next tick - leaving
+                // flip/shake armed after the practice panel closes would let an ordinary jostle
+                // call RequestReply for real.
                 _recognizer.Options = DisarmedOptions;
                 Feed.StopAccelerometer();
             }
             Wake();
         }
+    }
+
+    public GestureUI(AppUIHub hub) : base(hub)
+    {
+        Feed = hub.Services.GetRequiredService<SensorFeed>();
+        AppSettings = StateFactory.NewUserSettingsSynced(
+            UserSettingsUI,
+            nameof(UserAppSettings),
+            new UserAppSettings(),
+            updateDelayer: FixedDelayer.NextTick,
+            category: StateCategories.Get(GetType(), nameof(AppSettings)));
+        hub.RegisterDisposable(AppSettings);
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
@@ -57,77 +71,86 @@ public sealed class GestureUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 
     private async Task TrackActivation(CancellationToken cancellationToken)
     {
-        var isSensing = false;
-        var isProximityOn = false;
         try {
-            var cSettings = await Computed
-                .Capture(() => UserSettingsUI.UserWalkieTalkieSettings().Get(cancellationToken), cancellationToken)
-                .ConfigureAwait(false);
-            var cIsFaceDownStopEnabled = await Computed
-                .Capture(
-                    () => UserSettingsUI.UserAppSettings().Get(x => x.IsFaceDownMicStopEnabled ?? false, cancellationToken),
-                    cancellationToken)
+            // Only compute methods may be captured: Computed.Capture<T> hard-casts the last node
+            // used by the producer, and UserSettingsUI.Get is a plain method whose last node is a
+            // Computed<StoredSettings>. GetPttChatIds reads the whole UserWalkieTalkieSettings
+            // record, so its invalidation also covers the flip/shake/sensitivity toggles below.
+            var cPttChatIds = await Computed
+                .Capture(() => ChatAudioUI.GetPttChatIds(cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
             var cRecordingChatId = await Computed
                 .Capture(ChatAudioUI.GetRecordingChatId, cancellationToken)
                 .ConfigureAwait(false);
 
+            var minPeriod = Constants.Audio.WalkieTalkieGestureCheckMinPeriod;
+            var lastCheckAt = Clocks.CpuClock.Now - minPeriod;
             while (!cancellationToken.IsCancellationRequested) {
-                var settings = cSettings.Value;
-                var isFaceDownStopEnabled = cIsFaceDownStopEnabled.Value;
-                var recordingChatId = cRecordingChatId.Value;
-                var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
-                var isMicOpen = recordingChatId is not null;
+                var minWait = minPeriod - (Clocks.CpuClock.Now - lastCheckAt);
+                if (minWait > TimeSpan.Zero)
+                    await Clocks.CpuClock.Delay(minWait, cancellationToken).ConfigureAwait(false);
+
+                lastCheckAt = Clocks.CpuClock.Now;
+                cPttChatIds = await cPttChatIds.Update(cancellationToken).ConfigureAwait(false);
+                cRecordingChatId = await cRecordingChatId.Update(cancellationToken).ConfigureAwait(false);
+
+                // Every wake source is subscribed before the state it guards is read: a change
+                // landing in between must complete a signal this iteration still awaits.
+                using var waitCts = cancellationToken.CreateLinkedTokenSource();
+                var whenWoken = Volatile.Read(ref _wakeSignal).Task;
+                var cAppSettings = AppSettings.Computed;
+                var whenPttChatIdsChanged = cPttChatIds.WhenInvalidated(waitCts.Token);
+                var whenRecordingChanged = cRecordingChatId.WhenInvalidated(waitCts.Token);
+                var whenAppSettingsChanged = cAppSettings.WhenInvalidated(waitCts.Token);
+
+                var isPracticeMode = _isPracticeMode;
+                var pttChatIds = cPttChatIds.Value;
+                var isMicOpen = cRecordingChatId.Value is not null;
+                var isFaceDownStopEnabled = cAppSettings.Value.IsFaceDownMicStopEnabled ?? false;
+                var settings = await UserSettingsUI.UserWalkieTalkieSettings()
+                    .Get(cancellationToken)
+                    .ConfigureAwait(false);
                 var mustSenseStart = GestureActivationPolicy.ShouldSenseStartGestures(
                     settings.AreGesturesAlwaysOn,
-                    _isPracticeMode,
+                    isPracticeMode,
                     pttChatIds,
                     IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt(),
                     Clocks.ServerClock.Now,
                     Constants.Audio.WalkieTalkieReplyRecencyWindow);
-                var mustSenseStop = isFaceDownStopEnabled && (isMicOpen || _isPracticeMode);
+                var mustSenseStop = isFaceDownStopEnabled && (isMicOpen || isPracticeMode);
 
                 _recognizer.Options = new GestureOptions(
                     settings.IsFlipToTalkEnabled && mustSenseStart,
                     settings.IsDoubleShakeEnabled && mustSenseStart,
                     mustSenseStop,
                     settings.ShakeSensitivity);
+                if (_isPracticeMode != isPracticeMode)
+                    continue; // The setter raced this write and owns the disarm - re-decide
 
-                var mustSense = mustSenseStart || mustSenseStop;
-                if (mustSense != isSensing) {
-                    isSensing = mustSense;
-                    if (mustSense)
-                        Feed.StartAccelerometer();
-                    else {
-                        Feed.StopAccelerometer();
-                        _recognizer.Reset();
-                    }
+                // SensorFeed's Start/Stop are idempotent, so the loop states them every iteration
+                // instead of tracking transitions the IsPracticeMode setter can silently undo.
+                if (mustSenseStart || mustSenseStop)
+                    Feed.StartAccelerometer();
+                else {
+                    Feed.StopAccelerometer();
+                    _recognizer.Reset();
                 }
-                if (mustSenseStop != isProximityOn) {
-                    isProximityOn = mustSenseStop;
-                    if (mustSenseStop)
-                        Feed.StartProximity();
-                    else
-                        Feed.StopProximity();
-                }
+                if (mustSenseStop)
+                    Feed.StartProximity();
+                else
+                    Feed.StopProximity();
 
-                // WalkieTalkieIdleCheckPeriod is the wall-clock floor for the answer-window expiry -
-                // everything else races it so a state change takes effect on the next tick instead
-                // of waiting out the full period: Wake() covers local state (IsPracticeMode), the
-                // WhenInvalidated calls cover settings/mic-open changes driven elsewhere.
-                using var waitCts = cancellationToken.CreateLinkedTokenSource();
+                // WalkieTalkieIdleCheckPeriod is the wall-clock floor for the answer-window expiry;
+                // everything else races it so a state change takes effect on the next tick.
                 var whenTimeout = Clocks.CpuClock.Delay(Constants.Audio.WalkieTalkieIdleCheckPeriod, waitCts.Token);
-                var whenWoken = Volatile.Read(ref _wakeSignal).Task;
-                var whenSettingsChanged = cSettings.WhenInvalidated(waitCts.Token);
-                var whenFaceDownStopChanged = cIsFaceDownStopEnabled.WhenInvalidated(waitCts.Token);
-                var whenRecordingChanged = cRecordingChatId.WhenInvalidated(waitCts.Token);
-                await Task.WhenAny(whenTimeout, whenWoken, whenSettingsChanged, whenFaceDownStopChanged, whenRecordingChanged)
+                await Task.WhenAny(
+                        whenTimeout,
+                        whenWoken,
+                        whenPttChatIdsChanged,
+                        whenRecordingChanged,
+                        whenAppSettingsChanged)
                     .ConfigureAwait(false);
                 waitCts.CancelAndDisposeSilently();
-
-                cSettings = await cSettings.Update(cancellationToken).ConfigureAwait(false);
-                cIsFaceDownStopEnabled = await cIsFaceDownStopEnabled.Update(cancellationToken).ConfigureAwait(false);
-                cRecordingChatId = await cRecordingChatId.Update(cancellationToken).ConfigureAwait(false);
             }
         }
         finally {
