@@ -31,6 +31,12 @@ These close the spec's "Open Questions" and correct two stale spec statements. E
 2. **Accelerometer only; `OrientationSensor` is dropped** (spec open question 3). One sensor is cheaper, and orientation is derived sign-agnostically from the dominant gravity axis (`|Y|` dominant = portrait, `|X|` = landscape, `|Z|` = flat), which sidesteps per-platform quaternion conventions. Only `FaceDownDetector` needs the Z sign, and MAUI normalizes it (face-up ≈ `Z = -1`).
 3. **Proximity lives inside `MauiSensorFeed` behind `#if ANDROID` / `#if IOS`**, not in a separate per-platform interface + two files (spec component 6). This is exactly the `MauiThermalTracker` precedent, which does per-platform sensor work in one class.
 4. **Concrete thresholds** (spec open question 2) are specified in Task 5 and are seeded, not final: the practice panel exists to correct them on a device.
+
+   **Corrected during execution — this section has been updated in place; the reasoning is in the SDD ledger.** Two defects in the originally-written constants were caught by the Task 5 implementer and reviewer:
+   - The shake signal is `|a| - 1g`, which has a hard floor of `-1`, so a *symmetric* threshold of `1.2` at `Low` was unsatisfiable and `Low` could never fire for any input. Fixed by splitting into a rise threshold and a reachable dip threshold.
+   - Nesting needs the *windowed* alternation count to be monotone, not just the thresholds: a sample that is sub-threshold at one sensitivity can absorb a transition and push a reversal out of the 500 ms window for only one of two detectors. With `Medium` and `High` both requiring 3 reversals, neither had slack, and sequences exist that fire at `Medium` but not `High`. Fixed by making `GetReversalCount` strictly decreasing (4/3/2) and enforcing the invariant with a seeded randomized property test rather than hand-picked waveforms.
+
+   Take the lesson, not just the numbers: a threshold on a bounded signal, and an invariant asserted rather than property-tested, are both worth checking before trusting any constant in this file.
 5. **Hot-window seam** (spec open question 5): an optional `idleDuration` argument on `ChatAudioUI.SetRecordingChatId`, stored in a field that `RecordChat` reads when building `RecordingIdleOptions`. `RecordChat`'s structure is untouched, honouring E1's constraint.
 6. **Settings tab icon** (spec open question 4): reuse `icon-talking`, already used by `WalkieReplyToggle`. No new asset.
 7. **CORRECTION to spec — `IsWalkieTalkieArmed` has TWO server consumers, not one.** Sub-project D added `LiveAudioStreams.ReportPlayback` (`src/dotnet/Streaming.Service/Services/LiveAudioStreams.cs:128`) alongside the wake gate. Switching the predicate therefore also narrows *heard receipts* to PTT chats. That is the correct outcome (heard receipts are a walkie-talkie feature), but `ReportPlaybackTest` arms via `ListeningMode.Forever` and must be updated too, or it silently goes vacuous.
@@ -1024,8 +1030,26 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
             _ => 0.8f,
         };
 
+    // |a| has a hard floor at 0, so the dip below 1g can never exceed 1g however hard the shake.
+    // The dip side therefore needs its own, reachable threshold.
+    public static float GetDipThreshold(ShakeSensitivity sensitivity)
+        => sensitivity switch {
+            ShakeSensitivity.Low => 0.6f,
+            ShakeSensitivity.High => 0.4f,
+            _ => 0.55f,
+        };
+
+    // Process counts alternations inside a sliding ReversalWindow, not over the whole stream, so
+    // equal counts at neighboring sensitivities don't nest: a sample that's sub-threshold at one
+    // sensitivity but not the other can absorb a transition and push the next reversal out of the
+    // window for only one of the two detectors. Strictly decreasing counts give the weaker
+    // sensitivity slack the stronger one lacks, which is what keeps Low ⊆ Medium ⊆ High.
     public static int GetReversalCount(ShakeSensitivity sensitivity)
-        => sensitivity == ShakeSensitivity.Low ? 4 : 3;
+        => sensitivity switch {
+            ShakeSensitivity.Low => 4,
+            ShakeSensitivity.High => 2,
+            _ => 3,
+        };
 
     public bool Process(SensorSample sample)
     {
@@ -1034,9 +1058,8 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
         if (sample.At < _debouncedUntil)
             return false;
 
-        var threshold = GetMagnitudeThreshold(Sensitivity);
-        var sign = deviation > threshold ? 1
-            : deviation < -threshold ? -1
+        var sign = deviation > GetMagnitudeThreshold(Sensitivity) ? 1
+            : deviation < -GetDipThreshold(Sensitivity) ? -1
             : 0;
         if (sign == 0 || sign == _lastSign)
             return false;
