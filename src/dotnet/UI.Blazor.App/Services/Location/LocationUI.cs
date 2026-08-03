@@ -178,22 +178,16 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        if (await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false) is { } lastKnown)
-            return lastKnown;
+        if (await GetCurrentLocation(cancellationToken).ConfigureAwait(false) is { } current)
+            return current;
 
         var ownLive = await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-        if (ownLive is not null)
-            return ownLive.Point;
-
-        return await GetCurrentLocation(cancellationToken).ConfigureAwait(false);
+        return ownLive?.Point;
     }
 
     [ComputeMethod]
     public virtual async Task<GeoPoint?> GetCurrentLocation(CancellationToken cancellationToken)
     {
-        if (await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false) is { } lastKnown)
-            return lastKnown;
-
         if (await IsPermissionGranted(cancellationToken).ConfigureAwait(false) != true)
             return null;
 
@@ -239,6 +233,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
                 return;
 
+            // TODO: before allowing to send current location we need to wait for fresh location in share modal
             await SendCurrentLocation(chatId, Hub.StopToken).ConfigureAwait(true);
             return;
         }
@@ -260,7 +255,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
     public async Task SendCurrentLocation(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (await Tracker.Get(force: true, cancellationToken).ConfigureAwait(false) is not { } point)
+        if (await Tracker.Get(false, cancellationToken).ConfigureAwait(false) is not { } point)
             return;
 
         var change = Change.Create(new SharedLocationDiff { Point = point, LiveDuration = TimeSpan.Zero });
