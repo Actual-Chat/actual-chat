@@ -29,7 +29,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
             return; // Already hot - idempotent
 
-        var armed = await ChatAudioUI.GetChatsYouNeedToKeepListeningTo(cancellationToken).ConfigureAwait(false);
+        var armed = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         var focused = ChatUI.SelectedChatId.Value;
         var snapshot = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
         var target = ReplyTargetResolver.Resolve(

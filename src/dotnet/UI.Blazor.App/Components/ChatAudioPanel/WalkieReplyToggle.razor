@@ -1,14 +1,14 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, bool>
+@inherits ComputedStateComponent<AppUIHub, WalkieReplyToggle.ComputedModel>
 @{
-    var isArmed = State.Value;
+    var m = State.Value;
 }
 
-@if (isArmed) {
+@if (m.IsPtt) {
     <ButtonRound
-        Class="@($"walkie-reply-btn {Class}")"
+        Class="@($"walkie-reply-btn {(m.IsHot ? "on" : "")} {Class}")"
         Click="@OnClick"
-        Tooltip="Walkie reply"
+        Tooltip="@(m.IsHot ? "Stop walkie reply" : "Walkie reply")"
         TooltipPosition="FloatingPosition.Top">
         <i class="icon-talking text-2xl"></i>
     </ButtonRound>
@@ -23,21 +23,32 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
-    protected override ComputedState<bool>.Options GetStateOptions()
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<bool>.Options {
-                InitialValue = false,
+            static t => new ComputedState<ComputedModel>.Options {
+                InitialValue = ComputedModel.None,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var armedChatIds = await ChatAudioUI.GetChatsYouNeedToKeepListeningTo(cancellationToken).ConfigureAwait(false);
-        return armedChatIds.Contains(Chat.Id);
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
+        return new ComputedModel(pttChatIds.Contains(Chat.Id), recordingChatId == Chat.Id);
     }
 
-    private void OnClick()
-        => _ = BackgroundTask.Run(
-            () => WalkieTalkieReplyUI.RequestReply(CancellationToken.None),
-            Log, "RequestReply failed", CancellationToken.None);
+    private void OnClick() {
+        var isHot = State.Value.IsHot;
+        _ = BackgroundTask.Run(
+            () => isHot
+                ? WalkieTalkieReplyUI.StopReply()
+                : WalkieTalkieReplyUI.RequestReply(CancellationToken.None),
+            Log, "Walkie reply toggle failed", CancellationToken.None);
+    }
+
+    // Nested types
+
+    public sealed record ComputedModel(bool IsPtt, bool IsHot) {
+        public static readonly ComputedModel None = new(false, false);
+    }
 }

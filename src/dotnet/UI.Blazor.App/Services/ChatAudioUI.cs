@@ -106,8 +106,21 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
     {
         await Hub.ChatUI.WhenReady.ConfigureAwait(false);
-        return await UserSettingsUI.UserListeningSettings()
-            .Get(x => x.AlwaysListenedChatIds.ToList(), cancellationToken)
+        var alwaysListened = await UserSettingsUI.UserListeningSettings()
+            .Get(x => x.AlwaysListenedChatIds, cancellationToken)
+            .ConfigureAwait(false);
+        // A PTT chat wakes you to hear someone, so it must also be listened to -
+        // arming alone starts no player.
+        var pttChatIds = await GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        return alwaysListened.Concat(pttChatIds).Distinct().ToList();
+    }
+
+    [ComputeMethod(MinCacheDuration = 300)] // Synced
+    public virtual async Task<List<ChatId>> GetPttChatIds(CancellationToken cancellationToken)
+    {
+        await Hub.ChatUI.WhenReady.ConfigureAwait(false);
+        return await UserSettingsUI.UserWalkieTalkieSettings()
+            .Get(x => x.PttChatIds.ToList(), cancellationToken)
             .ConfigureAwait(false);
     }
 

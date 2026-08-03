@@ -54,7 +54,7 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
     private async Task TrackArmedChats(CancellationToken cancellationToken)
     {
         var cArmedChats = await Computed
-            .Capture(() => ChatAudioUI.GetChatsYouNeedToKeepListeningTo(cancellationToken), cancellationToken)
+            .Capture(() => ChatAudioUI.GetPttChatIds(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var watchers = new Dictionary<ChatId, FuncWorker>();
         await foreach (var change in cArmedChats.Changes(cancellationToken).ConfigureAwait(false)) {
