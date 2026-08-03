@@ -6,6 +6,11 @@ namespace ActualChat.App.Maui.Services;
 
 public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
 {
+    // The four Start/Stop methods are called from both the GestureUI worker thread and the
+    // Blazor UI thread, and each is a check-then-set on its flag - the lock keeps the flag and
+    // the hardware from disagreeing. The flag is the intended state, so on iOS it's set here
+    // rather than inside the main-thread dispatch below.
+    private readonly Lock _lock = new();
     private bool _isAccelerometerOn;
     private bool _isProximityOn;
 
@@ -15,33 +20,37 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
 
     public override void StartAccelerometer()
     {
-        if (_isAccelerometerOn || !Accelerometer.Default.IsSupported)
-            return;
+        lock (_lock) {
+            if (_isAccelerometerOn || !Accelerometer.Default.IsSupported)
+                return;
 
-        try {
-            Accelerometer.Default.ReadingChanged += OnReadingChanged;
-            // SensorSpeed.UI ~= 60ms/sample; clears the ~166ms bound the 500ms-window detectors need for a 4-6Hz shake.
-            Accelerometer.Default.Start(SensorSpeed.UI);
-            _isAccelerometerOn = true;
-        }
-        catch (Exception e) {
-            Accelerometer.Default.ReadingChanged -= OnReadingChanged;
-            Log.LogWarning(e, "Failed to start the accelerometer");
+            try {
+                Accelerometer.Default.ReadingChanged += OnReadingChanged;
+                // SensorSpeed.UI ~= 60ms/sample; clears the ~166ms bound the 500ms-window detectors need for a 4-6Hz shake.
+                Accelerometer.Default.Start(SensorSpeed.UI);
+                _isAccelerometerOn = true;
+            }
+            catch (Exception e) {
+                Accelerometer.Default.ReadingChanged -= OnReadingChanged;
+                Log.LogWarning(e, "Failed to start the accelerometer");
+            }
         }
     }
 
     public override void StopAccelerometer()
     {
-        if (!_isAccelerometerOn)
-            return;
+        lock (_lock) {
+            if (!_isAccelerometerOn)
+                return;
 
-        _isAccelerometerOn = false;
-        Accelerometer.Default.ReadingChanged -= OnReadingChanged;
-        try {
-            Accelerometer.Default.Stop();
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Failed to stop the accelerometer");
+            _isAccelerometerOn = false;
+            Accelerometer.Default.ReadingChanged -= OnReadingChanged;
+            try {
+                Accelerometer.Default.Stop();
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Failed to stop the accelerometer");
+            }
         }
     }
 
@@ -59,29 +68,44 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
 
     public override void StartProximity()
     {
-        if (_isProximityOn)
-            return;
+        lock (_lock) {
+            if (_isProximityOn)
+                return;
 
-        var sensorManager = GetSensorManager();
-        var sensor = GetProximitySensor();
-        if (sensorManager is null || sensor is null)
-            return;
+            var sensorManager = GetSensorManager();
+            var sensor = GetProximitySensor();
+            if (sensorManager is null || sensor is null)
+                return;
 
-        _proximityListener = new ProximityListener(sensor.MaximumRange, OnProximityChanged);
-        sensorManager.RegisterListener(
-            _proximityListener, sensor, Android.Hardware.SensorDelay.Normal);
-        _isProximityOn = true;
+            try {
+                _proximityListener = new ProximityListener(sensor.MaximumRange, OnProximityChanged);
+                sensorManager.RegisterListener(
+                    _proximityListener, sensor, Android.Hardware.SensorDelay.Normal);
+                _isProximityOn = true;
+            }
+            catch (Exception e) {
+                _proximityListener = null;
+                Log.LogWarning(e, "Failed to start proximity monitoring");
+            }
+        }
     }
 
     public override void StopProximity()
     {
-        if (!_isProximityOn)
-            return;
+        lock (_lock) {
+            if (!_isProximityOn)
+                return;
 
-        _isProximityOn = false;
-        if (_proximityListener is { } listener)
-            GetSensorManager()?.UnregisterListener(listener);
-        _proximityListener = null;
+            _isProximityOn = false;
+            try {
+                if (_proximityListener is { } listener)
+                    GetSensorManager()?.UnregisterListener(listener);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Failed to stop proximity monitoring");
+            }
+            _proximityListener = null;
+        }
         OnProximityChanged(false);
     }
 
@@ -113,26 +137,48 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
 
     public override void StartProximity()
     {
-        if (_isProximityOn)
-            return;
+        lock (_lock) {
+            if (_isProximityOn)
+                return;
 
-        UIKit.UIDevice.CurrentDevice.ProximityMonitoringEnabled = true;
-        _proximityObserver = Foundation.NSNotificationCenter.DefaultCenter.AddObserver(
-            UIKit.UIDevice.ProximityStateDidChangeNotification,
-            _ => OnProximityChanged(UIKit.UIDevice.CurrentDevice.ProximityState));
-        _isProximityOn = true;
+            _isProximityOn = true;
+        }
+        // UIKit is main-thread only; the main-thread queue is also what orders start vs. stop,
+        // so _proximityObserver is touched from that thread alone.
+        MainThread.BeginInvokeOnMainThread(() => {
+            try {
+                UIKit.UIDevice.CurrentDevice.ProximityMonitoringEnabled = true;
+                _proximityObserver ??= Foundation.NSNotificationCenter.DefaultCenter.AddObserver(
+                    UIKit.UIDevice.ProximityStateDidChangeNotification,
+                    _ => OnProximityChanged(UIKit.UIDevice.CurrentDevice.ProximityState));
+            }
+            catch (Exception e) {
+                // No rollback of the flag from here: GestureUI states Stop/Start every iteration,
+                // so its next disarm clears it - and the lock stays untaken on the main thread.
+                Log.LogWarning(e, "Failed to start proximity monitoring");
+            }
+        });
     }
 
     public override void StopProximity()
     {
-        if (!_isProximityOn)
-            return;
+        lock (_lock) {
+            if (!_isProximityOn)
+                return;
 
-        _isProximityOn = false;
-        if (_proximityObserver is { } observer)
-            Foundation.NSNotificationCenter.DefaultCenter.RemoveObserver(observer);
-        _proximityObserver = null;
-        UIKit.UIDevice.CurrentDevice.ProximityMonitoringEnabled = false;
+            _isProximityOn = false;
+        }
+        MainThread.BeginInvokeOnMainThread(() => {
+            try {
+                if (_proximityObserver is { } observer)
+                    Foundation.NSNotificationCenter.DefaultCenter.RemoveObserver(observer);
+                _proximityObserver = null;
+                UIKit.UIDevice.CurrentDevice.ProximityMonitoringEnabled = false;
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Failed to stop proximity monitoring");
+            }
+        });
         OnProximityChanged(false);
     }
 #endif
