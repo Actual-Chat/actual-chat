@@ -28,6 +28,10 @@ REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 SRC=${1:?usage: csc-ios-probe.sh <source-file> [<baseline-git-ref>]}
 BASELINE_REF=${2:-}
 [[ -f "$SRC" ]] || { echo "No such file: $SRC"; exit 2; }
+# Resolve to an absolute path now, while cwd is still the caller's — the script cds into
+# $WORK below, and a repo-relative $SRC (as every Task 6-10 invocation passes) would no
+# longer resolve after that.
+SRC=$(cd "$(dirname "$SRC")" && pwd)/$(basename "$SRC")
 REL=${SRC#"$REPO"/}
 
 SDK=$(ls -d "$HOME"/.dotnet/sdk/11.0.* | tail -1)
@@ -161,7 +165,7 @@ compile() { # $1 = source file, $2 = out name, $3 = log
 cp "$SRC" Current.cs
 compile Current.cs current.dll current.log && echo "CURRENT: exit 0" || { echo "CURRENT: FAILED"; cat current.log; exit 1; }
 echo "CURRENT errors: $(grep -c ' error ' current.log || true)"
-echo "CURRENT warnings:"; grep -o 'warning CS[0-9]*' current.log | sort | uniq -c
+echo "CURRENT warnings:"; grep -o 'warning CS[0-9]*' current.log | sort | uniq -c || true
 
 if [[ -n "$BASELINE_REF" ]]; then
     git -C "$REPO" show "$BASELINE_REF:$REL" > Baseline.cs
