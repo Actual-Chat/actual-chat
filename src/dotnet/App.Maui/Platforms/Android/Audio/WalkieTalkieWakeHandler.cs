@@ -72,6 +72,7 @@ public static class WalkieTalkieWakeHandler
         intent.PutExtra(IntentExtras.ChatPicUri, "");
         intent.PutExtra(IntentExtras.ExtraChatCount, 0);
         intent.PutExtra(IntentExtras.IsPaused, false);
+        intent.PutExtra(IntentExtras.CanPause, true);
         // TryStart, not StartForegroundService: the fast-fail wake below stops the service before
         // OnStartCommand can run, and only the registered start defers that stop instead of
         // letting Android kill us with ForegroundServiceDidNotStartInTimeException.
@@ -82,8 +83,13 @@ public static class WalkieTalkieWakeHandler
         return true;
     }
 
-    private static void HideForegroundService()
+    private static void HideForegroundService(bool mustOwn = false)
     {
+        // A wake failure must not take down a service the WebView widget has since taken over:
+        // the widget's state doesn't change on our failure, so nothing would ever re-show it.
+        if (mustOwn && !AndroidAudioWidget.IsWakeOwnedForegroundService)
+            return;
+
         AndroidAudioWidgetForegroundService.Stop(Platform.AppContext);
         AndroidAudioWidget.MarkForegroundServiceHidden();
     }
@@ -106,7 +112,7 @@ public static class WalkieTalkieWakeHandler
         public override void OnWakeFailed(ChatId chatId)
         {
             ShowFallbackNotification(chatId);
-            HideForegroundService();
+            HideForegroundService(mustOwn: true);
         }
 
         public override void OnHeadlessTeardown()

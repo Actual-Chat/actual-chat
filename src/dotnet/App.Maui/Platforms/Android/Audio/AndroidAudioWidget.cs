@@ -9,6 +9,7 @@ public class AndroidAudioWidget : AudioWidget
 {
     private static volatile AndroidAudioWidget? _instance;
     private static volatile bool _isShown;
+    private static bool _isWakeOwned;
     private static ILogger? _log;
 
     private bool _isDisposed;
@@ -82,8 +83,19 @@ public class AndroidAudioWidget : AudioWidget
 
     // Protected/internal methods
 
-    internal static void MarkForegroundServiceShown() => _isShown = true;
-    internal static void MarkForegroundServiceHidden() => _isShown = false;
+    internal static bool IsWakeOwnedForegroundService => Volatile.Read(ref _isWakeOwned);
+
+    internal static void MarkForegroundServiceShown()
+    {
+        _isShown = true;
+        Volatile.Write(ref _isWakeOwned, true);
+    }
+
+    internal static void MarkForegroundServiceHidden()
+    {
+        _isShown = false;
+        Volatile.Write(ref _isWakeOwned, false);
+    }
 
     // Private methods
 
@@ -101,8 +113,13 @@ public class AndroidAudioWidget : AudioWidget
         intent.PutExtra(IntentExtras.ChatPicUri, state.Chat.PicUrl);
         intent.PutExtra(IntentExtras.ExtraChatCount, state.Chat.ExtraChatCount);
         intent.PutExtra(IntentExtras.IsPaused, state.IsPaused);
-        if (AndroidAudioWidgetForegroundService.TryStart(context, intent))
+        intent.PutExtra(IntentExtras.CanPause, state.CanPause);
+        if (AndroidAudioWidgetForegroundService.TryStart(context, intent)) {
             _isShown = true;
+            // The widget's own state drives the service from here on, so a wake failure must not
+            // take it down - nothing would ever re-show it.
+            Volatile.Write(ref _isWakeOwned, false);
+        }
         else
             Log.LogWarning("ShowImpl: couldn't start the FGS (mode={Mode})", state.Mode);
     }
