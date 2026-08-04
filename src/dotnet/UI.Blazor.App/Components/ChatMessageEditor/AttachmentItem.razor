@@ -1,32 +1,23 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Time
 @inherits AttachmentItemBase
 
 @{
     var m = State.Value;
     var attachment = m.Attachment;
     var progress = m.Progress;
-    var progressValue = progress.Progress;
-    var stageDetails = progress.Details;
     // NOTE: For attachment item preview state should always be in OK state, so we can use previewUrl.
     var previewUrl = m.Preview.PreviewUrl;
-    var uploadProgressClass = "attachment-upload-progress";
-    var plugClass = "blurred-plug";
-    if (progress.IsFailed) {
-        progressValue = Math.Max(progressValue, 30);
-        uploadProgressClass += " attachment-upload-failed";
-    } else if (progress.IsReady) {
-        uploadProgressClass += " attachment-upload-completed";
-        plugClass = "";
-    }
-
-    var uploadStyle = $"width: {progressValue}%;";
     var isUploading = progress.IsInProgress;
+    var isFailed = progress.IsFailed;
+    var plugClass = progress.IsReady ? "" : "blurred-plug";
+    var isFile = !(attachment.IsSupportedImage || m.HasCustomPreview || attachment.IsSupportedVideo);
 }
-<li class="attachment-wrapper">
+<li class="attachment-wrapper @(isFailed ? "attachment-failed" : "")">
     <div class="c-content">
         <div class="attachment-item">
             <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
-                <i class="icon-trash03 text-2xl font-thin"></i>
+                <i class="icon-close text-lg"></i>
             </ButtonSquare>
             @if (attachment.IsSupportedImage || m.HasCustomPreview) {
                 <img src="@previewUrl" alt="Attachment" class="@plugClass"/>
@@ -34,8 +25,11 @@
                 <video preload="metadata" class="@plugClass">
                     <source src="@previewUrl#t=0.5"/>
                 </video>
+                @if (attachment.DurationMs > 0) {
+                    <div class="c-duration">@TimeSpan.FromMilliseconds(attachment.DurationMs).Format(TimeSpanFormat.Clock)</div>
+                }
             } else {
-                <FileAttachmentView FileType="@attachment.FileType"/>
+                <FileAttachmentView FileName="@attachment.FileName" FileType="@attachment.FileType"/>
             }
             @if (!progress.IsReady) {
                 <span class="spinner-icon-wrapper">
@@ -51,17 +45,18 @@
             @if (progress.IsInProgress && progress.UploadSize > 0) {
                 <div class="attachment-upload-size">@FileSizeFormatter.FormatProgress(progress.UploadProgress, progress.UploadSize)</div>
             }
-        </div>
-        <div class="attachment-filename" title="@attachment.FileName">
-            @if (attachment.FileName.Length > 0) {
-                <span>@attachment.FileName</span>
-            } else {
-                <span>&nbsp;</span>
+            @if (isFailed) {
+                <span class="attachment-error">Error</span>
             }
         </div>
-        <div class="@uploadProgressClass"
-             style="@uploadStyle"
-             title="@stageDetails">
-        </div>
+        @if (isFile) {
+            <div class="attachment-filename" title="@attachment.FileName">
+                @if (attachment.FileName.Length > 0) {
+                    <span>@attachment.FileName</span>
+                } else {
+                    <span>&nbsp;</span>
+                }
+            </div>
+        }
     </div>
 </li>

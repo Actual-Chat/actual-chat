@@ -19,4 +19,4 @@ public partial interface IFileProvider
     UploadSource GetUploadSource();
 }
 
-public sealed record FilePreview(string Url, Size2D? Dimensions = null);
+public sealed record FilePreview(string Url, Size2D? Dimensions = null, long DurationMs = 0);

@@ -3,9 +3,9 @@
 @{
     var fileSize = Attachment.Media.Length;
     var url = UrlMapper.ContentUrl(Attachment.Media.BlobId);
-    MediaMimeTypes.TryGetExtension(Attachment.Media.ContentType, out var extension);
-    var fileExtension = extension != null ? extension.Replace(".", "") : "";
-    var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
+    var kind = FileTypeHelper.GetKind(Attachment.Media.FileName, Attachment.Media.ContentType);
+    var fileCls = FileTypeHelper.GetCssClass(kind);
+    var iconCls = FileTypeHelper.GetIconClass(kind);
 }
 
 <div class="file-attachment with-menu unfocusable">
@@ -14,11 +14,7 @@
        target="_blank"
        role="button">
         <div class="c-file-icon @fileCls">
-            @if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
-                <i class="icon-play-fill text-2xl"></i>
-            } else {
-                <i class="icon-file text-xl"></i>
-            }
+            <i class="@iconCls text-xl"></i>
         </div>
         <div class="c-file-info">
             <FileAttachmentTitle Title="@Attachment.Media.FileName"/>

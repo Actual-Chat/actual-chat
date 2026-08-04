@@ -314,6 +314,18 @@
     --background-banner-error: var(--red-99);
     --text-banner-error: var(--magenta-40);
     --border-banner-error: var(--magenta-95);
+
+    /* File type icon colors - solid chip behind a white glyph */
+    --file-text: var(--blue-50);
+    --file-table: var(--green-30);
+    --file-presentation: var(--orange-50);
+    --file-pdf: var(--red-40);
+    --file-archive: var(--sienna-30);
+    --file-code: var(--indigo-60);
+    --file-audio: var(--magenta-40);
+    --file-executable: var(--ash-30);
+    --file-default: var(--gray-40);
+
     --background-replay: var(--ash-99);
     --text-replay: var(--text-02);
     --border-replay: var(--ash-95);
@@ -643,6 +655,18 @@
     --background-banner-error: var(--magenta-20);
     --text-banner-error: var(--magenta-80);
     --border-banner-error: var(--magenta-30);
+
+    /* File type icon colors - solid chip behind a white glyph */
+    --file-text: var(--blue-60);
+    --file-table: var(--green-30);
+    --file-presentation: var(--orange-60);
+    --file-pdf: var(--red-40);
+    --file-archive: var(--sienna-40);
+    --file-code: var(--indigo-70);
+    --file-audio: var(--magenta-60);
+    --file-executable: var(--ash-60);
+    --file-default: var(--gray-40);
+
     --background-replay: var(--ash-30);
     --text-replay: var(--text-02);
     --border-replay: var(--ash-40);
@@ -970,6 +994,18 @@
     --background-banner-error: var(--red-99);
     --text-banner-error: var(--magenta-40);
     --border-banner-error: var(--magenta-95);
+
+    /* File type icon colors - solid chip behind a white glyph */
+    --file-text: var(--blue-50);
+    --file-table: var(--green-30);
+    --file-presentation: var(--orange-50);
+    --file-pdf: var(--red-40);
+    --file-archive: var(--sienna-30);
+    --file-code: var(--indigo-60);
+    --file-audio: var(--magenta-40);
+    --file-executable: var(--ash-30);
+    --file-default: var(--gray-40);
+
     --background-replay: var(--ash-99);
     --text-replay: var(--text-02);
     --border-replay: var(--ash-95);
