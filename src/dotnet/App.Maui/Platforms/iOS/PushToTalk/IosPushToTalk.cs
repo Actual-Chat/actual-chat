@@ -134,6 +134,7 @@ public static class IosPushToTalk
                 return;
 
             transmission.PreRollToken = preRollToken;
+            transmission.IsStarted = true;
         }
 
         _ = BackgroundTask.Run(async () => {
@@ -148,7 +149,9 @@ public static class IosPushToTalk
                 isEndPending = transmission.IsEndPending;
             }
             if (!isRecording) {
-                PttPreRoll.Discard(preRollToken);
+                // StopTransmitReply, not a bare Discard: it also clears _transmission, and a
+                // latched one would make the next incoming wake open the mic instead of playing.
+                await StopTransmitReply(transmission).ConfigureAwait(false);
                 StopTransmitting();
                 return;
             }
@@ -161,6 +164,17 @@ public static class IosPushToTalk
                 await StopTransmitReply(transmission).ConfigureAwait(false);
             }
         }, Log, "PTT transmit reply failed", CancellationToken.None);
+    }
+
+    private static void OnChannelLeft()
+    {
+        OnTransmitEnded();
+        lock (Lock)
+            // A transmission that never reached StartTransmitReply has no reply task left to
+            // finish it, and no further callback will arrive - so drop it here rather than let it
+            // latch. A started one is left alone: its reply task owns the mic and the clear.
+            if (_transmission is { IsStarted: false })
+                _transmission = null;
     }
 
     private static void OnTransmitEnded()
@@ -215,8 +229,16 @@ public static class IosPushToTalk
     private static void OnAudioSessionActivated()
     {
         Transmission? transmission;
-        lock (Lock)
+        lock (Lock) {
             transmission = _transmission;
+            if (transmission is { IsStarted: false, IsEndPending: true }) {
+                // Released before the session ever activated, so no reply task exists to finish
+                // it. Acting on it here would take the session as PttTransmit, open the mic and
+                // swallow the pending wake - on what is most likely an incoming message.
+                _transmission = null;
+                transmission = null;
+            }
+        }
         AudioSession.SetOwner(AudioSessionOwnership.OnActivated(transmission is not null));
         if (transmission is not null) {
             StartTransmitReply(transmission);
@@ -245,6 +267,7 @@ public static class IosPushToTalk
     private sealed class Transmission
     {
         public long PreRollToken { get; set; }
+        public bool IsStarted { get; set; }
         public bool IsMicOwned { get; set; }
         public bool IsEndPending { get; set; }
     }
@@ -289,7 +312,7 @@ public static class IosPushToTalk
         public override void DidLeaveChannel(
             PTChannelManager channelManager, NSUuid channelUuid, PTChannelLeaveReason reason)
         {
-            OnTransmitEnded();
+            OnChannelLeft();
             // A leave can tear the session down without DidDeactivateAudioSession;
             // a stuck flag would permanently disable the app's own session activation.
             AudioSession.ReleaseOwner(AudioSessionRelease.ChannelLeft);
