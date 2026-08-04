@@ -18,85 +18,101 @@ public static class PttPreRoll
 
     public static long Start()
     {
+        AVAudioEngine? oldEngine;
+        long token;
         lock (Lock) {
-            StopUnsafe();
-            var token = ++_lastToken;
-            try {
-                var engine = new AVAudioEngine();
-                var input = engine.InputNode;
-                var format = input.GetBusOutputFormat(0);
-                var sampleRate = (int)format.SampleRate;
-                if (sampleRate <= 0) {
-                    Log.LogWarning("Pre-roll: the input node reports no sample rate");
-                    engine.Dispose();
-                    return 0;
-                }
+            (oldEngine, _engine, _format, _buffer) = (_engine, null, null, null);
+            token = ++_lastToken;
+        }
+        // StopEngine and the native setup below are blocking calls - keep them outside the lock
+        // so a concurrent TryTake()/Discard() (called from the app's own recorder startup, not
+        // the PTT callback queue Start() runs on) never waits on them.
+        StopEngine(oldEngine);
 
-                var capacity = (int)(sampleRate * Constants.Audio.WalkieTalkiePreRollCapacity.TotalSeconds);
-                var buffer = new PreRollBuffer(token, sampleRate, capacity);
-                var frameLength = (uint)(sampleRate / 1000 * Constants.Audio.OpusFrameDurationMs);
-                input.InstallTapOnBus(0, frameLength, format, (pcm, _) => buffer.TryAppend(pcm.AsReadOnlySpan()));
-                engine.Prepare();
-                engine.StartAndReturnError(out var error);
-                if (error is not null) {
-                    Log.LogWarning("Pre-roll engine didn't start: {Error}", error.LocalizedDescription);
-                    input.RemoveTapOnBus(0);
-                    engine.Dispose();
-                    return 0;
-                }
-
-                (_engine, _format, _buffer) = (engine, format, buffer);
-                Log.LogInformation("Pre-roll capture started ({SampleRate} Hz)", sampleRate);
-                return token;
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "Pre-roll capture failed to start");
+        try {
+            var engine = new AVAudioEngine();
+            var input = engine.InputNode;
+            var format = input.GetBusOutputFormat(0);
+            var sampleRate = (int)format.SampleRate;
+            if (sampleRate <= 0) {
+                Log.LogWarning("Pre-roll: the input node reports no sample rate");
+                engine.Dispose();
                 return 0;
             }
+
+            var capacity = (int)(sampleRate * Constants.Audio.WalkieTalkiePreRollCapacity.TotalSeconds);
+            var buffer = new PreRollBuffer(token, sampleRate, capacity);
+            var frameLength = (uint)(sampleRate / 1000 * Constants.Audio.OpusFrameDurationMs);
+            input.InstallTapOnBus(0, frameLength, format, (pcm, _) => buffer.TryAppend(pcm.AsReadOnlySpan()));
+            engine.Prepare();
+            engine.StartAndReturnError(out var error);
+            if (error is not null) {
+                Log.LogWarning("Pre-roll engine didn't start: {Error}", error.LocalizedDescription);
+                input.RemoveTapOnBus(0);
+                engine.Dispose();
+                return 0;
+            }
+
+            lock (Lock)
+                (_engine, _format, _buffer) = (engine, format, buffer);
+
+            Log.LogInformation("Pre-roll capture started ({SampleRate} Hz)", sampleRate);
+            return token;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Pre-roll capture failed to start");
+            return 0;
         }
     }
 
     public static void Discard(long token)
     {
+        AVAudioEngine? engine;
         lock (Lock) {
             if (_buffer is not { } buffer || buffer.Token != token)
                 return;
 
-            StopUnsafe();
+            (engine, _engine, _format, _buffer) = (_engine, null, null, null);
         }
+        StopEngine(engine);
     }
 
     public static PreRollTake? TryTake()
     {
+        AVAudioEngine? engine;
+        PreRollBuffer? buffer;
+        AVAudioFormat? format;
         lock (Lock) {
-            if (_buffer is not { } buffer || _format is not { } format)
-                return null;
-
-            var minSampleCount =
-                (int)(buffer.SampleRate * Constants.Audio.WalkieTalkiePreRollMinDuration.TotalSeconds);
-            var samples = buffer.TryDrain(buffer.Token, minSampleCount);
-            // Stopping here, before the caller starts AudioEngines.Recording, is the point: two
-            // AVAudioEngine instances must never hold the hardware input node at once.
-            StopUnsafe();
-            return samples is null ? null : new PreRollTake(samples, format);
+            (engine, buffer, format) = (_engine, _buffer, _format);
+            (_engine, _format, _buffer) = (null, null, null);
         }
+        // Stopping here, before the caller starts AudioEngines.Recording, is the point: two
+        // AVAudioEngine instances must never hold the hardware input node at once. It's a
+        // blocking native call, so - like the drain below - it runs outside the lock.
+        StopEngine(engine);
+        if (buffer is null || format is null)
+            return null;
+
+        var minSampleCount = (int)(buffer.SampleRate * Constants.Audio.WalkieTalkiePreRollMinDuration.TotalSeconds);
+        var samples = buffer.TryDrain(buffer.Token, minSampleCount);
+        return samples is null ? null : new PreRollTake(samples, format);
     }
 
     // Private methods
 
-    private static void StopUnsafe()
+    private static void StopEngine(AVAudioEngine? engine)
     {
-        if (_engine is { } engine) {
-            try {
-                engine.InputNode.RemoveTapOnBus(0);
-                engine.Stop();
-                engine.Dispose();
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "Pre-roll capture failed to stop cleanly");
-            }
+        if (engine is null)
+            return;
+
+        try {
+            engine.InputNode.RemoveTapOnBus(0);
+            engine.Stop();
+            engine.Dispose();
         }
-        (_engine, _format, _buffer) = (null, null, null);
+        catch (Exception e) {
+            Log.LogWarning(e, "Pre-roll capture failed to stop cleanly");
+        }
     }
 }
 
