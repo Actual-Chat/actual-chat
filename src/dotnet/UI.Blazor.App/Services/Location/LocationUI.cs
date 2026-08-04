@@ -248,6 +248,13 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         StartSharing(chatId, duration);
     }
 
+    public Task ShowLocationMapModal(ChatId chatId, SharedLocationId? locationId = null)
+    {
+        // The own marker appears only once there's a fix, and merely viewing the map is no reason to troubleshoot.
+        _ = BackgroundTask.Run(() => RefreshCurrentLocation(mustTroubleshoot: false, Hub.StopToken), Hub.StopToken);
+        return Hub.ModalUI.Show(new LocationMapModal.Model(chatId, locationId), Hub.StopToken);
+    }
+
     public void StartSharing(ChatId chatId, TimeSpan duration)
         => Reporter.StartSharing(chatId, duration);
 
@@ -271,9 +278,13 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<GeoPoint?> RefreshCurrentLocation(CancellationToken cancellationToken = default)
+    public Task<GeoPoint?> RefreshCurrentLocation(CancellationToken cancellationToken = default)
+        => RefreshCurrentLocation(true, cancellationToken);
+    public async Task<GeoPoint?> RefreshCurrentLocation(
+        bool mustTroubleshoot,
+        CancellationToken cancellationToken = default)
     {
-        if (!await LocationPermission.CheckOrRequest(cancellationToken).ConfigureAwait(false))
+        if (!await LocationPermission.CheckOrRequest(true, mustTroubleshoot, cancellationToken).ConfigureAwait(false))
             return null;
 
         // The fresh fix lands in the tracker, so GetCurrentLocation and its dependents recompute with it.
