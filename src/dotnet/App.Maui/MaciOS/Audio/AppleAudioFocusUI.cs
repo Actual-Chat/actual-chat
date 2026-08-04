@@ -146,9 +146,11 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             return;
         }
         AudioEngines.Pause();
-        await AudioSession.Reconfigure(mode).ConfigureAwait(false);
+        // Only when the session was really configured: under a PTT owner it may not have been, and
+        // latching the flag would make TryAcquire skip the configure this mode still owes.
+        var isConfigured = await AudioSession.Reconfigure(mode).ConfigureAwait(false);
         AudioEngines.Resume(mode);
-        _isSessionConfigured = true;
+        _isSessionConfigured = isConfigured;
     }
 
     private async Task RecoverInternal(CancellationToken cancellationToken)
@@ -156,8 +158,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         using var _1 = await _lock.Lock(cancellationToken).ConfigureAwait(false);
         var mode = _activeScopes.GetMode();
         Log.LogInformation("Recover: reactivating session in {Mode}", mode);
-        await AudioSession.Reactivate(mode).ConfigureAwait(false);
-        _isSessionConfigured = true;
+        _isSessionConfigured = await AudioSession.Reactivate(mode).ConfigureAwait(false);
         AudioEngines.Resume(mode);
         InvokeRestoreUnsafe();
         _isSuspended = false;
@@ -241,8 +242,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         var mode = _activeScopes.GetMode();
         Log.LogWarning("Rebuild: reconfiguring session in {Mode}", mode);
         AudioEngines.Pause();
-        await AudioSession.Reconfigure(mode).ConfigureAwait(false);
-        _isSessionConfigured = true;
+        _isSessionConfigured = await AudioSession.Reconfigure(mode).ConfigureAwait(false);
         AudioEngines.Resume(mode);
         InvokeRestoreUnsafe();
         _isSuspended = false;

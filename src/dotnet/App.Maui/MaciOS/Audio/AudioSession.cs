@@ -13,9 +13,11 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         Constants.Audio.WalkieTalkieIdleTimeout + TimeSpan.FromMinutes(1);
     private static readonly TimeSpan OwnerWatchdogPeriod = TimeSpan.FromSeconds(30);
 
+    private static readonly Lock OwnerLock = new();
     private static int _owner;
     private static long _ownerChangedAt;
     private static int _isOwnerWatchdogRunning;
+    private static Action? _ownerWatchdogRecovery;
 
     public static AudioSessionOwner Owner => (AudioSessionOwner)Volatile.Read(ref _owner);
 
@@ -23,7 +25,15 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         => PublishOwner(owner);
 
     public static void ReleaseOwner(AudioSessionRelease release, bool hasLivePlayback = false)
-        => PublishOwner(AudioSessionOwnership.OnReleased(Owner, release, hasLivePlayback));
+    {
+        lock (OwnerLock)
+            PublishOwnerUnsafe(AudioSessionOwnership.OnReleased(Owner, release, hasLivePlayback));
+
+        ArmOwnerWatchdog();
+    }
+
+    public static void SetOwnerWatchdogRecovery(Action recovery)
+        => Volatile.Write(ref _ownerWatchdogRecovery, recovery);
 
     private static ILogger OwnerLog => field ??= StaticLog.For(typeof(AudioSession));
     private ILogger Log => field ??= hub.LogFor(GetType());
@@ -41,10 +51,12 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
                 "Failed to dispose AudioSession")
             .ToValueTask();
 
-    public Task Reconfigure(AudioFocusMode mode)
+    // Returns whether the session was actually configured: under a PTT owner it may not be, and a
+    // caller that recorded "configured" anyway would skip the configure it still owes later.
+    public Task<bool> Reconfigure(AudioFocusMode mode)
         => DispatchToMainThread(() => ReconfigureUnsafe(mode));
 
-    public Task Reactivate(AudioFocusMode mode)
+    public Task<bool> Reactivate(AudioFocusMode mode)
         => DispatchToMainThread(() => ReactivateUnsafe(mode));
 
     public Task EnsureCorrectOutputRoute()
@@ -68,14 +80,24 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
 
     private static void PublishOwner(AudioSessionOwner owner)
     {
-        Volatile.Write(ref _ownerChangedAt, CpuTimestamp.Now.Value);
-        Volatile.Write(ref _owner, (int)owner);
-        if (owner != AudioSessionOwner.App)
-            EnsureOwnerWatchdog();
+        lock (OwnerLock)
+            PublishOwnerUnsafe(owner);
+
+        ArmOwnerWatchdog();
     }
 
-    private static void EnsureOwnerWatchdog()
+    private static void PublishOwnerUnsafe(AudioSessionOwner owner)
     {
+        // Owner and its timestamp are one decision, and the watchdog re-reads both under the same
+        // lock before reverting - otherwise a callback landing mid-decision is silently clobbered.
+        Volatile.Write(ref _ownerChangedAt, CpuTimestamp.Now.Value);
+        Volatile.Write(ref _owner, (int)owner);
+    }
+
+    private static void ArmOwnerWatchdog()
+    {
+        if (Owner == AudioSessionOwner.App)
+            return;
         if (Interlocked.CompareExchange(ref _isOwnerWatchdogRunning, 1, 0) != 0)
             return;
 
@@ -88,42 +110,83 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         try {
             while (true) {
                 await Task.Delay(OwnerWatchdogPeriod).ConfigureAwait(false);
-                var owner = Owner;
-                if (owner == AudioSessionOwner.App)
+                if (Owner == AudioSessionOwner.App)
                     return;
+                if (!IsOwnerStuck())
+                    continue;
 
-                // Every PTT callback republishes the owner, so an old stamp means none arrived.
-                var heldFor = new CpuTimestamp(Volatile.Read(ref _ownerChangedAt)).Elapsed;
-                if (heldFor < OwnerWatchdogTimeout || AppleAudioCapture.IsInputNodeHeld)
+                if (TryRevertOwner() is not { } stuckOwner)
                     continue;
 
                 // MayActivate is false for both PTT owners, so a stuck one leaves the whole app
                 // unable to activate its own session - every tune, playback and recording dies.
                 OwnerLog.LogWarning(
-                    "The audio session has been owned by {Owner} for {Duration} with no PTT callback - reverting to App",
-                    owner,
-                    heldFor.ToShortString());
-                Volatile.Write(ref _owner, (int)AudioSessionOwner.App);
+                    "The audio session was owned by {Owner} with no PTT callback - reverted to App", stuckOwner);
+                RunOwnerWatchdogRecovery();
                 return;
             }
         }
         finally {
             Volatile.Write(ref _isOwnerWatchdogRunning, 0);
-            if (Owner != AudioSessionOwner.App)
-                EnsureOwnerWatchdog();
+            ArmOwnerWatchdog();
         }
     }
 
-    private void ReactivateUnsafe(AudioFocusMode mode)
+    private static bool IsOwnerStuck()
     {
+        // Every PTT callback republishes the owner, so an old stamp means none arrived.
+        if (OwnerHeldFor() < OwnerWatchdogTimeout)
+            return false;
+
+        // A live recorder may only defer the revert, never cancel it: the latch is cleared by
+        // AppleAudioCapture's finally, and an abandoned enumerator would otherwise disable this
+        // insurance for the rest of the process.
+        return AppleAudioCapture.InputNodeHeldFor is not { } recordingFor
+            || recordingFor >= OwnerWatchdogTimeout;
+    }
+
+    private static AudioSessionOwner? TryRevertOwner()
+    {
+        lock (OwnerLock) {
+            // Re-read under the lock: a real wake may have published a fresh owner while the
+            // checks above were running, and reverting on top of it would leave the framework
+            // owning a live session that the app believes is its own.
+            var owner = Owner;
+            if (owner == AudioSessionOwner.App || OwnerHeldFor() < OwnerWatchdogTimeout)
+                return null;
+
+            PublishOwnerUnsafe(AudioSessionOwner.App);
+            return owner;
+        }
+    }
+
+    private static void RunOwnerWatchdogRecovery()
+    {
+        // The revert only fixes the app's view: the framework still shows a transmit or a receive,
+        // and a participant left set makes the next TransmitEnded hand the session back to it.
+        try {
+            Volatile.Read(ref _ownerWatchdogRecovery)?.Invoke();
+        }
+        catch (Exception e) {
+            OwnerLog.LogWarning(e, "The audio session owner watchdog couldn't reset the PTT framework state");
+        }
+    }
+
+    private static TimeSpan OwnerHeldFor()
+        => new CpuTimestamp(Volatile.Read(ref _ownerChangedAt)).Elapsed;
+
+    private bool ReactivateUnsafe(AudioFocusMode mode)
+    {
+        // Under a PTT owner the framework owns category and mode too - configuring underneath it
+        // is what the typed owner exists to prevent, except where the app only raises the category
+        // for its own mic.
         var session = AVAudioSession.SharedInstance();
         var owner = Owner;
-        // Under either PTT owner the framework owns category and mode too - configuring underneath
-        // it is what the typed owner exists to prevent.
-        if (AudioSessionOwnership.MayConfigure(owner))
+        var isConfigured = AudioSessionOwnership.MayConfigure(owner, mode);
+        if (isConfigured)
             ConfigureUnsafe(session, mode);
         if (!AudioSessionOwnership.MayActivate(owner))
-            return;
+            return isConfigured;
 
         if (!session.SetActive(true, out var error)) {
             Log.LogWarning("Failed to re-activate audio session: {Error}", error.LocalizedDescription);
@@ -135,16 +198,22 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
             session.SetActive(true, out error);
             error.Assert("Failed to re-activate audio session after retry");
         }
+
+        return isConfigured;
     }
 
-    private void ReconfigureUnsafe(AudioFocusMode minMode)
+    private bool ReconfigureUnsafe(AudioFocusMode minMode)
     {
         var session = AVAudioSession.SharedInstance();
         var owner = Owner;
         if (!AudioSessionOwnership.MayActivate(owner)) {
-            if (AudioSessionOwnership.MayConfigure(owner))
-                ConfigureUnsafe(session, minMode);
-            return;
+            if (!AudioSessionOwnership.MayConfigure(owner, minMode))
+                return false;
+
+            // The framework's session is already active, and SetCategory on an active session is
+            // what lets an in-app recording get PlayAndRecord during a live wake playback.
+            ConfigureUnsafe(session, minMode);
+            return true;
         }
 
         var deactivateOptions = minMode is AudioFocusMode.Tune
@@ -153,6 +222,7 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         session.SetActive(false, deactivateOptions).Assert("Failed to deactivate session");
         ConfigureUnsafe(session, minMode);
         session.SetActive(true).Assert("Failed to activate session");
+        return true;
     }
 
     private void EnsureCorrectOutputRouteUnsafe()

@@ -38,6 +38,13 @@ public static class AudioSessionOwnership
     public static bool MayActivate(AudioSessionOwner owner)
         => owner == AudioSessionOwner.App;
 
-    public static bool MayConfigure(AudioSessionOwner owner)
-        => owner == AudioSessionOwner.App;
+    public static bool MayConfigure(AudioSessionOwner owner, AudioFocusMode mode)
+        => owner switch {
+            AudioSessionOwner.App => true,
+            // The framework configured the session for a live call. Raising it to PlayAndRecord
+            // for the app's own mic is compatible with that; lowering it to Playback or Ambient
+            // is what cuts the incoming voice out.
+            AudioSessionOwner.PttPlayback => mode is AudioFocusMode.Recording,
+            _ => false,
+        };
 }

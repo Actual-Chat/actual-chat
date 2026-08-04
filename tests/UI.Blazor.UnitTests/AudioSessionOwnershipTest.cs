@@ -54,6 +54,14 @@ public class AudioSessionOwnershipTest
     }
 
     [Fact]
+    public void AnUnmatchedTransmitEndNeverTakesOwnershipFromTheApp()
+    {
+        // An end without a matching begin must not invent a PTT owner out of App.
+        AudioSessionOwnership.OnReleased(AudioSessionOwner.App, AudioSessionRelease.TransmitEnded, true)
+            .Should().Be(AudioSessionOwner.App);
+    }
+
+    [Fact]
     public void EndingATransmitOverALivePlaybackFallsBackToPlayback()
     {
         // act
@@ -77,13 +85,30 @@ public class AudioSessionOwnershipTest
         AudioSessionOwnership.MayActivate(AudioSessionOwner.PttTransmit).Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(AudioFocusMode.Tune)]
+    [InlineData(AudioFocusMode.Playback)]
+    [InlineData(AudioFocusMode.Recording)]
+    public void TheAppMayConfigureTheSessionInAnyMode(AudioFocusMode mode)
+        => AudioSessionOwnership.MayConfigure(AudioSessionOwner.App, mode).Should().BeTrue();
+
     [Fact]
-    public void OnlyTheAppMayConfigureTheSession()
+    public void APlaybackOwnerBlocksOnlyCategoryLowering()
     {
-        // Under either PTT owner the framework owns category and mode - the wake cue would
-        // otherwise set the session to Ambient underneath a live call.
-        AudioSessionOwnership.MayConfigure(AudioSessionOwner.App).Should().BeTrue();
-        AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttPlayback).Should().BeFalse();
-        AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttTransmit).Should().BeFalse();
+        // The wake cue must not drop the session to Ambient underneath a live call, but an
+        // in-app recording started during that call still needs PlayAndRecord.
+        AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttPlayback, AudioFocusMode.Tune)
+            .Should().BeFalse();
+        AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttPlayback, AudioFocusMode.Playback)
+            .Should().BeFalse();
+        AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttPlayback, AudioFocusMode.Recording)
+            .Should().BeTrue();
     }
+
+    [Theory]
+    [InlineData(AudioFocusMode.Tune)]
+    [InlineData(AudioFocusMode.Playback)]
+    [InlineData(AudioFocusMode.Recording)]
+    public void ATransmitOwnerBlocksEveryConfiguration(AudioFocusMode mode)
+        => AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttTransmit, mode).Should().BeFalse();
 }
