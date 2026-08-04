@@ -6,5 +6,5 @@ public static class AuthorExt
         => MentionRef.NewAuthor(author.Id);
 
     public static MentionMarkup ToMentionMarkup(this Author author)
-        => new (author.ToMentionId(), author.Avatar.Name);
+        => MentionMarkup.New(author.ToMentionId(), author.Avatar.Name);
 }

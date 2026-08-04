@@ -7,6 +7,7 @@ namespace ActualChat.Chat;
 /// Text markup with word-to-time mapping for synchronized playback.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MessagePackObject]
 public sealed partial class PlayableTextMarkup : TextMarkup
 {
     private const float InfTime = 1e6f;
@@ -14,9 +15,13 @@ public sealed partial class PlayableTextMarkup : TextMarkup
     private static partial Regex WordRegexFactory();
     private static readonly Regex WordRegex = WordRegexFactory();
 
+    [DataMember, Key(1)]
     public LinearMap TimeMap { get; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Range<float> TextRange => (0, Text.Length);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Range<float> TimeRange => (TimeMap.TryMap(0f) ?? InfTime, TimeMap.TryMap(Text.Length) ?? InfTime);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Word[] Words => field ??= GetWords();
 
     // ReSharper disable once ConvertToPrimaryConstructor

@@ -6,8 +6,10 @@ namespace ActualChat.Chat;
 /// Represents a sequence of markup elements.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MessagePackObject]
 public sealed class MarkupSeq : Markup
 {
+    [DataMember, Key(0)]
     public Markup[] Items { get; }
 
     // ReSharper disable once ConvertToPrimaryConstructor
