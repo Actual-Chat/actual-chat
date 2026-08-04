@@ -5,13 +5,15 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public enum AudioWidgetMode { Replaying, Listening, Recording }
 public sealed record AudioWidgetChatInfo(ChatId Id, string Title, string PicUrl, int ExtraChatCount);
-public sealed record AudioWidgetState(AudioWidgetMode Mode, AudioWidgetChatInfo Chat, bool IsPaused);
+public sealed record AudioWidgetState(
+    AudioWidgetMode Mode, AudioWidgetChatInfo Chat, bool IsPaused, bool CanPause = true);
 
 public class AudioWidget : IDisposable
 {
     private static readonly TimeSpan AnswerWindowExpiryDelay = TimeSpan.FromMilliseconds(250);
 
     private readonly ComputedState<AudioWidgetState?> _state;
+    private readonly bool _isAnswerWindowSupported;
     private AudioWidgetState? _lastState;
 
     private AppUIHub Hub { get; }
@@ -27,6 +29,7 @@ public class AudioWidget : IDisposable
     public AudioWidget(AppUIHub hub)
     {
         Hub = hub;
+        _isAnswerWindowSupported = hub.HostInfo.AppKind == AppKind.Android;
         _state = hub.StateFactory.NewComputed(
             new ComputedState<AudioWidgetState?>.Options() {
                 InitialValue = null,
@@ -35,10 +38,14 @@ public class AudioWidget : IDisposable
             },
             ComputeState);
         _state.Updated += OnStateUpdated;
+        if (_isAnswerWindowSupported)
+            IncomingVoiceActivityUI.IncomingVoiceStamped += OnIncomingVoiceStamped;
     }
 
     public virtual void Dispose()
     {
+        if (_isAnswerWindowSupported)
+            IncomingVoiceActivityUI.IncomingVoiceStamped -= OnIncomingVoiceStamped;
         _state.Updated -= OnStateUpdated;
         _state.Dispose();
     }
@@ -61,6 +68,13 @@ public class AudioWidget : IDisposable
     }
 
     // Private methods
+
+    private void OnIncomingVoiceStamped()
+    {
+        // The stamps are a plain dictionary, so a stamp landing or being cleared invalidates
+        // nothing on its own - and the answer-window state depends on both.
+        _state.Invalidate();
+    }
 
     private void OnStateUpdated(State state, StateEventKind eventKind)
     {
@@ -119,18 +133,21 @@ public class AudioWidget : IDisposable
             }
         }
 
+        var canPause = true;
         if (mode is not { } vMode) {
             if (await GetAnswerWindowChatId(cancellationToken).ConfigureAwait(false) is not { } answerChatId)
                 return null;
 
+            // Nothing plays in the answer-window state, so there is no player a Pause could reach.
             vMode = AudioWidgetMode.Listening;
             chatId = answerChatId;
+            canPause = false;
         }
 
         var chatInfo = await GetChatInfo(chatId!).ConfigureAwait(false);
         if (extraChatCount > 0)
             chatInfo = chatInfo with { ExtraChatCount = extraChatCount };
-        return new AudioWidgetState(vMode, chatInfo, isPaused);
+        return new AudioWidgetState(vMode, chatInfo, isPaused, canPause);
     }
 
     private async Task<ChatId?> GetAnswerWindowChatId(CancellationToken cancellationToken)
@@ -138,7 +155,7 @@ public class AudioWidget : IDisposable
         // Android routes the headset button through the media session, which lives and dies with this
         // widget's foreground service - so on Android the widget has to outlive playback for as long
         // as the walkie answer window is open. Every other host returns here immediately.
-        if (Hub.HostInfo.AppKind != AppKind.Android)
+        if (!_isAnswerWindowSupported)
             return null;
 
         var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
@@ -153,8 +170,8 @@ public class AudioWidget : IDisposable
         if (answer is not { } vAnswer)
             return null;
 
-        // The stamps are a plain dictionary, so nothing invalidates this state when the window
-        // expires - without the auto-invalidation the widget would never tear itself down.
+        // Nothing invalidates this state when the window merely lapses - without the
+        // auto-invalidation the widget would never tear itself down.
         var expiresIn = vAnswer.At + recencyWindow - now + AnswerWindowExpiryDelay;
         Computed.GetCurrent().Invalidate(expiresIn, false);
         return vAnswer.ChatId;
@@ -200,6 +217,7 @@ public class AudioWidget : IDisposable
     {
         switch (actionName) {
         case ActionNames.Stop:
+            IncomingVoiceActivityUI.ClearIncomingVoice(chatId);
             _ = ChatAudioUI.SetListeningState(chatId, false);
             break;
         case ActionNames.Pause:

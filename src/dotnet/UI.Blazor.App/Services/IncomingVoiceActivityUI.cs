@@ -54,6 +54,14 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
             IncomingVoiceStamped?.Invoke();
     }
 
+    public void ClearIncomingVoice(ChatId chatId)
+    {
+        // Stopping a chat's audio must close its answer window too - otherwise the walkie widget
+        // recomputes the very same state and the notification the user just dismissed comes back.
+        if (_lastIncomingAt.TryRemove(chatId, out _))
+            IncomingVoiceStamped?.Invoke();
+    }
+
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);

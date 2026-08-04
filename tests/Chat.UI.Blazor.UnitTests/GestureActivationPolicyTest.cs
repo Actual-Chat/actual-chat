@@ -89,6 +89,25 @@ public class GestureActivationPolicyTest
         answer.Should().BeNull();
     }
 
+    [Fact]
+    public void ClearingTheStampClosesTheAnswerWindow()
+    {
+        // What AudioWidget's Stop action does through IncomingVoiceActivityUI.ClearIncomingVoice:
+        // without this the widget recomputes the identical state and the notification comes back.
+
+        // arrange
+        var last = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromSeconds(5) };
+        var beforeClear = GestureActivationPolicy.GetAnswerWindowChat([ChatA], last, T0, Window);
+
+        // act
+        last.Remove(ChatA);
+
+        // assert
+        beforeClear.Should().NotBeNull();
+        GestureActivationPolicy.GetAnswerWindowChat([ChatA], last, T0, Window).Should().BeNull();
+        GestureActivationPolicy.HasAnswerWindow([ChatA], last, T0, Window).Should().BeFalse();
+    }
+
     [Theory]
     [InlineData(GestureKind.FlipToTalk, GestureRoute.StartReply)]
     [InlineData(GestureKind.DoubleShake, GestureRoute.StartReply)]
