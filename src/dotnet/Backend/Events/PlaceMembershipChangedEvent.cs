@@ -8,6 +8,6 @@ public sealed partial record PlaceMembershipChangedEvent(
     [property: DataMember] PlaceId PlaceId,
     [property: DataMember] bool HasLeft) : EventCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

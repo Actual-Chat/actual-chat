@@ -13,7 +13,7 @@ public partial record ContactSearchQuery
     [DataMember, Key(2)] public int Skip { get; init; }
     [DataMember, Key(3)] public int Limit { get; init; } = Constants.Search.DefaultPageSize;
 
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     [MemberNotNullWhen(true, nameof(PlaceId))]
     public bool MustFilterByPlace => PlaceId is not null;
 }

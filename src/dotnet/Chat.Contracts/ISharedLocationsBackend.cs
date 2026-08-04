@@ -24,6 +24,6 @@ public sealed partial record SharedLocationsBackend_Change(
     [property: DataMember, Key(2)] Change<SharedLocationDiff> Change
 ) : ICommand<SharedLocation?>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => AuthorId.ChatId;
 }

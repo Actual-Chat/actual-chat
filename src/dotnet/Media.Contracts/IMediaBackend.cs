@@ -49,6 +49,6 @@ public sealed partial record MediaBackend_CopyChat(
     [property: DataMember, Key(2)] MediaId[] MediaIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }

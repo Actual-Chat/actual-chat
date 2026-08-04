@@ -25,7 +25,7 @@ public sealed partial class EmojiRef : StringIdentifier, IStringIdentifier<Emoji
     public string Text => field ??= Value.UrlDecode();
     [IgnoreDataMember]
     public MentionKind MentionKind => MentionKind.Emoji;
-    [IgnoreDataMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string ShardKey => Value;
 
     // Factories and constructors

@@ -6,6 +6,6 @@ public partial record UserSignedOutEvent(
     [property: DataMember] Session Session
 ) : EventCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

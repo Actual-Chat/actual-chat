@@ -104,12 +104,12 @@ public partial class FlowData<TFlow> : IFlowData
 
     // Computed properties
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsCompleted => _flow is { } flow
         ? flow.UntypedResult is not null
         : ResultData.Length != 0;
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsFailed => _flow is { } flow
         ? flow.UntypedResult?.Error is not null
         : _resultData is { Length: > 0 } resultData && ResultHasError(resultData);

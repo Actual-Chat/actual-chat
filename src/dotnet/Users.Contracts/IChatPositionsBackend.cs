@@ -27,6 +27,6 @@ public sealed partial record ChatPositionsBackend_Set(
     [property: DataMember, Key(4)] bool Force = false
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

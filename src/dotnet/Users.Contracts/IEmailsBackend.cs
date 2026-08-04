@@ -26,7 +26,7 @@ public sealed partial record EmailsBackend_SendDigest(
     [property: DataMember, Key(1)]
     public bool IsDiagnosticsEnabled { get; init; }
 
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 
     TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);

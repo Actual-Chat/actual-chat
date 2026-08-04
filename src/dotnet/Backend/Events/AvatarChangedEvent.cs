@@ -7,6 +7,6 @@ public partial record AvatarChangedEvent(
     [property: DataMember] ChangeKind ChangeKind
 ) : EventCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Avatar.UserId;
 }

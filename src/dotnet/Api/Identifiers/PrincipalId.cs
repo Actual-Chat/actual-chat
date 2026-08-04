@@ -22,7 +22,7 @@ public partial class PrincipalId : StringIdentifier, IStringIdentifier<Principal
 
     [IgnoreDataMember]
     public PrincipalKind Kind { get; }
-    [IgnoreDataMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
     public virtual string ShardKey => Value;
 
     protected PrincipalId(string value, PrincipalKind kind) : base(value)

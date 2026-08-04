@@ -9,8 +9,8 @@ public sealed partial record FlowTypeStat(
     [property: DataMember, Key(4)] int Stuck,
     [property: DataMember, Key(5)] int Idle)
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public int Total => Completed + Failed + Scheduled + Stuck + Idle;
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public int Problematic => Failed + Stuck;
 }

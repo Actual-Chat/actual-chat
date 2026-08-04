@@ -7,6 +7,6 @@ public partial record ReadPositionChangedEvent(
     [property: DataMember] long EntryLid
 ) : EventCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

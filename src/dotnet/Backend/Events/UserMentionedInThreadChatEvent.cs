@@ -6,6 +6,6 @@ public partial record UserMentionedInThreadChatEvent(
     [property: DataMember] MentionRef[] MentionIds
 ) : EventCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ThreadChatId;
 }

@@ -26,6 +26,6 @@ public partial record ServerKvasBackend_SetMany(
     [property: DataMember(Order = 1), Key(1)] params (string Key, byte[]? Value)[] Items
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<string>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string ShardKey => Prefix;
 }
