@@ -15,7 +15,7 @@ namespace ActualChat.App.Maui;
 /// <summary>
 /// Process-level Apple Push to Talk integration: one aggregate "Voxt" channel whose join
 /// survives app kill/reboot; incoming PTT pushes route into <see cref="WalkieTalkieSession"/>.
-/// Receive-only: the channel runs in ListenOnly transmission mode.
+/// Transmission mode follows the user's Push-to-Talk-reply setting.
 /// </summary>
 public static class IosPushToTalk
 {
