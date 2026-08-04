@@ -20,7 +20,11 @@ namespace ActualChat.App.Maui;
 public static class IosPushToTalk
 {
     public const string ChannelName = "Voxt";
+    private const string IsTransmitEnabledKey = "Voxt.Ptt.IsTransmitEnabled";
+    private const string LastWakeChatIdKey = "Voxt.Ptt.LastWakeChatId";
+    private const string LastWakeAtKey = "Voxt.Ptt.LastWakeAt";
     private static readonly NSUuid ChannelUuid = new("f3b9a7e2-4c15-4a8e-9f2d-7b6c5d4e3f21");
+    private static readonly TimeSpan PhantomWakeClearDelay = TimeSpan.FromSeconds(5);
 
     private static readonly Lock Lock = new();
     private static PTChannelManager? _manager;
@@ -29,7 +33,11 @@ public static class IosPushToTalk
     private static volatile string _pttToken = "";
     private static volatile PendingWake? _pendingWake;
     private static Transmission? _transmission;
+    private static bool _isJoinRequested;
+    private static bool _isStopTransmitRequested;
     private static int _isTransmitEnabled;
+    private static int _isRemoteParticipantActive;
+    private static int _lastWakeGeneration;
     private static ILogger Log => field ??= StaticLog.For(typeof(IosPushToTalk));
 
     public static void Initialize()
@@ -41,21 +49,40 @@ public static class IosPushToTalk
             _managerDelegate = new ManagerDelegate();
             _restorationDelegate = new RestorationDelegate();
         }
+        // Before Create: a restoration join fires DidJoinChannel, which applies this flag, and a
+        // process launched by PTT never runs the WebView scope that would otherwise set it.
+        Volatile.Write(ref _isTransmitEnabled, LoadIsTransmitEnabled() ? 1 : 0);
         PTChannelManager.Create(_managerDelegate, _restorationDelegate, (manager, error) => {
             if (error is not null) {
                 Log.LogError("PTChannelManager.Create failed: {Error}", error.LocalizedDescription);
                 return;
             }
 
-            lock (Lock)
+            bool isJoinRequested, isStopTransmitRequested;
+            lock (Lock) {
                 _manager = manager;
+                (isJoinRequested, isStopTransmitRequested) = (_isJoinRequested, _isStopTransmitRequested);
+                _isStopTransmitRequested = false;
+            }
             Log.LogInformation("PTChannelManager ready");
+            // Everything requested before this point silently no-opped: EnsureJoined and
+            // StopTransmitting both need the manager, and nothing else would ever re-drive them.
+            if (isJoinRequested)
+                EnsureJoined();
+            if (manager.ActiveChannelUuid is not null)
+                ApplyTransmissionMode(manager, ChannelUuid, Volatile.Read(ref _isTransmitEnabled) != 0);
+            if (isStopTransmitRequested)
+                StopTransmitting();
         });
     }
 
     public static void EnsureJoined()
     {
-        var manager = _manager;
+        PTChannelManager? manager;
+        lock (Lock) {
+            _isJoinRequested = true;
+            manager = _manager;
+        }
         if (manager is null || manager.ActiveChannelUuid is not null)
             return;
 
@@ -65,7 +92,11 @@ public static class IosPushToTalk
 
     public static void Leave()
     {
-        var manager = _manager;
+        PTChannelManager? manager;
+        lock (Lock) {
+            _isJoinRequested = false;
+            manager = _manager;
+        }
         if (manager?.ActiveChannelUuid is null)
             return;
 
@@ -76,6 +107,7 @@ public static class IosPushToTalk
     public static void SetTransmitEnabled(bool isEnabled)
     {
         Volatile.Write(ref _isTransmitEnabled, isEnabled ? 1 : 0);
+        NSUserDefaults.StandardUserDefaults.SetString(isEnabled ? "1" : "0", IsTransmitEnabledKey);
         var manager = _manager;
         if (manager?.ActiveChannelUuid is null)
             return;
@@ -85,6 +117,7 @@ public static class IosPushToTalk
 
     public static void ClearActiveParticipant()
     {
+        Volatile.Write(ref _isRemoteParticipantActive, 0);
         var manager = _manager;
         if (manager is null)
             return;
@@ -160,8 +193,28 @@ public static class IosPushToTalk
     private static void OnTransmitBegan()
     {
         BlazorWebViewApp.EnsureStarted();
-        lock (Lock)
-            _transmission = new Transmission { CreatedAt = CpuTimestamp.Now };
+        Transmission transmission;
+        Transmission? superseded;
+        lock (Lock) {
+            (superseded, transmission) = (_transmission, new Transmission { CreatedAt = CpuTimestamp.Now });
+            _transmission = transmission;
+        }
+
+        if (superseded is not null) {
+            // A new press with the previous one still latched means its DidEndTransmitting never
+            // arrived, so nothing else would ever close the reply and pre-roll it owns.
+            _ = BackgroundTask.Run(
+                () => StopTransmitReply(superseded),
+                Log, "Stopping the superseded PTT transmit reply failed", CancellationToken.None);
+        }
+
+        // Level-triggered, not edge-triggered: the session stays active for the whole hot window,
+        // so a press landing inside it gets no DidActivateAudioSession to start it.
+        if (AudioSession.Owner == AudioSessionOwner.App)
+            return;
+
+        AudioSession.SetOwner(AudioSessionOwnership.OnActivated(true));
+        StartTransmitReply(transmission);
     }
 
     private static void StartTransmitReply(Transmission transmission)
@@ -231,6 +284,9 @@ public static class IosPushToTalk
 
     private static void OnTransmitEnded()
     {
+        // Unconditionally, even with nothing latched: an unmatched DidEndTransmitting would
+        // otherwise leave the session owned by a transmit that no longer exists.
+        ReleaseTransmitOwnership();
         Transmission? transmission;
         lock (Lock) {
             transmission = _transmission;
@@ -239,15 +295,19 @@ public static class IosPushToTalk
 
             if (transmission.Reply is null) {
                 transmission.IsEndPending = true;
-                AudioSession.ReleaseOwner(AudioSessionRelease.TransmitEnded);
                 return;
             }
         }
-        AudioSession.ReleaseOwner(AudioSessionRelease.TransmitEnded);
+
         _ = BackgroundTask.Run(
             () => StopTransmitReply(transmission),
             Log, "Stopping the PTT transmit reply failed", CancellationToken.None);
     }
+
+    private static void ReleaseTransmitOwnership()
+        => AudioSession.ReleaseOwner(
+            AudioSessionRelease.TransmitEnded,
+            Volatile.Read(ref _isRemoteParticipantActive) != 0);
 
     private static async Task StopTransmitReply(Transmission transmission)
     {
@@ -273,8 +333,18 @@ public static class IosPushToTalk
 
     private static void StopTransmitting()
     {
-        var manager = _manager;
-        if (manager?.ActiveChannelUuid is null)
+        PTChannelManager? manager;
+        lock (Lock) {
+            manager = _manager;
+            if (manager is null) {
+                // The cold-launch window, which is exactly when the reply-failed path needs this:
+                // Initialize's completion handler re-drives it once the manager exists.
+                _isStopTransmitRequested = true;
+                return;
+            }
+        }
+
+        if (manager.ActiveChannelUuid is null)
             return;
 
         manager.StopTransmitting(ChannelUuid);
@@ -282,17 +352,22 @@ public static class IosPushToTalk
 
     private static void OnAudioSessionActivated()
     {
-        Transmission? transmission;
+        Transmission? transmission, abandoned = null;
         lock (Lock) {
             transmission = _transmission;
-            if (transmission is not null && MustAbandon(transmission)) {
-                _transmission = null;
-                transmission = null;
-            }
+            if (transmission is not null && MustAbandon(transmission))
+                (abandoned, transmission, _transmission) = (transmission, null, null);
         }
+
+        if (abandoned is not null)
+            AbandonTransmission(abandoned);
+
         AudioSession.SetOwner(AudioSessionOwnership.OnActivated(transmission is not null));
         if (transmission is not null) {
-            StartTransmitReply(transmission);
+            // A started one already owns the mic: re-entering StartTransmitReply would open a
+            // second pre-roll engine and orphan the reply the first one holds.
+            if (!transmission.IsStarted)
+                StartTransmitReply(transmission);
             return;
         }
 
@@ -300,28 +375,68 @@ public static class IosPushToTalk
         if (wake is null)
             return;
 
+        DispatchWake(wake.ChatId, wake.StartedAt);
+    }
+
+    private static void DispatchWake(ChatId chatId, Moment startedAt)
+    {
         BlazorWebViewApp.EnsureStarted();
         _ = BackgroundTask.Run(async () => {
             var isForeground = await AppServicesAccessor
                 .DispatchToMainThread(() => UIApplication.SharedApplication.ApplicationState
                     == UIApplicationState.Active)
                 .ConfigureAwait(false);
-            await WalkieTalkieSession.HandleWake(wake.ChatId, wake.StartedAt, isForeground, IosPlatform.Instance)
+            await WalkieTalkieSession.HandleWake(chatId, startedAt, isForeground, IosPlatform.Instance)
                 .ConfigureAwait(false);
         }, Log, "PTT wake failed", CancellationToken.None);
     }
 
+    private static void AbandonTransmission(Transmission transmission)
+    {
+        // The framework keeps showing "transmitting" until it's told otherwise, and StopTransmitReply
+        // is what releases the pre-roll engine and the reply this transmission may have opened.
+        Log.LogWarning("Abandoning a stale PTT transmission");
+        StopTransmitting();
+        _ = BackgroundTask.Run(
+            () => StopTransmitReply(transmission),
+            Log, "Stopping an abandoned PTT transmit reply failed", CancellationToken.None);
+    }
+
     private static bool MustAbandon(Transmission transmission)
     {
-        // Only a transmission that never reached StartTransmitReply: it has no reply task to
-        // finish it, so acting on it at a later activation would take the session as PttTransmit,
-        // open the mic and swallow the pending wake - on what is most likely an incoming message.
-        // A started one is bounded by its own reply task instead.
+        // Acting on a stale transmission at a later activation would take the session as
+        // PttTransmit, open the mic and swallow the pending wake - on what is most likely an
+        // incoming message. Nothing bounds a started one either: its reply task returns as soon as
+        // the reply is open, and only DidEndTransmitting clears the latch afterwards.
+        if (transmission.CreatedAt.Elapsed > Constants.Audio.MaxStreamDuration)
+            return true;
         if (transmission.IsStarted)
             return false;
 
         return transmission.IsEndPending
             || transmission.CreatedAt.Elapsed > Constants.Audio.WalkieTalkiePttTransmitStartupTimeout;
+    }
+
+    private static void ScheduleClearActiveParticipant(int generation)
+        => _ = BackgroundTask.Run(async () => {
+            await Task.Delay(PhantomWakeClearDelay).ConfigureAwait(false);
+            // A real push landing in the meantime owns the participant now.
+            if (Volatile.Read(ref _lastWakeGeneration) != generation)
+                return;
+
+            ClearActiveParticipant();
+        }, Log, "Clearing a phantom PTT participant failed", CancellationToken.None);
+
+    private static bool LoadIsTransmitEnabled()
+        => NSUserDefaults.StandardUserDefaults.StringForKey(IsTransmitEnabledKey) != "0";
+
+    private static void SaveLastWake(ChatId chatId, Moment startedAt)
+    {
+        // Never cleared on read: HandleTransmit re-reads it for every cold-start press, and
+        // NoteIncomingVoice is idempotent and clamped.
+        var defaults = NSUserDefaults.StandardUserDefaults;
+        defaults.SetString(chatId.Value, LastWakeChatIdKey);
+        defaults.SetString(startedAt.EpochOffset.Ticks.ToString(), LastWakeAtKey);
     }
 
     // Nested types
@@ -341,6 +456,18 @@ public static class IosPushToTalk
     {
         public static readonly IosPlatform Instance = new();
 
+        public override (ChatId ChatId, Moment At)? LastWake {
+            get {
+                var defaults = NSUserDefaults.StandardUserDefaults;
+                if (ChatId.TryParse(defaults.StringForKey(LastWakeChatIdKey), allowNull: true) is not { } chatId)
+                    return null;
+                if (!long.TryParse(defaults.StringForKey(LastWakeAtKey), out var epochOffsetTicks))
+                    return null;
+
+                return (chatId, new Moment(epochOffsetTicks));
+            }
+        }
+
         public override void OnWakeFailed(ChatId chatId)
         {
             AudioSession.ReleaseOwner(AudioSessionRelease.ChannelLeft);
@@ -356,6 +483,9 @@ public static class IosPushToTalk
         public override Task OnForegroundWakeHandled(ChatId chatId)
         {
             // Foreground: the app manages its own session; end the PTT transmission right away.
+            // The release can't wait for DidDeactivateAudioSession - if SetActiveRemoteParticipant
+            // fails that callback never arrives, and the app can then never activate its session.
+            AudioSession.ReleaseOwner(AudioSessionRelease.ChannelLeft);
             ClearActiveParticipant();
             return Task.CompletedTask;
         }
@@ -374,12 +504,25 @@ public static class IosPushToTalk
             PTChannelManager channelManager, NSUuid channelUuid, PTChannelLeaveReason reason)
         {
             OnChannelLeft();
-            // A leave can tear the session down without DidDeactivateAudioSession;
-            // a stuck flag would permanently disable the app's own session activation.
+            // A leave can tear the session down without DidDeactivateAudioSession, and a stuck
+            // PTT owner permanently disables the app's own session activation.
             AudioSession.ReleaseOwner(AudioSessionRelease.ChannelLeft);
+            Volatile.Write(ref _isRemoteParticipantActive, 0);
             Log.LogInformation("PTT channel left ({Reason})", reason);
             DeregisterToken();
         }
+
+        public override void FailedToJoinChannel(
+            PTChannelManager channelManager, NSUuid channelUuid, NSError error)
+            => Log.LogError("PTT channel join failed: {Error}", error.LocalizedDescription);
+
+        public override void FailedToLeaveChannel(
+            PTChannelManager channelManager, NSUuid channelUuid, NSError error)
+            => Log.LogError("PTT channel leave failed: {Error}", error.LocalizedDescription);
+
+        public override void FailedToStopTransmittingInChannel(
+            PTChannelManager channelManager, NSUuid channelUuid, NSError error)
+            => Log.LogError("PTT stop-transmitting failed: {Error}", error.LocalizedDescription);
 
         public override void DidBeginTransmitting(
             PTChannelManager channelManager, NSUuid channelUuid, PTChannelTransmitRequestSource source)
@@ -417,13 +560,26 @@ public static class IosPushToTalk
             var sTimestamp = GetString(pushPayload, Constants.Notification.MessageDataKeys.Timestamp);
             var chatTitle = GetString(pushPayload, "chatTitle").NullIfEmpty() ?? ChannelName;
             var chatId = ChatId.TryParse(chatSid, allowNull: true);
+            var generation = Interlocked.Increment(ref _lastWakeGeneration);
+            Volatile.Write(ref _isRemoteParticipantActive, 1);
             if (chatId is not { } vChatId || !long.TryParse(sTimestamp, out var epochMs)) {
-                Log.LogWarning("Invalid PTT push payload");
+                Log.LogError("Invalid PTT push payload");
+                // A participant still has to be returned, so nothing else would ever clear it -
+                // the system UI would show the channel as receiving forever.
+                ScheduleClearActiveParticipant(generation);
                 return PTPushResult.Create(new PTParticipant(ChannelName, null!));
             }
 
-            _pendingWake = new PendingWake(vChatId, new Moment(epochMs * 10_000));
+            var startedAt = new Moment(epochMs * 10_000);
+            SaveLastWake(vChatId, startedAt);
             SetDescriptorTitle(chatTitle);
+            // No activation follows a push that lands while the session is already PTT-owned, so
+            // parking the wake for OnAudioSessionActivated would drop it.
+            if (AudioSession.Owner == AudioSessionOwner.App)
+                _pendingWake = new PendingWake(vChatId, startedAt);
+            else
+                DispatchWake(vChatId, startedAt);
+
             return PTPushResult.Create(new PTParticipant(chatTitle, null!));
         }
 
@@ -437,6 +593,7 @@ public static class IosPushToTalk
         {
             Log.LogInformation("PTT audio session deactivated");
             AudioSession.ReleaseOwner(AudioSessionRelease.Deactivated);
+            Volatile.Write(ref _isRemoteParticipantActive, 0);
         }
 
         private static string? GetString(NSDictionary<NSString, NSObject> dict, string key)

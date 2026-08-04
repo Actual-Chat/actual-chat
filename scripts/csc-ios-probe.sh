@@ -202,9 +202,26 @@ namespace ActualChat.App.Maui.Audio
 {
     public class AudioSession
     {
+        public static ActualChat.UI.Blazor.Services.AudioSessionOwner Owner => default;
         public static void SetOwner(ActualChat.UI.Blazor.Services.AudioSessionOwner owner) { }
-        public static void ReleaseOwner(ActualChat.UI.Blazor.Services.AudioSessionRelease release) { }
+        public static void ReleaseOwner(
+            ActualChat.UI.Blazor.Services.AudioSessionRelease release, bool hasLivePlayback = false) { }
         public Task EnsureCorrectOutputRoute() => Task.CompletedTask;
+    }
+}
+EOF
+fi
+
+# AudioSession's owner watchdog and PttPreRoll's input-node guard both read AppleAudioCapture's
+# process-level latch, so it's stubbed for every file but AppleAudioCapture.cs itself.
+APPLE_AUDIO_CAPTURE_REL=src/dotnet/App.Maui/MaciOS/Audio/AppleAudioCapture.cs
+if [[ "$REL" != "$APPLE_AUDIO_CAPTURE_REL" ]]; then
+cat >> Stubs.cs <<'EOF'
+namespace ActualChat.App.Maui.Audio
+{
+    public class AppleAudioCapture
+    {
+        public static bool IsInputNodeHeld => false;
     }
 }
 EOF
@@ -305,6 +322,7 @@ namespace ActualChat.App.Maui.Services
     {
         public abstract void OnWakeFailed(ChatId chatId);
         public abstract void OnHeadlessTeardown();
+        public virtual (ChatId ChatId, Moment At)? LastWake => null;
         public virtual Task OnForegroundWakeHandled(ChatId chatId) => Task.CompletedTask;
     }
     public static class WalkieTalkieSession
