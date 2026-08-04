@@ -104,6 +104,34 @@ public class PreRollBufferTest
     }
 
     [Fact]
+    public void AnAppendThatWrapsTheRingStaysInOrder()
+    {
+        // arrange
+        var buffer = new PreRollBuffer(7, SampleRate, 5);
+        buffer.TryAppend([1f, 2f, 3f, 4f]);
+
+        // act
+        buffer.TryAppend([5f, 6f, 7f]);
+
+        // assert
+        buffer.TryDrain(7, 1).Should().Equal([3f, 4f, 5f, 6f, 7f]);
+    }
+
+    [Fact]
+    public void ARepeatedlyOverflowedBufferStaysInOrder()
+    {
+        // arrange
+        var buffer = new PreRollBuffer(7, SampleRate, 4);
+
+        // act
+        for (var i = 1; i <= 10; i++)
+            buffer.TryAppend([i * 10f, i * 10f + 1f]);
+
+        // assert
+        buffer.TryDrain(7, 1).Should().Equal([90f, 91f, 100f, 101f]);
+    }
+
+    [Fact]
     public void TooLittleAudioIsNotDrained()
     {
         // arrange

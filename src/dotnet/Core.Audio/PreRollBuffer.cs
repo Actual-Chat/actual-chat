@@ -10,6 +10,7 @@ public sealed class PreRollBuffer
 {
     private readonly Lock _lock = new();
     private readonly float[] _samples;
+    private int _head;
     private int _count;
     private bool _isOverflowed;
     private bool _isDrained;
@@ -49,26 +50,33 @@ public sealed class PreRollBuffer
         if (samples.IsEmpty)
             return true;
 
+        // Runs on the real-time audio thread once per tap callback, so it only ever moves the
+        // incoming samples: advancing _head is what drops the oldest ones.
         lock (_lock) {
             if (_isDrained)
                 return false;
 
+            var capacity = _samples.Length;
             // A slow boot must degrade to "lost the first words", not to "lost everything": the
             // oldest samples are dropped so the newest Capacity worth always survive.
-            if (samples.Length >= _samples.Length) {
-                samples[^_samples.Length..].CopyTo(_samples);
-                _count = _samples.Length;
-                _isOverflowed = true;
+            if (samples.Length >= capacity) {
+                samples[^capacity..].CopyTo(_samples);
+                (_head, _count, _isOverflowed) = (0, capacity, true);
                 return true;
             }
 
-            var dropCount = _count + samples.Length - _samples.Length;
+            var dropCount = _count + samples.Length - capacity;
             if (dropCount > 0) {
-                _samples.AsSpan(dropCount, _count - dropCount).CopyTo(_samples);
+                _head = (_head + dropCount) % capacity;
                 _count -= dropCount;
                 _isOverflowed = true;
             }
-            samples.CopyTo(_samples.AsSpan(_count));
+
+            var tail = (_head + _count) % capacity;
+            var headLength = Math.Min(samples.Length, capacity - tail);
+            samples[..headLength].CopyTo(_samples.AsSpan(tail));
+            if (headLength < samples.Length)
+                samples[headLength..].CopyTo(_samples);
             _count += samples.Length;
             return true;
         }
@@ -81,7 +89,12 @@ public sealed class PreRollBuffer
                 return null;
 
             _isDrained = true;
-            return _samples.AsSpan(0, _count).ToArray();
+            var result = new float[_count];
+            var headLength = Math.Min(_count, _samples.Length - _head);
+            _samples.AsSpan(_head, headLength).CopyTo(result);
+            if (headLength < _count)
+                _samples.AsSpan(0, _count - headLength).CopyTo(result.AsSpan(headLength));
+            return result;
         }
     }
 }
