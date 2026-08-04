@@ -5,21 +5,24 @@ public static class SerializationCodeGen
     public static void ValidateType<T>()
         => ValidateMessagePack<T>();
 
-    // For the types still read back from MemoryPack bytes: legacy flow state
-    // (Core.Server/Flows/FlowData.cs) and legacy server KVAS values (Core/Kvas/KvasSerializer.cs).
     public static void ValidateMemoryPackType<T>()
     {
+        // For the types still read back from MemoryPack bytes: legacy flow state
+        // (Core.Server/Flows/FlowData.cs) and legacy server KVAS values (Core/Kvas/KvasSerializer.cs).
         ValidateMemoryPack<T>();
         ValidateMessagePack<T>();
     }
+
+    public static bool IsMemoryPackable(Type type)
+        => type.GetInterfaces()
+            .Any(i => i.IsGenericType
+                && i.GetGenericTypeDefinition().FullName == "MemoryPack.IMemoryPackable`1");
 
     // Private methods
 
     private static void ValidateMemoryPack<T>()
     {
-        var hasInterface = typeof(T).GetInterfaces()
-            .Any(i => i.IsGenericType
-                && i.GetGenericTypeDefinition().FullName == "MemoryPack.IMemoryPackable`1");
+        var hasInterface = IsMemoryPackable(typeof(T));
 #if USE_MEMORYPACK
         hasInterface.Should().BeTrue(
             $"{typeof(T).Name} should implement IMemoryPackable<T> (generator active)");

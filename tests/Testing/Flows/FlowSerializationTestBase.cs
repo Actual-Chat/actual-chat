@@ -6,10 +6,10 @@ namespace ActualChat.Testing.Flows;
 
 /// <summary>
 /// Base class for verifying that every persisted property of a flow round-trips correctly
-/// through both MemoryPack and MessagePack. Each derived test class provides a populated
-/// instance via <see cref="CreatePopulated"/>; the base class snapshots all
-/// <c>[DataMember]</c> properties (including inherited ones) before and after serialization
-/// and asserts that every value survives.
+/// through MessagePack, plus MemoryPack for flows that still carry <c>[MemoryPackable]</c>.
+/// Each derived test class provides a populated instance via <see cref="CreatePopulated"/>;
+/// the base class snapshots all <c>[DataMember]</c> properties (including inherited ones)
+/// before and after serialization and asserts that every value survives.
 /// </summary>
 public abstract class FlowSerializationTestBase<TFlow>(ITestOutputHelper @out) : TestBase(@out)
     where TFlow : Flow
@@ -23,7 +23,17 @@ public abstract class FlowSerializationTestBase<TFlow>(ITestOutputHelper @out) :
 
     [Fact]
     public void MemoryPack_RoundTrip()
-        => RoundTrip(Serializers.MemoryPack, "MemoryPack");
+    {
+        // MemoryPack is a legacy read path, so only flows whose bytes are already in the DB
+        // are [MemoryPackable]; the rest (test-only flows) have no formatter to exercise.
+        // xUnit v2 has no dynamic skip, hence the early return rather than Assert.Skip.
+        if (!SerializationCodeGen.IsMemoryPackable(typeof(TFlow))) {
+            Out.WriteLine($"Skipped: {typeof(TFlow).Name} isn't [MemoryPackable].");
+            return;
+        }
+
+        RoundTrip(Serializers.MemoryPack, "MemoryPack");
+    }
 
     [Fact]
     public void MessagePack_RoundTrip()
