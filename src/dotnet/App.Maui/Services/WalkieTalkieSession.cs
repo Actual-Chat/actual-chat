@@ -13,7 +13,9 @@ public static class WalkieTalkieSession
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan TeardownCheckPeriod = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan StopHotReplyTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan AudioFocusCheckPeriod = TimeSpan.FromSeconds(0.5);
     private const int TeardownIdleChecks = 2;
+    private const int AudioFocusChecks = 10;
     private static readonly Lock Lock = new();
     private static Task? _teardownWatcher;
     private static ILogger Log => field ??= StaticLog.For(typeof(WalkieTalkieSession));
@@ -27,10 +29,14 @@ public static class WalkieTalkieSession
             await sessionResolver.SessionTask.WaitAsync(StartupTimeout).ConfigureAwait(false);
 
             var (scopedServices, isHeadless) = ResolveScope();
+            var chatAudioUI = scopedServices.GetRequiredService<AppUIHub>().ChatAudioUI;
+            var audioFocusDenialCount = chatAudioUI.AudioFocusDenialCount;
             await StartPlayback(scopedServices, chatId, startedAt, isForeground, isHeadless, platform)
                 .ConfigureAwait(false);
             if (isHeadless)
                 EnsureTeardownWatcher(platform);
+            if (!isForeground)
+                WatchAudioFocus(chatAudioUI, audioFocusDenialCount, chatId, platform);
         }
         catch (Exception e) {
             Log.LogError(e, "Walkie-talkie wake failed for chat #{ChatId}", chatId);
@@ -238,6 +244,23 @@ public static class WalkieTalkieSession
             () => hub.WalkieTalkieReplyUI.PlayFailureCue(),
             Log, "Couldn't play the walkie-talkie transmit failure cue", CancellationToken.None);
     }
+
+    private static void WatchAudioFocus(
+        ChatAudioUI chatAudioUI, int denialCount, ChatId chatId, WalkieTalkiePlatform platform)
+        => _ = BackgroundTask.Run(async () => {
+            // A denial makes ChatAudioUI.StateSync drop the replay/listening state it was just
+            // given, and nothing throws - so the wake would end in silence instead of a fallback.
+            for (var i = 0; i < AudioFocusChecks; i++) {
+                await Task.Delay(AudioFocusCheckPeriod).ConfigureAwait(false);
+                if (chatAudioUI.AudioFocusDenialCount == denialCount)
+                    continue;
+
+                Log.LogWarning("Walkie-talkie wake was denied audio focus for chat #{ChatId}", chatId);
+                platform.OnWakeFailed(chatId);
+                await StopAndDisposeCurrent("audio focus denied").ConfigureAwait(false);
+                return;
+            }
+        }, Log, "Audio focus watch failed", CancellationToken.None);
 
     private static void EnsureTeardownWatcher(WalkieTalkiePlatform platform)
     {

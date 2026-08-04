@@ -13,6 +13,10 @@ public partial class ChatAudioUI
     private readonly MutableState<ReplayState?> _replayState;
     private readonly AudioFocusRequester _audioFocusRequester;
     private AudioFocusScope? _audioFocusScope;
+    private int _audioFocusDenialCount;
+
+    // Advances on every refused acquisition - the state sync answers those by dropping the state.
+    public int AudioFocusDenialCount => Volatile.Read(ref _audioFocusDenialCount);
 
     // Compute methods
 
@@ -142,6 +146,8 @@ public partial class ChatAudioUI
         }
 
         _audioFocusScope = await AudioFocusUI.TryAcquire(_audioFocusRequester).ConfigureAwait(false);
+        if (_audioFocusScope is null)
+            Interlocked.Increment(ref _audioFocusDenialCount);
         return _audioFocusScope;
     }
 
