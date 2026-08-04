@@ -26,9 +26,6 @@ public class AndroidFileSaver(IServiceProvider services)
     public async Task Save(string url, string fileName, string contentType)
     {
         // TODO(DF): Add special handling to ensure reliable file loading. Provide visual feedback for long loading files.
-        if (fileName.IsNullOrEmpty())
-            fileName = new File(url).Name;
-
         var succeeded = await BackgroundTask.Run(
                 () => SaveInternally(url, contentType, fileName),
             CancellationToken.None)
@@ -49,11 +46,14 @@ public class AndroidFileSaver(IServiceProvider services)
     {
         var succeeded = false;
         try {
-            var inputStream = await GetStreamFromUrl(sUri).ConfigureAwait(false);
-            if (inputStream is not null) {
-                await using var _1 = inputStream.ConfigureAwait(false);
-                succeeded = await SaveImageToGallery(inputStream, fileName, contentType).ConfigureAwait(false);
-            }
+            using var client = HttpClientFactory.CreateClient(nameof(AndroidFileSaver));
+            using var response = await client.GetAsync(sUri, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            if (fileName.IsNullOrEmpty())
+                fileName = GetResponseFileName(response) ?? "download";
+            var inputStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            await using var _1 = inputStream.ConfigureAwait(false);
+            succeeded = await SaveImageToGallery(inputStream, fileName, contentType).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to save media. ContentType: '{ContentType}', Uri: '{Uri}'", contentType, sUri);
@@ -61,18 +61,10 @@ public class AndroidFileSaver(IServiceProvider services)
         return succeeded;
     }
 
-    private async Task<Stream?> GetStreamFromUrl(string url)
+    private static string? GetResponseFileName(HttpResponseMessage response)
     {
-        try {
-            using var client = HttpClientFactory.CreateClient(nameof(AndroidFileSaver));
-            var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-        }
-        catch (Exception ex) {
-            Log.LogError(ex, "Failed to get stream from url: '{Url}'", url);
-            return null;
-        }
+        var disposition = response.Content.Headers.ContentDisposition;
+        return (disposition?.FileNameStar ?? disposition?.FileName)?.Trim('"').NullIfEmpty();
     }
 
     private async Task<bool> SaveImageToGallery(Stream inputStream, string fileName, string contentType)
