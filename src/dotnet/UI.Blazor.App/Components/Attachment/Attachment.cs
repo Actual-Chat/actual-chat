@@ -7,6 +7,7 @@ public record Attachment(string FileName, string FileType, long Length, Size2D S
     public AttachmentId Id { get; init; } = AttachmentId.New();
     public int Width => Size.Width;
     public int Height => Size.Height;
+    public long DurationMs { get; init; }
 
     public IFileProvider? FileProvider { get; init; }
     public string UploadSessionId { get; init; } = "";

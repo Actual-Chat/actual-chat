@@ -17,21 +17,25 @@ public class FilePreviews(IJSRuntime js, ILogger<FilePreviews> log)
             return preview;
 
         var previewFileType = MediaMimeTypes.TryGetMimeType(preview.Url, out var type) ? type : fileType;
-        var size = await GetSize(preview.Url, previewFileType);
-        return preview with { Dimensions = size };
+        var info = await GetMetadata(preview.Url, previewFileType);
+        return info is { } i
+            ? preview with { Dimensions = new Size2D(i.Width, i.Height), DurationMs = i.DurationMs }
+            : preview;
     }
 
-    private async Task<Size2D?> GetSize(string previewUrl, string fileType)
+    private async Task<VisualMediaInfo?> GetMetadata(string previewUrl, string fileType)
     {
         if (!MediaTypeExt.IsVisualMedia(fileType))
             return null;
 
         try {
-            return await js.InvokeAsync<Size2D>(JSGetDimensions, previewUrl, fileType).ConfigureAwait(false);
+            return await js.InvokeAsync<VisualMediaInfo>(JSGetDimensions, previewUrl, fileType).ConfigureAwait(false);
         }
         catch (Exception e) {
-            log.LogWarning(e, "Failed to get visual media dimensions: '{PreviewUrl}', '{FileType}'", previewUrl, fileType);
+            log.LogWarning(e, "Failed to get visual media metadata: '{PreviewUrl}', '{FileType}'", previewUrl, fileType);
             return null;
         }
     }
+
+    private readonly record struct VisualMediaInfo(int Width, int Height, long DurationMs);
 }
