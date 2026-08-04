@@ -1,11 +1,11 @@
 ﻿namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial record ExternalContactNameMayHaveChangedEvent(
-    [property: DataMember, MemoryPackOrder(1)] UserId OwnerUserId,
-    [property: DataMember, MemoryPackOrder(2)] ImmutableArray<string> ExternalContactHashes
+    [property: DataMember] UserId OwnerUserId,
+    [property: DataMember] ImmutableArray<string> ExternalContactHashes
 ) : EventCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => OwnerUserId;
 }

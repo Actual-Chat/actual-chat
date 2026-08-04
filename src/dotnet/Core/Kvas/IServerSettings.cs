@@ -15,11 +15,11 @@ public interface IServerSettings : IComputeService
 /// <summary>
 /// Command to set a server-side setting value.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(Internal.ServerSettings_SetMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
 public partial record ServerSettings_Set(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] string Key,
-    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] byte[]? Value
+    [property: DataMember(Order = 0), Key(0)] Session Session,
+    [property: DataMember(Order = 1), Key(1)] string Key,
+    [property: DataMember(Order = 2), Key(2)] byte[]? Value
 ) : ISessionCommand<Unit>, IApiCommand;

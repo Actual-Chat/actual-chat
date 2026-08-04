@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Identifies a conversation within a chat, starting from a specific entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<ConversationId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<ConversationId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ConversationId>))]

@@ -3,19 +3,19 @@
 /// <summary>
 /// Tracks the top read positions for users in a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public partial record ReadPositionsStatBackend(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long StartTrackingEntryLid,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] UserReadPosition[] TopReadPositions);
+    [property: DataMember, Key(0)] ChatId ChatId,
+    [property: DataMember, Key(1)] long StartTrackingEntryLid,
+    [property: DataMember, Key(2)] UserReadPosition[] TopReadPositions);
 
 /// <summary>
 /// Represents a user's read position in a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public readonly partial record struct UserReadPosition(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId? UserId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long EntryLid)
+    [property: DataMember, Key(0)] UserId? UserId,
+    [property: DataMember, Key(1)] long EntryLid)
 {
     public static IComparer<UserReadPosition> Comparer { get; } = new RelationalComparer();
 

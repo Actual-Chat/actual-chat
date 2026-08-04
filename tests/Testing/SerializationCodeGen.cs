@@ -3,16 +3,15 @@ namespace ActualChat.Testing;
 public static class SerializationCodeGen
 {
     public static void ValidateType<T>()
+        => ValidateMessagePack<T>();
+
+    // For the types still read back from MemoryPack bytes: legacy flow state
+    // (Core.Server/Flows/FlowData.cs) and legacy server KVAS values (Core/Kvas/KvasSerializer.cs).
+    public static void ValidateMemoryPackType<T>()
     {
         ValidateMemoryPack<T>();
         ValidateMessagePack<T>();
     }
-
-    // For modern union-shaped types (e.g. ChatEntry, Invite) that intentionally
-    // ship MessagePack-only on the wire — MemoryPack is reserved for the legacy
-    // wire-frozen counterparts.
-    public static void ValidateMessagePackOnlyType<T>()
-        => ValidateMessagePack<T>();
 
     // Private methods
 

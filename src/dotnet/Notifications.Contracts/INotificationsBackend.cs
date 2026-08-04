@@ -145,70 +145,70 @@ public sealed partial record NotificationsBackend_PushDismissal(
 /// <summary>
 /// Command to create or update an explicit (user-created) notification.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_UpsertExplicitNotification(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ExplicitNotification Notification
+    [property: DataMember, Key(0)] ExplicitNotification Notification
 ) : ICommand<bool>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Notification.UserId;
 }
 
 /// <summary>
 /// Command to register a device for push notifications.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RegisterDevice(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Symbol DeviceId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] DeviceType DeviceType,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] Symbol SessionHash
+    [property: DataMember, Key(0)] UserId UserId,
+    [property: DataMember, Key(1)] Symbol DeviceId,
+    [property: DataMember, Key(2)] DeviceType DeviceType,
+    [property: DataMember, Key(3)] Symbol SessionHash
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
 /// <summary>
 /// Command to unregister devices from push notifications.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveDevices(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Symbol[] DeviceIds
+    [property: DataMember, Key(0)] Symbol[] DeviceIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<Symbol> // Review
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public Symbol ShardKey => DeviceIds.FirstOrDefault();
 }
 
 /// <summary>
 /// Command to remove all notification data for a deleted account.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveAccount(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId
+    [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
 /// <summary>
 /// Command to notify all members of a chat about new entries.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_NotifyMembers(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long LastEntryId
+    [property: DataMember, Key(0)] UserId UserId,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] long LastEntryId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -228,61 +228,61 @@ public enum ConversationNotificationPhase
 /// Command to notify a chat's subscribers (minus the conversation's authors, and for live
 /// phases minus current participants) about a conversation lifecycle change.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_NotifyConversation(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ConversationId ConversationId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ConversationNotificationPhase Phase,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] string Text,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] long EndEntryLid,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] IReadOnlyList<AuthorId> AuthorIds
+    [property: DataMember, Key(0)] ConversationId ConversationId,
+    [property: DataMember, Key(1)] ConversationNotificationPhase Phase,
+    [property: DataMember, Key(2)] string Text,
+    [property: DataMember, Key(3)] long EndEntryLid,
+    [property: DataMember, Key(4)] IReadOnlyList<AuthorId> AuthorIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
 /// <summary>
 /// Command to ring the invitees of a voice/video call with an incoming-call notification.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_NotifyCall(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ConversationId ConversationId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId Caller,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] IReadOnlyList<AuthorId> Invitees,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] bool HasVideo
+    [property: DataMember, Key(0)] ConversationId ConversationId,
+    [property: DataMember, Key(1)] AuthorId Caller,
+    [property: DataMember, Key(2)] IReadOnlyList<AuthorId> Invitees,
+    [property: DataMember, Key(3)] bool HasVideo
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
 /// <summary>
 /// Command to dismiss a call's ring on the invitees' devices (cancel/decline/answer/timeout).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_CancelCall(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ConversationId ConversationId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] IReadOnlyList<AuthorId> Invitees
+    [property: DataMember, Key(0)] ConversationId ConversationId,
+    [property: DataMember, Key(1)] IReadOnlyList<AuthorId> Invitees
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
 /// <summary>
 /// Command to notify users who were mentioned in a message.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_NotifyMentionedMembers(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatEntryId ChatEntryId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] UserId[] UserIds
+    [property: DataMember, Key(0)] UserId UserId,
+    [property: DataMember, Key(1)] ChatEntryId ChatEntryId,
+    [property: DataMember, Key(2)] UserId[] UserIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

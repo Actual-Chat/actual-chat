@@ -3,7 +3,7 @@
 /// <summary>
 /// Session option storing the guest user ID.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record GuestIdOption(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] UserId GuestId
+    [property: DataMember(Order = 0), Key(0)] UserId GuestId
     );

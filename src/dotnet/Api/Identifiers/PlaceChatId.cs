@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Unique identifier for a chat within a <see cref="Place"/>.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<PlaceChatId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<PlaceChatId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<PlaceChatId>))]

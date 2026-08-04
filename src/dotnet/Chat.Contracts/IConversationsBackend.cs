@@ -39,34 +39,34 @@ public interface IConversationsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a conversation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Change(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ConversationId ConversationId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Change<ConversationDiff> Change
+    [property: DataMember, Key(0)] ConversationId ConversationId,
+    [property: DataMember, Key(1)] long? ExpectedVersion,
+    [property: DataMember, Key(2)] Change<ConversationDiff> Change
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [DataMember, MemoryPackOrder(3), Key(3)]
+    [DataMember, Key(3)]
     public bool IsLiveMaterialization { get; init; }
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
 /// <summary>
 /// Command to generate an AI summary for a conversation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Summarize(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] EntryLidRanges
+    [property: DataMember, Key(0)] ChatId ChatId,
+    [property: DataMember, Key(1)] Range<long>[] EntryLidRanges
     ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil, IHasTimeout
 {
-    [DataMember, MemoryPackOrder(2), Key(2)]
+    [DataMember, Key(2)]
     public Moment DelayUntil { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(3)]
+    [DataMember, Key(3)]
     public bool IsLiveMaterialization { get; init; }
 
     ChatId IHasShardKey<ChatId>.ShardKey => ChatId;
@@ -79,28 +79,28 @@ public sealed partial record ConversationBackend_Summarize(
 /// <summary>
 /// Command to persist a pre-computed (live-session) conversation as-is, without re-running the summarizer.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Materialize(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Conversation Conversation
+    [property: DataMember, Key(0)] Conversation Conversation
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Conversation.Id.ChatId;
 }
 
 /// <summary>
 /// Command to append a reply entry range to a conversation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_AppendReply(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long EntryLid,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Range<long> ReplyLidRange
+    [property: DataMember, Key(0)] ChatId ChatId,
+    [property: DataMember, Key(1)] long EntryLid,
+    [property: DataMember, Key(2)] Range<long> ReplyLidRange
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil, IHasTimeout
 {
-    [DataMember, MemoryPackOrder(3), Key(3)]
+    [DataMember, Key(3)]
     public Moment DelayUntil { get; init; }
 
     ChatId IHasShardKey<ChatId>.ShardKey => ChatId;

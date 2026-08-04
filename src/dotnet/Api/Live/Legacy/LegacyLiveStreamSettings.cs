@@ -13,11 +13,11 @@ public enum LegacyLiveStreamKind
 /// <summary>
 /// Configuration for a live stream subscription.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record LegacyLiveStreamSettings
 {
     public static readonly LegacyLiveStreamSettings Default = new();
 
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(0)]
+    [DataMember(Order = 1), Key(0)]
     public LegacyLiveStreamKind StreamKindFilter { get; init; } = LegacyLiveStreamKind.Audio;
 }

@@ -4,7 +4,7 @@ using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public partial class WebFileProvider : IFileProvider
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.tryCreateFromFileHandleDbKey";
@@ -16,12 +16,12 @@ public partial class WebFileProvider : IFileProvider
     private IJSRuntime JS => field ??= Services.JSRuntime();
     private ILogger Log => field ??= Services.LogFor<WebFileProvider>();
 
-    [DataMember, MemoryPackOrder(0), Key(0)]
+    [DataMember, Key(0)]
     public FileMetadata Metadata { get; init; } = new ();
-    [DataMember, MemoryPackOrder(1), Key(1)]
+    [DataMember, Key(1)]
     public string FileHandleDbKey { get; set; } = "";
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public IWebFileProviderInternal? WebFileProviderInternal { get; set; }
 
     public void Initialize(IServiceProvider services)

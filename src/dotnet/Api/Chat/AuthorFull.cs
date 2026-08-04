@@ -5,11 +5,11 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Extended <see cref="Author"/> with user association and role memberships.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MessagePackObject(AllowPrivate = true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor]
 public sealed partial record AuthorFull(
-    [property: DataMember, MemoryPackOrder(6), Key(10)] UserId UserId,
+    [property: DataMember, Key(10)] UserId UserId,
     AuthorId Id, long Version = 0
     ) : Author(Id, Version)
 {
@@ -17,9 +17,9 @@ public sealed partial record AuthorFull(
         (AuthorFull? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Author>()));
 
-    [DataMember, MemoryPackOrder(7), Key(11)]  public IReadOnlyList<RoleId> RoleIds { get; init; } = [];
-    [DataMember, MemoryPackOrder(10), Key(13)] public bool IsPlaceAuthor { get; set; }
-    [DataMember, MemoryPackOrder(9), Key(12)]  public Moment CreatedAt { get; init; }
+    [DataMember, Key(11)]  public IReadOnlyList<RoleId> RoleIds { get; init; } = [];
+    [DataMember, Key(13)] public bool IsPlaceAuthor { get; set; }
+    [DataMember, Key(12)]  public Moment CreatedAt { get; init; }
 
     // MessagePack deserialization entry point: the int-keyed positional record ctor's UserId-first
     // parameter order doesn't match Key(0)'s expected type, so MessagePack falls through to this
@@ -35,10 +35,10 @@ public sealed partial record AuthorFull(
 /// <summary>
 /// Represents changes to an <see cref="Author"/> for incremental updates.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public sealed partial record AuthorDiff : RecordDiff
 {
-    [DataMember, MemoryPackOrder(0)] public Symbol? AvatarId { get; init; }
-    [DataMember, MemoryPackOrder(1)] public bool? IsAnonymous { get; init; }
-    [DataMember, MemoryPackOrder(2)] public bool? HasLeft { get; init; }
+    [DataMember] public Symbol? AvatarId { get; init; }
+    [DataMember] public bool? IsAnonymous { get; init; }
+    [DataMember] public bool? HasLeft { get; init; }
 }

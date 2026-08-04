@@ -31,7 +31,7 @@ public sealed record MeshLockOptions(
     public bool LinkCancellationToken { get; init; } = true;
 
     // Computed properties
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public TimeSpan RenewalPeriod => ExpirationPeriod * RenewalPeriodRatio;
 
     public MeshLockOptions(double expirationPeriod, float renewalPeriodRatio = 0.32f)

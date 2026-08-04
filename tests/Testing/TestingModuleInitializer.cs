@@ -13,8 +13,8 @@ internal static class TestingModuleInitializer
         ApiContractsModuleInitializer.Load();
         CoreModuleInitializer.Initialize();
 
-#if !USE_MEMORYPACK
-        SerializationTestExt.UseMemoryPackSerializer = false;
-#endif
+        // MemoryPack survives only on two legacy read paths (flow state, server KVAS);
+        // those are covered by FlowSerializationTestBase and StoredSettingsSerializationTest.
+        ActualLab.Testing.SerializationTestExt.UseMemoryPackSerializer = false;
     }
 }

@@ -1,10 +1,10 @@
 namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial record ChatEntryLanguagesChangedEvent(
-    [property: DataMember, MemoryPackOrder(1)] ChatEntryLanguage[] EntryLanguages
+    [property: DataMember] ChatEntryLanguage[] EntryLanguages
 ) : EventCommand, IHasShardKey<ChatEntryId?>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatEntryId? ShardKey => EntryLanguages.FirstOrDefault()?.Id;
 }

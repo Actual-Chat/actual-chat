@@ -18,7 +18,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
             AvatarId = "avatar-1",
         };
         var cmd = new AuthorsBackend_Upsert(TestChatId, null, TestUserId, null, diff);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -26,7 +26,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     {
         var authorId = AuthorId.New(TestChatId, 5);
         var cmd = new AuthorsBackend_Remove(null, authorId, null);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     {
         var newChatId = GroupChatId.New();
         var cmd = new AuthorsBackend_CopyChat(TestChatId, newChatId, [], "corr-1");
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.OldChatId.Should().Be(original.OldChatId);
                 deserialized.NewChatId.Should().Be(original.NewChatId);
@@ -49,7 +49,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     {
         var diff = new ChatDiff { Title = "New Chat" };
         var cmd = new ChatsBackend_Change(null, null, Change.Create(diff), TestUserId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     {
         var diff = new ChatDiff { Title = "Updated Chat" };
         var cmd = new ChatsBackend_Change(TestChatId, 1, Change.Update(diff));
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -73,35 +73,35 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     public void ChatsBackend_RemoveOwnChats_Basic()
     {
         var cmd = new ChatsBackend_RemoveOwnChats(TestUserId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChatsBackend_RemoveOwnEntries_Basic()
     {
         var cmd = new ChatsBackend_RemoveOwnEntries(TestUserId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChatsBackend_CreateNotesChat_Basic()
     {
         var cmd = new ChatsBackend_CreateNotesChat(TestUserId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChatBackend_CopyChat_Basic()
     {
         var cmd = new ChatBackend_CopyChat(TestChatId, TestPlaceId, "corr-1");
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChatBackend_CopyChatResult_Basic()
     {
         var result = new ChatBackend_CopyChatResult(true, false, 42);
-        result.AssertPassesThroughAllSerializers();
+        result.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -109,14 +109,14 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     {
         var diff = new ChatCopyStateDiff { IsCopiedSuccessfully = true };
         var cmd = new ChatsBackend_ChangeChatCopyState(TestChatId, null, Change.Create(diff));
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChatsBackend_UpdateReadPositionsStat_Basic()
     {
         var cmd = new ChatsBackend_UpdateReadPositionsStat(TestChatId, TestUserId, 42);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     // ChatsBackend_CreateAttachments
@@ -131,7 +131,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
             MediaId = mediaId,
         };
         var cmd = new ChatsBackend_CreateAttachments([attachment]);
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Attachments.Length.Should().Be(original.Attachments.Length);
                 deserialized.Attachments[0].Id.Should().Be(original.Attachments[0].Id);
@@ -146,7 +146,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
         var aliasId = AliasId.Parse("test-alias");
         var alias = new Alias(aliasId, 0) { Kind = AliasKind.Chat, TargetId = TestChatId.Value };
         var cmd = new AliasBackend_Change(aliasId, null, Change.Create(alias));
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Id.Should().Be(original.Id);
             }, Out);
@@ -158,28 +158,28 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     public void ChatsUpgradeBackend_CreateDefaultChat_Basic()
     {
         var cmd = new ChatsUpgradeBackend_CreateDefaultChat();
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChatsUpgradeBackend_CreateAnnouncementsChat_Basic()
     {
         var cmd = new ChatsUpgradeBackend_CreateAnnouncementsChat();
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChatsUpgradeBackend_CreateFeedbackTemplateChat_Basic()
     {
         var cmd = new ChatsUpgradeBackend_CreateFeedbackTemplateChat();
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChatsUpgradeBackend_UpgradeChat_Basic()
     {
         var cmd = new ChatsUpgradeBackend_UpgradeChat(TestChatId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     // ChatEntryLanguagesBackend
@@ -189,7 +189,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     {
         var entryId = ChatEntryId.New(TestChatId, 1);
         var cmd = new ChatEntryLanguagesBackend_Detect(entryId, new HashString("SHA256 Base16 abc123"));
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     // ConversationBackend
@@ -200,7 +200,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
         var convId = ConversationId.New(TestChatId, 0);
         var diff = new ConversationDiff { Title = "Updated" };
         var cmd = new ConversationBackend_Change(convId, null, Change.Create(diff));
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.ConversationId.Should().Be(original.ConversationId);
             }, Out);
@@ -210,7 +210,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     public void ConversationBackend_Summarize_Basic()
     {
         var cmd = new ConversationBackend_Summarize(TestChatId, [new Range<long>(0, 100)]);
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.ChatId.Should().Be(original.ChatId);
             }, Out);
@@ -227,7 +227,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
         var cmd = new ConversationBackend_Materialize(conversation);
 
         // assert
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Conversation.Id.Should().Be(original.Conversation.Id);
                 deserialized.Conversation.Title.Should().Be("Voice chat");
@@ -241,7 +241,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     {
         var diff = new PlaceDiff { Title = "New Place" };
         var cmd = new PlacesBackend_Change(null, null, Change.Create(diff), TestUserId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     // ReactionsBackend
@@ -258,7 +258,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
             Emoji = Emojis.ThumbsUp,
         };
         var cmd = new ReactionsBackend_React(reaction);
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Reaction.Id.Should().Be(original.Reaction.Id);
             }, Out);
@@ -272,7 +272,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
         var roleId = RoleId.New(TestChatId, 1);
         var diff = new RoleDiff { Name = "Admin" };
         var cmd = new RolesBackend_Change(TestChatId, roleId, null, Change.Create(diff));
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.ChatId.Should().Be(original.ChatId);
                 deserialized.RoleId.Should().Be(original.RoleId);
@@ -288,7 +288,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
         var translationId = TranslationId.New(sourceId, Languages.Russian);
         var diff = new TranslationDiff { Content = "Translated" };
         var cmd = new TranslationsBackend_Change(translationId, null, Change.Create(diff));
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -296,7 +296,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     {
         var sourceId = TranslationSourceId.New(ChatEntryId.New(TestChatId, 1));
         var cmd = new TranslationsBackend_Translate(sourceId, Languages.Russian, false, false);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     // Data types
@@ -306,7 +306,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     {
         var authorId = AuthorId.New(TestChatId, 5);
         var entry = new ChatEntrySlim(1, "Hello", authorId, new Moment(DateTime.UtcNow), null, false, null, false);
-        entry.AssertPassesThroughAllSerializers(
+        entry.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.LocalId.Should().Be(original.LocalId);
                 deserialized.Content.Should().Be(original.Content);
@@ -321,7 +321,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
             TestChatId,
             10,
             [new UserReadPosition(TestUserId, 42)]);
-        stat.AssertPassesThroughAllSerializers(
+        stat.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.ChatId.Should().Be(original.ChatId);
                 deserialized.StartTrackingEntryLid.Should().Be(original.StartTrackingEntryLid);
@@ -334,20 +334,20 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     public void ChangedAuthorsQuery_Basic()
     {
         var query = new ChangedAuthorsQuery { MinVersion = 1, Limit = 100 };
-        query.AssertPassesThroughAllSerializers();
+        query.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChangedChatsQuery_Basic()
     {
         var query = new ChangedChatsQuery { LastId = TestChatId, Limit = 100, MinVersion = 1 };
-        query.AssertPassesThroughAllSerializers();
+        query.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChangedEntriesQuery_Basic()
     {
         var query = new ChangedEntriesQuery { ChatId = TestChatId, MinVersion = 1, Limit = 100 };
-        query.AssertPassesThroughAllSerializers();
+        query.AssertPassesThroughSerializers();
     }
 }

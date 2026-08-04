@@ -6,23 +6,23 @@ namespace ActualChat.Streaming;
 /// <see cref="IsThumbnail"/> is the display role — true only for a true
 /// thumbnail tile, false = "large or unknown" (old clients never set it).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record ReceiveQuality
 {
     public static readonly ReceiveQuality Paused = new(-1);
     public static readonly ReceiveQuality Lowest = new(0);
     public static readonly ReceiveQuality Default = new(1);
 
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public int LayerId { get; init; }
 
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [DataMember(Order = 1), Key(1)]
     public bool IsThumbnail { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsLowestOrPaused => LayerId <= 0;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsPaused => LayerId < 0;
 
     [SerializationConstructor]

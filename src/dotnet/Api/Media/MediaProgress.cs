@@ -4,16 +4,16 @@ using ActualLab.Versioning;
 namespace ActualChat.Media;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record MediaProgress(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] MediaId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] MediaProcessingStage Stage,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] double StageProgress,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] string? Error = null
+    [property: DataMember, Key(0)] MediaId Id,
+    [property: DataMember, Key(1)] long Version,
+    [property: DataMember, Key(2)] MediaProcessingStage Stage,
+    [property: DataMember, Key(3)] double StageProgress,
+    [property: DataMember, Key(4)] string? Error = null
 ) : IHasId<MediaId>, IHasVersion<long>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public bool HasFailed => !Error.IsNullOrEmpty();
 
     // This record relies on referential equality

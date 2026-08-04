@@ -196,6 +196,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.InaccessiblePlace>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallOverLockView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingShareModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppLocationGuideContent>();
@@ -925,6 +926,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.InaccessiblePlace), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallOverLockView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingShareModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppLocationGuideContent), AotTypeKind.Component),

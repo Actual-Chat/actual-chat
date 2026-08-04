@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Unique identifier for an explicit notification sent to a user.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<ExplicitNotificationId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<ExplicitNotificationId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ExplicitNotificationId>))]
@@ -23,11 +23,11 @@ public sealed partial class ExplicitNotificationId : StringIdentifier, IStringId
     public const char Delimiter = ':';
 
     // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId UserId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ExplicitNotificationKind Kind { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string SimilarityKey { get; }
 
     public static ExplicitNotificationId New(UserId userId, ExplicitNotificationKind kind, string similarityKey)

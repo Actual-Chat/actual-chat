@@ -17,7 +17,7 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             StreamId = "stream-1",
             BeginsAt = new Moment(DateTime.UtcNow),
         };
-        info.AssertPassesThroughAllSerializers();
+        info.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -26,7 +26,7 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var session = Session.New();
         var streamId = StreamId.New(NodeRef.Parse("1234abcd"), "local1");
         var record = new AudioRecord(streamId, session, TestChatId, 0.0, null);
-        var s = record.PassThroughAllSerializers(Out);
+        var s = record.PassThroughSerializers(Out);
         s.StreamId.Should().Be(record.StreamId);
         s.ChatId.Should().Be(record.ChatId);
         s.ClientStartAt.Should().Be(record.ClientStartAt);

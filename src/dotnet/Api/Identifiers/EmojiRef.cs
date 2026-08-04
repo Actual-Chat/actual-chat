@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Reference to a unicode-emoji slug or a custom emoji id used as a <see cref="MentionRef"/> target.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<EmojiRef>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<EmojiRef>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<EmojiRef>))]

@@ -6,18 +6,18 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Aggregates reaction counts and first authors for a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(0), Key(0)] public required Symbol Id { get; init; }
-    [DataMember, MemoryPackOrder(1), Key(1)] public long Version { get; init; }
-    [DataMember, MemoryPackOrder(2), Key(2)] public required ChatEntryId EntryId { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(3)] public required Emoji Emoji { get; init; }
-    [DataMember, MemoryPackOrder(4), Key(4)] public required long Count { get; init; }
+    [DataMember, Key(0)] public required Symbol Id { get; init; }
+    [DataMember, Key(1)] public long Version { get; init; }
+    [DataMember, Key(2)] public required ChatEntryId EntryId { get; init; }
+    [DataMember, Key(3)] public required Emoji Emoji { get; init; }
+    [DataMember, Key(4)] public required long Count { get; init; }
 
     // Set on read; ImmutableList is justified here, see Add/RemoveAuthor
-    [DataMember, MemoryPackOrder(5), Key(5)]
+    [DataMember, Key(5)]
     public ImmutableList<AuthorId> FirstAuthorIds { get; init; } = ImmutableList<AuthorId>.Empty;
 
     public ReactionSummary IncrementCount(long diff = 1)

@@ -6,7 +6,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     public void ChatId_Basic()
     {
         ChatId id = ChatId.Parse("the-actual-one");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -14,7 +14,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     {
         var id = GroupChatId.Parse("1234abcd");
         ChatId chatId = id;
-        chatId.AssertPassesThroughAllSerializers();
+        chatId.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -22,7 +22,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     {
         var id = PeerChatId.New(UserId.Parse("admin1"), UserId.Parse("admin2"));
         ChatId chatId = id;
-        chatId.AssertPassesThroughAllSerializers();
+        chatId.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -31,21 +31,21 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
         var placeId = PlaceId.New();
         var id = PlaceChatId.New(placeId);
         ChatId chatId = id;
-        chatId.AssertPassesThroughAllSerializers();
+        chatId.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void UserId_Basic()
     {
         var id = UserId.Parse("admin1");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void UserId_Guest()
     {
         var id = UserId.NewGuest();
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -53,14 +53,14 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     {
         var chatId = ChatId.Parse("the-actual-one");
         var id = AuthorId.New(chatId, 5);
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void PlaceId_Basic()
     {
         var id = PlaceId.New();
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     {
         var chatId = ChatId.Parse("the-actual-one");
         var id = ChatEntryId.New(chatId, 1);
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     {
         var chatId = ChatId.Parse("the-actual-one");
         var id = ChatEntryId.New(chatId, 1);
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     {
         var chatId = ChatId.Parse("the-actual-one");
         var id = ConversationId.New(chatId, 0);
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -93,21 +93,21 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
         var userId = UserId.Parse("admin1");
         var chatId = ChatId.Parse("the-actual-one");
         var id = ContactId.NewAny(userId, chatId);
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void StreamId_Basic()
     {
         var id = StreamId.New(NodeRef.Parse("1234abcd"), "local1");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void MediaId_Basic()
     {
         var id = MediaId.New("scope1", "local1");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -115,21 +115,21 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     {
         var chatId = ChatId.Parse("the-actual-one");
         var id = RoleId.New(chatId, 1);
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Language_Basic()
     {
         var id = Languages.English;
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void NotificationId_Basic()
     {
         var id = NotificationId.New(UserId.New(), NotificationKind.Message, "123");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
         var userId = UserId.New();
         var deviceId = UserDeviceId.New(userId, "device1");
         var id = ExternalContactId.New(deviceId, "1");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -146,7 +146,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     {
         var userId = UserId.New();
         var id = UserDeviceId.New(userId, "device1");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -155,7 +155,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
         var chatId = ChatId.Parse("the-actual-one");
         var sourceId = TranslationSourceId.New(ChatEntryId.New(chatId, 1));
         var id = TranslationId.New(sourceId, Languages.Russian);
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -163,35 +163,35 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     {
         var chatId = ChatId.Parse("the-actual-one");
         var id = TranslationSourceId.New(ChatEntryId.New(chatId, 1));
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void AliasId_Basic()
     {
         var id = AliasId.Parse("test-alias");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void MentionId_Basic()
     {
         var id = MentionRef.Parse("u:user123456");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Emoji_Basic()
     {
         var id = Emojis.ThumbsUp;
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void NodeRef_Basic()
     {
         var id = NodeRef.Parse("1234abcd");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -201,6 +201,6 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
             UserId.New(),
             ExplicitNotificationKind.NotifyMentionedMembers,
             "key-123");
-        id.AssertPassesThroughAllSerializers();
+        id.AssertPassesThroughSerializers();
     }
 }

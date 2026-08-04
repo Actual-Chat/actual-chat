@@ -5,11 +5,11 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Chat(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0
+    [property: DataMember, Key(0)] ChatId Id,
+    [property: DataMember, Key(1)] long Version = 0
     ) : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly Requirement<Chat> MustExist = Requirement.New(
@@ -26,31 +26,31 @@ public sealed partial record Chat(
             c => c?.Id is PlaceChatId { IsRoot: true },
             new(() => StandardError.Constraint<Chat>("Place root chat is expected.")));
 
-    [DataMember, MemoryPackOrder(2), Key(2)] public string Title { get; init; } = "";
-    [DataMember, MemoryPackOrder(3), Key(3)] public Moment CreatedAt { get; init; }
-    [DataMember, MemoryPackOrder(4), Key(4)] public bool IsPublic { get; init; }
-    [DataMember, MemoryPackOrder(5), Key(5)] public bool IsTemplate { get; init; }
-    [DataMember, MemoryPackOrder(6), Key(6)] public ChatId? TemplateId { get; init; }
-    [DataMember, MemoryPackOrder(7), Key(7)] public UserId? TemplatedForUserId { get; init; }
-    [DataMember, MemoryPackOrder(8), Key(8)] public bool AllowGuestAuthors { get; init; }
-    [DataMember, MemoryPackOrder(9), Key(9)] public bool AllowAnonymousAuthors { get; init; }
-    [DataMember, MemoryPackOrder(10), Key(10)] public MediaId? MediaId { get; init; }
-    [DataMember, MemoryPackOrder(14), Key(13)] public Symbol SystemTag { get; init; }
-    [DataMember, MemoryPackOrder(15), Key(14)] public bool IsArchived { get; init; }
-    [DataMember, MemoryPackOrder(16), Key(15)] public string Description { get; init; } = "";
-    [DataMember, MemoryPackOrder(17), Key(16)] public AliasId? AliasId { get; init; }
-    [DataMember, MemoryPackOrder(18), Key(17)] public bool? IsSummarized { get; init; }
+    [DataMember, Key(2)] public string Title { get; init; } = "";
+    [DataMember, Key(3)] public Moment CreatedAt { get; init; }
+    [DataMember, Key(4)] public bool IsPublic { get; init; }
+    [DataMember, Key(5)] public bool IsTemplate { get; init; }
+    [DataMember, Key(6)] public ChatId? TemplateId { get; init; }
+    [DataMember, Key(7)] public UserId? TemplatedForUserId { get; init; }
+    [DataMember, Key(8)] public bool AllowGuestAuthors { get; init; }
+    [DataMember, Key(9)] public bool AllowAnonymousAuthors { get; init; }
+    [DataMember, Key(10)] public MediaId? MediaId { get; init; }
+    [DataMember, Key(13)] public Symbol SystemTag { get; init; }
+    [DataMember, Key(14)] public bool IsArchived { get; init; }
+    [DataMember, Key(15)] public string Description { get; init; } = "";
+    [DataMember, Key(16)] public AliasId? AliasId { get; init; }
+    [DataMember, Key(17)] public bool? IsSummarized { get; init; }
 
     // Populated only on front-end
-    [DataMember, MemoryPackOrder(11), Key(11)] public AuthorRules Rules { get; init; } = null!;
-    [DataMember, MemoryPackOrder(12), Key(12)] public Media.Media? Picture { get; init; }
+    [DataMember, Key(11)] public AuthorRules Rules { get; init; } = null!;
+    [DataMember, Key(12)] public Media.Media? Picture { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatKind Kind => Id.Kind;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool HasSingleAuthor => SystemTag == Constants.Chat.SystemTags.Notes;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public AliasInfo<ChatId> AliasInfo => field ??= new(Id, AliasId);
 
     public bool CanInvite()
@@ -68,22 +68,22 @@ public sealed partial record Chat(
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public sealed partial record ChatDiff : RecordDiff
 {
-    [DataMember, MemoryPackOrder(0)] public string? Title { get; init; }
-    [DataMember, MemoryPackOrder(1)] public ChatKind? Kind { get; init; }
-    [DataMember, MemoryPackOrder(2)] public bool? IsPublic { get; init; }
-    [DataMember, MemoryPackOrder(3)] public bool? IsTemplate { get; init; }
-    [DataMember, MemoryPackOrder(4)] public Option<ChatId?> TemplateId { get; init; }
-    [DataMember, MemoryPackOrder(5)] public Option<UserId?> TemplatedForUserId { get; init; }
-    [DataMember, MemoryPackOrder(6)] public bool? AllowGuestAuthors { get; init; }
-    [DataMember, MemoryPackOrder(7)] public bool? AllowAnonymousAuthors { get; init; }
-    [DataMember, MemoryPackOrder(8)] public MediaId? MediaId { get; init; }
-    [DataMember, MemoryPackOrder(10)] public Symbol? SystemTag { get; init; }
-    [DataMember, MemoryPackOrder(11)] public PlaceId? PlaceId { get; init; }
-    [DataMember, MemoryPackOrder(12)] public bool? IsArchived { get; init; }
-    [DataMember, MemoryPackOrder(13)] public string? Description { get; init; }
-    [DataMember, MemoryPackOrder(14)] public AliasId? AliasId { get; init; }
-    [DataMember, MemoryPackOrder(15)] public Option<bool?> IsSummarized { get; init; }
+    [DataMember] public string? Title { get; init; }
+    [DataMember] public ChatKind? Kind { get; init; }
+    [DataMember] public bool? IsPublic { get; init; }
+    [DataMember] public bool? IsTemplate { get; init; }
+    [DataMember] public Option<ChatId?> TemplateId { get; init; }
+    [DataMember] public Option<UserId?> TemplatedForUserId { get; init; }
+    [DataMember] public bool? AllowGuestAuthors { get; init; }
+    [DataMember] public bool? AllowAnonymousAuthors { get; init; }
+    [DataMember] public MediaId? MediaId { get; init; }
+    [DataMember] public Symbol? SystemTag { get; init; }
+    [DataMember] public PlaceId? PlaceId { get; init; }
+    [DataMember] public bool? IsArchived { get; init; }
+    [DataMember] public string? Description { get; init; }
+    [DataMember] public AliasId? AliasId { get; init; }
+    [DataMember] public Option<bool?> IsSummarized { get; init; }
 }

@@ -7,26 +7,26 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Represents a translation of chat content to a target language.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Translation(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] TranslationId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0
+    [property: DataMember, Key(0)] TranslationId Id,
+    [property: DataMember, Key(1)] long Version = 0
 ) : IHasId<TranslationId>, IHasVersion<long>, IRequirementTarget, ISanitized
 {
-    [DataMember, MemoryPackOrder(2), Key(2)]
+    [DataMember, Key(2)]
     public string Content {
         get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
     } = "";
-    [DataMember, MemoryPackOrder(3), Key(3)] public HashString SourceContentHash { get; init; }
-    [DataMember, MemoryPackOrder(4), Key(4)] public Moment CreatedAt { get; init; }
-    [DataMember, MemoryPackOrder(5), Key(5)] public Moment ModifiedAt { get; init; }
-    [DataMember, MemoryPackOrder(6), Key(6)] public StreamId? StreamId { get; set; }
+    [DataMember, Key(3)] public HashString SourceContentHash { get; init; }
+    [DataMember, Key(4)] public Moment CreatedAt { get; init; }
+    [DataMember, Key(5)] public Moment ModifiedAt { get; init; }
+    [DataMember, Key(6)] public StreamId? StreamId { get; set; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Language TargetLanguage => Id.Language;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsStreaming => StreamId is not null;
 
     public bool MatchesOriginal(string originalContent)
@@ -43,13 +43,13 @@ public sealed partial record Translation(
 /// <summary>
 /// Represents changes to a <see cref="Translation"/> for incremental updates.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public sealed partial record TranslationDiff : RecordDiff, ISanitized
 {
-    [DataMember, MemoryPackOrder(0)] public long? Version { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string? Content {
+    [DataMember] public long? Version { get; init; }
+    [DataMember] public string? Content {
         get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
     }
-    [DataMember, MemoryPackOrder(2)] public HashString? SourceContentHash { get; init; }
-    [DataMember, MemoryPackOrder(3)] public Option<StreamId?> StreamId { get; init; }
+    [DataMember] public HashString? SourceContentHash { get; init; }
+    [DataMember] public Option<StreamId?> StreamId { get; init; }
 }

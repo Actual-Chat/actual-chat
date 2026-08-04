@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Represents a phone number with country code and normalization support.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<Phone>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<Phone>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Phone>))]

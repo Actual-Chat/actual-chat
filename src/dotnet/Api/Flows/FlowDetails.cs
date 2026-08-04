@@ -1,6 +1,6 @@
 namespace ActualChat.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record FlowDetails(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] string Console,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string? Error);
+    [property: DataMember, Key(0)] string Console,
+    [property: DataMember, Key(1)] string? Error);

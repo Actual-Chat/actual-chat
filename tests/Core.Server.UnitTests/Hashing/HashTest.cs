@@ -161,14 +161,14 @@ public class HashTest(ITestOutputHelper @out) : TestBase(@out)
 }
 
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial record HashedObjectBase
 {
-    [DataMember, MemoryPackOrder(0)] public string Id { get; init; } = "";
+    [DataMember] public string Id { get; init; } = "";
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial record HashedObject : HashedObjectBase
 {
-    [DataMember, MemoryPackOrder(1)] public string Name { get; init; } = "";
+    [DataMember] public string Name { get; init; } = "";
 }

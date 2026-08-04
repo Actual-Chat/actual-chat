@@ -2,12 +2,12 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record PlaceRules(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] PlaceId PlaceId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorFull? Author,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] AccountFull? Account,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] PlacePermissions Permissions = default
+    [property: DataMember, Key(0)] PlaceId PlaceId,
+    [property: DataMember, Key(1)] AuthorFull? Author,
+    [property: DataMember, Key(2)] AccountFull? Account,
+    [property: DataMember, Key(3)] PlacePermissions Permissions = default
     ) : IRequirementTarget
 {
     public static PlaceRules None(PlaceId placeId) => new(placeId, null, null);

@@ -22,7 +22,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             SystemTag = "system",
         };
 
-        var s = chat.PassThroughAllSerializers(Out);
+        var s = chat.PassThroughSerializers(Out);
         s.Id.Should().Be(chat.Id);
         s.Version.Should().Be(chat.Version);
         s.Title.Should().Be(chat.Title);
@@ -43,7 +43,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             AllowGuestAuthors = false,
             Description = "Updated description",
         };
-        diff.AssertPassesThroughAllSerializers();
+        diff.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Avatar = new Avatar("avatar-1") { Name = "TestUser" },
         };
 
-        var s = author.PassThroughAllSerializers(Out);
+        var s = author.PassThroughSerializers(Out);
         s.Id.Should().Be(author.Id);
         s.Version.Should().Be(author.Version);
         s.AvatarId.Should().Be(author.AvatarId);
@@ -150,7 +150,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             CreatedAt = new Moment(DateTime.UtcNow),
         };
 
-        var s = author.PassThroughAllSerializers(Out);
+        var s = author.PassThroughSerializers(Out);
         s.Id.Should().Be(author.Id);
         s.UserId.Should().Be(author.UserId);
         s.RoleIds.Should().BeEquivalentTo(author.RoleIds);
@@ -163,7 +163,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var chatId = ChatId.Parse("the-actual-one");
         var rules = new AuthorRules(chatId, null, null, ChatPermissions.Write);
 
-        var s = rules.PassThroughAllSerializers(Out);
+        var s = rules.PassThroughSerializers(Out);
         s.ChatId.Should().Be(rules.ChatId);
         s.Permissions.Should().Be(rules.Permissions);
         s.Author.Should().BeNull();
@@ -208,7 +208,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             null,
             100);
 
-        var s = meta.PassThroughAllSerializers(Out);
+        var s = meta.PassThroughSerializers(Out);
         s.LidRange.Should().Be(meta.LidRange);
         s.EntryLidRanges.Should().BeEquivalentTo(meta.EntryLidRanges);
         s.ConversationLidRanges.Should().BeEquivalentTo(meta.ConversationLidRanges);
@@ -227,7 +227,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             null,
             50);
 
-        var s = meta.PassThroughAllSerializers(Out);
+        var s = meta.PassThroughSerializers(Out);
         s.ChatId.Should().Be(meta.ChatId);
         s.EntryLidRange.Should().BeEquivalentTo(meta.EntryLidRange);
         s.PreviousEntryLid.Should().Be(meta.PreviousEntryLid);
@@ -245,7 +245,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             ModifiedAt = DateTime.UtcNow,
         };
 
-        lang.AssertPassesThroughAllSerializers(v => {
+        lang.AssertPassesThroughSerializers(v => {
             v.Id.Should().Be(lang.Id);
             v.Languages.Should().BeEquivalentTo(lang.Languages);
             v.CreatedAt.Should().Be(lang.CreatedAt);
@@ -262,7 +262,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             new Range<long>(0, 100),
             [new ChatEntryLanguage(entryId, 1) { Languages = [Languages.English] }]);
 
-        tile.AssertPassesThroughAllSerializers(v => {
+        tile.AssertPassesThroughSerializers(v => {
             v.LidTileRange.Should().Be(tile.LidTileRange);
             v.Entries.Length.Should().Be(tile.Entries.Length);
             v.Entries[0].Id.Should().Be(tile.Entries[0].Id);
@@ -284,7 +284,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             IsPublished = false,
         };
 
-        var s = state.PassThroughAllSerializers(Out);
+        var s = state.PassThroughSerializers(Out);
         s.Id.Should().Be(state.Id);
         s.SourceChatId.Should().Be(state.SourceChatId);
         s.LastProcessedEntryId.Should().Be(state.LastProcessedEntryId);
@@ -298,7 +298,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             LastProcessedEntryId = 100,
             IsCopiedSuccessfully = true,
         };
-        diff.AssertPassesThroughAllSerializers();
+        diff.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -316,7 +316,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             IsExpandedByDefault = true,
         };
 
-        var s = conv.PassThroughAllSerializers(Out);
+        var s = conv.PassThroughSerializers(Out);
         s.Id.Should().Be(conv.Id);
         s.Title.Should().Be(conv.Title);
         s.Description.Should().Be(conv.Description);
@@ -334,7 +334,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             IsExpandedByDefault = true,
         };
 
-        var s = diff.PassThroughAllSerializers(Out);
+        var s = diff.PassThroughSerializers(Out);
         s.Title.Should().Be(diff.Title);
         s.MessageCount.Should().Be(diff.MessageCount);
         s.IsExpandedByDefault.Should().Be(true);
@@ -350,7 +350,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             null,
             new Range<long>(100, 200));
 
-        var s = meta.PassThroughAllSerializers(Out);
+        var s = meta.PassThroughSerializers(Out);
         s.ChatId.Should().Be(meta.ChatId);
         s.ConversationLidRanges.Should().BeEquivalentTo(meta.ConversationLidRanges);
         s.PreviousConversationLidRange.Should().Be(meta.PreviousConversationLidRange);
@@ -368,7 +368,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Description = "A test place",
         };
 
-        var s = place.PassThroughAllSerializers(Out);
+        var s = place.PassThroughSerializers(Out);
         s.Id.Should().Be(place.Id);
         s.Title.Should().Be(place.Title);
         s.IsPublic.Should().Be(place.IsPublic);
@@ -382,7 +382,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Title = "Updated Place",
             IsPublic = false,
         };
-        diff.AssertPassesThroughAllSerializers();
+        diff.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -391,7 +391,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var placeId = PlaceId.New();
         var rules = new PlaceRules(placeId, null, null, PlacePermissions.Write);
 
-        var s = rules.PassThroughAllSerializers(Out);
+        var s = rules.PassThroughSerializers(Out);
         s.PlaceId.Should().Be(rules.PlaceId);
         s.Permissions.Should().Be(rules.Permissions);
     }
@@ -407,7 +407,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             SystemRole = SystemRole.None,
         };
 
-        var s = role.PassThroughAllSerializers(Out);
+        var s = role.PassThroughSerializers(Out);
         s.Id.Should().Be(role.Id);
         s.Name.Should().Be(role.Name);
         s.Permissions.Should().Be(role.Permissions);
@@ -421,7 +421,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Permissions = ChatPermissions.Owner,
         };
 
-        var s = diff.PassThroughAllSerializers(Out);
+        var s = diff.PassThroughSerializers(Out);
         s.Name.Should().Be(diff.Name);
         s.Permissions.Should().Be(diff.Permissions);
     }
@@ -440,7 +440,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             ModifiedAt = new Moment(DateTime.UtcNow),
         };
 
-        var s = reaction.PassThroughAllSerializers(Out);
+        var s = reaction.PassThroughSerializers(Out);
         s.Id.Should().Be(reaction.Id);
         s.AuthorId.Should().Be(reaction.AuthorId);
         s.EntryId.Should().Be(reaction.EntryId);
@@ -461,7 +461,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             FirstAuthorIds = [authorId],
         };
 
-        var s = summary.PassThroughAllSerializers(Out);
+        var s = summary.PassThroughSerializers(Out);
         s.Id.Should().Be(summary.Id);
         s.EntryId.Should().Be(summary.EntryId);
         s.Count.Should().Be(summary.Count);
@@ -477,7 +477,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             10,
             [new AuthorReadPosition(authorId, 42)]);
 
-        var s = stat.PassThroughAllSerializers(Out);
+        var s = stat.PassThroughSerializers(Out);
         s.ChatId.Should().Be(stat.ChatId);
         s.StartTrackingEntryLid.Should().Be(stat.StartTrackingEntryLid);
         s.TopReadPositions.Should().BeEquivalentTo(stat.TopReadPositions);
@@ -495,7 +495,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             MentionRef = mentionId,
         };
 
-        var s = mention.PassThroughAllSerializers(Out);
+        var s = mention.PassThroughSerializers(Out);
         s.Id.Should().Be(mention.Id);
         s.EntryId.Should().Be(mention.EntryId);
         s.MentionRef.Should().Be(mention.MentionRef);
@@ -599,7 +599,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             MediaId = mediaId,
         };
 
-        var s = attachment.PassThroughAllSerializers(Out);
+        var s = attachment.PassThroughSerializers(Out);
         s.Id.Should().Be(attachment.Id);
         s.EntryId.Should().Be(attachment.EntryId);
         s.Index.Should().Be(attachment.Index);
@@ -618,7 +618,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             ModifiedAt = new Moment(DateTime.UtcNow),
         };
 
-        var s = translation.PassThroughAllSerializers(Out);
+        var s = translation.PassThroughSerializers(Out);
         s.Id.Should().Be(translation.Id);
         s.Content.Should().Be(translation.Content);
     }
@@ -630,6 +630,6 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Content = "Updated translation",
             Version = 2,
         };
-        diff.AssertPassesThroughAllSerializers();
+        diff.AssertPassesThroughSerializers();
     }
 }

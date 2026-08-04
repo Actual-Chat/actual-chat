@@ -3,14 +3,14 @@ using ActualLab.IO;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public partial class MauiFileProvider : IFileProvider
 {
     private IServiceProvider _services = null!;
 
-    [DataMember, MemoryPackOrder(0), Key(0)]
+    [DataMember, Key(0)]
     public FileMetadata Metadata { get; init; } = new ();
-    [DataMember, MemoryPackOrder(1), Key(1)]
+    [DataMember, Key(1)]
     public FilePath FileRef { get; init; } = "";
 
     private IMauiFileProviderImpl Impl => field ??= _services.GetRequiredService<IMauiFileProviderImplFactory>().

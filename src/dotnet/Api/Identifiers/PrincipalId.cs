@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Base identifier for principals (users or authors).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<PrincipalId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<PrincipalId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<PrincipalId>))]

@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Represents an emoji with its codepoint and title.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<Emoji>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<Emoji>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Emoji>))]

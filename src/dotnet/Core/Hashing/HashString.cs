@@ -4,7 +4,7 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Hashing;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<HashString>))]
 [JsonConverter(typeof(StringLikeJsonConverter<HashString>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<HashString>))]
@@ -19,24 +19,24 @@ public readonly partial struct HashString : ISymbolIdentifier<HashString>
 
     public static HashString None => default;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0)]
     public Symbol Id { get; }
 
     // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public HashAlgorithm Algorithm { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public HashEncoding Encoding { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string Hash { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsNone => Id.IsEmpty;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
     public HashString(Symbol id)
         => this = Parse(id);
     public HashString(HashAlgorithm algorithm, HashEncoding encoding, Symbol hash)

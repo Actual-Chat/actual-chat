@@ -1,4 +1,3 @@
-using MemoryPack;
 using MessagePack;
 
 namespace ActualChat.Chat;
@@ -8,8 +7,8 @@ namespace ActualChat.Chat;
 // its invalidation phase (possibly on another node — Operation.Items round-
 // trips through _Operations.ItemsJson). Hence the explicit serialization
 // attributes: Newtonsoft via DbOperation.Serializer is what actually drives
-// cross-node delivery; MemoryPack/MessagePack are kept aligned with the
-// codebase's standard for round-trippable wire types.
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+// cross-node delivery; MessagePack is kept aligned with the codebase's
+// standard for round-trippable wire types.
+[DataContract, MessagePackObject(AllowPrivate = true)]
 internal sealed partial record ContentIndexPageCounts(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Dictionary<string, int> PageCounts);
+    [property: DataMember(Order = 0), Key(0)] Dictionary<string, int> PageCounts);

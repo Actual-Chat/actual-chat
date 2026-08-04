@@ -8,7 +8,7 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         SerializationCodeGen.ValidateType<Change<string>>();
 
         // Chat.Contracts
-        SerializationCodeGen.ValidateType<ChatEntrySlim>();
+        SerializationCodeGen.ValidateMemoryPackType<ChatEntrySlim>();
         SerializationCodeGen.ValidateType<ChangedAuthorsQuery>();
         SerializationCodeGen.ValidateType<ChangedChatsQuery>();
         SerializationCodeGen.ValidateType<ChangedEntriesQuery>();
@@ -17,10 +17,8 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         SerializationCodeGen.ValidateType<Author>();
         SerializationCodeGen.ValidateType<AuthorFull>();
         SerializationCodeGen.ValidateType<Chat>();
-        // ChatEntry / ChatNews / ChatTile are MessagePack-only unions; legacy MemoryPack
-        // shape lives in LegacyChatEntry / LegacyChatNews / LegacyChatTile.
-        SerializationCodeGen.ValidateMessagePackOnlyType<ChatEntry>();
-        SerializationCodeGen.ValidateMessagePackOnlyType<ChatNews>();
+        SerializationCodeGen.ValidateType<ChatEntry>();
+        SerializationCodeGen.ValidateType<ChatNews>();
         SerializationCodeGen.ValidateType<Conversation>();
         SerializationCodeGen.ValidateType<Mention>();
         SerializationCodeGen.ValidateType<Place>();
@@ -38,9 +36,8 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
 
         // Backend events
         SerializationCodeGen.ValidateType<ChatChangedEvent>();
-        // Carry ChatEntry — MessagePack-only.
-        SerializationCodeGen.ValidateMessagePackOnlyType<ChatEntryChangedEvent>();
-        SerializationCodeGen.ValidateMessagePackOnlyType<ReactionChangedEvent>();
+        SerializationCodeGen.ValidateType<ChatEntryChangedEvent>();
+        SerializationCodeGen.ValidateType<ReactionChangedEvent>();
         SerializationCodeGen.ValidateType<AccountChangedEvent>();
         SerializationCodeGen.ValidateType<AuthorUpsertedEvent>();
         SerializationCodeGen.ValidateType<PlaceChangedEvent>();

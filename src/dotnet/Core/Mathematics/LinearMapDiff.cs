@@ -2,17 +2,17 @@ using System.Numerics;
 
 namespace ActualChat.Mathematics;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(Internal.LinearMapDiffMessagePackFormatter))]
 [StructLayout(LayoutKind.Auto)]
 public readonly partial record struct LinearMapDiff(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] LinearMap Suffix,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] bool IsRewrite = false
+    [property: DataMember(Order = 0), Key(0)] LinearMap Suffix,
+    [property: DataMember(Order = 1), Key(1)] bool IsRewrite = false
 ) : ICanBeNone<LinearMapDiff>
 {
     public static LinearMapDiff None => default;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsNone => Suffix.IsEmpty && !IsRewrite;
 
     public static LinearMapDiff New(LinearMap map, LinearMap baseMap, Vector2 epsilon)

@@ -9,10 +9,10 @@ public interface ISessionTemporals : IComputeService
     Task OnSet(SessionTemporals_Set command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SessionTemporals_Set(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Key,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] string? Value
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] string Key,
+    [property: DataMember, Key(2)] string? Value
 ) : ISessionCommand<Unit>, IApiCommand;

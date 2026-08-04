@@ -6,10 +6,10 @@ namespace ActualChat.Streaming;
 /// <see cref="StreamDemandStats"/> (pull-only, so their churn can't drive
 /// invalidations).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record StreamDemandInfo(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] int Mask,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] bool ThumbnailViewersOnly)
+    [property: DataMember(Order = 0), Key(0)] int Mask,
+    [property: DataMember(Order = 1), Key(1)] bool ThumbnailViewersOnly)
 {
     public static readonly StreamDemandInfo None = new(0, false);
 }
@@ -21,7 +21,7 @@ public sealed partial record StreamDemandInfo(
 /// change on every viewer join/leave/pause and would invalidate the demand
 /// computes far more often than the decision inputs actually change.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record StreamDemandStats(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] int ViewerCount,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] int PausedCount);
+    [property: DataMember(Order = 0), Key(0)] int ViewerCount,
+    [property: DataMember(Order = 1), Key(1)] int PausedCount);

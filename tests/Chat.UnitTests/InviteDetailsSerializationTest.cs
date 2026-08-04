@@ -45,7 +45,7 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
         var chat = new ChatModel(chatId) { Title = "Test Chat" };
         var preview = new InviteChatLinkPreview(chat, null);
 
-        var s = preview.PassThroughAllSerializers(Out);
+        var s = preview.PassThroughSerializers(Out);
         s.Chat.Should().NotBeNull();
         s.Chat!.Id.Should().Be(chatId);
     }
@@ -70,14 +70,14 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
     public void Invites_Use_Basic()
     {
         var cmd = new Invites_Use(TestSession, "invite-1");
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Invites_Revoke_Basic()
     {
         var cmd = new Invites_Revoke(TestSession, "invite-1");
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     // Backend Commands
@@ -99,13 +99,13 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
     public void InvitesBackend_Use_Basic()
     {
         var cmd = new InvitesBackend_Use(TestSession, "invite-1");
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void InvitesBackend_Revoke_Basic()
     {
         var cmd = new InvitesBackend_Revoke(TestSession, "invite-1");
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 }

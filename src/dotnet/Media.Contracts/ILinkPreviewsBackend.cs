@@ -27,14 +27,14 @@ public interface ILinkPreviewsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a link preview.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record LinkPreviewsBackend_Change(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Symbol Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Change<LinkPreview> Change
+    [property: DataMember, Key(0)] Symbol Id,
+    [property: DataMember, Key(1)] long? ExpectedVersion,
+    [property: DataMember, Key(2)] Change<LinkPreview> Change
 ) : ICommand<LinkPreview?>, IBackendCommand, IHasShardKey<Symbol>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Symbol ShardKey => Id;
 }

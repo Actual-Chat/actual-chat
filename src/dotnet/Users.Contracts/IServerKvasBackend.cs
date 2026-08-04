@@ -19,13 +19,13 @@ public interface IServerKvasBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to set multiple key-value pairs at once.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvasBackend_SetMany(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] string Prefix,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] params (string Key, byte[]? Value)[] Items
+    [property: DataMember(Order = 0), Key(0)] string Prefix,
+    [property: DataMember(Order = 1), Key(1)] params (string Key, byte[]? Value)[] Items
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<string>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public string ShardKey => Prefix;
 }

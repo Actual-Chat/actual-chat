@@ -1,11 +1,11 @@
 namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial record AuthorUpsertedEvent(
-    [property: DataMember, MemoryPackOrder(1)] AuthorFull Author,
-    [property: DataMember, MemoryPackOrder(2)] AuthorFull? OldAuthor
+    [property: DataMember] AuthorFull Author,
+    [property: DataMember] AuthorFull? OldAuthor
 ) : EventCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Author.ChatId;
 }

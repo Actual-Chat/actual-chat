@@ -1133,10 +1133,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     // Nested types
 
-    [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+    [DataContract, MessagePackObject]
     public sealed partial record ParticipationInfo(
-        [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] ParticipationKind Kind,
-        [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] Moment RegisteredAt,
-        [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] bool MicMuted = false,
-        [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] Moment JoinedAt = default);
+        [property: DataMember(Order = 0), Key(0)] ParticipationKind Kind,
+        [property: DataMember(Order = 1), Key(1)] Moment RegisteredAt,
+        [property: DataMember(Order = 2), Key(2)] bool MicMuted = false,
+        [property: DataMember(Order = 3), Key(3)] Moment JoinedAt = default);
 }

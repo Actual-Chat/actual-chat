@@ -7,18 +7,18 @@ namespace ActualChat.Video;
 /// bundle share capture time, keyframe policy, source dims and codec —
 /// only Data, Width/Height, Description and LayerId differ.
 /// </summary>
-[DataContract, MemoryPackable, MessagePackObject]
-[method: MemoryPackConstructor, SerializationConstructor]
+[DataContract, MessagePackObject]
+[method: SerializationConstructor]
 public sealed partial class VideoFrameBundle(VideoFrame[] layers)
 {
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public VideoFrame[] Layers { get; init; } = layers;
 
-    [JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, IgnoreDataMember, IgnoreMember]
     public int LayerCount => Layers.Length;
-    [JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, IgnoreDataMember, IgnoreMember]
     public VideoFrame TopLayer => Layers[^1];
-    [JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, IgnoreDataMember, IgnoreMember]
     public VideoFrame BottomLayer => Layers[0];
 
     /// <summary>
@@ -27,6 +27,6 @@ public sealed partial class VideoFrameBundle(VideoFrame[] layers)
     /// KF unilaterally on reset/recovery even when only a delta was requested.
     /// A bundle is a real keyframe only when all spatial layers agree.
     /// </summary>
-    [JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsKeyFrame => Layers.Length != 0 && Layers.All(layer => layer.IsKeyFrame);
 }

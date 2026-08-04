@@ -41,59 +41,59 @@ public interface IAccounts : IComputeService
     Task<ApiList<SessionInfo>> ListOwnSessions(Session session, SessionKind kind, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_SignOut(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] bool Deactivate = false
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] bool Deactivate = false
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_Update(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] AccountFull Account,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long? ExpectedVersion
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] AccountFull Account,
+    [property: DataMember, Key(2)] long? ExpectedVersion
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_DeleteOwn(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session
+    [property: DataMember, Key(0)] Session Session
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_CreateApiKey(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Name,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] int ExpiresInDays = 365
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] string Name,
+    [property: DataMember, Key(2)] int ExpiresInDays = 365
 ) : ISessionCommand<string>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_DeactivateSession(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string IdPrefix
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] string IdPrefix
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_DeactivateAllSessions(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] SessionKind[] Kinds
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] SessionKind[] Kinds
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_ConfirmRegister(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Token
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] string Token
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_CancelRegister(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Token
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] string Token
 ) : ISessionCommand<Unit>, IApiCommand;

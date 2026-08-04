@@ -6,33 +6,33 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Represents a chat participant with an avatar identity.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Author(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] AuthorId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0
+    [property: DataMember, Key(0)] AuthorId Id,
+    [property: DataMember, Key(1)] long Version = 0
     ): IHasId<AuthorId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly Requirement<Author> MustExist = Requirement.New(
         (Author? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Author>()));
 
-    [DataMember, MemoryPackOrder(2), Key(2)] public Symbol AvatarId { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(3)] public bool IsAnonymous { get; init; }
-    [DataMember, MemoryPackOrder(4), Key(4)] public bool HasLeft { get; init; }
+    [DataMember, Key(2)] public Symbol AvatarId { get; init; }
+    [DataMember, Key(3)] public bool IsAnonymous { get; init; }
+    [DataMember, Key(4)] public bool HasLeft { get; init; }
 
     // Populated on reads by AuthorsBackend
-    [DataMember, MemoryPackOrder(5), Key(5)] public Avatar Avatar { get; init; } = null!;
+    [DataMember, Key(5)] public Avatar Avatar { get; init; } = null!;
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ChatId => Id.ChatId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public long LocalId => Id.LocalId;
 
     private Author() : this(null!, 0) { }
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
     public Author(AuthorId id, long version, Symbol avatarId, bool isAnonymous, bool hasLeft, Avatar avatar)
         : this(id, version)
     {

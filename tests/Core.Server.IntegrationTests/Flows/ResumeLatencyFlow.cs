@@ -3,16 +3,16 @@ using ActualChat.Flows;
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [Flow(DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial class ResumeLatencyFlow : Flow<Unit>
 {
     private const int ResumeCount = 5;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0)]
     public int RemainingCount { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1)]
     public Moment LastResumeAt { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2)]
     public TimeSpan MaxDelay { get; set; }
 
     protected override ValueTask Init(CancellationToken cancellationToken)

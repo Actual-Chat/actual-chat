@@ -2,14 +2,14 @@ using ActualChat.Users;
 
 namespace ActualChat.Live;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record SessionRules
 {
     public static readonly SessionRules Default = new();
 
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public VoiceMode? VoiceModeOverride { get; init; }
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [DataMember(Order = 1), Key(1)]
     public bool VideoAllowed { get; init; } = true;
 
     public VoiceMode Merge(VoiceMode userMode)

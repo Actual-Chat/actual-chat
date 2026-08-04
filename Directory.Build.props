@@ -393,4 +393,10 @@
     <SourceRoot Include="$(RepoRoot)" RepositoryUrl="$(RepositoryUrl)" SourceControl="git" RevisionId="$(GitCommitId)"/>
   </ItemGroup>
 
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <!-- MemoryPack now only reads legacy Flow and KVAS blobs via the non-generic
+         MemoryPackByteSerializer.Default, so its per-type CodeKeeper keeps are dead weight. -->
+    <RuntimeHostConfigurationOption Include="MemoryPackByteSerializer.IsEnabled" Value="false" Trim="true" />
+  </ItemGroup>
+
 </Project>
