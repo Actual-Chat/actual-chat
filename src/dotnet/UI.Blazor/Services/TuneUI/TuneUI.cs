@@ -88,22 +88,24 @@ public abstract class TuneUI : ProcessorBase
         return Task.CompletedTask;
     }
 
-    public Task Play(Tune tune)
+    public Task Play(Tune tune, bool mustPlay = true)
     {
+        // mustPlay: false still opens the follow-up window - a caller that mutes BeginRecording
+        // otherwise gets MORE feedback, because its follow-ups stop being suppressed.
         if (IsSuppressed(tune))
             return Task.CompletedTask;
 
         OnBeforePlay(tune);
-        return PlayInternal(tune);
+        return mustPlay ? PlayInternal(tune) : Task.CompletedTask;
     }
 
-    public Task PlayAndWait(Tune tune)
+    public Task PlayAndWait(Tune tune, bool mustPlay = true)
     {
         if (IsSuppressed(tune))
             return Task.CompletedTask;
 
         OnBeforePlay(tune);
-        return PlayAndWaitInternal(tune);
+        return mustPlay ? PlayAndWaitInternal(tune) : Task.CompletedTask;
     }
 
     protected abstract Task PlayInternal(Tune tune);

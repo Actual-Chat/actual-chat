@@ -36,9 +36,21 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
         // arm sooner than its next poll.
         var now = Clocks.ServerClock.Now;
         var stampedAt = at > now ? now : at;
-        var newAt = _lastIncomingAt.AddOrUpdate(
-            chatId, stampedAt, (_, oldAt) => oldAt > stampedAt ? oldAt : stampedAt);
-        if (newAt == stampedAt)
+        var hasAdvanced = false;
+        _lastIncomingAt.AddOrUpdate(
+            chatId,
+            _ => {
+                hasAdvanced = true;
+                return stampedAt;
+            },
+            (_, oldAt) => {
+                if (oldAt >= stampedAt)
+                    return oldAt;
+
+                hasAdvanced = true;
+                return stampedAt;
+            });
+        if (hasAdvanced)
             IncomingVoiceStamped?.Invoke();
     }
 

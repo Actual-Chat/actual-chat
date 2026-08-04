@@ -7,26 +7,12 @@ namespace ActualChat.UI.Blazor.UnitTests;
 public class PermissionHandlerTest : TestBase
 {
     private IServiceProvider Services { get; }
+    private IServiceProvider WebServices { get; }
 
     public PermissionHandlerTest(ITestOutputHelper @out) : base(@out)
     {
-        var hostInfo = new HostInfo {
-            HostKind = HostKind.MauiApp,
-            AppKind = AppKind.Android,
-            Environment = Environments.Development,
-            BaseUrl = $"https://{Constants.Hosts.LocalVoxt}",
-            IsTested = true,
-        };
-        Services = new ServiceCollection()
-            .AddTestLogging(Out)
-            .AddSingleton(_ => hostInfo)
-            .AddSingleton(c => new Features(c))
-            .AddSingleton(_ => new UrlMapper(hostInfo))
-            .AddScoped<UIHub>()
-            .AddScoped<IDispatcherResolver>(c => c.GetRequiredService<UIHub>())
-            .AddScoped<TestPermissionHandler>()
-            .AddFusion(fusion => fusion.AddBlazor())
-            .BuildServiceProvider();
+        Services = NewServices(HostKind.MauiApp, AppKind.Android);
+        WebServices = NewServices(HostKind.WasmApp, AppKind.Wasm);
     }
 
     [Fact]
@@ -104,10 +90,48 @@ public class PermissionHandlerTest : TestBase
         handler.GetCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task CheckStillWaitsForTheDispatcherOutsideMaui()
+    {
+        // arrange
+        var handler = NewHandler(WebServices);
+        handler.GetResult = true;
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
+
+        // act
+        var check = async () => await handler.Check(cts.Token);
+
+        // assert
+        await check.Should().ThrowAsync<OperationCanceledException>();
+        handler.GetCount.Should().Be(0);
+    }
+
     // Private methods
 
-    private TestPermissionHandler NewHandler()
-        => Services.CreateScope().ServiceProvider.GetRequiredService<TestPermissionHandler>();
+    private TestPermissionHandler NewHandler(IServiceProvider? services = null)
+        => (services ?? Services).CreateScope().ServiceProvider.GetRequiredService<TestPermissionHandler>();
+
+    private IServiceProvider NewServices(HostKind hostKind, AppKind appKind)
+    {
+        var hostInfo = new HostInfo {
+            HostKind = hostKind,
+            AppKind = appKind,
+            Environment = Environments.Development,
+            BaseUrl = $"https://{Constants.Hosts.LocalVoxt}",
+            IsTested = true,
+        };
+
+        return new ServiceCollection()
+            .AddTestLogging(Out)
+            .AddSingleton(_ => hostInfo)
+            .AddSingleton(c => new Features(c))
+            .AddSingleton(_ => new UrlMapper(hostInfo))
+            .AddScoped<UIHub>()
+            .AddScoped<IDispatcherResolver>(c => c.GetRequiredService<UIHub>())
+            .AddScoped<TestPermissionHandler>()
+            .AddFusion(fusion => fusion.AddBlazor())
+            .BuildServiceProvider();
+    }
 }
 
 public sealed class TestPermissionHandler(UIHub hub) : PermissionHandler(hub, false)

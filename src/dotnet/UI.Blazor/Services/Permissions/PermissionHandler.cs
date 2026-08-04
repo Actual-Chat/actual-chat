@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -76,11 +77,16 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
 
         releaser.MarkLockedLocally();
         if (!CanPrompt) {
-            // Headless scope: WhenInitialized never completes there, so awaiting it would park forever.
-            Log.LogDebug("Check (no dispatcher)");
-            var isGrantedNow = await Get(cancellationToken).ConfigureAwait(false);
-            SetUnsafe(isGrantedNow);
-            return isGrantedNow;
+            // Only MAUI has headless scopes, where WhenInitialized never completes and awaiting it
+            // parks forever. Elsewhere it just means "too early", and Get may need JS interop.
+            if (HostInfo.HostKind == HostKind.MauiApp) {
+                Log.LogDebug("Check (no dispatcher)");
+                var isGrantedNow = await Get(cancellationToken).ConfigureAwait(false);
+                SetUnsafe(isGrantedNow);
+                return isGrantedNow;
+            }
+
+            await DispatcherResolver.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
 
         return await DispatcherResolver.Dispatcher.InvokeAsync(async () => {

@@ -83,13 +83,13 @@ public static class WalkieTalkieSession
             // Expected degraded mode: the boot budget ran out - see WalkieTalkiePttTransmitStartupTimeout.
             Log.LogWarning(e, "Walkie-talkie transmit didn't fit into the startup budget");
             await StopOrphanedReply(hub, reply).ConfigureAwait(false);
-            await PlayFailureCue(hub).ConfigureAwait(false);
+            PlayFailureCue(hub);
             return null;
         }
         catch (Exception e) {
             Log.LogError(e, "Walkie-talkie transmit failed");
             await StopOrphanedReply(hub, reply).ConfigureAwait(false);
-            await PlayFailureCue(hub).ConfigureAwait(false);
+            PlayFailureCue(hub);
             return null;
         }
         finally {
@@ -227,17 +227,16 @@ public static class WalkieTalkieSession
         }
     }
 
-    private static async Task PlayFailureCue(AppUIHub? hub)
+    private static void PlayFailureCue(AppUIHub? hub)
     {
+        // Fire-and-forget: this reads a Kvas setting, and awaiting that on a timed-out boot would
+        // leak the headless scope by delaying the caller's teardown watcher.
         if (hub is null)
             return;
 
-        try {
-            await hub.WalkieTalkieReplyUI.PlayFailureCue().ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Couldn't play the walkie-talkie transmit failure cue");
-        }
+        _ = BackgroundTask.Run(
+            () => hub.WalkieTalkieReplyUI.PlayFailureCue(),
+            Log, "Couldn't play the walkie-talkie transmit failure cue", CancellationToken.None);
     }
 
     private static void EnsureTeardownWatcher(WalkieTalkiePlatform platform)

@@ -211,8 +211,8 @@ public partial class ChatAudioUI
             // audioSession is set to 'play-and-record' after getUserMedia,
             // and WebKit AEC does not register the DestinationFallbackTrait
             // playback path, so a tune playing into a live mic feeds back.
-            if (!Volatile.Read(ref _isBeginTuneSuppressed))
-                await TuneUI.PlayAndWait(Tune.BeginRecording).ConfigureAwait(false);
+            await TuneUI.PlayAndWait(Tune.BeginRecording, mustPlay: !Volatile.Read(ref _isBeginTuneSuppressed))
+                .ConfigureAwait(false);
             // Install before StartRecording so we don't miss a fast false→true→false
             // transition (e.g., pipeline dies during JS init).
             var whenRecorderStopped = ForegroundTask.Run(async () => {
