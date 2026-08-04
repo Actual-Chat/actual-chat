@@ -346,6 +346,7 @@ namespace ActualChat.App.Maui.Services
     {
         public abstract void OnWakeFailed(ChatId chatId);
         public abstract void OnHeadlessTeardown();
+        public virtual (ChatId ChatId, Moment At)? LastWake => null;
         public virtual Task OnPlaybackStarted(
             ActualChat.UI.Blazor.App.Services.AppUIHub hub, ChatId chatId) => Task.CompletedTask;
         public virtual Task OnForegroundWakeHandled(ChatId chatId) => Task.CompletedTask;
