@@ -44,7 +44,9 @@
                 <Icon><i class="icon-marker-pin"></i></Icon>
                 <Content>
                     <div class="c-text">Send my current location</div>
-                    <div class="c-caption">Accurate to 10m</div>
+                    @if (m.AccuracyText is { } accuracyText) {
+                        <div class="c-caption">@accuracyText</div>
+                    }
                 </Content>
             </ButtonTile>
             <ButtonTile Class="c-share-live" Click="@OnShareLive">
@@ -187,6 +189,10 @@
         public static readonly ComputedModel None = new() { OwnMarker = null };
 
         public required MapMarker? OwnMarker { get; init; }
+        public string? AccuracyText
+            => OwnMarker?.Point.Accuracy is { } accuracy and > 0
+                ? $"Accurate to {GeoPointExt.DistanceText(accuracy)}"
+                : null;
         public bool MustRequestPermission { get; init; }
         public MapType MapType { get; init; } = MapType.Map;
         public bool IsMapTypeMenuOpen { get; init; }

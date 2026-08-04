@@ -3,15 +3,15 @@ namespace ActualChat;
 public static class GeoPointExt
 {
     public static string DistanceTextTo(this GeoPoint point, GeoPoint other)
-    {
-        var meters = point.DistanceTo(other);
-        return meters switch {
+        => DistanceText(point.DistanceTo(other));
+
+    public static string DistanceText(double meters)
+        => meters switch {
             < 1 => "1 m",
             < 1000 => $"{meters:F0} m",
             < 10_000 => $"{meters / 1000:F1} km",
             _ => $"{meters / 1000:F0} km",
         };
-    }
 
     public static double DistanceTo(this GeoPoint point, GeoPoint other)
     {

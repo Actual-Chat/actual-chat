@@ -41,6 +41,16 @@
     @apply bg-primary;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
+.map-view .map-marker .c-own-accuracy {
+    @apply absolute z-0;
+    @apply rounded-full;
+    @apply pointer-events-none;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: color-mix(in srgb, var(--primary) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+}
 .map-view .map-marker .c-own-pulse {
     @apply absolute inset-0 z-0;
     @apply rounded-full;
