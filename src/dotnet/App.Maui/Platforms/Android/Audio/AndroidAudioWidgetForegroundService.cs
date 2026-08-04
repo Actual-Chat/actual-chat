@@ -25,6 +25,7 @@ public class AndroidAudioWidgetForegroundService : Service
         public const string ChatPicUri = nameof(ChatPicUri);
         public const string ExtraChatCount = nameof(ExtraChatCount);
         public const string IsPaused = nameof(IsPaused);
+        public const string CanPause = nameof(CanPause);
     }
 
     public const string ActionShow = "ACTION_SHOW";
@@ -32,12 +33,13 @@ public class AndroidAudioWidgetForegroundService : Service
     private const string ChannelId = "audio_widget";
     private const int NotificationId = 3001;
     private static int _pendingStartCount;
-    private static volatile bool _isStopPending;
+    private static bool _isStopPending;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
     private Android.App.Notification? _lastNotification;
     private int _lastMode = -1;
     private Action<bool>? _micCapabilityHandler;
+    private bool _isStopping;
     private static ILogger Log { get; } = StaticLog.For<AndroidAudioWidgetForegroundService>();
 
     public static bool TryStart(Context context, Intent intent)
@@ -45,14 +47,19 @@ public class AndroidAudioWidgetForegroundService : Service
         // OnStartRequested first: StartForegroundService dispatches OnStartCommand on the main
         // thread, so a caller running off it would otherwise register the start too late and leave
         // _pendingStartCount stuck above zero, deferring every later Stop() forever.
+        var wasStopPending = Volatile.Read(ref _isStopPending);
         OnStartRequested();
         try {
             context.StartForegroundService(intent);
             return true;
         }
         catch (Exception e) {
+            // The start OnStartRequested cancelled the deferred stop for never happened, so both
+            // must go back - otherwise nothing can ever take the foreground notification down.
             if (Volatile.Read(ref _pendingStartCount) > 0)
                 Interlocked.Decrement(ref _pendingStartCount);
+            if (wasStopPending)
+                Volatile.Write(ref _isStopPending, true);
             // Starting a mic FGS from the background is blocked (ForegroundServiceStartNotAllowedException):
             // this surfaces if the accept-over-lock-screen path lacks a foreground-visible activity.
             Log.LogError(e, "StartForegroundService failed");
@@ -63,7 +70,7 @@ public class AndroidAudioWidgetForegroundService : Service
     public static void OnStartRequested()
     {
         // A new Show cancels a stop that's still waiting for the service to reach foreground.
-        _isStopPending = false;
+        Volatile.Write(ref _isStopPending, false);
         Interlocked.Increment(ref _pendingStartCount);
     }
 
@@ -73,7 +80,7 @@ public class AndroidAudioWidgetForegroundService : Service
         // Android kill the process with ForegroundServiceDidNotStartInTimeException, even though
         // OnStartCommand does call StartForeground(). Let the service stop itself in that case.
         if (Volatile.Read(ref _pendingStartCount) > 0) {
-            _isStopPending = true;
+            Volatile.Write(ref _isStopPending, true);
             return;
         }
 
@@ -93,13 +100,14 @@ public class AndroidAudioWidgetForegroundService : Service
     public override void OnDestroy()
     {
         Log.LogDebug("OnDestroy");
+        Volatile.Write(ref _isStopping, true);
         if (_micCapabilityHandler is { } micCapabilityHandler) {
             WalkieTalkieMicCapability.ResetHandler(micCapabilityHandler);
             _micCapabilityHandler = null;
         }
         _requestId = Guid.NewGuid().ToString();
         Interlocked.Exchange(ref _pendingStartCount, 0);
-        _isStopPending = false;
+        Volatile.Write(ref _isStopPending, false);
         if (_mediaSession is not null) {
             _mediaSession.Active = false;
             _mediaSession.Release();
@@ -133,9 +141,10 @@ public class AndroidAudioWidgetForegroundService : Service
         StartForeground1(BuildStartingNotification(), mode);
         if (Volatile.Read(ref _pendingStartCount) > 0)
             Interlocked.Decrement(ref _pendingStartCount);
-        if (_isStopPending && Volatile.Read(ref _pendingStartCount) == 0) {
+        if (Volatile.Read(ref _isStopPending) && Volatile.Read(ref _pendingStartCount) == 0) {
             // Stop() deferred to us: StartForeground() above satisfied Android, so we can go away now.
-            _isStopPending = false;
+            Volatile.Write(ref _isStopPending, false);
+            Volatile.Write(ref _isStopping, true);
             StopForeground(StopForegroundFlags.Remove);
             StopSelf();
             return StartCommandResult.NotSticky;
@@ -146,6 +155,7 @@ public class AndroidAudioWidgetForegroundService : Service
         var chatPicUrl = intent.Extras!.GetString(IntentExtras.ChatPicUri) ?? "";
         var extraChatCount = intent.Extras!.GetInt(IntentExtras.ExtraChatCount);
         var isPaused = intent.Extras!.GetBoolean(IntentExtras.IsPaused);
+        var canPause = intent.Extras!.GetBoolean(IntentExtras.CanPause);
 
         if (_mediaSession is null) {
             _mediaSession = new MediaSessionCompat(this, "AudioWidgetSession") { Active = true };
@@ -173,7 +183,8 @@ public class AndroidAudioWidgetForegroundService : Service
 
         long capabilities = 0;
         if (mode is AudioWidgetMode.Replaying or AudioWidgetMode.Listening) {
-            capabilities |= isPaused ? PlaybackStateCompat.ActionPlay : PlaybackStateCompat.ActionPause;
+            if (canPause)
+                capabilities |= isPaused ? PlaybackStateCompat.ActionPlay : PlaybackStateCompat.ActionPause;
             capabilities |= PlaybackStateCompat.ActionStop;
         }
         var playbackStateCompat = new PlaybackStateCompat.Builder()
@@ -215,12 +226,22 @@ public class AndroidAudioWidgetForegroundService : Service
         // Android grants while-in-use microphone access on the serviceType of the last
         // startForeground call, not on the [Service] attribute - and a wake starts as
         // mediaPlayback only, so a press must re-issue this before the mic is opened.
+        // Inline on the main thread, because the media-button dispatch runs there and the raise
+        // must stay inside it; BeginInvokeOnMainThread posts even from the main thread.
         var mode = isMicrophoneNeeded ? AudioWidgetMode.Recording : AudioWidgetMode.Listening;
-        if (Volatile.Read(ref _lastMode) == (int)mode)
-            return;
+        if (MainThread.IsMainThread)
+            Apply();
+        else
+            BeginDispatchToMainThread(Apply);
+        return;
 
-        var notification = Volatile.Read(ref _lastNotification) ?? BuildStartingNotification();
-        StartForeground1(notification, mode);
+        void Apply() {
+            if (Volatile.Read(ref _isStopping) || Volatile.Read(ref _lastMode) == (int)mode)
+                return;
+
+            var notification = Volatile.Read(ref _lastNotification) ?? BuildStartingNotification();
+            StartForeground1(notification, mode);
+        }
     }
 
     private void StartForeground1(Android.App.Notification notification, AudioWidgetMode mode)
@@ -332,16 +353,13 @@ public class AndroidAudioWidgetForegroundService : Service
             if (action == HeadsetButtonAction.PassThrough)
                 return false;
 
-            if (action == HeadsetButtonAction.StartReply) {
-                // Synchronously inside the media-button dispatch, before anything awaits: this is
-                // where Android hands out the while-in-use exemption a background mic start needs.
-                WalkieTalkieMicCapability.Request(true);
-            }
-
+            // The hold is taken synchronously inside the media-button dispatch, which is where
+            // Android hands out the while-in-use exemption a background mic start needs, and it is
+            // released when the trigger ends - a reply that never opened can't leave it raised.
             var replyUI = hub.WalkieTalkieReplyUI;
             var whenHandled = action == HeadsetButtonAction.StopReply
                 ? replyUI.StopReply()
-                : replyUI.RequestReply(CancellationToken.None);
+                : WalkieTalkieMicCapability.HoldWhile(() => replyUI.RequestReply(CancellationToken.None));
             _ = BackgroundTask.Run(() => whenHandled, Log, $"{action} from the headset button failed",
                 CancellationToken.None);
             return true;

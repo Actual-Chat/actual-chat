@@ -207,14 +207,11 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
             return;
         }
 
-        if (route == GestureRoute.StartReply) {
-            // Synchronously, before anything awaits: on Android this re-types the running foreground
-            // service as a microphone one, and a headless session has no other path that would.
-            WalkieTalkieMicCapability.Request(true);
-        }
-
+        // The hold is taken synchronously here: on Android it re-types the running foreground
+        // service as a microphone one, and a headless session has no other path that would. It is
+        // released when the trigger ends, so a reply that never opened can't leave it raised.
         var whenHandled = route == GestureRoute.StartReply
-            ? WalkieTalkieReplyUI.RequestReply(CancellationToken.None)
+            ? WalkieTalkieMicCapability.HoldWhile(() => WalkieTalkieReplyUI.RequestReply(CancellationToken.None))
             : WalkieTalkieReplyUI.StopReply();
         _ = BackgroundTask.Run(() => whenHandled, Log, $"{gesture.Kind} handling failed", CancellationToken.None);
     }

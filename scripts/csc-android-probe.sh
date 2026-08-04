@@ -113,6 +113,7 @@ global using ActualLab.CommandR.Commands;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Logging.Abstractions;
 global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Maui.ApplicationModel;
 global using static ActualChat.App.Maui.AppServicesAccessor;
 EOF
 
@@ -123,6 +124,13 @@ namespace _Microsoft.Android.Resource.Designer
     public static class ResourceConstant
     {
         public static class Drawable { public const int notification_app_icon = 1; }
+    }
+}
+namespace Microsoft.Maui.ApplicationModel
+{
+    public static class MainThread
+    {
+        public static bool IsMainThread => true;
     }
 }
 namespace ActualChat.App.Maui

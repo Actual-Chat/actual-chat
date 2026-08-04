@@ -62,6 +62,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         var reply = new WalkieTalkieReply(chatId, Clocks.SystemClock.Now);
         lock (_lock)
             _reply = reply;
+        WalkieTalkieMicCapability.Hold(reply);
 
         try {
             await ChatAudioUI.SetRecordingChatId(chatId,
@@ -74,6 +75,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             lock (_lock)
                 if (_reply == reply)
                     _reply = null;
+            WalkieTalkieMicCapability.Release(reply);
             throw;
         }
 
@@ -91,20 +93,22 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
 
             _reply = null;
         }
-        if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) != reply.ChatId)
+        if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) != reply.ChatId) {
+            WalkieTalkieMicCapability.Release(reply);
             return;
+        }
 
-        await StopReply(isOwnReply: true).ConfigureAwait(false);
+        await CloseReply(reply).ConfigureAwait(false);
     }
 
     public Task StopReply()
     {
-        bool isOwnReply;
+        WalkieTalkieReply? ownReply;
         lock (_lock) {
-            isOwnReply = _reply is not null;
+            ownReply = _reply;
             _reply = null;
         }
-        return StopReply(isOwnReply);
+        return CloseReply(ownReply);
     }
 
     public bool IsOwnReply(ChatId chatId)
@@ -118,26 +122,31 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
 
     // Private methods
 
-    private async Task StopReply(bool isOwnReply)
+    private async Task CloseReply(WalkieTalkieReply? ownReply)
     {
         bool everVoiced;
         lock (_lock)
             everVoiced = _everVoiced;
 
         StopColdStartWatch();
-        if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is null)
-            return; // Already closed - idempotent
+        try {
+            if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is null)
+                return; // Already closed - idempotent
 
-        await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
-        WalkieTalkieMicCapability.Request(false);
-        if (!isOwnReply) {
-            // Closing any recording is intended, but a walkie cue would be a lie about a mic walkie
-            // never opened - and _everVoiced is stale for it anyway.
-            Log.LogDebug("StopReply: closed a recording walkie-talkie didn't open");
-            return;
+            await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+            if (ownReply is null) {
+                // Closing any recording is intended, but a walkie cue would be a lie about a mic walkie
+                // never opened - and _everVoiced is stale for it anyway.
+                Log.LogDebug("CloseReply: closed a recording walkie-talkie didn't open");
+                return;
+            }
+
+            _ = PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard);
         }
-
-        _ = PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard);
+        finally {
+            if (ownReply is not null)
+                WalkieTalkieMicCapability.Release(ownReply);
+        }
     }
 
     private async Task<bool> HasMicrophonePermission(CancellationToken cancellationToken)
@@ -217,19 +226,26 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
 
     private async Task CloseFromWatcher(CancellationTokenSource cts, bool everVoiced)
     {
+        WalkieTalkieReply? ownReply = null;
         lock (_lock) {
             if (ReferenceEquals(_coldStartCts, cts)) {
                 cts.DisposeSilently();
                 _coldStartCts = null;
                 // This watch owned the open reply, so _reply must not outlive it: a stale one
                 // would let a native trigger close whatever recording comes next.
+                ownReply = _reply;
                 _reply = null;
             }
         }
-        if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
-            await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
-        WalkieTalkieMicCapability.Request(false);
-        await PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard).ConfigureAwait(false);
+        try {
+            if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
+                await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+            await PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard).ConfigureAwait(false);
+        }
+        finally {
+            if (ownReply is not null)
+                WalkieTalkieMicCapability.Release(ownReply);
+        }
     }
 
     private async Task PlayCue(Tune tune)
