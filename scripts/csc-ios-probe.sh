@@ -38,6 +38,9 @@ SDK=$(ls -d "$HOME"/.dotnet/sdk/11.0.* | tail -1)
 CSC="$SDK/Roslyn/bincore/csc.dll"
 BCLREF=$(ls -d "$HOME"/.dotnet/packs/Microsoft.NETCore.App.Ref/11.0.*/ref/net11.0 | tail -1)
 TESTBIN=$REPO/artifacts/tests/bin/Chat.UI.Blazor.UnitTests/debug
+# Chat.UI.Blazor.UnitTests doesn't reference Core.Audio, so ActualChat.Core.Audio.dll (e.g.
+# PreRollBuffer) is missing from TESTBIN above - pull it from Core.Audio.UnitTests' own bin instead.
+TESTBIN2=$REPO/artifacts/tests/bin/Core.Audio.UnitTests/debug
 
 WORK=${WORK:-$REPO/tmp/csc-ios-probe}
 mkdir -p "$WORK"; cd "$WORK"
@@ -62,6 +65,8 @@ add() { local n; n=$(basename "$1" .dll); [[ -n "${seen[$n]:-}" ]] || { seen[$n]
 for f in "$BCLREF"/*.dll; do add "$f"; done
 add "$IOSREF"
 for f in "$TESTBIN"/*.dll; do add "$f"; done
+# webrtc-apm.dll is a native (non-managed) binary shipped alongside the test bin - csc rejects it.
+[[ -d "$TESTBIN2" ]] && for f in "$TESTBIN2"/*.dll; do [[ "$(basename "$f")" == webrtc-apm.dll ]] || add "$f"; done
 
 # --- the project's global usings (root Directory.Build.props + App.Maui/Directory.Build.props) ---
 cat > GlobalUsings.cs <<'EOF'
@@ -128,6 +133,7 @@ EOF
 # which the synthesized GlobalUsings.cs above doesn't mirror - so both the using and the member
 # are stubbed here.
 cat > Stubs.cs <<'EOF'
+global using System.Buffers;
 global using ActualChat.Maui;
 namespace ActualChat.App.Maui
 {
@@ -193,10 +199,98 @@ if [[ "$REL" != "$AUDIO_SESSION_REL" ]]; then
 cat >> Stubs.cs <<'EOF'
 namespace ActualChat.App.Maui.Audio
 {
-    public static class AudioSession
+    public class AudioSession
     {
         public static void SetOwner(ActualChat.UI.Blazor.Services.AudioSessionOwner owner) { }
         public static void ReleaseOwner(ActualChat.UI.Blazor.Services.AudioSessionRelease release) { }
+        public Task EnsureCorrectOutputRoute() => Task.CompletedTask;
+    }
+}
+EOF
+fi
+
+# AppleAudioCapture.cs pulls in the AudioEngines/AudioEngine/InputNode/Resampler wrapper chain
+# and IAudioCapture - none of them live in a built assembly TESTBIN(2) reaches, so they're
+# stubbed here at the minimal surface AppleAudioCapture.cs actually calls. Skipped when the
+# probed file is one of the types themselves, to avoid a definition collision (CS0101).
+AUDIO_ENGINE_CLUSTER_RELS=(
+    src/dotnet/App.Maui/Services/Recording/IAudioCapture.cs
+    src/dotnet/App.Maui/MaciOS/Audio/ResamplerFactory.cs
+    src/dotnet/App.Maui/MaciOS/Audio/Resampler.cs
+    src/dotnet/App.Maui/MaciOS/Audio/AudioEngines.cs
+    src/dotnet/App.Maui/MaciOS/Audio/EngineWrapper/AudioEngine.cs
+    src/dotnet/App.Maui/MaciOS/Audio/EngineWrapper/InputNode.cs
+    src/dotnet/App.Maui/MaciOS/Audio/EngineWrapper/AudioNode.cs
+)
+IS_AUDIO_ENGINE_CLUSTER_FILE=false
+for rel in "${AUDIO_ENGINE_CLUSTER_RELS[@]}"; do
+    [[ "$REL" == "$rel" ]] && IS_AUDIO_ENGINE_CLUSTER_FILE=true
+done
+AVAUDIO_PCM_BUFFER_EXT_REL=src/dotnet/App.Maui/MaciOS/Audio/AVAudioPcmBufferExt.cs
+if [[ "$REL" != "$AVAUDIO_PCM_BUFFER_EXT_REL" ]]; then
+cat >> Stubs.cs <<'EOF'
+namespace ActualChat.App.Maui.Audio
+{
+    public static class AVAudioPcmBufferExt
+    {
+        public static unsafe ReadOnlySpan<float> AsReadOnlySpan(this AVFoundation.AVAudioPcmBuffer pcm) => default;
+        public static void SetData(this AVFoundation.AVAudioPcmBuffer buffer, Span<float> data) { }
+    }
+}
+EOF
+fi
+
+PTT_PRE_ROLL_REL=src/dotnet/App.Maui/MaciOS/Audio/PttPreRoll.cs
+if [[ "$REL" != "$PTT_PRE_ROLL_REL" ]]; then
+cat >> Stubs.cs <<'EOF'
+namespace ActualChat.App.Maui.Audio
+{
+    public static class PttPreRoll
+    {
+        public static long Start() => 0;
+        public static void Discard(long token) { }
+        public static PreRollTake? TryTake() => null;
+    }
+    public sealed record PreRollTake(float[] Samples, AVFoundation.AVAudioFormat Format);
+}
+EOF
+fi
+
+if [[ "$IS_AUDIO_ENGINE_CLUSTER_FILE" == false ]]; then
+cat >> Stubs.cs <<'EOF'
+namespace ActualChat.App.Maui.Services.Recording
+{
+    public interface IAudioCapture
+    {
+        Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken);
+    }
+}
+namespace ActualChat.App.Maui.Audio
+{
+    public class Resampler : IDisposable
+    {
+        public void Dispose() { }
+        public void Transform(AVFoundation.AVAudioPcmBuffer input, BlockRingBuffer<float> output) { }
+    }
+    public class ResamplerFactory
+    {
+        public Resampler Create(AVFoundation.AVAudioFormat sourceFormat, AVFoundation.AVAudioFormat targetFormat) => new();
+    }
+    public class InputNode
+    {
+        public AVFoundation.AVAudioFormat GetOutputFormat() => null!;
+        public void SetVoiceProcessingEnabled(bool value) { }
+        public IDisposable Tap(AVFoundation.AVAudioNodeTapBlock callback) => null!;
+    }
+    public class AudioEngine
+    {
+        public static readonly AVFoundation.AVAudioFormat VoiceRecordingFormat = null!;
+        public InputNode Input { get; } = null!;
+        public void EnsureRunning() { }
+    }
+    public class AudioEngines
+    {
+        public AudioEngine Recording { get; } = null!;
     }
 }
 EOF

@@ -23,6 +23,20 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         using var outBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
         var hwFormat = engine.Input.GetOutputFormat();
         using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
+        var preRoll = PttPreRoll.TryTake();
+        if (preRoll is { } take) {
+            // Only a format match is safe: a route change between arming and draining would make
+            // the buffered samples the wrong rate for this resampler.
+            if (take.Format.SampleRate.Equals(hwFormat.SampleRate)
+                && take.Format.ChannelCount == hwFormat.ChannelCount) {
+                using var preRollBuffer = new AVAudioPcmBuffer(hwFormat, (uint)take.Samples.Length);
+                preRollBuffer.SetData(take.Samples);
+                resampler.Transform(preRollBuffer, outBuffer);
+                Log.LogInformation("Drained {Count} pre-roll samples", take.Samples.Length);
+            }
+            else
+                Log.LogWarning("Dropped the pre-roll: format changed since it was captured");
+        }
         // TODO(FC): restore AEC/NS/AGC on Mac Catalyst.
         // Voice processing breaks on Mac Catalyst: the engine's recording graph has no
         // active output side, so the VoiceProcessor's downlink DSP can't get valid sample
