@@ -59,14 +59,6 @@
                 <Right><Toggle IsChecked="@(m.Settings.IsHeadsetButtonEnabled ?? true)"/></Right>
             </TileItem>
         }
-        @if (HostInfo.AppKind == AppKind.Ios) {
-            <TileItem Click="@OnTogglePttTransmit">
-                <Icon><i class="icon-talking text-2xl"></i></Icon>
-                <Content>Lock Screen talk button</Content>
-                <Caption>Reply from the Lock Screen without unlocking</Caption>
-                <Right><Toggle IsChecked="@(m.Settings.IsPttTransmitEnabled ?? true)"/></Right>
-            </TileItem>
-        }
         @if (hasSensors) {
             @if (m.Settings.IsDoubleShakeEnabled) {
                 <TileItem IsHoverable="false">
@@ -96,6 +88,18 @@
             <p class="c-description">This device has no motion sensor, so gestures are unavailable.</p>
         }
     </Tile>
+
+    @if (HostInfo.AppKind == AppKind.Ios) {
+        <TileTopic Topic="Lock Screen"/>
+        <Tile>
+            <TileItem Click="@OnTogglePttTransmit">
+                <Icon><i class="icon-talking text-2xl"></i></Icon>
+                <Content>Lock Screen talk button</Content>
+                <Caption>Reply from the Lock Screen without unlocking</Caption>
+                <Right><Toggle IsChecked="@(m.Settings.IsPttTransmitEnabled ?? true)"/></Right>
+            </TileItem>
+        </Tile>
+    }
 
     @if (hasSensors) {
         <TileTopic Topic="Practice"/>

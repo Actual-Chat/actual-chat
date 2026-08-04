@@ -29,7 +29,6 @@ public abstract class ChatPlayer : ProcessorBase
     protected IChats Chats => Hub.Chats;
     protected IAuthors Authors => Hub.Authors;
     protected ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    protected UserSettingsUI UserSettingsUI => field ??= Hub.Services.GetRequiredService<UserSettingsUI>();
     protected InteractiveUI InteractiveUI => Hub.InteractiveUI;
     protected MomentClockSet Clocks => Hub.Clocks;
 
@@ -189,15 +188,10 @@ public abstract class ChatPlayer : ProcessorBase
     private async Task ReportPlayback(ChatAudioTrackInfo info, CancellationToken cancellationToken)
     {
         try {
-            var alwaysListenedChatIds = await ChatAudioUI.GetChatsYouNeedToKeepListeningTo(cancellationToken)
-                .ConfigureAwait(false);
-            if (!alwaysListenedChatIds.Contains(ChatId)) {
-                var listeningMode = await UserSettingsUI.ChatUserSettings(ChatId)
-                    .Get(x => x.ListeningMode, cancellationToken)
-                    .ConfigureAwait(false);
-                if (listeningMode != ListeningMode.Forever)
-                    return;
-            }
+            var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+            if (!pttChatIds.Contains(ChatId))
+                return;
+
             await Hub.LiveAudioStreams
                 .ReportPlayback(Session, ChatId, info.StreamId, info.EntryId, cancellationToken)
                 .ConfigureAwait(false);

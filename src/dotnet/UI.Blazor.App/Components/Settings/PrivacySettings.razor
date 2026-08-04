@@ -1,21 +1,26 @@
 @using ActualChat.Contacts
+@using ActualChat.Hosting
+@using ActualChat.UI.Blazor.App.Services.Gestures
 @inherits ComputedStateComponent<AppUIHub, PrivacySettings.Model>
 @{
     var m = State.Value;
+    var hasSensors = HostInfo.HostKind.IsMauiApp() && GestureUI.Feed.IsAccelerometerAvailable;
 }
 
-<TileTopic Topic="Microphone"/>
+@if (hasSensors) {
+    <TileTopic Topic="Microphone"/>
 
-<Tile>
-    <TileItem Click="@OnToggleFaceDownStop">
-        <Icon><i class="icon-mic-off text-2xl"></i></Icon>
-        <Content>Stop recording when face down</Content>
-        <Caption>Turning the phone face down or pocketing it closes the mic</Caption>
-        <Right>
-            <Toggle IsChecked="@m.IsFaceDownMicStopEnabled"/>
-        </Right>
-    </TileItem>
-</Tile>
+    <Tile>
+        <TileItem Click="@OnToggleFaceDownStop">
+            <Icon><i class="icon-mic-off text-2xl"></i></Icon>
+            <Content>Stop recording when face down</Content>
+            <Caption>Turning the phone face down or pocketing it closes the mic</Caption>
+            <Right>
+                <Toggle IsChecked="@m.IsFaceDownMicStopEnabled"/>
+            </Right>
+        </TileItem>
+    </Tile>
+}
 
 <TileTopic Topic="Blocked users"/>
 
@@ -66,6 +71,7 @@
     private bool _isExpanded;
 
     private IContacts Contacts => Hub.Contacts;
+    private GestureUI GestureUI => Hub.GestureUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
