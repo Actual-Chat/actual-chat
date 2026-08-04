@@ -118,7 +118,7 @@
         => LocationUI.StopSharing(Chat.Id, CancellationToken.None);
 
     private Task OnShare()
-        => LocationUI.ShowShareModal(Chat.Id);
+        => LocationUI.ShowShareLocationModal(Chat.Id);
 
     private void OnOpenMenu()
         => _isMenuOpen.Value = true;
