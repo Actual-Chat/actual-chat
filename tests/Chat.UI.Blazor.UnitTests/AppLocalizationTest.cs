@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Resources;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
@@ -105,25 +106,88 @@ public class AppLocalizationTest
         var enKeys = Load(Languages.English.PrimarySubtag)!.Keys.ToHashSet();
 
         // act
-        var members = AppStringsMembers().ToHashSet();
+        var members = AppStringsMembers().Select(m => m.Name).ToHashSet();
 
         // assert
         members.Should().BeEquivalentTo(
             enKeys, "every English key must have exactly one AppStrings member and vice-versa");
     }
 
+    [Fact]
+    public void EveryAppStringsMemberReadsItsOwnKey()
+    {
+        // Members are actually invoked here, which is the only way to catch
+        // a member bound to a wrong key - e.g. Common_Save => l["Common_Cancel"].
+
+        // arrange
+        var localizer = new TestStringLocalizer([]);
+
+        // act
+        var mismatches = new List<string>();
+        foreach (var member in AppStringsMembers()) {
+            member.Invoke(localizer, member.NewArgs());
+            if (localizer.LastKey != member.Name)
+                mismatches.Add($"'{member.Name}' reads key '{localizer.LastKey}'");
+        }
+
+        // assert
+        mismatches.Should().BeEmpty(
+            "every AppStrings member must read the key it's named after:\n{0}", string.Join("\n", mismatches));
+    }
+
+    [Fact]
+    public void EveryAppStringsMemberResolvesInEveryLanguage()
+    {
+        // arrange
+        var members = AppStringsMembers().ToList();
+
+        // act
+        var errors = new List<string>();
+        foreach (var subtag in ShippedSubtags()) {
+            var localizer = new TestStringLocalizer(Load(subtag)!);
+            foreach (var member in members) {
+                var args = member.NewArgs();
+                string value;
+                try {
+                    value = member.Invoke(localizer, args);
+                }
+                catch (TargetInvocationException e) {
+                    errors.Add($"'{subtag}.{member.Name}' throws: {e.InnerException!.Message}");
+                    continue;
+                }
+                if (!localizer.IsLastKeyFound)
+                    errors.Add($"'{subtag}.{member.Name}' has no value");
+                else if (value.IsNullOrEmpty())
+                    errors.Add($"'{subtag}.{member.Name}' is empty");
+                else if (args.FirstOrDefault(a => !value.Contains((string)a)) is string missingArg)
+                    errors.Add($"'{subtag}.{member.Name}' drops argument '{missingArg}'");
+            }
+        }
+
+        // assert
+        errors.Should().BeEmpty(
+            "every AppStrings member must resolve to a non-empty value in every shipped language:\n{0}",
+            string.Join("\n", errors));
+    }
+
     // Private methods
 
-    private static IEnumerable<string> AppStringsMembers()
+    private static IEnumerable<AppStringsMember> AppStringsMembers()
     {
         const BindingFlags bf = BindingFlags.Public | BindingFlags.NonPublic
             | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
         foreach (var nested in typeof(AppStrings).GetNestedTypes(bf).Where(n => n.IsSpecialName)) {
             foreach (var p in nested.GetProperties(bf))
-                yield return p.Name;
+                yield return NewMember(p.Name, "get_" + p.Name);
             foreach (var m in nested.GetMethods(bf).Where(m => !m.IsSpecialName))
-                yield return m.Name;
+                yield return NewMember(m.Name, m.Name);
         }
+        yield break;
+
+        // Extension members are declared in a compiler-generated nested type,
+        // but their implementations are static methods of AppStrings itself.
+        static AppStringsMember NewMember(string name, string implementationName)
+            => new(name, typeof(AppStrings).GetMethod(implementationName, bf)!);
     }
 
     private static IEnumerable<string> ShippedSubtags()
@@ -135,5 +199,51 @@ public class AppLocalizationTest
     {
         using var stream = Assembly.GetManifestResourceStream($"{Prefix}{subtag}{Suffix}");
         return stream == null ? null : JsonSerializer.Deserialize<Dictionary<string, string>>(stream);
+    }
+
+    // Nested types
+
+    private sealed record AppStringsMember(string Name, MethodInfo Implementation)
+    {
+        public object[] NewArgs()
+            => Enumerable.Range(0, Implementation.GetParameters().Length - 1)
+                .Select(object (i) => $"<arg{i}>")
+                .ToArray();
+
+        public string Invoke(IStringLocalizer localizer, object[] args)
+            => (string)Implementation.Invoke(null, [localizer, ..args])!;
+    }
+
+    private sealed class TestStringLocalizer(Dictionary<string, string> strings) : IStringLocalizer
+    {
+        public string LastKey { get; private set; } = "";
+        public bool IsLastKeyFound { get; private set; }
+
+        public LocalizedString this[string name] {
+            get {
+                var isFound = TryGet(name, out var value);
+                return new LocalizedString(name, value, !isFound);
+            }
+        }
+
+        public LocalizedString this[string name, params object[] arguments] {
+            get {
+                var isFound = TryGet(name, out var value);
+                return new LocalizedString(name, isFound ? string.Format(value, arguments) : value, !isFound);
+            }
+        }
+
+        public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
+            => strings.Select(kv => new LocalizedString(kv.Key, kv.Value));
+
+        // Private methods
+
+        private bool TryGet(string name, out string value)
+        {
+            LastKey = name;
+            IsLastKeyFound = strings.TryGetValue(name, out var foundValue);
+            value = foundValue ?? name;
+            return IsLastKeyFound;
+        }
     }
 }
