@@ -14,8 +14,8 @@
                     <Left>
                         <i class="text-2xl icon-ai-stars @iconCls"></i>
                     </Left>
-                    <Title>Summarize</Title>
-                    <Caption>@(m.IsSummarized ? "On" : "Off")</Caption>
+                    <Title>@L.RightPanel_Summarize</Title>
+                    <Caption>@(m.IsSummarized ? L.RightPanel_On : L.RightPanel_Off)</Caption>
                     <Right>
                         <Toggle IsChecked="@m.IsSummarized"/>
                     </Right>

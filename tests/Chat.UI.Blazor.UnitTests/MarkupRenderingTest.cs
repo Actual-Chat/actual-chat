@@ -2,6 +2,7 @@ using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using Bunit;
 using Bunit.TestDoubles;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
@@ -73,6 +74,7 @@ public class MarkupRenderingTest
     {
         // arrange
         using var context = new BunitContext();
+        context.Services.AddSingleton<IStringLocalizer>(new TestStringLocalizer([]));
 
         // act
         var cut = context.Render<AlertConfirmationInfo>(p => p

@@ -38,7 +38,7 @@
         </div>
         <HeaderButton
             Class="btn-go-to-thread"
-            Tooltip="Go to the thread"
+            Tooltip="@L.ChatView_GoToThread"
             Click="@OnGoToTheThread">
             <i class="icon-arrow-right"></i>
         </HeaderButton>
@@ -84,7 +84,7 @@
         </div>
         <div class="c-info">
             <div class="c-created">
-                <span>@creationDate,</span><span> created by </span>
+                <span>@creationDate,</span><span>&nbsp;@L.ChatView_CreatedBy&nbsp;</span>
                 @if (isLoading) {
                     <string-skeleton firstWidth="4" secondWidth="8" height="4"/>
                 } else {

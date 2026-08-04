@@ -10,14 +10,14 @@
 }
 
 @if (Chat.Kind == ChatKind.Peer) {
-    <ButtonRound Class="btn-sm" Click="@OnPeerToggleClick" Tooltip="Notifications">
+    <ButtonRound Class="btn-sm" Click="@OnPeerToggleClick" Tooltip="@L.RightPanel_Notifications">
         <i class="@iconCls text-2xl"></i>
     </ButtonRound>
 }
 else {
     <ButtonRound
         Class="btn-sm"
-        Tooltip="Notifications"
+        Tooltip="@L.RightPanel_Notifications"
         data-menu="@(MenuRef.New<ChatNotificationModeMenu>(Chat.Id.Value))"
         data-menu-trigger="@MenuTrigger.Primary"
         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">

@@ -8,13 +8,13 @@
 }
 
 @if (m.IsPlaying) {
-    <MenuEntry Class="important-item" Icon="icon-stop-fill" Text="Stop" Click="@OnStop"/>
+    <MenuEntry Class="important-item" Icon="icon-stop-fill" Text="@L.Common_Stop" Click="@OnStop"/>
 } else {
-    <MenuEntry Class="important-item" Icon="icon-play-fill" Text="Play" Click="@OnPlay"/>
+    <MenuEntry Class="important-item" Icon="icon-play-fill" Text="@L.MessageMenu_Play" Click="@OnPlay"/>
 }
-<MenuEntry Icon="icon-share" Text="Share file" Click="@OnShare"/>
-<MenuEntry Icon="icon-link-2" Text="Copy download link" Click="@OnCopyLink"/>
-<MenuEntry Icon="icon-download" Text="Download" Click="@OnDownload"/>
+<MenuEntry Icon="icon-share" Text="@L.MessageMenu_ShareFile" Click="@OnShare"/>
+<MenuEntry Icon="icon-link-2" Text="@L.MessageMenu_CopyDownloadLink" Click="@OnCopyLink"/>
+<MenuEntry Icon="icon-download" Text="@L.MessageMenu_Download" Click="@OnDownload"/>
 
 @code {
     private string _entryId = "";
@@ -70,8 +70,9 @@
             return;
 
         var modalModel = new ForwardMessageModal.Model(a.EntryId.ChatId) {
-            Title = "Share file",
-            SubmitTitle = "Send",
+            Title = L.MessageMenu_ShareFile,
+            SubmitTitle = L.Selection_ForwardSubmit,
+            SearchPlaceholder = L.Selection_ForwardSearchPlaceholder,
         };
         var modalRef = await ModalUI.Show(modalModel).ConfigureAwait(true);
         await modalRef.WhenClosed.ConfigureAwait(true);

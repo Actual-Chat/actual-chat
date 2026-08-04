@@ -296,13 +296,12 @@
 
     [JSInvokable]
     public async Task<bool> OnLargeTextPasted(int textLength) {
-        var text = $"The pasted text is {textLength:N0} characters long. "
-            + "Do you want to send it as a .txt file or keep it as a regular text message?";
+        var text = L.Editor_LargeTextMessage_Format(textLength.ToString("N0", null));
         var confirmed = false;
         var model = new ConfirmModal.Model(false, text, () => confirmed = true) {
-            Title = "Large text pasted",
-            ConfirmButtonText = "Send as file",
-            CancelButtonText = "Keep as text",
+            Title = L.Editor_LargeTextTitle,
+            ConfirmButtonText = L.Editor_SendAsFile,
+            CancelButtonText = L.Editor_KeepAsText,
         };
         var modalRef = await ModalUI.Show(model);
         await modalRef.WhenClosed;

@@ -157,7 +157,8 @@ public class AppLocalizationTest
                 }
                 if (!localizer.IsLastKeyFound)
                     errors.Add($"'{subtag}.{member.Name}' has no value");
-                else if (value.IsNullOrEmpty())
+                // TODO: if localization is missing will it return null or empty string?
+                else if (value.IsNullOrEmpty() && !IsSentenceFragment(member.Name))
                     errors.Add($"'{subtag}.{member.Name}' is empty");
                 else if (args.FirstOrDefault(a => !value.Contains((string)a)) is string missingArg)
                     errors.Add($"'{subtag}.{member.Name}' drops argument '{missingArg}'");
@@ -171,6 +172,11 @@ public class AppLocalizationTest
     }
 
     // Private methods
+
+    // A _Prefix/_Suffix pair wraps a value rendered as a child component; whichever side
+    // the placeholder starts or ends on is legitimately empty (e.g. ja "{0} さんに挨拶しましょう!").
+    private static bool IsSentenceFragment(string name)
+        => name.EndsWith("_Prefix") || name.EndsWith("_Suffix");
 
     private static IEnumerable<AppStringsMember> AppStringsMembers()
     {
@@ -187,7 +193,7 @@ public class AppLocalizationTest
         // Extension members are declared in a compiler-generated nested type,
         // but their implementations are static methods of AppStrings itself.
         static AppStringsMember NewMember(string name, string implementationName)
-            => new(name, typeof(AppStrings).GetMethod(implementationName, bf)!);
+            => new(name, typeof(AppStrings).GetMethod(implementationName, bf).Require(implementationName));
     }
 
     private static IEnumerable<string> ShippedSubtags()
@@ -212,38 +218,5 @@ public class AppLocalizationTest
 
         public string Invoke(IStringLocalizer localizer, object[] args)
             => (string)Implementation.Invoke(null, [localizer, ..args])!;
-    }
-
-    private sealed class TestStringLocalizer(Dictionary<string, string> strings) : IStringLocalizer
-    {
-        public string LastKey { get; private set; } = "";
-        public bool IsLastKeyFound { get; private set; }
-
-        public LocalizedString this[string name] {
-            get {
-                var isFound = TryGet(name, out var value);
-                return new LocalizedString(name, value, !isFound);
-            }
-        }
-
-        public LocalizedString this[string name, params object[] arguments] {
-            get {
-                var isFound = TryGet(name, out var value);
-                return new LocalizedString(name, isFound ? string.Format(value, arguments) : value, !isFound);
-            }
-        }
-
-        public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
-            => strings.Select(kv => new LocalizedString(kv.Key, kv.Value));
-
-        // Private methods
-
-        private bool TryGet(string name, out string value)
-        {
-            LastKey = name;
-            IsLastKeyFound = strings.TryGetValue(name, out var foundValue);
-            value = foundValue ?? name;
-            return IsLastKeyFound;
-        }
     }
 }

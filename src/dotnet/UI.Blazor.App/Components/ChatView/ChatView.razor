@@ -60,9 +60,9 @@
 
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <button class="hotkey" type="button" tabindex="-1"
-        aria-keyshortcuts="pageup" data-chat-scroll="up" aria-label="Scroll chat up"></button>
+        aria-keyshortcuts="pageup" data-chat-scroll="up" aria-label="@L.ChatView_ScrollUp"></button>
 <button class="hotkey" type="button" tabindex="-1"
-        aria-keyshortcuts="pagedown" data-chat-scroll="down" aria-label="Scroll chat down"></button>
+        aria-keyshortcuts="pagedown" data-chat-scroll="down" aria-label="@L.ChatView_ScrollDown"></button>
 <CascadingValue Value="@this">
     <InfiniteList
         @key="@Chat.Id.Value"

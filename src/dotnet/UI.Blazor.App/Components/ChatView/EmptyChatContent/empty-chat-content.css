@@ -17,6 +17,10 @@
     @apply px-4;
     @apply truncate;
 }
+/* TODO: why did it appear here? */
+.empty-chat-content > .c-text > .c-truncated-text > .c-part {
+    @apply whitespace-pre;
+}
 .empty-chat-content > .c-text > .c-truncated-text .avatar-name {
     @apply max-w-120;
 }

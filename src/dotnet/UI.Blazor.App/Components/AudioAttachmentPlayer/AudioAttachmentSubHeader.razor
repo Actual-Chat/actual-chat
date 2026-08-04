@@ -21,7 +21,7 @@
     </div>
     <div class="c-playback">
         @if (ScreenSize.IsWide()) {
-            <ButtonRound Tooltip="Backward" Click="@OnBackward" Class="btn-xs btn-transparent hover-primary-icon">
+            <ButtonRound Tooltip="@L.AudioPlayer_Backward" Click="@OnBackward" Class="btn-xs btn-transparent hover-primary-icon">
                 <i class="icon-media-backward-10 text-xl"></i>
             </ButtonRound>
         }
@@ -31,7 +31,7 @@
             <i class="@iconCls text-2xl"></i>
         </ButtonRound>
         @if (ScreenSize.IsWide()) {
-            <ButtonRound Tooltip="Forward" Click="@OnForward" Class="btn-xs btn-transparent hover-primary-icon">
+            <ButtonRound Tooltip="@L.AudioPlayer_Forward" Click="@OnForward" Class="btn-xs btn-transparent hover-primary-icon">
                 <i class="icon-media-forward-10 text-xl"></i>
             </ButtonRound>
         }
@@ -50,7 +50,7 @@
                min="0" max="1" step="0.001"
                value="@fraction.ToString("0.######")"
                disabled="@(m?.Duration is null)"
-               aria-label="Seek"
+               aria-label="@L.AudioPlayer_Seek"
                @oninput="OnSeek" />
     </div>
 </div>

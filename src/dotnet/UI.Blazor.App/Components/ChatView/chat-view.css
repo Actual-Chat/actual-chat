@@ -442,6 +442,13 @@ body.narrow .message-file-attachments {
 .chat-welcome-block .c-content > .c-incut {
     @apply flex-none;
 }
+/*TODO: why did it appear here? */
+.chat-welcome-block .c-content.c-contact-share {
+    @apply gap-x-0;
+}
+.chat-welcome-block .c-content.c-contact-share > .c-incut {
+    @apply whitespace-pre;
+}
 .chat-welcome-block .c-content > .c-contact {
     @apply max-w-100;
     @apply truncate;

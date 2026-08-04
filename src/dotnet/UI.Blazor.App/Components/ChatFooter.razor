@@ -13,12 +13,12 @@
     } else if (m.IsBlocked) {
         <div class="chat-footer readonly">
             <div class="c-content">
-                <span>You blocked this user.</span>
-                <Button Class="btn-primary btn-transparent ml-2" Click="@OnUnblock">Unblock</Button>
+                <span>@L.ChatFooter_YouBlockedUser</span>
+                <Button Class="btn-primary btn-transparent ml-2" Click="@OnUnblock">@L.ChatFooter_Unblock</Button>
             </div>
         </div>
     } else if (m.IsBlockedByPeer) {
-        <ReadOnlyChatFooter Text="This user has blocked you."/>
+        <ReadOnlyChatFooter Text="@L.ChatFooter_BlockedByUser"/>
     } else {
         @if (m.CanPost) {
             <ChatMessageEditor @key="@chat.Id.Value"/>
@@ -26,11 +26,11 @@
             <div class="chat-footer">
                 @if (!m.IsGuest) {
                     <div class="join-footer">
-                        <span class="c-text">To post or talk,&nbsp;</span>
+                        <span class="c-text">@L.ChatFooter_ToPostOrTalk&nbsp;</span>
                         @if (m.ShouldJoinPlaceFirst) {
-                            <Button Click="@(() => OnJoinPlace(m.Place!))" Class="btn-sm btn-primary">Join '@m.Place!.Title' place</Button>
+                            <Button Click="@(() => OnJoinPlace(m.Place!))" Class="btn-sm btn-primary">@L.ChatFooter_JoinPlace_Format(m.Place!.Title)</Button>
                         } else {
-                            <Button Click="@OnJoin" Class="btn-sm btn-primary">Join this chat</Button>
+                            <Button Click="@OnJoin" Class="btn-sm btn-primary">@L.ChatFooter_JoinChat</Button>
                         }
                     </div>
                 } else {
@@ -39,13 +39,14 @@
                             <SignInButton ButtonClass="w-full"/>
                         </div>
                         @if (m.PeerId is { } otherUserId) {
-                            <span class="inline-flex mx-2 mr-1 items-center">to chat with</span>
+                            <span class="inline-flex mx-2 mr-1 items-center">@L.ChatFooter_ToChatWith_Prefix</span>
                             <AccountName UserId="@otherUserId"/>
+                            <span class="inline-flex items-center">@L.ChatFooter_ToChatWith_Suffix</span>
                         } else if (m.CanJoinWithGuestAccount) {
-                            <span class="inline-flex mx-2 items-center">or</span>
-                            <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
+                            <span class="inline-flex mx-2 items-center">@L.ChatFooter_Or</span>
+                            <Button Click="@OnJoin" Class="inline-flex btn-outline">@L.ChatFooter_JoinAnonymously</Button>
                         } else {
-                            <span class="inline-flex ml-2 items-center">to join this chat</span>
+                            <span class="inline-flex ml-2 items-center">@L.ChatFooter_ToJoinThisChat</span>
                         }
                     </div>
                 }

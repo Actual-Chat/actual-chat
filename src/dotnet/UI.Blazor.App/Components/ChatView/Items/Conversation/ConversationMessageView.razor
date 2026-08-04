@@ -111,7 +111,7 @@
                 <div class="c-short">
                     <MarkupView Markup="@m.Description.Markup"/>
                     @if (!_isOpen) {
-                        <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails"> Show items</span>
+                        <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails">&nbsp;@L.ChatView_ShowItems</span>
                     }
                 </div>
             </div>
@@ -120,7 +120,7 @@
                     <div class="c-long-content @detailsCls">
                         <MarkupView Markup="@m.Summary.Markup"/>
                         <span class="show-more-btn" data-vl-hold="keep-edge"
-                              @onclick="@ToggleDetails"> Hide items</span>
+                              @onclick="@ToggleDetails">&nbsp;@L.ChatView_HideItems</span>
                     </div>
                 </div>
             }

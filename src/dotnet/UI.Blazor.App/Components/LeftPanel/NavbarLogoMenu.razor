@@ -8,37 +8,37 @@
 @if (m.NotesChat != null) {
     <MenuEntry
         Icon="icon-file-text"
-        Text="Notes"
+        Text="@L.Navbar_Notes"
         Click="@OnNotesClick">
     </MenuEntry>
 }
 @if (m.Account.IsAdmin) {
     <MenuEntry
         Icon="icon-bell"
-        Text="Notifications"
+        Text="@L.Navbar_Notifications"
         Click="@OnNotificationsClick">
     </MenuEntry>
 }
 <MenuEntry
     Icon="icon-settings"
-    Text="Settings"
+    Text="@L.Common_Settings"
     Click="@OnSettingsClick">
 </MenuEntry>
 <MenuEntry
     Icon="icon-refresh"
-    Text="Reload"
+    Text="@L.Navbar_Reload"
     Click="@OnReloadClick">
 </MenuEntry>
 @if (m.Account.IsGuest) {
     <MenuEntry
         Icon="icon-log-in"
-        Text="Sign in"
+        Text="@L.Navbar_SignIn"
         Click="@SignIn">
     </MenuEntry>
 } else {
     <MenuEntry
         Icon="icon-log-out"
-        Text="Log out"
+        Text="@L.Settings_LogOut"
         Click="@SignOut">
     </MenuEntry>
 }
@@ -46,7 +46,7 @@
     <MenuEntrySeparator/>
     <MenuEntry
         Icon="icon-alert-triangle"
-        Text="Test Pages"
+        Text="@L.Navbar_TestPages"
         Click="@OnTestPagesClick">
     </MenuEntry>
 }

@@ -38,7 +38,7 @@
                        min="0" max="1" step="0.001"
                        value="@fraction.ToString("0.######")"
                        disabled="@(m.Duration is null)"
-                       aria-label="Seek"
+                       aria-label="@L.AudioPlayer_Seek"
                        @oninput="OnSeek"
                        @onclick:stopPropagation />
             </div>

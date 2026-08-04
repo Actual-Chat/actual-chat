@@ -1,5 +1,7 @@
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Resources;
+using Microsoft.Extensions.Localization;
 
 // ReSharper disable once CheckNamespace
 namespace ActualChat.UI.Blazor.App.Components;
@@ -20,6 +22,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     private ImmutableHashSet<ChatId> _listeningChatsBeforeAudio = ImmutableHashSet<ChatId>.Empty;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private IStringLocalizer L => field ??= Services.GetRequiredService<IStringLocalizer>();
 
     public IState<PlaybackState?> State => _state;
 
@@ -251,16 +254,16 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
             return true;
 
         var text = activeChats.Count == 1
-            ? "Playing this audio will stop your active conversation."
-            : $"Playing this audio will stop {activeChats.Count} active conversations.";
+            ? L.AudioPlayer_InterruptOne
+            : L.AudioPlayer_InterruptMany_Format(activeChats.Count);
         var confirmed = false;
         var modalRef = await Hub.ModalUI.Show(new ConfirmModal.Model(
                 IsDestructive: false,
                 text,
                 Confirm: () => confirmed = true) {
-                Title = "Interrupt conversation?",
-                ConfirmButtonText = "Confirm",
-                CancelButtonText = "Cancel",
+                Title = L.AudioPlayer_InterruptTitle,
+                ConfirmButtonText = L.AudioPlayer_Confirm,
+                CancelButtonText = L.Common_Cancel,
             })
             .ConfigureAwait(true);
         await modalRef.WhenClosed.ConfigureAwait(true);

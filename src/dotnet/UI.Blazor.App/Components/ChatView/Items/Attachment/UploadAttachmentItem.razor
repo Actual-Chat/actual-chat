@@ -29,7 +29,7 @@
             </ButtonSquare>
             @if (previewState is PreviewAccessState.Ok) {
                 @if (attachment.IsSupportedImage || m.HasCustomPreview) {
-                    <img src="@previewUrl" alt="Attachment thumbnail" class="@plugClass" />
+                    <img src="@previewUrl" alt="@L.ChatView_AttachmentThumbnail" class="@plugClass" />
                 } else if (attachment.IsSupportedVideo) {
                     <video preload="metadata" class="@plugClass">
                         <source src="@previewUrl#t=0.5"/>

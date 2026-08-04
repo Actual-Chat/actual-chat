@@ -1,13 +1,15 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
 <div class="alert-text">
-    @CoreConstants.AppName sends regular notifications for every message, but an
-    <span class="font-bold">"Alert" is a notification similar to a phone call</span>
-    — it’s louder, and the user must swipe it or open the app to stop the sound.
-    If you don’t need to distract <span class="@TargetClass">@Target</span> right now, consider not sending it.
+    @L.Alert_InfoIntro_Format(CoreConstants.AppName)
+    <span class="font-bold">@L.Alert_InfoHighlight</span>
+    @L.Alert_InfoDetails
+    @L.Alert_InfoConsider_Prefix<span class="@TargetClass">@Target</span>@L.Alert_InfoConsider_Suffix
 </div>
 
 @code {
+    [Inject] private IStringLocalizer L { get; init; } = null!;
+
     [Parameter] public string Target { get; set; } = "";
     [Parameter] public string TargetClass { get; set; } = "";
 }

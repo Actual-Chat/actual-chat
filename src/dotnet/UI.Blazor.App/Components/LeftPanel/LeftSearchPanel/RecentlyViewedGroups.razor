@@ -7,7 +7,7 @@
 
 <div class="recently-viewed-groups">
     <div class="c-header">
-        <div class="c-title">@Title</div>
+        <div class="c-title">@(Title ?? L.Search_RecentlyViewed)</div>
     </div>
     <div class="chat-list">
         @foreach (var chat in chats) {
@@ -21,7 +21,7 @@
     private IChats Chats => Hub.Chats;
     private IChatUsages ChatUsages => Hub.ChatUsages;
 
-    [Parameter] public string Title { get; set; } = "Recently viewed";
+    [Parameter] public string? Title { get; set; }
     [Parameter] public ChatUsageListKind ListKind { get; set; } = ChatUsageListKind.ViewedGroupChats;
     [Parameter] public Place? Place { get; set; }
 

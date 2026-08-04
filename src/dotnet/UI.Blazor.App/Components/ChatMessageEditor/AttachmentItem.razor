@@ -20,7 +20,7 @@
                 <i class="icon-close text-lg"></i>
             </ButtonSquare>
             @if (attachment.IsSupportedImage || m.HasCustomPreview) {
-                <img src="@previewUrl" alt="Attachment" class="@plugClass"/>
+                <img src="@previewUrl" alt="@L.Editor_Attachment" class="@plugClass"/>
             } else if (attachment.IsSupportedVideo) {
                 <video preload="metadata" class="@plugClass">
                     <source src="@previewUrl#t=0.5"/>
