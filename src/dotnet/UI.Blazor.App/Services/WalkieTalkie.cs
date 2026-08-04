@@ -6,17 +6,13 @@ public static class WalkieTalkie
         => now - startedAt > Constants.Audio.WalkieTalkieStaleWakeAge;
 
     public static Moment? ComputeIdleDropAt(
-        IReadOnlyList<Moment?> lastActivityTimes, Moment idleSince, TimeSpan idleTimeout)
+        bool hasAnyActivity, Moment? lastActiveAt, Moment idleSince, TimeSpan idleTimeout)
     {
-        // A null last-activity means the chat is streaming right now (see
-        // LiveStreamUI.GetLastActivityServerTime), so there is no drop time at all.
-        var lastActivity = idleSince;
-        foreach (var t in lastActivityTimes) {
-            if (t is null)
-                return null;
+        // Activity is a level (LiveStreamUI.HasActivity), so the caller stamps lastActiveAt on
+        // the observed active->idle edge; idleSince clamps a stamp leaked from a prior session.
+        if (hasAnyActivity)
+            return null;
 
-            lastActivity = Moment.Max(lastActivity, t.Value);
-        }
-        return lastActivity + idleTimeout;
+        return Moment.Max(idleSince, lastActiveAt ?? idleSince) + idleTimeout;
     }
 }

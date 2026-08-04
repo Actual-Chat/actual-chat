@@ -25,11 +25,9 @@ public class WalkieTalkieTest
     [Fact]
     public void OngoingStreamingYieldsNoDropTime()
     {
-        // arrange: null last-activity means someone is streaming right now
-        var lastActivityTimes = new List<Moment?> { T0, null };
-
         // act
-        var dropAt = WalkieTalkie.ComputeIdleDropAt(lastActivityTimes, T0, TimeSpan.FromMinutes(5));
+        var dropAt = WalkieTalkie.ComputeIdleDropAt(
+            hasAnyActivity: true, lastActiveAt: T0, T0, TimeSpan.FromMinutes(5));
 
         // assert
         dropAt.Should().BeNull();
@@ -40,10 +38,10 @@ public class WalkieTalkieTest
     {
         // arrange
         var idleTimeout = TimeSpan.FromMinutes(5);
-        var lastActivityTimes = new List<Moment?> { T0 + TimeSpan.FromMinutes(1), T0 + TimeSpan.FromMinutes(2) };
+        var lastActiveAt = T0 + TimeSpan.FromMinutes(2);
 
         // act
-        var dropAt = WalkieTalkie.ComputeIdleDropAt(lastActivityTimes, T0, idleTimeout);
+        var dropAt = WalkieTalkie.ComputeIdleDropAt(hasAnyActivity: false, lastActiveAt, T0, idleTimeout);
 
         // assert
         dropAt.Should().Be(T0 + TimeSpan.FromMinutes(2) + idleTimeout);
@@ -52,12 +50,12 @@ public class WalkieTalkieTest
     [Fact]
     public void IdleSinceClampsStaleActivityTimes()
     {
-        // arrange: cached activity from a prior session must not shorten the idle window
+        // arrange: a stamp leaked from a prior session must not shorten the idle window
         var idleTimeout = TimeSpan.FromMinutes(5);
-        var lastActivityTimes = new List<Moment?> { T0 - TimeSpan.FromHours(2) };
+        var lastActiveAt = T0 - TimeSpan.FromHours(2);
 
         // act
-        var dropAt = WalkieTalkie.ComputeIdleDropAt(lastActivityTimes, T0, idleTimeout);
+        var dropAt = WalkieTalkie.ComputeIdleDropAt(hasAnyActivity: false, lastActiveAt, T0, idleTimeout);
 
         // assert
         dropAt.Should().Be(T0 + idleTimeout);
@@ -67,7 +65,8 @@ public class WalkieTalkieTest
     public void NoActivityTimesFallBackToIdleSince()
     {
         // act
-        var dropAt = WalkieTalkie.ComputeIdleDropAt([], T0, TimeSpan.FromMinutes(5));
+        var dropAt = WalkieTalkie.ComputeIdleDropAt(
+            hasAnyActivity: false, lastActiveAt: null, T0, TimeSpan.FromMinutes(5));
 
         // assert
         dropAt.Should().Be(T0 + TimeSpan.FromMinutes(5));

@@ -617,32 +617,37 @@ public partial class ChatAudioUI
         var backgroundStateTracker = Hub.Services.GetRequiredService<BackgroundStateTracker>();
         var serverClock = Clocks.ServerClock;
         Moment? idleSince = null;
+        Moment? lastActiveAt = null;
         while (!cancellationToken.IsCancellationRequested) {
             await Clocks.CpuClock.Delay(Constants.Audio.WalkieTalkieIdleCheckPeriod, cancellationToken)
                 .ConfigureAwait(false);
 
             var isBackground = backgroundStateTracker.IsBackground.Value || IsWalkieTalkieHeadless;
             if (!isBackground) {
-                idleSince = null;
+                (idleSince, lastActiveAt) = (null, null);
                 continue;
             }
 
             var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
             var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
             if (listeningChatIds.IsEmpty || _replayState.Value is not null || recordingChatId is not null) {
-                idleSince = null;
+                (idleSince, lastActiveAt) = (null, null);
                 continue;
             }
 
             var now = serverClock.Now;
             idleSince ??= now;
-            var lastActivityTimes = new List<Moment?>(listeningChatIds.Count);
+            var hasAnyActivity = false;
             foreach (var chatId in listeningChatIds)
-                lastActivityTimes.Add(
-                    await LiveStreamUI.GetLastActivityServerTime(chatId, cancellationToken).ConfigureAwait(false));
+                if (await LiveStreamUI.HasActivity(chatId, cancellationToken).ConfigureAwait(false)) {
+                    hasAnyActivity = true;
+                    break;
+                }
+            if (hasAnyActivity)
+                lastActiveAt = now;
 
             var dropAt = WalkieTalkie.ComputeIdleDropAt(
-                lastActivityTimes, idleSince.Value, Constants.Audio.WalkieTalkieIdleTimeout);
+                hasAnyActivity, lastActiveAt, idleSince.Value, Constants.Audio.WalkieTalkieIdleTimeout);
             if (dropAt is null || now < dropAt)
                 continue;
 
@@ -650,7 +655,7 @@ public partial class ChatAudioUI
                 "Walkie-talkie: {Count} listening chat(s) idle in background, dropping to armed",
                 listeningChatIds.Count);
             await ClearListeningChats().ConfigureAwait(false);
-            idleSince = null;
+            (idleSince, lastActiveAt) = (null, null);
         }
     }
 
