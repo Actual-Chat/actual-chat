@@ -63,6 +63,10 @@ body.hoverable .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-
     @apply text-[0.625rem];
     @apply bg-danger;
 }
+.navbar-button .badge.c-unread-dot {
+    @apply min-w-2.5 max-w-2.5 min-h-2.5 w-2.5 h-2.5;
+    @apply p-0;
+}
 .navbar-button > .c-dots {
     @apply absolute z-10 left-1;
     @apply hidden;
