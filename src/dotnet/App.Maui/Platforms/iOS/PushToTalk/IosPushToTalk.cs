@@ -194,18 +194,23 @@ public static class IosPushToTalk
     private static void OnTransmitBegan()
     {
         BlazorWebViewApp.EnsureStarted();
-        // Level-triggered, not edge-triggered: the session stays active for the whole hot window,
-        // so a press landing inside it gets no DidActivateAudioSession to start it.
-        var isSessionActive = AudioSession.Owner != AudioSessionOwner.App;
         Transmission transmission;
         Transmission? superseded;
+        bool isSessionActive;
         lock (Lock) {
             (superseded, transmission) = (_transmission, new Transmission { CreatedAt = CpuTimestamp.Now });
+            // Level-triggered, not edge-triggered: the session stays active for the whole hot
+            // window, so a press landing inside it gets no DidActivateAudioSession to start it.
+            // Read under the lock, or an activation racing this one sees no transmission to start
+            // and this one is left waiting for a callback that already happened.
+            isSessionActive = AudioSession.Owner != AudioSessionOwner.App;
             // Claimed here rather than in StartTransmitReply, which only latches it after the
             // blocking PttPreRoll.Start(): a DidActivateAudioSession delivered concurrently would
             // otherwise see an unstarted transmission and open a second pre-roll and reply.
             transmission.IsStarting = isSessionActive;
             _transmission = transmission;
+            if (isSessionActive)
+                AudioSession.SetOwner(AudioSessionOwnership.OnActivated(true));
         }
 
         if (superseded is not null) {
@@ -216,11 +221,8 @@ public static class IosPushToTalk
                 Log, "Stopping the superseded PTT transmit reply failed", CancellationToken.None);
         }
 
-        if (!isSessionActive)
-            return;
-
-        AudioSession.SetOwner(AudioSessionOwnership.OnActivated(true));
-        StartTransmitReply(transmission);
+        if (isSessionActive)
+            StartTransmitReply(transmission);
     }
 
     private static void StartTransmitReply(Transmission transmission)
@@ -380,12 +382,14 @@ public static class IosPushToTalk
                 transmission.IsStarting = true;
                 mustStart = true;
             }
+            // Published under the lock OnTransmitBegan reads it under: otherwise a press racing
+            // this callback sees App, waits for an activation that already fired, and is dropped.
+            AudioSession.SetOwner(AudioSessionOwnership.OnActivated(transmission is not null));
         }
 
         if (abandoned is not null)
             AbandonTransmission(abandoned);
 
-        AudioSession.SetOwner(AudioSessionOwnership.OnActivated(transmission is not null));
         if (mustStart)
             StartTransmitReply(transmission!);
 
