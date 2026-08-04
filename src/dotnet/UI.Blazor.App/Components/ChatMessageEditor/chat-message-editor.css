@@ -446,10 +446,10 @@ body.narrow .chat-message-editor:not(.narrow-panel) .attachment-wrapper:has(.c-f
 }
 .attachment-wrapper.last-element {
     @apply flex items-center justify-center;
-    @apply min-w-34;
+    @apply min-w-18;
 }
 body.narrow .attachment-wrapper.last-element {
-    @apply min-w-30;
+    @apply min-w-18;
 }
 .narrow-panel .attachment-wrapper.last-element:has(.add-attachment) {
     @apply hidden;
@@ -458,34 +458,41 @@ body.narrow .attachment-wrapper.last-element {
     @apply relative;
     @apply flex-y;
 }
+/* Structural base - shared with ChatView's upload attachments (.message-image-attachments).
+   Editor-specific sizing lives in the .attachment-list-wrapper-scoped rules below. */
 .attachment-item {
     @apply relative;
     @apply flex-none flex-y justify-center gap-x-1;
-    @apply h-34 w-34;
-    @apply mt-auto;
-    @apply rounded-t-lg;
     @apply overflow-hidden;
+}
+.attachment-list-wrapper .attachment-item {
+    @apply h-24 w-fit;
+    @apply min-w-18 max-w-36;
+    @apply mt-auto;
+    @apply rounded-t-lg border border-separator;
     transition: width 150ms ease, height 150ms ease;
 }
 .narrow-panel .attachment-item {
     @apply rounded;
 }
 .attachment-item > img, .attachment-item > video {
-    @apply h-34;
     @apply object-cover;
-    transition: min-height 150ms ease;
 }
-body.narrow .attachment-item {
-    @apply h-30 w-30;
+.attachment-list-wrapper .attachment-item > img,
+.attachment-list-wrapper .attachment-item > video {
+    @apply h-24 w-auto;
+    @apply min-w-18 max-w-36;
+    @apply self-center;
+    transition: min-height 150ms ease;
 }
 body.narrow .narrow-panel .attachment-item {
     @apply h-10 w-10;
-}
-body.narrow .attachment-item > img, .attachment-item > video {
-    @apply min-h-30;
+    @apply min-w-10 max-w-10;
 }
 body.narrow .narrow-panel .attachment-item > img,
 .narrow-panel .attachment-item > video {
+    @apply w-10 h-10;
+    @apply min-w-10 max-w-10;
     @apply min-h-10;
 }
 .remove-attachment-btn.btn {
@@ -495,29 +502,26 @@ body.narrow .narrow-panel .attachment-item > img,
     @apply top-0 right-0;
     @apply opacity-60;
 }
+/* Editor: smaller cross, always visible on desktop and mobile. */
+.attachment-list-wrapper .remove-attachment-btn.btn {
+    @apply min-w-6 max-w-6 min-h-6 max-h-6;
+    @apply top-0.5 right-0.5;
+    @apply opacity-80;
+}
 .narrow-panel .remove-attachment-btn.btn {
     @apply hidden;
 }
 .attachment-item > .c-file {
     @apply flex-y items-center justify-center;
-    @apply p-3;
+    @apply w-full h-full;
 }
 .attachment-item > .c-file .c-icon {
-    @apply flex items-center justify-center;
-    @apply w-10 h-12;
-    @apply rounded-md;
+    @apply flex-y items-center justify-center;
+    @apply w-full h-full;
     @apply always-white;
-}
-.attachment-item > .c-file .c-icon.file-default {
-    @apply bg-04;
-    @apply text-primary;
 }
 .attachment-item > .c-file .c-extension {
-    @apply h-3.5;
-    @apply text-caption-6 text-01;
-}
-body.narrow .attachment-item > .c-file .c-extension {
-    @apply always-white;
+    @apply text-caption-6;
 }
 .narrow-panel .attachment-item > .c-file .c-extension {
     @apply hidden;
@@ -535,7 +539,7 @@ body.narrow .attachment-item > .c-file .c-extension {
 }
 .attachment-filename {
     @apply absolute bottom-0 z-10;
-    @apply w-full max-w-34;
+    @apply w-full;
     @apply self-center text-center;
     @apply truncate;
     @apply px-2 md:px-0.5 pb-0.5 pt-1;
@@ -545,12 +549,41 @@ body.narrow .attachment-item > .c-file .c-extension {
     @apply bg-[var(--black-60)];
     @apply text-white text-xs font-medium;
 }
-body.narrow .attachment-filename {
-    @apply max-w-30;
+.attachment-list-wrapper .attachment-filename {
+    @apply font-normal;
 }
 body.narrow .narrow-panel .attachment-filename {
     @apply hidden;
 }
+.attachment-list-wrapper .attachment-item > .c-duration {
+    @apply absolute bottom-1 left-1 z-20;
+    @apply px-1.5 py-0.5;
+    @apply rounded-md;
+    @apply bg-[var(--black-90)] text-white;
+    @apply text-xs font-medium leading-none whitespace-nowrap;
+    @apply pointer-events-none;
+}
+.narrow-panel .attachment-item > .c-duration {
+    @apply hidden;
+}
+.attachment-wrapper.attachment-failed {
+    @apply border border-danger;
+}
+.attachment-failed .attachment-filename {
+    @apply hidden;
+}
+.attachment-error {
+    @apply absolute bottom-0 z-10;
+    @apply w-full;
+    @apply self-center text-center;
+    @apply pb-0.5 pt-1;
+    @apply rounded-t-sm;
+    @apply bg-[var(--black-60)];
+    @apply text-danger text-xs font-medium;
+    @apply pointer-events-none;
+}
+/* Upload progress bar - no longer used by the editor's AttachmentItem,
+   still used by ChatView's FileUploadAttachment / UploadAttachmentItem. */
 .attachment-upload-progress {
     @apply absolute bottom-4.5 z-20;
     @apply h-1;

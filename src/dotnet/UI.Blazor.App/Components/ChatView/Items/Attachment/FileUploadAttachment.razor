@@ -10,9 +10,9 @@
     var progressValue = progress.Progress;
     var stageDetails = progress.Details;
     var uploadProgressClass = "attachment-upload-progress";
-    MediaMimeTypes.TryGetExtension(attachment.FileType, out var extension);
-    var fileExtension = extension != null ? extension.Replace(".", "") : "";
-    var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
+    var kind = FileTypeHelper.GetKind(attachment.FileName, attachment.FileType);
+    var fileCls = FileTypeHelper.GetCssClass(kind);
+    var iconCls = FileTypeHelper.GetIconClass(kind);
     if (progress.IsFailed) {
         progressValue = Math.Max(progressValue, 30);
         uploadProgressClass += " attachment-upload-failed";
@@ -30,11 +30,7 @@
         } else if (previewState is PreviewAccessState.NoFileAccess) {
             <i class="icon-file-broken text-2xl text-02"></i>
         } else {
-            if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
-                <i class="icon-play-fill text-2xl"></i>
-            } else {
-                <i class="icon-file text-xl"></i>
-            }
+            <i class="@iconCls text-xl"></i>
         }
         @if (!progress.IsReady && previewState is PreviewAccessState.Ok) {
             @if (isUploading) {

@@ -152,6 +152,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             fileMetadata.Length,
             preview) {
             FileProvider = fileProvider,
+            DurationMs = preview?.DurationMs ?? 0,
         };
         attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
         return attachment;

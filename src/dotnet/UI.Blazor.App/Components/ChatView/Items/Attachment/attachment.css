@@ -160,27 +160,32 @@ body.hoverable .file-attachment:not(.upload-file):hover,
     @apply text-caption-4 text-primary;
 }
 
-.file-image {
-    @apply bg-[var(--violet-60)];
-}
-.file-multimedia {
-    @apply bg-[var(--magenta-70)];
-}
-.file-pdf {
-    @apply bg-[var(--red-70)];
+.file-text {
+    @apply bg-[var(--file-text)];
 }
 .file-table {
-    @apply bg-[var(--emerald-40)];
+    @apply bg-[var(--file-table)];
 }
-.file-text {
-    @apply bg-[var(--blue-70)];
+.file-presentation {
+    @apply bg-[var(--file-presentation)];
+}
+.file-pdf {
+    @apply bg-[var(--file-pdf)];
 }
 .file-archive {
-    @apply bg-[var(--sienna-70)];
+    @apply bg-[var(--file-archive)];
 }
-.file-attachment .c-file-icon.file-default {
-    @apply bg-cancel;
-    @apply text-primary;
+.file-code {
+    @apply bg-[var(--file-code)];
+}
+.file-audio {
+    @apply bg-[var(--file-audio)];
+}
+.file-executable {
+    @apply bg-[var(--file-executable)];
+}
+.file-default {
+    @apply bg-[var(--file-default)];
 }
 
 .message-image-attachments.media-attachment-uploads {

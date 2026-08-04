@@ -579,7 +579,7 @@ body.hoverable .content-list-rows .c-file-row:hover,
     @apply text-lg;
 }
 .content-list-rows .c-file-icon.file-default {
-    @apply bg-cancel text-01;
+    @apply bg-[var(--file-default)];
 }
 .content-list-rows .c-file-info {
     @apply min-w-0 flex-1 flex-y gap-y-0;

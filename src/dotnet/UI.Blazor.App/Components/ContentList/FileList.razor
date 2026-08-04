@@ -27,11 +27,12 @@
             else {
                 var url = UrlMapper.ContentUrl(file.BlobId);
                 var menuRef = MenuRef.New<ChatContentItemMenu>(file.EntryId.Value, file.LocalIndex.ToString()).ToString();
-                var ext = ContentListPlumbing.FileExtension(file.FileName);
-                var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(ext, "file-default");
+                var kind = FileTypeHelper.GetKind(file.FileName, file.ContentType);
+                var fileCls = FileTypeHelper.GetCssClass(kind);
+                var iconCls = FileTypeHelper.GetIconClass(kind);
                 <a class="c-file-row" href="@url" target="_blank" rel="noopener" role="button" data-menu="@menuRef" data-visor-date="@item.VisorDate">
                     <div class="c-file-icon @fileCls">
-                        <i class="icon-file"></i>
+                        <i class="@iconCls"></i>
                     </div>
                     <div class="c-file-info">
                         <FileAttachmentTitle Title="@file.FileName"/>

@@ -3,8 +3,7 @@
 @inherits ComputedStateComponent<AppUIHub, AudioFileRow.Model>
 @{
     var m = State.Value;
-    var ext = ContentListPlumbing.FileExtension(File.FileName);
-    var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(ext, "file-default");
+    var fileCls = FileTypeHelper.GetCssClass(FileType.Audio);
     var icon = m.IsPlaying ? "icon-pause-fill" : "icon-play-fill";
     var rowCls = m.IsCurrent ? "c-file-row is-current" : "c-file-row";
     var menuRef = MenuRef.New<ChatContentItemMenu>(File.EntryId.Value, File.LocalIndex.ToString()).ToString();
