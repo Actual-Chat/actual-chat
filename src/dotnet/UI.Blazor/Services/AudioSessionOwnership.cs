@@ -23,13 +23,15 @@ public static class AudioSessionOwnership
     public static AudioSessionOwner OnActivated(bool isTransmitting)
         => isTransmitting ? AudioSessionOwner.PttTransmit : AudioSessionOwner.PttPlayback;
 
-    public static AudioSessionOwner OnReleased(AudioSessionOwner current, AudioSessionRelease release)
+    public static AudioSessionOwner OnReleased(
+        AudioSessionOwner current, AudioSessionRelease release, bool hasLivePlayback)
         => release switch {
             AudioSessionRelease.Deactivated => AudioSessionOwner.App,
             AudioSessionRelease.ChannelLeft => AudioSessionOwner.App,
-            // Full duplex: ending a transmit must not steal the session from a running playback.
+            // Full duplex: transmit took the session away from a playback that's still running,
+            // so it has to hand it back rather than to the app.
             AudioSessionRelease.TransmitEnded when current == AudioSessionOwner.PttTransmit
-                => AudioSessionOwner.App,
+                => hasLivePlayback ? AudioSessionOwner.PttPlayback : AudioSessionOwner.App,
             _ => current,
         };
 
@@ -37,5 +39,5 @@ public static class AudioSessionOwnership
         => owner == AudioSessionOwner.App;
 
     public static bool MayConfigure(AudioSessionOwner owner)
-        => owner != AudioSessionOwner.PttTransmit;
+        => owner == AudioSessionOwner.App;
 }
