@@ -1,5 +1,3 @@
-using ActualLab.OS;
-
 namespace ActualChat;
 
 public static partial class Constants
@@ -13,18 +11,16 @@ public static partial class Constants
 
         public static class Compression
         {
-            public const bool IsServerSideEnabled = true;
-            public const bool IsClientSideEnabled = true;
+            public static readonly bool IsServerSideEnabled = false; // .NET 11 issue: automatic 30s keep-alives don't work w/ compression
+            public static readonly bool IsClientSideEnabled = false; // .NET 11 issue: automatic 30s keep-alives don't work w/ compression
         }
 
-        // Forces HTTP/2 transport for RPC
+        // RPC transport
         public static readonly bool UseHttpClient =
 #if USE_RPC_HTTP_CLIENT
             true;
 #else
-            // Android runs on HTTP/2 while we isolate a suspected
-            // WebSocket regression on .NET 11 & MAUI Android.
-            OSInfo.IsAndroid;
+            false;
 #endif
     }
 }
