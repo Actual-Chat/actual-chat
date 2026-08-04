@@ -206,7 +206,11 @@ namespace ActualChat.App.Maui.Audio
         public static void SetOwner(ActualChat.UI.Blazor.Services.AudioSessionOwner owner) { }
         public static void ReleaseOwner(
             ActualChat.UI.Blazor.Services.AudioSessionRelease release, bool hasLivePlayback = false) { }
+        public static void SetOwnerWatchdogRecovery(Action recovery) { }
+        public Task<bool> Reconfigure(ActualChat.UI.Blazor.Services.AudioFocusMode mode) => Task.FromResult(true);
+        public Task<bool> Reactivate(ActualChat.UI.Blazor.Services.AudioFocusMode mode) => Task.FromResult(true);
         public Task EnsureCorrectOutputRoute() => Task.CompletedTask;
+        public ActualChat.UI.Blazor.Services.AppleAudioSessionDiagnostics? GetDiagnostics() => null;
     }
 }
 EOF
@@ -221,6 +225,7 @@ namespace ActualChat.App.Maui.Audio
 {
     public class AppleAudioCapture
     {
+        public static TimeSpan? InputNodeHeldFor => null;
         public static bool IsInputNodeHeld => false;
     }
 }
@@ -309,6 +314,12 @@ namespace ActualChat.App.Maui.Audio
     public class AudioEngines
     {
         public AudioEngine Recording { get; } = null!;
+        public void Pause() { }
+        public void Resume(ActualChat.UI.Blazor.Services.AudioFocusMode mode) { }
+    }
+    public static class AudioEngineExt
+    {
+        public static void StopRecording(this AudioEngine engine) { }
     }
 }
 EOF

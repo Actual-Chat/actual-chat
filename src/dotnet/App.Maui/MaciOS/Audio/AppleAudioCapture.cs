@@ -7,11 +7,21 @@ namespace ActualChat.App.Maui.Audio;
 
 public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
 {
-    private static int _isInputNodeHeld;
+    // Bounds a latch leaked by an abandoned enumerator or a hung native read, which would
+    // otherwise disable the PTT pre-roll for the rest of the process.
+    private static readonly TimeSpan InputNodeHoldTimeout = TimeSpan.FromMinutes(30);
 
-    // Two AVAudioEngine instances must never hold the hardware input node at once, and the PTT
-    // pre-roll starts from a callback that knows nothing about the app's own recorder.
-    public static bool IsInputNodeHeld => Volatile.Read(ref _isInputNodeHeld) != 0;
+    private static long _inputNodeHeldAt;
+
+    // Null when the app's recorder isn't holding the hardware input node.
+    public static TimeSpan? InputNodeHeldFor {
+        get {
+            var heldAt = Volatile.Read(ref _inputNodeHeldAt);
+            return heldAt == 0 ? null : new CpuTimestamp(heldAt).Elapsed;
+        }
+    }
+
+    public static bool IsInputNodeHeld => InputNodeHeldFor is { } heldFor && heldFor < InputNodeHoldTimeout;
 
     public ResamplerFactory ResamplerFactory => field ??= hub.Services.GetRequiredService<ResamplerFactory>();
 
@@ -24,19 +34,20 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
 
     private async IAsyncEnumerable<IMemoryOwner<float>> CaptureInternal([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // PttPreRoll.TryTake() stops its own AVAudioEngine, and that must happen before
-        // AudioEngines.Recording is touched below - two AVAudioEngine instances must never hold
-        // the hardware input node at once.
-        var preRoll = PttPreRoll.TryTake();
-        Log.LogInformation("CaptureInternal: starting");
-        var engine = AudioEngines.Recording;
-        using var outBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
-        var hwFormat = engine.Input.GetOutputFormat();
-        using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
-        // Claims the input node for this engine from here on, so a PTT press can't start a
-        // pre-roll engine on top of it - see PttPreRoll.Start().
-        Volatile.Write(ref _isInputNodeHeld, 1);
+        // First statement, before TryTake() stops the pre-roll engine: everything below is
+        // blocking native work, and a press landing in that window would see a free input node
+        // and publish a second AVAudioEngine onto it - see PttPreRoll.Start().
+        Volatile.Write(ref _inputNodeHeldAt, CpuTimestamp.Now.Value);
         try {
+            // TryTake() stops its own AVAudioEngine, and that must happen before
+            // AudioEngines.Recording is touched below - two AVAudioEngine instances must never
+            // hold the hardware input node at once.
+            var preRoll = PttPreRoll.TryTake();
+            Log.LogInformation("CaptureInternal: starting");
+            var engine = AudioEngines.Recording;
+            using var outBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
+            var hwFormat = engine.Input.GetOutputFormat();
+            using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
             if (preRoll is { } take) {
                 // Only a format match is safe: a route change between arming and draining would make
                 // the buffered samples the wrong rate for this resampler.
@@ -93,28 +104,28 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
                 }
                 yield return owner;
             }
+            yield break;
+
+            [SuppressMessage("ReSharper", "AccessToDisposedClosure")]
+            void HandleSamples(AVAudioPcmBuffer pcmBuffer, AVAudioTime when)
+            {
+                try {
+                    var estimatedResampledLength = pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
+                    if (outBuffer.RemainingCapacity < estimatedResampledLength) {
+                        Log.LogWarning("Buffer full, dropping samples");
+                        return;
+                    }
+
+                    resampler.Transform(pcmBuffer, outBuffer);
+                }
+                catch (Exception e) {
+                    Log.LogError(e, "Failed to handle recorded samples");
+                }
+            }
         }
         finally {
-            Volatile.Write(ref _isInputNodeHeld, 0);
+            Volatile.Write(ref _inputNodeHeldAt, 0);
             Log.LogInformation("CaptureInternal: stopped");
-        }
-        yield break;
-
-        [SuppressMessage("ReSharper", "AccessToDisposedClosure")]
-        void HandleSamples(AVAudioPcmBuffer pcmBuffer, AVAudioTime when)
-        {
-            try {
-                var estimatedResampledLength = pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
-                if (outBuffer.RemainingCapacity < estimatedResampledLength) {
-                    Log.LogWarning("Buffer full, dropping samples");
-                    return;
-                }
-
-                resampler.Transform(pcmBuffer, outBuffer);
-            }
-            catch (Exception e) {
-                Log.LogError(e, "Failed to handle recorded samples");
-            }
         }
     }
 }

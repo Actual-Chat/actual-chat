@@ -52,6 +52,7 @@ public static class IosPushToTalk
         // Before Create: a restoration join fires DidJoinChannel, which applies this flag, and a
         // process launched by PTT never runs the WebView scope that would otherwise set it.
         Volatile.Write(ref _isTransmitEnabled, LoadIsTransmitEnabled() ? 1 : 0);
+        AudioSession.SetOwnerWatchdogRecovery(OnOwnerWatchdogFired);
         PTChannelManager.Create(_managerDelegate, _restorationDelegate, (manager, error) => {
             if (error is not null) {
                 Log.LogError("PTChannelManager.Create failed: {Error}", error.LocalizedDescription);
@@ -193,10 +194,17 @@ public static class IosPushToTalk
     private static void OnTransmitBegan()
     {
         BlazorWebViewApp.EnsureStarted();
+        // Level-triggered, not edge-triggered: the session stays active for the whole hot window,
+        // so a press landing inside it gets no DidActivateAudioSession to start it.
+        var isSessionActive = AudioSession.Owner != AudioSessionOwner.App;
         Transmission transmission;
         Transmission? superseded;
         lock (Lock) {
             (superseded, transmission) = (_transmission, new Transmission { CreatedAt = CpuTimestamp.Now });
+            // Claimed here rather than in StartTransmitReply, which only latches it after the
+            // blocking PttPreRoll.Start(): a DidActivateAudioSession delivered concurrently would
+            // otherwise see an unstarted transmission and open a second pre-roll and reply.
+            transmission.IsStarting = isSessionActive;
             _transmission = transmission;
         }
 
@@ -208,9 +216,7 @@ public static class IosPushToTalk
                 Log, "Stopping the superseded PTT transmit reply failed", CancellationToken.None);
         }
 
-        // Level-triggered, not edge-triggered: the session stays active for the whole hot window,
-        // so a press landing inside it gets no DidActivateAudioSession to start it.
-        if (AudioSession.Owner == AudioSessionOwner.App)
+        if (!isSessionActive)
             return;
 
         AudioSession.SetOwner(AudioSessionOwnership.OnActivated(true));
@@ -230,8 +236,9 @@ public static class IosPushToTalk
         }
 
         if (!isCurrent) {
-            // The pre-roll engine already holds the hardware input node, and only a Discard takes
-            // it back off - a second engine must never end up on that node.
+            // Discard even for a zero token (Start() declined because the recorder holds the input
+            // node): it also closes the token window, and a live pre-roll engine is only ever
+            // taken off that node by a Discard or a TryTake.
             PttPreRoll.Discard(preRollToken);
             return;
         }
@@ -331,6 +338,15 @@ public static class IosPushToTalk
         await hub.WalkieTalkieReplyUI.StopReply(reply).ConfigureAwait(false);
     }
 
+    private static void OnOwnerWatchdogFired()
+    {
+        // The watchdog only reverted the app's view of ownership. The framework still shows a
+        // transmit or a receive, and a participant left set would make the next TransmitEnded
+        // hand the session straight back to PttPlayback for another whole watchdog period.
+        StopTransmitting();
+        ClearActiveParticipant();
+    }
+
     private static void StopTransmitting()
     {
         PTChannelManager? manager;
@@ -353,26 +369,34 @@ public static class IosPushToTalk
     private static void OnAudioSessionActivated()
     {
         Transmission? transmission, abandoned = null;
+        var mustStart = false;
         lock (Lock) {
             transmission = _transmission;
             if (transmission is not null && MustAbandon(transmission))
                 (abandoned, transmission, _transmission) = (transmission, null, null);
+            // Anything already starting or started owns the mic: re-entering StartTransmitReply
+            // would open a second pre-roll engine and orphan the reply the first one holds.
+            if (transmission is { IsStarting: false, IsStarted: false }) {
+                transmission.IsStarting = true;
+                mustStart = true;
+            }
         }
 
         if (abandoned is not null)
             AbandonTransmission(abandoned);
 
         AudioSession.SetOwner(AudioSessionOwnership.OnActivated(transmission is not null));
-        if (transmission is not null) {
-            // A started one already owns the mic: re-entering StartTransmitReply would open a
-            // second pre-roll engine and orphan the reply the first one holds.
-            if (!transmission.IsStarted)
-                StartTransmitReply(transmission);
-            return;
-        }
+        if (mustStart)
+            StartTransmitReply(transmission!);
 
-        var wake = Interlocked.Exchange(ref _pendingWake, null);
-        if (wake is null)
+        // Also when a transmission consumed this activation: a wake parked before it would
+        // otherwise wait for the next one, by which time its StartedAt is stale.
+        DispatchPendingWake();
+    }
+
+    private static void DispatchPendingWake()
+    {
+        if (Interlocked.Exchange(ref _pendingWake, null) is not { } wake)
             return;
 
         DispatchWake(wake.ChatId, wake.StartedAt);
@@ -447,6 +471,7 @@ public static class IosPushToTalk
     {
         public CpuTimestamp CreatedAt { get; init; }
         public long PreRollToken { get; set; }
+        public bool IsStarting { get; set; }
         public bool IsStarted { get; set; }
         public WalkieTalkieReply? Reply { get; set; }
         public bool IsEndPending { get; set; }
