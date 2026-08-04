@@ -271,9 +271,14 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
-    public Task<GeoPoint?> RefreshCurrentLocation(CancellationToken cancellationToken = default)
+    public async Task<GeoPoint?> RefreshCurrentLocation(CancellationToken cancellationToken = default)
+    {
+        if (!await LocationPermission.CheckOrRequest(cancellationToken).ConfigureAwait(false))
+            return null;
+
         // The fresh fix lands in the tracker, so GetCurrentLocation and its dependents recompute with it.
-        => Tracker.Get(true, cancellationToken);
+        return await Tracker.Get(true, cancellationToken).ConfigureAwait(false);
+    }
 
     // Private methods
 
