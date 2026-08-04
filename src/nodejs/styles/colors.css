@@ -272,15 +272,6 @@
     --white-02: #FFFFFF05;
 }
 
-/* Location feature. Map tiles are light in every theme, so the controls drawn over them don't flip. */
-:root {
-    --map-control: var(--white-80);
-    --map-control-text: var(--gray-30);
-    --map-badge: var(--white-50);
-    --location-accent: var(--blue-50);
-    --location-stop: var(--magenta-50);
-}
-
 :root, .theme-light {
     /* Background */
     --background-01: var(--white);
@@ -1294,4 +1285,18 @@
     --author-color-8: var(--frost-70);
     --author-color-9: var(--orange-70);
     --author-color-10: var(--indigo-70);
+}
+
+/* Location: controls drawn over map tiles. MapView picks the tile style per theme
+   (liberty / positron / fiord), so these flip with the map underneath them. */
+:root, .theme-light, .theme-ash {
+    --map-control: var(--white-30);
+    --map-control-text: var(--gray-40);
+    --map-badge: var(--white-50);
+    --location-accent: var(--blue-50);
+    --location-stop: var(--magenta-50);
+}
+.theme-dark {
+    --map-control: var(--white-80);
+    --map-control-text: var(--gray-30);
 }
