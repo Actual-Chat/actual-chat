@@ -3,7 +3,7 @@
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<UIHub, MapView.Model?>
 
-<div @ref="Ref" class="map-view @Class"></div>
+<div @ref="Ref" class="map-view @Class" data-no-side-nav-pull="@Interactive"></div>
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.MapView.create";
