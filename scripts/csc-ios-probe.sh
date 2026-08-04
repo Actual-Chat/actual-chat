@@ -123,7 +123,12 @@ global using static ActualChat.App.Maui.AppServicesAccessor;
 EOF
 
 # --- stubs, ONLY for App.Maui-local types that live in no built assembly ---
+# NSErrorExt.Assert lives in the sibling "Maui" project (also Android/iOS/Windows-only, so it
+# never lands in TESTBIN either); App.Maui's own GlobalUsings.cs opens ActualChat.Maui globally,
+# which the synthesized GlobalUsings.cs above doesn't mirror - so both the using and the member
+# are stubbed here.
 cat > Stubs.cs <<'EOF'
+global using ActualChat.Maui;
 namespace ActualChat.App.Maui
 {
     public class AppServicesAccessor
@@ -136,15 +141,11 @@ namespace ActualChat.App.Maui
         public static Task<T> DispatchToMainThread<T>(Func<T> func) => Task.FromResult(func());
         public static Task DispatchToMainThread(Action action) { action(); return Task.CompletedTask; }
     }
-    public static class BlazorWebViewApp
+    public class BlazorWebViewApp
     {
+        public IServiceProvider Services { get; } = null!;
         public static void EnsureStarted() { }
-        public static Task<IServiceProvider> WhenAppReady => Task.FromResult<IServiceProvider>(null!);
-    }
-    public static class IosPushToTalk
-    {
-        public static void EnsureJoined() { }
-        public static void Leave() { }
+        public static Task<BlazorWebViewApp> WhenAppReady => Task.FromResult<BlazorWebViewApp>(null!);
     }
 }
 namespace ActualChat.App.Maui.Services
@@ -153,8 +154,72 @@ namespace ActualChat.App.Maui.Services
     {
         public static IServiceProvider? Current => null;
     }
+    public class MauiNotifications
+    {
+        public Task RefreshNotificationToken(
+            string token, ActualChat.Notifications.DeviceType deviceType, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+}
+namespace ActualChat.Maui
+{
+    public static class NSErrorExt
+    {
+        public static void Assert(this Foundation.NSError? error, string? message = null) { }
+    }
 }
 EOF
+
+# The stubs below live in App.Maui files that reference (rather than define) each other, so each
+# is only appended when the probed file itself isn't the one defining the real type - otherwise
+# Current.cs's real definition collides with the stub (CS0101).
+IOS_PUSH_TO_TALK_REL=src/dotnet/App.Maui/Platforms/iOS/PushToTalk/IosPushToTalk.cs
+AUDIO_SESSION_REL=src/dotnet/App.Maui/MaciOS/Audio/AudioSession.cs
+
+if [[ "$REL" != "$IOS_PUSH_TO_TALK_REL" ]]; then
+cat >> Stubs.cs <<'EOF'
+namespace ActualChat.App.Maui
+{
+    public static class IosPushToTalk
+    {
+        public static void EnsureJoined() { }
+        public static void Leave() { }
+    }
+}
+EOF
+fi
+
+if [[ "$REL" != "$AUDIO_SESSION_REL" ]]; then
+cat >> Stubs.cs <<'EOF'
+namespace ActualChat.App.Maui.Audio
+{
+    public static class AudioSession
+    {
+        public static void SetOwner(ActualChat.UI.Blazor.Services.AudioSessionOwner owner) { }
+        public static void ReleaseOwner(ActualChat.UI.Blazor.Services.AudioSessionRelease release) { }
+    }
+}
+EOF
+fi
+
+if [[ "$REL" == "$IOS_PUSH_TO_TALK_REL" ]]; then
+cat >> Stubs.cs <<'EOF'
+namespace ActualChat.App.Maui.Services
+{
+    public abstract class WalkieTalkiePlatform
+    {
+        public abstract void OnWakeFailed(ChatId chatId);
+        public abstract void OnHeadlessTeardown();
+        public virtual Task OnForegroundWakeHandled(ChatId chatId) => Task.CompletedTask;
+    }
+    public static class WalkieTalkieSession
+    {
+        public static Task HandleWake(ChatId chatId, Moment startedAt, bool isForeground, WalkieTalkiePlatform platform)
+            => Task.CompletedTask;
+    }
+}
+EOF
+fi
 
 compile() { # $1 = source file, $2 = out name, $3 = log
     dotnet exec "$CSC" -nostdlib -noconfig -target:library -nullable:enable \
