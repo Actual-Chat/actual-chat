@@ -270,6 +270,10 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
+    public Task<GeoPoint?> RefreshCurrentLocation(CancellationToken cancellationToken)
+        // The fresh fix lands in the tracker, so GetCurrentLocation and its dependents recompute with it.
+        => Tracker.Get(true, cancellationToken);
+
     // Private methods
 
     private MapMarker ToMapMarker(SharedLocation location, Author author)

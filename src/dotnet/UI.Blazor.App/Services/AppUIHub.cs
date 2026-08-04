@@ -82,7 +82,6 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => field ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     public MarkupHelpers MarkupHelpers => field ??= new MarkupHelpers(this);
-    public ILocationTracker LocationTracker => field ??= Services.GetRequiredService<ILocationTracker>();
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
