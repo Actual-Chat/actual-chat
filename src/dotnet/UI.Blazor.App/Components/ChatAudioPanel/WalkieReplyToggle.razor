@@ -32,6 +32,12 @@
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        // The incomplete-UI gate hides the button even for a user whose chats stayed armed
+        // from before the gate (or from another device).
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        if (!enableIncompleteUI)
+            return ComputedModel.None;
+
         var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
         var isHot = recordingChatId == Chat.Id && WalkieTalkieReplyUI.IsOwnReply(Chat.Id);

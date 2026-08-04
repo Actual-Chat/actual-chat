@@ -34,14 +34,16 @@
         </Right>
     </TileItem>
 
-    <TileItem Click="@OnPushToTalkClick">
-        <Icon><i class="icon-talking text-2xl"></i></Icon>
-        <Content>Push to Talk</Content>
-        <Caption>@(m.IsPushToTalk ? "Wakes this device when someone speaks" : "Off")</Caption>
-        <Right>
-            <Toggle IsDisabled="@(!m.IsPushToTalk && m.IsPttFull)" IsChecked="@m.IsPushToTalk"/>
-        </Right>
-    </TileItem>
+    @if (m.EnableIncompleteUI) {
+        <TileItem Click="@OnPushToTalkClick">
+            <Icon><i class="icon-talking text-2xl"></i></Icon>
+            <Content>Push to Talk</Content>
+            <Caption>@(m.IsPushToTalk ? "Wakes this device when someone speaks" : "Off")</Caption>
+            <Right>
+                <Toggle IsDisabled="@(!m.IsPushToTalk && m.IsPttFull)" IsChecked="@m.IsPushToTalk"/>
+            </Right>
+        </TileItem>
+    }
 
 </FormBlock>
 
@@ -58,7 +60,7 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = new(false, false, ListeningMode.Default, false, false),
+                InitialValue = new(false, false, ListeningMode.Default, false, false, false),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -71,12 +73,14 @@
             .Get(x => x.PttChatIds, cancellationToken)
             .ConfigureAwait(false);
         var mustStreamVoice = settings.VoiceMode.HasVoice();
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new (
             mustStreamVoice,
             settings.CanChange,
             listeningMode,
             pttChatIds.Contains(chatId),
-            pttChatIds.Length >= UserWalkieTalkieSettings.MaxChatCount);
+            pttChatIds.Length >= UserWalkieTalkieSettings.MaxChatCount,
+            enableIncompleteUI);
     }
 
     private async Task OnMustStreamVoiceChanged(bool mustStreamVoice) {
@@ -110,5 +114,6 @@
         bool CanChangeMustStreamVoice,
         ListeningMode ListeningMode,
         bool IsPushToTalk,
-        bool IsPttFull);
+        bool IsPttFull,
+        bool EnableIncompleteUI);
 }

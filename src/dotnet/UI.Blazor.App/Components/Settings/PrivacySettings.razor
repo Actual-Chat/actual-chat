@@ -7,7 +7,7 @@
     var hasSensors = HostInfo.HostKind.IsMauiApp() && GestureUI.Feed.IsAccelerometerAvailable;
 }
 
-@if (hasSensors) {
+@if (hasSensors && m.EnableIncompleteUI) {
     <TileTopic Topic="Microphone"/>
 
     <Tile>
@@ -94,7 +94,8 @@
         var isFaceDownMicStopEnabled = await UserSettingsUI.UserAppSettings()
             .Get(x => x.IsFaceDownMicStopEnabled ?? false, cancellationToken)
             .ConfigureAwait(false);
-        return new Model(items, isFaceDownMicStopEnabled);
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        return new Model(items, isFaceDownMicStopEnabled, enableIncompleteUI);
     }
 
     private void OnToggleExpand() {
@@ -112,8 +113,8 @@
 
     // Nested types
 
-    public sealed record Model(IReadOnlyList<Item> Items, bool IsFaceDownMicStopEnabled) {
-        public static readonly Model None = new(Array.Empty<Item>(), false);
+    public sealed record Model(IReadOnlyList<Item> Items, bool IsFaceDownMicStopEnabled, bool EnableIncompleteUI) {
+        public static readonly Model None = new(Array.Empty<Item>(), false, false);
     }
 
     public sealed record Item(ContactId ContactId, string Name, Avatar Avatar);
