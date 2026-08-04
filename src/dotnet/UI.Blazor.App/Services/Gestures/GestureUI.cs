@@ -207,6 +207,12 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
             return;
         }
 
+        if (route == GestureRoute.StartReply) {
+            // Synchronously, before anything awaits: on Android this re-types the running foreground
+            // service as a microphone one, and a headless session has no other path that would.
+            WalkieTalkieMicCapability.Request(true);
+        }
+
         var whenHandled = route == GestureRoute.StartReply
             ? WalkieTalkieReplyUI.RequestReply(CancellationToken.None)
             : WalkieTalkieReplyUI.StopReply();

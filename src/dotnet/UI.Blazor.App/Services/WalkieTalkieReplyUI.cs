@@ -129,6 +129,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             return; // Already closed - idempotent
 
         await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+        WalkieTalkieMicCapability.Request(false);
         if (!isOwnReply) {
             // Closing any recording is intended, but a walkie cue would be a lie about a mic walkie
             // never opened - and _everVoiced is stale for it anyway.
@@ -227,6 +228,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         }
         if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
             await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+        WalkieTalkieMicCapability.Request(false);
         await PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard).ConfigureAwait(false);
     }
 

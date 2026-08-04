@@ -28,13 +28,37 @@ public class AndroidAudioWidgetForegroundService : Service
     }
 
     public const string ActionShow = "ACTION_SHOW";
+    public const string ActionStop = "ACTION_STOP";
     private const string ChannelId = "audio_widget";
     private const int NotificationId = 3001;
     private static int _pendingStartCount;
     private static volatile bool _isStopPending;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
+    private Android.App.Notification? _lastNotification;
+    private int _lastMode = -1;
+    private Action<bool>? _micCapabilityHandler;
     private static ILogger Log { get; } = StaticLog.For<AndroidAudioWidgetForegroundService>();
+
+    public static bool TryStart(Context context, Intent intent)
+    {
+        // OnStartRequested first: StartForegroundService dispatches OnStartCommand on the main
+        // thread, so a caller running off it would otherwise register the start too late and leave
+        // _pendingStartCount stuck above zero, deferring every later Stop() forever.
+        OnStartRequested();
+        try {
+            context.StartForegroundService(intent);
+            return true;
+        }
+        catch (Exception e) {
+            if (Volatile.Read(ref _pendingStartCount) > 0)
+                Interlocked.Decrement(ref _pendingStartCount);
+            // Starting a mic FGS from the background is blocked (ForegroundServiceStartNotAllowedException):
+            // this surfaces if the accept-over-lock-screen path lacks a foreground-visible activity.
+            Log.LogError(e, "StartForegroundService failed");
+            return false;
+        }
+    }
 
     public static void OnStartRequested()
     {
@@ -62,11 +86,17 @@ public class AndroidAudioWidgetForegroundService : Service
         Log.LogDebug("OnCreate");
         base.OnCreate();
         CreateNotificationChannel();
+        _micCapabilityHandler = OnMicCapabilityRequested;
+        WalkieTalkieMicCapability.SetHandler(_micCapabilityHandler);
     }
 
     public override void OnDestroy()
     {
         Log.LogDebug("OnDestroy");
+        if (_micCapabilityHandler is { } micCapabilityHandler) {
+            WalkieTalkieMicCapability.ResetHandler(micCapabilityHandler);
+            _micCapabilityHandler = null;
+        }
         _requestId = Guid.NewGuid().ToString();
         Interlocked.Exchange(ref _pendingStartCount, 0);
         _isStopPending = false;
@@ -84,7 +114,14 @@ public class AndroidAudioWidgetForegroundService : Service
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
     {
         _requestId = Guid.NewGuid().ToString();
-        if ((intent?.Action ?? "") != ActionShow)
+        var action = intent?.Action ?? "";
+        if (action == ActionStop) {
+            // The notification's Stop button - the same door the media session's OnStop takes.
+            AndroidAudioWidget.Stop();
+            return StartCommandResult.NotSticky;
+        }
+
+        if (action != ActionShow)
             return StartCommandResult.Sticky;
 
         var mode = (AudioWidgetMode)(intent!.Extras?.GetInt(IntentExtras.Mode) ?? 0);
@@ -93,7 +130,7 @@ public class AndroidAudioWidgetForegroundService : Service
         // Android requires StartForeground() within ~5s of StartForegroundService(). Call it up-front
         // with a placeholder so a throw while building the rich notification (unexpected mode,
         // ChatId.Parse) can't leave the service without one -> ForegroundServiceDidNotStartInTimeException.
-        StartForeground1(BuildStartingNotification());
+        StartForeground1(BuildStartingNotification(), mode);
         if (Volatile.Read(ref _pendingStartCount) > 0)
             Interlocked.Decrement(ref _pendingStartCount);
         if (_isStopPending && Volatile.Read(ref _pendingStartCount) == 0) {
@@ -167,28 +204,43 @@ public class AndroidAudioWidgetForegroundService : Service
                     .Build();
                 _mediaSession.SetMetadata(metadata);
                 var notification = BuildNotification(_mediaSession, link);
-                StartForeground1(notification);
+                StartForeground1(notification, mode);
             });
 
         return StartCommandResult.NotSticky;
+    }
 
-        void StartForeground1(Android.App.Notification notification)
-        {
-            try {
-                if (Build.VERSION.SdkInt >= BuildVersionCodes.Q) {
-                    var serviceType = mode is AudioWidgetMode.Recording
-                        ? ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback
-                        : ForegroundService.TypeMediaPlayback;
-                    StartForeground(NotificationId, notification, serviceType);
-                }
-                else
-                    StartForeground(NotificationId, notification);
+    private void OnMicCapabilityRequested(bool isMicrophoneNeeded)
+    {
+        // Android grants while-in-use microphone access on the serviceType of the last
+        // startForeground call, not on the [Service] attribute - and a wake starts as
+        // mediaPlayback only, so a press must re-issue this before the mic is opened.
+        var mode = isMicrophoneNeeded ? AudioWidgetMode.Recording : AudioWidgetMode.Listening;
+        if (Volatile.Read(ref _lastMode) == (int)mode)
+            return;
+
+        var notification = Volatile.Read(ref _lastNotification) ?? BuildStartingNotification();
+        StartForeground1(notification, mode);
+    }
+
+    private void StartForeground1(Android.App.Notification notification, AudioWidgetMode mode)
+    {
+        try {
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.Q) {
+                var serviceType = mode is AudioWidgetMode.Recording
+                    ? ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback
+                    : ForegroundService.TypeMediaPlayback;
+                StartForeground(NotificationId, notification, serviceType);
             }
-            catch (Exception e) {
-                // A mic FGS started over the keyguard can be rejected (SecurityException /
-                // ForegroundServiceStartNotAllowedException) on some OEMs — log rather than crash.
-                Log.LogError(e, "StartForeground failed (mode={Mode})", mode);
-            }
+            else
+                StartForeground(NotificationId, notification);
+            Volatile.Write(ref _lastNotification, notification);
+            Volatile.Write(ref _lastMode, (int)mode);
+        }
+        catch (Exception e) {
+            // A mic FGS started over the keyguard can be rejected (SecurityException /
+            // ForegroundServiceStartNotAllowedException) on some OEMs — log rather than crash.
+            Log.LogError(e, "StartForeground failed (mode={Mode})", mode);
         }
     }
 
@@ -237,13 +289,19 @@ public class AndroidAudioWidgetForegroundService : Service
         var viewIntent = NotificationHelper.CreateViewIntent(this, link);
         var viewPending = PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable);
 
+        var stopIntent = new Intent(this, typeof(AndroidAudioWidgetForegroundService));
+        stopIntent.SetAction(ActionStop);
+        var stopPending = PendingIntent.GetService(this, 4, stopIntent, PendingIntentFlags.Immutable);
+
         var builder = new NotificationCompat.Builder(this, ChannelId)
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetContentIntent(viewPending)!
-            .SetOngoing(true)!;
+            .SetOngoing(true)!
+            .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop", stopPending)!;
 
         var mediaStyle = new AndroidX.Media.App.NotificationCompat.MediaStyle()
-            .SetMediaSession(mediaSession.SessionToken)!;
+            .SetMediaSession(mediaSession.SessionToken)!
+            .SetShowActionsInCompactView(0)!;
         builder.SetStyle(mediaStyle);
 
         return builder.Build()!;
@@ -273,6 +331,12 @@ public class AndroidAudioWidgetForegroundService : Service
                 state.HasAnswerWindow, state.IsReplyHot, state.IsPracticeMode);
             if (action == HeadsetButtonAction.PassThrough)
                 return false;
+
+            if (action == HeadsetButtonAction.StartReply) {
+                // Synchronously inside the media-button dispatch, before anything awaits: this is
+                // where Android hands out the while-in-use exemption a background mic start needs.
+                WalkieTalkieMicCapability.Request(true);
+            }
 
             var replyUI = hub.WalkieTalkieReplyUI;
             var whenHandled = action == HeadsetButtonAction.StopReply
