@@ -9,6 +9,6 @@ public partial record ReactionChangedEvent(
     [property: DataMember] ChangeKind ChangeKind
 ) : EventCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Entry.ChatId;
 }

@@ -38,7 +38,7 @@ public sealed partial record ChatEntryLanguagesBackend_Detect(
     [property: DataMember, Key(1)] HashString ContentHash
 ) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>, IHasUuid
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Id.ChatId;
 
     string IHasUuid.Uuid => $"{Id}.{ContentHash.Hash}";
@@ -55,7 +55,7 @@ public sealed partial record ChatEntryLanguagesBackend_Change(
     [property: DataMember, Key(2)] Change<ChatEntryLanguage> Change
 ) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Id.ChatId;
 
     public static ChatEntryLanguagesBackend_Change Upsert(ChatEntryLanguage language)

@@ -50,7 +50,7 @@ public sealed partial record ConversationBackend_Change(
     [DataMember, Key(3)]
     public bool IsLiveMaterialization { get; init; }
 
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
@@ -85,7 +85,7 @@ public sealed partial record ConversationBackend_Materialize(
     [property: DataMember, Key(0)] Conversation Conversation
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Conversation.Id.ChatId;
 }
 

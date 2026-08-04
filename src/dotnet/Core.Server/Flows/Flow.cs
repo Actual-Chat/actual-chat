@@ -42,15 +42,15 @@ public abstract class Flow : IFlowImpl
     protected FlowDef FlowDef => Runtime.FlowDef;
 
     // Properties that are persisted to the DB directly
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public FlowId Id { get; private set; }
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long Version { get; private set; }
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int DataVersion { get; private set; }
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public IResult? UntypedResult { get; private set; }
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public FlowConsole Console { get; private set; } = null!;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected Moment ResumedAt { get; private set; }

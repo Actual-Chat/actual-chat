@@ -32,7 +32,7 @@ public partial record SessionsBackend_Upsert(
     [property: DataMember, Key(0)] Session Session
     ) : ISessionCommand<SessionInfoFull>, IBackendCommand, ISanitized, IHasShardKey<Session>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Session ShardKey => Session;
 
     [DataMember, Key(1)] public string? IPAddress { get; init; }

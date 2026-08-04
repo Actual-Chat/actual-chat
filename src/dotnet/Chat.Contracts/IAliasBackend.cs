@@ -28,7 +28,7 @@ public sealed partial record AliasBackend_Change(
     [property: DataMember, Key(2)] Change<Alias> Change
 ) : ICommand<Alias?>, IBackendCommand, IHasShardKey<AliasId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public AliasId ShardKey => Id;
 }
 

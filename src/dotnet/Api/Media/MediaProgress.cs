@@ -13,7 +13,7 @@ public sealed partial record MediaProgress(
     [property: DataMember, Key(4)] string? Error = null
 ) : IHasId<MediaId>, IHasVersion<long>
 {
-    [IgnoreDataMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
     public bool HasFailed => !Error.IsNullOrEmpty();
 
     // This record relies on referential equality

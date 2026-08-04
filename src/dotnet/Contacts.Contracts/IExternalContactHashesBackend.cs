@@ -26,7 +26,7 @@ public sealed partial record ExternalContactHashesBackend_Change(
     [property: DataMember, Key(2)] Change<ExternalContactsHash> Change
 ) : ICommand<ExternalContactsHash?>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Id.OwnerId;
 }
 
@@ -39,6 +39,6 @@ public sealed partial record ExternalContactHashesBackend_RemoveAccount(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

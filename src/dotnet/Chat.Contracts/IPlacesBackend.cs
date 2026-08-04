@@ -37,6 +37,6 @@ public sealed partial record PlacesBackend_Change(
     [property: DataMember, Key(3)] UserId? OwnerId = null
 ) : ICommand<Place>, IBackendCommand, IHasShardKey<PlaceId?>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public PlaceId? ShardKey => PlaceId;
 }

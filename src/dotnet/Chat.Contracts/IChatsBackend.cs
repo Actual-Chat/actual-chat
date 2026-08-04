@@ -192,7 +192,7 @@ public sealed partial record ChatsBackend_CreateAttachments(
     ChatEntryAttachment[] Attachments
 ) : ICommand<ChatEntryAttachment[]>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Attachments.Length > 0 ? Attachments[0].EntryId.ChatId : throw new ArgumentException("No attachments provided", nameof(Attachments));
 }
 
@@ -206,7 +206,7 @@ public sealed partial record ChatsBackend_RemoveAttachments(
     ChatEntryId EntryId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => EntryId.ChatId;
 }
 
@@ -219,7 +219,7 @@ public sealed partial record ChatsBackend_UpdateChatVisualMediaIndex(
     [property: DataMember, Key(2)] VisualMediaItem[] Items
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }
 
@@ -232,7 +232,7 @@ public sealed partial record ChatsBackend_UpdateChatFileIndex(
     [property: DataMember, Key(2)] FileItem[] Items
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }
 
@@ -245,7 +245,7 @@ public sealed partial record ChatsBackend_UpdateChatLinkIndex(
     [property: DataMember, Key(2)] LinkItem[] Items
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }
 
@@ -258,7 +258,7 @@ public sealed partial record ChatsBackend_Change(
     [property: DataMember, Key(3)] UserId? OwnerId = null
 ) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId?>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId? ShardKey => ChatId;
 }
 
@@ -273,7 +273,7 @@ public sealed partial record ChatsBackend_ChangeEntry(
     [property: DataMember, Key(2)] Change<ChatEntryDiff> Change
 ) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatEntryId.ChatId;
 }
 
@@ -286,7 +286,7 @@ public sealed partial record ChatsBackend_RemoveOwnChats(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -299,7 +299,7 @@ public sealed partial record ChatsBackend_RemoveOwnEntries(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -312,7 +312,7 @@ public sealed partial record ChatsBackend_CreateNotesChat(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -327,7 +327,7 @@ public sealed partial record ChatBackend_CopyChat(
     [property: DataMember, Key(2)] string CorrelationId
 ) : ICommand<ChatBackend_CopyChatResult>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }
 
@@ -353,7 +353,7 @@ public sealed partial record ChatsBackend_ChangeChatCopyState(
     [property: DataMember, Key(2)] Change<ChatCopyStateDiff> Change
 ) : ICommand<ChatCopyState>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }
 
@@ -368,7 +368,7 @@ public sealed partial record ChatsBackend_UpdateReadPositionsStat(
     [property: DataMember, Key(2)] long EntryLid
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }
 

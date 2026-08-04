@@ -6,6 +6,6 @@ public partial record AuthorUpsertedEvent(
     [property: DataMember] AuthorFull? OldAuthor
 ) : EventCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Author.ChatId;
 }
