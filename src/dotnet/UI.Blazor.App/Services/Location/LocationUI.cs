@@ -217,8 +217,9 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         return await Tracker.Error.Use(cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task ShowShareModal(ChatId chatId)
+    public async Task ShowShareLocationModal(ChatId chatId)
     {
+        _ = BackgroundTask.Run(() => RefreshCurrentLocation(Hub.StopToken), Hub.StopToken);
         var isSharing = await IsOwnLive(chatId, Hub.StopToken).ConfigureAwait(true);
         var model = new ShareLocationModal.Model { ChatId = chatId, IsSharing = isSharing };
         var modalRef = await Hub.ModalUI.Show(model, Hub.StopToken).ConfigureAwait(true);
@@ -270,7 +271,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
-    public Task<GeoPoint?> RefreshCurrentLocation(CancellationToken cancellationToken)
+    public Task<GeoPoint?> RefreshCurrentLocation(CancellationToken cancellationToken = default)
         // The fresh fix lands in the tracker, so GetCurrentLocation and its dependents recompute with it.
         => Tracker.Get(true, cancellationToken);
 
