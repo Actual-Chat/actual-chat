@@ -6,6 +6,8 @@ public class ReplyTargetResolverTest
 {
     private static readonly Moment T0 = Moment.EpochStart + TimeSpan.FromDays(20_000);
     private static readonly TimeSpan Window = TimeSpan.FromSeconds(150);
+    private static readonly ChatId ChatA = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
+    private static readonly ChatId ChatB = ChatId.Parse("bbbbbbbbbbbbbbbbbbbb");
     private static ChatId Chat(string s) => ChatId.Parse(s);
 
     [Fact]
@@ -57,4 +59,43 @@ public class ReplyTargetResolverTest
         ReplyTargetResolver.Resolve(Array.Empty<ChatId>(), new Dictionary<ChatId, Moment>(), null, T0, Window)
             .Should().BeNull();
     }
+
+    [Fact]
+    public void AnUnboundedWindowResolvesArbitrarilyOldVoice()
+    {
+        // arrange
+        var longAgo = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromDays(30) };
+
+        // act
+        var bounded = ReplyTargetResolver.Resolve([ChatA, ChatB], longAgo, null, T0, Window);
+        var unbounded = ReplyTargetResolver.Resolve(
+            [ChatA, ChatB], longAgo, null, T0, ReplyTargetResolver.UnboundedRecencyWindow);
+
+        // assert
+        bounded.Should().BeNull();
+        unbounded.Should().Be(ChatA);
+    }
+
+    [Fact]
+    public void AnUnboundedWindowStillPicksTheMostRecentChat()
+    {
+        // arrange
+        var voices = new Dictionary<ChatId, Moment> {
+            [ChatA] = T0 - TimeSpan.FromDays(30),
+            [ChatB] = T0 - TimeSpan.FromDays(2),
+        };
+
+        // act
+        var target = ReplyTargetResolver.Resolve(
+            [ChatA, ChatB], voices, null, T0, ReplyTargetResolver.UnboundedRecencyWindow);
+
+        // assert
+        target.Should().Be(ChatB);
+    }
+
+    [Fact]
+    public void AnUnboundedWindowStillReturnsNullWithNoArmedChats()
+        => ReplyTargetResolver
+            .Resolve([], new Dictionary<ChatId, Moment>(), null, T0, ReplyTargetResolver.UnboundedRecencyWindow)
+            .Should().BeNull();
 }

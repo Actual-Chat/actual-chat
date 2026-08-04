@@ -23,7 +23,10 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
     public static bool ShouldColdClose(bool everVoiced, TimeSpan elapsed, TimeSpan coldTimeout)
         => !everVoiced && elapsed >= coldTimeout;
 
-    public async Task RequestReply(CancellationToken cancellationToken)
+    public Task RequestReply(CancellationToken cancellationToken)
+        => RequestReply(Constants.Audio.WalkieTalkieReplyRecencyWindow, cancellationToken);
+
+    public async Task RequestReply(TimeSpan recencyWindow, CancellationToken cancellationToken)
     {
         ChatAudioUI.Enable();
         if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
@@ -36,7 +39,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         var focused = ChatUI.SelectedChatId.Value;
         var snapshot = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
         var target = ReplyTargetResolver.Resolve(
-            armed, snapshot, focused, Clocks.ServerClock.Now, Constants.Audio.WalkieTalkieReplyRecencyWindow);
+            armed, snapshot, focused, Clocks.ServerClock.Now, recencyWindow);
         if (target is not { } chatId) {
             if (settings.AreAudibleCuesEnabled)
                 _ = TuneUI.Play(Tune.WalkieReplyNothingHeard);

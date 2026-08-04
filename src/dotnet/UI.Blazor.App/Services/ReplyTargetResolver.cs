@@ -2,6 +2,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public static class ReplyTargetResolver
 {
+    public static readonly TimeSpan UnboundedRecencyWindow = TimeSpan.MaxValue;
+
     public static ChatId? Resolve(
         IReadOnlyList<ChatId> armedChatIds,
         IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
@@ -13,7 +15,8 @@ public static class ReplyTargetResolver
             return null;
 
         ChatId? best = null;
-        var bestAt = now - recencyWindow;
+        // Moment.EpochStart precedes every real stamp; now - TimeSpan.MaxValue would overflow.
+        var bestAt = recencyWindow == UnboundedRecencyWindow ? Moment.EpochStart : now - recencyWindow;
         foreach (var chatId in armedChatIds) {
             if (lastIncomingVoiceAt.TryGetValue(chatId, out var at) && at > bestAt) {
                 bestAt = at;
