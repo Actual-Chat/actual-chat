@@ -135,7 +135,7 @@
 
     private async Task OnLocate() {
         // TODO: show ui loading state while locating cause it might take a while
-        var location = await LocationUI.RefreshCurrentLocation(Hub.StopToken).ConfigureAwait(true);
+        var location = await LocationUI.RefreshCurrentLocation(true, Hub.StopToken).ConfigureAwait(true);
         if (location is { } point && _mapView is { } mapView)
             await mapView.FlyTo(point).ConfigureAwait(false);
     }

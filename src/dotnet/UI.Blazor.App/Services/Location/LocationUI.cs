@@ -219,7 +219,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
     public async Task ShowShareLocationModal(ChatId chatId)
     {
-        _ = BackgroundTask.Run(() => RefreshCurrentLocation(Hub.StopToken), Hub.StopToken);
+        _ = BackgroundTask.Run(() => RefreshCurrentLocation(false, Hub.StopToken), Hub.StopToken);
         var isSharing = await IsOwnLive(chatId, Hub.StopToken).ConfigureAwait(true);
         var model = new ShareLocationModal.Model { ChatId = chatId, IsSharing = isSharing };
         var modalRef = await Hub.ModalUI.Show(model, Hub.StopToken).ConfigureAwait(true);
@@ -251,7 +251,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     public Task ShowLocationMapModal(ChatId chatId, SharedLocationId? locationId = null)
     {
         // The own marker appears only once there's a fix, and merely viewing the map is no reason to troubleshoot.
-        _ = BackgroundTask.Run(() => RefreshCurrentLocation(mustTroubleshoot: false, Hub.StopToken), Hub.StopToken);
+        _ = BackgroundTask.Run(() => RefreshCurrentLocation(false, Hub.StopToken), Hub.StopToken);
         return Hub.ModalUI.Show(new LocationMapModal.Model(chatId, locationId), Hub.StopToken);
     }
 
@@ -278,8 +278,6 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
-    public Task<GeoPoint?> RefreshCurrentLocation(CancellationToken cancellationToken = default)
-        => RefreshCurrentLocation(true, cancellationToken);
     public async Task<GeoPoint?> RefreshCurrentLocation(
         bool mustTroubleshoot,
         CancellationToken cancellationToken = default)
