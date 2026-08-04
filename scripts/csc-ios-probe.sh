@@ -207,11 +207,15 @@ namespace ActualChat.App.Maui.Audio
         public static void ReleaseOwner(
             ActualChat.UI.Blazor.Services.AudioSessionRelease release, bool hasLivePlayback = false) { }
         public static void SetOwnerWatchdogRecovery(Action recovery) { }
-        public Task<bool> Reconfigure(ActualChat.UI.Blazor.Services.AudioFocusMode mode) => Task.FromResult(true);
-        public Task<bool> Reactivate(ActualChat.UI.Blazor.Services.AudioFocusMode mode) => Task.FromResult(true);
+        public static bool MayActivateNow => true;
+        public Task<AudioSessionSetup> Reconfigure(ActualChat.UI.Blazor.Services.AudioFocusMode mode)
+            => Task.FromResult(default(AudioSessionSetup));
+        public Task<AudioSessionSetup> Reactivate(ActualChat.UI.Blazor.Services.AudioFocusMode mode)
+            => Task.FromResult(default(AudioSessionSetup));
         public Task EnsureCorrectOutputRoute() => Task.CompletedTask;
         public ActualChat.UI.Blazor.Services.AppleAudioSessionDiagnostics? GetDiagnostics() => null;
     }
+    public readonly record struct AudioSessionSetup(bool IsConfigured, bool IsActivated);
 }
 EOF
 fi
