@@ -7,14 +7,14 @@ namespace ActualChat;
 /// <summary>
 /// Represents a normalized local URL path starting with '/'.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<LocalUrl>))]
 [JsonConverter(typeof(StringLikeJsonConverter<LocalUrl>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<LocalUrl>))]
 [TypeConverter(typeof(StringLikeTypeConverter<LocalUrl>))]
 public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<LocalUrl>
 {
-    [DataMember, MemoryPackOrder(0), Key(0)]
+    [DataMember, Key(0)]
     public string Value => field ?? "/";
 
     public static LocalUrl Parse(string? s) => new(s);
@@ -58,10 +58,10 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
         return relativeUrl;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string DisplayText => Value.Length <= 1 ? Value : Value[1..];
 
-    [MemoryPackConstructor, SerializationConstructor]
+    [SerializationConstructor]
     public LocalUrl(string? value)
     {
         if (value.IsNullOrEmpty()) {

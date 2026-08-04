@@ -18,9 +18,9 @@ public interface IReactions : IComputeService
     Task OnReact(Reactions_React command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Reactions_React(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Reaction Reaction
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] Reaction Reaction
 ) : ISessionCommand<Unit>, IApiCommand;

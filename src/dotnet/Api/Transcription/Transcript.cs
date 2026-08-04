@@ -6,12 +6,12 @@ namespace ActualChat.Transcription;
 /// <summary>
 /// Represents transcribed text with character-to-time mapping.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-[method: MemoryPackConstructor, SerializationConstructor]
+[DataContract, MessagePackObject]
+[method: SerializationConstructor]
 public sealed partial record Transcript(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] string Text,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] LinearMap TimeMap,
-    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] Language[] Languages
+    [property: DataMember(Order = 0), Key(0)] string Text,
+    [property: DataMember(Order = 1), Key(1)] LinearMap TimeMap,
+    [property: DataMember(Order = 2), Key(2)] Language[] Languages
 ) : ISanitized
 {
     [GeneratedRegex(@"^\s*", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
@@ -28,14 +28,14 @@ public sealed partial record Transcript(
     public static readonly Transcript Ellipsis = new("\u2026", new LinearMap(Vector2.Zero, new Vector2(1, 0)), []);
     public static readonly Transcript Unrecognized = new("\u2026\u200B\u2026", new LinearMap(Vector2.Zero, new Vector2(3, 0)), []);
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public int Length => Text.Length;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Range<int> TextRange => new(0, Text.Length);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Range<float> TimeRange => TimeMap.YRange;
 
-    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
+    [DataMember(Order = 3), Key(3)]
     public bool IsStable { get; init; }
 
     public static Transcript New()

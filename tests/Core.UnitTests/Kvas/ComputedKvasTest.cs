@@ -212,10 +212,10 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
     }
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 public sealed partial record StringState(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] string Value,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] string Origin = ""
+    [property: DataMember(Order = 0)] string Value,
+    [property: DataMember(Order = 1)] string Origin = ""
     ) : IHasOrigin
 {
     public static implicit operator StringState(string value) => new (value);

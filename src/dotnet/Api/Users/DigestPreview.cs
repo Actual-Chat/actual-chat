@@ -1,27 +1,27 @@
 namespace ActualChat.Users;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record DigestPreview
 {
-    [DataMember, MemoryPackOrder(0), Key(0)]
+    [DataMember, Key(0)]
     public DigestPreviewChat[] Chats { get; init; } = [];
-    [DataMember, MemoryPackOrder(1), Key(1)]
+    [DataMember, Key(1)]
     public int OtherUnreadCount { get; init; }
-    [DataMember, MemoryPackOrder(2), Key(2)]
+    [DataMember, Key(2)]
     public string RenderedHtml { get; init; } = "";
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record DigestPreviewChat
 {
-    [DataMember, MemoryPackOrder(0), Key(0)]
+    [DataMember, Key(0)]
     public string ChatId { get; init; } = "";
-    [DataMember, MemoryPackOrder(1), Key(1)]
+    [DataMember, Key(1)]
     public string Name { get; init; } = "";
-    [DataMember, MemoryPackOrder(2), Key(2)]
+    [DataMember, Key(2)]
     public string Link { get; init; } = "";
-    [DataMember, MemoryPackOrder(3), Key(3)]
+    [DataMember, Key(3)]
     public long UnreadCount { get; init; }
-    [DataMember, MemoryPackOrder(4), Key(4)]
+    [DataMember, Key(4)]
     public string[] BulletPoints { get; init; } = [];
 }

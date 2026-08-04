@@ -11,14 +11,14 @@ public interface IMediaProgressBackend : IComputeService, IBackendService
     Task<MediaProgress?> OnChange(MediaProgressBackend_Change command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaProgressBackend_Change(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] MediaId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Change<MediaProgress> Change
+    [property: DataMember, Key(0)] MediaId Id,
+    [property: DataMember, Key(1)] long? ExpectedVersion,
+    [property: DataMember, Key(2)] Change<MediaProgress> Change
 ) : ICommand<MediaProgress?>, IBackendCommand, IHasShardKey<MediaId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public MediaId ShardKey => Id;
 }

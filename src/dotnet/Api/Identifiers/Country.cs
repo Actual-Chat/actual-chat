@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Represents a country with its code and title.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<Country>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<Country>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Country>))]

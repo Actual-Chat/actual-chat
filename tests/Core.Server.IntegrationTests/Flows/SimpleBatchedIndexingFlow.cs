@@ -2,7 +2,7 @@ using ActualChat.Flows;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlow<SimpleItem, ChatId>
 {
     public const int BatchSizeOverride = 3;
@@ -10,7 +10,7 @@ public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlow<SimpleItem,
     protected override int BatchSize => BatchSizeOverride;
     protected override int Quota => QuotaOverride;
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     private BatchedIndexingFlowTestContext<SimpleItem, ChatId> Context
         => Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem, ChatId>>();
 

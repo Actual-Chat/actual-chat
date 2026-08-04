@@ -12,11 +12,11 @@ public interface IChatPositions : IComputeService
     Task OnSet(ChatPositions_Set command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatPositions_Set(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] ChatPositionKind Kind,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] ChatPosition Position
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] ChatPositionKind Kind,
+    [property: DataMember, Key(3)] ChatPosition Position
 ) : ISessionCommand<Unit>, IApiCommand;

@@ -17,40 +17,40 @@ public interface IDiagnostics : IComputeService
     Task<FlowDetails?> GetFlowDetails(Session session, string flowId, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record MeshDiagInfo(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] string ThisNodeId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Tag,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Moment Timestamp,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] NodeDiagInfo[] Nodes,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] RpcPeerDiagInfo[] RpcPeers,
-    [property: DataMember, MemoryPackOrder(5), Key(5)] MeshRpcRefDiagInfo[] MeshRpcRefs,
-    [property: DataMember, MemoryPackOrder(6), Key(6)] MeshDiagInfo[] Others,
-    [property: DataMember, MemoryPackOrder(7), Key(7)] string Extra);
+    [property: DataMember, Key(0)] string ThisNodeId,
+    [property: DataMember, Key(1)] string Tag,
+    [property: DataMember, Key(2)] Moment Timestamp,
+    [property: DataMember, Key(3)] NodeDiagInfo[] Nodes,
+    [property: DataMember, Key(4)] RpcPeerDiagInfo[] RpcPeers,
+    [property: DataMember, Key(5)] MeshRpcRefDiagInfo[] MeshRpcRefs,
+    [property: DataMember, Key(6)] MeshDiagInfo[] Others,
+    [property: DataMember, Key(7)] string Extra);
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record NodeDiagInfo(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] string Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Endpoint,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] string State,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] bool IsThis,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] string Roles,
-    [property: DataMember, MemoryPackOrder(5), Key(5)] string Extra);
+    [property: DataMember, Key(0)] string Id,
+    [property: DataMember, Key(1)] string Endpoint,
+    [property: DataMember, Key(2)] string State,
+    [property: DataMember, Key(3)] bool IsThis,
+    [property: DataMember, Key(4)] string Roles,
+    [property: DataMember, Key(5)] string Extra);
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record RpcPeerDiagInfo(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] string Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Peer,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] string ConnectionKind,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] RpcPeerConnectionStateKind ConnectionStateKind,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] string ConnectionInfo,
-    [property: DataMember, MemoryPackOrder(5), Key(5)] string Extra);
+    [property: DataMember, Key(0)] string Id,
+    [property: DataMember, Key(1)] string Peer,
+    [property: DataMember, Key(2)] string ConnectionKind,
+    [property: DataMember, Key(3)] RpcPeerConnectionStateKind ConnectionStateKind,
+    [property: DataMember, Key(4)] string ConnectionInfo,
+    [property: DataMember, Key(5)] string Extra);
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record MeshRpcRefDiagInfo(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] string MeshRef,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Route,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] string Address,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] string NodeId,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] int Version,
-    [property: DataMember, MemoryPackOrder(5), Key(5)] string Extra);
+    [property: DataMember, Key(0)] string MeshRef,
+    [property: DataMember, Key(1)] string Route,
+    [property: DataMember, Key(2)] string Address,
+    [property: DataMember, Key(3)] string NodeId,
+    [property: DataMember, Key(4)] int Version,
+    [property: DataMember, Key(5)] string Extra);

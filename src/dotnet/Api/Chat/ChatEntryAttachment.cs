@@ -7,24 +7,24 @@ namespace ActualChat.Chat;
 /// Represents a media attachment on a text chat entry.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record ChatEntryAttachment(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Symbol Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0
+    [property: DataMember, Key(0)] Symbol Id,
+    [property: DataMember, Key(1)] long Version = 0
     ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(2), Key(2)] public ChatEntryId EntryId { get; init; } = null!;
-    [DataMember, MemoryPackOrder(3), Key(3)] public int Index { get; init; }
-    [DataMember, MemoryPackOrder(4), Key(4)] public MediaId MediaId { get; init; } = null!;
-    [DataMember, MemoryPackOrder(6), Key(6)] public MediaId? ThumbnailMediaId { get; init; }
+    [DataMember, Key(2)] public ChatEntryId EntryId { get; init; } = null!;
+    [DataMember, Key(3)] public int Index { get; init; }
+    [DataMember, Key(4)] public MediaId MediaId { get; init; } = null!;
+    [DataMember, Key(6)] public MediaId? ThumbnailMediaId { get; init; }
 
     // Populated only on reads
-    [DataMember, MemoryPackOrder(5), Key(5)] public Media.Media Media { get; init; } = null!;
-    [DataMember, MemoryPackOrder(7), Key(7)] public Media.Media? ThumbnailMedia { get; init; }
+    [DataMember, Key(5)] public Media.Media Media { get; init; } = null!;
+    [DataMember, Key(7)] public Media.Media? ThumbnailMedia { get; init; }
 
     public ChatEntryAttachment() : this(Symbol.Empty) { }
 
-    [MemoryPackConstructor, SerializationConstructor]
+    [SerializationConstructor]
     public ChatEntryAttachment(
         Symbol Id,
         long Version,

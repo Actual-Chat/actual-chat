@@ -16,7 +16,7 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Avatar = avatar,
         };
 
-        var s = account.PassThroughAllSerializers(Out);
+        var s = account.PassThroughSerializers(Out);
 
         AssertAccountEqual(s, account);
     }
@@ -30,7 +30,7 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Avatar = new Avatar("guest-avatar"),
         };
 
-        var s = account.PassThroughAllSerializers(Out);
+        var s = account.PassThroughSerializers(Out);
 
         AssertAccountEqual(s, account);
         s.IsGuest.Should().BeTrue();
@@ -60,7 +60,7 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
                 .With(new UserIdentity(AuthSchema.Email, "test@example.com"), ""),
         };
 
-        var s = accountFull.PassThroughAllSerializers(Out);
+        var s = accountFull.PassThroughSerializers(Out);
 
         AssertAccountFullEqual(s, accountFull);
     }
@@ -69,7 +69,7 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void AccountFullSerializationTest_WithIdentities()
     {
         var userId = UserId.New();
-        // Note: Using single identity to avoid JSON ordering issues in PassThroughAllSerializers
+        // Note: Using single identity to avoid JSON ordering issues in PassThroughSerializers
         var identities = new ApiMap<UserIdentity, string>()
             .With(new UserIdentity("email", "test@example.com"), "secret");
         var claims = new ApiMap<string, string>()
@@ -91,7 +91,7 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             AliasId = null,
         };
 
-        var s = accountFull.PassThroughAllSerializers(Out);
+        var s = accountFull.PassThroughSerializers(Out);
 
         AssertAccountFullEqual(s, accountFull);
         s.Identities.Count.Should().Be(accountFull.Identities.Count);
@@ -126,9 +126,8 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             AliasId = null,
         };
 
-        // Test MemoryPack serialization (doesn't have ordering issues)
-        var memoryPackBytes = MemoryPackSerializer.Serialize(accountFull);
-        var s = MemoryPackSerializer.Deserialize<AccountFull>(memoryPackBytes);
+        var bytes = Serializers.MessagePack.Write(accountFull);
+        var s = (AccountFull?)Serializers.MessagePack.Read(bytes.WrittenMemory, typeof(AccountFull), out _);
         s.Should().NotBeNull();
 
         AssertAccountFullEqual(s!, accountFull);
@@ -146,7 +145,7 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             AliasId = aliasId,
         };
 
-        var s = accountFull.PassThroughAllSerializers(Out);
+        var s = accountFull.PassThroughSerializers(Out);
 
         AssertAccountFullEqual(s, accountFull);
         s.AliasId.Should().Be(aliasId);
@@ -158,7 +157,7 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var userId = UserId.New();
         var accountFull = new AccountFull(userId);
 
-        var s = accountFull.PassThroughAllSerializers(Out);
+        var s = accountFull.PassThroughSerializers(Out);
 
         AssertAccountFullEqual(s, accountFull);
     }

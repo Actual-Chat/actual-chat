@@ -5,11 +5,11 @@ namespace ActualChat.Users;
 /// <summary>
 /// Result of a reCAPTCHA validation request.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record RecaptchaValidationResult(
-    [property: MemoryPackOrder(0), Key(0)] bool Success,
-    [property: MemoryPackOrder(1), Key(1)] string? ErrorMessage = null,
-    [property: MemoryPackOrder(2), Key(2)] float? Score = null);
+    [property: Key(0)] bool Success,
+    [property: Key(1)] string? ErrorMessage = null,
+    [property: Key(2)] float? Score = null);
 
 /// <summary>
 /// Service for reCAPTCHA token validation.

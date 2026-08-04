@@ -7,7 +7,7 @@ namespace ActualChat.Chat;
 /// <see cref="UserMention"/>) carry pre-resolved data so render-time access is synchronous.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public partial class MentionMarkup(MentionRef id, string name = "") : Markup
 {
     public static readonly string NotAvailableName = "(n/a)";
@@ -39,16 +39,16 @@ public partial class MentionMarkup(MentionRef id, string name = "") : Markup
         return name.Replace(' ', ReadableSpace);
     }
 
-    [DataMember, MemoryPackOrder(0), Key(0)]
+    [DataMember, Key(0)]
     public MentionRef Id { get; } = id;
-    [DataMember, MemoryPackOrder(1), Key(1)]
+    [DataMember, Key(1)]
     public string Name { get; } = name;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string QuotedName => Quote(Name);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string NameOrNotAvailable => Name.NullIfEmpty() ?? NotAvailableName;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string NameOrId => Name.NullIfEmpty() ?? Id.Value;
 
     public static MentionMarkup New(MentionRef id, string name = "")

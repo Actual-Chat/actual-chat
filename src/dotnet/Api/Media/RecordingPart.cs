@@ -15,16 +15,16 @@ public enum RecordingEventKind : byte
 /// <summary>
 /// Represents a part of a recording stream (data, pause, or resume event).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public partial class RecordingPart(RecordingEventKind eventKind)
 {
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public RecordingEventKind EventKind { get; init; } = eventKind;
 
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [DataMember(Order = 1), Key(1)]
     public byte[]? Data { get; init; }
-    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
+    [DataMember(Order = 2), Key(2)]
     public Moment? RecordedAt { get; init; } // Nullable is fine here
-    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
+    [DataMember(Order = 3), Key(3)]
     public TimeSpan? Offset { get; init; } // Nullable is fine here
 }

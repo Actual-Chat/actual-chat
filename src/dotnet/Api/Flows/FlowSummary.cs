@@ -1,9 +1,9 @@
 namespace ActualChat.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record FlowSummary(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] string FlowId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Name,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] FlowStatus Status,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] long Version,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] Moment UpdatedAt);
+    [property: DataMember, Key(0)] string FlowId,
+    [property: DataMember, Key(1)] string Name,
+    [property: DataMember, Key(2)] FlowStatus Status,
+    [property: DataMember, Key(3)] long Version,
+    [property: DataMember, Key(4)] Moment UpdatedAt);

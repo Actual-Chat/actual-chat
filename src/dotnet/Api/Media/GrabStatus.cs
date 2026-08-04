@@ -8,15 +8,15 @@ namespace ActualChat.Media;
 /// Tracks the status of a link preview grab operation.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+[DataContract, MessagePackObject]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
 public sealed partial record GrabStatus(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Symbol Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0)
+    [property: DataMember, Key(0)] Symbol Id,
+    [property: DataMember, Key(1)] long Version = 0)
     : IHasId<Symbol>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(2), Key(2)] public bool IsSuccessful { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(3)] public Moment ModifiedAt { get; init; }
+    [DataMember, Key(2)] public bool IsSuccessful { get; init; }
+    [DataMember, Key(3)] public Moment ModifiedAt { get; init; }
 
     // Computed properties
 

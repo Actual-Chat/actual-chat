@@ -1,11 +1,11 @@
 ﻿namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial record NewAccountEvent(
-    [property: DataMember, MemoryPackOrder(1)]
+    [property: DataMember]
     UserId UserId
 ) : EventCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

@@ -9,29 +9,29 @@ namespace ActualChat.Chat;
 /// which the last point is frozen as a static pin. A zero <see cref="Duration"/> means it was
 /// never a live share, just a pin.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record SharedLocation(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] SharedLocationId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version
+    [property: DataMember, Key(0)] SharedLocationId Id,
+    [property: DataMember, Key(1)] long Version
 ) : IHasId<SharedLocationId>, IHasVersion<long>
 {
-    [DataMember, MemoryPackOrder(2), Key(2)] public required AuthorId AuthorId { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(3)] public required GeoPoint Point { get; init; }
-    [DataMember, MemoryPackOrder(4), Key(4)] public required Moment CreatedAt { get; init; }
-    [DataMember, MemoryPackOrder(5), Key(5)] public required Moment ModifiedAt { get; init; }
-    [DataMember, MemoryPackOrder(6), Key(6)] public required TimeSpan Duration { get; init; }
-    [DataMember, MemoryPackOrder(7), Key(7)] public Moment? StoppedAt { get; init; }
+    [DataMember, Key(2)] public required AuthorId AuthorId { get; init; }
+    [DataMember, Key(3)] public required GeoPoint Point { get; init; }
+    [DataMember, Key(4)] public required Moment CreatedAt { get; init; }
+    [DataMember, Key(5)] public required Moment ModifiedAt { get; init; }
+    [DataMember, Key(6)] public required TimeSpan Duration { get; init; }
+    [DataMember, Key(7)] public Moment? StoppedAt { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ChatId => AuthorId.ChatId;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public bool IsUnlimited => Duration == Constants.Location.UnlimitedDuration;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public Moment LiveUntil => StoppedAt ?? (IsUnlimited ? Moment.MaxValue : CreatedAt + Duration);
 
     public bool IsLive(Moment now) => Duration > TimeSpan.Zero && now < LiveUntil;
@@ -41,7 +41,7 @@ public sealed partial record SharedLocation(
 /// Change to a <see cref="SharedLocation"/>: create/update carries a new <see cref="Point"/>
 /// (and <see cref="LiveDuration"/> on create); a Remove change stops it (freezes the last point).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public sealed partial record SharedLocationDiff : RecordDiff
 {
     public static readonly Requirement<SharedLocationDiff> MustHaveCorrectDuration = Requirement.New(
@@ -51,6 +51,6 @@ public sealed partial record SharedLocationDiff : RecordDiff
         },
         new (() => StandardError.Constraint<SharedLocationDiff>("Invalid live duration")));
 
-    [DataMember, MemoryPackOrder(0)] public GeoPoint? Point { get; init; }
-    [DataMember, MemoryPackOrder(1)] public TimeSpan? LiveDuration { get; init; }
+    [DataMember] public GeoPoint? Point { get; init; }
+    [DataMember] public TimeSpan? LiveDuration { get; init; }
 }

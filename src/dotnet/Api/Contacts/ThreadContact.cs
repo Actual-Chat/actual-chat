@@ -7,13 +7,13 @@ namespace ActualChat.Contacts;
 /// Represents a contact entry for a thread conversation.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record ThreadContact : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(0), Key(0)] public ContactId Id { get; init; }
-    [DataMember, MemoryPackOrder(1), Key(1)] public long Version { get; init; }
-    [DataMember, MemoryPackOrder(2), Key(2)] public Moment TouchedAt { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(3)] public bool IsPinned { get; init; }
+    [DataMember, Key(0)] public ContactId Id { get; init; }
+    [DataMember, Key(1)] public long Version { get; init; }
+    [DataMember, Key(2)] public Moment TouchedAt { get; init; }
+    [DataMember, Key(3)] public bool IsPinned { get; init; }
 
     public ThreadContact(ContactId Id, long Version = 0)
     {
@@ -28,9 +28,9 @@ public sealed partial record ThreadContact : IHasId<ContactId>, IHasVersion<long
         new(() => StandardError.NotFound<ThreadContact>()));
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId OwnerId => Id.OwnerId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ThreadChatId ThreadChatId => (ThreadChatId)Id.ChatId;
 
     public void Deconstruct(out ContactId Id, out long Version)

@@ -1,11 +1,11 @@
 ﻿namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial record UserMentionedInThreadChatEvent(
-    [property: DataMember, MemoryPackOrder(1)] ThreadChatId ThreadChatId,
-    [property: DataMember, MemoryPackOrder(2)] MentionRef[] MentionIds
+    [property: DataMember] ThreadChatId ThreadChatId,
+    [property: DataMember] MentionRef[] MentionIds
 ) : EventCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ThreadChatId;
 }

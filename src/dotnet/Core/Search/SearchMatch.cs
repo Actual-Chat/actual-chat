@@ -5,7 +5,7 @@ namespace ActualChat.Search;
 /// <see cref="Parts"/> — supplied explicitly (server results) or computed lazily from a
 /// <see cref="SearchQuery"/> (local results).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(Internal.SearchMatchMessagePackFormatter))]
 public sealed partial record SearchMatch
 {
@@ -13,17 +13,17 @@ public sealed partial record SearchMatch
 
     private readonly SearchQuery _query;
 
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public string Text { get; }
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [DataMember(Order = 1), Key(1)]
     public double Rank { get; }
-    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
+    [DataMember(Order = 2), Key(2)]
     public SearchMatchPart[] Parts {
         get => field ??= _query.IsEmpty ? [] : _query.GetMatchParts(Text);
         init;
     }
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public IEnumerable<SearchMatchPart> PartsWithGaps {
         get {
             var lastIndex = 0;
@@ -40,7 +40,7 @@ public sealed partial record SearchMatch
         }
     }
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public bool IsMatch => Parts.Length != 0;
 
     public static SearchMatch Matchless(string text)
@@ -49,7 +49,7 @@ public sealed partial record SearchMatch
     public SearchMatch(string text, SearchMatchPart[] parts)
         : this(text, 0, parts) { }
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
     public SearchMatch(string text, double rank, SearchMatchPart[] parts)
     {
         Text = text;

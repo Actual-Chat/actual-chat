@@ -14,13 +14,13 @@ public enum CallStatus
 /// so the caller can be told how it went. <see cref="CallStatus.None"/> is never stored - it is
 /// the absence of this record.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record CallState
 {
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public AuthorId CallerId { get; init; } = null!;
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [DataMember(Order = 1), Key(1)]
     public CallStatus Status { get; init; }
-    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
+    [DataMember(Order = 2), Key(2)]
     public Moment ChangedAt { get; init; }
 }

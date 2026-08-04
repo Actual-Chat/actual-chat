@@ -19,7 +19,7 @@ public class PropertyBagWithIdentifiersTest(ITestOutputHelper @out) : TestBase(@
         p = p.KeylessSet(placeId);
         p = p.KeylessSet(authorId);
 
-        var p1 = p.PassThroughAllSerializers();
+        var p1 = p.PassThroughSerializers();
         var x = p.KeylessGet<string>("");
         var userId1 = p1.KeylessGet<UserId>();
         var peerChatId1 = p1.KeylessGet<PeerChatId>();
@@ -53,7 +53,7 @@ public class PropertyBagWithIdentifiersTest(ITestOutputHelper @out) : TestBase(@
         p.KeylessSet(placeId);
         p.KeylessSet(authorId);
 
-        var p1 = p.PassThroughAllSerializers();
+        var p1 = p.PassThroughSerializers();
         var x = p.KeylessGet<string>("");
         var userId1 = p1.KeylessGet<UserId>();
         var peerChatId1 = p1.KeylessGet<PeerChatId>();

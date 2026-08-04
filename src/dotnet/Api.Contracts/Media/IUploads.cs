@@ -23,42 +23,42 @@ public interface IUploads : IComputeService
     Task OnStartProcessUpload(Uploads_StartProcessUpload command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Uploads_Create(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long? Length,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] string Tag,
-    [property: DataMember, MemoryPackOrder(10), Key(3)] MetadataBag Metadata
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] long? Length,
+    [property: DataMember, Key(2)] string Tag,
+    [property: DataMember, Key(3)] MetadataBag Metadata
 ) : ISessionCommand<UploadId>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Uploads_Append(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] UploadId UploadId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long Offset,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] byte[] Chunk
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] UploadId UploadId,
+    [property: DataMember, Key(2)] long Offset,
+    [property: DataMember, Key(3)] byte[] Chunk
 ) : ISessionCommand<long>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Uploads_Remove(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] UploadId UploadId
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] UploadId UploadId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Uploads_ConvertToMediaRef(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] UploadId UploadId
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] UploadId UploadId
 ) : ISessionCommand<MediaRef>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Uploads_StartProcessUpload(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] UploadId UploadId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] MediaId MediaId
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] UploadId UploadId,
+    [property: DataMember, Key(2)] MediaId MediaId
 ) : ISessionCommand<Unit>, IApiCommand;

@@ -15,7 +15,7 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
             Skip = 0,
             Limit = 20,
         };
-        query.AssertPassesThroughAllSerializers();
+        query.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -27,14 +27,14 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
             Own = true,
             Limit = 20,
         };
-        query.AssertPassesThroughAllSerializers();
+        query.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void SearchMatch_Basic()
     {
         var match = new SearchMatch("test query", 0.95, []);
-        var s = match.PassThroughAllSerializers(Out);
+        var s = match.PassThroughSerializers(Out);
         s.Text.Should().Be(match.Text);
         s.Rank.Should().Be(match.Rank);
         s.Parts.Should().BeEmpty();
@@ -48,7 +48,7 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
             new SearchMatchPart(new Range<int>(5, 10), 0.8),
         };
         var match = new SearchMatch("test query", 0.95, parts);
-        var s = match.PassThroughAllSerializers(Out);
+        var s = match.PassThroughSerializers(Out);
         s.Text.Should().Be(match.Text);
         s.Rank.Should().Be(match.Rank);
         s.Parts.Length.Should().Be(2);
@@ -58,7 +58,7 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
     public void SearchMatchPart_Basic()
     {
         var part = new SearchMatchPart(new Range<int>(0, 5), 0.9);
-        part.AssertPassesThroughAllSerializers();
+        part.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
         var transcript = new Transcript("Hello world", LinearMap.Zero, [Languages.English]) {
             IsStable = true,
         };
-        var s = transcript.PassThroughAllSerializers(Out);
+        var s = transcript.PassThroughSerializers(Out);
         s.Text.Should().Be(transcript.Text);
         s.IsStable.Should().Be(transcript.IsStable);
         s.Languages.Length.Should().Be(1);
@@ -77,7 +77,7 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
     public void Transcript_Empty()
     {
         var transcript = Transcript.New();
-        var s = transcript.PassThroughAllSerializers(Out);
+        var s = transcript.PassThroughSerializers(Out);
         s.Text.Should().Be(transcript.Text);
         s.IsStable.Should().Be(transcript.IsStable);
     }
@@ -88,7 +88,7 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
         var diff = new TranscriptDiff(new StringDiff(5, " world"), LinearMapDiff.None) {
             IsStable = false,
         };
-        var s = diff.PassThroughAllSerializers(Out);
+        var s = diff.PassThroughSerializers(Out);
         s.TextDiff.Should().Be(diff.TextDiff);
         s.IsStable.Should().Be(diff.IsStable);
     }
@@ -97,7 +97,7 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
     public void TranscriptDiff_None()
     {
         var diff = TranscriptDiff.None;
-        var s = diff.PassThroughAllSerializers(Out);
+        var s = diff.PassThroughSerializers(Out);
         s.TextDiff.Should().Be(diff.TextDiff);
         s.IsStable.Should().Be(diff.IsStable);
     }
@@ -106,14 +106,14 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
     public void StringDiff_Basic()
     {
         var diff = new StringDiff(5, " world");
-        diff.AssertPassesThroughAllSerializers();
+        diff.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void StringDiff_None()
     {
         var diff = StringDiff.None;
-        diff.AssertPassesThroughAllSerializers();
+        diff.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -121,19 +121,13 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
     {
         var id = ContentId.New(ChatId.Parse("the-actual-one"));
         var info = new ContentLinkInfo(id, "Example", null, "A description");
-        info.AssertPassesThroughAllSerializers();
+        info.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void LocalUrl_Basic()
     {
         var url = new LocalUrl("/chat/abc");
-
-        // MemoryPack round-trip (has [MemoryPackConstructor])
-        var mpp = MemoryPackSerialized.New(url);
-        Out.WriteLine($"MemoryPackSerialized: {mpp.Data.AsByteString()}");
-        var s1 = MemoryPackSerialized.New<LocalUrl>(mpp.Data).Value;
-        s1.Value.Should().Be(url.Value);
 
         // MessagePack round-trip
         var mp = MessagePackSerialized.New(url);
@@ -146,6 +140,6 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
     public void LocalUrl_Root()
     {
         var url = new LocalUrl("/");
-        url.AssertPassesThroughAllSerializers();
+        url.AssertPassesThroughSerializers();
     }
 }

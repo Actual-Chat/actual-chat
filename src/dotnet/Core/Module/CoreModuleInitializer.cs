@@ -56,10 +56,6 @@ public static partial class CoreModuleInitializer
                 RpcSerializationFormat.All = ImmutableList.Create(
                     RpcSerializationFormat.SystemJsonV5,
                     RpcSerializationFormat.SystemJsonV5NP,
-                    RpcSerializationFormat.MemoryPackV5, // Legacy clients
-                    RpcSerializationFormat.MemoryPackV5C, // Legacy clients
-                    RpcSerializationFormat.MemoryPackV6,
-                    RpcSerializationFormat.MemoryPackV6C,
                     RpcSerializationFormat.MessagePackV6,
                     RpcSerializationFormat.MessagePackV6C,
                     messagePackV6K,

@@ -10,7 +10,7 @@ namespace ActualChat;
 /// <summary>
 /// Represents a validated email address with normalization support.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<Email>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<Email>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Email>))]

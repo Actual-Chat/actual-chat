@@ -7,7 +7,7 @@ namespace ActualChat;
 /// <summary>
 /// Unique identifier for a cluster node.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 [MessagePackFormatter(typeof(Internal.StringLikeMessagePackFormatter<NodeRef>))]
 [JsonConverter(typeof(Internal.StringLikeJsonConverter<NodeRef>))]
 [Newtonsoft.Json.JsonConverter(typeof(Internal.StringLikeNewtonsoftJsonConverter<NodeRef>))]
@@ -23,16 +23,16 @@ public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
     public static NodeRef None => default;
     public static readonly NodeRef ThisNodeAlias = new("@", AssumeValid.Option);
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0)]
     public Symbol Id { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsNone => Id.IsEmpty;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
     public NodeRef(Symbol id)
         => this = Parse(id);
     public NodeRef(string? id)

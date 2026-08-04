@@ -43,16 +43,16 @@ public interface ISearchBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to refresh the search index.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-[method: MemoryPackConstructor, SerializationConstructor]
+[DataContract, MessagePackObject]
+[method: SerializationConstructor]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SearchBackend_Refresh(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] bool RefreshUsers = false,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] bool RefreshGroups = false,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] bool RefreshPlaces = false,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] bool RefreshEntries = false
+    [property: DataMember, Key(0)] bool RefreshUsers = false,
+    [property: DataMember, Key(1)] bool RefreshGroups = false,
+    [property: DataMember, Key(2)] bool RefreshPlaces = false,
+    [property: DataMember, Key(3)] bool RefreshEntries = false
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId?> // Review
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId? ShardKey => null;
 }

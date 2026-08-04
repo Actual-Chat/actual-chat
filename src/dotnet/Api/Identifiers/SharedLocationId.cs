@@ -10,7 +10,7 @@ namespace ActualChat;
 /// references via <see cref="Chat.ChatEntry.LocationId"/>.
 /// </summary>
 #pragma warning disable CS0659, CS0660, CS0661 // Overrides ==/Equals but not GetHashCode (provided by base)
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<SharedLocationId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<SharedLocationId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<SharedLocationId>))]

@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Unique identifier for a thread chat (reply thread attached to a chat entry).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<ThreadChatId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<ThreadChatId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ThreadChatId>))]

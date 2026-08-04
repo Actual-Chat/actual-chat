@@ -50,7 +50,7 @@ public abstract class SymbolIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
     {
         var identifiers = ValidIdentifiers.Select(s => TIdentifier.Parse(s)).Concat(new[] { None }).ToArray();
         foreach (var id in identifiers) {
-            id.AssertPassesThroughAllSerializers(Out);
+            id.AssertPassesThroughSerializers(Out);
             var s1 = new NewtonsoftJsonSerializer();
             s1.Write(id).Should().Be($"\"{id.Value}\"");
             var s2 = new SystemJsonSerializer();
@@ -67,7 +67,7 @@ public abstract class SymbolIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
                 .KeylessSet("s")
                 .Set("x", id)
                 .KeylessSet(id);
-            bag = bag.PassThroughAllSerializers(Out);
+            bag = bag.PassThroughSerializers(Out);
             bag.KeylessGet<string>().Should().Be("s");
             bag.Get<TIdentifier>("x").Should().Be(id);
             bag.KeylessGet<TIdentifier>().Should().Be(id);
@@ -83,7 +83,7 @@ public abstract class SymbolIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
             bag.KeylessSet("s");
             bag.Set("x", id);
             bag.KeylessSet(id);
-            bag = bag.PassThroughAllSerializers(Out);
+            bag = bag.PassThroughSerializers(Out);
             bag.KeylessGet<string>().Should().Be("s");
             bag.Get<TIdentifier>("x").Should().Be(id);
             bag.KeylessGet<TIdentifier>().Should().Be(id);

@@ -1,12 +1,12 @@
 ﻿namespace ActualChat.UI.Blazor.App.Services;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record ActiveChat(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] bool IsListening = false,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] bool IsRecording = false,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] Moment Recency = default, // CPU time
-    [property: DataMember, MemoryPackOrder(4), Key(4)] Moment ListeningRecency = default // CPU time
+    [property: DataMember, Key(0)] ChatId ChatId,
+    [property: DataMember, Key(1)] bool IsListening = false,
+    [property: DataMember, Key(2)] bool IsRecording = false,
+    [property: DataMember, Key(3)] Moment Recency = default, // CPU time
+    [property: DataMember, Key(4)] Moment ListeningRecency = default // CPU time
     )
 {
     public bool IsSameAs(ActiveChat? other)

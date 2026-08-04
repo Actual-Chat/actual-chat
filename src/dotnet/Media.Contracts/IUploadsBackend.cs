@@ -28,68 +28,68 @@ public interface IUploadsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create a new upload session.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_Create(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UploadId UploadId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long? Length,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] string Tag,
-    [property: DataMember, MemoryPackOrder(10), Key(4)] MetadataBag Metadata
+    [property: DataMember, Key(0)] UploadId UploadId,
+    [property: DataMember, Key(1)] UserId UserId,
+    [property: DataMember, Key(2)] long? Length,
+    [property: DataMember, Key(3)] string Tag,
+    [property: DataMember, Key(4)] MetadataBag Metadata
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UploadId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UploadId ShardKey => UploadId;
 }
 
 /// <summary>
 /// Command to remove an upload session.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_Remove(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UploadId Id
+    [property: DataMember, Key(0)] UploadId Id
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UploadId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UploadId ShardKey => Id;
 }
 
 /// <summary>
 /// Command to append a chunk to an upload session.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_Append(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UploadId UploadId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Offset,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] byte[] Chunk
+    [property: DataMember, Key(0)] UploadId UploadId,
+    [property: DataMember, Key(1)] long Offset,
+    [property: DataMember, Key(2)] byte[] Chunk
 ) : ICommand<long>, IBackendCommand, IHasShardKey<UploadId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UploadId ShardKey => UploadId;
 }
 
 /// <summary>
 /// Command to finalize an upload and convert it to media content.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_ProcessAndSaveContent(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UploadId UploadId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] MediaId MediaId
+    [property: DataMember, Key(0)] UploadId UploadId,
+    [property: DataMember, Key(1)] MediaId MediaId
 ) : ICommand<MediaRef>, IBackendCommand, IHasShardKey<UploadId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UploadId ShardKey => UploadId;
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_ConvertToMediaRef(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UploadId UploadId
+    [property: DataMember, Key(0)] UploadId UploadId
 ) : ICommand<MediaRef>, IBackendCommand, IHasShardKey<UploadId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UploadId ShardKey => UploadId;
 }

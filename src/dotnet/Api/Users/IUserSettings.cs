@@ -16,10 +16,10 @@ public interface IUserSettings : IComputeService
 /// <summary>
 /// Command to set a single settings value in the account settings store.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public partial record UserSettings_Set(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] string Key,
-    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] StoredSettings? Value
+    [property: DataMember(Order = 0), Key(0)] Session Session,
+    [property: DataMember(Order = 1), Key(1)] string Key,
+    [property: DataMember(Order = 2), Key(2)] StoredSettings? Value
 ) : ISessionCommand<Unit>, IApiCommand;

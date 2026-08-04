@@ -8,12 +8,10 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
     public void BasicTest()
     {
         SerializationCodeGen.ValidateType<Change<string>>();
-        SerializationCodeGen.ValidateType<ChatListSettings>();
+        SerializationCodeGen.ValidateMemoryPackType<ChatListSettings>();
         SerializationCodeGen.ValidateType<ActiveChat>();
         SerializationCodeGen.ValidateType<FileMetadata>();
         SerializationCodeGen.ValidateType<UploadSessionSnapshot>();
-        // RelatedEntryRef wraps an EntryRef whose ChatEntry payload is the new
-        // MessagePack-only union, so MemoryPack is intentionally not generated.
-        SerializationCodeGen.ValidateMessagePackOnlyType<RelatedEntryRef>();
+        SerializationCodeGen.ValidateType<RelatedEntryRef>();
     }
 }

@@ -356,10 +356,10 @@ public interface IRoutingTestService : IComputeService, IBackendService
 }
 
 // Value type returned by the test service
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 public sealed partial record RoutingTestValue(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] string Value,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] string HostNodeRef
+    [property: DataMember(Order = 0)] string Value,
+    [property: DataMember(Order = 1)] string HostNodeRef
 );
 
 // Test service implementation

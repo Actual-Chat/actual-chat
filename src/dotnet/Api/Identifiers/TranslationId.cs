@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Unique identifier for a translation of content into a specific language.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<TranslationId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<TranslationId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<TranslationId>))]

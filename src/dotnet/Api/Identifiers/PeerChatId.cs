@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Unique identifier for a peer-to-peer chat between two users.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<PeerChatId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<PeerChatId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<PeerChatId>))]

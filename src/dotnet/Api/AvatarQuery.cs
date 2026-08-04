@@ -6,27 +6,27 @@ namespace ActualChat;
 /// <summary>
 /// Query parameters for avatar generation endpoints.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record AvatarQuery : IValidatableObject
 {
     public static readonly ImmutableArray<int> SupportedSizes = [40, 80, 160];
     public const int MaxTitleLength = 32;
 
-    [DataMember, MemoryPackOrder(0), Key(0)]
+    [DataMember, Key(0)]
     [Required]
     public required AvatarKind Kind { get; init; }
 
-    [DataMember, MemoryPackOrder(1), Key(1)]
+    [DataMember, Key(1)]
     [Required]
     public required string Key { get; init; }
 
-    [DataMember, MemoryPackOrder(2), Key(2)]
+    [DataMember, Key(2)]
     public AvatarFormat Format { get; init; } = AvatarFormat.Svg;
 
-    [DataMember, MemoryPackOrder(3), Key(3)]
+    [DataMember, Key(3)]
     public int? Size { get; init; }
 
-    [DataMember, MemoryPackOrder(4), Key(4)]
+    [DataMember, Key(4)]
     public string? Title { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

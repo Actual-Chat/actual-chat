@@ -30,29 +30,29 @@ public interface IChatThreads : IComputeService
     Task<Unit> OnToggleThreadFollowStatus(ChatThreads_ToggleThreadFollowStatus command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatThreads_Start(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ParentChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] string Title,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] string Description,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] ChatEntryId[] EntryIds
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId ParentChatId,
+    [property: DataMember, Key(2)] string Title,
+    [property: DataMember, Key(3)] string Description,
+    [property: DataMember, Key(4)] ChatEntryId[] EntryIds
 ) : ISessionCommand<Chat>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatThreads_ToggleThreadFollowStatus(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ThreadChatId ThreadChatId
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ThreadChatId ThreadChatId
 ) : ISessionCommand<Unit>, IApiCommand;
 
 /// <summary>
 /// Statistics for a chat thread.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record ThreadStat(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] long MessageCount,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId[] TopAuthorIds,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] int AuthorCount,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] ChatEntryAttachment[] Attachments);
+    [property: DataMember, Key(0)] long MessageCount,
+    [property: DataMember, Key(1)] AuthorId[] TopAuthorIds,
+    [property: DataMember, Key(2)] int AuthorCount,
+    [property: DataMember, Key(3)] ChatEntryAttachment[] Attachments);

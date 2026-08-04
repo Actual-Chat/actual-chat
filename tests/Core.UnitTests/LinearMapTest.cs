@@ -34,7 +34,7 @@ public class LinearMapTest(ITestOutputHelper @out) : TestBase(@out)
         map.Map(0.5f).Should().Be(2f);
         map.Map(6).Should().Be(3.5f);
 
-        var map1 = map.PassThroughAllSerializers(Out);
+        var map1 = map.PassThroughSerializers(Out);
         map1.Data.Should().Equal(map.Data);
     }
     [Fact]

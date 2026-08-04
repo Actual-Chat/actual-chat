@@ -38,7 +38,7 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
     {
         var identifiers = ValidIdentifiers.Select(TIdentifier.Parse).Concat([null]).ToArray();
         foreach (var id in identifiers) {
-            id.AssertPassesThroughAllSerializers(Out);
+            id.AssertPassesThroughSerializers(Out);
 
             var s1 = new NewtonsoftJsonSerializer();
             s1.Write(id).Should().Be(GetJson(id));
@@ -65,7 +65,7 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
                 .KeylessSet("s")
                 .Set("x", id)
                 .KeylessSet(id);
-            bag = bag.PassThroughAllSerializers(Out);
+            bag = bag.PassThroughSerializers(Out);
             bag.KeylessGet<string>().Should().Be("s");
             bag.Get<TIdentifier>("x").Should().Be(id);
             bag.KeylessGet<TIdentifier>().Should().Be(id);
@@ -81,7 +81,7 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
             bag.KeylessSet("s");
             bag.Set("x", id);
             bag.KeylessSet(id);
-            bag = bag.PassThroughAllSerializers(Out);
+            bag = bag.PassThroughSerializers(Out);
             bag.KeylessGet<string>().Should().Be("s");
             bag.Get<TIdentifier>("x").Should().Be(id);
             bag.KeylessGet<TIdentifier>().Should().Be(id);

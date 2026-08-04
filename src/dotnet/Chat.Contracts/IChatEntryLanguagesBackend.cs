@@ -31,14 +31,14 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to detect the language of a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_Detect(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatEntryId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] HashString ContentHash
+    [property: DataMember, Key(0)] ChatEntryId Id,
+    [property: DataMember, Key(1)] HashString ContentHash
 ) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>, IHasUuid
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Id.ChatId;
 
     string IHasUuid.Uuid => $"{Id}.{ContentHash.Hash}";
@@ -47,15 +47,15 @@ public sealed partial record ChatEntryLanguagesBackend_Detect(
 /// <summary>
 /// Command to update the detected language for a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_Change(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatEntryId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Change<ChatEntryLanguage> Change
+    [property: DataMember, Key(0)] ChatEntryId Id,
+    [property: DataMember, Key(1)] long? ExpectedVersion,
+    [property: DataMember, Key(2)] Change<ChatEntryLanguage> Change
 ) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Id.ChatId;
 
     public static ChatEntryLanguagesBackend_Change Upsert(ChatEntryLanguage language)

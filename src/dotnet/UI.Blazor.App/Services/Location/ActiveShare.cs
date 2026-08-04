@@ -1,19 +1,19 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
 [DataContract]
-[MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[MessagePackObject]
 public sealed partial record ActiveShare(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
+    [property: DataMember, Key(0)] ChatId ChatId,
     // null until the first fix creates the share and posts the entry
-    [property: DataMember, MemoryPackOrder(1), Key(1)] SharedLocationId? LocationId,
+    [property: DataMember, Key(1)] SharedLocationId? LocationId,
     // Wall-clock (ServerClock) so it survives restarts
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Moment StartedAt,
+    [property: DataMember, Key(2)] Moment StartedAt,
     // The exact Constants.Location.Durations key the user picked — the server accepts only these
-    [property: DataMember, MemoryPackOrder(3), Key(3)] TimeSpan Duration
+    [property: DataMember, Key(3)] TimeSpan Duration
 )
 {
     // StartedAt + TimeSpan.MaxValue would silently wrap negative
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public Moment ExpiresAt => Duration == Constants.Location.UnlimitedDuration
         ? Moment.MaxValue
         : StartedAt + Duration;

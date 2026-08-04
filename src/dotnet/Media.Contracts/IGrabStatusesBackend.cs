@@ -19,13 +19,13 @@ public interface IGrabStatusesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to update the status of a link preview grab operation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record GrabStatusesBackend_Change(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Symbol Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] bool IsSuccessful
+    [property: DataMember, Key(0)] Symbol Id,
+    [property: DataMember, Key(1)] bool IsSuccessful
 ) : ICommand<GrabStatus>, IBackendCommand, IHasShardKey<Symbol>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Symbol ShardKey => Id;
 }

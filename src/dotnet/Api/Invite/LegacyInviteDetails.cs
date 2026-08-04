@@ -3,25 +3,25 @@ namespace ActualChat.Invite;
 /// <summary>
 /// Wire-frozen v2.7 <see cref="InviteDetails"/> wrapper used inside <see cref="LegacyInvite"/>.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 public sealed partial record LegacyInviteDetails : IUnionRecord<LegacyInviteDetailsOption?>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
     public LegacyInviteDetailsOption? Option { get; init; }
 
-    [DataMember, MemoryPackOrder(0)]
+    [DataMember]
     public LegacyChatInviteOption? Chat {
         get => Option as LegacyChatInviteOption;
         init => Option ??= value;
     }
 
-    [DataMember, MemoryPackOrder(1)]
+    [DataMember]
     public LegacyUserInviteOption? User {
         get => Option as LegacyUserInviteOption;
         init => Option ??= value;
     }
 
-    [DataMember, MemoryPackOrder(2)]
+    [DataMember]
     public LegacyPlaceInviteOption? Place {
         get => Option as LegacyPlaceInviteOption;
         init => Option ??= value;
@@ -40,15 +40,15 @@ public sealed partial record LegacyInviteDetails : IUnionRecord<LegacyInviteDeta
 
 public abstract record LegacyInviteDetailsOption;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 public partial record LegacyChatInviteOption(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId
+    [property: DataMember] ChatId ChatId
     ) : LegacyInviteDetailsOption;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 public partial record LegacyPlaceInviteOption(
-    [property: DataMember, MemoryPackOrder(0)] PlaceId PlaceId
+    [property: DataMember] PlaceId PlaceId
     ) : LegacyInviteDetailsOption;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 public partial record LegacyUserInviteOption : LegacyInviteDetailsOption;

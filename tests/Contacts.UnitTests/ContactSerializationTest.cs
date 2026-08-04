@@ -25,7 +25,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Chat = new Chat.Chat(TestChatId) { Title = "Test Chat" },
         };
 
-        var s = contact.PassThroughAllSerializers(Out);
+        var s = contact.PassThroughSerializers(Out);
         s.Id.Should().Be(contact.Id);
         s.Version.Should().Be(contact.Version);
         s.TouchedAt.Should().Be(contact.TouchedAt);
@@ -43,7 +43,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Hash = new HashString("SHA256 Base16 abc123"),
         };
 
-        var s = contact.PassThroughAllSerializers(Out);
+        var s = contact.PassThroughSerializers(Out);
         s.Id.Should().Be(contact.Id);
         s.Hash.Should().Be(contact.Hash);
     }
@@ -60,7 +60,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             CreatedAt = new Moment(DateTime.UtcNow),
         };
 
-        var s = contact.PassThroughAllSerializers(Out);
+        var s = contact.PassThroughSerializers(Out);
         s.Id.Should().Be(contact.Id);
         s.DisplayName.Should().Be(contact.DisplayName);
         s.GivenName.Should().Be(contact.GivenName);
@@ -77,7 +77,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             ModifiedAt = new Moment(DateTime.UtcNow),
         };
 
-        var s = hash.PassThroughAllSerializers(Out);
+        var s = hash.PassThroughSerializers(Out);
         s.Id.Should().Be(hash.Id);
         s.Hash.Should().Be(hash.Hash);
     }
@@ -93,7 +93,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             IsPinned = false,
         };
 
-        var s = contact.PassThroughAllSerializers(Out);
+        var s = contact.PassThroughSerializers(Out);
         s.Id.Should().Be(contact.Id);
         s.TouchedAt.Should().Be(contact.TouchedAt);
         s.IsPinned.Should().Be(contact.IsPinned);
@@ -106,7 +106,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var contactId = ContactId.NewAny(TestUserId, TestChatId);
         var cmd = new Contacts_Touch(TestSession, contactId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Chat = new Chat.Chat(TestChatId),
         };
         var cmd = new Contacts_Change(TestSession, contactId, null, Change.Update(contact));
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Id.Should().Be(original.Id);
                 deserialized.Session.Should().Be(original.Session);
@@ -132,7 +132,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Hash = new HashString("SHA256 Base16 abc123"),
         };
         var cmd = new ExternalContactHashes_Change(TestSession, deviceId.Id, null, Change.Create(hash));
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.DeviceId.Should().Be(original.DeviceId);
             }, Out);
@@ -148,7 +148,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Chat = new Chat.Chat(TestChatId),
         };
         var cmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Id.Should().Be(original.Id);
             }, Out);
@@ -159,35 +159,35 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var contactId = ContactId.NewAny(TestUserId, TestChatId);
         var cmd = new ContactsBackend_Touch(contactId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ContactsBackend_RemoveAccount_Basic()
     {
         var cmd = new ContactsBackend_RemoveAccount(TestUserId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ContactsBackend_RemoveChatContacts_Basic()
     {
         var cmd = new ContactsBackend_RemoveChatContacts(TestChatId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ContactsBackend_Greet_Basic()
     {
         var cmd = new ContactsBackend_Greet(TestUserId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ContactsBackend_ChangePlaceMembership_Basic()
     {
         var cmd = new ContactsBackend_ChangePlaceMembership(TestPlaceId, TestUserId, false);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -195,7 +195,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var placeChatId = PlaceChatId.New(TestPlaceId);
         var cmd = new ContactsBackend_PublishCopiedChat(placeChatId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -203,21 +203,21 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var contactId = ContactId.NewAny(TestUserId, TestChatId);
         var cmd = new ContactsBackend_ReviewExternalContactName(contactId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ExternalContactsBackend_RemoveAccount_Basic()
     {
         var cmd = new ExternalContactsBackend_RemoveAccount(TestUserId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ExternalContactHashesBackend_RemoveAccount_Basic()
     {
         var cmd = new ExternalContactHashesBackend_RemoveAccount(TestUserId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     // Query types
@@ -226,6 +226,6 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ChangedContactsQuery_Basic()
     {
         var query = new ChangedContactsQuery { MinVersion = 1, Limit = 100, LastId = null };
-        query.AssertPassesThroughAllSerializers();
+        query.AssertPassesThroughSerializers();
     }
 }

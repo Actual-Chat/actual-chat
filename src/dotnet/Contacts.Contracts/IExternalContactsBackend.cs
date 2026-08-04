@@ -24,38 +24,38 @@ public interface IExternalContactsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to bulk create, update, or delete external contacts.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactsBackend_BulkChange(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ExternalContactChange[] Changes
+    [property: DataMember, Key(0)] ExternalContactChange[] Changes
 ) : ICommand<Result<ExternalContactFull?>[]>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Changes.Length > 0 ? Changes[0].Id.UserDeviceId.OwnerId : throw new ArgumentException("No changes provided", nameof(Changes));
 }
 
 /// <summary>
 /// Command to update an external contact's last sync timestamp.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactsBackend_Touch(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ExternalContactId Id
+    [property: DataMember, Key(0)] ExternalContactId Id
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Id.UserDeviceId.OwnerId;
 }
 
 /// <summary>
 /// Command to remove all external contacts for a deleted account.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactsBackend_RemoveAccount(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId
+    [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

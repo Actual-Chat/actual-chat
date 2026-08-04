@@ -10,10 +10,10 @@ public enum ChatPositionKind { Read = 0, View };
 /// <summary>
 /// Represents a user's position within a chat conversation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record ChatPosition(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] long EntryLid = 0,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string Origin = ""
+    [property: DataMember, Key(0)] long EntryLid = 0,
+    [property: DataMember, Key(1)] string Origin = ""
 ) : IHasOrigin
 {
     public override string ToString()
