@@ -54,6 +54,7 @@ public class ApnsClient(
         }
 
         var payload = JsonSerializer.Serialize(new Dictionary<string, object> {
+            { "aps", new Dictionary<string, object>() },
             { Constants.Notification.MessageDataKeys.Kind, NotificationKind.SpeechStarted.ToString() },
             { Constants.Notification.MessageDataKeys.ChatId, chatId.Value },
             { Constants.Notification.MessageDataKeys.Timestamp, (long)startedAt.EpochOffset.TotalMilliseconds },
@@ -120,7 +121,7 @@ public class ApnsClient(
             return;
         }
 
-        Log.LogWarning("APNs PTT push rejected: {StatusCode} {Body}", (int)response.StatusCode, body);
+        Log.LogError("APNs PTT push rejected: {StatusCode} {Body}", (int)response.StatusCode, body);
     }
 
     private string GetJwt()
