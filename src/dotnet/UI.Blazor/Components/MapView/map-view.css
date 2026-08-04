@@ -3,8 +3,11 @@
     @apply w-full h-full;
     @apply overflow-hidden;
 }
+/* MapLibre places a marker with a transform that assumes the marker sits at the
+   container origin, so it must stay out of flow: in flow every marker past the
+   first is also shifted down by the heights of the ones before it. */
 .map-view .map-marker {
-    @apply relative;
+    @apply absolute;
     @apply flex items-center justify-center;
 }
 .map-view .map-marker .c-pin {

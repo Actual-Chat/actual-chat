@@ -170,6 +170,13 @@ describe('multi-user location sharing', () => {
         await bob.waitForTimeout(1_000);
         expect(await bobMap.locator('.maplibregl-marker').count()).toBe(2);
 
+        // assert — markers stay out of flow: MapLibre positions them with a transform that
+        // assumes the container origin, so an in-flow marker is shifted by the height of every
+        // marker before it (#4115)
+        const markerPositions = await bobMap.locator('.maplibregl-marker')
+            .evaluateAll(els => els.map(x => getComputedStyle(x).position));
+        expect(markerPositions).toEqual(['absolute', 'absolute']);
+
         // assert — the participants list shows exactly Alice: not marked "(you)", with an
         // "Updated ..." status and her share's countdown; Bob (not sharing) gets no row,
         // only his own map marker
