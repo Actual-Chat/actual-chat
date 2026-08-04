@@ -686,6 +686,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await CloseCall(chatId).ConfigureAwait(false);
     }
 
+    // Legacy methods
+
+    public Task LegacyOnStreamRegistered(
+        ChatId chatId,
+        AuthorId authorId,
+        long? entryLid,
+        bool transcriptionOn,
+        CancellationToken cancellationToken)
+        => OnStreamRegistered(chatId, authorId, entryLid, transcriptionOn, true, cancellationToken);
+
     // Protected/internal methods
 
     [ComputeMethod(ConsolidationDelay = 0)]
