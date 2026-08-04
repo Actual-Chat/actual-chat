@@ -94,6 +94,49 @@ public class ReplyTargetResolverTest
     }
 
     [Fact]
+    public void AStaleStampLosesToTheFocusedChat()
+    {
+        // arrange
+        var longAgo = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromDays(30) };
+
+        // act
+        var target = ReplyTargetResolver.Resolve(
+            [ChatA, ChatB], longAgo, ChatB, T0, ReplyTargetResolver.UnboundedRecencyWindow);
+
+        // assert
+        target.Should().Be(ChatB);
+    }
+
+    [Fact]
+    public void AFreshStampBeatsTheFocusedChat()
+    {
+        // arrange
+        var justNow = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromSeconds(20) };
+
+        // act
+        var target = ReplyTargetResolver.Resolve(
+            [ChatA, ChatB], justNow, ChatB, T0, ReplyTargetResolver.UnboundedRecencyWindow);
+
+        // assert
+        target.Should().Be(ChatA);
+    }
+
+    [Fact]
+    public void AStaleStampWinsWhenNothingElseIsAvailable()
+    {
+        // arrange
+        var longAgo = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromDays(30) };
+        var unarmedFocus = Chat("cccccccccccccccccccc");
+
+        // act
+        var target = ReplyTargetResolver.Resolve(
+            [ChatA, ChatB], longAgo, unarmedFocus, T0, ReplyTargetResolver.UnboundedRecencyWindow);
+
+        // assert
+        target.Should().Be(ChatA);
+    }
+
+    [Fact]
     public void AnUnboundedWindowStillReturnsNullWithNoArmedChats()
         => ReplyTargetResolver
             .Resolve([], new Dictionary<ChatId, Moment>(), null, T0, ReplyTargetResolver.UnboundedRecencyWindow)

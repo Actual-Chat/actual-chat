@@ -23,11 +23,16 @@ public static class ReplyTargetResolver
                 best = chatId;
             }
         }
-        if (best is not null)
+        // Beyond the ordinary window a stamp is a last resort, not the first choice - otherwise an
+        // unbounded window lets a days-old stamp outrank the chat you're looking at.
+        var isBestStale = best is not null && bestAt <= now - Constants.Audio.WalkieTalkieReplyRecencyWindow;
+        if (best is not null && !isBestStale)
             return best;
 
         if (focusedChatId is { } focused && armedChatIds.Contains(focused))
             return focused;
+        if (best is not null)
+            return best;
 
         return armedChatIds.Count == 1 ? armedChatIds[0] : null;
     }

@@ -28,6 +28,20 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
     public IReadOnlyDictionary<ChatId, Moment> SnapshotLastIncomingVoiceAt()
         => new Dictionary<ChatId, Moment>(_lastIncomingAt);
 
+    public void NoteIncomingVoice(ChatId chatId, Moment at)
+    {
+        // The wake path replays an utterance that may be over already, so HasIncomingVoice never
+        // sees an edge for it - without this stamp such a wake opens no answer window at all.
+        // The stamp is a plain dictionary write; the event is the only thing that lets GestureUI
+        // arm sooner than its next poll.
+        var now = Clocks.ServerClock.Now;
+        var stampedAt = at > now ? now : at;
+        var newAt = _lastIncomingAt.AddOrUpdate(
+            chatId, stampedAt, (_, oldAt) => oldAt > stampedAt ? oldAt : stampedAt);
+        if (newAt == stampedAt)
+            IncomingVoiceStamped?.Invoke();
+    }
+
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
@@ -89,12 +103,8 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
         var prevHadOthers = false;
         await foreach (var change in cHasOthers.Changes(cancellationToken).ConfigureAwait(false)) {
             var nowHasOthers = change.Value;
-            if (ShouldStamp(prevHadOthers, nowHasOthers)) {
-                // The stamp opens the answer window, but it's a plain dictionary write - the
-                // event is the only thing that lets GestureUI arm sooner than its next poll.
-                _lastIncomingAt[chatId] = Clocks.ServerClock.Now;
-                IncomingVoiceStamped?.Invoke();
-            }
+            if (ShouldStamp(prevHadOthers, nowHasOthers))
+                NoteIncomingVoice(chatId, Clocks.ServerClock.Now);
             prevHadOthers = nowHasOthers;
         }
     }
