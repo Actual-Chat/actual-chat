@@ -19,28 +19,28 @@ public interface IPhoneAuth : IComputeService
     Task<bool> OnVerifyPhone(PhoneAuth_VerifyPhone command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record PhoneAuth_SendTotp(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Phone Phone,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] TotpPurpose Purpose = TotpPurpose.SignInPhone,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] string? CaptchaToken = null,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] string? CaptchaAction = null
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] Phone Phone,
+    [property: DataMember, Key(2)] TotpPurpose Purpose = TotpPurpose.SignInPhone,
+    [property: DataMember, Key(3)] string? CaptchaToken = null,
+    [property: DataMember, Key(4)] string? CaptchaAction = null
 ) : ISessionCommand<Moment>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record PhoneAuth_ValidateTotp(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Phone Phone,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] int Totp
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] Phone Phone,
+    [property: DataMember, Key(2)] int Totp
 ) : ISessionCommand<bool>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record PhoneAuth_VerifyPhone(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Phone Phone,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] int Totp
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] Phone Phone,
+    [property: DataMember, Key(2)] int Totp
 ) : ISessionCommand<bool>, IApiCommand; // NOTE(AY): Add backend, implement IApiCommand

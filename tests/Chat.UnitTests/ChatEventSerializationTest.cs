@@ -35,7 +35,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var chat = new ChatModel(TestChatId, 1) { Title = "Test" };
         var evt = new ChatChangedEvent(chat, null, ChangeKind.Create);
-        evt.AssertPassesThroughAllSerializers(
+        evt.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Chat.Id.Should().Be(original.Chat.Id);
                 deserialized.ChangeKind.Should().Be(original.ChangeKind);
@@ -50,7 +50,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Name = "Test",
         };
         var evt = new AccountChangedEvent(account, null, ChangeKind.Create);
-        evt.AssertPassesThroughAllSerializers(
+        evt.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Account.Id.Should().Be(original.Account.Id);
                 deserialized.ChangeKind.Should().Be(original.ChangeKind);
@@ -65,7 +65,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Avatar = new Avatar("avatar-1") { Name = "Test" },
         };
         var evt = new AuthorUpsertedEvent(author, null);
-        evt.AssertPassesThroughAllSerializers(
+        evt.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Author.Id.Should().Be(original.Author.Id);
             }, Out);
@@ -79,7 +79,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Avatar = new Avatar("avatar-1") { Name = "Test" },
         };
         var evt = new AuthorsRemovedEvent([author]);
-        evt.AssertPassesThroughAllSerializers(
+        evt.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Authors.Length.Should().Be(original.Authors.Length);
                 deserialized.Authors[0].Id.Should().Be(original.Authors[0].Id);
@@ -91,7 +91,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var avatar = new AvatarFull(TestUserId, "avatar-1", 1) { Name = "Test" };
         var evt = new AvatarChangedEvent(avatar, null, ChangeKind.Create);
-        evt.AssertPassesThroughAllSerializers(
+        evt.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Avatar.Id.Should().Be(original.Avatar.Id);
                 deserialized.ChangeKind.Should().Be(original.ChangeKind);
@@ -106,7 +106,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Chat = new ChatModel(TestChatId),
         };
         var evt = new ContactChangedEvent(contact, null, ChangeKind.Create);
-        evt.AssertPassesThroughAllSerializers(
+        evt.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Contact.Id.Should().Be(original.Contact.Id);
                 deserialized.ChangeKind.Should().Be(original.ChangeKind);
@@ -117,7 +117,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ExternalContactNameMayHaveChangedEvent_Basic()
     {
         var evt = new ExternalContactNameMayHaveChangedEvent(TestUserId, ["hash1", "hash2"]);
-        evt.AssertPassesThroughAllSerializers(
+        evt.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.OwnerUserId.Should().Be(original.OwnerUserId);
             }, Out);
@@ -127,7 +127,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void NewAccountEvent_Basic()
     {
         var evt = new NewAccountEvent(TestUserId);
-        evt.AssertPassesThroughAllSerializers();
+        evt.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var place = new Place(TestPlaceId, 1) { Title = "Test Place" };
         var evt = new PlaceChangedEvent(place, null, ChangeKind.Create);
-        evt.AssertPassesThroughAllSerializers(
+        evt.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Place.Id.Should().Be(original.Place.Id);
                 deserialized.ChangeKind.Should().Be(original.ChangeKind);
@@ -146,7 +146,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void PlaceMembershipChangedEvent_Basic()
     {
         var evt = new PlaceMembershipChangedEvent(TestUserId, TestPlaceId, false);
-        evt.AssertPassesThroughAllSerializers();
+        evt.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -183,6 +183,6 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void UserSignedOutEvent_Basic()
     {
         var evt = new UserSignedOutEvent(TestUserId, Session.New());
-        evt.AssertPassesThroughAllSerializers();
+        evt.AssertPassesThroughSerializers();
     }
 }

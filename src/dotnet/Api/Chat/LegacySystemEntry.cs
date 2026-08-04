@@ -6,20 +6,20 @@ namespace ActualChat.Chat;
 /// Wire-frozen v2.7 SystemEntry wrapper. The current shape used <see cref="IUnionRecord{T}"/>
 /// with typed accessor properties; this record preserves that layout for old clients.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record LegacySystemEntry : IUnionRecord<LegacySystemEntryOption?>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
     public LegacySystemEntryOption? Option { get; init; }
 
-    [DataMember, MemoryPackOrder(0)]
+    [DataMember]
     public LegacyMembersChangedOption? MembersChanged {
         get => Option as LegacyMembersChangedOption;
         init => Option ??= value;
     }
 
-    [DataMember, MemoryPackOrder(1)]
+    [DataMember]
     public LegacyNotifyMembersOption? NotifyMembers {
         get => Option as LegacyNotifyMembersOption;
         init => Option ??= value;
@@ -44,14 +44,14 @@ public sealed partial record LegacySystemEntry : IUnionRecord<LegacySystemEntryO
 
 public abstract record LegacySystemEntryOption;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 public sealed partial record LegacyMembersChangedOption : LegacySystemEntryOption
 {
-    [DataMember, MemoryPackOrder(0)] public AuthorId? AuthorId { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
-    [DataMember, MemoryPackOrder(2)] public bool HasLeft { get; init; }
+    [DataMember] public AuthorId? AuthorId { get; init; }
+    [DataMember] public string AuthorName { get; init; } = "";
+    [DataMember] public bool HasLeft { get; init; }
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public LegacyMembersChangedOption(AuthorId? authorId, string authorName, bool hasLeft)
     {
         AuthorId = authorId;
@@ -60,13 +60,13 @@ public sealed partial record LegacyMembersChangedOption : LegacySystemEntryOptio
     }
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 public sealed partial record LegacyNotifyMembersOption : LegacySystemEntryOption
 {
-    [DataMember, MemoryPackOrder(0)] public AuthorId? AuthorId { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
+    [DataMember] public AuthorId? AuthorId { get; init; }
+    [DataMember] public string AuthorName { get; init; } = "";
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public LegacyNotifyMembersOption(AuthorId? authorId, string authorName)
     {
         AuthorId = authorId;

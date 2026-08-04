@@ -3,7 +3,7 @@ namespace ActualChat.Audio;
 /// <summary>
 /// Represents a single frame of audio data.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(CachingAudioFrameFormatter))]
 public sealed partial record AudioFrame : MediaFrame
 {
@@ -12,8 +12,8 @@ public sealed partial record AudioFrame : MediaFrame
     [Key(2)]
     public override TimeSpan Duration { get; init; } = Constants.Audio.OpusFrameDuration;
 
-    [Obsolete("2025.05: Unused in AudioFrame (serialized by MemoryPack, ignored by MessagePack)")]
-    [DataMember(Order = 3), MemoryPackOrder(3), IgnoreMember]
+    [Obsolete("2025.05: Unused in AudioFrame; still written by CachingAudioFrameFormatter for wire compatibility")]
+    [DataMember(Order = 3), IgnoreMember]
     public bool LegacyIsKeyFrame { get; init; } = true;
 
     /// <summary>
@@ -25,7 +25,7 @@ public sealed partial record AudioFrame : MediaFrame
     /// Backed by a plain GC-managed <c>byte[]</c>; <see cref="MediaFrame.Data"/> is a slice
     /// into the same array, so the array lives as long as any consumer holds this frame.
     /// </summary>
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ReadOnlyMemory<byte> SerializedData { get; set; }
 
     public override string ToString()

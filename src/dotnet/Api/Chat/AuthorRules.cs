@@ -5,12 +5,12 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Encapsulates an author's resolved permissions for a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record AuthorRules(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorFull? Author,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] AccountFull? Account,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] ChatPermissions Permissions = default
+    [property: DataMember, Key(0)] ChatId ChatId,
+    [property: DataMember, Key(1)] AuthorFull? Author,
+    [property: DataMember, Key(2)] AccountFull? Account,
+    [property: DataMember, Key(3)] ChatPermissions Permissions = default
     ) : IRequirementTarget
 {
     public static readonly Requirement<AuthorRules> MustExist = Requirement.New(

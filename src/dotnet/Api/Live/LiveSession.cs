@@ -6,29 +6,29 @@ namespace ActualChat.Live;
 /// A live call/session in a chat: its host, capability rules, members and per-peer state.
 /// The transcript-summary block, when transcription is on, is the <see cref="Conversation"/> facet.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record LiveSession
 {
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public ChatId ChatId { get; init; } = null!;
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [DataMember(Order = 1), Key(1)]
     public AuthorId Host { get; init; } = null!;
-    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
+    [DataMember(Order = 2), Key(2)]
     public Moment StartedAt { get; init; }
-    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
+    [DataMember(Order = 3), Key(3)]
     public SessionRules Rules { get; init; } = SessionRules.Default;
-    [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
+    [DataMember(Order = 4), Key(4)]
     public IReadOnlyList<LiveSessionMember> Members { get; init; } = [];
-    [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
+    [DataMember(Order = 5), Key(5)]
     public Conversation? Conversation { get; init; }
-    [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
+    [DataMember(Order = 6), Key(6)]
     public long Version { get; init; }
-    [DataMember(Order = 7), MemoryPackOrder(7), Key(7)]
+    [DataMember(Order = 7), Key(7)]
     public bool TranscriptionOn { get; init; }
-    [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
+    [DataMember(Order = 8), Key(8)]
     public LiveSessionKind Kind { get; init; } = LiveSessionKind.Ambient;
-    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
+    [DataMember(Order = 9), Key(9)]
     public IReadOnlyList<CallInvite> Invites { get; init; } = [];
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ConversationId? ConversationId => Conversation?.Id;
 }

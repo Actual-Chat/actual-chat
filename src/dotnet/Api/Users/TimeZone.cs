@@ -3,9 +3,9 @@
 /// <summary>
 /// Represents a time zone with Windows and IANA identifiers.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record TimeZone(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] string Id) : IHasId<string>
+    [property: DataMember, Key(0)] string Id) : IHasId<string>
 {
-    [DataMember, MemoryPackOrder(1), Key(1)] public string IanaName { get; set; } = "";
+    [DataMember, Key(1)] public string IanaName { get; set; } = "";
 }

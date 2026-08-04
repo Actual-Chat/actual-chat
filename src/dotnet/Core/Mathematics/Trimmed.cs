@@ -5,7 +5,7 @@ using ActualLab.Fusion.Blazor;
 namespace ActualChat.Mathematics;
 
 [StructLayout(LayoutKind.Auto)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackFormatter(typeof(TrimmedMessagePackFormatter<>))]
+[DataContract, MessagePackFormatter(typeof(TrimmedMessagePackFormatter<>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public readonly partial record struct Trimmed<T>
     : IAdditionOperators<Trimmed<T>, Trimmed<T>, Trimmed<T>>,
@@ -13,13 +13,13 @@ public readonly partial record struct Trimmed<T>
         IComparable<Trimmed<T>>
     where T : struct, IAdditionOperators<T, T, T>, IComparable<T>, IEquatable<T>
 {
-    [DataMember, MemoryPackOrder(0)] public T Value { get; }
-    [DataMember, MemoryPackOrder(1)] public T? Limit { get; }
+    [DataMember] public T Value { get; }
+    [DataMember] public T? Limit { get; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsTrimmed => Limit is { } t && EqualityComparer<T>.Default.Equals(Value, t);
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
     public Trimmed(T value, T? limit)
     {
         Limit = limit;

@@ -20,11 +20,11 @@ namespace ActualChat.Users;
 /// <summary>
 /// Represents a user account with associated avatar and status.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Account(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0
+    [property: DataMember, Key(0)] UserId Id,
+    [property: DataMember, Key(1)] long Version = 0
 ) : IHasId<UserId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly Requirement<Account> MustExist = Requirement.New(
@@ -34,11 +34,11 @@ public partial record Account(
         (Account? a) => a?.HasId() == true && !a.Id.IsGuest,
         new(() => StandardError.Account.Guest()));
 
-    [DataMember, MemoryPackOrder(2), Key(2)] public AccountStatus Status { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(3)] public Avatar Avatar { get; init; } = null!; // Populated only on reads
+    [DataMember, Key(2)] public AccountStatus Status { get; init; }
+    [DataMember, Key(3)] public Avatar Avatar { get; init; } = null!; // Populated only on reads
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsGuest => Id?.IsGuest ?? true;
 
     // This record relies on referential equality

@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Represents a user interest or topic.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<Interest>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<Interest>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Interest>))]

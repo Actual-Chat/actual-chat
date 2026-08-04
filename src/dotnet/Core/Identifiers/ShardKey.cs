@@ -7,11 +7,11 @@ namespace ActualChat;
 /// to shard index <c>Value mod ShardCount</c> of the target service's shard scheme.
 /// </summary>
 [StructLayout(LayoutKind.Auto)]
-[DataContract, MemoryPackable, MessagePackObject]
+[DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(Serialization.Internal.ShardKeyMessagePackFormatter))]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
 public readonly partial record struct ShardKey(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] int Value)
+    [property: DataMember(Order = 0), Key(0)] int Value)
 {
     public static ShardKey New(int value) => new(value);
 

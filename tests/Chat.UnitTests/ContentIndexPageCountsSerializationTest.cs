@@ -12,7 +12,7 @@ public class ContentIndexPageCountsSerializationTest(ITestOutputHelper @out) : T
     public void PassesThroughAllSerializers()
     {
         var value = NewSample();
-        value.AssertPassesThroughAllSerializers(AssertEqual, Out);
+        value.AssertPassesThroughSerializers(AssertEqual, Out);
     }
 
     [Fact]

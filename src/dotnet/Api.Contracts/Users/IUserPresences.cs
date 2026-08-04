@@ -16,9 +16,9 @@ public interface IUserPresences : IComputeService
     Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UserPresences_CheckIn(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] bool IsActive
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] bool IsActive
 ) : ISessionCommand<Unit>, IApiCommand;

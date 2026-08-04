@@ -11,8 +11,8 @@ public interface IEmails : IComputeService
     Task OnSendDigest(Emails_SendDigest command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Emails_SendDigest(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session
+    [property: DataMember, Key(0)] Session Session
 ) : ISessionCommand<Moment>, IApiCommand;

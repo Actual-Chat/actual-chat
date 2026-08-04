@@ -1,15 +1,15 @@
 namespace ActualChat.Video;
 
-[DataContract, MemoryPackable, MessagePackObject]
+[DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(CachingVideoFrameFormatter))]
 public sealed partial record VideoFrame : MediaFrame
 {
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [DataMember(Order = 1), Key(1)]
     public override TimeSpan Offset { get; init; }
-    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
+    [DataMember(Order = 2), Key(2)]
     public override TimeSpan Duration { get; init; }
     // Key/Order 3 is reserved for the obsolete IsKeyFrame wire field.
-    [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
+    [DataMember(Order = 4), Key(4)]
     public int OffsetEpoch { get; init; }
 
     /// <summary>
@@ -17,7 +17,7 @@ public sealed partial record VideoFrame : MediaFrame
     /// surface as gaps in <c>Index</c> for the same-layer stream. 0 if the
     /// upstream peer doesn't populate it (legacy clients).
     /// </summary>
-    [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
+    [DataMember(Order = 5), Key(5)]
     public int Index { get; init; }
     /// <summary>
     /// Per-layer pointer to the keyframe this frame belongs to: the value is the
@@ -25,50 +25,50 @@ public sealed partial record VideoFrame : MediaFrame
     /// <see cref="Index"/> == <see cref="KeyFrameIndex"/>. Sender-assigned;
     /// passed through the server unchanged.
     /// </summary>
-    [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
+    [DataMember(Order = 6), Key(6)]
     public int KeyFrameIndex { get; init; }
 
-    [DataMember(Order = 7), MemoryPackOrder(7), Key(7)]
+    [DataMember(Order = 7), Key(7)]
     public int Width { get; init; }
-    [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
+    [DataMember(Order = 8), Key(8)]
     public int Height { get; init; }
-    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
+    [DataMember(Order = 9), Key(9)]
     public byte Rotation { get; init; }
 
     /// <summary>
     /// SVC layer ID. 0 = base (lowest-res) layer, 1+ = higher-res layers.
     /// Always 0 on single-encoder (P2P) streams.
     /// </summary>
-    [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
+    [DataMember(Order = 10), Key(10)]
     public byte LayerId { get; init; }
     // Canonical ladder size (max canonical layer id + 1). Layer ids are STABLE:
     // the layer→resolution map never changes mid-stream even when some tiers
     // aren't currently encoded — see LayerMask.
-    [DataMember(Order = 11), MemoryPackOrder(11), Key(11)]
+    [DataMember(Order = 11), Key(11)]
     public byte LayerCount { get; init; } = 1;
-    [DataMember(Order = 12), MemoryPackOrder(12), Key(12)]
+    [DataMember(Order = 12), Key(12)]
     public int MaxLayerWidth { get; init; }
-    [DataMember(Order = 13), MemoryPackOrder(13), Key(13)]
+    [DataMember(Order = 13), Key(13)]
     public int MaxLayerHeight { get; init; }
 
     /// <summary>
     /// SVC temporal layer ID. 0 = base layer, 1+ = enhancement layers.
     /// </summary>
-    [DataMember(Order = 14), MemoryPackOrder(14), Key(14)]
+    [DataMember(Order = 14), Key(14)]
     public byte TemporalLayerId { get; init; }
-    [DataMember(Order = 15), MemoryPackOrder(15), Key(15)]
+    [DataMember(Order = 15), Key(15)]
     public byte TemporalLayerCount { get; init; } = 1;
 
     /// <summary>
     /// Codec identifier (e.g., "avc1" for H.264). Only present on keyframes.
     /// </summary>
-    [DataMember(Order = 16), MemoryPackOrder(16), Key(16)]
+    [DataMember(Order = 16), Key(16)]
     public string? Codec { get; init; }
     /// <summary>
     /// Codec-specific data (SPS/PPS for H.264). Only present on keyframes.
     /// ReadOnlyMemory&lt;byte&gt; for zero-copy slicing and reduced GC pressure.
     /// </summary>
-    [DataMember(Order = 17), MemoryPackOrder(17), Key(17)]
+    [DataMember(Order = 17), Key(17)]
     public ReadOnlyMemory<byte> Description { get; init; }
 
     /// <summary>
@@ -77,7 +77,7 @@ public sealed partial record VideoFrame : MediaFrame
     /// first frame; subsequent frames append entries when an operator's local
     /// detector observes a gap larger than the trace already covers.
     /// </summary>
-    [DataMember(Order = 18), MemoryPackOrder(18), Key(18)]
+    [DataMember(Order = 18), Key(18)]
     public ReadOnlyMemory<byte> DropTrace { get; init; }
 
     // Stamped server-side in VideoStreamingBackend.ProcessFrames at ingest
@@ -85,21 +85,21 @@ public sealed partial record VideoFrame : MediaFrame
     // downlink latency = (receiver.now - ServerArrivedAtTicks/10000) - minSkew.
     // Mutable post-construction like SerializedData: server invalidates the
     // cache after stamping so fan-out rebuilds the bytes once.
-    [DataMember(Order = 19), MemoryPackOrder(19), Key(19)]
+    [DataMember(Order = 19), Key(19)]
     public long ServerArrivedAtTicks { get; set; }
 
     // Bitmask of canonical layer ids the producer currently encodes (bit i =
     // layer i is live). 0 = legacy sender — every layer in [0, LayerCount) is
     // live. Consumers should read EffectiveLayerMask instead.
-    [DataMember(Order = 20), MemoryPackOrder(20), Key(20)]
+    [DataMember(Order = 20), Key(20)]
     public byte LayerMask { get; init; }
 
     // NB: The properties below this line aren't serialized!
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public bool IsKeyFrame => KeyFrameIndex == Index;
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public int EffectiveLayerMask => LayerMask != 0 ? LayerMask : (1 << LayerCount) - 1;
 
     /// <summary>
@@ -111,7 +111,7 @@ public sealed partial record VideoFrame : MediaFrame
     /// Backed by a plain GC-managed <c>byte[]</c>; <see cref="Data"/> is a slice into the
     /// same array, so the array lives as long as any consumer holds this frame.
     /// </summary>
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ReadOnlyMemory<byte> SerializedData { get; set; }
 
     public override string ToString()

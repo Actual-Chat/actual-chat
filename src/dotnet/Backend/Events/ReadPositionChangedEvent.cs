@@ -1,12 +1,12 @@
 namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial record ReadPositionChangedEvent(
-    [property: DataMember, MemoryPackOrder(1)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(2)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(3)] long EntryLid
+    [property: DataMember] UserId UserId,
+    [property: DataMember] ChatId ChatId,
+    [property: DataMember] long EntryLid
 ) : EventCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

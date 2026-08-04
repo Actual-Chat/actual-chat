@@ -17,22 +17,22 @@ public enum RecordingQualityReason
 /// Recorder controller's intended layer count and the count actually
 /// applied to the encoder. Sent to the server purely as a metric.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record RecordingQualityState(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] int TargetLayerCount,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] int EffectiveLayerCount);
+    [property: DataMember(Order = 0), Key(0)] int TargetLayerCount,
+    [property: DataMember(Order = 1), Key(1)] int EffectiveLayerCount);
 
 /// <summary>
 /// Wire payload accompanying a recording quality decision. Slim: only
 /// what the server-side telemetry uses (VideoSendDropRatio, VideoSendAckAgeMs).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record RecordingQualityInfo(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] RecordingQualityReason Reason,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double SenderFrameDropRatioEma,
-    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double LastAckAgeMs,
-    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] ThermalLevel ThermalLevel = default,
-    [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] bool IsHardwareAccelerated = false);
+    [property: DataMember(Order = 0), Key(0)] RecordingQualityReason Reason,
+    [property: DataMember(Order = 1), Key(1)] double SenderFrameDropRatioEma,
+    [property: DataMember(Order = 2), Key(2)] double LastAckAgeMs,
+    [property: DataMember(Order = 3), Key(3)] ThermalLevel ThermalLevel = default,
+    [property: DataMember(Order = 4), Key(4)] bool IsHardwareAccelerated = false);
 
 /// <summary>
 /// Per-tick recorder stats — CLIENT-LOCAL only, never serialized to the

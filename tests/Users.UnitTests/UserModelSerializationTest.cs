@@ -12,7 +12,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             PictureUrl = "https://example.com/pic.jpg",
         };
 
-        var s = avatar.PassThroughAllSerializers(Out);
+        var s = avatar.PassThroughSerializers(Out);
         s.Id.Should().Be(avatar.Id);
         s.Version.Should().Be(avatar.Version);
         s.Name.Should().Be(avatar.Name);
@@ -30,7 +30,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             IsAnonymous = true,
         };
 
-        var s = avatar.PassThroughAllSerializers(Out);
+        var s = avatar.PassThroughSerializers(Out);
         s.UserId.Should().Be(avatar.UserId);
         s.IsAnonymous.Should().Be(avatar.IsAnonymous);
         s.Name.Should().Be(avatar.Name);
@@ -40,7 +40,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ChatPosition_Basic()
     {
         var pos = new ChatPosition(42, "origin");
-        pos.AssertPassesThroughAllSerializers();
+        pos.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var guestId = UserId.NewGuest();
         var option = new GuestIdOption(guestId);
-        option.AssertPassesThroughAllSerializers();
+        option.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             IsVideoDiagnosticsEnabled = true,
             IsAudioDiagnosticsEnabled = false,
         };
-        settings.AssertPassesThroughAllSerializers();
+        settings.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             AvatarIds = ["avatar-1", "avatar-2"],
             DefaultAvatarId = "avatar-1",
         };
-        settings.AssertPassesThroughAllSerializers(v => {
+        settings.AssertPassesThroughSerializers(v => {
             v.AvatarIds.Should().Equal(settings.AvatarIds);
             v.DefaultAvatarId.Should().Be(settings.DefaultAvatarId);
         }, Out);
@@ -85,7 +85,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             ReadBubbles = ["bubble-1", "bubble-2"],
             Origin = "https://actual.chat",
         };
-        settings.AssertPassesThroughAllSerializers(v => {
+        settings.AssertPassesThroughSerializers(v => {
             v.ReadBubbles.Should().Equal(settings.ReadBubbles);
             v.Origin.Should().Be(settings.Origin);
         }, Out);
@@ -100,7 +100,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             VoiceMode = VoiceMode.TextAndVoice,
             ListeningMode = ListeningMode.Default,
         };
-        settings.AssertPassesThroughAllSerializers();
+        settings.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             ChatId = chatId,
             Language = Languages.English,
         };
-        settings.AssertPassesThroughAllSerializers();
+        settings.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             DigestTime = new TimeSpan(9, 0, 0),
             IsDigestEnabled = true,
         };
-        settings.AssertPassesThroughAllSerializers();
+        settings.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Tertiary = Languages.German,
             Origin = "https://actual.chat",
         };
-        settings.AssertPassesThroughAllSerializers();
+        settings.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -146,7 +146,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             AlwaysListenedChatIds = [chatId],
             Origin = "https://actual.chat",
         };
-        var s = settings.PassThroughAllSerializers(Out);
+        var s = settings.PassThroughSerializers(Out);
         s.AlwaysListenedChatIds.Length.Should().Be(1);
         s.AlwaysListenedChatIds[0].Should().Be(chatId);
         s.Origin.Should().Be(settings.Origin);
@@ -162,7 +162,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             PinnedChats = [chatId],
             PlacesOrder = [placeId],
         };
-        var s = settings.PassThroughAllSerializers(Out);
+        var s = settings.PassThroughSerializers(Out);
         s.Origin.Should().Be(settings.Origin);
         s.PinnedChats.Length.Should().Be(1);
         s.PinnedChats[0].Should().Be(chatId);
@@ -179,7 +179,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             IsVerifyEmailStepCompleted = false,
             Origin = "https://actual.chat",
         };
-        settings.AssertPassesThroughAllSerializers();
+        settings.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var settings = new UserTranscriptionEngineSettings {
             Origin = "https://actual.chat",
         };
-        settings.AssertPassesThroughAllSerializers();
+        settings.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -198,14 +198,14 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             IsLogViewerEnabled = true,
             LocationAccuracy = GeoTrackingAccuracy.Low,
         };
-        settings.AssertPassesThroughAllSerializers(AssertLocalAppSettingsEqual);
+        settings.AssertPassesThroughSerializers(AssertLocalAppSettingsEqual);
     }
 
     [Fact]
     public void LocalAppSettings_Default()
     {
         var settings = new LocalAppSettings();
-        settings.AssertPassesThroughAllSerializers(AssertLocalAppSettingsEqual);
+        settings.AssertPassesThroughSerializers(AssertLocalAppSettingsEqual);
     }
 
     [Fact]
@@ -228,7 +228,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
                 .With("cam-1", true)
                 .With("cam-2", false),
         };
-        settings.AssertPassesThroughAllSerializers(AssertLocalAppSettingsEqual);
+        settings.AssertPassesThroughSerializers(AssertLocalAppSettingsEqual);
     }
 
     private static void AssertLocalAppSettingsEqual(LocalAppSettings actual, LocalAppSettings expected)

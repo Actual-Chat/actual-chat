@@ -21,27 +21,27 @@ public static class Maybe
 /// Represents an optional value that may or may not be present.
 /// </summary>
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(MaybeMessagePackFormatter<>))]
 [DebuggerDisplay("{" + nameof(DebugValue) + "}")]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
 [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
 public partial class Maybe<T>(bool hasValue, T? valueOrDefault)
     : IEquatable<Maybe<T>>
 {
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public bool HasValue { get; } = hasValue;
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [DataMember(Order = 1), Key(1)]
     public T? ValueOrDefault { get; } = valueOrDefault;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public T Value {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get { AssertHasValue(); return ValueOrDefault!; }
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     protected string DebugValue => ToString();
 
     public override string ToString()

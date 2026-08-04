@@ -13,28 +13,28 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void Chats_GetOrCreateFromTemplate_Basic()
     {
         var cmd = new Chats_GetOrCreateFromTemplate(TestSession, TestChatId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Chats_RemoveEntry_Basic()
     {
         var cmd = new Chats_RemoveEntry(TestSession, TestChatId, 42);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Chats_RestoreEntry_Basic()
     {
         var cmd = new Chats_RestoreEntry(TestSession, TestChatId, 42);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Chats_RemoveEntries_Basic()
     {
         var cmd = new Chats_RemoveEntries(TestSession, TestChatId, [1L, 2L, 3L]);
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.ChatId.Should().Be(original.ChatId);
@@ -45,7 +45,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void Chats_RestoreEntries_Basic()
     {
         var cmd = new Chats_RestoreEntries(TestSession, TestChatId, [1L, 2L, 3L]);
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.ChatId.Should().Be(original.ChatId);
@@ -56,7 +56,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void Chats_UpsertEntry_Basic()
     {
         var cmd = new Chats_UpsertEntry(TestSession, TestChatId, null) { Text = "Hello, world!" };
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.ChatId.Should().Be(original.ChatId);
@@ -68,7 +68,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void Chats_UpsertEntry_WithReply()
     {
         var cmd = new Chats_UpsertEntry(TestSession, TestChatId, 1) { Text = "Reply text", RepliedEntryLid = Option.Some<long?>(5) };
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.ChatId.Should().Be(original.ChatId);
@@ -81,7 +81,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var diff = new ChatDiff { Title = "New Chat", IsPublic = true };
         var cmd = new Chats_Change(TestSession, null, null, Change.Create(diff));
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var diff = new ChatDiff { Title = "Updated Chat" };
         var cmd = new Chats_Change(TestSession, TestChatId, 1, Change.Update(diff));
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
         var entryId = ChatEntryId.New(TestChatId, 1);
         var destChatId = GroupChatId.New();
         var cmd = new Chats_ForwardEntries(TestSession, TestChatId, [entryId], [destChatId]);
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.ChatId.Should().Be(original.ChatId);
@@ -109,7 +109,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void Chat_CopyChat_Basic()
     {
         var cmd = new Chat_CopyChat(TestSession, TestChatId, TestPlaceId, "corr-1");
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -117,14 +117,14 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var newChatId = PlaceChatId.New(TestPlaceId);
         var cmd = new Chat_PublishCopiedChat(TestSession, newChatId, TestChatId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Chat_CopyChatResult_Basic()
     {
         var result = new Chat_CopyChatResult(true, false);
-        result.AssertPassesThroughAllSerializers();
+        result.AssertPassesThroughSerializers();
     }
 
     // Authors commands
@@ -133,21 +133,21 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void Authors_Join_Basic()
     {
         var cmd = new Authors_Join(TestSession, TestChatId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Authors_Leave_Basic()
     {
         var cmd = new Authors_Leave(TestSession, TestChatId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Authors_Invite_Basic()
     {
         var cmd = new Authors_Invite(TestSession, TestChatId, [TestUserId]);
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.ChatId.Should().Be(original.ChatId);
@@ -159,7 +159,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var authorId = AuthorId.New(TestChatId, 5);
         var cmd = new Authors_Exclude(TestSession, authorId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -167,14 +167,14 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var authorId = AuthorId.New(TestChatId, 5);
         var cmd = new Authors_Restore(TestSession, authorId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Authors_SetAvatar_Basic()
     {
         var cmd = new Authors_SetAvatar(TestSession, TestChatId, "avatar-1");
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var authorId = AuthorId.New(TestChatId, 5);
         var cmd = new Authors_PromoteToOwner(TestSession, authorId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     // Roles commands
@@ -193,7 +193,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
         var roleId = RoleId.New(TestChatId, 1);
         var diff = new RoleDiff { Name = "Moderator" };
         var cmd = new Roles_Change(TestSession, TestChatId, roleId, null, Change.Create(diff));
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.ChatId.Should().Be(original.ChatId);
@@ -214,7 +214,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
             Emoji = Emojis.ThumbsUp,
         };
         var cmd = new Reactions_React(TestSession, reaction);
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.Reaction.Id.Should().Be(original.Reaction.Id);
@@ -229,21 +229,21 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var diff = new PlaceDiff { Title = "New Place", IsPublic = true };
         var cmd = new Places_Change(TestSession, null, null, Change.Create(diff));
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Places_Join_Basic()
     {
         var cmd = new Places_Join(TestSession, TestPlaceId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Places_Invite_Basic()
     {
         var cmd = new Places_Invite(TestSession, TestPlaceId, [TestUserId]);
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.PlaceId.Should().Be(original.PlaceId);
@@ -255,7 +255,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var authorId = AuthorId.New(TestChatId, 5);
         var cmd = new Places_Exclude(TestSession, authorId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -263,7 +263,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var authorId = AuthorId.New(TestChatId, 5);
         var cmd = new Places_Restore(TestSession, authorId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -271,14 +271,14 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var authorId = AuthorId.New(TestChatId, 5);
         var cmd = new Places_PromoteToOwner(TestSession, authorId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Places_Leave_Basic()
     {
         var cmd = new Places_Leave(TestSession, TestPlaceId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     // Conversations commands
@@ -289,7 +289,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
         var chatId = ChatId.Parse("the-actual-one");
         var convId = ConversationId.New(chatId, 0);
         var cmd = new Conversations_Summarize(TestSession, convId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     // ChatThreads commands
@@ -299,7 +299,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var entryId = ChatEntryId.New(TestChatId, 1);
         var cmd = new ChatThreads_Start(TestSession, TestChatId, "Thread Title", "Description", [entryId]);
-        cmd.AssertPassesThroughAllSerializers(
+        cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.ParentChatId.Should().Be(original.ParentChatId);

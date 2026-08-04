@@ -1,10 +1,10 @@
 namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial record AuthorsRemovedEvent(
-    [property: DataMember, MemoryPackOrder(1)] AuthorFull[] Authors
+    [property: DataMember] AuthorFull[] Authors
 ) : EventCommand, IHasShardKey<ChatId?>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId? ShardKey => Authors.Length > 0 ? Authors[0].ChatId : null;
 }

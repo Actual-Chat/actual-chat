@@ -11,7 +11,7 @@ namespace ActualChat;
 /// where the prefix selects a <see cref="MentionKind"/> and the local id parses into an
 /// <see cref="IMentionTarget"/>. See <see cref="MentionKind.ByPrefix"/> for the registered kinds.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<MentionRef>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<MentionRef>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<MentionRef>))]

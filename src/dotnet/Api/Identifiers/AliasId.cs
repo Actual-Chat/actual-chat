@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Represents a user-friendly alias for entities like chats or places.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<AliasId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<AliasId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<AliasId>))]

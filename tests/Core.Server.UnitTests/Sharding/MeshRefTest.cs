@@ -7,11 +7,11 @@ public class MeshRefTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var r = default(NodeRef);
         r.IsNone.Should().BeTrue();
-        r.AssertPassesThroughAllSerializers();
+        r.AssertPassesThroughSerializers();
 
         r = new NodeRef(Generate.Option);
         r.IsNone.Should().BeFalse();
-        r.AssertPassesThroughAllSerializers();
+        r.AssertPassesThroughSerializers();
     }
 
     [Fact]

@@ -21,7 +21,7 @@ public enum AliasKind { Chat, Place }
 /// <summary>
 /// Represents the target of an alias resolution.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public partial record AliasTarget(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] AliasKind Kind,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string TargetId);
+    [property: DataMember, Key(0)] AliasKind Kind,
+    [property: DataMember, Key(1)] string TargetId);

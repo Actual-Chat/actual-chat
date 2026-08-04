@@ -6,5 +6,5 @@
 [DataContract]
 public abstract partial record EventCommand : IEventCommand
 {
-    [DataMember, MemoryPackOrder(0)] public string ChainId { get; init; } = "";
+    [DataMember] public string ChainId { get; init; } = "";
 }

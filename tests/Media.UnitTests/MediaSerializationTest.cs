@@ -17,7 +17,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var mediaId = MediaId.New(TestUserId.Value, "local1");
         var media = new Media(mediaId, "content-1", 0, MediaKind.Unknown, new MetadataBag());
 
-        var s = media.PassThroughAllSerializers(Out);
+        var s = media.PassThroughSerializers(Out);
         s.Id.Should().Be(media.Id);
         s.BlobId.Should().Be(media.BlobId);
     }
@@ -35,7 +35,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             ModifiedAt = new Moment(DateTime.UtcNow),
         };
 
-        var s = preview.PassThroughAllSerializers(Out);
+        var s = preview.PassThroughSerializers(Out);
         s.Id.Should().Be(preview.Id);
         s.Url.Should().Be(preview.Url);
         s.Title.Should().Be(preview.Title);
@@ -50,7 +50,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             ModifiedAt = new Moment(DateTime.UtcNow),
         };
 
-        var s = status.PassThroughAllSerializers(Out);
+        var s = status.PassThroughSerializers(Out);
         s.Id.Should().Be(status.Id);
         s.IsSuccessful.Should().Be(status.IsSuccessful);
     }
@@ -60,7 +60,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var mediaId = MediaId.New(TestUserId.Value, "local1");
         var content = new MediaRef(mediaId, "content-1");
-        var s = content.PassThroughAllSerializers(Out);
+        var s = content.PassThroughSerializers(Out);
         s.MediaId.Should().Be(content.MediaId);
         s.BlobId.Should().Be(content.BlobId);
     }
@@ -71,7 +71,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var mediaId = MediaId.New(TestUserId.Value, "local1");
         var thumbId = MediaId.New(TestUserId.Value, "thumb1");
         var content = new MediaRef(mediaId, "content-1", thumbId, "thumb-content-1");
-        var s = content.PassThroughAllSerializers(Out);
+        var s = content.PassThroughSerializers(Out);
         s.MediaId.Should().Be(content.MediaId);
         s.BlobId.Should().Be(content.BlobId);
         s.ThumbnailMediaId.Should().Be(content.ThumbnailMediaId);
@@ -84,7 +84,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var mediaId = MediaId.New(TestUserId.Value, "local1");
         var content = new MediaRef(mediaId, "content-1");
         var picture = new Picture(content, "https://example.com/pic.jpg", "avatar-key");
-        var s = picture.PassThroughAllSerializers(Out);
+        var s = picture.PassThroughSerializers(Out);
         s.MediaRef.Should().NotBeNull();
         s.MediaRef!.MediaId.Should().Be(picture.MediaRef!.MediaId);
         s.ExternalUrl.Should().Be(picture.ExternalUrl);
@@ -95,7 +95,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Picture_ExternalOnly()
     {
         var picture = new Picture(null, "https://example.com/pic.jpg");
-        var s = picture.PassThroughAllSerializers(Out);
+        var s = picture.PassThroughSerializers(Out);
         s.MediaRef.Should().BeNull();
         s.ExternalUrl.Should().Be(picture.ExternalUrl);
     }
@@ -106,7 +106,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Uploads_Create_Basic()
     {
         var cmd = new Uploads_Create(TestSession, 1024, "image", new MetadataBag());
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var uploadId = UploadId.New();
         var cmd = new Uploads_Remove(TestSession, uploadId);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]

@@ -145,111 +145,111 @@ public interface IChats : IComputeService
     Task OnPublishCopiedChat(Chat_PublishCopiedChat command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_GetOrCreateFromTemplate(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId TemplateChatId
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId TemplateChatId
 ) : ISessionCommand<Chat>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_RemoveEntry(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long LocalId
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] long LocalId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_RestoreEntry(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long LocalId
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] long LocalId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_RemoveEntries(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long[] LocalIds
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] long[] LocalIds
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_RestoreEntries(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long[] LocalIds
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] long[] LocalIds
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_UpsertEntry(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long? LocalId
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] long? LocalId
 ) : ISessionCommand<ChatEntry>, IApiCommand, ISanitized
 {
-    [DataMember, MemoryPackOrder(3), Key(3)] public string Text {
+    [DataMember, Key(3)] public string Text {
         get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
     } = "";
-    [DataMember, MemoryPackOrder(4), Key(4)] public Option<long?> RepliedEntryLid { get; init; }
-    [DataMember, MemoryPackOrder(11), Key(5)] public ChatEntryAttachment[] Attachments { get; init; } = [];
-    [DataMember, MemoryPackOrder(12), Key(6)] public bool HasUploadingAttachments { get; init; }
-    [DataMember, MemoryPackOrder(13), Key(7)] public string ClientId { get; init; } = "";
-    [DataMember, MemoryPackOrder(14), Key(8)] public ChatEntryForwarded? Forwarded { get; init; }
-    [DataMember, MemoryPackOrder(15), Key(9)] public SharedLocationId? LocationId { get; init; }
+    [DataMember, Key(4)] public Option<long?> RepliedEntryLid { get; init; }
+    [DataMember, Key(5)] public ChatEntryAttachment[] Attachments { get; init; } = [];
+    [DataMember, Key(6)] public bool HasUploadingAttachments { get; init; }
+    [DataMember, Key(7)] public string ClientId { get; init; } = "";
+    [DataMember, Key(8)] public ChatEntryForwarded? Forwarded { get; init; }
+    [DataMember, Key(9)] public SharedLocationId? LocationId { get; init; }
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_Change(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId? ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] Change<ChatDiff> Change
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId? ChatId,
+    [property: DataMember, Key(2)] long? ExpectedVersion,
+    [property: DataMember, Key(3)] Change<ChatDiff> Change
 ) : ISessionCommand<Chat>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_ForwardEntries(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] ChatEntryId[] ChatEntries,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] ChatId[] DestinationChatIds
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] ChatEntryId[] ChatEntries,
+    [property: DataMember, Key(3)] ChatId[] DestinationChatIds
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_ForwardAttachment(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatEntryId ChatEntryId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] int AttachmentIndex,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] ChatId[] DestinationChatIds
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatEntryId ChatEntryId,
+    [property: DataMember, Key(2)] int AttachmentIndex,
+    [property: DataMember, Key(3)] ChatId[] DestinationChatIds
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chat_CopyChat(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId SourceChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] PlaceId PlaceId,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] string CorrelationId
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId SourceChatId,
+    [property: DataMember, Key(2)] PlaceId PlaceId,
+    [property: DataMember, Key(3)] string CorrelationId
 ) : ISessionCommand<Chat_CopyChatResult>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chat_CopyChatResult(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] bool HasChanges,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] bool HasErrors
+    [property: DataMember, Key(0)] bool HasChanges,
+    [property: DataMember, Key(1)] bool HasErrors
 );
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chat_PublishCopiedChat(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] PlaceChatId NewChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] ChatId SourceChatId
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] PlaceChatId NewChatId,
+    [property: DataMember, Key(2)] ChatId SourceChatId
 ) : ISessionCommand<Unit>, IApiCommand;

@@ -88,7 +88,6 @@ public static class MauiDiagnostics
 
     private static LoggerConfiguration AddPlatformLoggerSinks(LoggerConfiguration logging)
     {
-        // We should not use FilePath here, since it triggers MemoryPack formatter registration for FilePath
 #if WINDOWS
         AppDataLogFilePath = Path.Combine(FileSystem.AppDataDirectory, "Logs", "ActualChat.log");
         logging = logging.WriteTo.Debug(outputTemplate: LoggingExt.OutputTemplate);

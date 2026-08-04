@@ -28,15 +28,15 @@ public interface IPlacesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a place.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record PlacesBackend_Change(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] PlaceId? PlaceId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Change<PlaceDiff> Change,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] UserId? OwnerId = null
+    [property: DataMember, Key(0)] PlaceId? PlaceId,
+    [property: DataMember, Key(1)] long? ExpectedVersion,
+    [property: DataMember, Key(2)] Change<PlaceDiff> Change,
+    [property: DataMember, Key(3)] UserId? OwnerId = null
 ) : ICommand<Place>, IBackendCommand, IHasShardKey<PlaceId?>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public PlaceId? ShardKey => PlaceId;
 }

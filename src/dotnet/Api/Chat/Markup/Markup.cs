@@ -19,7 +19,7 @@ public abstract class Markup : ISanitized
     // option never produces it, which is what lets rendering treat it as a streaming-only state.
     // Never serialized - it describes a transient parse of a prefix, not the message itself.
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public bool IsIncomplete { get; init; }
 
     public static Markup Join(Markup first, Markup second)

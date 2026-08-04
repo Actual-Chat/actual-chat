@@ -4,7 +4,6 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 #pragma warning disable MsgPack005 // Union attr required — handled by custom formatter, Maui subtype unavailable in CI
 
-[MemoryPackable(GenerateType.NoGenerate)]
 [Union(0, typeof(WebFileProvider))]
 [Union(1, typeof(MauiFileProvider))]
 public partial interface IFileProvider
@@ -21,11 +20,3 @@ public partial interface IFileProvider
 }
 
 public sealed record FilePreview(string Url, Size2D? Dimensions = null);
-
-// NOTE(DF): This is a workaround for the following issue:
-// When I apply MemoryPackUnion to the interface, this is working on Desktop, but fails on Android (MAUI) with an error:
-// System.BadImageFormatException: Method has no body.
-[MemoryPackUnionFormatter(typeof(IFileProvider))]
-[MemoryPackUnion(0, typeof(WebFileProvider))]
-[MemoryPackUnion(1, typeof(MauiFileProvider))]
-public partial class FileProviderUnionFormatter;

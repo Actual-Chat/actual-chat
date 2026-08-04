@@ -42,33 +42,33 @@ public interface IAuthorsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create or update a chat author.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AuthorsBackend_Upsert(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId? AuthorId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] UserId? UserId,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] AuthorDiff Diff,
-    [property: DataMember, MemoryPackOrder(5), Key(5)] bool DoNotNotify = false
+    [property: DataMember, Key(0)] ChatId ChatId,
+    [property: DataMember, Key(1)] AuthorId? AuthorId,
+    [property: DataMember, Key(2)] UserId? UserId,
+    [property: DataMember, Key(3)] long? ExpectedVersion,
+    [property: DataMember, Key(4)] AuthorDiff Diff,
+    [property: DataMember, Key(5)] bool DoNotNotify = false
 ) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }
 
 /// <summary>
 /// Command to remove a chat author by chat ID, author ID, or user ID.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AuthorsBackend_Remove(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId? ByChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId? ByAuthorId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] UserId? ByUserId
+    [property: DataMember, Key(0)] ChatId? ByChatId,
+    [property: DataMember, Key(1)] AuthorId? ByAuthorId,
+    [property: DataMember, Key(2)] UserId? ByUserId
 ) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey<PrincipalId?>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public PrincipalId? ShardKey => (ByChatId is not null, ByAuthorId is not null, ByUserId is not null) switch {
         (true, _, _) => AuthorId.New(ByChatId!, 1),
         (_, true, _) => ByAuthorId,
@@ -80,16 +80,16 @@ public sealed partial record AuthorsBackend_Remove(
 /// <summary>
 /// Command to copy authors from one chat to another.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AuthorsBackend_CopyChat(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId OldChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId NewChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] (RoleId, RoleId)[] RolesMap,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] string CorrelationId
+    [property: DataMember, Key(0)] ChatId OldChatId,
+    [property: DataMember, Key(1)] ChatId NewChatId,
+    [property: DataMember, Key(2)] (RoleId, RoleId)[] RolesMap,
+    [property: DataMember, Key(3)] string CorrelationId
 ) : ICommand<bool>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => OldChatId;
 }
 

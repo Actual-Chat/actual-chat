@@ -5,15 +5,15 @@ namespace ActualChat.Transcription;
 /// <summary>
 /// Represents incremental string changes as a start index and suffix text.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public readonly partial record struct StringDiff(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] int Start,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] string? Suffix
+    [property: DataMember(Order = 0), Key(0)] int Start,
+    [property: DataMember(Order = 1), Key(1)] string? Suffix
 ) : ICanBeNone<StringDiff>, ISanitized
 {
     public static StringDiff None => default;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsNone => ReferenceEquals(Suffix, null);
 
     public static StringDiff New(string text, string baseText)

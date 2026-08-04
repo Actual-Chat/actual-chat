@@ -9,7 +9,7 @@ namespace ActualChat;
 /// <summary>
 /// Unique identifier for a specific user device, combining user and device IDs.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<UserDeviceId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<UserDeviceId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<UserDeviceId>))]

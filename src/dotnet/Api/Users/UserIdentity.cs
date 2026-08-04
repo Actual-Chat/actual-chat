@@ -4,7 +4,7 @@ using ActualChat.Internal;
 namespace ActualChat.Users;
 
 [StructLayout(LayoutKind.Auto)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract]
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<UserIdentity>))]
 [JsonConverter(typeof(StringLikeJsonConverter<UserIdentity>))]
@@ -18,16 +18,16 @@ public readonly partial record struct UserIdentity : IStringLike<UserIdentity>, 
     public static readonly string DefaultSchema = "Default";
     public static readonly string InternalSchema = "internal";
 
-    [DataMember(Order = 0), MemoryPackOrder(0), StringAsSymbolMemoryPackFormatter, Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public string Id { get => field ?? ""; init; }
 
     // Computed properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]
     public string Schema => ParseId(Id).Schema;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]
     public string Value => ParseId(Id).Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]
     public bool IsValid => !Id.IsNullOrEmpty();
 
     // IStringLike — use Id (the round-trippable serialized form) rather than Value
@@ -35,7 +35,7 @@ public readonly partial record struct UserIdentity : IStringLike<UserIdentity>, 
     string IStringLike.Value => Id;
     public static UserIdentity Parse(string? s) => new(s ?? "");
 
-    [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
     public UserIdentity(string id)
         => Id = id;
     public UserIdentity(string provider, string providerBoundId)

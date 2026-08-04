@@ -6,11 +6,11 @@ namespace ActualChat.Users;
 /// <summary>
 /// Represents a user's avatar with name, picture, and bio information.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Avatar(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Symbol Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0
+    [property: DataMember, Key(0)] Symbol Id,
+    [property: DataMember, Key(1)] long Version = 0
     ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
     public const string GuestName = "Guest";
@@ -19,16 +19,16 @@ public partial record Avatar(
         (Avatar? a) => a is { Id.IsEmpty : false },
         new(() => StandardError.NotFound<Avatar>()));
 
-    [DataMember, MemoryPackOrder(2), Key(2)] public string Name { get; init; } = "";
-    [DataMember, MemoryPackOrder(3), Key(3)] public string PictureUrl { get; init; } = "";
-    [DataMember, MemoryPackOrder(4), Key(4)] public MediaId? MediaId { get; init; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [DataMember, Key(2)] public string Name { get; init; } = "";
+    [DataMember, Key(3)] public string PictureUrl { get; init; } = "";
+    [DataMember, Key(4)] public MediaId? MediaId { get; init; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Picture? Picture => Media.ToPicture(PictureUrl, AvatarKey);
-    [DataMember, MemoryPackOrder(5), Key(5)] public string Bio { get; init; } = "";
-    [DataMember, MemoryPackOrder(9), Key(6)] public string AvatarKey { get; init; } = "";
+    [DataMember, Key(5)] public string Bio { get; init; } = "";
+    [DataMember, Key(6)] public string AvatarKey { get; init; } = "";
 
     // Populated only on reads
-    [DataMember, MemoryPackOrder(6), Key(7)] public Media.Media? Media { get; init; }
+    [DataMember, Key(7)] public Media.Media? Media { get; init; }
 
     // Helpers
 
@@ -68,18 +68,18 @@ public partial record Avatar(
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public sealed partial record AvatarDiff : RecordDiff
 {
-    [DataMember, MemoryPackOrder(0)] public string? Name { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string? Bio { get; init; }
+    [DataMember] public string? Name { get; init; }
+    [DataMember] public string? Bio { get; init; }
     [Obsolete("2026.04: Use MediaId instead.")]
-    [DataMember, MemoryPackOrder(2)] public MediaId? LegacyMediaId { get; init; }
-    [DataMember, MemoryPackOrder(3)] public string? PictureUrl { get; init; }
-    [DataMember, MemoryPackOrder(4)] public string? AvatarKey { get; init; }
-    [DataMember, MemoryPackOrder(5)] public UserId? UserId { get; init; }
-    [DataMember, MemoryPackOrder(6)] public bool? IsAnonymous { get; init; }
-    [DataMember, MemoryPackOrder(7)] public Option<MediaId?> MediaId { get; init; }
+    [DataMember] public MediaId? LegacyMediaId { get; init; }
+    [DataMember] public string? PictureUrl { get; init; }
+    [DataMember] public string? AvatarKey { get; init; }
+    [DataMember] public UserId? UserId { get; init; }
+    [DataMember] public bool? IsAnonymous { get; init; }
+    [DataMember] public Option<MediaId?> MediaId { get; init; }
 
 #pragma warning disable CS0618 // Compatibility bridge for LegacyMediaId.
     public static AvatarDiff FromFull(AvatarFull avatar)

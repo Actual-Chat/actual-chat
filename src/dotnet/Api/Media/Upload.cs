@@ -8,35 +8,25 @@ namespace ActualChat.Media;
 #pragma warning disable MA0049 // Allows ActualChat.Media.Media
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(0), Key(0)] public UploadId Id { get; init; }
-    [DataMember, MemoryPackOrder(1), Key(1)] public UserId UserId { get; init; }
-    #region MemoryPackXxx properties
-
-    [MemoryPackInclude, MemoryPackOrder(2)]
-    private ApiNullable8<long> MemoryPackLength {
-        get => Length;
-        init => Length = value;
-    }
-
-    #endregion
-
-    [DataMember, MemoryPackIgnore, Key(5)] public long? Length { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(2)] public string Tag { get; init; } = "";
-    [DataMember, MemoryPackOrder(4), Key(3)] public string SessionUri { get; init; } = "";
-    [DataMember, MemoryPackOrder(10), Key(4)] public MetadataBag Metadata { get; init; }
+    [DataMember, Key(0)] public UploadId Id { get; init; }
+    [DataMember, Key(1)] public UserId UserId { get; init; }
+    [DataMember, Key(5)] public long? Length { get; init; }
+    [DataMember, Key(2)] public string Tag { get; init; } = "";
+    [DataMember, Key(3)] public string SessionUri { get; init; } = "";
+    [DataMember, Key(4)] public MetadataBag Metadata { get; init; }
 
     // Computed properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string FileName {
         get => this.GetMetadataValue("");
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string ContentType {
         get => this.GetMetadataValue("");
         init => this.SetMetadataValue(value);
@@ -51,7 +41,6 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
         Metadata = metadata;
     }
 
-    [MemoryPackConstructor]
     private Upload() : this(default!, default!, null, "", default) { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]

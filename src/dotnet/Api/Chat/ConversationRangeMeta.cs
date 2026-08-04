@@ -1,13 +1,13 @@
 ﻿namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record ConversationRangeMeta(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] ConversationLidRanges,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Range<long>? PreviousConversationLidRange,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] Range<long>? NextConversationLidRange)
+    [property: DataMember, Key(0)] ChatId ChatId,
+    [property: DataMember, Key(1)] Range<long>[] ConversationLidRanges,
+    [property: DataMember, Key(2)] Range<long>? PreviousConversationLidRange,
+    [property: DataMember, Key(3)] Range<long>? NextConversationLidRange)
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ConversationId[] ConversationIds
         => field ??= ConversationLidRanges.Select(r => ConversationId.New(ChatId, r.Start)).ToArray();
 }

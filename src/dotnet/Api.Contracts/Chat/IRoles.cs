@@ -19,12 +19,12 @@ public interface IRoles : IComputeService
     Task<Role> OnChange(Roles_Change command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Roles_Change(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] RoleId RoleId,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] Change<RoleDiff> Change
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] RoleId RoleId,
+    [property: DataMember, Key(3)] long? ExpectedVersion,
+    [property: DataMember, Key(4)] Change<RoleDiff> Change
 ) : ISessionCommand<Role>, IApiCommand;

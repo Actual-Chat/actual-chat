@@ -16,14 +16,14 @@ public interface ISharedLocationsBackend : IComputeService, IBackendService
     Task<SharedLocation?> OnChange(SharedLocationsBackend_Change command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SharedLocationsBackend_Change(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] SharedLocationId? Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] AuthorId AuthorId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Change<SharedLocationDiff> Change
+    [property: DataMember, Key(0)] SharedLocationId? Id,
+    [property: DataMember, Key(1)] AuthorId AuthorId,
+    [property: DataMember, Key(2)] Change<SharedLocationDiff> Change
 ) : ICommand<SharedLocation?>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => AuthorId.ChatId;
 }
