@@ -1,3 +1,6 @@
+using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Services.Gestures;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public enum AudioWidgetMode { Replaying, Listening, Recording }
@@ -6,6 +9,8 @@ public sealed record AudioWidgetState(AudioWidgetMode Mode, AudioWidgetChatInfo 
 
 public class AudioWidget : IDisposable
 {
+    private static readonly TimeSpan AnswerWindowExpiryDelay = TimeSpan.FromMilliseconds(250);
+
     private readonly ComputedState<AudioWidgetState?> _state;
     private AudioWidgetState? _lastState;
 
@@ -14,6 +19,7 @@ public class AudioWidget : IDisposable
     private IChats Chats => Hub.Chats;
     private IAccounts Accounts => Hub.Accounts;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
     private UrlMapper UrlMapper => Hub.UrlMapper;
 
     public IState<AudioWidgetState?> State => _state;
@@ -113,13 +119,45 @@ public class AudioWidget : IDisposable
             }
         }
 
-        if (mode is not { } vMode)
-            return null;
+        if (mode is not { } vMode) {
+            if (await GetAnswerWindowChatId(cancellationToken).ConfigureAwait(false) is not { } answerChatId)
+                return null;
+
+            vMode = AudioWidgetMode.Listening;
+            chatId = answerChatId;
+        }
 
         var chatInfo = await GetChatInfo(chatId!).ConfigureAwait(false);
         if (extraChatCount > 0)
             chatInfo = chatInfo with { ExtraChatCount = extraChatCount };
         return new AudioWidgetState(vMode, chatInfo, isPaused);
+    }
+
+    private async Task<ChatId?> GetAnswerWindowChatId(CancellationToken cancellationToken)
+    {
+        // Android routes the headset button through the media session, which lives and dies with this
+        // widget's foreground service - so on Android the widget has to outlive playback for as long
+        // as the walkie answer window is open. Every other host returns here immediately.
+        if (Hub.HostInfo.AppKind != AppKind.Android)
+            return null;
+
+        var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        if (pttChatIds.Count == 0)
+            return null;
+
+        var now = Hub.Clocks.ServerClock.Now;
+        var recencyWindow = Constants.Audio.WalkieTalkieReplyRecencyWindow;
+        var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
+        var answer = GestureActivationPolicy.GetAnswerWindowChat(
+            pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
+        if (answer is not { } vAnswer)
+            return null;
+
+        // The stamps are a plain dictionary, so nothing invalidates this state when the window
+        // expires - without the auto-invalidation the widget would never tear itself down.
+        var expiresIn = vAnswer.At + recencyWindow - now + AnswerWindowExpiryDelay;
+        Computed.GetCurrent().Invalidate(expiresIn, false);
+        return vAnswer.ChatId;
     }
 
     private async Task<AudioWidgetChatInfo> GetChatInfo(ChatId chatId)

@@ -7,13 +7,23 @@ public static class GestureActivationPolicy
         IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
         Moment now,
         TimeSpan recencyWindow)
+        => GetAnswerWindowChat(pttChatIds, lastIncomingVoiceAt, now, recencyWindow) is not null;
+
+    public static (ChatId ChatId, Moment At)? GetAnswerWindowChat(
+        IReadOnlyList<ChatId> pttChatIds,
+        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        Moment now,
+        TimeSpan recencyWindow)
     {
         var since = now - recencyWindow;
-        foreach (var chatId in pttChatIds)
-            if (lastIncomingVoiceAt.TryGetValue(chatId, out var at) && at > since)
-                return true;
-
-        return false;
+        (ChatId ChatId, Moment At)? best = null;
+        foreach (var chatId in pttChatIds) {
+            if (!lastIncomingVoiceAt.TryGetValue(chatId, out var at) || at <= since)
+                continue;
+            if (best is not { } vBest || at > vBest.At)
+                best = (chatId, at);
+        }
+        return best;
     }
 
     public static bool ShouldSenseStartGestures(

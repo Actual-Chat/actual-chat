@@ -55,6 +55,40 @@ public class GestureActivationPolicyTest
             .ShouldSenseStartGestures(false, true, [], NoVoice, T0, Window)
             .Should().BeTrue();
 
+    [Fact]
+    public void AnswerWindowChatIsTheMostRecentOne()
+    {
+        // arrange
+        var last = new Dictionary<ChatId, Moment> {
+            [ChatA] = T0 - TimeSpan.FromSeconds(100),
+            [ChatB] = T0 - TimeSpan.FromSeconds(20),
+        };
+
+        // act
+        var answer = GestureActivationPolicy.GetAnswerWindowChat([ChatA, ChatB], last, T0, Window);
+
+        // assert
+        answer.Should().NotBeNull();
+        answer!.Value.ChatId.Should().Be(ChatB);
+        answer.Value.At.Should().Be(T0 - TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
+    public void AnswerWindowChatIgnoresStaleAndNonPttStamps()
+    {
+        // arrange
+        var last = new Dictionary<ChatId, Moment> {
+            [ChatA] = T0 - TimeSpan.FromSeconds(400),
+            [ChatB] = T0 - TimeSpan.FromSeconds(1),
+        };
+
+        // act
+        var answer = GestureActivationPolicy.GetAnswerWindowChat([ChatA], last, T0, Window);
+
+        // assert
+        answer.Should().BeNull();
+    }
+
     [Theory]
     [InlineData(GestureKind.FlipToTalk, GestureRoute.StartReply)]
     [InlineData(GestureKind.DoubleShake, GestureRoute.StartReply)]
