@@ -123,6 +123,12 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `Role` (record) — role definition with permissions; system roles are `Anyone`,
   `Guest`/`User`/`AnonymousUser` (automatic membership), and `Moderator`/`Owner`
   (explicit membership, appointed via `Authors_ChangeRole`)
+- `ChatPermissions` / `PlacePermissions` (flags enums) — bit values must stay
+  aligned (`Places.ToPlaceRules` casts between them); `ChatPermissionsExt.AddImplied`
+  is the implication closure, where `Moderate` implies `EditProperties` + `EditMembers`
+  and `Owner` implies `Moderate`
+- `AuthorRules` / `PlaceRules` (records) — an actor's resolved permissions in a
+  chat / place; test them via `IsOwner()`, `CanModerate()`, `CanRead()`, etc.
 
 ### Markup
 - `IMarkupParser` — parses text into markup tree
@@ -161,9 +167,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 
 ### Chat Services
 - `IChats` — chat CRUD, listing, rules
-- `IAuthors` — author management within chats
-- `IPlaces` — place (community) management
-- `IRoles` — role management
+- `IAuthors` — author management within chats; `Authors_ChangeRole` appoints/removes Owners and Moderators
+- `IPlaces` — place (community) management; `ListOwnerIds`/`ListModeratorIds` forward to the place root chat
+- `IRoles` — role management; `ListOwnerIds`/`ListModeratorIds` mask anonymous members from non-owner callers (use `IRolesBackend` when that masking would be a hole)
 - `IReactions` — message reactions
 - `IMentions` — mention queries
 
