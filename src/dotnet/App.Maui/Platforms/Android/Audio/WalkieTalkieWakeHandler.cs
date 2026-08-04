@@ -11,6 +11,7 @@ namespace ActualChat.App.Maui.Audio;
 /// </summary>
 public static class WalkieTalkieWakeHandler
 {
+    private const string InitialTitle = "Walkie-talkie";
     private static ILogger Log => field ??= StaticLog.For(typeof(WalkieTalkieWakeHandler));
 
     public static void Handle(NotificationData data)
@@ -21,21 +22,26 @@ public static class WalkieTalkieWakeHandler
         }
 
         var isForeground = AndroidUtils.IsAppForeground() ?? false;
-        if (!isForeground)
-            try {
-                // First and synchronously: FGS start must land inside the FCM high-priority
-                // exemption window; the service self-guards the 5s startForeground rule.
-                ShowForegroundService(chatId, "Listening…");
-            }
-            catch (Exception e) {
-                // Denied FGS start (OEM restrictions etc.) must not kill the wake:
-                // playback is still attempted, and any later failure shows the fallback.
-                Log.LogWarning(e, "Couldn't start the audio FGS for chat #{ChatId}", chatId);
-            }
-        BlazorWebViewApp.EnsureStarted();
-        _ = BackgroundTask.Run(
-            () => WalkieTalkieSession.HandleWake(chatId, startedAt, isForeground, AndroidPlatform.Instance),
-            Log, "SpeechStarted wake failed", CancellationToken.None);
+        var isServiceShown = false;
+        if (!isForeground) {
+            // First and synchronously: FGS start must land inside the FCM high-priority
+            // exemption window; the service self-guards the 5s startForeground rule.
+            isServiceShown = ShowForegroundService(chatId, InitialTitle);
+        }
+
+        try {
+            BlazorWebViewApp.EnsureStarted();
+            _ = BackgroundTask.Run(
+                () => WalkieTalkieSession.HandleWake(chatId, startedAt, isForeground, AndroidPlatform.Instance),
+                Log, "SpeechStarted wake failed", CancellationToken.None);
+        }
+        catch (Exception e) {
+            // A synchronous throw here would otherwise leave the FGS up with nothing behind it.
+            Log.LogError(e, "Couldn't start the wake for chat #{ChatId}", chatId);
+            if (isServiceShown)
+                AndroidPlatform.Instance.OnWakeFailed(chatId);
+            throw;
+        }
     }
 
     public static void StopHeadlessSession()
@@ -55,7 +61,7 @@ public static class WalkieTalkieWakeHandler
         }
     }
 
-    private static void ShowForegroundService(ChatId chatId, string title)
+    private static bool ShowForegroundService(ChatId chatId, string title)
     {
         var context = Platform.AppContext;
         var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
@@ -66,15 +72,19 @@ public static class WalkieTalkieWakeHandler
         intent.PutExtra(IntentExtras.ChatPicUri, "");
         intent.PutExtra(IntentExtras.ExtraChatCount, 0);
         intent.PutExtra(IntentExtras.IsPaused, false);
-        context.StartForegroundService(intent);
+        // TryStart, not StartForegroundService: the fast-fail wake below stops the service before
+        // OnStartCommand can run, and only the registered start defers that stop instead of
+        // letting Android kill us with ForegroundServiceDidNotStartInTimeException.
+        if (!AndroidAudioWidgetForegroundService.TryStart(context, intent))
+            return false;
+
         AndroidAudioWidget.MarkForegroundServiceShown();
+        return true;
     }
 
     private static void HideForegroundService()
     {
-        var context = Platform.AppContext;
-        var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
-        context.StopService(intent);
+        AndroidAudioWidgetForegroundService.Stop(Platform.AppContext);
         AndroidAudioWidget.MarkForegroundServiceHidden();
     }
 

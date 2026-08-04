@@ -101,16 +101,10 @@ public class AndroidAudioWidget : AudioWidget
         intent.PutExtra(IntentExtras.ChatPicUri, state.Chat.PicUrl);
         intent.PutExtra(IntentExtras.ExtraChatCount, state.Chat.ExtraChatCount);
         intent.PutExtra(IntentExtras.IsPaused, state.IsPaused);
-        try {
-            context.StartForegroundService(intent);
-            AndroidAudioWidgetForegroundService.OnStartRequested();
+        if (AndroidAudioWidgetForegroundService.TryStart(context, intent))
             _isShown = true;
-        }
-        catch (Exception e) {
-            // Starting a mic FGS from the background is blocked (ForegroundServiceStartNotAllowedException):
-            // this surfaces if the accept-over-lock-screen path lacks a foreground-visible activity.
-            Log.LogError(e, "StartForegroundService failed (mode={Mode})", state.Mode);
-        }
+        else
+            Log.LogWarning("ShowImpl: couldn't start the FGS (mode={Mode})", state.Mode);
     }
 
     private static void HideImpl()
