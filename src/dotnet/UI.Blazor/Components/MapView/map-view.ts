@@ -2,6 +2,9 @@ import maplibregl, { Map as MlMap, Marker as MlMarker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Versioning } from 'versioning';
 
+// Below this diameter the accuracy circle just fattens the dot's outline, so it's not drawn.
+const minAccuracyCircleSize = 24;
+
 let isWorkerUrlSet = false;
 
 // The build resolves maplibre-gl to its CSP variant, which has no built-in worker URL.
@@ -123,6 +126,8 @@ export class MapView {
             attributionControl: false,
         });
         this.map.on('webglcontextlost', () => this.onContextLost());
+        // An accuracy circle is a metric radius, so its pixel size changes with zoom.
+        this.map.on('move', () => this.applyAccuracyCircles(this.lastMarkers));
         this.applyMarkers(this.lastMarkers);
     }
 
@@ -196,6 +201,19 @@ export class MapView {
             marker.remove();
             this.markers.delete(id);
         }
+        this.applyAccuracyCircles(markers);
+    }
+
+    private applyAccuracyCircles(markers: MapMarker[]): void {
+        const map = this.map;
+        if (map == null)
+            return;
+
+        for (const m of markers) {
+            const marker = this.markers.get(m.id);
+            if (marker != null)
+                MapView.applyAccuracyCircle(map, marker.getElement(), m.point);
+        }
     }
 
     // Marker styles: the avatar-less own position is a lone blue dot (+ heading fan),
@@ -246,13 +264,16 @@ export class MapView {
     private static createOwnLocationElement(m: MapMarker): HTMLElement {
         const own = document.createElement('div');
         own.className = 'c-own-location';
+        const accuracy = document.createElement('div');
+        accuracy.className = 'c-own-accuracy';
+        accuracy.style.display = 'none';
         const heading = document.createElement('div');
         heading.className = 'c-own-heading';
         const pulse = document.createElement('div');
         pulse.className = 'c-own-pulse';
         const dot = document.createElement('div');
         dot.className = 'c-own-dot';
-        own.append(heading, pulse, dot);
+        own.append(accuracy, heading, pulse, dot);
         MapView.applyHeading(own, m.point.bearing);
         return own;
     }
@@ -271,6 +292,33 @@ export class MapView {
 
         heading.style.display = '';
         heading.style.transform = `rotate(${bearing}deg)`;
+    }
+
+    // The circle covers the area the position may actually be in, so it's sized in meters.
+    private static applyAccuracyCircle(map: MlMap, element: HTMLElement, point: GeoPoint): void {
+        const circle = element.querySelector<HTMLElement>('.c-own-accuracy');
+        if (circle == null)
+            return;
+
+        const size = 2 * MapView.toPixelDistance(map, point, point.accuracy ?? 0);
+        if (size < minAccuracyCircleSize) {
+            circle.style.display = 'none';
+            return;
+        }
+
+        circle.style.display = '';
+        circle.style.width = `${size}px`;
+        circle.style.height = `${size}px`;
+    }
+
+    private static toPixelDistance(map: MlMap, point: GeoPoint, meters: number): number {
+        const metersPerDegree = 111_320 * Math.cos(point.latitude * Math.PI / 180);
+        if (meters <= 0 || metersPerDegree <= 0)
+            return 0;
+
+        const origin = map.project([point.longitude, point.latitude]);
+        const shifted = map.project([point.longitude + (meters / metersPerDegree), point.latitude]);
+        return Math.abs(shifted.x - origin.x);
     }
 
     private static createAvatarElement(m: MapMarker): HTMLElement | null {
