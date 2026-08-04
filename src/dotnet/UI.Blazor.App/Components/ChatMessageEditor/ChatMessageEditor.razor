@@ -398,7 +398,7 @@
 
     private Task OnShareLocationButtonClickEvent(ShareLocationButtonClickEvent @event, CancellationToken cancellationToken)
         => @event.EditorId == _editorId
-            ? LocationUI.ShowShareModal(Chat.Id)
+            ? LocationUI.ShowShareLocationModal(Chat.Id)
             : Task.CompletedTask;
 
     private async Task OnEmojiButtonClick(string tabId = "emoji") {
