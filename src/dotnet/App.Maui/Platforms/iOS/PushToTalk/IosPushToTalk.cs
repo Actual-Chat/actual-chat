@@ -2,6 +2,7 @@ using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
 using ActualChat.Notifications;
 using ActualChat.Security;
+using ActualChat.UI.Blazor.Services;
 using AVFoundation;
 using Foundation;
 using PushToTalk;
@@ -118,7 +119,7 @@ public static class IosPushToTalk
 
     private static void OnAudioSessionActivated()
     {
-        AudioSession.IsExternallyActivated = true;
+        AudioSession.SetOwner(AudioSessionOwner.PttPlayback);
         var wake = Interlocked.Exchange(ref _pendingWake, null);
         if (wake is null)
             return;
@@ -143,10 +144,16 @@ public static class IosPushToTalk
         public static readonly IosPlatform Instance = new();
 
         public override void OnWakeFailed(ChatId chatId)
-            => ClearActiveParticipant();
+        {
+            AudioSession.ReleaseOwner(AudioSessionRelease.ChannelLeft);
+            ClearActiveParticipant();
+        }
 
         public override void OnHeadlessTeardown()
-            => ClearActiveParticipant();
+        {
+            AudioSession.ReleaseOwner(AudioSessionRelease.ChannelLeft);
+            ClearActiveParticipant();
+        }
 
         public override Task OnForegroundWakeHandled(ChatId chatId)
         {
@@ -174,7 +181,7 @@ public static class IosPushToTalk
         {
             // A leave can tear the session down without DidDeactivateAudioSession;
             // a stuck flag would permanently disable the app's own session activation.
-            AudioSession.IsExternallyActivated = false;
+            AudioSession.ReleaseOwner(AudioSessionRelease.ChannelLeft);
             Log.LogInformation("PTT channel left ({Reason})", reason);
             DeregisterToken();
         }
@@ -220,7 +227,7 @@ public static class IosPushToTalk
         public override void DidDeactivateAudioSession(PTChannelManager channelManager, AVAudioSession audioSession)
         {
             Log.LogInformation("PTT audio session deactivated");
-            AudioSession.IsExternallyActivated = false;
+            AudioSession.ReleaseOwner(AudioSessionRelease.Deactivated);
         }
 
         private static string? GetString(NSDictionary<NSString, NSObject> dict, string key)

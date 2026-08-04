@@ -7,15 +7,21 @@ namespace ActualChat.App.Maui.Audio;
 
 public class AudioSession(AppUIHub hub) : IAsyncDisposable
 {
-    // Set while an Apple Push to Talk transmission owns AVAudioSession activation:
-    // the PTT delegate activates/deactivates the session; we may only configure it.
-    public static volatile bool IsExternallyActivated;
+    private static int _owner;
+
+    public static AudioSessionOwner Owner => (AudioSessionOwner)Volatile.Read(ref _owner);
+
+    public static void SetOwner(AudioSessionOwner owner)
+        => Volatile.Write(ref _owner, (int)owner);
+
+    public static void ReleaseOwner(AudioSessionRelease release)
+        => Volatile.Write(ref _owner, (int)AudioSessionOwnership.OnReleased(Owner, release));
 
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     public ValueTask DisposeAsync()
         => BackgroundTask.Run(() => DispatchToMainThread(() => {
-                    if (IsExternallyActivated)
+                    if (!AudioSessionOwnership.MayActivate(Owner))
                         return;
 
                     var session = AVAudioSession.SharedInstance();
@@ -52,8 +58,12 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     private void ReactivateUnsafe(AudioFocusMode mode)
     {
         var session = AVAudioSession.SharedInstance();
-        ConfigureUnsafe(session, mode);
-        if (IsExternallyActivated)
+        var owner = Owner;
+        // Under a PTT transmit the framework owns category and mode too - configuring underneath
+        // it is what the typed owner exists to prevent.
+        if (AudioSessionOwnership.MayConfigure(owner))
+            ConfigureUnsafe(session, mode);
+        if (!AudioSessionOwnership.MayActivate(owner))
             return;
 
         if (!session.SetActive(true, out var error)) {
@@ -71,8 +81,10 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     private void ReconfigureUnsafe(AudioFocusMode minMode)
     {
         var session = AVAudioSession.SharedInstance();
-        if (IsExternallyActivated) {
-            ConfigureUnsafe(session, minMode);
+        var owner = Owner;
+        if (!AudioSessionOwnership.MayActivate(owner)) {
+            if (AudioSessionOwnership.MayConfigure(owner))
+                ConfigureUnsafe(session, minMode);
             return;
         }
 
