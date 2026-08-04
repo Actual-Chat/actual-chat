@@ -7,6 +7,7 @@ namespace ActualChat.App.Maui.Audio;
 
 public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
 {
+    private static readonly TimeSpan InputNodeHoldTimeout = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan InputNodeHeartbeatTimeout = TimeSpan.FromSeconds(30);
 
     private static long _inputNodeHeldAt;
@@ -21,10 +22,13 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
 
     public static bool IsInputNodeHeld {
         get {
-            // Liveness, not elapsed time: a recording of any length keeps its heartbeat, while an
-            // engine that stopped delivering releases the node instead of blocking the pre-roll.
-            if (Volatile.Read(ref _inputNodeHeldAt) == 0)
+            // The hold itself is the signal - an engine that's running but not delivering (a
+            // decoder hang, or a media-services reset) still owns the node. The heartbeat only
+            // extends the hold past InputNodeHoldTimeout, which exists to heal a leaked latch.
+            if (InputNodeHeldFor is not { } heldFor)
                 return false;
+            if (heldFor < InputNodeHoldTimeout)
+                return true;
 
             var heartbeatAt = Volatile.Read(ref _inputNodeHeartbeatAt);
             return new CpuTimestamp(heartbeatAt).Elapsed < InputNodeHeartbeatTimeout;
