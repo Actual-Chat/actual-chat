@@ -6,12 +6,15 @@ namespace ActualChat.Chat;
 /// Represents a Markdown-style header (#, ##, ###) with inline content.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MessagePackObject]
 public sealed class HeaderMarkup : BlockMarkup
 {
     public const int MinLevel = 1;
     public const int MaxLevel = 3;
 
+    [DataMember, Key(0)]
     public int Level { get; }
+    [DataMember, Key(1)]
     public Markup Content { get; }
 
     public HeaderMarkup(int level, Markup content)

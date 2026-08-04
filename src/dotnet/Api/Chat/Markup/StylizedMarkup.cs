@@ -11,15 +11,18 @@ public enum TextStyle { None = 0, Italic = 1, Bold = 2, Spoiler = 3 }
 /// Represents styled text content (bold, italic, spoiler).
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MessagePackObject]
 public sealed class StylizedMarkup(Markup content, TextStyle style) : Markup
 {
     // U+2588 FULL BLOCK — renders a redaction-bar mask in notifications and other
     // non-interactive text surfaces where a spoiler can't be revealed by tapping.
     public const char SpoilerMaskChar = '█';
 
+    [DataMember, Key(0)]
     public Markup Content { get; init; } = content;
+    [DataMember, Key(1)]
     public TextStyle Style { get; init; } = style;
-
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string StyleToken => Style switch {
         TextStyle.None => "",
         TextStyle.Italic => "*",

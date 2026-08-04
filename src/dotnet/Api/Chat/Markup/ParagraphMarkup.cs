@@ -1,5 +1,6 @@
 namespace ActualChat.Chat;
 
+[DataContract, MessagePackObject]
 public class ParagraphMarkup : BlockMarkup
 {
     public static readonly ParagraphMarkup Empty = new (PlainTextMarkup.Empty);
@@ -11,7 +12,9 @@ public class ParagraphMarkup : BlockMarkup
         Content = content;
     }
 
+    [DataMember, Key(0)]
     public Markup Content { get; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsEmpty => Content is TextMarkup { Text.Length: 0 };
 
     public override string Format()

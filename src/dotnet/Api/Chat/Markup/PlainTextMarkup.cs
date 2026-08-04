@@ -6,6 +6,7 @@ namespace ActualChat.Chat;
 /// Represents plain text content without formatting.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MessagePackObject]
 public sealed class PlainTextMarkup(string text) : TextMarkup(text)
 {
     public static readonly PlainTextMarkup Empty = new("");
