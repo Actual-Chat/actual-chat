@@ -32,7 +32,7 @@
                 <TextBox
                     @bind-Value="@_form.Name"
                     Id="@_form.NameFieldId"
-                    Autofocus="true"
+                    Autofocus="@(ModalModel.Field == AccountField.Name)"
                     ClearButton="true"/>
             </FormSection>
 
@@ -53,7 +53,8 @@
                         Id="@_form.AliasIdFormId"
                         Prefix="@Links.UserAliasPrefix"
                         @bind-Value="@_form.AliasId"
-                        InputRefCreated="@_aliasTextBoxRefSetter" />
+                        Autofocus="@(ModalModel.Field == AccountField.AliasId)"
+                        InputRefCreated="@_aliasTextBoxRefSetter"/>
                 </ChildContent>
                 <Right>
                     @if (!_copyAliasFormatString.IsNullOrEmpty() && !_aliasTextBoxRef.Id.IsNullOrEmpty()) {
@@ -68,6 +69,26 @@
             </FormSection>
 
             <FormSection
+                For="() => email"
+                InputId="@_form.EmailFieldId"
+                Label="Email"
+                IsLabelInsideInput="true">
+                <ChildContent>
+                    <TextBox
+                        @bind-Value="@_form.Email"
+                        Id="@_form.EmailFieldId"
+                        Autofocus="@(ModalModel.Field == AccountField.Email)"/>
+                </ChildContent>
+                <Right>
+                    <VerificationStatus IsVerified="isEmailVerified"/>
+                </Right>
+            </FormSection>
+
+            @if (_formRef.IsValid && !isEmailVerified && !isEmailEmpty) {
+                <EmailVerifier Email="@email" Class="my-3"/>
+            }
+
+            <FormSection
                 For="() => _form.Phone"
                 InputId="@_form.PhoneFieldId"
                 Label="Phone"
@@ -79,6 +100,7 @@
                         Value="@(!_form.Phone.IsNullOrEmpty() ? _form.Phone : _defaultPhoneValue)"
                         ValueExpression="@(() => _form.Phone)"
                         ValueChanged="@OnPhoneChanged"
+                        Autofocus="@(ModalModel.Field == AccountField.Phone)"
                         Autocomplete="tel"
                         type="tel"
                         inputmode="tel"/>
@@ -91,37 +113,17 @@
             </FormSection>
 
             @if (phone != null && !isPhoneVerified) {
-                <PhoneVerifier Phone="@phone" Class="my-3" />
-            }
-
-            <FormSection
-                For="() => email"
-                InputId="@_form.EmailFieldId"
-                Label="Email"
-                IsLabelInsideInput="true">
-                <ChildContent>
-                    <TextBox
-                        @bind-Value="@_form.Email"
-                        Id="@_form.EmailFieldId"
-                        Autofocus="true"/>
-                </ChildContent>
-                <Right>
-                    <VerificationStatus IsVerified="isEmailVerified"/>
-                </Right>
-            </FormSection>
-
-            @if (_formRef.IsValid && !isEmailVerified && !isEmailEmpty) {
-                <EmailVerifier Email="@email" Class="my-3" />
+                <PhoneVerifier Phone="@phone" Class="my-3"/>
             }
         </FormBlock>
         <FormBlock>
             <Card>
-                <ButtonTile Class="btn-danger" Click="@OnDeleteAccountClick">
+                <ButtonTile Class="btn-danger delete-account-tile" Click="@OnDeleteAccountClick">
                     <Icon>
-                        <i class="icon-trash03 text-xl text-danger"></i>
+                        <i class="icon-trash03"></i>
                     </Icon>
                     <Content>
-                        <div class="c-text text-danger">
+                        <div class="c-text">
                             Delete account
                         </div>
                     </Content>
@@ -157,9 +159,7 @@
     private ElementReference _aliasTextBoxRef;
     private string _copyAliasFormatString = "";
     private Action<ElementReference> _aliasTextBoxRefSetter = null!;
-
     private IPhones Phones => Hub.Phones;
-
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
@@ -252,7 +252,8 @@
         public string AliasIdFormId { get; set; } = "";
     }
 
-    public sealed record Model {
+    public sealed record Model(AccountField Field = AccountField.Name) {
         public static readonly Model Default = new();
     }
+    public enum AccountField { Name, AliasId, Phone, Email }
 }

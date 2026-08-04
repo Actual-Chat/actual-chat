@@ -90,6 +90,15 @@ body.narrow .close-settings-btn {
     @apply text-caption-6;
 }
 
+/* ── Your Account tab ── */
+
+.your-account-tile .tile-item-icon i {
+    @apply text-xl;
+}
+.your-account-tile .c-actions {
+    @apply flex-x items-center;
+}
+
 /* ── Sessions tab ── */
 
 .sessions-tile-item .tile-item-body {
