@@ -51,12 +51,22 @@
                 <Right><Toggle IsChecked="@m.Settings.IsDoubleShakeEnabled"/></Right>
             </TileItem>
         }
-        <TileItem Click="@OnToggleHeadsetButton">
-            <Icon><i class="icon-headphones-fill text-2xl"></i></Icon>
-            <Content>Headset button</Content>
-            <Caption>Press the button on your earbuds to reply</Caption>
-            <Right><Toggle IsChecked="@(m.Settings.IsHeadsetButtonEnabled ?? true)"/></Right>
-        </TileItem>
+        @if (HostInfo.AppKind == AppKind.Android) {
+            <TileItem Click="@OnToggleHeadsetButton">
+                <Icon><i class="icon-headphones-fill text-2xl"></i></Icon>
+                <Content>Headset button</Content>
+                <Caption>Press the button on your earbuds to reply</Caption>
+                <Right><Toggle IsChecked="@(m.Settings.IsHeadsetButtonEnabled ?? true)"/></Right>
+            </TileItem>
+        }
+        @if (HostInfo.AppKind == AppKind.Ios) {
+            <TileItem Click="@OnTogglePttTransmit">
+                <Icon><i class="icon-talking text-2xl"></i></Icon>
+                <Content>Lock Screen talk button</Content>
+                <Caption>Reply from the Lock Screen without unlocking</Caption>
+                <Right><Toggle IsChecked="@(m.Settings.IsPttTransmitEnabled ?? true)"/></Right>
+            </TileItem>
+        }
         @if (hasSensors) {
             @if (m.Settings.IsDoubleShakeEnabled) {
                 <TileItem IsHoverable="false">
@@ -163,6 +173,12 @@
         => UserSettingsUI.UserWalkieTalkieSettings()
             .Update(
                 x => x with { IsHeadsetButtonEnabled = !(x.IsHeadsetButtonEnabled ?? true) },
+                CancellationToken.None);
+
+    private Task OnTogglePttTransmit()
+        => UserSettingsUI.UserWalkieTalkieSettings()
+            .Update(
+                x => x with { IsPttTransmitEnabled = !(x.IsPttTransmitEnabled ?? true) },
                 CancellationToken.None);
 
     private Task OnToggleAlwaysOn()

@@ -32,6 +32,9 @@ public sealed partial record UserWalkieTalkieSettings
     // Nullable, read as `?? true`: a blob predating this member reads it as default, not as `= true`.
     [DataMember, MemoryPackOrder(8), Key(8)]
     public bool? IsHeadsetButtonEnabled { get; init; }
+    // Nullable, read as `?? true`: a blob predating this member reads it as default, not as `= true`.
+    [DataMember, MemoryPackOrder(9), Key(9)]
+    public bool? IsPttTransmitEnabled { get; init; }
 
     public UserWalkieTalkieSettings WithPttChat(ChatId chatId)
         => this with { PttChatIds = PttChatIds.WithOrSkip(chatId).ToArray() };
