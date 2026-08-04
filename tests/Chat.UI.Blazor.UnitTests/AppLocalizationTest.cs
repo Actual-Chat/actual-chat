@@ -8,6 +8,8 @@ public class AppLocalizationTest
 {
     private const string Prefix = "Strings.";
     private const string Suffix = ".json";
+    private const string PrefixSuffix = "_Prefix";
+    private const string SuffixSuffix = "_Suffix";
     private static readonly Assembly Assembly = typeof(Strings).Assembly;
 
     [Fact]
@@ -138,6 +140,9 @@ public class AppLocalizationTest
     [Fact]
     public void EveryAppStringsMemberResolvesInEveryLanguage()
     {
+        // A missing key resolves to the key name, not to null or "" - so IsLastKeyFound is the
+        // only signal for "absent", and an empty value can only come from the catalog itself.
+
         // arrange
         var members = AppStringsMembers().ToList();
 
@@ -157,7 +162,6 @@ public class AppLocalizationTest
                 }
                 if (!localizer.IsLastKeyFound)
                     errors.Add($"'{subtag}.{member.Name}' has no value");
-                // TODO: if localization is missing will it return null or empty string?
                 else if (value.IsNullOrEmpty() && !IsSentenceFragment(member.Name))
                     errors.Add($"'{subtag}.{member.Name}' is empty");
                 else if (args.FirstOrDefault(a => !value.Contains((string)a)) is string missingArg)
@@ -171,12 +175,44 @@ public class AppLocalizationTest
             string.Join("\n", errors));
     }
 
+    [Fact]
+    public void EverySentenceFragmentPairHasContent()
+    {
+        // EveryAppStringsMemberResolvesInEveryLanguage lets a _Prefix/_Suffix side be empty,
+        // so this is what still catches a pair whose sentence went missing entirely.
+
+        // arrange
+        var prefixKeys = Load(Languages.English.PrimarySubtag)!.Keys
+            .Where(k => k.EndsWith(PrefixSuffix))
+            .ToList();
+
+        // act
+        var errors = new List<string>();
+        foreach (var subtag in ShippedSubtags()) {
+            var strings = Load(subtag)!;
+            foreach (var prefixKey in prefixKeys) {
+                var suffixKey = prefixKey[..^PrefixSuffix.Length] + SuffixSuffix;
+                if (!strings.ContainsKey(suffixKey)) {
+                    errors.Add($"'{subtag}.{prefixKey}' has no matching '{suffixKey}'");
+                    continue;
+                }
+                if (strings[prefixKey].IsNullOrEmpty() && strings[suffixKey].IsNullOrEmpty())
+                    errors.Add($"'{subtag}.{prefixKey}' and '{suffixKey}' are both empty");
+            }
+        }
+
+        // assert
+        errors.Should().BeEmpty(
+            "a _Prefix/_Suffix pair must carry the sentence on at least one side:\n{0}",
+            string.Join("\n", errors));
+    }
+
     // Private methods
 
     // A _Prefix/_Suffix pair wraps a value rendered as a child component; whichever side
     // the placeholder starts or ends on is legitimately empty (e.g. ja "{0} さんに挨拶しましょう!").
     private static bool IsSentenceFragment(string name)
-        => name.EndsWith("_Prefix") || name.EndsWith("_Suffix");
+        => name.EndsWith(PrefixSuffix) || name.EndsWith(SuffixSuffix);
 
     private static IEnumerable<AppStringsMember> AppStringsMembers()
     {
