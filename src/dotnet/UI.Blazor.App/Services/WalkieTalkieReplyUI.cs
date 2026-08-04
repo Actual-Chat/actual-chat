@@ -60,13 +60,18 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         // Published before the mic opens: WalkieReplyToggle recomputes on the recording-chat change
         // and must already see this reply as walkie-owned.
         var reply = new WalkieTalkieReply(chatId, Clocks.SystemClock.Now);
+        // The hold precedes the publish: a competitor can only displace this reply after seeing it
+        // in _reply, so its Release always follows this Hold and the count never dips.
+        WalkieTalkieMicCapability.Hold(reply);
         WalkieTalkieReply? displacedReply;
         lock (_lock) {
             displacedReply = _reply;
             _reply = reply;
+            // The displaced reply's watcher dies here, inside the lock: alive, it could still pass
+            // its ownership gate and close the mic this call is about to open.
+            _coldStartCts.CancelAndDisposeSilently();
+            _coldStartCts = null;
         }
-        // The new hold first, so the capability can't dip between the two.
-        WalkieTalkieMicCapability.Hold(reply);
         if (displacedReply is not null)
             WalkieTalkieMicCapability.Release(displacedReply);
 
@@ -204,7 +209,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             if (state.ChatId == chatId && state.IsVoiceActive)
                 break;
             if (ShouldColdClose(false, startedAt.Elapsed, coldTimeout)) {
-                await CloseFromWatcher(cts, everVoiced: false).ConfigureAwait(false);
+                await CloseFromWatcher(cts, chatId, everVoiced: false).ConfigureAwait(false);
                 return;
             }
 
@@ -225,26 +230,27 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             .ConfigureAwait(false);
         await foreach (var (recordingChatId, _) in cRecordingChatId.Changes(cancellationToken).ConfigureAwait(false))
             if (recordingChatId != chatId) {
-                await CloseFromWatcher(cts, everVoiced: true).ConfigureAwait(false);
+                await CloseFromWatcher(cts, chatId, everVoiced: true).ConfigureAwait(false);
                 return;
             }
     }
 
-    private async Task CloseFromWatcher(CancellationTokenSource cts, bool everVoiced)
+    private async Task CloseFromWatcher(CancellationTokenSource cts, ChatId chatId, bool everVoiced)
     {
-        WalkieTalkieReply? ownReply = null;
+        WalkieTalkieReply? ownReply;
         lock (_lock) {
-            if (ReferenceEquals(_coldStartCts, cts)) {
-                cts.DisposeSilently();
-                _coldStartCts = null;
-                // This watch owned the open reply, so _reply must not outlive it: a stale one
-                // would let a native trigger close whatever recording comes next.
-                ownReply = _reply;
-                _reply = null;
-            }
+            // A superseded watcher owns nothing anymore - closing here would hit whatever reply
+            // displaced its own.
+            if (!ReferenceEquals(_coldStartCts, cts))
+                return;
+
+            cts.DisposeSilently();
+            _coldStartCts = null;
+            ownReply = _reply;
+            _reply = null;
         }
         try {
-            if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
+            if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) == chatId)
                 await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
             await PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard).ConfigureAwait(false);
         }
