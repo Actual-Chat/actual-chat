@@ -156,7 +156,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `LongAsStringKeyComparer` - Comparer for long keys as strings.
 - `StringIdentifier<T>` (abstract record struct) - Base for string-based identifiers.
 - `SymbolIdentifier<T>` (abstract record struct) - Base for Symbol-based identifiers.
-- `SystemRole` (enum) - System role types.
+- `SystemRole` (enum) - System role types; `Anyone`/`Guest`/`User`/`AnonymousUser` have automatic membership, `Moderator`/`Owner` have an explicit author list.
 - `MetadataExt` (static class) - Extension methods for metadata.
 - `AudioFocusService` - Manages audio focus across the app.
 - `StreamHub` - Hub for audio/video streams.
@@ -368,7 +368,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IAliases` - Service for resolving human-friendly aliases to chats and places.
 - `AliasKind` (enum) - Specifies the type of entity an alias points to.
 - `AliasTarget` (record) - Represents the target of an alias resolution.
-- `IAuthors` - Service for managing chat authors and membership.
+- `IAuthors` - Service for managing chat authors and membership; `Authors_ChangeRole` appoints/removes Owners and Moderators (`Authors_PromoteToOwner` is its obsolete predecessor).
 - `IChatMarkupHub` - Provides markup parsing and mention resolution services for a chat.
 - `IChatThreads` - Service for managing chat threads (reply threads attached to messages).
 - `ThreadStat` (record) - Statistics for a chat thread.
@@ -376,9 +376,9 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IConversations` - Service for managing conversation segments and their summaries.
 - `IDiagnostics` - Service for retrieving server mesh diagnostic information.
 - `IMentions` - Service for tracking mentions of users in chat messages.
-- `IPlaces` - Service for managing places and their members.
+- `IPlaces` - Service for managing places and their members; `ListOwnerIds` / `ListModeratorIds` and `Places_ChangeRole` forward to the place root chat.
 - `IReactions` - Service for managing reactions (emoji responses) to chat messages.
-- `IRoles` - Service for managing chat roles and permissions.
+- `IRoles` - Service for managing chat roles and permissions; `ListOwnerIds` / `ListModeratorIds` mask anonymous members from non-owner callers.
 - `ITranslations` - Service for translating chat messages to different languages.
 - `IContacts` - Service for managing user contacts and contact lists.
 - `IExternalContactHashes` - Service for tracking external contact sync state via hashes.
@@ -390,6 +390,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `INotifications` - Service for managing user notifications and device registrations.
 - `ISearch` - Service for searching contacts and chat entries.
 - `IStreamClient` - Client-side interface for accessing audio and transcript streams.
+- `ILiveSessions` - Service for live sessions (calls): start/accept/leave, mute peers, `SetHost`. Owners and Moderators can mute participants; Moderators can't mute Owners.
 - `IAccounts` - Service for managing user accounts, sessions, and presence.
 - `IAvatars` - Service for managing user avatars.
 - `RecaptchaValidationResult` (record) - Result of a reCAPTCHA validation request.
@@ -461,11 +462,11 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `TrackType` (enum) - Specifies the type of track in a WebM file.
 - `Author` (record) - Represents a chat participant with an avatar identity.
 - `AuthorFull` (record) - Extended author information with full profile details.
-- `AuthorRules` (record) - Permission rules for an author in a chat.
+- `AuthorRules` (record) - Permission rules for an author in a chat; `IsOwner()` / `CanModerate()` / `CanRead()` and friends test `Permissions`.
 - `CachingMarkupParser` - Caching decorator for IMarkupParser using LRU cache.
 - `Chat` (record) - Represents a chat with metadata, rules, and settings.
 - `ChatEntry` (abstract record) - Base class for chat entries (messages, system events).
-- `ChatPermissions` (enum) - Permission flags for chat operations.
+- `ChatPermissions` (enum) - Permission flags for chat operations; `Moderate` implies `EditProperties` + `EditMembers`, and `Owner` implies `Moderate`.
 - `CodeBlockMarkup` (sealed class) - Represents a fenced code block with optional language.
 - `Conversation` (record) - Represents a conversation segment with AI-generated summary.
 - `IMarkupParser` - Parses text into markup elements.
@@ -490,13 +491,14 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `MentionResolver` (record : AsyncMarkupRewriter) - Tree rewriter; delegates per-mention enrichment to IChatMentionResolver.Enrich (was MentionNamer).
 - `NewLineMarkup` (sealed class) - Represents a line break in markup.
 - `Place` (record) - Represents a place (community container for chats).
-- `PlacePermissions` (enum) - Permission flags for place operations.
+- `PlaceRules` (record) - Permission rules for an author in a place; the place-level counterpart of `AuthorRules`.
+- `PlacePermissions` (enum) - Permission flags for place operations; bit values must stay aligned with `ChatPermissions` - `Places.ToPlaceRules` casts between them.
 - `PlainTextMarkup` (sealed class) - Represents plain text content without formatting.
 - `PlayableTextMarkup` (sealed class) - Represents text in playable audio message markup.
 - `PreformattedTextMarkup` (sealed class) - Represents inline monospace/code text wrapped in backticks.
 - `Reaction` (record) - Represents an emoji reaction on a chat entry.
 - `ReactionSummary` (record) - Summary of reactions on a chat entry.
-- `Role` (record) - Represents a chat role with permissions.
+- `Role` (record) - Represents a chat role with permissions; `Fix()` clamps system roles to their canonical permission set.
 - `StylizedMarkup` (sealed class) - Represents styled text content (bold, italic).
 - `TextEntry` (record) - Represents a text message entry in a chat.
 - `TextEntryAttachment` (record) - Attachment on a text entry.
@@ -659,7 +661,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IMentionsBackend` - Backend service for tracking mentions in chat entries.
 - `IPlacesBackend` - Backend service for managing places (organizational containers for chats).
 - `IReactionsBackend` - Backend service for managing reactions on chat entries.
-- `IRolesBackend` - Backend service for managing chat roles and permissions.
+- `IRolesBackend` - Backend service for managing chat roles and permissions; unlike `IRoles` it never masks anonymous members, so owner-immunity checks must go through it.
 - `ITranslationsBackend` - Backend service for translating chat entry content between languages.
 - `ReadPositionsStatBackend` (record) - Tracks the top read positions for users in a chat.
 - `RequestedAuthorKind` (enum) - Specifies the level of detail to return for author queries.
@@ -721,6 +723,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 
 - `AudioRecord` (record) - Represents a recorded audio segment with metadata.
 - `ILiveBackend` - Backend service for live audio streaming.
+- `ILiveSessionsBackend` - Backend service for live-session (call) state: membership, host assignment, `MuteAll` / `SetHost`.
 - `ILiveAudioBackend` - Backend service for live audio sessions.
 - `ILiveVideoBackend` - Backend service for live video sessions.
 - `IVideoStreamingBackend` - Backend service for video streaming operations.
@@ -882,6 +885,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 
 - `FlowBackend` - Implementation of IFlowBackend.
 - `LiveBackend` - Implementation of ILiveBackend.
+- `LiveSessions` - Implementation of ILiveSessions; `GetCallAuthority` decides who may mute whom (Owners immune to Moderators) and who may reassign the host.
+- `LiveSessionsBackend` - Implementation of ILiveSessionsBackend.
 - `LiveAudioBackend` - Implementation of ILiveAudioBackend.
 - `LiveVideoBackend` - Implementation of ILiveVideoBackend.
 - `StreamingBackend` - Implementation of IStreamingBackend.
