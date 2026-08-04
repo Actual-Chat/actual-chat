@@ -13,6 +13,8 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
     protected TimeSpan? ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);
 
     public IState<bool?> Cached => _cached;
+    // False in a headless scope: nothing ever renders there, so there is no dispatcher to prompt on.
+    public bool CanPrompt => DispatcherResolver.WhenInitialized.IsCompleted;
 
     protected PermissionHandler(UIHub hub, bool mustStart = true) : base(hub)
     {
@@ -73,8 +75,14 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
             return true;
 
         releaser.MarkLockedLocally();
-        if (!DispatcherResolver.WhenInitialized.IsCompleted)
-            await DispatcherResolver.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (!CanPrompt) {
+            // Headless scope: WhenInitialized never completes there, so awaiting it would park forever.
+            Log.LogDebug("Check (no dispatcher)");
+            var isGrantedNow = await Get(cancellationToken).ConfigureAwait(false);
+            SetUnsafe(isGrantedNow);
+            return isGrantedNow;
+        }
+
         return await DispatcherResolver.Dispatcher.InvokeAsync(async () => {
             Log.LogDebug("Check");
             var isGranted = await Get(cancellationToken).ConfigureAwait(false);

@@ -211,7 +211,8 @@ public partial class ChatAudioUI
             // audioSession is set to 'play-and-record' after getUserMedia,
             // and WebKit AEC does not register the DestinationFallbackTrait
             // playback path, so a tune playing into a live mic feeds back.
-            await TuneUI.PlayAndWait(Tune.BeginRecording).ConfigureAwait(false);
+            if (!Volatile.Read(ref _isBeginTuneSuppressed))
+                await TuneUI.PlayAndWait(Tune.BeginRecording).ConfigureAwait(false);
             // Install before StartRecording so we don't miss a fast false→true→false
             // transition (e.g., pipeline dies during JS init).
             var whenRecorderStopped = ForegroundTask.Run(async () => {
@@ -882,6 +883,12 @@ public partial class ChatAudioUI
 
     private async Task ShowRecordingTroubleshooter(TimeSpan delay, CancellationToken cancellationToken) {
         await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+        if (!Hub.WhenInitialized.IsCompleted) {
+            // A headless scope has no renderer, so Dispatcher would throw and WhenInitialized never completes.
+            Log.LogWarning("Recording issue, but there is no renderer to show the troubleshooter in");
+            return;
+        }
+
         await Dispatcher.InvokeAsync(async () => {
             var model = new RecordingTroubleshooterModal.Model(null, true);
             var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
