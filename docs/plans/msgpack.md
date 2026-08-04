@@ -1,5 +1,9 @@
 # MessagePack Migration Plan
 
+> **Status:** Phases 1–3 are complete; phase 4 (removing `[DataContract]`) is next.
+> For the resulting target state — which serializer owns which path, and the attribute
+> convention — see [Serialization](../architecture/serialization.md).
+
 ## Goal
 
 Replace MemoryPack with MessagePack as the primary binary serializer across the entire codebase. MessagePack provides better cross-platform support (especially for non-.NET clients) and a more mature ecosystem.
@@ -10,10 +14,21 @@ Replace MemoryPack with MessagePack as the primary binary serializer across the 
 
 | Attribute | File count | Description |
 |-----------|-----------|-------------|
-| `[DataContract]` | 252 | Types with serialization metadata (used by MessagePack for key mapping) |
-| `[MemoryPackable]` | 250 | Types with MemoryPack support (the current binary serializer) |
+These were the counts when this plan was written; see the status note above for where things
+stand now.
+
+| Attribute | File count | Description |
+|-----------|-----------|-------------|
+| `[DataContract]` | 252 | Types with serialization metadata |
+| `[MemoryPackable]` | 250 | Types with MemoryPack support (the binary serializer at the time) |
 | `[MessagePackFormatter]` | 35 | Identifier types with custom MessagePack formatters (already migrated) |
 | `[MessagePackObject]` | 2 | Types with native MessagePack object support (`Maybe<T>`, `Choice<T, TAlt>`) |
+
+`[DataContract]` was described here as "used by MessagePack for key mapping". That is only
+true for types *without* `[MessagePackObject]`, and only on the dynamic (non-AOT) resolver —
+where `[MessagePackObject]` + `[Key]` is present, `[Key]` wins and the DataContract
+annotations have no effect on the wire format. See
+[Serialization](../architecture/serialization.md) for the verified matrix.
 
 ### What already has MessagePack support
 
@@ -80,7 +95,7 @@ Comprehensive serialization tests have been written for all serializable types. 
 
 - **`ApiNullable8<T>` MemoryPack bridge** (e.g., `ChatEntry.MemoryPackEndsAt`, `Notification.MemoryPackHandledAt`, `Upload.MemoryPackLength`, `Device.MemoryPackAccessedAt`, `LegacyChatEntry.MemoryPack*`, `ChatEntryAudio.MemoryPack*`, `ChatRangeMeta.MemoryPack*`, `ChatEntryRangeMeta.MemoryPack*`): a private `ApiNullable8<T>` property with `[MemoryPackInclude, MemoryPackOrder(N), IgnoreMember]` shadows a public `Nullable<T>` property with `[MemoryPackIgnore]`. MemoryPack serializes the private 8-byte bridge; MessagePack serializes the public `Nullable<T>` natively. Both serializers roundtrip correctly. When/if MemoryPack is removed in Phase 3, drop the private bridges and keep the public `Nullable<T>` properties.
 
-## Phase 2: Add `[MessagePackObject]` Attributes (TODO)
+## Phase 2: Add `[MessagePackObject]` Attributes (COMPLETE)
 
 For each type, add `[MessagePackObject]` with integer `[Key(N)]` attributes on all serialized members. This is the bulk of the migration work.
 
@@ -119,7 +134,7 @@ After adding `[MessagePackObject]` to a type, its serialization test should cont
 dotnet test tests/<Project>.csproj --filter "TypeName_Basic"
 ```
 
-## Phase 3: Remove MemoryPack (TODO)
+## Phase 3: Remove MemoryPack (COMPLETE)
 
 Once all types have MessagePack support and tests pass:
 
@@ -127,3 +142,29 @@ Once all types have MessagePack support and tests pass:
 2. Remove MemoryPack NuGet packages
 3. Update serializer configuration to use MessagePack as the default binary serializer
 4. Remove any MemoryPack-specific bridges (e.g., `ApiNullable8`)
+
+**Part 1 (in review)** removes MemoryPack from everything except the two paths that still
+read pre-existing database bytes: Flow state (`FlowData.FlowSerializer`'s legacy leg) and
+legacy server KVAS values (`KvasSerializer`'s `0x0` marker). It also drops the
+`MemoryPackV5`/`V6` RPC formats, trims the `StringLikeMemoryPackFormatter` registrations, and
+deletes the `ApiNullable8` bridges (step 4). Retained: all Flow types and their reachable
+state, the `StoredSettings` union, the legacy `Language` formatters, `MediaRef`, `Range<T>`,
+`ChatEntrySlim`, and `HashedExternalContact`.
+
+MemoryPack cannot be removed outright while those DB blobs exist — steps 2 and 3 stay open
+until the persisted data is migrated or aged out.
+
+What remains carries MemoryPack: 68 types across 83 files, all inside the retained closure
+(Flows and their reachable state, the `StoredSettings` union, the legacy `Language` formatters,
+`MediaRef`, `Range<T>`, `ChatEntrySlim`, `HashedExternalContact`). `AotFormatterPresenceTest`
+resolves all 32 of the MemoryPack-serializable AOT entries plus 315 MessagePack ones without
+dynamic IL emit, and the AOT keep-lists have been regenerated against that set.
+
+## Phase 4: Remove `[DataContract]` / `[DataMember]` (PLANNED)
+
+Independent of MemoryPack. `[DataContract]` is read by Newtonsoft.Json (where it switches the
+type to opt-in) and, for types without `[MessagePackObject]`, by MessagePack's dynamic
+resolver — while System.Text.Json ignores it entirely. Replacing it with serializer-native
+attributes removes that ambiguity. The rationale, the verified behavior matrix, and the
+per-type migration risk are documented in
+[Serialization](../architecture/serialization.md#migrating-off-datacontract).
