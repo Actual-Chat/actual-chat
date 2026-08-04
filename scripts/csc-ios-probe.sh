@@ -190,6 +190,7 @@ namespace ActualChat.App.Maui
     {
         public static void EnsureJoined() { }
         public static void Leave() { }
+        public static void SetTransmitEnabled(bool isEnabled) { }
     }
 }
 EOF

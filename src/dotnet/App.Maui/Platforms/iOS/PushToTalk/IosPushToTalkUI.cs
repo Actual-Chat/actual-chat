@@ -18,11 +18,19 @@ public class IosPushToTalkUI : UIWorkerBase<AppUIHub>
         var cArmedChatIds = await Computed
             .Capture(() => chatAudioUI.GetPttChatIds(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
+        // GetPttChatIds reads the whole UserWalkieTalkieSettings record, so its invalidation also
+        // covers IsPttTransmitEnabled - see the same note in GestureUI.TrackActivation.
         await foreach (var change in cArmedChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (change.Value.Count != 0)
-                IosPushToTalk.EnsureJoined();
-            else
+            if (change.Value.Count == 0) {
                 IosPushToTalk.Leave();
+                continue;
+            }
+
+            var settings = await UserSettingsUI.UserWalkieTalkieSettings()
+                .Get(cancellationToken)
+                .ConfigureAwait(false);
+            IosPushToTalk.SetTransmitEnabled(settings.IsPttTransmitEnabled ?? true);
+            IosPushToTalk.EnsureJoined();
         }
     }
 }

@@ -29,6 +29,7 @@ public static class IosPushToTalk
     private static volatile string _pttToken = "";
     private static volatile PendingWake? _pendingWake;
     private static Transmission? _transmission;
+    private static int _isTransmitEnabled;
     private static ILogger Log => field ??= StaticLog.For(typeof(IosPushToTalk));
 
     public static void Initialize()
@@ -72,6 +73,16 @@ public static class IosPushToTalk
         manager.LeaveChannel(ChannelUuid);
     }
 
+    public static void SetTransmitEnabled(bool isEnabled)
+    {
+        Volatile.Write(ref _isTransmitEnabled, isEnabled ? 1 : 0);
+        var manager = _manager;
+        if (manager?.ActiveChannelUuid is null)
+            return;
+
+        ApplyTransmissionMode(manager, ChannelUuid, isEnabled);
+    }
+
     public static void ClearActiveParticipant()
     {
         var manager = _manager;
@@ -88,6 +99,33 @@ public static class IosPushToTalk
 
     private static PTChannelDescriptor NewDescriptor()
         => new(ChannelName, UIImage.FromBundle("AppIcon"));
+
+    private static void ApplyTransmissionMode(PTChannelManager manager, NSUuid channelUuid, bool isEnabled)
+    {
+        // Off must mean ListenOnly, not an inert button: a Talk press that silently does nothing
+        // is worse than no Talk button at all.
+        var mode = isEnabled ? PTTransmissionMode.FullDuplex : PTTransmissionMode.ListenOnly;
+        manager.SetTransmissionMode(mode, channelUuid, error => {
+            if (error is not null)
+                Log.LogWarning("SetTransmissionMode({Mode}) failed: {Error}", mode, error.LocalizedDescription);
+        });
+    }
+
+    private static void SetDescriptorTitle(string chatTitle)
+    {
+        var manager = _manager;
+        if (manager?.ActiveChannelUuid is null)
+            return;
+
+        // The channel is the aggregate "Voxt", so without this the system sheet cannot tell the
+        // user which chat a Talk press would reach.
+        manager.SetChannelDescriptor(new PTChannelDescriptor(chatTitle, UIImage.FromBundle("AppIcon")),
+            ChannelUuid,
+            error => {
+                if (error is not null)
+                    Log.LogWarning("SetChannelDescriptor failed: {Error}", error.LocalizedDescription);
+            });
+    }
 
     private static void RegisterToken(string token)
     {
@@ -329,11 +367,7 @@ public static class IosPushToTalk
             PTChannelManager channelManager, NSUuid channelUuid, PTChannelJoinReason reason)
         {
             Log.LogInformation("PTT channel joined ({Reason})", reason);
-            // Receive-only v1: no transmit button in the system UI.
-            channelManager.SetTransmissionMode(PTTransmissionMode.ListenOnly, channelUuid, error => {
-                if (error is not null)
-                    Log.LogWarning("SetTransmissionMode failed: {Error}", error.LocalizedDescription);
-            });
+            ApplyTransmissionMode(channelManager, channelUuid, Volatile.Read(ref _isTransmitEnabled) != 0);
         }
 
         public override void DidLeaveChannel(
@@ -389,6 +423,7 @@ public static class IosPushToTalk
             }
 
             _pendingWake = new PendingWake(vChatId, new Moment(epochMs * 10_000));
+            SetDescriptorTitle(chatTitle);
             return PTPushResult.Create(new PTParticipant(chatTitle, null!));
         }
 
