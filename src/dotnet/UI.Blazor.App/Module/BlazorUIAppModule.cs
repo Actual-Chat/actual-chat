@@ -247,9 +247,13 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => {
             var hub = c.UIHub();
             var debugUI = new DebugUI(hub);
-            debugUI.ShowMicTroubleshooterHandler = () => hub.ModalUI.Show(new RecordingTroubleshooterModal.Model());
+            debugUI.ShowMicTroubleshooterHandler = guideType => hub.ModalUI.Show(
+                new RecordingTroubleshooterModal.Model(ParseGuideType(guideType)));
             debugUI.ShowPhotoTroubleshooterHandler = () => hub.ModalUI.Show(new PhotoTroubleshooterModal.Model());
-            debugUI.ShowIncomingShareModalHandler = () => hub.ModalUI.Show(new IncomingShareModal.Model("Test shared text"));
+            debugUI.ShowLocationTroubleshooterHandler = guideType => hub.ModalUI.Show(
+                new LocationTroubleshooterModal.Model(ParseGuideType(guideType)));
+            debugUI.ShowIncomingShareModalHandler = () => hub.ModalUI.Show(
+                new IncomingShareModal.Model("Test shared text"));
             debugUI.TestVideoRecordingQualityChangeHandler = period =>
                 c.GetRequiredService<VideoQualityUI>().BeginRecordingQualityTest(period);
             debugUI.TestVideoPlaybackQualityChangeHandler = period =>
@@ -269,4 +273,10 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<UploadSessionsState>(ServiceLifetime.Scoped);
         services.AddScoped(c => new IncomingShareAfterSendMessageHandler(c.AppUIHub()));
     }
+
+    // Private methods
+
+    private static GuideType? ParseGuideType(string? guideType)
+        // A null result means "auto-detect from HostInfo + BrowserInfo".
+        => Enum.TryParse<GuideType>(guideType, true, out var result) ? result : null;
 }

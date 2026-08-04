@@ -31,11 +31,11 @@
                 type = GuideType.WebChrome;
         }
     }
-    var primaryButtonTitle = isMaui ? "Settings" : "Got it";
+    var primaryButtonTitle = isMaui ? "Settings" : "OK";
 }
 
 <DialogFrame
-    Class="location-troubleshooter-modal guide-modal"
+    Class="guide-modal"
     BodyClass="no-scrollbar"
     Title="Location access"
     HasCloseButton="true"
@@ -81,7 +81,7 @@
             </Button>
         } else {
             <Button Class="btn-modal btn-primary" Click="@(() => Modal.Close())">
-                Got it
+                OK
             </Button>
         }
     </Buttons>

@@ -2,18 +2,16 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<PhotoTroubleshooterModal.Model>
-@{
-    var settingsButtonTitle = "Settings";
-}
 
 <DialogFrame
-    Class="photo-troubleshooter-modal"
+    Class="photo-troubleshooter-modal guide-modal"
+    BodyClass="no-scrollbar"
     Title="Photo library access"
     HasCloseButton="true"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.ForSubmitButton(OnSettingsClick, settingsButtonTitle)">
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.ForSubmitButton(OnOkClick, "OK")">
     <Body>
     <FormBlock>
-        <div class="c-text font-normal">
+        <div class="c-intro">
             @CoreConstants.AppName needs access to your photo library to save photos and videos.
             Please enable it in <a @onclick="OnSettingsClick" @onclick:preventDefault class="settings-link">Settings</a>.
         </div>
@@ -21,11 +19,8 @@
     <div class="safe-area-bottom safe-area-bottom-overlay"></div>
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="@(() => Modal.Close())">
-            Later
-        </Button>
-        <Button Class="btn-modal btn-primary" Click="OnSettingsClick">
-            Settings
+        <Button Class="btn-modal btn-primary" Click="OnOkClick">
+            OK
         </Button>
     </Buttons>
 </DialogFrame>
@@ -41,6 +36,9 @@
         await SystemSettingsUI.Open();
         Modal.Close();
     }
+
+    private void OnOkClick()
+        => Modal.Close();
 
     public sealed record Model;
 }

@@ -1,7 +1,0 @@
-.location-troubleshooter-modal .dialog-body {
-    @apply gap-y-4;
-}
-
-.location-troubleshooter-modal .c-text {
-    @apply text-02;
-}
