@@ -29,7 +29,13 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
         if (isTrackingHealthy && await GetTracked(cancellationToken).ConfigureAwait(false) is { } point)
             return point;
 
-        return await FetchCurrent(true, cancellationToken).ConfigureAwait(false);
+        // Publishing the one-shot fix invalidates everything bound to Get; safe only on this branch,
+        // since mustBeFresh is never requested from a compute method - it would self-invalidate.
+        var fetched = await FetchCurrent(true, cancellationToken).ConfigureAwait(false);
+        if (fetched is not null)
+            SetTrackedLocation(fetched);
+
+        return fetched;
     }
 
     public abstract Task Start(CancellationToken cancellationToken);
