@@ -307,7 +307,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     .WithOrigins(origins.ToArray())
                     .WithMethods("GET")
                     .AllowAnyHeader()
-                    .WithExposedHeaders("Content-Encoding","Content-Length","Content-Range", "Content-Type");
+                    .WithExposedHeaders("Content-Encoding","Content-Length","Content-Range", "Content-Type", "Content-Disposition");
             });
         });
         // services.Configure<HstsOptions>(options => {

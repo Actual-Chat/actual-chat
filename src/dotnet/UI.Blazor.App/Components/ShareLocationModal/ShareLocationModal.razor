@@ -93,7 +93,6 @@
     private MutableState<bool> _isDurationMenuOpen = null!;
     private MapView? _mapView;
 
-    private ILocationTracker Tracker => Hub.LocationTracker;
     private LocationUI LocationUI => Hub.LocationUI;
     private LocationPermissionHandler LocationPermission
         => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
@@ -174,7 +173,8 @@
     }
 
     private async Task OnLocate() {
-        if (await Tracker.Get(force: true).ConfigureAwait(true) is not { } point)
+        // TODO: show ui loading state while locating cause it might take a while
+        if (await LocationUI.RefreshCurrentLocation(Hub.StopToken).ConfigureAwait(true) is not { } point)
             return;
 
         if (_mapView is { } mapView)

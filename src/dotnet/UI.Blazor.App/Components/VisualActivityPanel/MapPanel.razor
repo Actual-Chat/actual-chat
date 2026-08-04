@@ -61,7 +61,6 @@
     private MapView? _mapView;
 
     private Chat Chat => ChatContext.Chat;
-    private ILocationTracker Tracker => Hub.LocationTracker;
     private LocationUI LocationUI => Hub.LocationUI;
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
 
@@ -119,7 +118,7 @@
         => LocationUI.StopSharing(Chat.Id, CancellationToken.None);
 
     private Task OnShare()
-        => LocationUI.ShowShareModal(Chat.Id);
+        => LocationUI.ShowShareLocationModal(Chat.Id);
 
     private void OnOpenMenu()
         => _isMenuOpen.Value = true;
@@ -135,7 +134,9 @@
 
     private async Task OnLocate() {
         _isMenuOpen.Value = false;
-        if (await Tracker.Get().ConfigureAwait(true) is { } point && _mapView is { } mapView)
+        // TODO: show ui loading state while locating cause it might take a while
+        var location = await LocationUI.RefreshCurrentLocation(Hub.StopToken).ConfigureAwait(true);
+        if (location is { } point && _mapView is { } mapView)
             await mapView.FlyTo(point).ConfigureAwait(false);
     }
 

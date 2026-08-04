@@ -362,6 +362,10 @@ body.hoverable .conversation-attachments .image-attachment:hover {
         linear-gradient(to bottom,
             var(--violet-60) 0%, var(--violet-60) 50%, var(--c-live-tint, rgba(166, 53, 255, 0.1)) 100%) border-box;
 }
+.virtual-list .c-virtual-container .group:has(> .item.expanded > .live-conversation-header) {
+    @apply px-0;
+    @apply overflow-hidden;
+}
 
 /* Unjoined (never-attended) live block: the same unified shell, but painted with the flat unjoined
    gradient and no violet outline. Keyed on the header's Join button - which shows ONLY for the

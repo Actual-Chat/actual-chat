@@ -182,7 +182,8 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         await Tracker.Start(cancellationToken).ConfigureAwait(false);
         var timeout = activeShares.Max(x => x.ExpiresAt) - ServerNow;
         using var cts = cancellationToken.CreateLinkedTokenSource(timeout < MaxReportLoopTimeout ? timeout : null);
-        await Tracker.LastKnown.Computed.When(x => x is not null, cts.Token).ConfigureAwait(false);
+        // Waits for the first live fix, so the cycle below doesn't re-post the cached one as fresh.
+        await Tracker.Get(true, cts.Token).ConfigureAwait(false);
         await AsyncChain.From(ReportForChats)
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
@@ -222,7 +223,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         if (Tracker.Error.Value is not null)
             return;
 
-        var point = await Tracker.LastKnown.Use(cancellationToken).ConfigureAwait(false);
+        var point = await Tracker.Get(false, cancellationToken).ConfigureAwait(false);
         if (point is null)
             return;
 

@@ -52,7 +52,7 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
             return Task.CompletedTask;
 
         IsTracking = false;
-        SetLocation(null);
+        SetCached(null);
         var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
         Context.StopService(intent);
         return Task.CompletedTask;
@@ -61,7 +61,7 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
     // Protected/internal methods
 
     internal static void ReportLocation(GeoPoint point)
-        => _instance?.SetLocation(point);
+        => _instance?.SetCached(point);
 
     internal static void ReportError(GeoTrackingError error)
         => _instance?.SetError(error);

@@ -75,7 +75,6 @@
     private MutableState<bool> _isMapTypeMenuOpen = null!;
     private MapView? _mapView;
 
-    private ILocationTracker Tracker => Hub.LocationTracker;
     private LocationUI LocationUI => Hub.LocationUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -135,7 +134,9 @@
     }
 
     private async Task OnLocate() {
-        if (await Tracker.Get().ConfigureAwait(true) is { } point && _mapView is { } mapView)
+        // TODO: show ui loading state while locating cause it might take a while
+        var location = await LocationUI.RefreshCurrentLocation(Hub.StopToken).ConfigureAwait(true);
+        if (location is { } point && _mapView is { } mapView)
             await mapView.FlyTo(point).ConfigureAwait(false);
     }
 

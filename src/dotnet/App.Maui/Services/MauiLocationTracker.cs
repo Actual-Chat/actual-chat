@@ -43,7 +43,7 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
             return Task.CompletedTask;
 
         IsTracking = false;
-        SetLocation(null);
+        SetCached(null);
         _geolocation.LocationChanged -= OnLocationChanged;
         _geolocation.ListeningFailed -= OnListeningFailed;
         _geolocation.StopListeningForeground();
@@ -51,7 +51,7 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
     }
 
     private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
-        => SetLocation(e.Location.ToGeoPoint());
+        => SetCached(e.Location.ToGeoPoint());
 
     private void OnListeningFailed(object? sender, GeolocationListeningFailedEventArgs e)
     {

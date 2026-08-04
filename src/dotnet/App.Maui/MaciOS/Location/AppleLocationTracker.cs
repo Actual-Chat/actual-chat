@@ -39,7 +39,7 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
             return Task.CompletedTask;
 
         IsTracking = false;
-        SetLocation(null);
+        SetCached(null);
         MainThread.BeginInvokeOnMainThread(() => _manager?.StopUpdatingLocation());
         return Task.CompletedTask;
     }
@@ -76,7 +76,7 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
     private void OnLocationsUpdated(object? sender, CLLocationsUpdatedEventArgs e)
     {
         if (e.Locations.LastOrDefault() is { } location)
-            SetLocation(location.ToGeoPoint());
+            SetCached(location.ToGeoPoint());
     }
 
     private void OnFailed(object? sender, NSErrorEventArgs e)
