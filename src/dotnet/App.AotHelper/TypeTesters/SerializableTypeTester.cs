@@ -11,6 +11,13 @@ public sealed class SerializableTypeTester : IAotTypeTester
     {
         var shortName = type.FullName ?? type.Name;
         try {
+            // A [Union] root can be an interface, which never has constructors; the concrete
+            // subtypes carry them and are registered — and so tested — separately.
+            if (type.IsInterface) {
+                WriteLine($"  OK [Serializable] {shortName} (union root)");
+                return true;
+            }
+
             var ctors = type.GetConstructors(
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             if (ctors.Length == 0) {
