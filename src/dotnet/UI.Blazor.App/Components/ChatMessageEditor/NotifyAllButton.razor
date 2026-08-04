@@ -43,17 +43,19 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
-        // TODO: there `companion` and now there is an empty string, intentional?
-        var alertTarget = "";
         if (chatId.Kind is ChatKind.Peer) {
-            var cls = "font-bold";
+            var alertTarget = "";
             if (chatId is PeerChatId peerChatId) {
                 var anotherAuthorId = peerChatId.AnotherAuthorId(chat.Rules.Account!.Id);
                 var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
                 if (!(anotherAuthor?.Avatar.Name).IsNullOrEmpty())
                     alertTarget = anotherAuthor.Avatar.Name;
             }
-            return Model.EnabledUnread with { AlertTarget = alertTarget, AlertClass = cls, IsPeerChat = true }; // Always allowed for peer chats.
+            return Model.EnabledUnread with { // Always allowed for peer chats.
+                AlertTarget = alertTarget,
+                AlertClass = "font-bold",
+                IsPeerChat = true,
+            };
         }
 
         var isPublicAccessible = chat.IsPublic;
