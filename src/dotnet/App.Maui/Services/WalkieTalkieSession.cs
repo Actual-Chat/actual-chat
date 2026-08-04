@@ -26,20 +26,7 @@ public static class WalkieTalkieSession
             var sessionResolver = app.Services.GetRequiredService<TrueSessionResolver>();
             await sessionResolver.SessionTask.WaitAsync(StartupTimeout).ConfigureAwait(false);
 
-            IServiceProvider scopedServices;
-            var isHeadless = false;
-            if (AppServicesAccessor.TryGetScopedServices(out var liveScope))
-                scopedServices = liveScope;
-            else if (HeadlessBlazorScope.GetOrCreate() is { } headless) {
-                scopedServices = headless.Services;
-                isHeadless = true;
-            }
-            else if (AppServicesAccessor.TryGetScopedServices(out liveScope!))
-                // Lost the creation race to a just-published WebView scope
-                scopedServices = liveScope;
-            else
-                throw StandardError.Internal("No service scope is available.");
-
+            var (scopedServices, isHeadless) = ResolveScope();
             await StartPlayback(scopedServices, chatId, startedAt, isForeground, isHeadless, platform)
                 .ConfigureAwait(false);
             if (isHeadless)
@@ -49,6 +36,44 @@ public static class WalkieTalkieSession
             Log.LogError(e, "Walkie-talkie wake failed for chat #{ChatId}", chatId);
             platform.OnWakeFailed(chatId);
             await StopAndDisposeCurrent("wake failed").ConfigureAwait(false);
+        }
+    }
+
+    public static async Task<bool> HandleTransmit(WalkieTalkiePlatform platform)
+    {
+        var timeout = Constants.Audio.WalkieTalkiePttTransmitStartupTimeout;
+        try {
+            var app = await BlazorWebViewApp.WhenAppReady.WaitAsync(timeout).ConfigureAwait(false);
+            var sessionResolver = app.Services.GetRequiredService<TrueSessionResolver>();
+            await sessionResolver.SessionTask.WaitAsync(timeout).ConfigureAwait(false);
+
+            var (scopedServices, isHeadless) = ResolveScope();
+            var hub = scopedServices.GetRequiredService<AppUIHub>();
+            if (isHeadless)
+                hub.ChatAudioUI.IsWalkieTalkieHeadless = true;
+            if (hub.GestureUI.IsPracticeMode)
+                return false; // Rehearsing in Settings must never transmit
+
+            // RequestReply is idempotent, so a gesture-opened mic would make it report success and
+            // the transmission would later close a reply it never started.
+            if (await hub.ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
+                return false;
+
+            // The mic-permission check cannot show a prompt from a locked screen, so it must not be
+            // allowed to outlive the boot budget.
+            using var cts = new CancellationTokenSource(timeout);
+            await hub.WalkieTalkieReplyUI
+                .RequestReply(ReplyTargetResolver.UnboundedRecencyWindow, cts.Token)
+                .ConfigureAwait(false);
+            var isRecording = await hub.ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null;
+            if (isRecording && isHeadless)
+                EnsureTeardownWatcher(platform);
+
+            return isRecording;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Walkie-talkie transmit failed");
+            return false;
         }
     }
 
@@ -104,6 +129,19 @@ public static class WalkieTalkieSession
         await hub.AudioRecorder.State.Computed
             .When(x => x.ChatId is null, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private static (IServiceProvider Services, bool IsHeadless) ResolveScope()
+    {
+        if (AppServicesAccessor.TryGetScopedServices(out var liveScope))
+            return (liveScope, false);
+        if (HeadlessBlazorScope.GetOrCreate() is { } headless)
+            return (headless.Services, true);
+        if (AppServicesAccessor.TryGetScopedServices(out liveScope!))
+            // Lost the creation race to a just-published WebView scope
+            return (liveScope, false);
+
+        throw StandardError.Internal("No service scope is available.");
     }
 
     private static async Task StartPlayback(
@@ -164,6 +202,13 @@ public static class WalkieTalkieSession
                     return; // The WebView scope owns audio now
 
                 var chatAudioUI = headless.Services.GetRequiredService<AppUIHub>().ChatAudioUI;
+                // A transmit into a headless scope with nothing playing looks exactly like an idle
+                // session - without this the watcher would dispose the scope under an open mic.
+                if (chatAudioUI.IsRecording()) {
+                    idleChecks = 0;
+                    continue;
+                }
+
                 var listeningChatIds = await chatAudioUI.GetListeningChatIds().ConfigureAwait(false);
                 if (!listeningChatIds.IsEmpty || chatAudioUI.ReplayState.Value is not null) {
                     idleChecks = 0;

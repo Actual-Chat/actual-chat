@@ -310,6 +310,32 @@ namespace ActualChat.App.Maui.Services
     {
         public static Task HandleWake(ChatId chatId, Moment startedAt, bool isForeground, WalkieTalkiePlatform platform)
             => Task.CompletedTask;
+        public static Task<bool> HandleTransmit(WalkieTalkiePlatform platform) => Task.FromResult(false);
+    }
+}
+EOF
+fi
+
+WALKIE_TALKIE_SESSION_REL=src/dotnet/App.Maui/Services/WalkieTalkieSession.cs
+if [[ "$REL" == "$WALKIE_TALKIE_SESSION_REL" ]]; then
+cat >> Stubs.cs <<'EOF'
+namespace ActualChat.App.Maui.Services
+{
+    public abstract class WalkieTalkiePlatform
+    {
+        public abstract void OnWakeFailed(ChatId chatId);
+        public abstract void OnHeadlessTeardown();
+        public virtual Task OnPlaybackStarted(
+            ActualChat.UI.Blazor.App.Services.AppUIHub hub, ChatId chatId) => Task.CompletedTask;
+        public virtual Task OnForegroundWakeHandled(ChatId chatId) => Task.CompletedTask;
+    }
+    public sealed class HeadlessBlazorScope : IAsyncDisposable
+    {
+        public static HeadlessBlazorScope? Current => null;
+        public IServiceProvider Services => null!;
+        public static HeadlessBlazorScope? GetOrCreate() => null;
+        public static HeadlessBlazorScope? TryDetachCurrent(string reason) => null;
+        public ValueTask DisposeAsync() => default;
     }
 }
 EOF

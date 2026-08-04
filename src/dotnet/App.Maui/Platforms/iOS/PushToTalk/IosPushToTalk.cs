@@ -2,6 +2,7 @@ using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
 using ActualChat.Notifications;
 using ActualChat.Security;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using AVFoundation;
 using Foundation;
@@ -27,6 +28,7 @@ public static class IosPushToTalk
     private static RestorationDelegate? _restorationDelegate;
     private static volatile string _pttToken = "";
     private static volatile PendingWake? _pendingWake;
+    private static Transmission? _transmission;
     private static ILogger Log => field ??= StaticLog.For(typeof(IosPushToTalk));
 
     public static void Initialize()
@@ -117,9 +119,110 @@ public static class IosPushToTalk
         }, Log, "PTT token deregistration failed", CancellationToken.None);
     }
 
+    private static void OnTransmitBegan()
+    {
+        BlazorWebViewApp.EnsureStarted();
+        lock (Lock)
+            _transmission = new Transmission();
+    }
+
+    private static void StartTransmitReply(Transmission transmission)
+    {
+        var preRollToken = PttPreRoll.Start();
+        lock (Lock) {
+            if (!ReferenceEquals(_transmission, transmission))
+                return;
+
+            transmission.PreRollToken = preRollToken;
+        }
+
+        _ = BackgroundTask.Run(async () => {
+            var isRecording = await WalkieTalkieSession.HandleTransmit(IosPlatform.Instance)
+                .ConfigureAwait(false);
+            bool isEndPending;
+            lock (Lock) {
+                if (!ReferenceEquals(_transmission, transmission))
+                    return;
+
+                transmission.IsMicOwned = isRecording;
+                isEndPending = transmission.IsEndPending;
+            }
+            if (!isRecording) {
+                PttPreRoll.Discard(preRollToken);
+                StopTransmitting();
+                return;
+            }
+
+            if (isEndPending) {
+                // The user let go before the app finished booting. The buffered words are real
+                // speech, so the reply still goes out - it just holds open long enough for
+                // AppleAudioCapture to drain the pre-roll into the encoder.
+                await Task.Delay(Constants.Audio.WalkieTalkiePreRollFlushDelay).ConfigureAwait(false);
+                await StopTransmitReply(transmission).ConfigureAwait(false);
+            }
+        }, Log, "PTT transmit reply failed", CancellationToken.None);
+    }
+
+    private static void OnTransmitEnded()
+    {
+        Transmission? transmission;
+        lock (Lock) {
+            transmission = _transmission;
+            if (transmission is null)
+                return;
+
+            if (!transmission.IsMicOwned) {
+                transmission.IsEndPending = true;
+                AudioSession.ReleaseOwner(AudioSessionRelease.TransmitEnded);
+                return;
+            }
+        }
+        AudioSession.ReleaseOwner(AudioSessionRelease.TransmitEnded);
+        _ = BackgroundTask.Run(
+            () => StopTransmitReply(transmission),
+            Log, "Stopping the PTT transmit reply failed", CancellationToken.None);
+    }
+
+    private static async Task StopTransmitReply(Transmission transmission)
+    {
+        lock (Lock) {
+            if (!ReferenceEquals(_transmission, transmission))
+                return;
+
+            _transmission = null;
+        }
+        PttPreRoll.Discard(transmission.PreRollToken);
+        if (AppScopeAccessor.Current is not { } services)
+            return;
+
+        // Only stop what this transmission started: the mic may belong to a gesture reply.
+        if (!transmission.IsMicOwned)
+            return;
+
+        var hub = services.GetRequiredService<AppUIHub>();
+        await hub.WalkieTalkieReplyUI.StopReply().ConfigureAwait(false);
+    }
+
+    private static void StopTransmitting()
+    {
+        var manager = _manager;
+        if (manager?.ActiveChannelUuid is null)
+            return;
+
+        manager.StopTransmitting(ChannelUuid);
+    }
+
     private static void OnAudioSessionActivated()
     {
-        AudioSession.SetOwner(AudioSessionOwner.PttPlayback);
+        Transmission? transmission;
+        lock (Lock)
+            transmission = _transmission;
+        AudioSession.SetOwner(AudioSessionOwnership.OnActivated(transmission is not null));
+        if (transmission is not null) {
+            StartTransmitReply(transmission);
+            return;
+        }
+
         var wake = Interlocked.Exchange(ref _pendingWake, null);
         if (wake is null)
             return;
@@ -138,6 +241,13 @@ public static class IosPushToTalk
     // Nested types
 
     private sealed record PendingWake(ChatId ChatId, Moment StartedAt);
+
+    private sealed class Transmission
+    {
+        public long PreRollToken { get; set; }
+        public bool IsMicOwned { get; set; }
+        public bool IsEndPending { get; set; }
+    }
 
     private sealed class IosPlatform : WalkieTalkiePlatform
     {
@@ -179,6 +289,7 @@ public static class IosPushToTalk
         public override void DidLeaveChannel(
             PTChannelManager channelManager, NSUuid channelUuid, PTChannelLeaveReason reason)
         {
+            OnTransmitEnded();
             // A leave can tear the session down without DidDeactivateAudioSession;
             // a stuck flag would permanently disable the app's own session activation.
             AudioSession.ReleaseOwner(AudioSessionRelease.ChannelLeft);
@@ -188,11 +299,24 @@ public static class IosPushToTalk
 
         public override void DidBeginTransmitting(
             PTChannelManager channelManager, NSUuid channelUuid, PTChannelTransmitRequestSource source)
-        { }
+        {
+            Log.LogInformation("PTT transmit began ({Source})", source);
+            OnTransmitBegan();
+        }
 
         public override void DidEndTransmitting(
             PTChannelManager channelManager, NSUuid channelUuid, PTChannelTransmitRequestSource source)
-        { }
+        {
+            Log.LogInformation("PTT transmit ended ({Source})", source);
+            OnTransmitEnded();
+        }
+
+        public override void FailedToBeginTransmittingInChannel(
+            PTChannelManager channelManager, NSUuid channelUuid, NSError error)
+        {
+            Log.LogWarning("PTT transmit was refused: {Error}", error.LocalizedDescription);
+            OnTransmitEnded();
+        }
 
         public override void ReceivedEphemeralPushToken(PTChannelManager channelManager, NSData pushToken)
         {
