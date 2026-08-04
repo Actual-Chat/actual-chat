@@ -123,32 +123,46 @@ public static class IosPushToTalk
     {
         BlazorWebViewApp.EnsureStarted();
         lock (Lock)
-            _transmission = new Transmission();
+            _transmission = new Transmission { CreatedAt = CpuTimestamp.Now };
     }
 
     private static void StartTransmitReply(Transmission transmission)
     {
         var preRollToken = PttPreRoll.Start();
+        bool isCurrent;
         lock (Lock) {
-            if (!ReferenceEquals(_transmission, transmission))
-                return;
+            isCurrent = ReferenceEquals(_transmission, transmission);
+            if (isCurrent) {
+                transmission.PreRollToken = preRollToken;
+                transmission.IsStarted = true;
+            }
+        }
 
-            transmission.PreRollToken = preRollToken;
-            transmission.IsStarted = true;
+        if (!isCurrent) {
+            // The pre-roll engine already holds the hardware input node, and only a Discard takes
+            // it back off - a second engine must never end up on that node.
+            PttPreRoll.Discard(preRollToken);
+            return;
         }
 
         _ = BackgroundTask.Run(async () => {
-            var isRecording = await WalkieTalkieSession.HandleTransmit(IosPlatform.Instance)
+            var reply = await WalkieTalkieSession.HandleTransmit(IosPlatform.Instance)
                 .ConfigureAwait(false);
             bool isEndPending;
             lock (Lock) {
-                if (!ReferenceEquals(_transmission, transmission))
-                    return;
-
-                transmission.IsMicOwned = isRecording;
+                transmission.Reply = reply;
+                isCurrent = ReferenceEquals(_transmission, transmission);
                 isEndPending = transmission.IsEndPending;
             }
-            if (!isRecording) {
+
+            if (!isCurrent) {
+                // Superseded: this transmission owns nothing now, but its pre-roll engine is still
+                // on the input node and the reply it opened still has to close.
+                await StopTransmitReply(transmission).ConfigureAwait(false);
+                return;
+            }
+
+            if (reply is null) {
                 // StopTransmitReply, not a bare Discard: it also clears _transmission, and a
                 // latched one would make the next incoming wake open the mic instead of playing.
                 await StopTransmitReply(transmission).ConfigureAwait(false);
@@ -185,7 +199,7 @@ public static class IosPushToTalk
             if (transmission is null)
                 return;
 
-            if (!transmission.IsMicOwned) {
+            if (transmission.Reply is null) {
                 transmission.IsEndPending = true;
                 AudioSession.ReleaseOwner(AudioSessionRelease.TransmitEnded);
                 return;
@@ -199,22 +213,24 @@ public static class IosPushToTalk
 
     private static async Task StopTransmitReply(Transmission transmission)
     {
+        WalkieTalkieReply? reply;
+        long preRollToken;
         lock (Lock) {
-            if (!ReferenceEquals(_transmission, transmission))
-                return;
-
-            _transmission = null;
+            (reply, preRollToken) = (transmission.Reply, transmission.PreRollToken);
+            if (ReferenceEquals(_transmission, transmission))
+                _transmission = null;
         }
-        PttPreRoll.Discard(transmission.PreRollToken);
-        if (AppScopeAccessor.Current is not { } services)
+
+        // Both cleanups run even for a superseded transmission: the engine it left on the input
+        // node and the reply it opened are still its own, and nothing else will close them.
+        PttPreRoll.Discard(preRollToken);
+        if (reply is null || AppScopeAccessor.Current is not { } services)
             return;
 
-        // Only stop what this transmission started: the mic may belong to a gesture reply.
-        if (!transmission.IsMicOwned)
-            return;
-
+        // Only stop what this transmission opened - StopReply(reply) no-ops once anything else
+        // has replaced the open reply, so a gesture-held mic is never closed here.
         var hub = services.GetRequiredService<AppUIHub>();
-        await hub.WalkieTalkieReplyUI.StopReply().ConfigureAwait(false);
+        await hub.WalkieTalkieReplyUI.StopReply(reply).ConfigureAwait(false);
     }
 
     private static void StopTransmitting()
@@ -231,10 +247,7 @@ public static class IosPushToTalk
         Transmission? transmission;
         lock (Lock) {
             transmission = _transmission;
-            if (transmission is { IsStarted: false, IsEndPending: true }) {
-                // Released before the session ever activated, so no reply task exists to finish
-                // it. Acting on it here would take the session as PttTransmit, open the mic and
-                // swallow the pending wake - on what is most likely an incoming message.
+            if (transmission is not null && MustAbandon(transmission)) {
                 _transmission = null;
                 transmission = null;
             }
@@ -260,15 +273,29 @@ public static class IosPushToTalk
         }, Log, "PTT wake failed", CancellationToken.None);
     }
 
+    private static bool MustAbandon(Transmission transmission)
+    {
+        // Only a transmission that never reached StartTransmitReply: it has no reply task to
+        // finish it, so acting on it at a later activation would take the session as PttTransmit,
+        // open the mic and swallow the pending wake - on what is most likely an incoming message.
+        // A started one is bounded by its own reply task instead.
+        if (transmission.IsStarted)
+            return false;
+
+        return transmission.IsEndPending
+            || transmission.CreatedAt.Elapsed > Constants.Audio.WalkieTalkiePttTransmitStartupTimeout;
+    }
+
     // Nested types
 
     private sealed record PendingWake(ChatId ChatId, Moment StartedAt);
 
     private sealed class Transmission
     {
+        public CpuTimestamp CreatedAt { get; init; }
         public long PreRollToken { get; set; }
         public bool IsStarted { get; set; }
-        public bool IsMicOwned { get; set; }
+        public WalkieTalkieReply? Reply { get; set; }
         public bool IsEndPending { get; set; }
     }
 

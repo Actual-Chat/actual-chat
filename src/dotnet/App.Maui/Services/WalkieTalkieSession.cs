@@ -39,11 +39,11 @@ public static class WalkieTalkieSession
         }
     }
 
-    public static async Task<bool> HandleTransmit(WalkieTalkiePlatform platform)
+    public static async Task<WalkieTalkieReply?> HandleTransmit(WalkieTalkiePlatform platform)
     {
         var isHeadless = false;
         AppUIHub? hub = null;
-        var hasRequestedReply = false;
+        WalkieTalkieReply? reply = null;
         try {
             // One budget for the whole boot, shared by all three waits: the mic-permission check
             // inside RequestReply cannot show a prompt from a locked screen, so nothing here may
@@ -61,24 +61,23 @@ public static class WalkieTalkieSession
 
             // Rehearsing in Settings must never transmit
             if (hub.GestureUI.IsPracticeMode)
-                return false;
+                return null;
 
             // RequestReply is idempotent, so a gesture-opened mic would make it report success and
             // the transmission would later close a reply it never started.
             if (await hub.ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
-                return false;
+                return null;
 
-            // Set before the call, not after: RequestReply may open the mic and then fail.
-            hasRequestedReply = true;
-            await hub.WalkieTalkieReplyUI
+            // Null unless this very call opened the mic - see WalkieTalkieReplyUI.RequestReply.
+            reply = await hub.WalkieTalkieReplyUI
                 .RequestReply(ReplyTargetResolver.UnboundedRecencyWindow, cts.Token)
                 .ConfigureAwait(false);
-            return await hub.ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null;
+            return reply;
         }
         catch (Exception e) {
             Log.LogError(e, "Walkie-talkie transmit failed");
-            await StopOrphanedReply(hub, hasRequestedReply).ConfigureAwait(false);
-            return false;
+            await StopOrphanedReply(hub, reply).ConfigureAwait(false);
+            return null;
         }
         finally {
             // Also on every failure path: ResolveScope may have created this scope, and nothing
@@ -196,19 +195,16 @@ public static class WalkieTalkieSession
         _ = platform.OnPlaybackStarted(hub, chatId);
     }
 
-    private static async Task StopOrphanedReply(AppUIHub? hub, bool hasRequestedReply)
+    private static async Task StopOrphanedReply(AppUIHub? hub, WalkieTalkieReply? reply)
     {
-        // Only ever closes a reply this transmit opened: HandleTransmit bails out earlier when
-        // something else already holds the mic, so a recording that exists now is ours.
-        if (hub is null || !hasRequestedReply)
+        // Identity, not "is anything recording": StopReply(reply) no-ops unless this is still the
+        // open reply, so a gesture that grabbed the mic meanwhile keeps it.
+        if (hub is null || reply is null)
             return;
 
         try {
-            if (await hub.ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is null)
-                return;
-
             Log.LogWarning("Closing the reply opened by a failed walkie-talkie transmit");
-            await hub.WalkieTalkieReplyUI.StopReply().ConfigureAwait(false);
+            await hub.WalkieTalkieReplyUI.StopReply(reply).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Couldn't close the reply opened by a failed walkie-talkie transmit");

@@ -310,7 +310,9 @@ namespace ActualChat.App.Maui.Services
     {
         public static Task HandleWake(ChatId chatId, Moment startedAt, bool isForeground, WalkieTalkiePlatform platform)
             => Task.CompletedTask;
-        public static Task<bool> HandleTransmit(WalkieTalkiePlatform platform) => Task.FromResult(false);
+        public static Task<ActualChat.UI.Blazor.App.Services.WalkieTalkieReply?> HandleTransmit(
+            WalkieTalkiePlatform platform)
+            => Task.FromResult<ActualChat.UI.Blazor.App.Services.WalkieTalkieReply?>(null);
     }
 }
 EOF
