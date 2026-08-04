@@ -4,8 +4,5 @@
     <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="data\api-evolution\*.bin" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
 
 </Project>
