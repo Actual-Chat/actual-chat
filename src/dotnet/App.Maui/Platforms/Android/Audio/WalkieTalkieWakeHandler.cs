@@ -87,7 +87,7 @@ public static class WalkieTalkieWakeHandler
     {
         // A wake failure must not take down a service the WebView widget has since taken over:
         // the widget's state doesn't change on our failure, so nothing would ever re-show it.
-        if (mustOwn && !AndroidAudioWidget.IsWakeOwnedForegroundService)
+        if (mustOwn && !AndroidAudioWidget.IsForegroundServiceWakeOwned())
             return;
 
         AndroidAudioWidgetForegroundService.Stop(Platform.AppContext);

@@ -132,6 +132,9 @@ public class AndroidAudioWidgetForegroundService : Service
         if (action != ActionShow)
             return StartCommandResult.Sticky;
 
+        // A Show revives an instance whose deferred stop never reached OnDestroy - otherwise the
+        // microphone re-type would stay dead for the rest of its life.
+        Volatile.Write(ref _isStopping, false);
         var mode = (AudioWidgetMode)(intent!.Extras?.GetInt(IntentExtras.Mode) ?? 0);
         if (!Enum.IsDefined(mode))
             mode = AudioWidgetMode.Listening;

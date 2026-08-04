@@ -8,7 +8,7 @@ namespace ActualChat.App.Maui.Audio;
 public class AndroidAudioWidget : AudioWidget
 {
     private static volatile AndroidAudioWidget? _instance;
-    private static volatile bool _isShown;
+    private static bool _isShown;
     private static bool _isWakeOwned;
     private static ILogger? _log;
 
@@ -83,19 +83,23 @@ public class AndroidAudioWidget : AudioWidget
 
     // Protected/internal methods
 
-    internal static bool IsWakeOwnedForegroundService => Volatile.Read(ref _isWakeOwned);
-
     internal static void MarkForegroundServiceShown()
     {
-        _isShown = true;
-        Volatile.Write(ref _isWakeOwned, true);
+        // Ownership is claimable only while nothing is shown: once the WebView widget owns the
+        // service, a failing wake must not be able to take it down - nothing would re-show it.
+        if (!Volatile.Read(ref _isShown))
+            Volatile.Write(ref _isWakeOwned, true);
+        Volatile.Write(ref _isShown, true);
     }
 
     internal static void MarkForegroundServiceHidden()
     {
-        _isShown = false;
+        Volatile.Write(ref _isShown, false);
         Volatile.Write(ref _isWakeOwned, false);
     }
+
+    internal static bool IsForegroundServiceWakeOwned()
+        => Volatile.Read(ref _isWakeOwned);
 
     // Private methods
 
@@ -115,7 +119,7 @@ public class AndroidAudioWidget : AudioWidget
         intent.PutExtra(IntentExtras.IsPaused, state.IsPaused);
         intent.PutExtra(IntentExtras.CanPause, state.CanPause);
         if (AndroidAudioWidgetForegroundService.TryStart(context, intent)) {
-            _isShown = true;
+            Volatile.Write(ref _isShown, true);
             // The widget's own state drives the service from here on, so a wake failure must not
             // take it down - nothing would ever re-show it.
             Volatile.Write(ref _isWakeOwned, false);
@@ -126,10 +130,11 @@ public class AndroidAudioWidget : AudioWidget
 
     private static void HideImpl()
     {
-        if (!_isShown)
+        if (!Volatile.Read(ref _isShown))
             return;
 
-        _isShown = false;
+        Volatile.Write(ref _isShown, false);
+        Volatile.Write(ref _isWakeOwned, false);
         AndroidAudioWidgetForegroundService.Stop(Context);
     }
 }
