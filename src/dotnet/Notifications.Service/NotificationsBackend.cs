@@ -783,19 +783,20 @@ public class NotificationsBackend(IServiceProvider services)
             .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
             .ConfigureAwait(false);
         var activeUserIds = await GetActiveParticipantUserIds(chatId, cancellationToken).ConfigureAwait(false);
-        foreach (var userId in userIds) {
-            if (userId == speaker?.UserId || activeUserIds.Contains(userId))
-                continue;
-
-            try {
-                await SendWalkieTalkieWake(userId, chatId, authorId, startedAt, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogError(e,
-                    "Walkie-talkie wake failed for user '{UserId}' in chat '{ChatId}'", userId, chatId);
-            }
-        }
+        await userIds
+            .Where(userId => userId != speaker?.UserId && !activeUserIds.Contains(userId))
+            .Select(async userId => {
+                try {
+                    await SendWalkieTalkieWake(userId, chatId, authorId, startedAt, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception e) when (e is not OperationCanceledException) {
+                    Log.LogError(e,
+                        "Walkie-talkie wake failed for user '{UserId}' in chat '{ChatId}'", userId, chatId);
+                }
+            })
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // Private methods
@@ -1062,26 +1063,34 @@ public class NotificationsBackend(IServiceProvider services)
     {
         if (!await IsArmedForWalkieTalkie(userId, chatId, cancellationToken).ConfigureAwait(false))
             return;
+        var mode = await GetNotificationMode(userId, chatId, cancellationToken).ConfigureAwait(false);
+        if (mode == ChatNotificationMode.Muted)
+            return;
 
-        lock (_wakePending) {
-            if (!_wakePending.TryAdd((userId, chatId)))
-                return;
-        }
-
-        var devices = await ListDevices(userId, cancellationToken).ConfigureAwait(false);
+        var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
+        var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
         var fcmDeviceIds = devices
             .Where(d => d.DeviceType == DeviceType.AndroidApp)
             .Select(d => d.DeviceId)
             .ToList();
+        var pttDeviceIds = devices
+            .Where(d => d.DeviceType == DeviceType.iOSPttApp)
+            .Select(d => d.DeviceId)
+            .ToList();
+        if (fcmDeviceIds.Count == 0 && pttDeviceIds.Count == 0)
+            return;
+
+        lock (_wakePending) {
+            _wakePending.Prune();
+            if (!_wakePending.TryAdd((userId, chatId)))
+                return;
+        }
+
         if (fcmDeviceIds.Count != 0)
             await FirebaseMessagingClient
                 .SendSpeechStartedWake(chatId, authorId, startedAt, fcmDeviceIds, cancellationToken)
                 .ConfigureAwait(false);
 
-        var pttDeviceIds = devices
-            .Where(d => d.DeviceType == DeviceType.iOSPttApp)
-            .Select(d => d.DeviceId)
-            .ToList();
         if (pttDeviceIds.Count != 0) {
             // The PTT system UI needs a channel/speaker label at push time, before any RPC.
             var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
