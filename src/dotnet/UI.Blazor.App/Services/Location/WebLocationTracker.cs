@@ -38,14 +38,14 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
         if (!IsTracking)
             return;
 
-        SetTrackedLocation(null);
+        SetCached(null);
         SetError(null);
         await DisposeWatch().ConfigureAwait(false);
     }
 
     [JSInvokable]
     public void OnLocation(double latitude, double longitude, double? accuracy, double? heading)
-        => SetTrackedLocation(new GeoPoint(latitude, longitude, (float?)accuracy, (float?)heading));
+        => SetCached(new GeoPoint(latitude, longitude, (float?)accuracy, (float?)heading));
 
     [JSInvokable]
     public void OnError(int code)
@@ -60,7 +60,7 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
 
     // Protected/internal methods
 
-    protected override Task<GeoPoint?> FetchCurrent(bool mustBeFresh, CancellationToken cancellationToken)
+    protected override Task<GeoPoint?> Fetch(bool mustBeFresh, CancellationToken cancellationToken)
         => _hub.JS
             .InvokeAsync<GeoPoint?>(JSGetCurrentMethod, cancellationToken, mustBeFresh)
             .AsTask();
