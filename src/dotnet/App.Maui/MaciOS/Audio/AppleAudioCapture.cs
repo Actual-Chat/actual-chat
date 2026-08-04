@@ -7,13 +7,11 @@ namespace ActualChat.App.Maui.Audio;
 
 public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
 {
-    // Bounds a latch leaked by an abandoned enumerator or a hung native read, which would
-    // otherwise disable the PTT pre-roll for the rest of the process.
-    private static readonly TimeSpan InputNodeHoldTimeout = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan InputNodeHeartbeatTimeout = TimeSpan.FromSeconds(30);
 
     private static long _inputNodeHeldAt;
+    private static long _inputNodeHeartbeatAt;
 
-    // Null when the app's recorder isn't holding the hardware input node.
     public static TimeSpan? InputNodeHeldFor {
         get {
             var heldAt = Volatile.Read(ref _inputNodeHeldAt);
@@ -21,7 +19,17 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         }
     }
 
-    public static bool IsInputNodeHeld => InputNodeHeldFor is { } heldFor && heldFor < InputNodeHoldTimeout;
+    public static bool IsInputNodeHeld {
+        get {
+            // Liveness, not elapsed time: a recording of any length keeps its heartbeat, while an
+            // engine that stopped delivering releases the node instead of blocking the pre-roll.
+            if (Volatile.Read(ref _inputNodeHeldAt) == 0)
+                return false;
+
+            var heartbeatAt = Volatile.Read(ref _inputNodeHeartbeatAt);
+            return new CpuTimestamp(heartbeatAt).Elapsed < InputNodeHeartbeatTimeout;
+        }
+    }
 
     public ResamplerFactory ResamplerFactory => field ??= hub.Services.GetRequiredService<ResamplerFactory>();
 
@@ -37,7 +45,9 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         // First statement, before TryTake() stops the pre-roll engine: everything below is
         // blocking native work, and a press landing in that window would see a free input node
         // and publish a second AVAudioEngine onto it - see PttPreRoll.Start().
-        Volatile.Write(ref _inputNodeHeldAt, CpuTimestamp.Now.Value);
+        var heldAt = CpuTimestamp.Now.Value;
+        Volatile.Write(ref _inputNodeHeartbeatAt, heldAt);
+        Volatile.Write(ref _inputNodeHeldAt, heldAt);
         try {
             // TryTake() stops its own AVAudioEngine, and that must happen before
             // AudioEngines.Recording is touched below - two AVAudioEngine instances must never
@@ -109,6 +119,8 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
             [SuppressMessage("ReSharper", "AccessToDisposedClosure")]
             void HandleSamples(AVAudioPcmBuffer pcmBuffer, AVAudioTime when)
             {
+                // The engine is alive and still owns the input node - see IsInputNodeHeld.
+                Volatile.Write(ref _inputNodeHeartbeatAt, CpuTimestamp.Now.Value);
                 try {
                     var estimatedResampledLength = pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
                     if (outBuffer.RemainingCapacity < estimatedResampledLength) {

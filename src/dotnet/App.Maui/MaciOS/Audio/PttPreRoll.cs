@@ -67,10 +67,13 @@ public static class PttPreRoll
             // A concurrent TryTake()/Discard() may have already closed this token's window while
             // this method was doing native work on another thread - publish only if this is still
             // the newest, unclosed token, so a raced-out engine never ends up on the hardware
-            // input node with no one left who will ever stop it.
+            // input node with no one left who will ever stop it. The latch is re-read here too:
+            // the recorder may have claimed the node after the check at the top of this method.
             bool isPublished;
             lock (Lock) {
-                isPublished = token == _lastToken && token > _closedToken;
+                isPublished = token == _lastToken
+                    && token > _closedToken
+                    && !AppleAudioCapture.IsInputNodeHeld;
                 if (isPublished)
                     (_engine, _format, _buffer) = (engine, format, buffer);
             }
