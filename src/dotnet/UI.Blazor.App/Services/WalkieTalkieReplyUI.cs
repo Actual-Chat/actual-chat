@@ -60,9 +60,15 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         // Published before the mic opens: WalkieReplyToggle recomputes on the recording-chat change
         // and must already see this reply as walkie-owned.
         var reply = new WalkieTalkieReply(chatId, Clocks.SystemClock.Now);
-        lock (_lock)
+        WalkieTalkieReply? displacedReply;
+        lock (_lock) {
+            displacedReply = _reply;
             _reply = reply;
+        }
+        // The new hold first, so the capability can't dip between the two.
         WalkieTalkieMicCapability.Hold(reply);
+        if (displacedReply is not null)
+            WalkieTalkieMicCapability.Release(displacedReply);
 
         try {
             await ChatAudioUI.SetRecordingChatId(chatId,

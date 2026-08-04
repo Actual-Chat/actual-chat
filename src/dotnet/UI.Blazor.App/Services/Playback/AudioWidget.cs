@@ -57,13 +57,19 @@ public class AudioWidget : IDisposable
 
     protected void InvokeAction(string actionName)
     {
-        var replayState = ChatAudioUI.ReplayState.Value;
-        if (replayState is not null)
-            InvokeReplayAction(replayState, actionName);
-        else {
-            var state = _state.Value;
-            if (state is { Mode: AudioWidgetMode.Listening })
-                InvokeListeningAction(state.Chat.Id, actionName);
+        // Routes on what the notification is showing, not on ReplayState: a replay state whose
+        // player isn't playing leaves ComputeState showing something else entirely.
+        if (_state.Value is not { } state)
+            return;
+
+        switch (state.Mode) {
+        case AudioWidgetMode.Replaying:
+            if (ChatAudioUI.ReplayState.Value is { } replayState)
+                InvokeReplayAction(replayState, actionName);
+            break;
+        case AudioWidgetMode.Listening:
+            InvokeListeningAction(state.Chat.Id, actionName);
+            break;
         }
     }
 
