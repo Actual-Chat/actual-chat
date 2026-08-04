@@ -17,7 +17,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     private readonly Disposable<NSObject> _mediaServicesResetSubscription;
     private readonly Disposable<NSObject> _routeChangeSubscription;
     private readonly TaskSerializer _interruptionQueue = new();
-    private volatile bool _isInterrupted;
+    private bool _isInterrupted;
     private bool _isSuspended;
     private bool _isSessionConfigured;
     private bool _isSessionActivated;
@@ -89,6 +89,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             Log.LogError(e, "Failed to acquire scope for {Mode}", requester.Kind);
             throw;
         }
+
         return scope;
     }
 
@@ -109,7 +110,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         => new (
             IsSupported: true,
             ActiveMode: _activeScopes.GetMode(),
-            IsInterrupted: _isInterrupted,
+            IsInterrupted: Volatile.Read(ref _isInterrupted),
             IsSuspended: _isSuspended,
             IsSessionConfigured: _isSessionConfigured,
             Scopes: _activeScopes.GetScopeInfos(),
@@ -142,7 +143,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     private async Task SetModeUnsafe(AudioFocusMode mode)
     {
         Log.LogInformation("SetMode: {Mode}", mode);
-        if (_isInterrupted) {
+        if (Volatile.Read(ref _isInterrupted)) {
             // iOS rejects SetActive(true) while an interruption is in progress; RecoverInternal
             // reactivates in the latest mode once the interruption ends.
             Log.LogInformation("SetMode: {Mode} deferred - interruption in progress", mode);
@@ -156,7 +157,9 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             AudioEngines.Pause();
 
         var setup = await AudioSession.Reconfigure(mode).ConfigureAwait(false);
-        if (mustBounceEngines)
+        // setup.IsActivated covers an owner flip between the snapshot above and ReconfigureUnsafe
+        // running: the session went through a deactivate/activate pair with the engines never paused.
+        if (mustBounceEngines || setup.IsActivated)
             AudioEngines.Resume(mode);
 
         (_isSessionConfigured, _isSessionActivated) = (setup.IsConfigured, setup.IsActivated);
@@ -224,7 +227,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         // observes this, so without a full rebuild audio stays dead while the UI still
         // thinks it's listening (headphones button stays on).
         Log.LogWarning("Media services were reset - rebuilding audio session");
-        _isInterrupted = false;
+        Volatile.Write(ref _isInterrupted, false);
         _ = _interruptionQueue.Enqueue(_ => RebuildAfterMediaServicesReset());
     }
 
@@ -269,7 +272,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     {
         bool shouldRecover;
         using (await _lock.Lock(StopToken).ConfigureAwait(false))
-            shouldRecover = _isSuspended && !_isInterrupted && !_activeScopes.IsEmpty;
+            shouldRecover = _isSuspended && !Volatile.Read(ref _isInterrupted) && !_activeScopes.IsEmpty;
         if (!shouldRecover)
             return;
 
@@ -290,12 +293,12 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             switch (type) {
             case AVAudioSessionInterruptionType.Began:
                 using (await _lock.Lock(StopToken).ConfigureAwait(false)) {
-                    _isInterrupted = true;
+                    Volatile.Write(ref _isInterrupted, true);
                     InvokeLostFocusUnsafe(true, false);
                 }
                 break;
             case AVAudioSessionInterruptionType.Ended:
-                _isInterrupted = false;
+                Volatile.Write(ref _isInterrupted, false);
                 // ShouldResume is unreliable for phone calls, so always recover.
                 await TryRecover().ConfigureAwait(false);
                 break;
@@ -350,6 +353,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
                 log.LogWarning("Requester {Requester} not found in active scopes", requester);
                 return false;
             }
+
             if (existing != scope) {
                 log.LogError("Scope {Scope} doesn't match existing scope {Existing} for {Mode}",
                     scope,
@@ -357,6 +361,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
                     requester.Kind);
                 return false;
             }
+
             return true;
         }
 
