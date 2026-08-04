@@ -21,8 +21,8 @@
     @apply absolute top-2 left-2;
     @apply w-8 h-8;
     @apply rounded-full;
-    background: var(--white-50);
-    color: var(--blue-50);
+    background: var(--map-badge);
+    color: var(--location-accent);
     @apply text-sm font-medium;
     @apply pointer-events-none;
 }
@@ -32,8 +32,8 @@
 .location-message .c-map-area .btn.btn-round.btn-stop-sharing {
     @apply absolute top-2 right-2;
     @apply w-8 h-8;
-    background: var(--white-80);
-    color: var(--magenta-50);
+    background: var(--map-control);
+    color: var(--location-stop);
 }
 .location-message .c-map-area .btn.btn-round.btn-stop-sharing marker-pin-off-svg {
     @apply text-xl;
@@ -57,7 +57,7 @@
     @apply text-2xl text-03;
 }
 .location-message.live .c-footer .c-pin {
-    color: var(--blue-50);
+    color: var(--location-accent);
 }
 .location-message .c-footer .c-info {
     @apply flex-y grow min-w-0;
@@ -67,7 +67,7 @@
     @apply text-headline-1 text-01;
 }
 .location-message.live .c-footer .c-title {
-    color: var(--blue-50);
+    color: var(--location-accent);
 }
 .location-message .c-footer .c-caption {
     @apply truncate;
