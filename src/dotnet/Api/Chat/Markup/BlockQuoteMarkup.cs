@@ -7,10 +7,11 @@ namespace ActualChat.Chat;
 /// Its inline content may contain any non-block markup (mentions, styles, urls, emoji, newlines).
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MessagePackObject]
 public sealed class BlockQuoteMarkup : BlockMarkup
 {
+    [DataMember, Key(0)]
     public Markup Content { get; }
-
     public BlockQuoteMarkup(Markup content)
     {
         if (content.IsBlockMarkup())

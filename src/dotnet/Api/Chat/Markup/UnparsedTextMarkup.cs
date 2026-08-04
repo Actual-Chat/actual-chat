@@ -6,6 +6,7 @@ namespace ActualChat.Chat;
 /// Represents text that should not be parsed for markup.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MessagePackObject]
 public sealed class UnparsedTextMarkup(string text) : TextMarkup(text)
 {
     public static readonly UnparsedTextMarkup Empty = new("");

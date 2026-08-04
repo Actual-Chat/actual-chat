@@ -6,10 +6,11 @@ namespace ActualChat.Chat;
 /// Represents a single item in a <see cref="ListMarkup"/>.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MessagePackObject]
 public sealed class ListItemMarkup(Markup content) : Markup
 {
     public const string Prefix = "- ";
-
+    [DataMember, Key(0)]
     public Markup Content { get; } = content;
 
     public override string Format()

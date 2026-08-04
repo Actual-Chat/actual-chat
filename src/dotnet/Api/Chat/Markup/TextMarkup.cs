@@ -51,7 +51,9 @@ public abstract class TextMarkup(string text) : Markup
         }
     }
 
+    [DataMember, Key(0)]
     public string Text { get; } = text;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public virtual TextMarkupKind Kind => TextMarkupKind.Unknown;
 
     public override string ToString()

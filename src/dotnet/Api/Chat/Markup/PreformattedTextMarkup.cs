@@ -6,6 +6,7 @@ namespace ActualChat.Chat;
 /// Represents inline monospace/code text wrapped in backticks.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MessagePackObject]
 public sealed class PreformattedTextMarkup(string text) : TextMarkup(text)
 {
     public static readonly PreformattedTextMarkup Empty = new("");

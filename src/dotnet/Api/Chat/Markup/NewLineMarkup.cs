@@ -6,6 +6,7 @@ namespace ActualChat.Chat;
 /// Represents a line break in markup.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MessagePackObject]
 public sealed class NewLineMarkup() : TextMarkup("\r\n")
 {
     public static readonly NewLineMarkup Instance = new();
