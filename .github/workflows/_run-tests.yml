@@ -250,6 +250,9 @@ jobs:
           CoreSettings__PromptsDir: ${{github.workspace}}/.config/prompts/
           StreamingSettings__DeepgramKey: ${{secrets.DEEPGRAM_API_KEY}}
           ChatSettings__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
+          CoreSettings__DeepgramKey: ${{secrets.DEEPGRAM_API_KEY}}
+          CoreSettings__SonioxKey: ${{secrets.SONIOX_API_KEY}}
+          CoreSettings__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
         run: |-
           cat <<- 'EOF' > ./.config/gcp-key.json
           ${{secrets.GCP_KEY_JSON}}
