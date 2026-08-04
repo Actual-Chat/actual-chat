@@ -27,7 +27,7 @@ public interface IChatsUpgradeBackend : ICommandService, IBackendService
 public sealed partial record ChatsUpgradeBackend_CreateDefaultChat(
 ) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Constants.Chat.DefaultChatId;
 }
 
@@ -39,7 +39,7 @@ public sealed partial record ChatsUpgradeBackend_CreateDefaultChat(
 public sealed partial record ChatsUpgradeBackend_CreateAnnouncementsChat(
 ) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Constants.Chat.AnnouncementsChatId;
 }
 
@@ -51,7 +51,7 @@ public sealed partial record ChatsUpgradeBackend_CreateAnnouncementsChat(
 public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
 ) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Constants.Chat.FeedbackTemplateChatId;
 }
 
@@ -63,7 +63,7 @@ public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
 public sealed partial record ChatsUpgradeBackend_FixCorruptedReadPositions(
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId?>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId? ShardKey => null;
 }
 
@@ -76,6 +76,6 @@ public sealed partial record ChatsUpgradeBackend_UpgradeChat(
     [property: DataMember, Key(0)] ChatId ChatId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }

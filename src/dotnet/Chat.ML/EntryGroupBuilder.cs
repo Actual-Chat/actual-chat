@@ -16,22 +16,22 @@ public partial class EntryGroupBuilder
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public IReadOnlyList<ChatEntrySlim> Entries => _entries;
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public IDictionary<AuthorId, int> AuthorActivity { get; } = new Dictionary<AuthorId, int>();
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int WordCount => _wordCount;
 
     [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public double[] Embeddings { get; set; } = [];
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int AveragePauseBetweenEntries => _averagePauseBetweenEntries;
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MinLid => _minLid;
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MaxLid => _maxLid;
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

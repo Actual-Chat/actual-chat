@@ -32,7 +32,7 @@ public sealed partial record Conversation(
     [DataMember, Key(12)] public ChatEntryAttachment[] Attachments { get; init; } = []; // Populated only on reads by ConversationsBackend
     [DataMember, Key(13)] public bool IsExpandedByDefault { get; init; }
 
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Range<long> EntryLidRange => new(Id.StartEntryLid, EndEntryLid + 1);
 
     // This record relies on referential equality

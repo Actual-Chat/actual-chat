@@ -28,6 +28,6 @@ public sealed partial record UserPresencesBackend_CheckIn(
     [property: DataMember, Key(2)] bool IsActive
 ) : IDelegatingCommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

@@ -70,7 +70,7 @@ public sealed partial record AccountsBackend_SignOut(
     [property: DataMember, Key(1)] bool Deactivate = false
 ) : ISessionCommand<Unit>, IBackendCommand, IHasShardKey<Session>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Session ShardKey => Session;
 }
 
@@ -84,7 +84,7 @@ public sealed partial record AccountsBackend_Update(
     [property: DataMember, Key(1)] long? ExpectedVersion
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Account.Id;
 }
 
@@ -97,6 +97,6 @@ public sealed partial record AccountsBackend_Delete(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

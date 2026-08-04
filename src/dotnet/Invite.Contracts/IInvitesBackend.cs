@@ -34,7 +34,7 @@ public sealed partial record InvitesBackend_Revoke(
     [property: DataMember, Key(1)] string InviteId
 ) : ISessionCommand<Unit>, IHasShardKey<string>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string ShardKey => InviteId;
 }
 
@@ -48,7 +48,7 @@ public sealed partial record InvitesBackend_Use(
     [property: DataMember, Key(1)] string InviteId
 ) : ISessionCommand<Invite>, IHasShardKey<string>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string ShardKey => InviteId;
 }
 
@@ -61,6 +61,6 @@ public sealed partial record InvitesBackend_Generate(
     [property: DataMember, Key(0)] Invite Invite
 ) : ICommand<Invite>, IBackendCommand, IHasShardKey<Unit>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Unit ShardKey => default;
 }

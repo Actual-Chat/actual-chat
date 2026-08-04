@@ -53,7 +53,7 @@ public sealed partial record AuthorsBackend_Upsert(
     [property: DataMember, Key(5)] bool DoNotNotify = false
 ) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }
 
@@ -68,7 +68,7 @@ public sealed partial record AuthorsBackend_Remove(
     [property: DataMember, Key(2)] UserId? ByUserId
 ) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey<PrincipalId?>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public PrincipalId? ShardKey => (ByChatId is not null, ByAuthorId is not null, ByUserId is not null) switch {
         (true, _, _) => AuthorId.New(ByChatId!, 1),
         (_, true, _) => ByAuthorId,
@@ -89,7 +89,7 @@ public sealed partial record AuthorsBackend_CopyChat(
     [property: DataMember, Key(3)] string CorrelationId
 ) : ICommand<bool>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => OldChatId;
 }
 

@@ -13,7 +13,7 @@ public sealed partial record ActiveShare(
 )
 {
     // StartedAt + TimeSpan.MaxValue would silently wrap negative
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Moment ExpiresAt => Duration == Constants.Location.UnlimitedDuration
         ? Moment.MaxValue
         : StartedAt + Duration;

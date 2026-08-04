@@ -25,6 +25,6 @@ public sealed partial record AvatarsBackend_Change(
     [property: DataMember, Key(2)] Change<AvatarDiff> Change
 ) : ICommand<AvatarFull>, IBackendCommand, IHasShardKey<Symbol>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Symbol ShardKey => AvatarId;
 }

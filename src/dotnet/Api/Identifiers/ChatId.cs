@@ -35,7 +35,7 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
         => this is PlaceChatId placeChatId ? placeChatId.RootChatId : this;
     [IgnoreDataMember]
     public MentionKind MentionKind => MentionKind.Chat;
-    [IgnoreDataMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
     public virtual string ShardKey => Value;
 
     // Factories and constructors

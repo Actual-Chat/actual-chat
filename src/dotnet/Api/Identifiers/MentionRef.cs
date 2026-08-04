@@ -27,7 +27,7 @@ public sealed partial class MentionRef : StringIdentifier, IStringIdentifier<Men
     public MentionKind Kind { get; }
     [IgnoreDataMember]
     public IMentionTarget Target { get; }
-    [IgnoreDataMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string ShardKey => Target.ShardKey;
 
     // Factories and constructors

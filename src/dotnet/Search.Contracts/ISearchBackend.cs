@@ -53,6 +53,6 @@ public sealed partial record SearchBackend_Refresh(
     [property: DataMember, Key(3)] bool RefreshEntries = false
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId?> // Review
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId? ShardKey => null;
 }

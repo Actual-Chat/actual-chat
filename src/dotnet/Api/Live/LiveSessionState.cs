@@ -55,19 +55,19 @@ public sealed partial record LiveSessionState
     [DataMember(Order = 21), Key(21)]
     public bool IsExpandedByDefault { get; init; }
 
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public long EffectiveVisibleStartLid => VisibleStartLid > 0 ? VisibleStartLid : StartEntryLid;
     [IgnoreDataMember, IgnoreMember]
     public Range<long> VisibleEntryLidRange
         => new(EffectiveVisibleStartLid, Math.Max(EndEntryLid, EffectiveVisibleStartLid) + 1);
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ConversationId ConversationId => ConversationId.New(ChatId, EffectiveVisibleStartLid);
     // Ring id must stay fixed for the whole call, unlike ConversationId, which jumps at the latch.
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ConversationId RingConversationId => ConversationId.New(ChatId, StartEntryLid);
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsCall => Kind is LiveSessionKind.Call or LiveSessionKind.Dialing;
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsDialing => Kind == LiveSessionKind.Dialing;
 
     public Conversation ToConversation()

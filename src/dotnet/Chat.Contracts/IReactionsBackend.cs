@@ -25,6 +25,6 @@ public sealed partial record ReactionsBackend_React(
     [property: DataMember, Key(0)] Reaction Reaction
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatEntryId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatEntryId ShardKey => Reaction.EntryId;
 }

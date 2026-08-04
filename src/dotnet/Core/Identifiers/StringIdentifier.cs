@@ -36,7 +36,7 @@ public abstract class StringIdentifier(string value) : IStringIdentifier
     public readonly string Value = value;
     [IgnoreDataMember]
     public readonly int HashCode = value.GetHashCode();
-    [IgnoreDataMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
     public Symbol Id => new(Value, HashCode);
 
     // IStringIdentifier members

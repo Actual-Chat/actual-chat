@@ -35,7 +35,7 @@ public sealed partial record ChatUsagesBackend_RegisterUsage(
     [property: DataMember, Key(3)] DateTime? AccessTime
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -50,6 +50,6 @@ public sealed partial record ChatUsagesBackend_PurgeRecencyList(
     [property: DataMember, Key(2)] int Size
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

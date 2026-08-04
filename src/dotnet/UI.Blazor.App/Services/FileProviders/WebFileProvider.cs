@@ -21,7 +21,7 @@ public partial class WebFileProvider : IFileProvider
     [DataMember, Key(1)]
     public string FileHandleDbKey { get; set; } = "";
 
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public IWebFileProviderInternal? WebFileProviderInternal { get; set; }
 
     public void Initialize(IServiceProvider services)

@@ -26,11 +26,11 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     [DataMember, MemoryPackOrder(5), Key(5)] public GeoTrackingAccuracy? LocationAccuracy { get; init; }
     // MemoryPackOrder(6) reserved (was IsAudioDiagnosticsEnabled) — do not reuse.
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsBackgroundBlurEnabledOrDefault => IsBackgroundBlurEnabled ?? false;
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public GeoTrackingAccuracy LocationAccuracyOrDefault => LocationAccuracy ?? GeoTrackingAccuracy.Balanced;
 }
 

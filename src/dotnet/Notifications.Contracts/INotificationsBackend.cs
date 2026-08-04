@@ -77,7 +77,7 @@ public sealed partial record NotificationsBackend_Notify(
     [property: DataMember, Key(0)] Notification Notification
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Notification.UserId;
 }
 
@@ -88,7 +88,7 @@ public sealed partial record NotificationsBackend_Process(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -99,7 +99,7 @@ public sealed partial record NotificationsBackend_Handle(
     [property: DataMember, Key(0)] NotificationId NotificationId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => NotificationId.UserId;
 }
 
@@ -111,7 +111,7 @@ public sealed partial record NotificationsBackend_HandleAll(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -125,7 +125,7 @@ public sealed partial record NotificationsBackend_Push(
     [property: DataMember, Key(1)] bool IsSilent = false
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Notification.UserId;
 }
 
@@ -138,7 +138,7 @@ public sealed partial record NotificationsBackend_PushDismissal(
     [property: DataMember, Key(1)] ApiArray<Notification> Dismissed
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -151,7 +151,7 @@ public sealed partial record NotificationsBackend_UpsertExplicitNotification(
     [property: DataMember, Key(0)] ExplicitNotification Notification
 ) : ICommand<bool>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Notification.UserId;
 }
 
@@ -167,7 +167,7 @@ public sealed partial record NotificationsBackend_RegisterDevice(
     [property: DataMember, Key(3)] Symbol SessionHash
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -180,7 +180,7 @@ public sealed partial record NotificationsBackend_RemoveDevices(
     [property: DataMember, Key(0)] Symbol[] DeviceIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<Symbol> // Review
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Symbol ShardKey => DeviceIds.FirstOrDefault();
 }
 
@@ -193,7 +193,7 @@ public sealed partial record NotificationsBackend_RemoveAccount(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -208,7 +208,7 @@ public sealed partial record NotificationsBackend_NotifyMembers(
     [property: DataMember, Key(2)] long LastEntryId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
@@ -238,7 +238,7 @@ public sealed partial record NotificationsBackend_NotifyConversation(
     [property: DataMember, Key(4)] IReadOnlyList<AuthorId> AuthorIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
@@ -254,7 +254,7 @@ public sealed partial record NotificationsBackend_NotifyCall(
     [property: DataMember, Key(3)] bool HasVideo
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
@@ -268,7 +268,7 @@ public sealed partial record NotificationsBackend_CancelCall(
     [property: DataMember, Key(1)] IReadOnlyList<AuthorId> Invitees
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
@@ -283,6 +283,6 @@ public sealed partial record NotificationsBackend_NotifyMentionedMembers(
     [property: DataMember, Key(2)] UserId[] UserIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => UserId;
 }

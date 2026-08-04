@@ -6,6 +6,6 @@ public partial record ExternalContactNameMayHaveChangedEvent(
     [property: DataMember] ImmutableArray<string> ExternalContactHashes
 ) : EventCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => OwnerUserId;
 }
