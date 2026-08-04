@@ -139,6 +139,43 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task PublicCommandRejectsHeardPosition()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var tester = appHost.NewWebClientTester(Out);
+        _ = await tester.SignInAsUniqueAlice();
+        var (chatId, _) = await tester.CreateChat(false);
+
+        // act
+        var act = () => tester.Commander.Call(
+            new ChatPositions_Set(tester.Session, chatId, ChatPositionKind.Heard, new ChatPosition(10)));
+
+        // assert
+        await act.Should().ThrowAsync<Exception>();
+    }
+
+    [Fact]
+    public async Task BackendClampsHeardMaxValue()
+    {
+        // arrange
+        var appHost = AppHost;
+        var chatPositionsBackend = appHost.Services.GetRequiredService<IChatPositionsBackend>();
+        await using var tester = appHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueAlice();
+        var (chatId, _) = await tester.CreateChat(false);
+        await tester.CreateTextEntry(chatId, "Hi");
+
+        // act
+        await tester.Commander.Call(new ChatPositionsBackend_Set(
+            account.Id, chatId, ChatPositionKind.Heard, new ChatPosition(long.MaxValue)));
+        var stored = await chatPositionsBackend.Get(account.Id, chatId, ChatPositionKind.Heard, default);
+
+        // assert
+        stored.EntryLid.Should().BeLessThan(long.MaxValue);
+    }
+
+    [Fact]
     public async Task IgnoresUsageForUnreadableChat()
     {
         // arrange

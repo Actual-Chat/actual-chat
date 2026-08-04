@@ -42,9 +42,9 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
         }
 
         // Guard against the client's "unbounded" sentinel (long.MaxValue) being persisted as a
-        // read position. OnSet is forward-only for reads, so a stored MaxValue would mark the chat
-        // permanently fully-read and suppress every notification. Clamp it to the chat's last entry.
-        if (kind == ChatPositionKind.Read && position.EntryLid == long.MaxValue) {
+        // read/heard position. OnSet is forward-only for both, so a stored MaxValue would mark the
+        // chat permanently fully-read/heard and suppress every notification. Clamp to the last entry.
+        if (kind is ChatPositionKind.Read or ChatPositionKind.Heard && position.EntryLid == long.MaxValue) {
             var maxLid = await ChatsBackend.GetMaxLid(chatId, true, cancellationToken).ConfigureAwait(false);
             position = position with { EntryLid = maxLid };
         }
