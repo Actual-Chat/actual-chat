@@ -1740,3 +1740,39 @@ git commit -m "docs: mark walkie-talkie iOS PTT transmit (E4) implemented"
 - **Two `AVAudioEngine` instances must never hold the input node at once.** `PttPreRoll.TryTake` stops the pre-roll engine, and `AppleAudioCapture` calls it before touching `AudioEngines.Recording` — but the ordering is load-bearing and invisible at the call site if someone later moves that line.
 - **Full duplex hands session configuration entirely to the framework.** Speakerphone echo is the plausible failure, and skipping `ConfigureUnsafe` under `PttTransmit` is precisely what removes our ability to correct it.
 - **A stuck `AudioSessionOwner` permanently disables the app's own session activation.** The old bool already carried this hazard; three states and five release paths widen it, and the spec's timer-based watchdog was deliberately not built.
+
+## Execution outcome
+
+Tasks 1–9 are code-complete. Built: the `IsPttTransmitEnabled` setting and its iOS-only toggle, with the pre-existing "Headset button" toggle now gated to Android (Task 1); an unbounded recency window so a deliberate Talk-button press can resolve arbitrarily old voice activity, via `ReplyTargetResolver.UnboundedRecencyWindow` and a `WalkieTalkieReplyUI.RequestReply(TimeSpan, CancellationToken)` overload (Task 2); `AudioSessionOwner`/`AudioSessionOwnership` as a pure, fully-tested state machine in `UI.Blazor/Services` (Task 3); `PreRollBuffer`, a standalone bounded token-guarded capture buffer in `Core.Audio` (Task 4); `scripts/csc-ios-probe.sh`, the iOS sibling of the Android csc probe (Task 5); typed ownership wired through `AudioSession`'s three session paths and `IosPushToTalk`'s receive callbacks, replacing the `IsExternallyActivated` bool everywhere (Task 6); `PttPreRoll` — a process-level `AVAudioEngine` tap into `PreRollBuffer` — plus the drain in `AppleAudioCapture.CaptureInternal` ahead of live frames (Task 7); the transmit path itself — `WalkieTalkieSession.HandleTransmit`, `IosPushToTalk`'s `DidBeginTransmitting`/`DidEndTransmitting`/`FailedToBeginTransmittingInChannel` bodies, the teardown watcher's new `IsRecording` check, and the early-release-still-sends flush (Task 8); and the settings-driven transmission mode plus a chat-named channel descriptor (Task 9).
+
+Two corrections to the spec surfaced during implementation, now reflected in the spec's "Corrections to this spec found during implementation" section: `PreRollBuffer` does not wrap `BlockRingBuffer<T>` — that type is a blocking SPSC streaming buffer that drops the *newest* data on overflow and requires exact-length reads, both wrong for a one-shot capture drained once, where overflow must void the whole buffer — so `PreRollBuffer` is standalone in `Core.Audio`; and `AudioSessionOwner` lives in `UI.Blazor/Services/AudioSessionOwnership.cs`, not `MaciOS/Audio`, because `App.Maui` compiles in no test host and the type's ownership transitions are only worth having if they're verifiable.
+
+Two deliberate deviations from the spec, both shipped as-is rather than deferred:
+
+- **The timer-based ownership watchdog was not built.** The spec asked for a timer that reverts `AudioSessionOwner` if no PTT callback arrives. A timer cannot distinguish a stuck flag from a legitimately long playback, so ownership instead reverts deterministically on five existing paths: `DidDeactivateAudioSession`, `DidEndTransmitting`, `DidLeaveChannel`, `OnWakeFailed`, and `OnHeadlessTeardown`.
+- **The transmit boot budget is one shared 8 s, not 8 s per step.** `HandleTransmit` uses a single `CancellationTokenSource(WalkieTalkiePttTransmitStartupTimeout)` whose token is passed to `WhenAppReady.WaitAsync`, `SessionTask.WaitAsync`, and `RequestReply` alike, rather than a fresh 8 s window at each step. This is a real behaviour change: a cold start that takes 5 s to reach `WhenAppReady` and 4 s more to resolve the session now fails where independent 8 s windows would have let it proceed. It is justified because the pre-roll capacity is also 8 s — past that point the buffered speech is already gone, so a longer boot budget could not recover it anyway.
+
+**Known gap carried forward, out of scope for E4:** `WalkieTalkieReplyUI.RequestReply` now returns `Task<WalkieTalkieReply?>` instead of `Task`, so a caller can prove it is the one that opened the recording it later stops (`StopOrphanedReply` in `HandleTransmit` uses this). Android's headset button and the on-screen `WalkieReplyToggle` both still discard that return value today, so they retain the older "stop whatever is recording" behaviour. Giving them the same protection is an obvious follow-up.
+
+Also carried forward: the sweep-discipline follow-up E3 flagged — diff the CI test-project list against what plans actually invoke — is still open; Step 2 of this task ran the five projects named in the brief by hand rather than closing that gap structurally.
+
+### Device-verification list
+
+None of the following has been run on a device; all require a physical iPhone, an APNs `.p8` key, and a partner to speak into a second device or the Lock Screen. In this order:
+
+1. **Verify sub-project C's iOS wake path on a device first.** It has never been compiled or run. Everything in E4 sits on it, and until it is known good a transmit failure and a wake failure are indistinguishable.
+2. **Build for iOS on a Mac.** First real compile of everything in Tasks 6–9 beyond the probe's per-file coverage — no analyzers, no `Microsoft.Maui*` ambiguity, no linker have run.
+3. **Toggle "Lock Screen talk button" off and on once** in Settings, to confirm the write path for a settings blob that predates the member.
+4. **With transmit off, confirm no Talk button appears** in the system PTT sheet — the channel must stay `ListenOnly`.
+5. **With transmit on and the app foregrounded**, press Talk: a reply records into the most recent PTT chat and stops on release.
+6. **The killed-process case:** kill the app, have someone speak, then press Talk from the Lock Screen. This is the point of the sub-project.
+7. **Verify the pre-roll actually lands** — speak immediately at the system chime on a cold start and confirm the first word is in the sent message. If it is not, `PttPreRoll.Start()` is returning 0 or the format guard is dropping the take; both log.
+8. **Release the Talk button immediately on a cold start** (before the app can boot). Per decision 7 the buffered words should still send. **This is E4's least certain path**: if iOS deactivates the audio session on release, the recorder may open into a dead session and produce nothing. If so, change `OnTransmitEnded` to discard rather than flush.
+9. **Press Talk with nothing recent in any armed chat** — expect the `WalkieReplyNothingHeard` cue and no recording.
+10. **Check the system sheet names the chat**, not `"Voxt"`, after an incoming wake.
+11. **Reply while an incoming utterance is still playing** — full duplex must allow it (decision 5).
+12. **Listen for speakerphone echo** while transmitting. The framework owns the session configuration and `ConfigureUnsafe` is now skipped under `PttTransmit`, so we cannot correct the route.
+13. **Confirm ownership never sticks:** after a transmit, an ordinary in-app recording must still activate the session. A stuck `AudioSessionOwner` disables the app's own activation permanently.
+14. **Leave a headless transmit running past 10 seconds** with nothing playing, to confirm the teardown watcher's new `IsRecording` check keeps the scope alive.
+
+Items 1–2 outrank the rest: until sub-project C's wake path and a real iOS build are both known good, a failure anywhere in items 3–14 cannot be attributed to E4 versus something upstream of it.

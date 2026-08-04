@@ -1,7 +1,7 @@
 # Walkie-Talkie: iOS Apple PTT Transmit (Sub-Project E4)
 
 Date: 2026-08-04
-Status: Approved design, pre-implementation
+Status: Implemented (device verification pending — see plan Task 10)
 Depends on: C (`2026-07-13-walkie-talkie-ios-design.md`) for the joined PTT
 channel, `IosPushToTalk`, `IosPushToTalkUI` and the externally-activated
 audio-session mode; E1 (`2026-07-20-walkie-talkie-reply-to-voice-design.md`)
@@ -401,24 +401,64 @@ a new component.
   `StartupTimeout`; transmit needs its own, shorter cap plus byte and
   second ceilings on the buffer. Pick concrete numbers against the
   recorder's format, not by analogy.
+  **Resolved:** both the pre-roll capacity and the transmit boot cap are
+  8 s, pinned to `AppleAudioCapture`'s `outBuffer` (`RecordingSampleRate *
+  10` samples) so a full pre-roll can be resampled into it in one go. The
+  8 s boot cap is shared across `WhenAppReady`, `SessionTask` and
+  `RequestReply` combined, not 8 s each — see the plan's "Execution
+  outcome" for why.
 - **The minimum-duration floor** below which an early-released pre-roll is
   discarded rather than sent (decision 7). Duration is a proxy for intent,
   not for voice — the real VAD (`CoreMLVoiceActivityDetector`) is a scoped
   service and is not available while the buffer is filling.
+  **Resolved:** 0.4 s.
 - **Live descriptor updates.** Decision 8 assumes the channel descriptor
   can be re-set while joined so the system sheet names the last-active
   chat. Confirm the API and whether an update while transmitting is
   allowed; if it is not, the title is only refreshable between
   transmissions.
+  **Resolved:** `PTChannelManager.SetChannelDescriptor(PTChannelDescriptor,
+  NSUuid, Action<NSError>)` exists and compiles — live descriptor updates
+  are possible.
 - **Whether `Microsoft.iOS.Ref` is obtainable and usable on Linux** for
   `scripts/csc-ios-probe.sh`. The Android probe works because the ref pack
   restores cross-platform; verify before promising the probe.
+  **Resolved:** `Microsoft.iOS.Ref.net11.0_26.2` version
+  `26.2.11588-net11-p3` restores as a plain NuGet package on Linux and
+  yields `ref/net11.0/Microsoft.iOS.dll`, which `csc` compiles
+  `PushToTalk`/`AVFoundation`/`UIKit` code against. This is what
+  `scripts/csc-ios-probe.sh` uses.
 - **Half duplex semantics** — whether it blocks a transmit request or
   preempts the active remote participant (decision 5). Not needed to
   implement full duplex, but it bounds how far iOS would diverge if we
-  ever reverse that decision.
+  ever reverse that decision. **Left open** — not answerable without a
+  device.
 - **Whether `didBeginTransmitting` can arrive before
   `PTChannelManager.Create`'s completion handler has assigned `_manager`.**
   The delegate is passed into `Create`, so callbacks should not precede it,
   but the transmit path dereferences the manager and the cold-launch
-  ordering is unverified.
+  ordering is unverified. **Left open** — not answerable without a device.
+- **`PTChannelTransmitRequestSource` has exactly three members**
+  (`Unknown`, `UserRequest`, `HandsfreeButton`), confirmed by compiling
+  against the ref assembly; there is no `PlayButton`, `Siri`, or `CarPlay`.
+  The transmit-failure delegate override is
+  `FailedToBeginTransmittingInChannel`, not `DidFailToBeginTransmitting` —
+  the latter does not exist.
+
+## Corrections to this spec found during implementation
+
+- **The pre-roll does not wrap `BlockRingBuffer<T>`.** The Reuse section
+  below originally proposed it, but `BlockRingBuffer<T>`
+  (`Core/Collections/BlockRingBuffer.cs`) is a blocking
+  single-producer/single-consumer *streaming* buffer: it drops the
+  *newest* data on overflow and requires exact-length reads. A pre-roll is
+  a one-shot capture drained once, where overflow must void the *whole*
+  buffer instead of dropping a fragment. Wrapping `BlockRingBuffer<T>`
+  would have meant fighting three of its four behaviours, so
+  `PreRollBuffer` is a standalone type in `src/dotnet/Core.Audio/`.
+- **`AudioSessionOwner` lives in `src/dotnet/UI.Blazor/Services/
+  AudioSessionOwnership.cs`, not `MaciOS/Audio`.** The spec's Components
+  section said `MaciOS/Audio`, but `App.Maui` compiles in no test host, and
+  the entire point of the type is that its ownership transitions are
+  verifiable off-platform. It lives beside `AudioFocusMode` in
+  `UI.Blazor/Services` instead.
