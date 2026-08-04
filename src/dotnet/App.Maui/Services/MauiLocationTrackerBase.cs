@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.App.Services;
 namespace ActualChat.App.Maui.Services;
 public abstract class MauiLocationTrackerBase(AppUIHub hub) : LocationTrackerBase(hub)
 {
-    protected override async Task<GeoPoint?> FetchCurrent(bool mustBeFresh, CancellationToken cancellationToken)
+    protected override async Task<GeoPoint?> Fetch(bool mustBeFresh, CancellationToken cancellationToken)
     {
         if (!mustBeFresh && await Geolocation.Default.GetLastKnownLocationAsync().ConfigureAwait(false) is { } cached)
             return cached.ToGeoPoint();

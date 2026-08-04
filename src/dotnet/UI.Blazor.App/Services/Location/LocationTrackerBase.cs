@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTracker
 {
-    private readonly MutableState<GeoPoint?> _trackedLocation;
+    private readonly MutableState<GeoPoint?> _cachedLocation;
     private readonly MutableState<GeoTrackingError?> _error;
 
     public IState<GeoTrackingError?> Error => _error;
@@ -10,9 +10,9 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
 
     protected LocationTrackerBase(AppUIHub hub) : base(hub)
     {
-        _trackedLocation = hub.StateFactory.NewMutable(
+        _cachedLocation = hub.StateFactory.NewMutable(
             (GeoPoint?)null,
-            StateCategories.Get(GetType(), nameof(_trackedLocation)));
+            StateCategories.Get(GetType(), nameof(_cachedLocation)));
         _error = hub.StateFactory.NewMutable(
             (GeoTrackingError?)null,
             StateCategories.Get(GetType(), nameof(Error)));
@@ -20,20 +20,17 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
 
     public async Task<GeoPoint?> Get(bool mustBeFresh = false, CancellationToken cancellationToken = default)
     {
-        // Use() binds the calling compute method to the tracked position, so every fix recomputes it.
-        var trackedLocation = await _trackedLocation.Use(cancellationToken).ConfigureAwait(false);
+        var trackedLocation = await _cachedLocation.Use(cancellationToken).ConfigureAwait(false);
         if (!mustBeFresh)
-            return trackedLocation ?? await FetchCurrent(false, cancellationToken).ConfigureAwait(false);
+            return trackedLocation ?? await Fetch(false, cancellationToken).ConfigureAwait(false);
 
         var isTrackingHealthy = IsTracking && _error.Value is null;
-        if (isTrackingHealthy && await GetTracked(cancellationToken).ConfigureAwait(false) is { } point)
+        if (isTrackingHealthy && await _cachedLocation.Use(cancellationToken).ConfigureAwait(false) is { } point)
             return point;
 
-        // Publishing the one-shot fix invalidates everything bound to Get; safe only on this branch,
-        // since mustBeFresh is never requested from a compute method - it would self-invalidate.
-        var fetched = await FetchCurrent(true, cancellationToken).ConfigureAwait(false);
+        var fetched = await Fetch(true, cancellationToken).ConfigureAwait(false);
         if (fetched is not null)
-            SetTrackedLocation(fetched);
+            SetCached(fetched);
 
         return fetched;
     }
@@ -43,36 +40,18 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
 
     // Protected/internal methods
 
-    protected abstract Task<GeoPoint?> FetchCurrent(bool mustBeFresh, CancellationToken cancellationToken);
+    protected abstract Task<GeoPoint?> Fetch(bool mustBeFresh, CancellationToken cancellationToken);
 
     protected Task<GeoTrackingAccuracy> GetAccuracy(CancellationToken cancellationToken)
         => Hub.LocalSettings.LocalAppSettings().Get(x => x.LocationAccuracyOrDefault, cancellationToken);
 
-    protected void SetTrackedLocation(GeoPoint? point)
+    protected void SetCached(GeoPoint? point)
     {
-        _trackedLocation.Value = point;
+        _cachedLocation.Value = point;
         if (point is not null)
             _error.Value = null;
     }
 
     protected void SetError(GeoTrackingError? error)
         => _error.Value = error;
-
-    // Private methods
-
-    private async Task<GeoPoint?> GetTracked(CancellationToken cancellationToken)
-    {
-        // A running tracker delivers fixes at least as fresh as a one-shot request would,
-        // so wait for its next one rather than start a second location session.
-        using var cts = cancellationToken.CreateLinkedTokenSource(Constants.Location.GetTimeout);
-        try {
-            var cTrackedLocation = await _trackedLocation.Computed
-                .When(x => x is not null, cts.Token)
-                .ConfigureAwait(false);
-            return cTrackedLocation.Value;
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            return null;
-        }
-    }
 }
