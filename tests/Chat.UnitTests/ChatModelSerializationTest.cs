@@ -22,6 +22,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             SystemTag = "system",
         };
 
+        chat.AssertSameShapeAcrossSerializers(Out);
         var s = chat.PassThroughSerializers(Out);
         s.Id.Should().Be(chat.Id);
         s.Version.Should().Be(chat.Version);
@@ -43,6 +44,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             AllowGuestAuthors = false,
             Description = "Updated description",
         };
+        diff.AssertSameShapeAcrossSerializers(Out);
         diff.AssertPassesThroughSerializers();
     }
 

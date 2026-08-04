@@ -73,3 +73,6 @@ sw.js
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 .superpowers/
+
+# Wire-format baseline: generated locally before a serialization refactor, never committed
+tests/**/data/wire-format-all/
