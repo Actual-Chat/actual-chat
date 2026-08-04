@@ -51,8 +51,6 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
                 "Failed to dispose AudioSession")
             .ToValueTask();
 
-    // Returns whether the session was actually configured: under a PTT owner it may not be, and a
-    // caller that recorded "configured" anyway would skip the configure it still owes later.
     public Task<bool> Reconfigure(AudioFocusMode mode)
         => DispatchToMainThread(() => ReconfigureUnsafe(mode));
 
@@ -182,11 +180,10 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         // for its own mic.
         var session = AVAudioSession.SharedInstance();
         var owner = Owner;
-        var isConfigured = AudioSessionOwnership.MayConfigure(owner, mode);
-        if (isConfigured)
+        if (AudioSessionOwnership.MayConfigure(owner, mode))
             ConfigureUnsafe(session, mode);
         if (!AudioSessionOwnership.MayActivate(owner))
-            return isConfigured;
+            return false;
 
         if (!session.SetActive(true, out var error)) {
             Log.LogWarning("Failed to re-activate audio session: {Error}", error.LocalizedDescription);
@@ -199,21 +196,23 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
             error.Assert("Failed to re-activate audio session after retry");
         }
 
-        return isConfigured;
+        return true;
     }
 
     private bool ReconfigureUnsafe(AudioFocusMode minMode)
     {
+        // The result means "the session is set up AND active", not just "the category was set":
+        // the framework deactivates its session without telling the app's focus scopes, so a
+        // caller that latched "configured" here would never reactivate for a still-live recording.
         var session = AVAudioSession.SharedInstance();
         var owner = Owner;
         if (!AudioSessionOwnership.MayActivate(owner)) {
-            if (!AudioSessionOwnership.MayConfigure(owner, minMode))
-                return false;
+            if (AudioSessionOwnership.MayConfigure(owner, minMode))
+                // The framework's session is already active, and SetCategory on an active session
+                // is what lets an in-app recording get PlayAndRecord during a live wake playback.
+                ConfigureUnsafe(session, minMode);
 
-            // The framework's session is already active, and SetCategory on an active session is
-            // what lets an in-app recording get PlayAndRecord during a live wake playback.
-            ConfigureUnsafe(session, minMode);
-            return true;
+            return false;
         }
 
         var deactivateOptions = minMode is AudioFocusMode.Tune
@@ -267,7 +266,11 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     {
         Log.LogInformation("Configure: mode={Mode}", mode);
         if (mode is AudioFocusMode.Recording) {
+            // Carrying session.Mode through is what keeps a PTT call's VoiceChat mode - and with
+            // it the framework's AEC - alive: the category-only overloads reset it to Default.
+            // The app never sets Mode itself, so under its own ownership this is a no-op.
             session.SetCategory(AVAudioSessionCategory.PlayAndRecord,
+                    session.Mode,
                     AVAudioSessionCategoryOptions.DefaultToSpeaker
                     | AVAudioSessionCategoryOptions.AllowBluetooth
                     | AVAudioSessionCategoryOptions.AllowBluetoothA2DP)
