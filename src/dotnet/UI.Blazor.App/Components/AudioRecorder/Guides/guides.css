@@ -1,5 +1,6 @@
 .guide-modal .form-block {
     @apply gap-y-6;
+    @apply py-0;
 }
 
 .guide-modal .dialog-body {
@@ -7,8 +8,43 @@
     @apply overflow-y-auto;
 }
 
+/* .form-block contributes no vertical padding here, so the entire gap above the
+   buttons comes from this rule - and unlike padding inside the scrolling body,
+   it stays put instead of scrolling out of view. */
+.guide-modal .dialog-buttons {
+    @apply pt-2;
+}
+
+.guide-modal .c-hero {
+    @apply overflow-hidden;
+    @apply rounded-lg;
+}
+
 .guide-modal .c-text {
     @apply text-02;
+}
+
+.guide-modal .c-title {
+    @apply text-text-1 text-02;
+    @apply font-bold;
+}
+
+.guide-modal .c-intro {
+    @apply text-text-1 text-02;
+}
+
+.guide-modal ol.c-steps {
+    @apply flex-y gap-y-4;
+    @apply list-decimal;
+    @apply text-text-1 text-02;
+}
+
+.guide-modal ol.c-steps > li {
+    @apply ml-5 pl-1;
+}
+
+.guide-modal ol.c-steps > li > img {
+    @apply mt-2;
 }
 
 .guide-modal ul.c-items {

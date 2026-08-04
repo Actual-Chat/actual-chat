@@ -20,8 +20,9 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
 
     private DotNetObjectReference<DebugUI>? _blazorRef;
 
-    public Func<Task>? ShowMicTroubleshooterHandler { get; set; }
+    public Func<string?, Task>? ShowMicTroubleshooterHandler { get; set; }
     public Func<Task>? ShowPhotoTroubleshooterHandler { get; set; }
+    public Func<string?, Task>? ShowLocationTroubleshooterHandler { get; set; }
     public Func<Task>? ShowIncomingShareModalHandler { get; set; }
     public Action<int>? TestVideoRecordingQualityChangeHandler { get; set; }
     public Action<int>? TestVideoPlaybackQualityChangeHandler { get; set; }
@@ -79,11 +80,11 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
     }
 
     [JSInvokable]
-    public async Task ShowMicTroubleshooter()
+    public async Task ShowMicTroubleshooter(string? guideType = null)
     {
         if (ShowMicTroubleshooterHandler is { } handler)
-            await handler().ConfigureAwait(true);
-        Log.LogInformation("ShowMicTroubleshooter: done");
+            await handler(guideType).ConfigureAwait(true);
+        Log.LogInformation("ShowMicTroubleshooter({GuideType}): done", guideType ?? "auto");
     }
 
     [JSInvokable]
@@ -92,6 +93,14 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
         if (ShowPhotoTroubleshooterHandler is { } handler)
             await handler().ConfigureAwait(true);
         Log.LogInformation("ShowPhotoTroubleshooter: done");
+    }
+
+    [JSInvokable]
+    public async Task ShowLocationTroubleshooter(string? guideType = null)
+    {
+        if (ShowLocationTroubleshooterHandler is { } handler)
+            await handler(guideType).ConfigureAwait(true);
+        Log.LogInformation("ShowLocationTroubleshooter({GuideType}): done", guideType ?? "auto");
     }
 
     [JSInvokable]

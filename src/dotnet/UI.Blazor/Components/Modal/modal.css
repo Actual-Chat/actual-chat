@@ -207,6 +207,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .modal-header-interactive .modal-title {
+    @apply truncate;
     @apply text-title-1 text-02;
 }
 

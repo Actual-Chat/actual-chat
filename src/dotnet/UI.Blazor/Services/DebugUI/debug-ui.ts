@@ -21,6 +21,19 @@ interface BlazorGlobal {
     _internal?: BlazorInternal;
 }
 
+/** Mirrors the C# `GuideType` enum — picks which platform guide a troubleshooter
+ *  modal renders. Omit it to let the modal auto-detect from HostInfo/BrowserInfo. */
+type GuideType =
+    | 'MobileChromeAndroid'
+    | 'MobileEdgeAndroid'
+    | 'MobileSafariIos'
+    | 'WebChrome'
+    | 'WebEdge'
+    | 'WebSafari'
+    | 'IosApp'
+    | 'AndroidApp'
+    | 'Unknown';
+
 type VideoTraceKillKind = 'recording' | 'playback';
 type VideoTraceKillPeriodInput = number | string;
 
@@ -146,12 +159,16 @@ export class DebugUI {
         return this.backendRef.invokeMethodAsync('SetRenderMode', mode) as unknown as Promise<void>;
     }
 
-    public static showMicTroubleshooter(): void {
-        void this.backendRef.invokeMethodAsync('ShowMicTroubleshooter');
+    public static showMicTroubleshooter(guideType?: GuideType): void {
+        void this.backendRef.invokeMethodAsync('ShowMicTroubleshooter', guideType ?? null);
     }
 
     public static showPhotoTroubleshooter(): void {
         void this.backendRef.invokeMethodAsync('ShowPhotoTroubleshooter');
+    }
+
+    public static showLocationTroubleshooter(guideType?: GuideType): void {
+        void this.backendRef.invokeMethodAsync('ShowLocationTroubleshooter', guideType ?? null);
     }
 
     public static showIncomingShareModal(): void {

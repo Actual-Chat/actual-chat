@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 651 291" width="651" height="291"
+     role="img" aria-label="No location access">
+  <defs>
+    <linearGradient id="mp-bg" x1="0" y1="0" x2="0.32" y2="1">
+      <stop offset="0"    stop-color="#3B5FE3"/>
+      <stop offset="0.45" stop-color="#7B2CC4"/>
+      <stop offset="1"    stop-color="#C10079"/>
+    </linearGradient>
+
+    <linearGradient id="mp-ring" gradientUnits="userSpaceOnUse" x1="120" y1="-30" x2="540" y2="310">
+      <stop offset="0"   stop-color="#FFFFFF" stop-opacity="1"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.75"/>
+      <stop offset="1"   stop-color="#FFFFFF" stop-opacity="0.45"/>
+    </linearGradient>
+
+    <radialGradient id="mp-halo">
+      <stop offset="0"    stop-color="#FFFFFF" stop-opacity="0.17"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.05"/>
+      <stop offset="1"    stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <clipPath id="mp-frame">
+      <rect width="651" height="291"/>
+    </clipPath>
+
+    <mask id="mp-cut" maskUnits="userSpaceOnUse" x="-70" y="-70" width="140" height="140">
+      <rect x="-70" y="-70" width="140" height="140" fill="#FFFFFF"/>
+      <path class="blink" d="M -44 -44 L 44 44" stroke="#000000" stroke-width="12" stroke-linecap="round"/>
+    </mask>
+
+    <style>
+      /* Original timing: 4s, one wave released per second, 4 in flight.
+         Line weights are 1.5x the first version (rendered ~2.4 -> ~2.1 px). */
+      .wave {
+        animation: mp-emit 4s cubic-bezier(0.16, 0.7, 0.3, 1) infinite;
+        transform-origin: 0 0;
+      }
+      .wave:nth-of-type(2) { animation-delay: -1s; }
+      .wave:nth-of-type(3) { animation-delay: -2s; }
+      .wave:nth-of-type(4) { animation-delay: -3s; }
+
+      /* stroke-width counter-scales against the transform to hold rendered weight */
+      @keyframes mp-emit {
+        from { transform: scale(0.40); opacity: 0;    stroke-width: 6; }
+        20%  {                         opacity: 0.95; }
+        to   { transform: scale(1.40); opacity: 0;    stroke-width: 1.5; }
+      }
+
+      .blink { animation: mp-blink 1.4s ease-in-out infinite; }
+      @keyframes mp-blink {
+        0%, 48%  { opacity: 1; }
+        64%, 84% { opacity: 0; }
+        100%     { opacity: 1; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .blink { animation: none; opacity: 1; }
+        .wave { animation: none; }
+        .wave:nth-of-type(1) { transform: scale(0.47); opacity: 1;    stroke-width: 5.55; }
+        .wave:nth-of-type(2) { transform: scale(0.68); opacity: 0.85; stroke-width: 3.3; }
+        .wave:nth-of-type(3) { transform: scale(1);    opacity: 0.62; stroke-width: 1.875; }
+        .wave:nth-of-type(4) { transform: scale(1.32); opacity: 0.3;  stroke-width: 1.5; }
+      }
+    </style>
+  </defs>
+
+  <g clip-path="url(#mp-frame)">
+    <rect width="651" height="291" fill="url(#mp-bg)"/>
+
+    <g transform="translate(325.5 145.5)">
+      <circle r="130" fill="url(#mp-halo)"/>
+
+      <!-- base r=165, scaled 0.40 -> 1.40 (r=66 -> r=231) -->
+      <g fill="none" stroke="url(#mp-ring)" stroke-width="2.25">
+        <circle class="wave" r="165"/>
+        <circle class="wave" r="165"/>
+        <circle class="wave" r="165"/>
+        <circle class="wave" r="165"/>
+      </g>
+
+      <g mask="url(#mp-cut)">
+        <!--
+          Location pin on centerlines in the same 24-unit space: head circle r 5.8
+          at (12, 8.8), tail tangent to it meeting at the tip (12, 19.6), inner dot
+          concentric with the head. Same scale and stroke as the mic was
+          (1.2243 * 5.26 = 6.44 rendered), anchored on the stroke-inclusive bbox
+          center (12, 11.3) so it sits dead-center on the ring origin.
+        -->
+        <g transform="scale(5.26) translate(-12 -11.3)" fill="none" stroke="#FFFFFF"
+           stroke-width="1.2243" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M 12 19.6 C 10.3 17.2 6.2 12.9 6.2 8.8 A 5.8 5.8 0 1 1 17.8 8.8 C 17.8 12.9 13.7 17.2 12 19.6 Z"/>
+          <circle cx="12" cy="8.8" r="2.3"/>
+        </g>
+      </g>
+
+      <path class="blink" d="M -42 -42 L 42 42" fill="none" stroke="#FFFFFF"
+            stroke-width="6.4" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>

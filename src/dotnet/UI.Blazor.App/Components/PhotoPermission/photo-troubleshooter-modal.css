@@ -1,11 +1,10 @@
-.photo-troubleshooter-modal .dialog-body {
-    @apply gap-y-4;
-}
-
-.photo-troubleshooter-modal .c-text {
-    @apply text-02;
-}
-
 .photo-troubleshooter-modal .settings-link {
-    @apply text-primary hover:text-primary-hover cursor-pointer hover:underline;
+    @apply text-primary;
+    @apply cursor-pointer;
+}
+
+body.hoverable .photo-troubleshooter-modal .settings-link:hover,
+.touch-capable .photo-troubleshooter-modal .settings-link:active {
+    @apply text-primary-hover;
+    @apply underline;
 }
