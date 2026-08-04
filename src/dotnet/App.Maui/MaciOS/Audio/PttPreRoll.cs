@@ -11,6 +11,10 @@ public static class PttPreRoll
 {
     private static readonly Lock Lock = new();
     private static long _lastToken;
+    // The highest token a TryTake()/Discard() has already "closed" - even one that ran while
+    // nothing was published yet, because Start() may still be mid-flight on another thread. A
+    // token may publish only while it's still the newest AND still unclosed; see Start().
+    private static long _closedToken;
     private static AVAudioEngine? _engine;
     private static AVAudioFormat? _format;
     private static PreRollBuffer? _buffer;
@@ -53,8 +57,21 @@ public static class PttPreRoll
                 return 0;
             }
 
-            lock (Lock)
-                (_engine, _format, _buffer) = (engine, format, buffer);
+            // A concurrent TryTake()/Discard() may have already closed this token's window while
+            // this method was doing native work on another thread - publish only if this is still
+            // the newest, unclosed token, so a raced-out engine never ends up on the hardware
+            // input node with no one left who will ever stop it.
+            bool isPublished;
+            lock (Lock) {
+                isPublished = token == _lastToken && token > _closedToken;
+                if (isPublished)
+                    (_engine, _format, _buffer) = (engine, format, buffer);
+            }
+            if (!isPublished) {
+                Log.LogWarning("Pre-roll: lost the race with a concurrent take/discard/start, dropping it");
+                StopEngine(engine);
+                return 0;
+            }
 
             Log.LogInformation("Pre-roll capture started ({SampleRate} Hz)", sampleRate);
             return token;
@@ -67,12 +84,12 @@ public static class PttPreRoll
 
     public static void Discard(long token)
     {
-        AVAudioEngine? engine;
+        AVAudioEngine? engine = null;
         lock (Lock) {
-            if (_buffer is not { } buffer || buffer.Token != token)
-                return;
-
-            (engine, _engine, _format, _buffer) = (_engine, null, null, null);
+            if (token > _closedToken)
+                _closedToken = token;
+            if (_buffer is { } buffer && buffer.Token == token)
+                (engine, _engine, _format, _buffer) = (_engine, null, null, null);
         }
         StopEngine(engine);
     }
@@ -83,6 +100,10 @@ public static class PttPreRoll
         PreRollBuffer? buffer;
         AVAudioFormat? format;
         lock (Lock) {
+            // Closes the window for whatever token is newest right now, even if it's a Start()
+            // still mid-flight on another thread and hasn't published yet - see Start().
+            if (_lastToken > _closedToken)
+                _closedToken = _lastToken;
             (engine, buffer, format) = (_engine, _buffer, _format);
             (_engine, _format, _buffer) = (null, null, null);
         }

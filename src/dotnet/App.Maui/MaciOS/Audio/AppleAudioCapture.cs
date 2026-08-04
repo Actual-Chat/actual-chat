@@ -38,12 +38,14 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
                 // under that bound at realistic mic rates) so an 8 s pre-roll can't be truncated
                 // to ~3 s. Do not "simplify" this back into a single Transform call.
                 var chunkFrameCount = (int)hwFormat.SampleRate;
+                var drainedSampleCount = 0;
                 var isTruncated = false;
                 for (var offset = 0; offset < take.Samples.Length && !isTruncated; offset += chunkFrameCount) {
                     var chunkLength = Math.Min(chunkFrameCount, take.Samples.Length - offset);
                     using var preRollBuffer = new AVAudioPcmBuffer(hwFormat, (uint)chunkLength);
                     preRollBuffer.SetData(take.Samples.AsSpan(offset, chunkLength));
                     resampler.Transform(preRollBuffer, outBuffer);
+                    drainedSampleCount += chunkLength;
                     // Transform() doesn't surface BlockRingBuffer.TryWrite's result, so fullness
                     // is the only signal available here that a write came up short.
                     if (outBuffer.IsFull) {
@@ -51,7 +53,7 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
                         Log.LogWarning("Pre-roll drain: outBuffer is full, the rest of the pre-roll was dropped");
                     }
                 }
-                Log.LogInformation("Drained {Count} pre-roll samples", take.Samples.Length);
+                Log.LogInformation("Drained {Count} pre-roll samples", drainedSampleCount);
             }
             else
                 Log.LogWarning("Dropped the pre-roll: format changed since it was captured");
