@@ -234,6 +234,11 @@ class SideNavPullDetectGesture extends Gesture {
                 }
             }
 
+            // Placed after the block above, so an edge swipe over such an element still
+            // suppresses the browser's history-navigation gesture
+            if (event.target instanceof Element && event.target.closest('[data-no-side-nav-pull]'))
+                return; // The element pans on its own (e.g. an interactive map)
+
             Gestures.addActive(new SideNavPullDetectGesture(sideNav, coords, event, prePullDistance));
         })(); }));
     }
