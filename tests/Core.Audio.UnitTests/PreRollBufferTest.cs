@@ -53,7 +53,7 @@ public class PreRollBufferTest
     }
 
     [Fact]
-    public void OverflowVoidsTheWholeBuffer()
+    public void OverflowKeepsTheNewestSamples()
     {
         // arrange
         var buffer = new PreRollBuffer(7, SampleRate, 4);
@@ -63,26 +63,44 @@ public class PreRollBufferTest
         var isAppended = buffer.TryAppend([3f, 4f, 5f]);
 
         // assert
-        // A fragment whose start is missing is worse than nothing: the boot budget was blown.
-        isAppended.Should().BeFalse();
+        // A slow boot loses the first words, not the whole utterance.
+        isAppended.Should().BeTrue();
         buffer.IsOverflowed.Should().BeTrue();
-        buffer.Count.Should().Be(0);
-        buffer.TryDrain(7, 1).Should().BeNull();
+        buffer.Count.Should().Be(4);
+        buffer.TryDrain(7, 1).Should().Equal([2f, 3f, 4f, 5f]);
     }
 
     [Fact]
-    public void AppendingAfterOverflowKeepsFailing()
+    public void AnAppendLongerThanTheBufferKeepsItsTail()
+    {
+        // arrange
+        var buffer = new PreRollBuffer(7, SampleRate, 2);
+
+        // act
+        var isAppended = buffer.TryAppend([1f, 2f, 3f]);
+
+        // assert
+        isAppended.Should().BeTrue();
+        buffer.IsOverflowed.Should().BeTrue();
+        buffer.TryDrain(7, 1).Should().Equal([2f, 3f]);
+    }
+
+    [Fact]
+    public void AppendingAfterOverflowKeepsWorking()
     {
         // arrange
         var buffer = new PreRollBuffer(7, SampleRate, 2);
         buffer.TryAppend([1f, 2f, 3f]);
 
         // act
-        var isAppended = buffer.TryAppend([1f]);
+        var isAppended = buffer.TryAppend([4f]);
 
         // assert
-        isAppended.Should().BeFalse();
-        buffer.Count.Should().Be(0);
+        // No poisoning: the buffer that overflowed at second 8 of a 20 s boot must still hold
+        // the last 8 s when the recorder finally arrives.
+        isAppended.Should().BeTrue();
+        buffer.Count.Should().Be(2);
+        buffer.TryDrain(7, 1).Should().Equal([3f, 4f]);
     }
 
     [Fact]

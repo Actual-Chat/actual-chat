@@ -2,8 +2,9 @@ namespace ActualChat.Audio;
 
 /// <summary>
 /// A bounded, one-shot capture buffer that fills from a native tap before the app's recorder
-/// exists and is drained once. The token ties its content to the capture that armed it, so a
-/// buffer abandoned by a failed capture can never be drained by an unrelated later recording.
+/// exists and is drained once, keeping the most recent <see cref="Capacity"/> samples. The token
+/// ties its content to the capture that armed it, so a buffer abandoned by a failed capture can
+/// never be drained by an unrelated later recording.
 /// </summary>
 public sealed class PreRollBuffer
 {
@@ -49,17 +50,24 @@ public sealed class PreRollBuffer
             return true;
 
         lock (_lock) {
-            if (_isDrained || _isOverflowed)
+            if (_isDrained)
                 return false;
 
-            if (samples.Length > _samples.Length - _count) {
-                // The boot budget was blown. A fragment whose start is missing would be sent as
-                // if it were the whole reply, so the buffer is voided rather than truncated.
+            // A slow boot must degrade to "lost the first words", not to "lost everything": the
+            // oldest samples are dropped so the newest Capacity worth always survive.
+            if (samples.Length >= _samples.Length) {
+                samples[^_samples.Length..].CopyTo(_samples);
+                _count = _samples.Length;
                 _isOverflowed = true;
-                _count = 0;
-                return false;
+                return true;
             }
 
+            var dropCount = _count + samples.Length - _samples.Length;
+            if (dropCount > 0) {
+                _samples.AsSpan(dropCount, _count - dropCount).CopyTo(_samples);
+                _count -= dropCount;
+                _isOverflowed = true;
+            }
             samples.CopyTo(_samples.AsSpan(_count));
             _count += samples.Length;
             return true;
@@ -69,7 +77,7 @@ public sealed class PreRollBuffer
     public float[]? TryDrain(long token, int minSampleCount)
     {
         lock (_lock) {
-            if (_isDrained || _isOverflowed || token != Token || _count < minSampleCount)
+            if (_isDrained || token != Token || _count < minSampleCount)
                 return null;
 
             _isDrained = true;
