@@ -76,6 +76,13 @@ public static partial class Constants
         public static readonly TimeSpan WalkieTalkieStaleWakeAge = TimeSpan.FromSeconds(60);
         public static readonly TimeSpan WalkieTalkieReplyColdStartTimeout = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan WalkieTalkieReplyRecencyWindow = TimeSpan.FromSeconds(150);
+        // Apple PTT transmit: the framework chimes when it activates the session, not when our
+        // recorder exists, so audio is captured natively across the gap. Capacity must stay <=
+        // 10 s, which is AppleAudioCapture's outBuffer size at RecordingSampleRate.
+        public static readonly TimeSpan WalkieTalkiePttTransmitStartupTimeout = TimeSpan.FromSeconds(8);
+        public static readonly TimeSpan WalkieTalkiePreRollCapacity = TimeSpan.FromSeconds(8);
+        public static readonly TimeSpan WalkieTalkiePreRollMinDuration = TimeSpan.FromSeconds(0.4);
+        public static readonly TimeSpan WalkieTalkiePreRollFlushDelay = TimeSpan.FromSeconds(1.5);
         public static readonly TimeSpan RecordingDuration = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxRealtimeStreamDrift = TimeSpan.FromSeconds(1.5);
         public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(3);
