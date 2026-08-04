@@ -112,7 +112,7 @@
     // Private methods
 
     private Task OnExpandClick()
-        => ModalUI.Show(new LocationMapModal.Model(Chat.Id));
+        => LocationUI.ShowLocationMapModal(Chat.Id);
 
     private Task OnStopSharing()
         => LocationUI.StopSharing(Chat.Id, CancellationToken.None);

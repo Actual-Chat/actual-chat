@@ -116,7 +116,7 @@
     }
 
     private Task OnOpenMap()
-        => ModalUI.Show(new LocationMapModal.Model(Entry.ChatId, Entry.LocationId));
+        => LocationUI.ShowLocationMapModal(Entry.ChatId, Entry.LocationId);
 
     private Task OnStopSharing()
         => LocationUI.StopSharing(Entry.ChatId, CancellationToken.None);
