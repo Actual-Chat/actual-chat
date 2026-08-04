@@ -43,24 +43,39 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         var target = ReplyTargetResolver.Resolve(
             armed, snapshot, focused, Clocks.ServerClock.Now, recencyWindow);
         if (target is not { } chatId) {
-            if (settings.AreAudibleCuesEnabled)
-                _ = TuneUI.Play(Tune.WalkieReplyNothingHeard);
+            await PlayFailureCue().ConfigureAwait(false);
             return null;
         }
-
-        if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false))
+        if (!await HasMicrophonePermission(cancellationToken).ConfigureAwait(false)) {
+            await PlayFailureCue().ConfigureAwait(false);
             return null;
+        }
 
         cancellationToken.ThrowIfCancellationRequested();
         // Opening the mic lifts a soft "mute all" applied by the host, exactly like RecorderToggle.
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat?.Rules.Author?.Id is { } ownAuthorId)
             await LiveSessionUI.MutePeer(chatId, ownAuthorId, false, cancellationToken).ConfigureAwait(false);
-        await ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk: true, idleDuration: settings.HotWindow)
-            .ConfigureAwait(false);
+
+        // Published before the mic opens: WalkieReplyToggle recomputes on the recording-chat change
+        // and must already see this reply as walkie-owned.
         var reply = new WalkieTalkieReply(chatId, Clocks.SystemClock.Now);
         lock (_lock)
             _reply = reply;
+
+        try {
+            await ChatAudioUI.SetRecordingChatId(chatId,
+                    isPushToTalk: true,
+                    idleDuration: settings.HotWindow,
+                    mustPlayBeginTune: settings.AreAudibleCuesEnabled)
+                .ConfigureAwait(false);
+        }
+        catch {
+            lock (_lock)
+                if (_reply == reply)
+                    _reply = null;
+            throw;
+        }
 
         StartColdStartWatch(chatId);
         return reply;
@@ -79,25 +94,62 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) != reply.ChatId)
             return;
 
-        await StopReply().ConfigureAwait(false);
+        await StopReply(isOwnReply: true).ConfigureAwait(false);
     }
 
-    public async Task StopReply()
+    public Task StopReply()
     {
-        bool everVoiced;
+        bool isOwnReply;
         lock (_lock) {
-            everVoiced = _everVoiced;
+            isOwnReply = _reply is not null;
             _reply = null;
         }
+        return StopReply(isOwnReply);
+    }
+
+    public bool IsOwnReply(ChatId chatId)
+    {
+        lock (_lock)
+            return _reply is { } reply && reply.ChatId == chatId;
+    }
+
+    public Task PlayFailureCue()
+        => PlayCue(Tune.WalkieReplyNothingHeard);
+
+    // Private methods
+
+    private async Task StopReply(bool isOwnReply)
+    {
+        bool everVoiced;
+        lock (_lock)
+            everVoiced = _everVoiced;
+
         StopColdStartWatch();
         if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is null)
             return; // Already closed - idempotent
 
         await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+        if (!isOwnReply) {
+            // Closing any recording is intended, but a walkie cue would be a lie about a mic walkie
+            // never opened - and _everVoiced is stale for it anyway.
+            Log.LogDebug("StopReply: closed a recording walkie-talkie didn't open");
+            return;
+        }
+
         _ = PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard);
     }
 
-    // Private methods
+    private async Task<bool> HasMicrophonePermission(CancellationToken cancellationToken)
+    {
+        var permission = AudioRecorder.MicrophonePermission;
+        if (await permission.Check(cancellationToken).ConfigureAwait(false) == true)
+            return true;
+        if (permission.CanPrompt)
+            return await permission.CheckOrRequest(cancellationToken).ConfigureAwait(false);
+
+        Log.LogWarning("RequestReply: no microphone permission, and nothing can request it headlessly");
+        return false;
+    }
 
     private void StartColdStartWatch(ChatId chatId)
     {

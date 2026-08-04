@@ -34,7 +34,8 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
-        return new ComputedModel(pttChatIds.Contains(Chat.Id), recordingChatId == Chat.Id);
+        var isHot = recordingChatId == Chat.Id && WalkieTalkieReplyUI.IsOwnReply(Chat.Id);
+        return new ComputedModel(pttChatIds.Contains(Chat.Id), isHot);
     }
 
     private void OnClick() {

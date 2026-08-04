@@ -68,15 +68,28 @@ public static class WalkieTalkieSession
             if (await hub.ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
                 return null;
 
+            // The live signal can't have fired for an utterance that ended before this process
+            // booted, so the persisted wake is the only thing that opens an answer window for it.
+            if (platform.LastWake is { } lastWake)
+                hub.IncomingVoiceActivityUI.NoteIncomingVoice(lastWake.ChatId, lastWake.At);
+
             // Null unless this very call opened the mic - see WalkieTalkieReplyUI.RequestReply.
             reply = await hub.WalkieTalkieReplyUI
                 .RequestReply(ReplyTargetResolver.UnboundedRecencyWindow, cts.Token)
                 .ConfigureAwait(false);
             return reply;
         }
+        catch (OperationCanceledException e) {
+            // Expected degraded mode: the boot budget ran out - see WalkieTalkiePttTransmitStartupTimeout.
+            Log.LogWarning(e, "Walkie-talkie transmit didn't fit into the startup budget");
+            await StopOrphanedReply(hub, reply).ConfigureAwait(false);
+            await PlayFailureCue(hub).ConfigureAwait(false);
+            return null;
+        }
         catch (Exception e) {
             Log.LogError(e, "Walkie-talkie transmit failed");
             await StopOrphanedReply(hub, reply).ConfigureAwait(false);
+            await PlayFailureCue(hub).ConfigureAwait(false);
             return null;
         }
         finally {
@@ -167,6 +180,9 @@ public static class WalkieTalkieSession
         if (isHeadless)
             chatAudioUI.IsWalkieTalkieHeadless = true;
         chatAudioUI.Enable();
+        // The utterance may be over by the time we boot, so HasIncomingVoice would never see an edge
+        // for it and the answer window would never open.
+        hub.IncomingVoiceActivityUI.NoteIncomingVoice(chatId, startedAt);
 
         if (isForeground) {
             // The user is in the app: don't hijack their state with a forced replay -
@@ -208,6 +224,19 @@ public static class WalkieTalkieSession
         }
         catch (Exception e) {
             Log.LogWarning(e, "Couldn't close the reply opened by a failed walkie-talkie transmit");
+        }
+    }
+
+    private static async Task PlayFailureCue(AppUIHub? hub)
+    {
+        if (hub is null)
+            return;
+
+        try {
+            await hub.WalkieTalkieReplyUI.PlayFailureCue().ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Couldn't play the walkie-talkie transmit failure cue");
         }
     }
 
