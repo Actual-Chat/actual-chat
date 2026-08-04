@@ -1,4 +1,5 @@
 @using TimeZone = ActualChat.Users.TimeZone
+@using AccountField = ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal.AccountField
 @inherits ComputedStateComponent<AppUIHub, AccountFull>
 @implements IDisposable
 @{
@@ -8,17 +9,14 @@
 
 <TileTopic Topic="Information"/>
 
-<Tile>
-    <TileItem IsHoverable="false" Class="first-tile-item">
+<Tile Class="your-account-tile">
+    <TileItem Class="first-tile-item" Click="@(() => OnEditClick(AccountField.Name))">
         <Icon>
             <AvatarBadge
                 Avatar="@account.Avatar"
                 Size="@SquareSize.Size9"
                 NameClass="hidden" />
         </Icon>
-        <Right>
-            <TileButtons EditClick="@OnEditClick"/>
-        </Right>
         <Content>
             @account.Name
         </Content>
@@ -28,9 +26,9 @@
     </TileItem>
 
     @if (account.AliasId is { } aliasId) {
-        <TileItem>
+        <TileItem Click="@(() => OnEditClick(AccountField.AliasId))">
             <Icon>
-                <i class="icon-link-2 text-xl"></i>
+                <i class="icon-link-2"></i>
             </Icon>
             <Content>
                 @("@" + aliasId.Value)
@@ -39,16 +37,18 @@
                 User link
             </Caption>
             <Right>
-                <CopyToClipboard
-                    ButtonClass="btn-xs btn-transparent tile-hidden-btn"
-                    Text="@(UrlMapper.ToAbsolute(Links.User(account.AliasInfo)))"/>
+                <div class="c-actions" @onclick:stopPropagation="true">
+                    <CopyToClipboard
+                        ButtonClass="btn-xs btn-transparent tile-hidden-btn"
+                        Text="@(UrlMapper.ToAbsolute(Links.User(account.AliasInfo)))"/>
+                </div>
             </Right>
         </TileItem>
     }
 
-    <TileItem>
+    <TileItem Click="@(() => OnEditClick(AccountField.Email))">
         <Icon>
-            <i class="icon-at text-xl"></i>
+            <i class="icon-at"></i>
         </Icon>
         <Content>
             @account.Email
@@ -57,19 +57,29 @@
             Email
         </Caption>
         <Right>
-            <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@account.Email"/>
-            <VerificationStatus IsVerified="account.IsEmailVerified()" Class="w-8 h-8" Verify="@OnEditClick"/>
+            <div class="c-actions" @onclick:stopPropagation="true">
+                <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@account.Email"/>
+                <VerificationStatus
+                    IsVerified="account.IsEmailVerified()"
+                    Class="w-8 h-8"
+                    Verify="@(() => OnEditClick(AccountField.Email))"/>
+            </div>
         </Right>
     </TileItem>
 
-    <TileItem>
+    <TileItem Click="@(() => OnEditClick(AccountField.Phone))">
         <Icon>
-            <i class="icon-phone text-xl"></i>
+            <i class="icon-phone"></i>
         </Icon>
         <Right>
             @if (account.Phone != null) {
-                <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@readablePhone"/>
-                <VerificationStatus IsVerified="account.IsPhoneVerified()" Class="w-8 h-8" Verify="@OnEditClick"/>
+                <div class="c-actions" @onclick:stopPropagation="true">
+                    <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@readablePhone"/>
+                    <VerificationStatus
+                        IsVerified="account.IsPhoneVerified()"
+                        Class="w-8 h-8"
+                        Verify="@(() => OnEditClick(AccountField.Phone))"/>
+                </div>
             }
         </Right>
         <Content>
@@ -82,19 +92,31 @@
 
     <TileItem Click="@OnTimeZoneClick">
         <Icon>
-            <i class="icon-globe text-xl"></i>
+            <i class="icon-globe"></i>
         </Icon>
         <Content>
             @(_timeZoneName ?? "Not set")
         </Content>
         <Caption>
-            Time zone
+            Time zone (for digest)
+        </Caption>
+    </TileItem>
+
+    <TileItem Class="tile-item-edit" Click="@(() => OnEditClick(AccountField.Name))">
+        <Icon>
+            <i class="icon-edit"></i>
+        </Icon>
+        <Content>
+            Edit or Delete
+        </Content>
+        <Caption>
+            Edit name, email, phone, or delete account
         </Caption>
     </TileItem>
 
     <TileItem Class="tile-item-share" Click="@OnShareClick">
         <Icon>
-            <i class="icon-share text-xl"></i>
+            <i class="icon-share"></i>
         </Icon>
         <Content>
             Share
@@ -134,8 +156,8 @@
 
     public void Dispose() { }
 
-    private void OnEditClick()
-        => ModalUI.Show(OwnAccountEditorModal.Model.Default);
+    private void OnEditClick(AccountField field)
+        => ModalUI.Show(new OwnAccountEditorModal.Model(field));
 
     private void OnShareClick()
         => _ = ShareUI.ShareOwnAccount();

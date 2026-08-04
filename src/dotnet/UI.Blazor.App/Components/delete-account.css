@@ -1,9 +1,18 @@
 ﻿.delete-account-modal .c-question span {
     @apply font-semibold;
 }
+.delete-account-modal .dialog-body > .form-block:first-child {
+    @apply pt-0;
+}
+.delete-account-modal .c-description {
+    @apply text-danger;
+}
 .delete-account-modal .c-description span {
     @apply font-semibold;
 }
 .delete-account-modal .c-proposal span {
     @apply font-semibold;
+}
+.delete-account-modal .c-proposal code {
+    @apply font-mono font-semibold text-danger;
 }

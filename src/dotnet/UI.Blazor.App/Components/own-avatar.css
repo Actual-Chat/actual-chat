@@ -4,6 +4,12 @@
 .own-account-editor-modal section.form-section-alias .copy-to-clipboard {
     @apply -mr-3;
 }
+.own-account-editor-modal .delete-account-tile i {
+    @apply text-xl text-danger;
+}
+.own-account-editor-modal .delete-account-tile .c-text {
+    @apply text-danger;
+}
 .is-default-avatar {
     @apply h-12 my-2;
 }

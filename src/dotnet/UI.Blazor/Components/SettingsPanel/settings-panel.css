@@ -279,10 +279,12 @@ body.narrow .settings-tab-header {
     @apply hidden;
 }
 
-.tile-item.tile-item-share i {
+.tile-item.tile-item-share i,
+.tile-item.tile-item-edit i {
     @apply text-primary;
 }
-.tile-item.tile-item-share .tile-item-body-content {
+.tile-item.tile-item-share .tile-item-body-content,
+.tile-item.tile-item-edit .tile-item-body-content {
     @apply text-primary;
 }
 
