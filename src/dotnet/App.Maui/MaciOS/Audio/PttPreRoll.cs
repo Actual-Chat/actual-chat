@@ -22,6 +22,13 @@ public static class PttPreRoll
 
     public static long Start()
     {
+        if (AppleAudioCapture.IsInputNodeHeld) {
+            // A second engine on a node the recorder already holds can silence the recording in
+            // flight, and a press made while the app is already recording needs no pre-roll.
+            Log.LogInformation("Pre-roll: skipped, the recorder holds the input node");
+            return 0;
+        }
+
         AVAudioEngine? oldEngine;
         long token;
         lock (Lock) {
@@ -126,13 +133,25 @@ public static class PttPreRoll
         if (engine is null)
             return;
 
+        // Per step: a throw from RemoveTapOnBus must not skip Stop()/Dispose(), or a running
+        // native engine is left on the hardware input node with nothing able to take it off.
         try {
             engine.InputNode.RemoveTapOnBus(0);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Pre-roll capture failed to remove its tap");
+        }
+        try {
             engine.Stop();
-            engine.Dispose();
         }
         catch (Exception e) {
             Log.LogWarning(e, "Pre-roll capture failed to stop cleanly");
+        }
+        try {
+            engine.Dispose();
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Pre-roll capture failed to dispose its engine");
         }
     }
 }
