@@ -121,6 +121,9 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
     protected override void VisitUnparsed(UnparsedTextMarkup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 
+    protected override void VisitHashtag(HashtagMarkup markup, ref StringBuilder state)
+        => AddText(markup.Text, ref state);
+
     protected override void VisitUnknown(Markup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 

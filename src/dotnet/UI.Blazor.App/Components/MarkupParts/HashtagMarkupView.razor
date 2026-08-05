@@ -1,0 +1,27 @@
+@using ActualChat.Search
+@inherits ComputedMarkupViewBase<HashtagMarkup, SearchMatch>
+
+<a class="hashtag-markup" @onclick="@OnClick"><SearchMatchHighlighter
+    Match="@State.Value"
+    HighlightedClass="highlight"/></a>
+
+@code {
+    private SearchUI SearchUI => Hub.SearchUI;
+
+    protected override ComputedState<SearchMatch>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<SearchMatch>.Options {
+                InitialValue = SearchMatch.Matchless(Markup.Text),
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<SearchMatch> ComputeState(CancellationToken cancellationToken) {
+        var markupText = Markup.Text;
+        var searchMatch = await HighlightUI.GetSearchMatch(Entry.Id, markupText, cancellationToken)
+            .ConfigureAwait(false);
+        return searchMatch.IsMatch ? searchMatch : SearchMatch.Matchless(markupText);
+    }
+
+    private void OnClick()
+        => SearchUI.SearchFor(Markup.Text);
+}

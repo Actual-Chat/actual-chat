@@ -33,5 +33,6 @@ public record MentionExtractor : MarkupVisitorWithState<HashSet<MentionRef>>
     protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref HashSet<MentionRef> state) { }
     protected override void VisitNewLine(NewLineMarkup markup, ref HashSet<MentionRef> state) { }
     protected override void VisitUnparsed(UnparsedTextMarkup markup, ref HashSet<MentionRef> state) { }
+    protected override void VisitHashtag(HashtagMarkup markup, ref HashSet<MentionRef> state) { }
     protected override void VisitUnknown(Markup markup, ref HashSet<MentionRef> state) { }
 }

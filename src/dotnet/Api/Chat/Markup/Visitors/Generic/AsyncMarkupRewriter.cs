@@ -82,4 +82,6 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
         => new (markup);
     protected override ValueTask<Markup> VisitUnparsed(UnparsedTextMarkup markup, CancellationToken cancellationToken)
         => new (markup);
+    protected override ValueTask<Markup> VisitHashtag(HashtagMarkup markup, CancellationToken cancellationToken)
+        => new (markup);
 }

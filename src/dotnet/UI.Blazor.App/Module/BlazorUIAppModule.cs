@@ -100,6 +100,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddTypeMapper<IMarkupView>(map => map
             .Add<NewLineMarkup, NewLineMarkupView>()
             .Add<UrlMarkup, UrlMarkupView>()
+            .Add<HashtagMarkup, HashtagMarkupView>()
             .Add<MentionMarkup, AuthorMentionView>()
             .Add<UserMention, UserMentionView>()
             .Add<ChatMention, ChatMentionView>()

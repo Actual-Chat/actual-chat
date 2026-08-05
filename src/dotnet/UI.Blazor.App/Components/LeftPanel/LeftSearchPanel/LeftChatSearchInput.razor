@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.App.Events
 @inherits ComputedStateComponent<AppUIHub, LeftChatSearchInput.Model>
 <OnUIEvent TEvent="SearchClearedEvent" Handler="OnSearchCleared" />
+<OnUIEvent TEvent="SearchTextSetEvent" Handler="OnSearchTextSet" />
 @{
     var m = State.Value;
     var cls = m.IsOpen ? "open" : "closed";
@@ -156,6 +157,11 @@
 
     private void OnTypeBadgeClick()
         => SearchUI.SetTypeFilter(SearchTypeFilter.Anything);
+
+    private Task OnSearchTextSet(SearchTextSetEvent e, CancellationToken cancellationToken) {
+        UpdateHasText(e.Text);
+        return _inputRef?.SetText(e.Text).AsTask() ?? Task.CompletedTask;
+    }
 
     private static string LocationBadgeText(SearchLocationFilter filter) => filter switch {
         SearchLocationFilter.Chat => "Chat",

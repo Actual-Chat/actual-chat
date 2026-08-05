@@ -25,6 +25,7 @@ public abstract record MarkupVisitor<TResult>
             PreformattedTextMarkup preformattedTextMarkup => VisitPreformattedText(preformattedTextMarkup),
             NewLineMarkup newLineMarkup => VisitNewLine(newLineMarkup),
             UnparsedTextMarkup unparsedMarkup => VisitUnparsed(unparsedMarkup),
+            HashtagMarkup hashtagMarkup => VisitHashtag(hashtagMarkup),
             _ => VisitUnknown(markup),
         };
 
@@ -47,6 +48,7 @@ public abstract record MarkupVisitor<TResult>
     protected abstract TResult VisitPreformattedText(PreformattedTextMarkup markup);
     protected abstract TResult VisitNewLine(NewLineMarkup markup);
     protected abstract TResult VisitUnparsed(UnparsedTextMarkup markup);
+    protected abstract TResult VisitHashtag(HashtagMarkup markup);
 
     protected virtual TResult VisitUnknown(Markup markup)
         => throw new ArgumentOutOfRangeException(nameof(markup));
