@@ -43,7 +43,6 @@ public class NotificationsBackend(IServiceProvider services)
     private IUserPresencesBackend UserPresencesBackend { get; } = services.GetRequiredService<IUserPresencesBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private NotificationsSettings Settings { get; } = services.GetRequiredService<NotificationsSettings>();
-    private IServerFeatures ServerFeatures { get; } = services.GetRequiredService<IServerFeatures>();
     private IDbEntityResolver<string, DbExplicitNotification> DbExplicitNotificationResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbExplicitNotification>>();
 
@@ -772,7 +771,7 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         var (chatId, authorId, startedAt) = eventCommand;
-        if (!await ServerFeatures.Get<Features_EnableWalkieTalkiePush>(cancellationToken).ConfigureAwait(false))
+        if (!Settings.EnableWalkieTalkiePush)
             return;
 
         var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
