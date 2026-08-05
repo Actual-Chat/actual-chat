@@ -76,7 +76,10 @@ public static partial class CoreModuleInitializer
 #else
                 = new((isServer
                     ? RpcSerializationFormat.MessagePackV6
-                    : RpcSerializationFormat.MessagePackV6C_LZ4).Key);
+                    : OSInfo.IsWebAssembly
+                        ? RpcSerializationFormat.MessagePackV6C_LZ4 // No outbound compression in WASM
+                        : RpcSerializationFormat.MessagePackV6C_LZ4F
+                    ).Key);
 #endif
         }
     }
