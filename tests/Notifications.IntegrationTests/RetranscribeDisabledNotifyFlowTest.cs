@@ -1,3 +1,4 @@
+using ActualChat.Transcription.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Streaming.Module;
 using ActualChat.Testing.Host;
@@ -41,8 +42,7 @@ public sealed class RetranscribeDisabledNotifyCollection : ICollectionFixture<Re
             messageSink,
             TestAppHostOptions.Default with {
                 ConfigureHost = (_, cfg) => {
-                    cfg.AddInMemory<ChatSettings>((x => x.IsRetranscriptionEnabled, "false"));
-                    cfg.AddInMemory<StreamingSettings>((x => x.UseFakeTranscriber, "true"));
+                    cfg.AddInMemory<TranscriptionSettings>((x => x.UseFakeTranscriber, "true"));
                 },
             });
 }

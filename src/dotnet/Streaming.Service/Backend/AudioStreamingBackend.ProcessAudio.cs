@@ -172,6 +172,7 @@ public partial class AudioStreamingBackend
         var liveStreamId = mustStreamVoice ? openSegment.StreamId.Value : null;
         var audioMediaIdTcs = TaskCompletionSourceExt.New<MediaId?>();
         var refineTranscriptLanguageTcs = TaskCompletionSourceExt.New<Language?>();
+        var realtimeTextTcs = TaskCompletionSourceExt.New<string>();
         var refinedTranscriptTcs = TaskCompletionSourceExt.New<Transcript?>();
         // Transcript off (controller set JustVoice / user JustVoice): live voice still
         // fans out, but no transcription runs and no text entry / audio media is persisted.
@@ -184,6 +185,7 @@ public partial class AudioStreamingBackend
                     liveStreamId,
                     audioMediaIdTcs.Task,
                     refineTranscriptLanguageTcs,
+                    realtimeTextTcs,
                     refinedTranscriptTcs.Task,
                     CancellationToken.None),
                 Log,
@@ -244,7 +246,12 @@ public partial class AudioStreamingBackend
             // transcribeTask also keeps `audio` alive until transcription and finalization finish.
             if (mustTranscribe) {
                 DispatchRefineTranscription(
-                    openSegment, closedSegment, mustStreamVoice, refineTranscriptLanguageTcs.Task, refinedTranscriptTcs);
+                    openSegment,
+                    closedSegment,
+                    mustStreamVoice,
+                    refineTranscriptLanguageTcs.Task,
+                    realtimeTextTcs.Task,
+                    refinedTranscriptTcs);
                 await transcribeTask!.ConfigureAwait(false);
             }
             // Covers the case when nothing was ever published, so no stream expiry will fire.
@@ -257,24 +264,39 @@ public partial class AudioStreamingBackend
         ClosedAudioSegment? closedSegment,
         bool mustStreamVoice,
         Task<Language?> refineTranscriptLanguageTask,
+        Task<string> realtimeTextTask,
         TaskCompletionSource<Transcript?> refinedTranscriptTcs)
     {
-        var refineTranscriber = RefineTranscriber;
-        if (!mustStreamVoice || refineTranscriber is null || closedSegment is null) {
+        if (!mustStreamVoice || closedSegment is null) {
             refinedTranscriptTcs.TrySetResult(null);
             return;
         }
+
         var audioSource = closedSegment.Audio;
         var streamId = openSegment.StreamId;
+        var record = openSegment.Record;
         _ = BackgroundTask.Run(async () => {
             var language = await refineTranscriptLanguageTask.ConfigureAwait(false);
             if (language is not { } lang) {
                 refinedTranscriptTcs.TrySetResult(null);
                 return;
             }
+
+            // Resolved as the realtime stream drains, just before finalization awaits this task.
+            var realtimeText = await realtimeTextTask.ConfigureAwait(false);
             using var cts = new CancellationTokenSource(Constants.Transcription.RetranscriptionTimeout);
             try {
                 var options = new TranscriptionOptions { Language = lang };
+                var preferredId = await GetPreferredTranscriberId(record, cts.Token).ConfigureAwait(false);
+                var streamInfo = TranscriberRegistry.GetInfo(preferredId);
+                var refineTranscriber = TranscriberSelector.GetOffline(options, preferredId, streamInfo);
+                if (refineTranscriber is null || IsTooShortToRetranscribe(audioSource, streamInfo, realtimeText)) {
+                    refinedTranscriptTcs.TrySetResult(null);
+                    return;
+                }
+
+                options = await WithContext(options, record.ChatId, refineTranscriber.Info, cts.Token)
+                    .ConfigureAwait(false);
                 var result = await refineTranscriber.Transcribe(audioSource, options, cts.Token).ConfigureAwait(false);
                 refinedTranscriptTcs.TrySetResult(result);
             }
@@ -351,7 +373,8 @@ public partial class AudioStreamingBackend
             if (Stopwatch.GetElapsedTime(lastLogStamp, nowStamp).TotalSeconds >= 1.0) {
                 if (gapsInWindow > 0)
                     log.LogWarning(
-                        "audio-ingress-cadence: stream #{StreamId} {Gaps} gap(s) >60ms in last second; max gap {MaxMs:F0}ms",
+                        "audio-ingress-cadence: stream #{StreamId} {Gaps} gap(s) >60ms in last second; "
+                        + "max gap {MaxMs:F0}ms",
                         streamId, gapsInWindow, maxGapMs);
                 gapsInWindow = 0;
                 maxGapMs = 0;
@@ -361,19 +384,59 @@ public partial class AudioStreamingBackend
         }
     }
 
-    private async Task<AudioSegmentLanguage> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
+    private async Task<AudioSegmentLanguage> GetTranscriptionLanguage(
+        AudioRecord record,
+        CancellationToken cancellationToken)
     {
         var userSettingsUI = Services.UserSettingsUI(record.Session);
-        var settings = await userSettingsUI.ChatUserSettings(record.ChatId).Get(cancellationToken).ConfigureAwait(false);
+        var settings = await userSettingsUI.ChatUserSettings(record.ChatId)
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
         var languageSettings = await userSettingsUI.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
         return new AudioSegmentLanguage(settings.Language, languageSettings);
     }
 
-    private async Task<TranscriptionEngine> GetTranscriptionEngine(AudioRecord record, CancellationToken cancellationToken)
+    private async Task<TranscriptionOptions> WithContext(
+        TranscriptionOptions options,
+        ChatId chatId,
+        TranscriberInfo? info,
+        CancellationToken cancellationToken)
+    {
+        // Building it costs chat reads, so only transcribers that can actually use it pay.
+        var source = TranscriptionContextSource;
+        if (source == null || info?.ContextPolicy == null || chatId.Value.IsNullOrEmpty())
+            return options;
+
+        var context = await source.GetContext(chatId, cancellationToken).ConfigureAwait(false);
+        return context.IsNone ? options : options with { Context = context };
+    }
+
+    private static bool IsTooShortToRetranscribe(
+        AudioSource audioSource,
+        TranscriberInfo? streamInfo,
+        string realtimeText)
+    {
+        var minWords = streamInfo?.MinRetranscriptionWords ?? Constants.Transcription.MinRetranscriptionWords;
+        if (realtimeText.CountWords() >= minWords)
+            return false;
+
+        // Clearing either bar is enough, so the duration still speaks for speech the realtime pass
+        // under-transcribed. An unknown duration means the segment never closed cleanly - retranscribe.
+        var minDuration = streamInfo?.MinRetranscriptionDuration
+            ?? Constants.Transcription.MinRetranscriptionDuration;
+        return audioSource.WhenDurationAvailable.IsCompletedSuccessfully
+            && audioSource.Duration < minDuration;
+    }
+
+    private async Task<TranscriberId> GetPreferredTranscriberId(
+        AudioRecord record,
+        CancellationToken cancellationToken)
     {
         var userSettingsUI = Services.UserSettingsUI(record.Session);
-        var settings = await userSettingsUI.UserTranscriptionEngineSettings().Get(cancellationToken).ConfigureAwait(false);
-        return settings.TranscriptionEngine;
+        var settings = await userSettingsUI.UserTranscriptionEngineSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        return settings.GetTranscriberId();
     }
 
     private async Task<(ChatEntryId, Language)?> TranscribeAudio(
@@ -382,6 +445,7 @@ public partial class AudioStreamingBackend
         string? liveStreamId,
         Task<MediaId?> audioMediaIdTask,
         TaskCompletionSource<Language?> refineTranscriptLanguageTcs,
+        TaskCompletionSource<string> realtimeTextTcs,
         Task<Transcript?> refinedTranscriptTask,
         CancellationToken cancellationToken)
     {
@@ -391,7 +455,17 @@ public partial class AudioStreamingBackend
             var transcriptionOptions = new TranscriptionOptions {
                 Language = chatLanguage,
             };
-            var chatEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, liveStreamId, audioMediaIdTask, refineTranscriptLanguageTcs, refinedTranscriptTask, cancellationToken).ConfigureAwait(false);
+            var chatEntryId = await TranscribeAudio(
+                    audioSegment,
+                    transcriptionOptions,
+                    beginsAt,
+                    liveStreamId,
+                    audioMediaIdTask,
+                    refineTranscriptLanguageTcs,
+                    realtimeTextTcs,
+                    refinedTranscriptTask,
+                    cancellationToken)
+                .ConfigureAwait(false);
             return chatEntryId is not null ? (chatEntryId, chatLanguage) : null;
         }
         else {
@@ -404,14 +478,25 @@ public partial class AudioStreamingBackend
                 foreach (var languageCandidate in languageCandidates) {
                     if (detectedLanguages.Contains(languageCandidate)) {
                         detectedLanguage = languageCandidate;
-                        DebugLog?.LogDebug("Detected language: {Language} for AudioSegment: {AudioSegment}", detectedLanguage, audioSegment.StreamId);
+                        DebugLog?.LogDebug("Detected language: {Language} for AudioSegment: {AudioSegment}",
+                            detectedLanguage, audioSegment.StreamId);
                         ApplyTranscriptionDetectedLanguage(audioSegment.Record, detectedLanguage, default);
                         break;
                     }
                 }
             };
             var transcriptionOptions = TranscriptionOptions.AutoDetectLanguage(languageCandidates, onLanguageDetected);
-            var chatEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, liveStreamId, audioMediaIdTask, refineTranscriptLanguageTcs, refinedTranscriptTask, cancellationToken).ConfigureAwait(false);
+            var chatEntryId = await TranscribeAudio(
+                    audioSegment,
+                    transcriptionOptions,
+                    beginsAt,
+                    liveStreamId,
+                    audioMediaIdTask,
+                    refineTranscriptLanguageTcs,
+                    realtimeTextTcs,
+                    refinedTranscriptTask,
+                    cancellationToken)
+                .ConfigureAwait(false);
             if (detectedLanguage is not null && chatEntryId is not null)
                 return (chatEntryId, detectedLanguage);
             return null;
@@ -425,15 +510,26 @@ public partial class AudioStreamingBackend
         string? liveStreamId,
         Task<MediaId?> audioMediaIdTask,
         TaskCompletionSource<Language?> refineTranscriptLanguageTcs,
+        TaskCompletionSource<string> realtimeTextTcs,
         Task<Transcript?> refinedTranscriptTask,
         CancellationToken cancellationToken)
     {
-        TranscriptionEngine transcriptionEngine;
-        if (transcriptionOptions.DetectLanguage)
-            transcriptionEngine = TranscriptionEngine.Deepgram;
-        else
-            transcriptionEngine = await GetTranscriptionEngine(audioSegment.Record, cancellationToken).ConfigureAwait(false);
-        var transcriber = TranscriberFactory.Get(transcriptionEngine);
+        var preferredId = await GetPreferredTranscriberId(audioSegment.Record, cancellationToken)
+            .ConfigureAwait(false);
+        var transcriber = TranscriberSelector.GetStream(transcriptionOptions, preferredId);
+        if (transcriber == null) {
+            Log.LogError("No transcriber supports {Language} for stream #{StreamId}",
+                transcriptionOptions.Language, audioSegment.StreamId);
+            return null;
+        }
+
+        transcriptionOptions = await WithContext(
+                transcriptionOptions,
+                audioSegment.Record.ChatId,
+                transcriber.Info,
+                cancellationToken)
+            .ConfigureAwait(false);
+
         // Providers can fail to complete the transcript stream (e.g. a lost Deepgram finalize ack),
         // which would strand the entry in the streaming state - so transcription gets a deadline,
         // anchored at the audio source end. The paced (2x) audio push lags that end by at most
@@ -508,7 +604,8 @@ public partial class AudioStreamingBackend
         }
         catch (Exception e) when (deadlineCts.IsCancellationRequested) {
             Log.LogWarning(e,
-                "TranscribeAudio: realtime transcription of #{StreamId} hit the completion deadline, finalizing with what we have",
+                "TranscribeAudio: realtime transcription of #{StreamId} hit the completion deadline, "
+                + "finalizing with what we have",
                 audioSegment.StreamId);
         }
         finally {
@@ -527,11 +624,13 @@ public partial class AudioStreamingBackend
                     // - chat-language mode: outer already set it; this is a no-op.
                     // - detect mode: realtime stream has drained, so lastTranscript.Languages is final.
                     refineTranscriptLanguageTcs.TrySetResult(lastTranscript.Languages.FirstOrDefault());
+                    realtimeTextTcs.TrySetResult(lastTranscript.Text);
                     await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
                 }
             }
             // No-op when finalization set the language above; otherwise refine must not stay blocked on it
             refineTranscriptLanguageTcs.TrySetResult(null);
+            realtimeTextTcs.TrySetResult("");
             await transcriptDiffStream.DisposeSilentlyAsync().ConfigureAwait(false);
         }
         return textEntry?.Id;
@@ -576,12 +675,16 @@ public partial class AudioStreamingBackend
             if (refinedTranscript is not null) {
                 if (realtimeText.ShouldUseOriginalTranscript(refinedTranscript.Text))
                     Log.LogInformation(
-                        "TranscribeAudio: entry #{EntryId} rejected refined transcript. Original: '{OriginalTranscript}', refined: '{RefinedTranscript}'",
+                        "TranscribeAudio: entry #{EntryId} rejected refined transcript. "
+                        + "Original: '{OriginalTranscript}', refined: '{RefinedTranscript}'",
                         textEntry.Id, realtimeText, refinedTranscript.Text);
                 else {
                     finalText = refinedTranscript.Text;
                     finalTimeMap = refinedTranscript.TimeMap.IsDegenerate && !realtimeTimeMap.IsDegenerate
-                        ? LinearMapDtwRemapper.Remap(realtimeText, refinedTranscript.Text, realtimeTimeMap, LinearMapAlignmentMode.RetranscribeSameAudio)
+                        ? LinearMapDtwRemapper.Remap(realtimeText,
+                            refinedTranscript.Text,
+                            realtimeTimeMap,
+                            LinearMapAlignmentMode.RetranscribeSameAudio)
                         : refinedTranscript.TimeMap;
                 }
             }
@@ -632,7 +735,9 @@ public partial class AudioStreamingBackend
         }
     }
 
-    private void ApplyTranscriptionDetectedLanguage(AudioRecord audioSegmentRecord, Language detectedLanguage,
+    private void ApplyTranscriptionDetectedLanguage(
+        AudioRecord audioSegmentRecord,
+        Language detectedLanguage,
         CancellationToken cancellationToken)
         => _ = BackgroundTask.Run(async () => {
             var chatId = audioSegmentRecord.ChatId;

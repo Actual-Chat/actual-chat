@@ -1,7 +1,7 @@
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Streaming;
-using ActualChat.Streaming.Services.Transcribers;
+using ActualChat.Transcription;
 using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Transcription.IntegrationTests;

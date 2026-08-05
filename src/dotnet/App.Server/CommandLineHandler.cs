@@ -23,7 +23,7 @@ public static class CommandLineHandler
 
     // Env. vars set by -fake-ai-services. Add new fakes here as they're introduced.
     private static readonly (string Name, string Value)[] FakeAiServiceEnvVars = [
-        ("StreamingSettings__UseFakeTranscriber", "true"),
+        ("TranscriptionSettings__UseFakeTranscriber", "true"),
         ("ChatSettings__UseFakeLanguageDetection", "true"),
     ];
 

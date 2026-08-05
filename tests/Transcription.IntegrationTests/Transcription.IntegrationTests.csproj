@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\dotnet\Streaming.Contracts\Streaming.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\Transcription.Service\Transcription.Service.csproj" />
     <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>

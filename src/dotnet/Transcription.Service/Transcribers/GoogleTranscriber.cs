@@ -2,21 +2,28 @@ using System.Numerics;
 using System.Text.RegularExpressions;
 using ActualChat.Audio;
 using ActualChat.Module;
-using ActualChat.Transcription;
 using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using EndpointingSensitivity = Google.Cloud.Speech.V2.StreamingRecognitionFeatures.Types.EndpointingSensitivity;
 using static ActualChat.Constants.Transcription.Google;
 
-namespace ActualChat.Streaming.Services.Transcribers;
+namespace ActualChat.Transcription;
 
-/// <summary>
-/// Transcriber implementation using Google Cloud Speech-to-Text API.
-/// </summary>
-public partial class GoogleTranscriber : ITranscriber
+public sealed partial class GoogleTranscriber : ITranscriber
 {
+    public sealed class Options
+    {
+        public string Model { get; set; } = Constants.Transcription.Google.Model;
+        public EndpointingSensitivity EndpointingSensitivity { get; set; } = DefaultEndpointingSensitivity;
+    }
+
+    // Short and Supershort are documented as latency optimizations, but measured on a 70s ru
+    // recording both fragment the stream badly enough to lose the tail: 394/368 chars vs 575.
+    public const EndpointingSensitivity DefaultEndpointingSensitivity = EndpointingSensitivity.Standard;
+
     [GeneratedRegex(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
     private static partial Regex CompleteSentenceOrEmptyRegexFactory();
 
@@ -25,7 +32,8 @@ public partial class GoogleTranscriber : ITranscriber
 
     private static readonly Regex CompleteSentenceOrEmptyRegex = CompleteSentenceOrEmptyRegexFactory();
     private static readonly Regex EndsWithWhitespaceOrEmptyRegex = EndsWithWhitespaceOrEmptyRegexFactory();
-    private static readonly string RegionId = "us";
+
+    private readonly Options _options;
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -39,18 +47,27 @@ public partial class GoogleTranscriber : ITranscriber
 
     private SpeechClient SpeechClient { get; set; } = null!; // Post-WhenInitialized
     private string GoogleProjectId { get; set; } = null!; // Post-WhenInitialized
+    private string RegionId => CoreServerSettings.GoogleRegionId;
 
     public Task WhenInitialized { get; }
+    public TranscriberInfo Info { get; } = new() {
+        Id = TranscriberId.GoogleStream,
+        DriverId = "google",
+        Kind = TranscriberKind.StreamOnly,
+    };
 
-    public GoogleTranscriber(IServiceProvider services)
+    public GoogleTranscriber(IServiceProvider services, Options? options = null)
     {
+        _options = options ?? new Options();
         Services = services;
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
 
         CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
         WebMStreamConverter = new WebMStreamConverter(Clocks, services.LogFor<WebMStreamConverter>());
-        OggOpusStreamConverter = new OggOpusStreamConverter();
+        OggOpusStreamConverter = new OggOpusStreamConverter(new OggOpusStreamConverter.Options {
+            PageDuration = Constants.Transcription.StreamPageDuration,
+        });
         WhenInitialized = Initialize();
     }
 
@@ -69,7 +86,8 @@ public partial class GoogleTranscriber : ITranscriber
         else {
             var platform = await Platform.InstanceAsync().ConfigureAwait(false);
             GoogleProjectId = platform?.ProjectId ?? throw StandardError.NotSupported<GoogleTranscriber>(
-                $"Requires GKE or explicit settings of {nameof(CoreServerSettings)}.{nameof(CoreServerSettings.GoogleProjectId)}");
+                $"Requires GKE or explicit settings of {nameof(CoreServerSettings)}." +
+                $"{nameof(CoreServerSettings.GoogleProjectId)}");
         }
 
         if (GoogleProjectId != "n/a")
@@ -88,7 +106,7 @@ public partial class GoogleTranscriber : ITranscriber
             Log.LogDebug("Starting recognize process for {AudioStreamId}", audioStreamId);
 
             var languageCode = GetRecognizerOptions(options.Language).LanguageCode;
-            var recognizerId = $"{languageCode.ToLower()}";
+            var recognizerId = $"{languageCode.ToLower()}-{_options.Model.Replace('_', '-')}";
             var parent = $"projects/{GoogleProjectId}/locations/{RegionId}";
             var recognizerName = $"{parent}/recognizers/{recognizerId}";
 
@@ -105,6 +123,7 @@ public partial class GoogleTranscriber : ITranscriber
                 await TranscribeInternal(recognizerName, audioSource, options, output, cancellationToken)
                     .ConfigureAwait(false);
             }
+
             output.TryComplete();
         }
         catch (Exception e) {
@@ -113,24 +132,44 @@ public partial class GoogleTranscriber : ITranscriber
         }
     }
 
+    // Protected/internal methods
+
+    // It's internal to be accessible from tests
+    internal async IAsyncEnumerable<Transcript> ProcessResponses(
+        GoogleTranscribeState state,
+        TranscriptionOptions options,
+        IAsyncEnumerable<StreamingRecognizeResponse> responses)
+    {
+        await foreach (var response in responses.ConfigureAwait(false)) {
+            var transcript = ProcessResponse(state, options, response);
+            if (transcript != null)
+                yield return transcript;
+        }
+
+        state.MakeStable();
+        var finalTranscript = state.Stable.WithSuffix("", state.ProcessedAudioDuration);
+        yield return finalTranscript;
+    }
+
     // Private methods
 
-    private static StreamingRecognitionConfig GetStreamingRecognitionConfig(TranscriptionOptions options)
+    private StreamingRecognitionConfig GetStreamingRecognitionConfig(TranscriptionOptions options)
     {
         var languageCode = GetRecognizerOptions(options.Language).LanguageCode;
         return new StreamingRecognitionConfig {
             Config = new RecognitionConfig {
-                Model = "long",
+                Model = _options.Model,
                 LanguageCodes = { languageCode },
                 AutoDecodingConfig = new AutoDetectDecodingConfig(),
+                // Word timings and confidences go unread - the time map is built from
+                // ResultEndOffset - and asking for them cost 33% of the transcribed text.
                 Features = new RecognitionFeatures {
                     EnableAutomaticPunctuation = true,
-                    EnableWordConfidence = true,
-                    EnableWordTimeOffsets = true,
                 },
             },
             StreamingFeatures = new StreamingRecognitionFeatures {
                 InterimResults = true,
+                EndpointingSensitivity = _options.EndpointingSensitivity,
                 // TODO(AK): test google VAD events - might be useful
                 // VoiceActivityTimeout =
                 // EnableVoiceActivityEvents =
@@ -160,17 +199,15 @@ public partial class GoogleTranscriber : ITranscriber
         }).ConfigureAwait(false);
 
         var state = new GoogleTranscribeState(audioSource, options, recognizeStream, output);
-        Task? pullResponsesTask = null;
         try {
-            var pushAudioTask = PushAudio(state, cts.Token);
-            pullResponsesTask = PullResponses(state, options, cts.Token);
-            await pushAudioTask.ConfigureAwait(false);
-            await pullResponsesTask.ConfigureAwait(false);
+            await TranscriberHelper.WhenPushAndRead(
+                    PushAudio(state, cts.Token),
+                    PullResponses(state, options, cts.Token),
+                    cts)
+                .ConfigureAwait(false);
         }
         finally {
             cts.CancelAndDisposeSilently();
-            if (pullResponsesTask is { IsCompleted: false })
-                await pullResponsesTask.SilentAwait(false);
         }
     }
 
@@ -202,14 +239,15 @@ public partial class GoogleTranscriber : ITranscriber
                 if (delay > TimeSpan.Zero)
                     await clock.Delay(delay, cancellationToken).ConfigureAwait(false);
 
+                // StreamingConfig and Audio share a protobuf oneof: only the first request carries one.
                 var request = new StreamingRecognizeRequest {
-                    StreamingConfig = GetStreamingRecognitionConfig(state.Options),
                     Audio = Google.Protobuf.ByteString.CopyFrom(chunk),
                 };
                 await recognizeStream.WriteAsync(request).ConfigureAwait(false);
 
                 if (lastFrame != null) {
-                    var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration - SilentPrefixDuration).Positive();
+                    var processedAudioDuration =
+                        (lastFrame.Offset + lastFrame.Duration - SilentPrefixDuration).Positive();
                     if (audioSource.WhenDurationAvailable.IsCompletedSuccessfully)
                         processedAudioDuration = TimeSpanExt.Min(audioSource.Duration, processedAudioDuration);
                     state.ProcessedAudioDuration = (float)processedAudioDuration.TotalSeconds;
@@ -249,23 +287,6 @@ public partial class GoogleTranscriber : ITranscriber
         }
     }
 
-    // It's internal to be accessible from tests
-    internal async IAsyncEnumerable<Transcript> ProcessResponses(
-        GoogleTranscribeState state,
-        TranscriptionOptions options,
-        IAsyncEnumerable<StreamingRecognizeResponse> responses)
-    {
-        await foreach (var response in responses.ConfigureAwait(false)) {
-            var transcript = ProcessResponse(state, options, response);
-            if (transcript != null)
-                yield return transcript;
-        }
-
-        state.MakeStable();
-        var finalTranscript = state.Stable.WithSuffix("", state.ProcessedAudioDuration);
-        yield return finalTranscript;
-    }
-
     private Transcript? ProcessResponse(
         GoogleTranscribeState state,
         TranscriptionOptions options,
@@ -283,7 +304,8 @@ public partial class GoogleTranscriber : ITranscriber
         if (UseStabilityHeuristics) {
             // Google Transcribe issue: sometimes it omits the final transcript,
             // so we use a heuristic to automatically identify it
-            if (!isFinal && stability.Length == 1 && stability[0] < 0.5 && lastStability.Length > 1 && lastStability.Max() > 0.5)
+            if (!isFinal && stability.Length == 1 && stability[0] < 0.5
+                && lastStability.Length > 1 && lastStability.Max() > 0.5)
                 // Not marked as final, but:
                 // - Previous results contain at least one having a high stability,
                 // - And now we're getting a single result with a low stability.
@@ -307,12 +329,12 @@ public partial class GoogleTranscriber : ITranscriber
         GoogleTranscribeState state,
         StreamingRecognitionResult result,
         TranscriptionOptions options,
-        bool appendToUnstable)
+        bool mustAppendToUnstable)
     {
         var isFinal = result.IsFinal;
         var suffix = result.Alternatives.FirstOrDefault()?.Transcript ?? "";
         var endTime = TryGetOriginalAudioTime(result.ResultEndOffset) ?? state.ProcessedAudioDuration;
-        suffix = FixSuffix(state[appendToUnstable].Text, suffix);
+        suffix = FixSuffix(state[mustAppendToUnstable].Text, suffix);
 
         // Google transcriber sometimes returns empty final transcript -
         // we assume that the last unstable one becomes stable in this case.
@@ -340,7 +362,7 @@ public partial class GoogleTranscriber : ITranscriber
 #endif
 
         // Sometimes Final response seems to be cut, let's check its size and keep unstable transcription if necessary
-        if (isFinal && !appendToUnstable)
+        if (isFinal && !mustAppendToUnstable)
             // Unstable is significantly larger than new stable chunk
             if (state.Unstable.Length > suffix.Length + 8) {
                 state.MakeStable();
@@ -352,7 +374,7 @@ public partial class GoogleTranscriber : ITranscriber
             : [];
         if (languages.Length == 0)
             languages = [options.Language];
-        state.Append(suffix, endTime, languages, appendToUnstable).MakeStable(isFinal);
+        state.Append(suffix, endTime, languages, mustAppendToUnstable).MakeStable(isFinal);
     }
 
     // This method is unused for now, since we rely on our own time offset computation logic
@@ -413,8 +435,6 @@ public partial class GoogleTranscriber : ITranscriber
         return true;
     }
 
-    // Helpers
-
     private async Task CreateRecognizer(
         string recognizerId,
         string recognizerParent,
@@ -427,12 +447,12 @@ public partial class GoogleTranscriber : ITranscriber
             Parent = recognizerParent,
             RecognizerId = recognizerId,
             Recognizer = new Recognizer {
- #pragma warning disable CS0612 // Type or member is obsolete -
+#pragma warning disable CS0612 // Type or member is obsolete -
                 // NOTE(AY): We anyway using the newer properties, search for "RecognitionConfig" here
-                Model = "long",
+                Model = _options.Model,
                 DisplayName = recognizerId,
                 LanguageCodes = { recognizerOptions.LanguageCode },
- #pragma warning restore CS0612 // Type or member is obsolete
+#pragma warning restore CS0612 // Type or member is obsolete
                 DefaultRecognitionConfig = new RecognitionConfig {
                     Features = new RecognitionFeatures {
                         EnableAutomaticPunctuation = recognizerOptions.EnableAutomaticPunctuation,
@@ -441,7 +461,7 @@ public partial class GoogleTranscriber : ITranscriber
                         EnableSpokenEmojis = false,
                         ProfanityFilter = recognizerOptions.ProfanityFilter,
                         EnableWordConfidence = false,
-                        EnableWordTimeOffsets = true,
+                        EnableWordTimeOffsets = false,
                         MultiChannelMode = RecognitionFeatures.Types.MultiChannelMode.Unspecified,
                     },
                     AutoDecodingConfig = new AutoDetectDecodingConfig(),
@@ -461,7 +481,7 @@ public partial class GoogleTranscriber : ITranscriber
     private static RecognizerOptions GetRecognizerOptions(Language language)
     {
         // Defined based on https://cloud.google.com/speech-to-text/v2/docs/speech-to-text-supported-languages
-        bool supportAutomaticPunctuation =
+        var isAutomaticPunctuationSupported =
             language != Languages.EnglishIN &&
             language != Languages.FrenchCA &&
             language != Languages.Portuguese &&
@@ -469,9 +489,9 @@ public partial class GoogleTranscriber : ITranscriber
             language != Languages.Turkish &&
             language != Languages.Thai &&
             language != Languages.Polish;
-        bool profanityFilter =
+        var isProfanityFilterEnabled =
             language != Languages.FrenchCA;
-        return new RecognizerOptions(language.Value, supportAutomaticPunctuation, profanityFilter);
+        return new RecognizerOptions(language.Value, isAutomaticPunctuationSupported, isProfanityFilterEnabled);
     }
 
     private static string FixSuffix(string prefix, string suffix)
@@ -511,6 +531,8 @@ public partial class GoogleTranscriber : ITranscriber
         => GetOriginalAudioTime((float)time.ToTimeSpan().TotalSeconds);
     private static float GetOriginalAudioTime(float time)
         => (float)Math.Round(Math.Max(0, time - SilentPrefixDuration.TotalSeconds), 2);
+
+    // Nested types
 
     private record struct RecognizerOptions(string LanguageCode, bool EnableAutomaticPunctuation, bool ProfanityFilter);
 }

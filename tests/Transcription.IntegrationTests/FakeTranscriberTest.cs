@@ -1,6 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Streaming;
-using ActualChat.Streaming.Services.Transcribers;
+using ActualChat.Transcription;
 
 namespace ActualChat.Transcription.IntegrationTests;
 

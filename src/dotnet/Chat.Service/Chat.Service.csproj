@@ -9,6 +9,7 @@
     <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
     <ProjectReference Include="..\Notifications.Contracts\Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Streaming.Contracts\Streaming.Contracts.csproj" />
+    <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>
 

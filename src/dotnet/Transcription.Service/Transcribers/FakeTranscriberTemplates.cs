@@ -1,4 +1,4 @@
-namespace ActualChat.Streaming.Services.Transcribers;
+namespace ActualChat.Transcription;
 
 /// <summary>
 /// Static text templates used by <see cref="FakeTranscriber"/> to produce

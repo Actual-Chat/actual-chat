@@ -1,3 +1,5 @@
+using ActualChat.Module;
+using ActualChat.Transcription.Module;
 using ActualChat.Audio;
 using ActualChat.Chat.Module;
 using ActualChat.Streaming;
@@ -34,7 +36,7 @@ public class RetranscribeTranslationFlowTest(
     private async Task AssertReTranslationUsesRefinedTranscript(bool mustFailRealtimeTranslation)
     {
         // arrange
-        FakeRefineTranscriber.Reset();
+        FakeOfflineTranscriber.Reset();
         FakeTranslator.Reset();
         FakeTranslator.MustFailRealtime = mustFailRealtimeTranslation;
         await Tester.SignInAsUniqueAlice();
@@ -63,7 +65,7 @@ public class RetranscribeTranslationFlowTest(
             null);
 
         // act
-        // FakeRefineTranscriber blocks finalization on a gate, so the entry stays content-streaming
+        // FakeOfflineTranscriber blocks finalization on a gate, so the entry stays content-streaming
         // until we release it — this deterministically reproduces the realtime-stream → finalize race.
         var recordTask = streaming.ProcessAudio(record, 0,
             new RpcStream<AudioFrame>(GenerateAudioFrames(120)),
@@ -77,13 +79,13 @@ public class RetranscribeTranslationFlowTest(
         var translatedStreamId = StreamId.New(segmentStreamId, targetLanguage);
         await streaming.GetTranscript(translatedStreamId, CancellationToken.None);
 
-        FakeRefineTranscriber.Release();
+        FakeOfflineTranscriber.Release();
         await recordTask;
 
         var finalEntry = await chatsBackend.GetEntry(entryId, CancellationToken.None);
         finalEntry.Should().NotBeNull();
         finalEntry!.IsContentStreaming.Should().BeFalse();
-        finalEntry.Content.Should().Contain(FakeRefineTranscriber.Marker);
+        finalEntry.Content.Should().Contain(FakeOfflineTranscriber.Marker);
 
         // assert
         // The stored translation must upgrade to the refined transcript's translation on its own
@@ -92,7 +94,7 @@ public class RetranscribeTranslationFlowTest(
             var translation = await Translations.Get(session, TranslationId.New(entryId, targetLanguage), false, ct);
             translation.Should().NotBeNull();
             translation!.IsStreaming.Should().BeFalse();
-            translation.Content.Should().Contain(FakeRefineTranscriber.Marker);
+            translation.Content.Should().Contain(FakeOfflineTranscriber.Marker);
             translation.SourceContentHash.Should().Be(finalEntry.ContentHash);
         }, TimeSpan.FromSeconds(20));
     }
@@ -134,18 +136,18 @@ public sealed class RetranscribeTranslationCollection : ICollectionFixture<Retra
             messageSink,
             TestAppHostOptions.Default with {
                 ConfigureHost = (_, cfg) => {
-                    cfg.AddInMemory<ChatSettings>(
-                        (x => x.IsTranslationEnabled, "true"),
-                        (x => x.IsRetranscriptionEnabled, "true"),
-                        (x => x.OpenAIKey, "test-key"));
-                    cfg.AddInMemory<StreamingSettings>((x => x.UseFakeTranscriber, "true"));
+                    cfg.AddInMemory<ChatSettings>((x => x.IsTranslationEnabled, "true"));
+                    cfg.AddInMemory<CoreServerSettings>((x => x.OpenAIKey, "test-key"));
+                    cfg.AddInMemory<TranscriptionSettings>(
+                        (x => x.UseFakeTranscriber, "true"),
+                        (x => x.OfflineRanking, "fake-offline"));
                 },
                 ConfigureServices = (_, services) => {
                     services.AddSingleton<Translator>(c => new FakeTranslator(c));
                     services.AddKeyedSingleton<Translator>(
                         Constants.Translation.RealtimeServiceKey,
                         (c, key) => new FakeTranslator(c, (string)key));
-                    services.Replace(ServiceDescriptor.Singleton<IRefineTranscriber>(_ => new FakeRefineTranscriber()));
+                    services.Replace(ServiceDescriptor.Singleton<IOfflineTranscriber>(_ => new FakeOfflineTranscriber()));
                 },
             });
 }
@@ -182,8 +184,13 @@ sealed file class FakeTranslator(IServiceProvider services, string serviceKey = 
     }
 }
 
-sealed file class FakeRefineTranscriber : IRefineTranscriber
+sealed file class FakeOfflineTranscriber : IOfflineTranscriber
 {
+    public TranscriberInfo Info { get; } = new() {
+        Id = TranscriberId.NewBuiltin("fake-offline"),
+        DriverId = "fake",
+        Kind = TranscriberKind.OfflineOnly,
+    };
     public const string Marker = "RefineTranscriptionTestMarker";
     public const string FinalText =
         Marker + " — final retranscribed text from the recording, made deliberately long so it deterministically "

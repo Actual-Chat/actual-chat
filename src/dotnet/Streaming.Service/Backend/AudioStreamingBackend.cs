@@ -19,7 +19,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
 
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger OpenAudioSegmentLog => field ??= Services.LogFor<OpenAudioSegment>();
-    private ILogger AudioSourceLog  => field ??= Services.LogFor<AudioSource>();
+    private ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
     private static bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
 
@@ -29,8 +29,11 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private AudioSegmentSaver AudioSegmentSaver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILiveSessionsBackend LiveSessionsBackend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
-    private ITranscriberFactory TranscriberFactory => field ??= Services.GetRequiredService<ITranscriberFactory>();
-    private IRefineTranscriber? RefineTranscriber => field ??= Services.GetService<IRefineTranscriber>();
+    private ITranscriberSelector TranscriberSelector => field ??= Services.GetRequiredService<ITranscriberSelector>();
+    private ITranscriberRegistry TranscriberRegistry => field ??= Services.GetRequiredService<ITranscriberRegistry>();
+    private ITranscriptionContextSource? TranscriptionContextSource
+        // Optional: it lives in Chat.Service, which isn't loaded in every host or test.
+        => field ??= Services.GetService<ITranscriptionContextSource>();
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
@@ -71,7 +74,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     public virtual Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken)
         => Task.FromResult(_chatIdByStream.GetValueOrDefault(BaseStreamId(streamId)));
 
-    public virtual async Task<RpcStream<AudioFrame>?> GetAudio(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<AudioFrame>?> GetAudio(
+        StreamId streamId,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
     {
         var stream = await _audioStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         if (stream == null)
@@ -81,7 +87,9 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         return StandardRpcStream.NewAudioDelivery(stream);
     }
 
-    public virtual async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<TranscriptDiff>?> GetTranscript(
+        StreamId streamId,
+        CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("GetTranscript: #{StreamId}", streamId);
         var stream = await _transcriptStreams.Get(streamId, false, cancellationToken).ConfigureAwait(false);
@@ -101,7 +109,8 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         DebugLog?.LogDebug("GetTranscript: #{StreamId} - Translate stream", streamId);
 
         var cmd = new TranslationsBackend_TranslateStream(originalStreamId, language);
-        // Use ApplicationStopping as GetTranscript might be canceled, but we still want to wait for the translated stream to be created.
+        // Use ApplicationStopping as GetTranscript might be canceled, but we still want to wait
+        // for the translated stream to be created.
         await Commander.Call(cmd, HostLifetime.StopToken()).ConfigureAwait(false);
         stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
 
@@ -111,7 +120,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             : StandardRpcStream.NewTranscriptDelivery(stream);
     }
 
-    public async Task PushTranscript(StreamId streamId, RpcStream<TranscriptDiff> diffStream, CancellationToken cancellationToken)
+    public async Task PushTranscript(
+        StreamId streamId,
+        RpcStream<TranscriptDiff> diffStream,
+        CancellationToken cancellationToken)
     {
         try {
             ValidateStreamId(streamId);
@@ -132,6 +144,23 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     internal void RememberChatId(StreamId streamId, ChatId chatId)
         => _chatIdByStream[BaseStreamId(streamId)] = chatId;
 
+    internal static IAsyncEnumerable<AudioFrame> SkipTo(
+        IAsyncEnumerable<AudioFrame> stream,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
+    {
+        if (skipTo <= TimeSpan.Zero)
+            return stream;
+
+        // Preserve the stream header and original frame offsets while trimming
+        // stale data frames. The client still sees source-time offsets for the
+        // frames that remain and can perform fine playback/A-V catch-up locally.
+        var (headerTask, dataStream) = stream.SplitHead(cancellationToken);
+        return dataStream
+            .SkipWhile(f => f.Offset < skipTo)
+            .PrependOne(headerTask);
+    }
+
     // Private methods
 
     private void ForgetChatIdIfUnused(StreamId streamId)
@@ -151,22 +180,4 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             throw new ArgumentOutOfRangeException(nameof(streamId),
                 $"Wrong mesh node: expected {ThisNode.Ref}, but got {streamId.NodeRef}.");
     }
-
-    internal static IAsyncEnumerable<AudioFrame> SkipTo(
-        IAsyncEnumerable<AudioFrame> stream,
-        TimeSpan skipTo,
-        CancellationToken cancellationToken)
-    {
-        if (skipTo <= TimeSpan.Zero)
-            return stream;
-
-        // Preserve the stream header and original frame offsets while trimming
-        // stale data frames. The client still sees source-time offsets for the
-        // frames that remain and can perform fine playback/A-V catch-up locally.
-        var (headerTask, dataStream) = stream.SplitHead(cancellationToken);
-        return dataStream
-            .SkipWhile(f => f.Offset < skipTo)
-            .PrependOne(headerTask);
-    }
-
 }

@@ -1,8 +1,7 @@
 ﻿using System.Numerics;
 using System.Text.RegularExpressions;
 using ActualChat.Audio;
-using ActualChat.Streaming.Module;
-using ActualChat.Transcription;
+using ActualChat.Module;
 using ActualLab.Diagnostics;
 using Deepgram;
 using Deepgram.Constants;
@@ -10,14 +9,10 @@ using Deepgram.Models.Authenticate.v1;
 using Deepgram.Models.Listen.v2.WebSocket;
 using static ActualChat.Constants.Transcription.Deepgram;
 
-namespace ActualChat.Streaming.Services.Transcribers;
+namespace ActualChat.Transcription;
 
-/// <summary>
-/// Transcriber implementation using Deepgram speech-to-text API.
-/// </summary>
 #pragma warning disable CA1826
-
-public partial class DeepgramTranscriber : ITranscriber
+public sealed partial class DeepgramTranscriber : ITranscriber
 {
     [GeneratedRegex(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
     private static partial Regex CompleteSentenceOrEmptyRegexFactory();
@@ -57,17 +52,24 @@ public partial class DeepgramTranscriber : ITranscriber
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
     private MomentClockSet Clocks { get; }
-    private StreamingSettings StreamingSettings { get; }
+    private CoreServerSettings CoreServerSettings { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
+    public TranscriberInfo Info { get; } = new() {
+        Id = TranscriberId.DeepgramStream,
+        DriverId = "deepgram",
+        Kind = TranscriberKind.StreamOnly,
+        Languages = DeepgramLanguage.Supported,
+        IsLanguageDetectionSupported = true,
+    };
 
     public DeepgramTranscriber(IServiceProvider services)
     {
         Services = services;
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
-        StreamingSettings = services.GetRequiredService<StreamingSettings>();
+        CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
         OggOpusStreamConverter = new OggOpusStreamConverter(new OggOpusStreamConverter.Options {
-            PageDuration = TimeSpan.FromMilliseconds(200),
+            PageDuration = Constants.Transcription.StreamPageDuration,
         });
     }
 
@@ -83,7 +85,7 @@ public partial class DeepgramTranscriber : ITranscriber
         Exception? error = null;
         try {
             using var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            var apiKey = StreamingSettings.DeepgramKey;
+            var apiKey = CoreServerSettings.DeepgramKey;
             using var deepgramClient = new ListenWebSocketClient(
                 apiKey,
                 new DeepgramWsClientOptions(apiKey, keepAlive: true));
@@ -96,18 +98,18 @@ public partial class DeepgramTranscriber : ITranscriber
 
             var language = options.Language;
             var schemaLanguage = language.ToDeepgram();
-            var useNova3Model = true;
+            var isNova3Usable = true;
             if (!options.DetectLanguage)
-                useNova3Model = IsNova3Language(language);
+                isNova3Usable = IsNova3Language(language);
             else {
                 schemaLanguage = "multi";
                 foreach (var languageCandidate in options.LanguageCandidates)
                     if (!IsNova3Language(languageCandidate)) {
-                        useNova3Model = false;
+                        isNova3Usable = false;
                         break;
                     }
             }
-            var model = useNova3Model ? "nova-3" : "nova-2";
+            var model = isNova3Usable ? "nova-3" : "nova-2";
             var liveSchema = new LiveSchema {
                 Language = schemaLanguage,
                 Punctuate = true,
@@ -124,11 +126,13 @@ public partial class DeepgramTranscriber : ITranscriber
             if (!isConnected)
                 throw StandardError.External("Deepgram connection failed");
 
-            await PushAudio(transcriptState, deepgramClient, tokenSource.Token).ConfigureAwait(false);
-
-            // Completes on the finalize ack, connection close, or error; with keepAlive on,
-            // a lost ack would otherwise hang this await forever - so it must observe the token.
-            await whenCompleted.WaitAsync(tokenSource.Token).ConfigureAwait(false);
+            // whenCompleted completes on the finalize ack, connection close, or error; with keepAlive
+            // on, a lost ack would otherwise hang forever - so it must observe the token.
+            await TranscriberHelper.WhenPushAndRead(
+                    PushAudio(transcriptState, deepgramClient, tokenSource.Token),
+                    whenCompleted.WaitAsync(tokenSource.Token),
+                    tokenSource)
+                .ConfigureAwait(false);
 
             try {
                 // Ignore errors on stopping
@@ -157,6 +161,8 @@ public partial class DeepgramTranscriber : ITranscriber
         void HandleConnectionError(object? sender, ErrorResponse e)
             => whenCompletedSource.TrySetException(new TranscriptionException(e.Message, e.Description));
     }
+
+    // Private methods
 
     private async Task PushAudio(
         DeepgramTranscribeState state,
@@ -187,7 +193,8 @@ public partial class DeepgramTranscriber : ITranscriber
 
                 if (lastFrame != null) {
                     // Subtract the artificial silent prefix from timing to keep scheduler in sync with original audio
-                    var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration - SilentPrefixDuration).Positive();
+                    var processedAudioDuration =
+                        (lastFrame.Offset + lastFrame.Duration - SilentPrefixDuration).Positive();
                     if (audioSource.WhenDurationAvailable.IsCompletedSuccessfully)
                         processedAudioDuration = TimeSpanExt.Min(audioSource.Duration, processedAudioDuration);
                     // state.ProcessedAudioDuration = (float)processedAudioDuration.TotalSeconds;
@@ -217,13 +224,15 @@ public partial class DeepgramTranscriber : ITranscriber
         var isStreamFinalized = result.FromFinalize ?? false;
         var alternative = result.Channel?.Alternatives?.FirstOrDefault();
         var suffix = alternative?.Transcript ?? "";
-        // NOTE: as for now deepgram does not support language detection in streaming mode so we use language from options
-        var detectedLanguages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToArray() ?? [];
+        // NOTE: as for now deepgram does not support language detection in streaming mode,
+        // so we use language from options
+        var detectedLanguages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram)
+            .Distinct().ToArray() ?? [];
         var languages = detectedLanguages.Length > 0 ? detectedLanguages : [options.Language];
-        // Minimum transcript length (in characters) before treating streaming language detection as reliable;
-        // very short snippets are often ambiguous or misclassified, so we wait until we have enough context.
-        const int minTranscriptLengthForLanguageDetection = 20;
-        if (options.DetectLanguage && detectedLanguages.Length > 0 && suffix.Length >= minTranscriptLengthForLanguageDetection)
+        // Snippets shorter than this are often misclassified, so detection waits for more context.
+        const int minLanguageDetectionLength = 20;
+        if (options.DetectLanguage && detectedLanguages.Length > 0
+            && suffix.Length >= minLanguageDetectionLength)
             options.LanguageDetectedCallback?.Invoke(languages);
         var endTime = (float?)result.Duration ?? 0;
         if (isFinal) {
@@ -272,7 +281,6 @@ public partial class DeepgramTranscriber : ITranscriber
             var wordStartTime = (float?)word.Start ?? 0;
             if (wordStartTime < parsedDuration)
                 continue;
-
             if (word.PunctuatedWord == null)
                 continue;
 

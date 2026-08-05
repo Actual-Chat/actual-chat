@@ -1,8 +1,7 @@
 using ActualChat.Audio;
-using ActualChat.Transcription;
 using Google.Cloud.Speech.V2;
 
-namespace ActualChat.Streaming.Services.Transcribers;
+namespace ActualChat.Transcription;
 
 public class GoogleTranscribeState(
     AudioSource audioSource,
