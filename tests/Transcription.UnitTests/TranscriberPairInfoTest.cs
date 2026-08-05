@@ -58,14 +58,14 @@ public class TranscriberPairInfoTest(ITestOutputHelper @out) : TestBase(@out)
     private static ITranscriber NewStream(TranscriberId id, Language[] languages)
         => new StubTranscriber(new TranscriberInfo {
             Id = id,
-            Kind = TranscriberKind.StreamOnly,
+            Kind = TranscriberKind.Stream,
             Languages = new ApiSet<Language>(languages),
         });
 
     private static IOfflineTranscriber NewOffline(TranscriberId id, Language[] languages)
         => new StubOfflineTranscriber(new TranscriberInfo {
             Id = id,
-            Kind = TranscriberKind.OfflineOnly,
+            Kind = TranscriberKind.Offline,
             Languages = new ApiSet<Language>(languages),
         });
 

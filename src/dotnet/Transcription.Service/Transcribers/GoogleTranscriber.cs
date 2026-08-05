@@ -52,8 +52,7 @@ public sealed partial class GoogleTranscriber : ITranscriber
     public Task WhenInitialized { get; }
     public TranscriberInfo Info { get; } = new() {
         Id = TranscriberId.GoogleStream,
-        DriverId = "google",
-        Kind = TranscriberKind.StreamOnly,
+        Kind = TranscriberKind.Stream,
     };
 
     public GoogleTranscriber(IServiceProvider services, Options? options = null)

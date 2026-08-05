@@ -26,8 +26,7 @@ public sealed class ElevenLabsOfflineTranscriber : IOfflineTranscriber
     private ILogger Log { get; }
     public TranscriberInfo Info { get; } = new() {
         Id = TranscriberId.ElevenLabsOffline,
-        DriverId = "elevenlabs",
-        Kind = TranscriberKind.OfflineOnly,
+        Kind = TranscriberKind.Offline,
         IsLanguageDetectionSupported = true,
         // No ContextPolicy: the batch endpoint takes only a keyterm list, and our context is
         // prose. The realtime one accepts a prefix, so ElevenLabsTranscriber does declare one.

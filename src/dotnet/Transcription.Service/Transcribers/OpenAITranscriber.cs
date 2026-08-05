@@ -25,8 +25,7 @@ public sealed class OpenAITranscriber : IOfflineTranscriber
     private ILogger Log { get; }
     public TranscriberInfo Info { get; } = new() {
         Id = TranscriberId.OpenAIOffline,
-        DriverId = "openai",
-        Kind = TranscriberKind.OfflineOnly,
+        Kind = TranscriberKind.Offline,
         // gpt-transcribe takes a free-form prompt, and the duration is known here, so the budget
         // scales with it: ~2x what the audio itself costs, floored so short phrases still get some
         // context and capped at what 30s of audio earns, since past that it stops paying off.
