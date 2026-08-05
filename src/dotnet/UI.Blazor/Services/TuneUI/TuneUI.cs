@@ -43,6 +43,7 @@ public abstract class TuneUI : ProcessorBase
         // Walkie-talkie
         [Tune.WalkieReplyEnded] = new ([100, 50, 100]),
         [Tune.WalkieReplyNothingHeard] = new ([80]),
+        [Tune.WalkieGestureDetected] = new ([40]),
     };
     // Suppress redundant tactile feedback fired as a side-effect of starting
     // recording: ConfirmRecording (mic-live signal ~0.5–1 s after start) and
@@ -158,6 +159,7 @@ public enum Tune
     ClickButton,
     WalkieReplyEnded,
     WalkieReplyNothingHeard,
+    WalkieGestureDetected,
 }
 
 /// <summary>

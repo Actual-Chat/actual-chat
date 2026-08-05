@@ -38,6 +38,7 @@ export enum Tune {
     ClickButton,
     WalkieReplyEnded,
     WalkieReplyNothingHeard,
+    WalkieGestureDetected,
 }
 
 export type TuneName = keyof typeof Tune;
@@ -94,8 +95,7 @@ export class TuneUI {
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             const tuneInfo = this.tunes[tune] ?? this.tunes[Tune[tune]];
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            if (!tuneInfo)
-            {
+            if (!tuneInfo) {
                 errorLog?.log(`${logScope}.playAndWait: unexpected tune ${tune}.`)
                 return;
             }
@@ -109,9 +109,8 @@ export class TuneUI {
     // Private methods
 
     private static async playVibration(tune: Tune, tuneInfo: TuneInfo): Promise<void> {
-        if (tuneInfo.vibration.length == 0) {
+        if (tuneInfo.vibration.length == 0)
             return;
-        }
 
         debugLog?.log(`playVibration: '${tune}'`);
         for (let i = 0; i < tuneInfo.vibration.length; i++) {
@@ -124,12 +123,10 @@ export class TuneUI {
     }
 
     private static async playSound(tune: Tune, tuneInfo: TuneInfo): Promise<void> {
-        if (!tuneInfo.sound) {
+        if (!tuneInfo.sound)
             return;
-        }
-        else
-            debugLog?.log(`playSound: '${tune}'`);
 
+        debugLog?.log(`playSound: '${tune}'`);
         const ext = DeviceInfo.isWebKit ? '.m4a' : '.webm'; // TODO: allow webm for iOS >= 16.5
         const soundUrl = `dist/sounds/${tuneInfo.sound}${ext}`;
         const cooldown = cooldownMap.get(tune);

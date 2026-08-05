@@ -1,5 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Resilience;
 
@@ -202,6 +203,10 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         var route = GestureActivationPolicy.Route(gesture.Kind, isPracticeMode);
         if (route == GestureRoute.None)
             return;
+
+        // Immediate tactile ack that the gesture registered - the mic-open cue comes later (or
+        // never, in practice mode), which is too late to tell "not detected" from "not opened".
+        _ = Hub.TuneUI.Play(Tune.WalkieGestureDetected);
         if (route == GestureRoute.Practice) {
             PracticeGestureDetected?.Invoke(gesture);
             return;
