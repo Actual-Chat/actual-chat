@@ -9,7 +9,7 @@ namespace ActualChat.Transcription.IntegrationTests;
 public sealed class ElevenLabsTranscriberTest(ITestOutputHelper @out, ILogger<ElevenLabsTranscriberTest> log)
     : TranscriberTestBase(@out, log)
 {
-    [Theory]
+    [Theory(Skip = "For manual runs only")]
     [InlineData("196050.webm", "ru-RU")]
     [InlineData("0004-AK.webm", "ru-RU")]
     public async Task StreamingTranscribeWorks(string fileName, string languageId)
@@ -36,7 +36,7 @@ public sealed class ElevenLabsTranscriberTest(ITestOutputHelper @out, ILogger<El
         transcripts[^1].Text.Should().NotBeNullOrWhiteSpace();
     }
 
-    [Theory]
+    [Theory(Skip = "For manual runs only")]
     [InlineData("196050.webm", "ru-RU")]
     public async Task OfflineTranscribeWorks(string fileName, string languageId)
     {
