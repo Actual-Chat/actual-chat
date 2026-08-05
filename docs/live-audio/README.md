@@ -11,6 +11,11 @@ fan-out, RemoteStreamCache, AIMD-style controls) but audio diverges in
 important ways — it is **loss-preserving**, drives transcription, and is
 the side that adapts in A/V sync.
 
+The **walkie-talkie** layer ([doc 10](./10-walkie-talkie.md)) rides on this very
+pipeline: it adds a wake push, a headless playback scope and a push-to-talk
+reply on the mobile apps, but every frame it produces or consumes still travels
+the capture → publish → fan-out → playback path described in docs 02–07.
+
 ## Reading order
 
 | # | Doc | Scope |
@@ -24,6 +29,7 @@ the side that adapts in A/V sync.
 | 7 | [07-receiver.md](./07-receiver.md) | Subscribe → opus-decoder worker → feeder worklet → WebAudio |
 | 8 | [08-diagnostics-and-tuning.md](./08-diagnostics-and-tuning.md) | Meters, debug hooks, tunable constants |
 | 9 | [09-glossary.md](./09-glossary.md) | Glossary of types, files, and abbreviations |
+| 10 | [10-walkie-talkie.md](./10-walkie-talkie.md) | Walkie-talkie: wake push, headless playback, PTT reply, heard receipts |
 
 For the design-intent vs. current-shape discussion of buffering and A/V
 sync — that's in
