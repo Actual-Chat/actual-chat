@@ -28,6 +28,10 @@ public sealed class TranscriptionServiceModule(IServiceProvider moduleServices)
         var coreSettings = Cfg.Settings<CoreServerSettings>(nameof(CoreSettings));
         services.AddSingleton<ITranscriber, GoogleTranscriber>();
         services.AddSingleton<ITranscriber, DeepgramTranscriber>();
+        if (!coreSettings.SonioxKey.IsNullOrEmpty()) {
+            services.AddSingleton<ITranscriber, SonioxTranscriber>();
+            services.AddSingleton<IOfflineTranscriber, SonioxOfflineTranscriber>();
+        }
         if (Constants.Transcription.IsRetranscriptionEnabled && !coreSettings.OpenAIKey.IsNullOrEmpty())
             // Not TryAddEnumerable: it rejects factory descriptors, which have no
             // implementation type to tell them apart, and throws at startup.
