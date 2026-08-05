@@ -10,6 +10,9 @@
     <PackageReference Include="Google.Api.Gax" />
     <PackageReference Include="Google.Cloud.Speech.V2" />
     <PackageReference Include="OpenAI" />
+    <!-- ElevenLabs realtime accepts PCM only, so the Opus frames have to be decoded first. -->
+    <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
 
   <ItemGroup>
