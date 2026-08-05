@@ -78,10 +78,6 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover {
 .chat-audio-panel .language-button {
     @apply relative;
 }
-/* Empty when PTT is off - display: contents so it doesn't reserve a flex-gap slot. */
-.chat-audio-panel .walkie-reply-button {
-    display: contents;
-}
 .chat-audio-panel .language-button .btn.btn-round,
 .chat-audio-panel .playback-wrapper .btn.btn-round,
 .chat-audio-panel .video-wrapper .btn.btn-round {

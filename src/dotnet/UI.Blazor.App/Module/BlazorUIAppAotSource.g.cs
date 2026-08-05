@@ -439,7 +439,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsListeningModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsStartModalPage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WalkieReplyToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebChromeGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebChromeLocationGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent>();
@@ -1174,7 +1173,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsListeningModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsStartModalPage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.WalkieReplyToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebChromeGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebChromeLocationGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent), AotTypeKind.Component),

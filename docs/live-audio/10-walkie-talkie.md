@@ -400,7 +400,6 @@ and the resolver special-cases it to `Moment.EpochStart` rather than computing
 
 | Trigger | Path |
 |---|---|
-| On-screen toggle | `WalkieReplyToggle.razor` → `RequestReply` / `StopReply` |
 | Flip-to-talk, double-shake | `GestureUI.OnSample` → `GestureRecognizer` → `GestureActivationPolicy.Route` → `WalkieTalkieMicCapability.HoldWhile(RequestReply)` |
 | Face-down | same, routed to `StopReply` |
 | Android headset button | `AndroidAudioWidgetForegroundService` media session → `HeadsetButtonPolicy.Decide` |
@@ -528,10 +527,9 @@ deserializes to `default`, not to the initializer's `true`.
 **Gating.** The walkie UI is admin-only preview surface, hidden behind
 `Features_EnableIncompleteUI` (which returns `false` for any non-admin account
 and otherwise reads `UserAppSettings.IsIncompleteUIEnabled`). `SettingsModal`
-shows the Push-to-Talk page only when `HostInfo.HostKind.IsMauiApp() && EnableIncompleteUI`,
-and `WalkieReplyToggle` returns its empty model unless the feature is on — so
-the button disappears even for a user whose chats stayed armed from before the
-gate or from another device.
+shows the Push-to-Talk page only when `HostInfo.HostKind.IsMauiApp() && EnableIncompleteUI`.
+There is no on-screen reply button — replies are triggered only through the
+native paths below.
 
 The **runtime paths are deliberately ungated**: the server wake fan-out, the
 wake handlers, the gesture and headset triggers, and the heard-receipt path all

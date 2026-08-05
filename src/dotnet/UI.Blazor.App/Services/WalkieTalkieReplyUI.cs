@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <summary>
 /// Coordinates a walkie-talkie voice reply: resolves the target chat, opens the hot mic,
 /// and runs a cold-start dead-man switch that closes the mic if no voice is heard in time.
-/// The on-screen trigger and native triggers drive it via <see cref="RequestReply"/>/<see cref="StopReply"/>.
+/// Native triggers (iOS PTT, Android widget, gestures) drive it via <see cref="RequestReply"/>/<see cref="StopReply"/>.
 /// </summary>
 public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
@@ -60,8 +60,6 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         if (chat?.Rules.Author?.Id is { } ownAuthorId)
             await LiveSessionUI.MutePeer(chatId, ownAuthorId, false, cancellationToken).ConfigureAwait(false);
 
-        // Published before the mic opens: WalkieReplyToggle recomputes on the recording-chat change
-        // and must already see this reply as walkie-owned.
         var reply = new WalkieTalkieReply(chatId, Clocks.SystemClock.Now);
         // The hold precedes the publish: a competitor can only displace this reply after seeing it
         // in _reply, so its Release always follows this Hold and the count never dips.
@@ -123,12 +121,6 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             _reply = null;
         }
         return CloseReply(ownReply);
-    }
-
-    public bool IsOwnReply(ChatId chatId)
-    {
-        lock (_lock)
-            return _reply is { } reply && reply.ChatId == chatId;
     }
 
     public Task PlayFailureCue()
