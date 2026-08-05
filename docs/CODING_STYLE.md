@@ -81,6 +81,18 @@ the part the signature doesn't already carry.
     an expression-bodied member. Never above the declaration, and never
     switch a member to a block body just to host a comment.
   - **TypeScript**: put the comment **above the method declaration**.
+- **Exception — comments about the declaration itself go above it.** When the
+  comment explains the *signature* rather than the behavior — why the member is
+  `internal` rather than `private`, why a parameter is nullable, why it's
+  `virtual`, why the return type is what it is — it belongs directly above the
+  declaration, since that's what it annotates. The body is the wrong place: the
+  reader needs it while looking at the signature, not after entering the method.
+  ```csharp
+  // It's internal to be accessible from tests
+  internal async IAsyncEnumerable<Transcript> ProcessResponses(...)
+  ```
+  This exception is narrow. A comment that says anything about *what the member
+  does* goes inside the body as usual, even if it also touches the signature.
 - If the name already explains what the method does, **omit the comment** —
   don't restate the signature in English.
 - Keep comments short: a single line is almost always enough. Prefer a useful

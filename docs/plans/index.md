@@ -35,6 +35,16 @@ other backend DBs by their natural key (`ChatId`, `UserId`, `OwnerId`, …) usin
 Fusion's app-level sharding subsystem, which ActualChat runs in single-shard
 mode today.
 
+### Multi-provider transcription
+
+[Multi-provider transcription](./transcription-providers.md) — make
+transcription providers pluggable: a registry with per-language preference
+ranking, a chat-context prefix (recent entries + conversation summary) fed to
+the provider, and health-based auto-ejection built on a new general
+`IExternalServiceHealth` API in `Core.Server`. Adds Soniox (streaming +
+offline) and Gemini 3 (offline), upgrades Google to Chirp 3 and OpenAI to
+`gpt-transcribe` / `gpt-live-transcribe`.
+
 ### On-premises instances
 
 [On-premises instances](./on-prem-instances.md) — let customers run their own

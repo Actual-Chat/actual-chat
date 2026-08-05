@@ -15,6 +15,13 @@ One `##` subheader per file, one bullet per bypassed violation:
   — blank lines around single-line member — Alex Yakunin's decision
 ```
 
+## src/dotnet/Transcription.Service/Transcribers/OpenAITranscriber.cs
+
+- L73 `AudioTranscription transcription = await _audioClient`
+  — explicit type instead of `var` — required: the call returns
+  `ClientResult<AudioTranscription>` and the target type drives the implicit
+  conversion, so `var` doesn't compile
+
 The **quoted snippet is the identity** — match on it first. The line number is
 the original start line and only a hint, since it drifts as the file changes;
 the rule is an abbreviated label, since its wording changes as the guide is
