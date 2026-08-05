@@ -28,6 +28,8 @@ public sealed partial class TranscriberId : StringIdentifier, IStringIdentifier<
     public static readonly TranscriberId OpenAIOffline = NewBuiltin("openai-offline");
     public static readonly TranscriberId SonioxStream = NewBuiltin("soniox-stream");
     public static readonly TranscriberId SonioxOffline = NewBuiltin("soniox-offline");
+    public static readonly TranscriberId ElevenLabsStream = NewBuiltin("elevenlabs-stream");
+    public static readonly TranscriberId ElevenLabsOffline = NewBuiltin("elevenlabs-offline");
     private const string UserPrefix = "u:";
     private const char PairSeparator = '~';
     private static readonly ILruCache<string, TranscriberId> Cache = CreateCache<TranscriberId>(64);
