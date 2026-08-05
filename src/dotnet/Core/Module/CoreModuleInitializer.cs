@@ -57,20 +57,26 @@ public static partial class CoreModuleInitializer
                     RpcSerializationFormat.SystemJsonV5,
                     RpcSerializationFormat.SystemJsonV5NP,
                     RpcSerializationFormat.MessagePackV6,
+                    RpcSerializationFormat.MessagePackV6_LZ4,
                     RpcSerializationFormat.MessagePackV6C,
+                    RpcSerializationFormat.MessagePackV6C_LZ4,
                     messagePackV6K,
                     messagePackV6CK);
             }
             else
                 RpcSerializationFormat.All = ImmutableList.Create(
                     RpcSerializationFormat.MessagePackV6,
-                    RpcSerializationFormat.MessagePackV6C);
+                    RpcSerializationFormat.MessagePackV6_LZ4,
+                    RpcSerializationFormat.MessagePackV6C,
+                    RpcSerializationFormat.MessagePackV6C_LZ4);
 
             RpcSerializationFormatResolver.Default
 #if DEBUG
                 = new(RpcSerializationFormat.MessagePackV6.Key);
 #else
-                = new((isServer ? RpcSerializationFormat.MessagePackV6 : RpcSerializationFormat.MessagePackV6C).Key);
+                = new((isServer
+                    ? RpcSerializationFormat.MessagePackV6
+                    : RpcSerializationFormat.MessagePackV6C_LZ4).Key);
 #endif
         }
     }
