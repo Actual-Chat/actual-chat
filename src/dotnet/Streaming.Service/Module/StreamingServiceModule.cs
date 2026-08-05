@@ -4,10 +4,8 @@ using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Live;
 using ActualChat.Streaming.Services;
-using ActualChat.Streaming.Services.Transcribers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using GoogleTranscriber = ActualChat.Streaming.Services.Transcribers.GoogleTranscriber;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
 namespace ActualChat.Streaming.Module;
@@ -61,17 +59,11 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
 
         // Internal services
         services.AddSingleton(_ => new AudioSettings()); // Used in BlazorUIAppModule as well
-        services.AddSingleton<ITranscriberFactory, TranscriberFactory>();
-        services.AddSingleton<GoogleTranscriber>();
-        services.AddSingleton<DeepgramTranscriber>();
-        services.AddSingleton<FakeTranscriber>();
         services.AddSingleton<AudioSegmentSaver>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<StreamingContext>(services);
 
-        // Disable Deepgram logging
-        Deepgram.Logger.Log.Initialize(Deepgram.Logger.LogLevel.Disable);
     }
 }

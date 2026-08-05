@@ -25,6 +25,8 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     [IgnoreDataMember]
     public string Title { get; }
     [IgnoreDataMember]
+    public string IsoCode { get; }
+    [IgnoreDataMember]
     public bool IsAnyEnglish { get; }
     [IgnoreDataMember]
     public bool IsAnySpanish { get; }
@@ -36,6 +38,9 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     {
         ShortTitle = shortTitle;
         Title = title;
+        // The primary subtag, not value[..2]: that would collapse "fil-PH" onto Finnish's "fi".
+        var separatorIndex = value.IndexOf('-');
+        IsoCode = (separatorIndex < 0 ? value : value[..separatorIndex]).ToLower();
         IsAnyEnglish = shortTitle.StartsWith("en", StringComparison.OrdinalIgnoreCase);
         IsAnySpanish = shortTitle.StartsWith("es", StringComparison.OrdinalIgnoreCase);
     }

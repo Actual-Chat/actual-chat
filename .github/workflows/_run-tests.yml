@@ -248,8 +248,9 @@ jobs:
           DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
           CoreSettings__GoogleProjectId: ${{secrets.CORESETTINGS_GOOGLEPROJECTID}}
           CoreSettings__PromptsDir: ${{github.workspace}}/.config/prompts/
-          StreamingSettings__DeepgramKey: ${{secrets.DEEPGRAM_API_KEY}}
-          ChatSettings__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
+          CoreSettings__DeepgramKey: ${{secrets.DEEPGRAM_API_KEY}}
+          CoreSettings__SonioxKey: ${{secrets.SONIOX_API_KEY}}
+          CoreSettings__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
         run: |-
           cat <<- 'EOF' > ./.config/gcp-key.json
           ${{secrets.GCP_KEY_JSON}}

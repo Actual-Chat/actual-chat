@@ -20,17 +20,6 @@
     "ShouldRecreateDb": true,
     "ShouldVerifyDb": false
   },
-  "AudioSettings": {
-    "Redis": ""
-  },
-  "ChatSettings": {
-    "Db": "",
-    "Redis": ""
-  },
-  "UsersSettings": {
-    "Db": "",
-    "Redis": ""
-  },
   "TestSettings": {
     "User1": {
       "Email": "test@test.com",

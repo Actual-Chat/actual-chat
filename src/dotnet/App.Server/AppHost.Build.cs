@@ -16,6 +16,7 @@ using ActualChat.Module;
 using ActualChat.Notifications.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Streaming.Module;
+using ActualChat.Transcription.Module;
 using ActualChat.UI;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
@@ -177,6 +178,7 @@ public partial class AppHost
                 // API modules
                 new ApiModule(moduleServices),
                 // Service-specific & service modules
+                new TranscriptionServiceModule(moduleServices),
                 new StreamingServiceModule(moduleServices),
                 new MediaServiceModule(moduleServices),
                 new ContactsServiceModule(moduleServices),

@@ -1,8 +1,7 @@
 using System.Numerics;
 using ActualChat.Audio;
-using ActualChat.Transcription;
 
-namespace ActualChat.Streaming.Services.Transcribers;
+namespace ActualChat.Transcription;
 
 /// <summary>
 /// Test-only transcriber that emits one of the canned <see cref="FakeTranscriberTemplates"/>
@@ -19,6 +18,14 @@ public sealed class FakeTranscriber(IServiceProvider services) : ITranscriber
     // mean — solving E[1/W] = 1/3 for a triangular(1.5, m, 5.0) yields m ≈ 3.0.
 
     private ILogger Log { get; } = services.LogFor<FakeTranscriber>();
+    public static readonly TranscriberId Id = TranscriberId.NewBuiltin("fake-stream");
+
+    public TranscriberInfo Info { get; } = new() {
+        Id = Id,
+        DriverId = "fake",
+        Kind = TranscriberKind.StreamSelfRefined,
+        IsLanguageDetectionSupported = true,
+    };
 
     public async Task Transcribe(
         string audioStreamId,

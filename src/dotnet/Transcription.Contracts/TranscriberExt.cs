@@ -1,8 +1,7 @@
 using ActualChat.Audio;
-using ActualChat.Transcription;
 using static ActualChat.Constants.Transcription;
 
-namespace ActualChat.Streaming;
+namespace ActualChat.Transcription;
 
 /// <summary>
 /// Extension methods for <see cref="ITranscriber"/>.

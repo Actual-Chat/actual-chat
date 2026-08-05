@@ -1,4 +1,4 @@
-namespace ActualChat.Streaming.Services.Transcribers;
+namespace ActualChat.Transcription;
 
 public static class DeepgramLanguage
 {
@@ -39,6 +39,8 @@ public static class DeepgramLanguage
             g => g.Key,
             g => g.First().Key,
             StringComparer.OrdinalIgnoreCase);
+
+    public static ApiSet<Language> Supported { get; } = new(Map.Keys);
 
     public static string ToDeepgram(this Language language)
         => Map.TryGetValue(language, out var deepgramLanguage)
