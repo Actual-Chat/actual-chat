@@ -411,15 +411,15 @@ public partial class AudioStreamingBackend
         return context.IsNone ? options : options with { Context = context };
     }
 
-    private static bool IsTooShortToRetranscribe(AudioSource audioSource, string realtimeText)
+    private bool IsTooShortToRetranscribe(AudioSource audioSource, string realtimeText)
     {
-        if (realtimeText.CountWords() >= Constants.Transcription.MinRetranscriptionWords)
+        if (realtimeText.CountWords() >= StreamingSettings.MinRetranscriptionWords)
             return false;
 
         // Clearing either bar is enough, so the duration still speaks for speech the realtime pass
         // under-transcribed. An unknown duration means the segment never closed cleanly - retranscribe.
         return audioSource.WhenDurationAvailable.IsCompletedSuccessfully
-            && audioSource.Duration < Constants.Transcription.MinRetranscriptionDuration;
+            && audioSource.Duration < StreamingSettings.MinRetranscriptionDuration;
     }
 
     private async Task<TranscriberId> GetPreferredTranscriberId(
