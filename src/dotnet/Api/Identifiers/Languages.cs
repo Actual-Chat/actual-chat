@@ -35,7 +35,7 @@ public static class Languages
     public static readonly Language Portuguese = new("pt-PT", "PT", "Portuguese");
     public static readonly Language PortugueseBR = new("pt-BR", "PT-BR", "Portuguese (Brazil)");
     public static readonly Language Punjabi = new("pa-IN", "PA", "Punjabi");
-    public static readonly Language Quechua = new("quz-PE", "qu", "Quechua");
+    // public static readonly Language Quechua = new("quz-PE", "qu", "Quechua"); No transcriber supports it
     public static readonly Language Russian = new("ru-RU", "RU", "Russian");
     public static readonly Language Serbian = new("sr-SR", "SR", "Serbian");
     public static readonly Language Spanish = new("es-ES", "ES", "Spanish");
@@ -79,7 +79,7 @@ public static class Languages
         Portuguese,
         PortugueseBR,
         Punjabi,
-        Quechua,
+        // Quechua,
         Russian,
         Serbian,
         Spanish,
