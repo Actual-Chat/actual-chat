@@ -116,7 +116,7 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var position = new ChatPosition(42, "origin");
         var cmd = new ChatPositions_Set(TestSession, TestChatId, ChatPositionKind.Heard, position);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var position = new ChatPosition(42, "origin");
         var cmd = new ChatPositionsBackend_Set(TestUserId, TestChatId, ChatPositionKind.Heard, position);
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
