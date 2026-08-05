@@ -105,37 +105,40 @@ public class GestureDetectorTest
     [Fact]
     public void ShakeFiresOnAlternatingSpikes()
     {
-        var d = new ShakeDetector(ShakeSensitivity.Medium);
         // act + assert
-        Shake(d, ShakeSensitivity.Medium, reversals: 3, stepMs: 80).Should().BeTrue();
+        HasFired(Rest(0).Concat(Burst(1.0f, extremes: 4, startMs: 1000, stepMs: 80)), ShakeSensitivity.Medium)
+            .Should().BeTrue();
     }
 
     [Fact]
     public void ShakeDoesNotFireOnSingleSpike()
     {
-        var d = new ShakeDetector(ShakeSensitivity.Medium);
+        var spike = new[] { new SensorSample(At(1000), 3f, 0f, 1f) };
+
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(new SensorSample(At(50), 0f, -3f, 0f)).Should().BeFalse();
-        d.Process(Portrait(100)).Should().BeFalse();
+        HasFired(Rest(0).Concat(spike).Concat(Rest(1060)), ShakeSensitivity.Medium).Should().BeFalse();
     }
 
     [Fact]
     public void ShakeDoesNotFireWhenSpikesAreTooSlow()
     {
-        var d = new ShakeDetector(ShakeSensitivity.Medium);
         // act + assert
-        Shake(d, ShakeSensitivity.Medium, reversals: 3, stepMs: 400).Should().BeFalse();
+        HasFired(Rest(0).Concat(Burst(1.0f, extremes: 4, startMs: 1000, stepMs: 400)), ShakeSensitivity.Medium)
+            .Should().BeFalse();
     }
 
     [Fact]
     public void ShakeHonoursDebounce()
     {
-        var d = new ShakeDetector(ShakeSensitivity.High);
-        // act + assert
-        Shake(d, ShakeSensitivity.High, reversals: 3, stepMs: 60).Should().BeTrue();
-        Shake(d, ShakeSensitivity.High, reversals: 3, stepMs: 60, startMs: 400).Should().BeFalse();
-        Shake(d, ShakeSensitivity.High, reversals: 3, stepMs: 60, startMs: 3000).Should().BeTrue();
+        // The sensor feed is continuous, so the bursts ride on rest samples, not silence.
+        var samples = Rest(0)
+            .Concat(Burst(1.2f, extremes: 4, startMs: 1000, stepMs: 70))
+            .Concat(Burst(1.2f, extremes: 4, startMs: 1500, stepMs: 70))
+            .Concat(Rest(1780, durationMs: 1220))
+            .Concat(Burst(1.2f, extremes: 4, startMs: 3000, stepMs: 70));
+
+        // act + assert: the second burst starts inside the 1s debounce of the first fire
+        CountFires(samples, ShakeSensitivity.High).Should().Be(2);
     }
 
     [Theory]
@@ -144,11 +147,40 @@ public class GestureDetectorTest
     public void ShakeSensitivityIsMonotonic(ShakeSensitivity fired)
     {
         // Anything that fires at a lower sensitivity must also fire at a higher one.
-        var reversals = ShakeDetector.GetReversalCount(fired);
+        var amplitude = ShakeDetector.GetDeviationThreshold(fired) + 0.2f;
+        var extremes = ShakeDetector.GetReversalCount(fired) + 1;
         var stronger = fired == ShakeSensitivity.Low ? ShakeSensitivity.Medium : ShakeSensitivity.High;
+        var samples = Rest(0).Concat(Burst(amplitude, extremes, startMs: 1000, stepMs: 70)).ToArray();
+
         // act + assert
-        Shake(new ShakeDetector(fired), fired, reversals, stepMs: 70).Should().BeTrue();
-        Shake(new ShakeDetector(stronger), fired, reversals, stepMs: 70).Should().BeTrue();
+        HasFired(samples, fired).Should().BeTrue();
+        HasFired(samples, stronger).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShakeDoesNotFireOnFlipRotation()
+    {
+        // A full flip rotates gravity portrait -> landscape -> portrait: each axis sees one
+        // monotone swing per leg, so the high-passed signal produces at most one reversal -
+        // never the two that even High sensitivity demands.
+        var samples = new List<SensorSample>();
+        for (var t = 0d; t < 1000; t += 60)
+            samples.Add(Portrait(t));
+        for (var i = 1; i <= 6; i++) {
+            var angle = i * MathF.PI / 12f;
+            samples.Add(new SensorSample(At(1000 + (i * 60)), -MathF.Sin(angle), -MathF.Cos(angle), 0f));
+        }
+        for (var t = 1420d; t < 1900; t += 60)
+            samples.Add(Landscape(t));
+        for (var i = 1; i <= 6; i++) {
+            var angle = (6 - i) * MathF.PI / 12f;
+            samples.Add(new SensorSample(At(1900 + (i * 60)), -MathF.Sin(angle), -MathF.Cos(angle), 0f));
+        }
+        for (var t = 2320d; t < 3000; t += 60)
+            samples.Add(Portrait(t));
+
+        // act + assert
+        HasFired(samples, ShakeSensitivity.High).Should().BeFalse();
     }
 
     [Fact]
@@ -221,10 +253,9 @@ public class GestureDetectorTest
         var options = new GestureOptions(true, true, true, ShakeSensitivity.High);
         var r = new GestureRecognizer(options);
         r.SetProximityCovered(true);
-        // Face-down (700ms dwell since t=0) and shake (2 High-sensitivity |a| reversals within
-        // the last 500ms: dip at 650, rise at 700) both complete on the very last sample - it
-        // must report the stop, never the start, because GestureRecognizer.Process evaluates
-        // face-down first.
+        // Face-down (700ms dwell since t=0) completes on the last sample while the same burst
+        // feeds the shake detector - the recognizer must report the stop, never a start, because
+        // GestureRecognizer.Process evaluates face-down first.
         // act + assert
         r.Process(new SensorSample(At(0), 0f, 0f, -3f)).Should().BeNull();
         r.Process(new SensorSample(At(600), 0f, 0f, -1f)).Should().BeNull();
@@ -234,13 +265,10 @@ public class GestureDetectorTest
     }
 
     [Fact]
-    public void ShakeDipOnly05FiresOnlyAtHigh()
+    public void ShakeAmplitude06FiresOnlyAtHigh()
     {
-        var samples = new[] {
-            new SensorSample(At(0), 0f, -3f, 0f),
-            new SensorSample(At(100), 0f, -0.5f, 0f),
-            new SensorSample(At(200), 0f, -3f, 0f),
-        };
+        var samples = Rest(0).Concat(Burst(0.6f, extremes: 5, startMs: 1000, stepMs: 70)).ToArray();
+
         // act + assert
         HasFired(samples, ShakeSensitivity.Low).Should().BeFalse();
         HasFired(samples, ShakeSensitivity.Medium).Should().BeFalse();
@@ -248,45 +276,21 @@ public class GestureDetectorTest
     }
 
     [Fact]
-    public void ShakeDipAt035FiresAtAllSensitivities()
+    public void ShakeAmplitude09FiresAtMediumAndHigh()
     {
-        var samples = new[] {
-            new SensorSample(At(0), 0f, -3f, 0f),
-            new SensorSample(At(80), 0f, -0.35f, 0f),
-            new SensorSample(At(160), 0f, -3f, 0f),
-            new SensorSample(At(240), 0f, -0.35f, 0f),
-            new SensorSample(At(320), 0f, -3f, 0f),
-        };
+        var samples = Rest(0).Concat(Burst(0.9f, extremes: 5, startMs: 1000, stepMs: 70)).ToArray();
+
         // act + assert
-        HasFired(samples, ShakeSensitivity.Low).Should().BeTrue();
+        HasFired(samples, ShakeSensitivity.Low).Should().BeFalse();
         HasFired(samples, ShakeSensitivity.Medium).Should().BeTrue();
         HasFired(samples, ShakeSensitivity.High).Should().BeTrue();
     }
 
     [Fact]
-    public void ShakeRiseAt16FiresOnlyAtHigh()
+    public void ShakeAmplitude14FiresAtAllSensitivities()
     {
-        var samples = new[] {
-            new SensorSample(At(0), 0f, 0f, 0f),
-            new SensorSample(At(80), 0f, -1.6f, 0f),
-            new SensorSample(At(160), 0f, 0f, 0f),
-        };
-        // act + assert
-        HasFired(samples, ShakeSensitivity.Low).Should().BeFalse();
-        HasFired(samples, ShakeSensitivity.Medium).Should().BeFalse();
-        HasFired(samples, ShakeSensitivity.High).Should().BeTrue();
-    }
+        var samples = Rest(0).Concat(Burst(1.4f, extremes: 5, startMs: 1000, stepMs: 70)).ToArray();
 
-    [Fact]
-    public void ShakeRiseAt23FiresAtAllSensitivities()
-    {
-        var samples = new[] {
-            new SensorSample(At(0), 0f, 0f, 0f),
-            new SensorSample(At(80), 0f, -2.3f, 0f),
-            new SensorSample(At(160), 0f, 0f, 0f),
-            new SensorSample(At(240), 0f, -2.3f, 0f),
-            new SensorSample(At(320), 0f, 0f, 0f),
-        };
         // act + assert
         HasFired(samples, ShakeSensitivity.Low).Should().BeTrue();
         HasFired(samples, ShakeSensitivity.Medium).Should().BeTrue();
@@ -322,17 +326,22 @@ public class GestureDetectorTest
     public void ShakeChangeSensitivityPreservesDebounceAndPeak()
     {
         var d = new ShakeDetector(ShakeSensitivity.High);
+
         // act + assert
-        Shake(d, ShakeSensitivity.High, ShakeDetector.GetReversalCount(ShakeSensitivity.High), stepMs: 60)
-            .Should().BeTrue();
+        var hasFired = false;
+        foreach (var sample in Rest(0).Concat(Burst(0.7f, extremes: 3, startMs: 1000, stepMs: 60)))
+            hasFired |= d.Process(sample);
+        hasFired.Should().BeTrue();
         var peakBeforeChange = d.PeakDeviation;
         peakBeforeChange.Should().BeGreaterThan(0f);
         d.ChangeSensitivity(ShakeSensitivity.Low);
         d.PeakDeviation.Should().Be(peakBeforeChange);
         // The debounce set by the High-sensitivity fire must still block a fresh Low-sensitivity
         // burst that starts well inside the debounce window.
-        Shake(d, ShakeSensitivity.Low, ShakeDetector.GetReversalCount(ShakeSensitivity.Low), stepMs: 60, startMs: 400)
-            .Should().BeFalse();
+        hasFired = false;
+        foreach (var sample in Burst(1.4f, extremes: 5, startMs: 1500, stepMs: 60))
+            hasFired |= d.Process(sample);
+        hasFired.Should().BeFalse();
     }
 
     [Fact]
@@ -367,6 +376,35 @@ public class GestureDetectorTest
         e!.Value.Kind.Should().Be(GestureKind.FaceDown);
     }
 
+    [Fact]
+    public void ShakeFiresOnHorizontalShake()
+    {
+        // The real-device shake: phone flat-ish (gravity on Z), oscillation along X at ~3.6Hz
+        // reaching ±1.5g, sampled at SensorSpeed.UI's ~60ms cadence. Total-magnitude schemes
+        // are blind to this geometry - sqrt(1 + x²) never drops below 1g.
+        // act + assert
+        HasFired(Oscillation(GravityAxis.X, 1.5f), ShakeSensitivity.Medium).Should().BeTrue();
+    }
+
+    private static IEnumerable<SensorSample> Oscillation(
+        GravityAxis axis, float amplitude, double startMs = 0, int halfCycles = 6,
+        double stepMs = 60, double periodMs = 280)
+    {
+        // 1s of stillness first, so the detector's gravity estimate settles before the burst.
+        for (var t = 0d; t < 1000; t += stepMs)
+            yield return new SensorSample(At(startMs + t), 0f, 0f, 1f);
+
+        for (var t = 0d; t <= halfCycles * periodMs / 2; t += stepMs) {
+            var v = amplitude * MathF.Sin((float)(2 * Math.PI * t / periodMs));
+            var at = At(startMs + 1000 + t);
+            yield return axis switch {
+                GravityAxis.X => new SensorSample(at, v, 0f, 1f),
+                GravityAxis.Y => new SensorSample(at, 0f, v, 1f),
+                _ => new SensorSample(at, 0f, 0f, 1f + v),
+            };
+        }
+    }
+
     private static bool HasFired(IEnumerable<SensorSample> samples, ShakeSensitivity sensitivity)
     {
         var detector = new ShakeDetector(sensitivity);
@@ -376,21 +414,30 @@ public class GestureDetectorTest
         return hasFired;
     }
 
-    private static bool Shake(
-        ShakeDetector detector,
-        ShakeSensitivity sensitivity,
-        int reversals,
-        double stepMs,
-        double startMs = 0)
+    private static int CountFires(IEnumerable<SensorSample> samples, ShakeSensitivity sensitivity)
     {
-        // Alternating |a| spikes above and below 1g by more than the sensitivity threshold.
-        var threshold = ShakeDetector.GetMagnitudeThreshold(sensitivity) + 0.2f;
-        var hasFired = false;
-        for (var i = 0; i <= reversals; i++) {
-            var magnitude = i % 2 == 0 ? 1f + threshold : Math.Max(0f, 1f - threshold);
-            var sample = new SensorSample(At(startMs + (i * stepMs)), 0f, -magnitude, 0f);
-            hasFired |= detector.Process(sample);
+        var detector = new ShakeDetector(sensitivity);
+        var fires = 0;
+        foreach (var sample in samples)
+            if (detector.Process(sample))
+                fires++;
+        return fires;
+    }
+
+    private static IEnumerable<SensorSample> Rest(double startMs, double durationMs = 1000, double stepMs = 60)
+    {
+        for (var t = 0d; t < durationMs; t += stepMs)
+            yield return new SensorSample(At(startMs + t), 0f, 0f, 1f);
+    }
+
+    private static IEnumerable<SensorSample> Burst(
+        float amplitude, int extremes, double startMs, double stepMs)
+    {
+        // Alternating lateral extremes with gravity still on Z - the geometry a hand shake
+        // actually produces.
+        for (var i = 0; i < extremes; i++) {
+            var x = i % 2 == 0 ? amplitude : -amplitude;
+            yield return new SensorSample(At(startMs + (i * stepMs)), x, 0f, 1f);
         }
-        return hasFired;
     }
 }
