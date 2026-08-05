@@ -4,6 +4,7 @@
   },
   "CoreSettings": {
     "Instance": "dev",
+    "OpenAIKey": "not-an-api-key",
     "GoogleStorageBucket": "",
     "GoogleProjectId": "",
     "GoogleRegionId": "us-central1"
@@ -23,32 +24,13 @@
     "ShouldRecreateDb": true,
     "ShouldVerifyDb": false
   },
-  "AudioSettings": {
-    "Redis": ""
-  },
   "ChatSettings": {
-    "Db": "",
-    "Redis": "",
-    "OpenAIKey": "not-an-api-key",
     "IsChatContentItemIndexingEnabled": true
   },
   "MLSearchSettings": {
     "OpenSearch": {
-      "ClusterUri": "http://127.0.0.1:9200",
-      "ModelGroup": "NLP_model_group"
-    },
-    "Bot": {
-      "IsEnabled": true,
-      "AllowPeerBotChat": true,
-      "OpenAI": {
-        "ChatModel": "gpt-4o",
-        "ApiKey": "not-an-api-key"
-      }
+      "ClusterUri": "http://127.0.0.1:9200"
     }
-  },
-  "UsersSettings": {
-    "Db": "",
-    "Redis": ""
   },
   "TestSettings": {
     "User1": {

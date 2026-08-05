@@ -1,16 +1,20 @@
 using ActualChat.Kvas;
-using ActualChat.Transcription;
 
 namespace ActualChat.Users;
 
 /// <summary>
-/// User preference for the speech-to-text transcription engine.
+/// Admin-only override pinning transcription to specific transcribers;
+/// an empty id means "resolve by ranking".
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record UserTranscriptionEngineSettings
     : StoredSettings, IHasOrigin, IHasKvasKey<UserTranscriptionEngineSettings>
 {
-    [DataMember, MemoryPackOrder(0), Key(0)] public TranscriptionEngine TranscriptionEngine { get; init; }
-        = TranscriptionEngine.Deepgram;
+    // Key(0) is reserved: it held the TranscriptionEngine enum
+    // Key(2) and Key(3) are reserved: they held the separate stream and offline ids, now one pair id
     [DataMember, MemoryPackOrder(1), Key(1)] public string Origin { get; init; } = "";
+    [DataMember, MemoryPackOrder(4), Key(4)] public string Transcriber { get; init; } = "";
+
+    public TranscriberId GetTranscriberId()
+        => TranscriberId.TryParse(Transcriber, out var result) ? result : TranscriberId.None;
 }

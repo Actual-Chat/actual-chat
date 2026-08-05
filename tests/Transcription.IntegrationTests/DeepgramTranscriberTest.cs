@@ -1,6 +1,8 @@
+using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.Streaming;
 using ActualChat.Streaming.Module;
-using ActualChat.Streaming.Services.Transcribers;
+using ActualChat.Transcription;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 
@@ -11,8 +13,7 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTra
     : TranscriberTestBase(@out, log)
 {
     [Theory(Skip = "For manual runs only")]
-    // [InlineData("file.webm", false)]
-    [InlineData("file.webm", true)]
+    [InlineData("0004-AK.webm", true)]
     // [InlineData("0001-AY.opuss", true)]
     // [InlineData("0002-AY.opuss", true)]
     // [InlineData("0003-AK.opuss", true)] //- fails as too short???
@@ -48,13 +49,16 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTra
     }
 
     private IServiceProvider CreateServices()
-        => new ServiceCollection()
-            .AddSingleton<IConfiguration>(_ => new ConfigurationManager {
-                Sources = { new EnvironmentVariablesConfigurationSource() },
-            })
+    {
+        IConfiguration configuration = new ConfigurationManager {
+            Sources = { new EnvironmentVariablesConfigurationSource() },
+        };
+        return new ServiceCollection()
+            .AddSingleton(_ => configuration)
             .AddSingleton(MomentClockSet.Default)
+            .AddSingleton(_ => configuration.Settings<CoreServerSettings>(nameof(CoreSettings)))
             .AddSingleton<StreamingSettings>(c => new StreamingServiceModule(c).Settings)
             .AddTestLogging(Out)
             .BuildServiceProvider();
-
+    }
 }

@@ -1,3 +1,4 @@
+using ActualChat.Transcription.Module;
 using ActualChat.Audio;
 using ActualChat.Chat.Module;
 using ActualChat.Streaming;
@@ -19,7 +20,7 @@ public class RetranscribeNotifyFlowTest(
     [Fact]
     public async Task ShouldDeliverPushWithRetranscribedText()
     {
-        FakeRefineTranscriber.Behavior = static () => new Transcript(FakeRefineTranscriber.FinalText, LinearMap.Zero, []);
+        FakeOfflineTranscriber.Behavior = static () => new Transcript(FakeOfflineTranscriber.FinalText, LinearMap.Zero, []);
 
         var alice = await Tester.SignInAsAlice();
         var bob = await Tester.SignInAsBob();
@@ -31,14 +32,14 @@ public class RetranscribeNotifyFlowTest(
         var entry = await Tester.RecordVoiceEntry(chat.Id, Languages.English);
 
         var notification = await Tester.WaitForChatEntryNotification(alice.Id, entry.Id);
-        notification.Text.Should().StartWith("Bobby: " + FakeRefineTranscriber.Marker);
+        notification.Text.Should().StartWith("Bobby: " + FakeOfflineTranscriber.Marker);
         notification.EntryId.Should().Be(entry.Id);
     }
 
     [Fact]
     public async Task ShouldDeliverPushEvenWhenRetranscriptionFails()
     {
-        FakeRefineTranscriber.Behavior = static () => throw new InvalidOperationException("simulated OpenAI failure");
+        FakeOfflineTranscriber.Behavior = static () => throw new InvalidOperationException("simulated OpenAI failure");
 
         var alice = await Tester.SignInAsAlice();
         var bob = await Tester.SignInAsBob();
@@ -50,7 +51,7 @@ public class RetranscribeNotifyFlowTest(
         var entry = await Tester.RecordVoiceEntry(chat.Id, Languages.English);
 
         var notification = await Tester.WaitForChatEntryNotification(alice.Id, entry.Id);
-        notification.Text.Should().NotContain(FakeRefineTranscriber.Marker);
+        notification.Text.Should().NotContain(FakeOfflineTranscriber.Marker);
         notification.Text.Should().NotBeNullOrEmpty();
         notification.EntryId.Should().Be(entry.Id);
     }
@@ -59,9 +60,9 @@ public class RetranscribeNotifyFlowTest(
     public async Task ShouldDeliverPushForJustTextVoiceMessage()
     {
         var transcribeCallCount = 0;
-        FakeRefineTranscriber.Behavior = () => {
+        FakeOfflineTranscriber.Behavior = () => {
             Interlocked.Increment(ref transcribeCallCount);
-            return new Transcript(FakeRefineTranscriber.FinalText, LinearMap.Zero, []);
+            return new Transcript(FakeOfflineTranscriber.FinalText, LinearMap.Zero, []);
         };
 
         var alice = await Tester.SignInAsAlice();
@@ -74,7 +75,7 @@ public class RetranscribeNotifyFlowTest(
         var entry = await Tester.RecordVoiceEntry(chat.Id, Languages.English, VoiceMode.JustText);
 
         var notification = await Tester.WaitForChatEntryNotification(alice.Id, entry.Id);
-        notification.Text.Should().NotContain(FakeRefineTranscriber.Marker);
+        notification.Text.Should().NotContain(FakeOfflineTranscriber.Marker);
         notification.Text.Should().NotBeNullOrEmpty();
         notification.EntryId.Should().Be(entry.Id);
         transcribeCallCount.Should().Be(0, "no audio → no OpenAI retranscription should be triggered");
@@ -90,17 +91,23 @@ public sealed class RetranscribeNotifyCollection : ICollectionFixture<Retranscri
             messageSink,
             TestAppHostOptions.Default with {
                 ConfigureHost = (_, cfg) => {
-                    cfg.AddInMemory<ChatSettings>((x => x.IsRetranscriptionEnabled, "true"));
-                    cfg.AddInMemory<StreamingSettings>((x => x.UseFakeTranscriber, "true"));
+                    cfg.AddInMemory<TranscriptionSettings>(
+                        (x => x.UseFakeTranscriber, "true"),
+                        (x => x.OfflineRanking, "fake-offline"));
                 },
                 ConfigureServices = (_, services) => {
-                    services.Replace(ServiceDescriptor.Singleton<IRefineTranscriber>(_ => new FakeRefineTranscriber()));
+                    services.Replace(ServiceDescriptor.Singleton<IOfflineTranscriber>(_ => new FakeOfflineTranscriber()));
                 },
             });
 }
 
-sealed file class FakeRefineTranscriber : IRefineTranscriber
+sealed file class FakeOfflineTranscriber : IOfflineTranscriber
 {
+    public TranscriberInfo Info { get; } = new() {
+        Id = TranscriberId.NewBuiltin("fake-offline"),
+        DriverId = "fake",
+        Kind = TranscriberKind.OfflineOnly,
+    };
     public const string Marker = "RefineTranscriptionTestMarker";
     public const string FinalText =
         Marker + " — final retranscribed text from the recording, made deliberately long to deterministically beat the realtime FakeTranscriber's canned templates regardless of template choice.";

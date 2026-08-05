@@ -25,6 +25,8 @@ namespace ActualChat.Chat.Module;
 public sealed class ChatServiceModule(IServiceProvider moduleServices)
     : HostModule<ChatSettings>(moduleServices), IServerModule
 {
+    private CoreServerSettings CoreServerSettings => field ??= Cfg.Settings<CoreServerSettings>(nameof(CoreSettings));
+
     protected override void InjectServices(IServiceCollection services)
     {
         // RPC host
@@ -82,6 +84,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddSingleton(c =>
             new CachingKeyedFactory<IBackendChatMarkupHub, ChatId, BackendChatMarkupHub>(c, 4096, true).ToGeneric());
 
+        // Transcription context
+        services.AddSingleton<Transcription.ITranscriptionContextSource>(
+            c => new TranscriptionContextSource(c));
+
         // Content meta
         rpcHost.AddBackend<IContentLinksBackend, ContentLinksBackend>();
         services.AddSingleton<OpenGraphTagsProvider>();
@@ -104,14 +110,12 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             AddKeyedOpenAI(services,
                 Constants.Translation.ServiceKey,
                 Settings.Translation.OpenAIModel,
-                Settings.Translation.OpenAIKey,
                 Settings.Translation.HttpTimeout);
             if (!Settings.Translation.RealtimeOpenAIModel.IsNullOrEmpty() && Settings.Translation.RealtimeGeminiModel.IsNullOrEmpty())
                 AddKeyedOpenAI(services,
                     Constants.Translation.RealtimeServiceKey,
                     Settings.Translation.RealtimeOpenAIModel,
-                    Settings.Translation.OpenAIKey,
-                    Settings.Translation.HttpTimeout);
+                        Settings.Translation.HttpTimeout);
             else if (!Settings.Translation.RealtimeGeminiModel.IsNullOrEmpty())
                 AddKeyedVertexAI(services,
                     Constants.Translation.RealtimeServiceKey,
@@ -121,7 +125,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                 AddKeyedOpenAI(services,
                     Constants.LanguageDetection.ServiceKey,
                     Settings.LanguageDetection.OpenAIModel,
-                    Settings.LanguageDetection.OpenAIKey,
                     Settings.LanguageDetection.HttpTimeout);
         }
         services.AddSingleton<Translator>();
@@ -135,7 +138,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), c.LogFor<EntryGroupExtractor>()));
 
         if (Settings.IsSummarizationEnabled) {
-            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.Summarization.OpenAIModel, Settings.Summarization.OpenAIKey, Settings.Summarization.HttpTimeout);
+            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.Summarization.OpenAIModel, Settings.Summarization.HttpTimeout);
             services.AddSingleton<IConversationSummarizer>(
                 c => new ConversationSummarizer(
                     new ConversationSummarizer.Options {
@@ -159,14 +162,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<IConversationSummarizer, ConversationSummarizerStub>();
             services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractorStub>();
             services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizerStub>();
-        }
-
-        if (Settings.IsRetranscriptionEnabled) {
-            services.AddSingleton(new OpenAITranscriber.Options {
-                ApiKey = Settings.Retranscription.OpenAIKey.NullIfEmpty() ?? Settings.OpenAIKey,
-                Model = Settings.Retranscription.OpenAIModel,
-            });
-            services.AddSingleton<IRefineTranscriber>(c => new OpenAITranscriber(c.GetRequiredService<OpenAITranscriber.Options>(), c));
         }
 
         // Embeddings
@@ -247,19 +242,18 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         });
     }
 
-    private void AddKeyedOpenAI(IServiceCollection services, string serviceKey, string openAIModel, string openAIKey, TimeSpan? httpClientTimeout = null)
+    private void AddKeyedOpenAI(IServiceCollection services, string serviceKey, string openAIModel, TimeSpan? httpClientTimeout = null)
     {
         var httpClient = new HttpClient(new OpenAIRateLimitsLoggingHandler(new OpenAIRateLimitsLoggingHandler.Options(false)) {
             InnerHandler = new HttpClientHandler {
-                Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
-                UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
+                Proxy = !CoreServerSettings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(CoreServerSettings.OpenAIProxy) : null,
+                UseProxy = !CoreServerSettings.OpenAIProxy.IsNullOrEmpty(),
             },
         }) {
             Timeout = httpClientTimeout ?? TimeSpan.FromSeconds(100),
         };
         services.AddKeyedSingleton(serviceKey, httpClient); // for disposal
-        if (openAIKey.IsNullOrEmpty())
-            openAIKey = Settings.OpenAIKey;
+        var openAIKey = CoreServerSettings.OpenAIKey;
         if (openAIModel.IsNullOrEmpty())
             openAIModel = Settings.OpenAIModel;
 
@@ -287,12 +281,12 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
     private void AddKeyedVertexAI(IServiceCollection services, string serviceKey, string model, TimeSpan? httpClientTimeout = null)
     {
         var httpClient = new HttpClient(new HttpClientHandler {
-            Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
-            UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
+            Proxy = !CoreServerSettings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(CoreServerSettings.OpenAIProxy) : null,
+            UseProxy = !CoreServerSettings.OpenAIProxy.IsNullOrEmpty(),
         });
         services.AddKeyedSingleton(serviceKey, httpClient); // for disposal
 
-        var coreSettings = Cfg.Settings<CoreServerSettings>(nameof(CoreSettings));
+        var coreSettings = CoreServerSettings;
         if (coreSettings.GoogleProjectId.IsNullOrEmpty()) {
             var platform = Platform.Instance();
             coreSettings.GoogleProjectId = platform?.ProjectId ?? throw StandardError.NotSupported<ChatServiceModule>(

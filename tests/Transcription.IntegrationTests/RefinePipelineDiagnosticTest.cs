@@ -2,7 +2,7 @@ using ActualChat.Chat.ML;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Streaming;
-using ActualChat.Streaming.Services.Transcribers;
+using ActualChat.Transcription;
 using Microsoft.Extensions.Configuration;
 using ActualLab.IO;
 
@@ -23,7 +23,7 @@ public class RefinePipelineDiagnosticTest(
     // chat-language mode (Google realtime → OpenAI refine) and prints each stage's text so we can see
     // where a wrong language or hallucination ("Субтитры создал …") is introduced.
     // Requires: Google credentials (CoreSettings / GOOGLE_APPLICATION_CREDENTIALS) and an OpenAI key
-    // (ChatSettings__Retranscription__OpenAIKey or ChatSettings__OpenAIKey).
+    // (CoreSettings__OpenAIKey).
     [Theory(Skip = "For manual runs only")]
     [InlineData("196050.webm", "ru-RU")]
     [InlineData("195977.webm", "ru-RU")]
@@ -104,14 +104,8 @@ public class RefinePipelineDiagnosticTest(
 
     private async Task<Transcript?> RunOpenAIRefine(IServiceProvider services, FilePath fileName, TranscriptionOptions options, string? model = null)
     {
-        var apiKey = configuration["ChatSettings:Retranscription:OpenAIKey"];
-        if (apiKey.IsNullOrEmpty())
-            apiKey = configuration["ChatSettings:OpenAIKey"] ?? "";
-        if (model.IsNullOrEmpty()) {
-            model = configuration["ChatSettings:Retranscription:OpenAIModel"];
-            if (model.IsNullOrEmpty())
-                model = "gpt-4o-transcribe";
-        }
+        var apiKey = configuration["CoreSettings:OpenAIKey"] ?? "";
+        model = model.NullIfEmpty() ?? OpenAITranscriber.DefaultModel;
         var transcriber = new OpenAITranscriber(new OpenAITranscriber.Options { ApiKey = apiKey, Model = model }, services);
         var audio = await GetAudio(fileName, withDelay: false);
         return await transcriber.Transcribe(audio, options, CancellationToken.None);

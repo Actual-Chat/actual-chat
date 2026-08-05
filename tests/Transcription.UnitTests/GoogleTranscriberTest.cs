@@ -1,5 +1,5 @@
 using ActualChat.Module;
-using ActualChat.Streaming.Services.Transcribers;
+using ActualChat.Transcription;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf.WellKnownTypes;
 

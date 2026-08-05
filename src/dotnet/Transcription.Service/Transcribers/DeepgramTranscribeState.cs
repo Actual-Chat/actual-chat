@@ -1,7 +1,6 @@
 using ActualChat.Audio;
-using ActualChat.Transcription;
 
-namespace ActualChat.Streaming.Services.Transcribers;
+namespace ActualChat.Transcription;
 
 public class DeepgramTranscribeState(
     AudioSource audioSource,

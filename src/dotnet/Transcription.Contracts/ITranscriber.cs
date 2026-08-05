@@ -1,13 +1,14 @@
-﻿using ActualChat.Audio;
-using ActualChat.Transcription;
+using ActualChat.Audio;
 
-namespace ActualChat.Streaming;
+namespace ActualChat.Transcription;
 
 /// <summary>
-/// Transcribes audio streams to text using a speech-to-text engine.
+/// Transcribes an audio stream incrementally, writing progressively refined
+/// <see cref="Transcript"/> snapshots to <c>output</c>.
 /// </summary>
 public interface ITranscriber
 {
+    TranscriberInfo Info { get; }
     Task Transcribe(
         string audioStreamId,
         AudioSource audioSource,

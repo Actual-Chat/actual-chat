@@ -1,3 +1,4 @@
+using ActualChat.Transcription.Module;
 using System.Runtime.CompilerServices;
 using ActualChat.Audio;
 using ActualChat.Streaming;
@@ -118,7 +119,7 @@ public sealed class StreamingEntryNetworkLossCollection
             messageSink,
             TestAppHostOptions.Default with {
                 ConfigureHost = (_, cfg) => {
-                    cfg.AddInMemory<StreamingSettings>((x => x.UseFakeTranscriber, "true"));
+                    cfg.AddInMemory<TranscriptionSettings>((x => x.UseFakeTranscriber, "true"));
                 },
             });
 }
