@@ -1,21 +1,19 @@
 using ActualChat.Security;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 
 /// <summary>
-/// Platform-neutral walkie-talkie wake core: scope resolution (live WebView scope vs
-/// <see cref="HeadlessBlazorScope"/>), playback start, and headless-session teardown.
+/// Process-global walkie-talkie entry points: scope resolution (live WebView scope vs
+/// <see cref="HeadlessBlazorScope"/>), app-ready waits, and headless-session teardown.
+/// Per-scope work lives in <see cref="WalkieTalkieSessionCore"/>.
 /// </summary>
 public static class WalkieTalkieSession
 {
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan TeardownCheckPeriod = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan StopHotReplyTimeout = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan AudioFocusCheckPeriod = TimeSpan.FromSeconds(0.5);
     private const int TeardownIdleChecks = 2;
-    private const int AudioFocusChecks = 10;
     private static readonly Lock Lock = new();
     private static Task? _teardownWatcher;
     private static ILogger Log => field ??= StaticLog.For(typeof(WalkieTalkieSession));
@@ -29,14 +27,16 @@ public static class WalkieTalkieSession
             await sessionResolver.SessionTask.WaitAsync(StartupTimeout).ConfigureAwait(false);
 
             var (scopedServices, isHeadless) = ResolveScope();
-            var chatAudioUI = scopedServices.GetRequiredService<AppUIHub>().ChatAudioUI;
-            var audioFocusDenialCount = chatAudioUI.AudioFocusDenialCount;
-            await StartPlayback(scopedServices, chatId, startedAt, isForeground, isHeadless, platform)
+            var core = scopedServices.GetRequiredService<WalkieTalkieSessionCore>();
+            var audioFocusDenialCount = core.AudioFocusDenialCount;
+            await core.StartPlayback(chatId, startedAt, isForeground, isHeadless, platform)
                 .ConfigureAwait(false);
             if (isHeadless)
                 EnsureTeardownWatcher(platform);
             if (!isForeground)
-                WatchAudioFocus(chatAudioUI, audioFocusDenialCount, chatId, platform);
+                core.WatchAudioFocus(
+                    audioFocusDenialCount, chatId, platform,
+                    () => StopAndDisposeCurrent("audio focus denied"));
         }
         catch (Exception e) {
             Log.LogError(e, "Walkie-talkie wake failed for chat #{ChatId}", chatId);
@@ -48,8 +48,6 @@ public static class WalkieTalkieSession
     public static async Task<WalkieTalkieReply?> HandleTransmit(WalkieTalkiePlatform platform)
     {
         var isHeadless = false;
-        AppUIHub? hub = null;
-        WalkieTalkieReply? reply = null;
         try {
             // One budget for the whole boot, shared by all three waits: the mic-permission check
             // inside RequestReply cannot show a prompt from a locked screen, so nothing here may
@@ -61,41 +59,17 @@ public static class WalkieTalkieSession
 
             IServiceProvider scopedServices;
             (scopedServices, isHeadless) = ResolveScope();
-            hub = scopedServices.GetRequiredService<AppUIHub>();
-            if (isHeadless)
-                hub.ChatAudioUI.IsWalkieTalkieHeadless = true;
-
-            // Rehearsing in Settings must never transmit
-            if (hub.GestureUI.IsPracticeMode)
-                return null;
-
-            // RequestReply is idempotent, so a gesture-opened mic would make it report success and
-            // the transmission would later close a reply it never started.
-            if (await hub.ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
-                return null;
-
-            // The live signal can't have fired for an utterance that ended before this process
-            // booted, so the persisted wake is the only thing that opens an answer window for it.
-            if (platform.LastWake is { } lastWake)
-                hub.IncomingVoiceActivityUI.NoteIncomingVoice(lastWake.ChatId, lastWake.At);
-
-            // Null unless this very call opened the mic - see WalkieTalkieReplyUI.RequestReply.
-            reply = await hub.WalkieTalkieReplyUI
-                .RequestReply(ReplyTargetResolver.UnboundedRecencyWindow, cts.Token)
-                .ConfigureAwait(false);
-            return reply;
+            var core = scopedServices.GetRequiredService<WalkieTalkieSessionCore>();
+            return await core.Transmit(isHeadless, platform, cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException e) {
-            // Expected degraded mode: the boot budget ran out - see WalkieTalkiePttTransmitStartupTimeout.
+            // The boot didn't reach the scope, so there is no reply to close and no cue to play -
+            // core.Transmit handles its own failures past that point.
             Log.LogWarning(e, "Walkie-talkie transmit didn't fit into the startup budget");
-            await StopOrphanedReply(hub, reply).ConfigureAwait(false);
-            PlayFailureCue(hub);
             return null;
         }
         catch (Exception e) {
             Log.LogError(e, "Walkie-talkie transmit failed");
-            await StopOrphanedReply(hub, reply).ConfigureAwait(false);
-            PlayFailureCue(hub);
             return null;
         }
         finally {
@@ -135,7 +109,9 @@ public static class WalkieTalkieSession
 
             Log.LogInformation("Closing a hot walkie reply before disposing the headless scope");
             using var cts = new CancellationTokenSource(StopHotReplyTimeout);
-            await StopReplyAndWaitForRecorder(hub, cts.Token).ConfigureAwait(false);
+            await scope.Services.GetRequiredService<WalkieTalkieSessionCore>()
+                .StopReplyAndWaitForRecorder(cts.Token)
+                .ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Couldn't close the hot walkie reply before disposing the headless scope");
@@ -147,18 +123,6 @@ public static class WalkieTalkieSession
     }
 
     // Private methods
-
-    private static async Task StopReplyAndWaitForRecorder(AppUIHub hub, CancellationToken cancellationToken)
-    {
-        // StopReply only writes the "stop recording" intent; RecordChat's own teardown (a
-        // different async flow in the same scope) is what actually closes the mic and plays the
-        // cue. Waiting for ChatId to clear - IsRecording stays false while the engine starts -
-        // is what turns this into a real stop-then-dispose rather than a race with teardown.
-        await hub.WalkieTalkieReplyUI.StopReply().ConfigureAwait(false);
-        await hub.AudioRecorder.State.Computed
-            .When(x => x.ChatId is null, cancellationToken)
-            .ConfigureAwait(false);
-    }
 
     private static (IServiceProvider Services, bool IsHeadless) ResolveScope()
     {
@@ -172,95 +136,6 @@ public static class WalkieTalkieSession
 
         throw StandardError.Internal("No service scope is available.");
     }
-
-    private static async Task StartPlayback(
-        IServiceProvider scopedServices,
-        ChatId chatId,
-        Moment startedAt,
-        bool isForeground,
-        bool isHeadless,
-        WalkieTalkiePlatform platform)
-    {
-        var hub = scopedServices.GetRequiredService<AppUIHub>();
-        var chatAudioUI = hub.ChatAudioUI;
-        if (isHeadless)
-            chatAudioUI.IsWalkieTalkieHeadless = true;
-        chatAudioUI.Enable();
-        // The utterance may be over by the time we boot, so HasIncomingVoice would never see an edge
-        // for it and the answer window would never open.
-        hub.IncomingVoiceActivityUI.NoteIncomingVoice(chatId, startedAt);
-
-        if (isForeground) {
-            // The user is in the app: don't hijack their state with a forced replay -
-            // just make sure the trigger chat is being listened to.
-            await chatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
-            await platform.OnForegroundWakeHandled(chatId).ConfigureAwait(false);
-            return;
-        }
-
-        // The replay path bypasses ChatListeningPlayer, which normally plays this cue on
-        // stream-start after a long lull - so the wake plays it explicitly.
-        _ = hub.TuneUI.Play(Tune.NotifyOnNewAudioMessageAfterDelay);
-
-        // The server gates wakes on the same settings; re-read them for the restore set.
-        var restoreSet = await chatAudioUI.GetChatsYouNeedToKeepListeningTo(CancellationToken.None)
-            .ConfigureAwait(false);
-        if (!restoreSet.Contains(chatId))
-            restoreSet = [..restoreSet, chatId];
-
-        if (WalkieTalkie.IsStaleWake(startedAt, hub.Clocks.SystemClock.Now))
-            foreach (var armedChatId in restoreSet)
-                await chatAudioUI.SetListeningState(armedChatId, true).ConfigureAwait(false);
-        else
-            await chatAudioUI.StartWalkieTalkieReplay(chatId, startedAt, restoreSet).ConfigureAwait(false);
-
-        _ = platform.OnPlaybackStarted(hub, chatId);
-    }
-
-    private static async Task StopOrphanedReply(AppUIHub? hub, WalkieTalkieReply? reply)
-    {
-        // Identity, not "is anything recording": StopReply(reply) no-ops unless this is still the
-        // open reply, so a gesture that grabbed the mic meanwhile keeps it.
-        if (hub is null || reply is null)
-            return;
-
-        try {
-            Log.LogWarning("Closing the reply opened by a failed walkie-talkie transmit");
-            await hub.WalkieTalkieReplyUI.StopReply(reply).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Couldn't close the reply opened by a failed walkie-talkie transmit");
-        }
-    }
-
-    private static void PlayFailureCue(AppUIHub? hub)
-    {
-        // Fire-and-forget: this reads a Kvas setting, and awaiting that on a timed-out boot would
-        // leak the headless scope by delaying the caller's teardown watcher.
-        if (hub is null)
-            return;
-
-        _ = BackgroundTask.Run(
-            () => hub.WalkieTalkieReplyUI.PlayFailureCue(),
-            Log, "Couldn't play the walkie-talkie transmit failure cue", CancellationToken.None);
-    }
-
-    private static void WatchAudioFocus(
-        ChatAudioUI chatAudioUI, int denialCount, ChatId chatId, WalkieTalkiePlatform platform)
-        => _ = BackgroundTask.Run(async () => {
-            // A denial makes ChatAudioUI.StateSync drop the replay/listening state it was just
-            // given, and nothing throws - so the wake would end in silence instead of a fallback.
-            for (var i = 0; i < AudioFocusChecks; i++) {
-                await Task.Delay(AudioFocusCheckPeriod).ConfigureAwait(false);
-                if (chatAudioUI.AudioFocusDenialCount == denialCount)
-                    continue;
-
-                Log.LogWarning("Walkie-talkie wake was denied audio focus for chat #{ChatId}", chatId);
-                platform.OnWakeFailed(chatId);
-                await StopAndDisposeCurrent("audio focus denied").ConfigureAwait(false);
-                return;
-            }
-        }, Log, "Audio focus watch failed", CancellationToken.None);
 
     private static void EnsureTeardownWatcher(WalkieTalkiePlatform platform)
     {
