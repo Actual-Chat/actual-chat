@@ -26,6 +26,8 @@ public sealed partial class TranscriberId : StringIdentifier, IStringIdentifier<
     public static readonly TranscriberId DeepgramStream = NewBuiltin("deepgram-stream");
     public static readonly TranscriberId OpenAIStream = NewBuiltin("openai-stream");
     public static readonly TranscriberId OpenAIOffline = NewBuiltin("openai-offline");
+    public static readonly TranscriberId SonioxStream = NewBuiltin("soniox-stream");
+    public static readonly TranscriberId SonioxOffline = NewBuiltin("soniox-offline");
     private const string UserPrefix = "u:";
     private const char PairSeparator = '~';
     private static readonly ILruCache<string, TranscriberId> Cache = CreateCache<TranscriberId>(64);
