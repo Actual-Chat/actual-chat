@@ -1,7 +1,7 @@
 # Walkie-Talkie: Hands-Free Reply to Incoming Voice
 
 Date: 2026-07-20
-Status: E1 (core pipeline + on-screen PTT) implemented; E2 (shake), E3 (Android media button + FGS record-from-wake), E4 (iOS Apple PTT transmit) pending
+Status: E1-E4 implemented (device verification pending)
 
 ## Background
 

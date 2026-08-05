@@ -1,6 +1,6 @@
 # Walkie-Talkie Cleanup: De-static Session, Flag Removal, Doc Consolidation
 
-Status: Approved design, pre-implementation
+Status: Implemented
 Branch: feat/walkie-talkie-push
 
 ## Goal
@@ -177,3 +177,12 @@ style of the existing numbered docs, covering:
 Parts are independent; execute 2 (smallest) → 1 (riskiest) → 3 → 4, each as
 its own commit(s), so the refactor lands against a quiet baseline and the
 docs describe the post-refactor shape.
+
+## Deviations found during implementation
+
+- `ResolveScope` was kept as-is: `AppScopeAccessor.Current` cannot report
+  the `IsHeadless` flag its callers need, so the planned unification would
+  have changed behavior.
+- No `AppUIHub` accessor for `WalkieTalkieSessionCore`: the facade resolves
+  the core from the specific scope it picked; a hub accessor would be dead
+  code.

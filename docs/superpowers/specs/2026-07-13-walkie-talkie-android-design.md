@@ -1,7 +1,7 @@
 # Walkie-Talkie: Android Armed/Hot Lifecycle (Sub-Project B)
 
 Date: 2026-07-13
-Status: Approved design, pre-implementation
+Status: Implemented (device verification pending)
 Depends on: Sub-project A (`2026-07-13-walkie-talkie-server-trigger-design.md`),
 merged as the speech-start FCM wake push
 (`kind=SpeechStarted, chatId, authorId, timestamp` data payload,

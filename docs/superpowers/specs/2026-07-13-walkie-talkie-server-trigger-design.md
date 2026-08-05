@@ -1,7 +1,7 @@
 # Walkie-Talkie: Server-Side Speech-Start Push Trigger (Sub-Project A)
 
 Date: 2026-07-13
-Status: Approved design, pre-implementation
+Status: Implemented
 
 ## Background
 

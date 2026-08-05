@@ -1,7 +1,7 @@
 # Walkie-Talkie: iOS via Apple Push to Talk (Sub-Project C)
 
 Date: 2026-07-13
-Status: Approved design, pre-implementation
+Status: Implemented (device verification pending)
 Depends on:
 - Sub-project A (`2026-07-13-walkie-talkie-server-trigger-design.md`) —
   the `SpeechStartedEvent` → `NotificationsBackend.SendWalkieTalkieWake`
