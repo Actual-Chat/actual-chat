@@ -1,4 +1,5 @@
 using System.Text;
+using ActualLab.Diagnostics;
 using FirebaseAdmin.Messaging;
 
 namespace ActualChat.Notifications;
@@ -17,7 +18,7 @@ public class FirebaseMessagingClient(
     private FirebaseMessaging FirebaseMessaging { get; } = firebaseMessaging;
     private ICommander Commander { get; } = commander;
     private ILogger Log { get; } = log;
-    private ILogger? DebugLog => Log;
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Notifications);
 
     public async Task SendMessage(
         Notification notification,
@@ -33,7 +34,7 @@ public class FirebaseMessagingClient(
         var content = notification.Text;
         var iconUrl = notification.IconUrl;
         var chatNotification = notification as ChatNotification;
-        var chatId = (ChatId?)chatNotification?.ChatId;
+        var chatId = chatNotification?.ChatId;
         // entryId carries the latest entry (client read-skip), linkEntryId the first-unread tap target.
         var entryId = (ChatEntryId?)null;
         var linkEntryId = (ChatEntryId?)null;
@@ -80,7 +81,10 @@ public class FirebaseMessagingClient(
             { Constants.Notification.MessageDataKeys.Kind, kind.ToString() },
             { Constants.Notification.MessageDataKeys.Link, link },
             { Constants.Notification.MessageDataKeys.Silent, isSilent.ToString() },
-            { Constants.Notification.MessageDataKeys.Timestamp, ((long)notification.CreatedAt.EpochOffset.TotalMilliseconds).ToString() },
+            {
+                Constants.Notification.MessageDataKeys.Timestamp,
+                ((long)notification.CreatedAt.EpochOffset.TotalMilliseconds).ToString()
+            },
         };
         if (lastEntryLocalId > 0)
             data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString());
@@ -102,11 +106,13 @@ public class FirebaseMessagingClient(
         }
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
-            // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
+            // We do not specify Notification instance, because we use Data messages
+            // to deliver notifications to Android
             // Notification = default,
             Data = data,
             Android = new AndroidConfig {
-                // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
+                // We do not specify Notification instance, because we use Data messages
+                // to deliver notifications to Android
                 // Notification = default,
                 Data = androidData,
                 Priority = Priority.High,
@@ -221,7 +227,7 @@ public class FirebaseMessagingClient(
                         : c.Exception.MessagingErrorCode.HasValue
                             ? "errCode=" + c.Exception.MessagingErrorCode
                             : c.Exception.Message));
-            DebugLog.LogInformation("Sent {Successfully}/{Total} messages. Result: '{MessageIds}'",
+            DebugLog.LogDebug("Sent {Successfully}/{Total} messages. Result: '{MessageIds}'",
                 batchResponse.SuccessCount, batchResponse.Responses.Count, messageIds);
         }
 
@@ -244,7 +250,8 @@ public class FirebaseMessagingClient(
                 var tokensToRemove = responseGroup
                     .Select(g => g.DeviceId)
                     .ToArray();
-                _ = Commander.Start(new NotificationsBackend_RemoveDevices(tokensToRemove), true, CancellationToken.None);
+                _ = Commander.Start(
+                    new NotificationsBackend_RemoveDevices(tokensToRemove), true, CancellationToken.None);
             }
             else if (responseGroup.Key.HasValue) {
                 var firstErrorItem = responseGroup.First();
@@ -253,7 +260,8 @@ public class FirebaseMessagingClient(
                     : await firstErrorItem.HttpResponse.Content
                         .ReadAsStringAsync(cancellationToken)
                         .ConfigureAwait(false);
-                Log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
+                Log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; "
+                    + "Count = {ErrorCount}; {Details}",
                     responseGroup.Key, responseGroup.Count(), errorContent);
             }
     }
