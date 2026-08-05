@@ -38,9 +38,11 @@ public sealed class TranscriberSelectorTest(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
-    public void ExplicitStreamOnlyStillRetranscribes()
+    public void ExplicitStreamOnlySkipsRetranscriptionToo()
     {
         // arrange
+        // A StreamOnly stream benefits from an offline pass, but "no re-transcription" in the
+        // picker has to mean it - this is what silently refined ElevenLabs with Soniox.
         var selector = NewSelector(TranscriberKind.StreamOnly, out var registry);
         var id = TranscriberId.NewBuiltin(Stream);
 
@@ -48,7 +50,7 @@ public sealed class TranscriberSelectorTest(ITestOutputHelper @out) : TestBase(@
         var offline = selector.GetOffline(new TranscriptionOptions(), id, registry.GetInfo(id));
 
         // assert
-        offline?.Info.Id.Value.Should().Be(Offline);
+        offline.Should().BeNull();
     }
 
     [Fact]

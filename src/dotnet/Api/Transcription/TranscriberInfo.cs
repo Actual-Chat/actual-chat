@@ -37,8 +37,6 @@ public sealed partial record TranscriberInfo
     public bool IsOffline => Kind == TranscriberKind.OfflineOnly;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsContextSupported => ContextPolicy != null || Retranscriber?.ContextPolicy != null;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool IsOfflinePassNeeded => Kind == TranscriberKind.StreamOnly;
 
     public bool IsSupported(Language language)
         => Languages.Count == 0 || Languages.Contains(language);
