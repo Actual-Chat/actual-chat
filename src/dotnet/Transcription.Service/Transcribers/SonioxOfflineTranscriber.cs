@@ -28,8 +28,7 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
     private ILogger Log { get; }
     public TranscriberInfo Info { get; } = new() {
         Id = TranscriberId.SonioxOffline,
-        DriverId = "soniox",
-        Kind = TranscriberKind.OfflineOnly,
+        Kind = TranscriberKind.Offline,
         Languages = SonioxLanguage.Supported,
         DetectLanguages = SonioxLanguage.Supported,
         IsLanguageDetectionSupported = true,

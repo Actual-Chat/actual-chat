@@ -22,8 +22,7 @@ public sealed class FakeTranscriber(IServiceProvider services) : ITranscriber
 
     public TranscriberInfo Info { get; } = new() {
         Id = Id,
-        DriverId = "fake",
-        Kind = TranscriberKind.StreamSelfRefined,
+        Kind = TranscriberKind.Stream,
         IsLanguageDetectionSupported = true,
     };
 

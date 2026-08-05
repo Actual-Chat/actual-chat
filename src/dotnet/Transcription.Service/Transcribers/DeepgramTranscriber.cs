@@ -56,8 +56,7 @@ public sealed partial class DeepgramTranscriber : ITranscriber
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
     public TranscriberInfo Info { get; } = new() {
         Id = TranscriberId.DeepgramStream,
-        DriverId = "deepgram",
-        Kind = TranscriberKind.StreamOnly,
+        Kind = TranscriberKind.Stream,
         Languages = DeepgramLanguage.Supported,
         IsLanguageDetectionSupported = true,
     };

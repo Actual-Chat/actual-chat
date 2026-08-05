@@ -290,7 +290,7 @@ public partial class AudioStreamingBackend
                 var preferredId = await GetPreferredTranscriberId(record, cts.Token).ConfigureAwait(false);
                 var streamInfo = TranscriberRegistry.GetInfo(preferredId);
                 var refineTranscriber = TranscriberSelector.GetOffline(options, preferredId, streamInfo);
-                if (refineTranscriber is null || IsTooShortToRetranscribe(audioSource, streamInfo, realtimeText)) {
+                if (refineTranscriber is null || IsTooShortToRetranscribe(audioSource, realtimeText)) {
                     refinedTranscriptTcs.TrySetResult(null);
                     return;
                 }
@@ -411,21 +411,15 @@ public partial class AudioStreamingBackend
         return context.IsNone ? options : options with { Context = context };
     }
 
-    private static bool IsTooShortToRetranscribe(
-        AudioSource audioSource,
-        TranscriberInfo? streamInfo,
-        string realtimeText)
+    private static bool IsTooShortToRetranscribe(AudioSource audioSource, string realtimeText)
     {
-        var minWords = streamInfo?.MinRetranscriptionWords ?? Constants.Transcription.MinRetranscriptionWords;
-        if (realtimeText.CountWords() >= minWords)
+        if (realtimeText.CountWords() >= Constants.Transcription.MinRetranscriptionWords)
             return false;
 
         // Clearing either bar is enough, so the duration still speaks for speech the realtime pass
         // under-transcribed. An unknown duration means the segment never closed cleanly - retranscribe.
-        var minDuration = streamInfo?.MinRetranscriptionDuration
-            ?? Constants.Transcription.MinRetranscriptionDuration;
         return audioSource.WhenDurationAvailable.IsCompletedSuccessfully
-            && audioSource.Duration < minDuration;
+            && audioSource.Duration < Constants.Transcription.MinRetranscriptionDuration;
     }
 
     private async Task<TranscriberId> GetPreferredTranscriberId(

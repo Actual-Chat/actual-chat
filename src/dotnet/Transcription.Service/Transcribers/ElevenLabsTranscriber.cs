@@ -27,8 +27,7 @@ public sealed class ElevenLabsTranscriber : ITranscriber
 
     public TranscriberInfo Info { get; } = new() {
         Id = TranscriberId.ElevenLabsStream,
-        DriverId = "elevenlabs",
-        Kind = TranscriberKind.StreamOnly,
+        Kind = TranscriberKind.Stream,
         IsLanguageDetectionSupported = true,
         // previous_text on the first chunk is a prose prefix, unlike the batch endpoint's
         // keyterm list - streaming can't know the duration, so it's a flat allowance.

@@ -105,8 +105,7 @@ sealed file class FakeOfflineTranscriber : IOfflineTranscriber
 {
     public TranscriberInfo Info { get; } = new() {
         Id = TranscriberId.NewBuiltin("fake-offline"),
-        DriverId = "fake",
-        Kind = TranscriberKind.OfflineOnly,
+        Kind = TranscriberKind.Offline,
     };
     public const string Marker = "RefineTranscriptionTestMarker";
     public const string FinalText =
