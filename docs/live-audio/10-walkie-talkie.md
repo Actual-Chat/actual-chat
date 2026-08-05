@@ -515,7 +515,7 @@ devices:
 | `IsDoubleShakeEnabled` | `true` | Double-shake start gesture |
 | `ShakeSensitivity` | `Medium` | Ordered so `Medium` is the zero default; firing sets nest `Low ⊆ Medium ⊆ High` |
 | `AreGesturesAlwaysOn` | `false` | Sense start gestures outside the answer window |
-| `HotWindow` | 60 s | Idle duration handed to `SetRecordingChatId` for a walkie reply |
+| `HotWindow` | 60 s | Idle duration handed to `SetRecordingChatId` for a walkie reply; clamped to `WalkieTalkieReplyBackgroundHotWindow` (15 s) when the reply starts in background or headless |
 | `AreAudibleCuesEnabled` | `true` | Begin/end/nothing-heard tunes |
 | `IsHeadsetButtonEnabled` | `null` → `true` | Headset hook / play-pause opens a reply |
 | `IsPttTransmitEnabled` | `null` → `true` | Apple PTT transmission mode (`FullDuplex` vs `ListenOnly`) |

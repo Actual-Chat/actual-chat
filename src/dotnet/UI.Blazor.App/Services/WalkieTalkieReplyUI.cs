@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -23,6 +24,8 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
+    private BackgroundStateTracker BackgroundStateTracker
+        => field ??= Services.GetRequiredService<BackgroundStateTracker>();
 
     public static bool ShouldColdClose(bool everVoiced, TimeSpan elapsed, TimeSpan coldTimeout)
         => !everVoiced && elapsed >= coldTimeout;
@@ -76,10 +79,11 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         if (displacedReply is not null)
             WalkieTalkieMicCapability.Release(displacedReply);
 
+        var isBackground = BackgroundStateTracker.IsBackground.Value || ChatAudioUI.IsWalkieTalkieHeadless;
         try {
             await ChatAudioUI.SetRecordingChatId(chatId,
                     isPushToTalk: true,
-                    idleDuration: settings.HotWindow,
+                    idleDuration: GetEffectiveHotWindow(settings.HotWindow, isBackground),
                     mustPlayBeginTune: settings.AreAudibleCuesEnabled)
                 .ConfigureAwait(false);
         }
@@ -125,6 +129,13 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
 
     public Task PlayFailureCue()
         => PlayCue(Tune.WalkieReplyNothingHeard);
+
+    public static TimeSpan GetEffectiveHotWindow(TimeSpan hotWindow, bool isBackground)
+        // A background activation has no visible mic indicator to prompt a manual stop,
+        // so the hot window shrinks to keep an unnoticed open mic short.
+        => isBackground
+            ? TimeSpanExt.Min(hotWindow, Constants.Audio.WalkieTalkieReplyBackgroundHotWindow)
+            : hotWindow;
 
     // Private methods
 

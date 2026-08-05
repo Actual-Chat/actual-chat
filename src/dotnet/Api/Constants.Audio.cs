@@ -75,6 +75,7 @@ public static partial class Constants
         // Matches the wake push's FCM TTL; older wakes skip replay-from-start and go live.
         public static readonly TimeSpan WalkieTalkieStaleWakeAge = TimeSpan.FromSeconds(60);
         public static readonly TimeSpan WalkieTalkieReplyColdStartTimeout = TimeSpan.FromSeconds(15);
+        public static readonly TimeSpan WalkieTalkieReplyBackgroundHotWindow = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan WalkieTalkieReplyRecencyWindow = TimeSpan.FromSeconds(150);
         // Apple PTT transmit: the framework chimes when it activates the session, not when our
         // recorder exists, so audio is captured natively across the gap. Capacity must stay <=
