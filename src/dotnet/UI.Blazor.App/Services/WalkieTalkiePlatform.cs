@@ -1,9 +1,7 @@
-using ActualChat.UI.Blazor.App.Services;
-
-namespace ActualChat.App.Maui.Services;
+namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// Platform hooks for <see cref="WalkieTalkieSession"/>: wake failure, playback start,
+/// Platform hooks for the walkie-talkie session: wake failure, playback start,
 /// foreground-wake completion, and headless-session teardown.
 /// </summary>
 public abstract class WalkieTalkiePlatform
