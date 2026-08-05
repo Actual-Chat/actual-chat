@@ -1,6 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.Diagnostics;
 using ActualChat.Streaming.Services;
+using ActualChat.Streaming.Module;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
 using Microsoft.Extensions.Hosting;
@@ -26,6 +27,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private IServiceProvider Services { get; }
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
     private AudioSettings AudioSettings { get; }
+    private StreamingSettings StreamingSettings { get; }
     private AudioSegmentSaver AudioSegmentSaver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILiveSessionsBackend LiveSessionsBackend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
@@ -45,6 +47,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     {
         Services = services;
         AudioSettings = services.GetRequiredService<AudioSettings>();
+        StreamingSettings = services.GetRequiredService<StreamingSettings>();
 
         var typeFullName = GetType().FullName;
         _audioStreams = new StreamStore<AudioFrame> {

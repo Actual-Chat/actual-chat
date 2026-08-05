@@ -141,6 +141,8 @@ public sealed class RetranscribeTranslationCollection : ICollectionFixture<Retra
                     cfg.AddInMemory<TranscriptionSettings>(
                         (x => x.UseFakeTranscriber, "true"),
                         (x => x.OfflineRanking, "fake-offline"));
+                    // The test clip is seconds long, so it clears neither retranscription bar.
+                    cfg.AddInMemory<StreamingSettings>((x => x.MinRetranscriptionWords, "0"));
                 },
                 ConfigureServices = (_, services) => {
                     services.AddSingleton<Translator>(c => new FakeTranslator(c));
