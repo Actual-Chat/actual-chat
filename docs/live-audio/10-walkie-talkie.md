@@ -575,18 +575,3 @@ Cross-invariants worth keeping in mind when tuning these:
   between.
 - **`WalkieTalkiePreRollCapacity` ≤ `AppleAudioCapture`'s output buffer** (10 s
   at `RecordingSampleRate`), or the drain would be truncated.
-
-## Design history
-
-This doc describes the current shape; the sub-project specs below record the
-intent and sequencing behind it:
-
-- [2026-07-13-walkie-talkie-server-trigger-design.md](../superpowers/specs/2026-07-13-walkie-talkie-server-trigger-design.md) — server-side speech-start push trigger (Sub-project A)
-- [2026-07-13-walkie-talkie-android-design.md](../superpowers/specs/2026-07-13-walkie-talkie-android-design.md) — Android armed/hot lifecycle (Sub-project B)
-- [2026-07-13-walkie-talkie-ios-design.md](../superpowers/specs/2026-07-13-walkie-talkie-ios-design.md) — iOS via Apple Push to Talk (Sub-project C)
-- [2026-07-20-walkie-talkie-reply-to-voice-design.md](../superpowers/specs/2026-07-20-walkie-talkie-reply-to-voice-design.md) — hands-free reply to incoming voice
-- [2026-07-20-walkie-talkie-heard-receipts-design.md](../superpowers/specs/2026-07-20-walkie-talkie-heard-receipts-design.md) — heard receipts (Sub-project D)
-- [2026-07-26-walkie-talkie-ptt-settings-design.md](../superpowers/specs/2026-07-26-walkie-talkie-ptt-settings-design.md) — PTT settings + gesture engine (Sub-project E2)
-- [2026-08-03-walkie-talkie-headset-button-design.md](../superpowers/specs/2026-08-03-walkie-talkie-headset-button-design.md) — headset button + headless reply pipeline (Sub-project E3)
-- [2026-08-04-walkie-talkie-ios-transmit-e4-design.md](../superpowers/specs/2026-08-04-walkie-talkie-ios-transmit-e4-design.md) — iOS Apple PTT transmit (Sub-project E4)
-- [2026-08-05-walkie-talkie-cleanup-design.md](../superpowers/specs/2026-08-05-walkie-talkie-cleanup-design.md) — de-static session, flag removal, doc consolidation
