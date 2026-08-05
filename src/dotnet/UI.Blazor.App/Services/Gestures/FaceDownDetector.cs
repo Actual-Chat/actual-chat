@@ -7,8 +7,8 @@ namespace ActualChat.UI.Blazor.App.Services.Gestures;
 public sealed class FaceDownDetector
 {
     public static readonly TimeSpan Dwell = TimeSpan.FromMilliseconds(700);
-    // MAUI reports Z ≈ -1 face-up, so face-down is the positive end.
-    private const float FaceDownZ = 0.85f;
+    // MAUI reports Z ≈ +1 face-up on both platforms, so face-down is the negative end.
+    private const float FaceDownZ = -0.85f;
     private const float PocketMaxZ = 0.5f;
 
     private Moment? _heldSince;
@@ -24,7 +24,7 @@ public sealed class FaceDownDetector
 
     public bool Process(SensorSample sample)
     {
-        var isFaceDown = sample.Z >= FaceDownZ;
+        var isFaceDown = sample.Z <= FaceDownZ;
         var isPocketed = _isCovered && MathF.Abs(sample.Z) <= PocketMaxZ;
         if (!isFaceDown && !isPocketed) {
             _heldSince = null;

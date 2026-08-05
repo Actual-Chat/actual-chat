@@ -9,8 +9,8 @@ public class GestureDetectorTest
 
     private static SensorSample Portrait(double atMs) => new(At(atMs), 0f, -1f, 0f);
     private static SensorSample Landscape(double atMs) => new(At(atMs), -1f, 0f, 0f);
-    private static SensorSample FaceUp(double atMs) => new(At(atMs), 0f, 0f, -1f);
-    private static SensorSample FaceDown(double atMs) => new(At(atMs), 0f, 0f, 1f);
+    private static SensorSample FaceUp(double atMs) => new(At(atMs), 0f, 0f, 1f);
+    private static SensorSample FaceDown(double atMs) => new(At(atMs), 0f, 0f, -1f);
     private static Moment At(double ms) => T0 + TimeSpan.FromMilliseconds(ms);
 
     [Fact]
@@ -140,6 +140,18 @@ public class GestureDetectorTest
     }
 
     [Fact]
+    public void FaceDownUsesTheRealMauiZConvention()
+    {
+        // On both platforms MAUI yields Z ≈ +1 for a device lying flat face-UP
+        // (Android divides raw +9.81 by gravity; iOS negates CoreMotion's -1).
+        var d = new FaceDownDetector();
+        d.Process(new SensorSample(At(0), 0f, 0f, 1f)).Should().BeFalse();
+        d.Process(new SensorSample(At(1200), 0f, 0f, 1f)).Should().BeFalse();
+        d.Process(new SensorSample(At(2000), 0f, 0f, -1f)).Should().BeFalse();
+        d.Process(new SensorSample(At(3000), 0f, 0f, -1f)).Should().BeTrue();
+    }
+
+    [Fact]
     public void FaceDown_FiresAfterDwell()
     {
         var d = new FaceDownDetector();
@@ -195,10 +207,10 @@ public class GestureDetectorTest
         // the last 500ms: dip at 650, rise at 700) both complete on the very last sample - it
         // must report the stop, never the start, because GestureRecognizer.Process evaluates
         // face-down first.
-        r.Process(new SensorSample(At(0), 0f, 0f, 3f)).Should().BeNull();
-        r.Process(new SensorSample(At(600), 0f, 0f, 1f)).Should().BeNull();
-        r.Process(new SensorSample(At(650), 0f, 0f, 0.2f)).Should().BeNull();
-        var e = r.Process(new SensorSample(At(700), 0f, 0f, 3f));
+        r.Process(new SensorSample(At(0), 0f, 0f, -3f)).Should().BeNull();
+        r.Process(new SensorSample(At(600), 0f, 0f, -1f)).Should().BeNull();
+        r.Process(new SensorSample(At(650), 0f, 0f, -0.2f)).Should().BeNull();
+        var e = r.Process(new SensorSample(At(700), 0f, 0f, -3f));
         e!.Value.Kind.Should().Be(GestureKind.FaceDown);
     }
 
@@ -303,14 +315,14 @@ public class GestureDetectorTest
     {
         var options = new GestureOptions(false, false, true, ShakeSensitivity.Medium);
         var r = new GestureRecognizer(options);
-        r.Process(new SensorSample(At(0), 0f, 0f, 1f)).Should().BeNull();
-        r.Process(new SensorSample(At(400), 0f, 0f, 1f)).Should().BeNull();
+        r.Process(new SensorSample(At(0), 0f, 0f, -1f)).Should().BeNull();
+        r.Process(new SensorSample(At(400), 0f, 0f, -1f)).Should().BeNull();
         r.Options = options with { IsFaceDownEnabled = false };
         r.Options = options with { IsFaceDownEnabled = true };
         // Without the reset-on-toggle fix, the stale _heldSince(0) would make this look like the
         // dwell already elapsed (1000ms since t=0), firing immediately.
-        r.Process(new SensorSample(At(1000), 0f, 0f, 1f)).Should().BeNull();
-        var e = r.Process(new SensorSample(At(1750), 0f, 0f, 1f));
+        r.Process(new SensorSample(At(1000), 0f, 0f, -1f)).Should().BeNull();
+        var e = r.Process(new SensorSample(At(1750), 0f, 0f, -1f));
         e!.Value.Kind.Should().Be(GestureKind.FaceDown);
     }
 
@@ -319,12 +331,12 @@ public class GestureDetectorTest
     {
         var options = new GestureOptions(false, false, true, ShakeSensitivity.Medium);
         var r = new GestureRecognizer(options);
-        r.Process(new SensorSample(At(0), 0f, 0f, 1f)).Should().BeNull();
-        r.Process(new SensorSample(At(400), 0f, 0f, 1f)).Should().BeNull();
+        r.Process(new SensorSample(At(0), 0f, 0f, -1f)).Should().BeNull();
+        r.Process(new SensorSample(At(400), 0f, 0f, -1f)).Should().BeNull();
         // A 2.5s gap simulates the app being backgrounded and resumed - without the gap guard,
         // the stale _heldSince(0) would make this look like the dwell already elapsed.
-        r.Process(new SensorSample(At(2900), 0f, 0f, 1f)).Should().BeNull();
-        var e = r.Process(new SensorSample(At(3650), 0f, 0f, 1f));
+        r.Process(new SensorSample(At(2900), 0f, 0f, -1f)).Should().BeNull();
+        var e = r.Process(new SensorSample(At(3650), 0f, 0f, -1f));
         e!.Value.Kind.Should().Be(GestureKind.FaceDown);
     }
 
