@@ -92,7 +92,7 @@
             items.Add(new Item(id, name, avatar));
         }
         var isFaceDownMicStopEnabled = await UserSettingsUI.UserAppSettings()
-            .Get(x => x.IsFaceDownMicStopEnabled ?? false, cancellationToken)
+            .Get(x => !(x.IsFaceDownMicStopDisabled ?? false), cancellationToken)
             .ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new Model(items, isFaceDownMicStopEnabled, enableIncompleteUI);
@@ -108,7 +108,7 @@
 
     private Task OnToggleFaceDownStop()
         => UserSettingsUI.UserAppSettings().Update(
-            x => x with { IsFaceDownMicStopEnabled = !(x.IsFaceDownMicStopEnabled ?? false) },
+            x => x with { IsFaceDownMicStopDisabled = !(x.IsFaceDownMicStopDisabled ?? false) },
             CancellationToken.None);
 
     // Nested types

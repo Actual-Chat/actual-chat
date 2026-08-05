@@ -8,9 +8,10 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     private static readonly KvasSerializer MemoryPackKvasSerializer = new() { PreferMemoryPack = true };
 
     [Fact]
-    public void Defaults_AreSafe()
+    public void DefaultsAreSafe()
     {
         var settings = new UserWalkieTalkieSettings();
+        // act + assert
         settings.PttChatIds.Should().BeEmpty();
         settings.IsFlipToTalkEnabled.Should().BeTrue();
         settings.IsDoubleShakeEnabled.Should().BeTrue();
@@ -64,9 +65,10 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     }
 
     [Fact]
-    public void WithPttChat_IsIdempotent()
+    public void WithPttChatIsIdempotent()
     {
         var settings = new UserWalkieTalkieSettings().WithPttChat(TestChatId).WithPttChat(TestChatId);
+        // act + assert
         settings.PttChatIds.Should().Equal(TestChatId);
         settings.WithoutPttChat(TestChatId).PttChatIds.Should().BeEmpty();
     }
@@ -84,6 +86,7 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
             IsHeadsetButtonEnabled = false,
             Origin = "test",
         };
+        // act + assert
         AssertPassesThroughUnionSerializers(settings,
             (deserialized, original) => {
                 var d = (UserWalkieTalkieSettings)deserialized;
@@ -100,11 +103,13 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     }
 
     [Fact]
-    public void UserAppSettings_FaceDownFlag_PassesThroughAllSerializers()
+    public void UserAppSettingsFaceDownFlagPassesThroughAllSerializers()
     {
-        var settings = new UserAppSettings { IsFaceDownMicStopEnabled = true };
+        // Inverted flag: null/absent means the face-down stop is ON for everyone by default.
+        var settings = new UserAppSettings { IsFaceDownMicStopDisabled = true };
+        // act + assert
         AssertPassesThroughUnionSerializers(settings,
-            (deserialized, _) => ((UserAppSettings)deserialized).IsFaceDownMicStopEnabled.Should().BeTrue());
+            (deserialized, _) => ((UserAppSettings)deserialized).IsFaceDownMicStopDisabled.Should().BeTrue());
     }
 
     private void AssertPassesThroughUnionSerializers<T>(T settings, Action<StoredSettings, StoredSettings> assertion)

@@ -127,7 +127,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 var isPracticeMode = _isPracticeMode;
                 var pttChatIds = cPttChatIds.Value;
                 var isMicOpen = cRecordingChatId.Value is not null;
-                var isFaceDownStopEnabled = cAppSettings.Value.IsFaceDownMicStopEnabled ?? false;
+                var isFaceDownStopEnabled = !(cAppSettings.Value.IsFaceDownMicStopDisabled ?? false);
                 var settings = await UserSettingsUI.UserWalkieTalkieSettings()
                     .Get(cancellationToken)
                     .ConfigureAwait(false);
