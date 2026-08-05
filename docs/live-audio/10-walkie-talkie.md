@@ -193,8 +193,9 @@ app-ready waits, and headless-session teardown.
   app-ready wait, the session wait and `core.Transmit`, because the
   microphone-permission check inside `RequestReply` cannot show a prompt from a
   locked screen and nothing may outlive it. Its `finally` arms the teardown
-  watcher on every path, including failures: `ResolveScope` may have created a
-  scope that nothing else would ever dispose.
+  watcher on every path that resolved a headless scope, including failures:
+  `ResolveScope` may have created a scope that nothing else would ever
+  dispose.
 - **`ResolveScope()`** prefers the live WebView scope
   (`AppServicesAccessor.TryGetScopedServices`), falls back to
   `HeadlessBlazorScope.GetOrCreate()`, and re-checks the WebView scope once more
@@ -307,9 +308,11 @@ re-driven from the create callback.
 
 `IncomingPushResult` must return synchronously and fast, so it only parses the
 payload, persists the wake (`SaveLastWake`), sets the channel descriptor title,
-and either dispatches the wake or parks it in `_pendingWake` when
-`AudioSession.Owner == AudioSessionOwner.App` (no activation callback follows a
-push that lands while the session is already PTT-owned).
+and either parks the wake in `_pendingWake` when
+`AudioSession.Owner == AudioSessionOwner.App` — the session is still
+App-owned, so an activation callback will follow and dispatch it then — or
+dispatches it immediately otherwise, because a session that is already
+PTT-owned gets no further activation callback to dispatch on.
 `DidActivateAudioSession` → `OnAudioSessionActivated` then drains the pending
 wake. An invalid payload still returns a `PTParticipant` and schedules
 `ClearActiveParticipant` after `PhantomWakeClearDelay` (5 s), or the system UI
@@ -482,7 +485,7 @@ Walkie playback produces a third read-position kind. `ChatPlayer`'s
 chat is in `ChatAudioUI.GetPttChatIds`, and calls
 `ILiveAudioStreams.ReportPlayback(session, chatId, streamId, entryId)`.
 
-Server-side, `LiveAudioStreams.ReportPlayback` re-validates everything:
+Server-side, `LiveAudioStreams.ReportPlayback` gates every report:
 `ChatPermissions.ReadAudio` on the caller's rules, then
 `ServerKvasBackend.IsWalkieTalkieArmed` for the caller's own account, then the
 entry — the client-supplied `entryId` is accepted only after those gates and is
@@ -572,3 +575,18 @@ Cross-invariants worth keeping in mind when tuning these:
   between.
 - **`WalkieTalkiePreRollCapacity` ≤ `AppleAudioCapture`'s output buffer** (10 s
   at `RecordingSampleRate`), or the drain would be truncated.
+
+## Design history
+
+This doc describes the current shape; the sub-project specs below record the
+intent and sequencing behind it:
+
+- [2026-07-13-walkie-talkie-server-trigger-design.md](../superpowers/specs/2026-07-13-walkie-talkie-server-trigger-design.md) — server-side speech-start push trigger (Sub-project A)
+- [2026-07-13-walkie-talkie-android-design.md](../superpowers/specs/2026-07-13-walkie-talkie-android-design.md) — Android armed/hot lifecycle (Sub-project B)
+- [2026-07-13-walkie-talkie-ios-design.md](../superpowers/specs/2026-07-13-walkie-talkie-ios-design.md) — iOS via Apple Push to Talk (Sub-project C)
+- [2026-07-20-walkie-talkie-reply-to-voice-design.md](../superpowers/specs/2026-07-20-walkie-talkie-reply-to-voice-design.md) — hands-free reply to incoming voice
+- [2026-07-20-walkie-talkie-heard-receipts-design.md](../superpowers/specs/2026-07-20-walkie-talkie-heard-receipts-design.md) — heard receipts (Sub-project D)
+- [2026-07-26-walkie-talkie-ptt-settings-design.md](../superpowers/specs/2026-07-26-walkie-talkie-ptt-settings-design.md) — PTT settings + gesture engine (Sub-project E2)
+- [2026-08-03-walkie-talkie-headset-button-design.md](../superpowers/specs/2026-08-03-walkie-talkie-headset-button-design.md) — headset button + headless reply pipeline (Sub-project E3)
+- [2026-08-04-walkie-talkie-ios-transmit-e4-design.md](../superpowers/specs/2026-08-04-walkie-talkie-ios-transmit-e4-design.md) — iOS Apple PTT transmit (Sub-project E4)
+- [2026-08-05-walkie-talkie-cleanup-design.md](../superpowers/specs/2026-08-05-walkie-talkie-cleanup-design.md) — de-static session, flag removal, doc consolidation

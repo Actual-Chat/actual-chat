@@ -63,6 +63,7 @@ flowchart LR
         Trans[Transcribers<br/>Google / Deepgram / Fake]
         Saver[AudioSegmentSaver]
         Blob[(blob storage<br/>.webm)]
+        Wake[Wake push<br/>FCM / APNs]
     end
 
     subgraph BrowserB["Receiver browser"]
@@ -94,6 +95,8 @@ flowchart LR
     Dec --> Feed
     Feed --> Out
     Player -- "ReportAudioLatency" --> ILAS
+    ASB -. "hasVoice → wake" .-> Wake
+    Wake -. "headless playback (doc 10)" .-> Player
 ```
 
 ## Three-line summary

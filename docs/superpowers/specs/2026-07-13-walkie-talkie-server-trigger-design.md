@@ -142,7 +142,10 @@ Worst case after a shard restart is one extra push.
    `context.Operation.AddEvent(new SpeechStartedEvent(...))` in
    `LiveSessionsBackend.OnStreamRegistered`.
 3. **`Features_EnableWalkieTalkiePush`** — `FeatureDef<bool>`,
-   `IServerFeatureDef`, placed next to existing server feature defs.
+   `IServerFeatureDef`, placed next to existing server feature defs. (The
+   feature def was later removed; the wake path now reads
+   `NotificationsSettings.EnableWalkieTalkiePush` directly — see
+   2026-08-05-walkie-talkie-cleanup-design.md.)
 4. **`OnSpeechStartedEvent`** `[EventHandler]` on `NotificationsBackend`
    plus private `ResolveWalkieTalkieRecipients(chatId, speakerAuthorId)`
    implementing steps 2–4 above. Private by design: it composes
