@@ -9,8 +9,8 @@ namespace ActualChat.Transcription.Module;
 public class TranscriptionSettings
 {
     public bool UseFakeTranscriber { get; set; }
-    public string StreamRanking { get; set; } = "deepgram-stream,google-stream";
-    public string OfflineRanking { get; set; } = "openai-offline";
+    public string StreamRanking { get; set; } = "soniox-stream,deepgram-stream,google-stream";
+    public string OfflineRanking { get; set; } = "soniox-offline,openai-offline";
     public Dictionary<string, string> StreamRankingOverrides { get; set; } = new();
     public Dictionary<string, string> OfflineRankingOverrides { get; set; } = new();
     public Dictionary<string, TranscriberKind> KindOverrides { get; set; } = new();

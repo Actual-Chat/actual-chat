@@ -18,7 +18,35 @@ internal static class TranscriptRefineExt
             return refinedText.Length < 0.9 * realtimeText.Length;
         if (realtimeText.Length > 25)
             return refinedText.Length < 0.8 * realtimeText.Length;
+
         return true;
+    }
+
+    public static int CountWords(this string text)
+    {
+        // Chinese, Japanese and Thai write without spaces, so there are no word boundaries to count
+        // and the character total stands in for one. Korean does space its words, hence not listed.
+        var charsPerWord = text.GetDominantScript() switch {
+            TextScript.Cjk => 1.5,
+            TextScript.Thai => 3.0,
+            _ => 0.0,
+        };
+        if (charsPerWord > 0)
+            return (int)(text.Count(char.IsLetterOrDigit) / charsPerWord);
+
+        var words = 0;
+        var isInWord = false;
+        foreach (var ch in text) {
+            if (char.IsLetterOrDigit(ch)) {
+                if (!isInWord)
+                    words++;
+                isInWord = true;
+            }
+            else if (char.IsWhiteSpace(ch))
+                isInWord = false;
+        }
+
+        return words;
     }
 
     public static TextScript GetDominantScript(this string text)
@@ -36,6 +64,7 @@ internal static class TranscriptRefineExt
                 dominant = (TextScript)i;
             }
         }
+
         return dominant;
     }
 
