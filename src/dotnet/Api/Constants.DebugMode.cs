@@ -51,6 +51,9 @@ public static partial class Constants
         public static readonly bool TranscriberGoogle = false;
         public static readonly bool TranscriberDeepgram = false;
 
+        // Notifications
+        public static readonly bool Notifications = false;
+
         // Translation
         public static readonly bool TranscriptionTranslation = false;
         public static readonly bool TranslationBackend = false;
