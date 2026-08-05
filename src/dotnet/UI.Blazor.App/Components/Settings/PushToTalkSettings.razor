@@ -42,13 +42,13 @@
                 <Icon><i class="icon-refresh text-2xl"></i></Icon>
                 <Content>Flip to talk</Content>
                 <Caption>Rotate the phone 90° and back</Caption>
-                <Right><Toggle IsChecked="@m.Settings.IsFlipToTalkEnabled"/></Right>
+                <Right><Toggle IsChecked="@m.Settings.IsFlipToTalkEnabled" IsCheckedChanged="@(_ => OnToggleFlip())"/></Right>
             </TileItem>
             <TileItem Click="@OnToggleShake">
                 <Icon><i class="icon-alert-circle text-2xl"></i></Icon>
                 <Content>Double shake</Content>
                 <Caption>Shake the phone twice</Caption>
-                <Right><Toggle IsChecked="@m.Settings.IsDoubleShakeEnabled"/></Right>
+                <Right><Toggle IsChecked="@m.Settings.IsDoubleShakeEnabled" IsCheckedChanged="@(_ => OnToggleShake())"/></Right>
             </TileItem>
         }
         @if (HostInfo.AppKind == AppKind.Android) {
@@ -56,7 +56,7 @@
                 <Icon><i class="icon-headphones-fill text-2xl"></i></Icon>
                 <Content>Headset button</Content>
                 <Caption>Press the button on your earbuds to reply</Caption>
-                <Right><Toggle IsChecked="@(m.Settings.IsHeadsetButtonEnabled ?? true)"/></Right>
+                <Right><Toggle IsChecked="@(m.Settings.IsHeadsetButtonEnabled ?? true)" IsCheckedChanged="@(_ => OnToggleHeadsetButton())"/></Right>
             </TileItem>
         }
         @if (hasSensors) {
@@ -82,7 +82,7 @@
                 <Icon><i class="icon-infinity text-2xl"></i></Icon>
                 <Content>Always listen for gestures</Content>
                 <Caption>Uses more battery. Off: gestures work only right after someone speaks.</Caption>
-                <Right><Toggle IsChecked="@m.Settings.AreGesturesAlwaysOn"/></Right>
+                <Right><Toggle IsChecked="@m.Settings.AreGesturesAlwaysOn" IsCheckedChanged="@(_ => OnToggleAlwaysOn())"/></Right>
             </TileItem>
         } else {
             <p class="c-description">This device has no motion sensor, so gestures are unavailable.</p>
@@ -96,7 +96,7 @@
                 <Icon><i class="icon-talking text-2xl"></i></Icon>
                 <Content>Lock Screen talk button</Content>
                 <Caption>Reply from the Lock Screen without unlocking</Caption>
-                <Right><Toggle IsChecked="@(m.Settings.IsPttTransmitEnabled ?? true)"/></Right>
+                <Right><Toggle IsChecked="@(m.Settings.IsPttTransmitEnabled ?? true)" IsCheckedChanged="@(_ => OnTogglePttTransmit())"/></Right>
             </TileItem>
         </Tile>
     }
@@ -130,7 +130,7 @@
         <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
         <Content>Audible cues</Content>
         <Caption>Play a sound when a reply starts and ends</Caption>
-        <Right><Toggle IsChecked="@m.Settings.AreAudibleCuesEnabled"/></Right>
+        <Right><Toggle IsChecked="@m.Settings.AreAudibleCuesEnabled" IsCheckedChanged="@(_ => OnToggleCues())"/></Right>
     </TileItem>
 </Tile>
 </div>

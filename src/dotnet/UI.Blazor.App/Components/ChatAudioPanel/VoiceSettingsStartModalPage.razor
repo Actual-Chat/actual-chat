@@ -40,7 +40,7 @@
             <Content>Push to Talk</Content>
             <Caption>@(m.IsPushToTalk ? "Wakes this device when someone speaks" : "Off")</Caption>
             <Right>
-                <Toggle IsDisabled="@(!m.IsPushToTalk && m.IsPttFull)" IsChecked="@m.IsPushToTalk"/>
+                <Toggle IsDisabled="@(!m.IsPushToTalk && m.IsPttFull)" IsChecked="@m.IsPushToTalk" IsCheckedChanged="@(_ => OnPushToTalkClick())"/>
             </Right>
         </TileItem>
     }

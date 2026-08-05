@@ -16,7 +16,7 @@
             <Content>Stop recording when face down</Content>
             <Caption>Turning the phone face down or pocketing it closes the mic</Caption>
             <Right>
-                <Toggle IsChecked="@m.IsFaceDownMicStopEnabled"/>
+                <Toggle IsChecked="@m.IsFaceDownMicStopEnabled" IsCheckedChanged="@(_ => OnToggleFaceDownStop())"/>
             </Right>
         </TileItem>
     </Tile>
