@@ -333,19 +333,14 @@ if [[ "$REL" == "$IOS_PUSH_TO_TALK_REL" ]]; then
 cat >> Stubs.cs <<'EOF'
 namespace ActualChat.App.Maui.Services
 {
-    public abstract class WalkieTalkiePlatform
-    {
-        public abstract void OnWakeFailed(ChatId chatId);
-        public abstract void OnHeadlessTeardown();
-        public virtual (ChatId ChatId, Moment At)? LastWake => null;
-        public virtual Task OnForegroundWakeHandled(ChatId chatId) => Task.CompletedTask;
-    }
     public static class WalkieTalkieSession
     {
-        public static Task HandleWake(ChatId chatId, Moment startedAt, bool isForeground, WalkieTalkiePlatform platform)
+        public static Task HandleWake(
+            ChatId chatId, Moment startedAt, bool isForeground,
+            ActualChat.UI.Blazor.App.Services.WalkieTalkiePlatform platform)
             => Task.CompletedTask;
         public static Task<ActualChat.UI.Blazor.App.Services.WalkieTalkieReply?> HandleTransmit(
-            WalkieTalkiePlatform platform)
+            ActualChat.UI.Blazor.App.Services.WalkieTalkiePlatform platform)
             => Task.FromResult<ActualChat.UI.Blazor.App.Services.WalkieTalkieReply?>(null);
     }
 }
@@ -357,15 +352,6 @@ if [[ "$REL" == "$WALKIE_TALKIE_SESSION_REL" ]]; then
 cat >> Stubs.cs <<'EOF'
 namespace ActualChat.App.Maui.Services
 {
-    public abstract class WalkieTalkiePlatform
-    {
-        public abstract void OnWakeFailed(ChatId chatId);
-        public abstract void OnHeadlessTeardown();
-        public virtual (ChatId ChatId, Moment At)? LastWake => null;
-        public virtual Task OnPlaybackStarted(
-            ActualChat.UI.Blazor.App.Services.AppUIHub hub, ChatId chatId) => Task.CompletedTask;
-        public virtual Task OnForegroundWakeHandled(ChatId chatId) => Task.CompletedTask;
-    }
     public sealed class HeadlessBlazorScope : IAsyncDisposable
     {
         public static HeadlessBlazorScope? Current => null;
