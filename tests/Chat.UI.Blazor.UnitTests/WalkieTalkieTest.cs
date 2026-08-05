@@ -71,4 +71,26 @@ public class WalkieTalkieTest
         // assert
         dropAt.Should().Be(T0 + TimeSpan.FromMinutes(5));
     }
+
+    [Fact]
+    public void PracticeModeBlocksTransmit()
+    {
+        // act + assert
+        WalkieTalkie.MayTransmit(isPracticeMode: true, recordingChatId: null).Should().BeFalse();
+    }
+
+    [Fact]
+    public void OpenMicBlocksTransmit()
+    {
+        // act + assert
+        WalkieTalkie.MayTransmit(isPracticeMode: false, ChatId.Parse("testchatid1234567890"))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void IdleNonPracticeStateAllowsTransmit()
+    {
+        // act + assert
+        WalkieTalkie.MayTransmit(isPracticeMode: false, recordingChatId: null).Should().BeTrue();
+    }
 }

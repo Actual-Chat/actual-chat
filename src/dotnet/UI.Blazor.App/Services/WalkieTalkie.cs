@@ -15,4 +15,6 @@ public static class WalkieTalkie
 
         return Moment.Max(idleSince, lastActiveAt ?? idleSince) + idleTimeout;
     }
+    public static bool MayTransmit(bool isPracticeMode, ChatId? recordingChatId)
+        => !isPracticeMode && recordingChatId is null;
 }
