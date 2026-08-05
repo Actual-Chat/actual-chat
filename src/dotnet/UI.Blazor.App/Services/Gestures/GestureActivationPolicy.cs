@@ -46,6 +46,16 @@ public static class GestureActivationPolicy
         return HasAnswerWindow(pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
     }
 
+    public static bool ShouldSenseStopGesture(bool isFaceDownStopEnabled, bool isMicOpen, bool isPracticeMode)
+    {
+        // The playground must let the user rehearse the stop gesture even when the privacy
+        // toggle is off; outside practice the toggle governs and only an open mic needs it.
+        if (isPracticeMode)
+            return true;
+
+        return isFaceDownStopEnabled && isMicOpen;
+    }
+
     public static GestureRoute Route(GestureKind kind, bool isPracticeMode)
     {
         // Practice never transmits: rehearsing a gesture in Settings must not open the mic.

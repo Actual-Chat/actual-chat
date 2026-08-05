@@ -141,7 +141,8 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                     lastIncomingVoiceAt,
                     now,
                     recencyWindow);
-                var mustSenseStop = isFaceDownStopEnabled && (isMicOpen || isPracticeMode);
+                var mustSenseStop = GestureActivationPolicy.ShouldSenseStopGesture(
+                    isFaceDownStopEnabled, isMicOpen, isPracticeMode);
                 var buttonState = HeadsetButtonPolicy.GetState(
                     settings, pttChatIds, lastIncomingVoiceAt, now, recencyWindow, isMicOpen, isPracticeMode);
                 Volatile.Write(ref _isHeadsetButtonEnabled, buttonState.IsEnabled);

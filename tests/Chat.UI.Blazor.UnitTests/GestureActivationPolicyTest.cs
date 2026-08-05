@@ -11,6 +11,24 @@ public class GestureActivationPolicyTest
     private static readonly IReadOnlyDictionary<ChatId, Moment> NoVoice = new Dictionary<ChatId, Moment>();
 
     [Fact]
+    public void PracticeModeSensesTheStopGestureRegardlessOfTheToggle()
+    {
+        // act + assert: the playground must let the user rehearse face-down/pocket even when
+        // the privacy toggle is off and no mic is open.
+        GestureActivationPolicy.ShouldSenseStopGesture(false, false, isPracticeMode: true).Should().BeTrue();
+        GestureActivationPolicy.ShouldSenseStopGesture(true, true, isPracticeMode: true).Should().BeTrue();
+    }
+
+    [Fact]
+    public void StopGestureNeedsTheToggleAndAnOpenMicOutsidePractice()
+    {
+        // act + assert
+        GestureActivationPolicy.ShouldSenseStopGesture(true, true, isPracticeMode: false).Should().BeTrue();
+        GestureActivationPolicy.ShouldSenseStopGesture(true, false, isPracticeMode: false).Should().BeFalse();
+        GestureActivationPolicy.ShouldSenseStopGesture(false, true, isPracticeMode: false).Should().BeFalse();
+    }
+
+    [Fact]
     public void SensesInsideTheAnswerWindow()
     {
         var last = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromSeconds(20) };
