@@ -22,7 +22,14 @@ public class VoicePlayer : IDisposable
     {
         Id = id;
         Hub = hub;
-        Engine = Hub.Services.GetRequiredService<AudioEngines>().Playback;
+        var engines = Hub.Services.GetRequiredService<AudioEngines>();
+        // On Mac VPIO cancels only the audio rendered through its own unit, so while
+        // the mic is capturing, voice playback must go through the Recording engine
+        // to become the AEC far-end reference (iOS references the whole device output,
+        // so the separate Playback engine is fine there).
+        Engine = OperatingSystem.IsMacCatalyst() && engines.Recording.IsRunningNow
+            ? engines.Recording
+            : engines.Playback;
         Node = Engine.NewPlayer(AudioEngine.VoicePlaybackFormat);
 
         _capacity = new AudioBufferCapacity(hub);

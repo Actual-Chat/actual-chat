@@ -117,8 +117,14 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
                     | AVAudioSessionCategoryOptions.AllowBluetooth
                     | AVAudioSessionCategoryOptions.AllowBluetoothA2DP)
                 .Assert($"{mode}: failed to set category");
-            session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalSeconds, out var error);
-            error.Assert("Failed to set preferred IO buffer duration");
+            // On Mac Catalyst a 20ms (960-frame) preference conflicts with the VPIO
+            // aggregate device's 512/1024-frame quantum and floods the log with
+            // "AUVPAggregate: incorrect pull size" every render cycle — keep the
+            // device default there.
+            if (!OperatingSystem.IsMacCatalyst()) {
+                session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalSeconds, out var error);
+                error.Assert("Failed to set preferred IO buffer duration");
+            }
         }
         else if (mode is AudioFocusMode.Playback)
             session.SetCategory(AVAudioSessionCategory.Playback).Assert($"{mode}: failed to set category");
