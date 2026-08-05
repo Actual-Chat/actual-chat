@@ -7,6 +7,7 @@ using ActualChat.Notifications.Db;
 using ActualChat.Queues;
 using ActualChat.Sharding;
 using ActualChat.Users;
+using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -26,7 +27,8 @@ public class NotificationsBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
-    private Streaming.ILiveSessionsBackend LiveSessionsBackend { get; } = services.GetRequiredService<Streaming.ILiveSessionsBackend>();
+    private Streaming.ILiveSessionsBackend LiveSessionsBackend { get; }
+        = services.GetRequiredService<Streaming.ILiveSessionsBackend>();
     private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
@@ -43,12 +45,16 @@ public class NotificationsBackend(IServiceProvider services)
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private CancellationToken StopToken { get; } = services.GetService<IHostApplicationLifetime>().StopToken();
-    private ILogger? DebugLog => Log;
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Notifications);
 
     // [ComputeMethod]
-    public virtual async Task<ExplicitNotification?> GetExplicit(ExplicitNotificationId notificationId, CancellationToken cancellationToken)
+    public virtual async Task<ExplicitNotification?> GetExplicit(
+        ExplicitNotificationId notificationId,
+        CancellationToken cancellationToken)
     {
-        var dbNotification = await DbExplicitNotificationResolver.Get(notificationId.Value, cancellationToken).ConfigureAwait(false);
+        var dbNotification = await DbExplicitNotificationResolver
+            .Get(notificationId.Value, cancellationToken)
+            .ConfigureAwait(false);
         return dbNotification?.ToModel();
     }
 
@@ -63,7 +69,8 @@ public class NotificationsBackend(IServiceProvider services)
         if (chatId.IsThread(out var threadChatId)) {
             var subscriberIds = await ListSubscribedUserIds(threadChatId.ParentChatId, importance, cancellationToken)
                 .ConfigureAwait(false);
-            subscriberIds = await FilterByFollowThreadStatus(subscriberIds, chatId, cancellationToken).ConfigureAwait(false);
+            subscriberIds = await FilterByFollowThreadStatus(subscriberIds, chatId, cancellationToken)
+                .ConfigureAwait(false);
             subscriberIds = await FilterByNotificationMode(subscriberIds, chatId, importance, cancellationToken)
                 .ConfigureAwait(false);
             return subscriberIds;
@@ -77,7 +84,9 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<UserNotificationInfo> GetUserNotificationInfo(UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<UserNotificationInfo> GetUserNotificationInfo(
+        UserId userId,
+        CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -108,7 +117,9 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnNotify(NotificationsBackend_Notify command, CancellationToken cancellationToken)
+    public virtual async Task OnNotify(
+        NotificationsBackend_Notify command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
@@ -116,12 +127,12 @@ public class NotificationsBackend(IServiceProvider services)
         var notification = command.Notification;
         var userId = notification.UserId.Require();
 
-        DebugLog?.LogInformation("-> OnNotify. UserId={UserId}, NotificationId={NotificationId}",
+        DebugLog?.LogDebug("-> OnNotify. UserId={UserId}, NotificationId={NotificationId}",
             userId, notification.Id);
 
         var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
         if (info.IsDormant) {
-            DebugLog?.LogInformation("OnNotify: skipped (dormant). UserId={UserId}, NotificationId={NotificationId}",
+            DebugLog?.LogDebug("OnNotify: skipped (dormant). UserId={UserId}, NotificationId={NotificationId}",
                 userId, notification.Id);
             return;
         }
@@ -140,7 +151,7 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         if (await ShouldDeferForActiveReader(userId, notification, cancellationToken).ConfigureAwait(false)) {
-            DebugLog?.LogInformation("OnNotify: deferred (active reader). UserId={UserId}, Id={NotificationId}",
+            DebugLog?.LogDebug("OnNotify: deferred (active reader). UserId={UserId}, Id={NotificationId}",
                 userId, notification.Id);
             EnqueueSoft(userId, notification, info, Constants.Notification.ActiveReaderGrace);
             return;
@@ -152,7 +163,9 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnProcess(NotificationsBackend_Process command, CancellationToken cancellationToken)
+    public virtual async Task OnProcess(
+        NotificationsBackend_Process command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
@@ -162,29 +175,33 @@ public class NotificationsBackend(IServiceProvider services)
         if (batch.Count == 0)
             return;
 
-        DebugLog?.LogInformation("-> OnProcess. UserId={UserId}, Count={Count}", userId, batch.Count);
+        DebugLog?.LogDebug("-> OnProcess. UserId={UserId}, Count={Count}", userId, batch.Count);
         await ApplyHardUpdate(userId, batch, [], cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task OnHandle(NotificationsBackend_Handle command, CancellationToken cancellationToken)
+    public virtual async Task OnHandle(
+        NotificationsBackend_Handle command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
 
         var notificationId = command.NotificationId;
-        DebugLog?.LogInformation("-> OnHandle. NotificationId={NotificationId}", notificationId);
+        DebugLog?.LogDebug("-> OnHandle. NotificationId={NotificationId}", notificationId);
         await ApplyHardUpdate(notificationId.UserId, [], [notificationId], cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task OnHandleAll(NotificationsBackend_HandleAll command, CancellationToken cancellationToken)
+    public virtual async Task OnHandleAll(
+        NotificationsBackend_HandleAll command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
 
         var userId = command.UserId;
-        DebugLog?.LogInformation("-> OnHandleAll. UserId={UserId}", userId);
+        DebugLog?.LogDebug("-> OnHandleAll. UserId={UserId}", userId);
         // handleAll dismisses the raw committed set (not the compute-filtered view), so
         // notifications hidden by a currently muted chat are dismissed too and can't resurface
         // as unread when the chat is unmuted.
@@ -245,7 +262,9 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnRegisterDevice(NotificationsBackend_RegisterDevice command, CancellationToken cancellationToken)
+    public virtual async Task OnRegisterDevice(
+        NotificationsBackend_RegisterDevice command,
+        CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
 
@@ -258,7 +277,8 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         var (userId, deviceId, deviceType, sessionHash) = command;
-        DebugLog?.LogInformation("-> OnRegisterDevice. UserId={UserId}, DeviceId={DeviceId}, DeviceType={DeviceType}, SessionHash={SessionHash}",
+        DebugLog?.LogDebug("-> OnRegisterDevice. UserId={UserId}, DeviceId={DeviceId}, "
+            + "DeviceType={DeviceType}, SessionHash={SessionHash}",
             userId, deviceId, deviceType, sessionHash);
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -279,8 +299,9 @@ public class NotificationsBackend(IServiceProvider services)
             dbContext.Add(dbDevice);
         }
         else {
-            DebugLog?.LogInformation("-- OnRegisterDevice. Existing DbDevice found:" +
-                " UserId={UserId}, DeviceId={DeviceId}, DeviceType={DeviceType}, SessionHash={SessionHash}, AccessedAt={AccessedAt}",
+            DebugLog?.LogDebug("-- OnRegisterDevice. Existing DbDevice found:"
+                + " UserId={UserId}, DeviceId={DeviceId}, DeviceType={DeviceType}, "
+                + "SessionHash={SessionHash}, AccessedAt={AccessedAt}",
                 dbDevice.UserId, dbDevice.Id, dbDevice.Type, dbDevice.SessionHash, dbDevice.AccessedAt);
             dbDevice.AccessedAt = Clocks.SystemClock.Now;
             if (dbDevice.Type == DeviceType.WebBrowser && deviceType != DeviceType.WebBrowser)
@@ -290,11 +311,14 @@ public class NotificationsBackend(IServiceProvider services)
             if (UserId.TryParse(dbDevice.UserId, out var existingUserId) && existingUserId != userId) {
                 if (existingUserId.IsGuest) {
                     dbDevice.UserId = userId.Value;
-                    DebugLog?.LogInformation("Guest UserId for Device '{DeviceId}' has been updated: '{OldUserId}'->'{NewUserId}'",
+                    DebugLog?.LogDebug(
+                        "Guest UserId for Device '{DeviceId}' has been updated: "
+                        + "'{OldUserId}'->'{NewUserId}'",
                         existingUserId, existingUserId, userId);
                 }
                 else
-                    Log.LogWarning("User {UserId} is trying to register device for {ExistingUserId}. Skipped", userId, existingUserId);
+                    Log.LogWarning("User {UserId} is trying to register device for {ExistingUserId}. Skipped",
+                        userId, existingUserId);
             }
         }
 
@@ -304,7 +328,9 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnRemoveDevices(NotificationsBackend_RemoveDevices command, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveDevices(
+        NotificationsBackend_RemoveDevices command,
+        CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
 
@@ -337,7 +363,9 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnRemoveAccount(NotificationsBackend_RemoveAccount command, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveAccount(
+        NotificationsBackend_RemoveAccount command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;
@@ -384,7 +412,9 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnNotifyMentionedMembers(NotificationsBackend_NotifyMentionedMembers command, CancellationToken cancellationToken)
+    public virtual async Task OnNotifyMentionedMembers(
+        NotificationsBackend_NotifyMentionedMembers command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -400,7 +430,8 @@ public class NotificationsBackend(IServiceProvider services)
         if (userIds.Length == 0)
             return;
 
-        await NotifyMembersInternal(userId, chatId, ChatEntryId.LocalId, userIds, cancellationToken).ConfigureAwait(false);
+        await NotifyMembersInternal(userId, chatId, ChatEntryId.LocalId, userIds, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -421,7 +452,8 @@ public class NotificationsBackend(IServiceProvider services)
         AuthorFull? primaryAuthor = null;
         var authorNames = new List<string>();
         foreach (var authorId in authorIds) {
-            var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+            var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+                .ConfigureAwait(false);
             if (author is null)
                 continue;
 
@@ -455,7 +487,8 @@ public class NotificationsBackend(IServiceProvider services)
                 IconUrl = iconUrl,
                 SentAt = now,
             };
-            await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
+            await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
@@ -479,7 +512,9 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     [CommandHandler]
-    public virtual async Task OnNotifyCall(NotificationsBackend_NotifyCall command, CancellationToken cancellationToken)
+    public virtual async Task OnNotifyCall(
+        NotificationsBackend_NotifyCall command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;
@@ -510,12 +545,15 @@ public class NotificationsBackend(IServiceProvider services)
                 IconUrl = iconUrl,
                 SentAt = now,
             };
-            await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
+            await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
     [CommandHandler]
-    public virtual async Task OnCancelCall(NotificationsBackend_CancelCall command, CancellationToken cancellationToken)
+    public virtual async Task OnCancelCall(
+        NotificationsBackend_CancelCall command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;
@@ -542,7 +580,9 @@ public class NotificationsBackend(IServiceProvider services)
     // Event handlers
 
     // [EventHandler]
-    public virtual async Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnChatEntryChangedEvent(
+        ChatEntryChangedEvent eventCommand,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -578,7 +618,9 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [EventHandler]
-    public virtual async Task OnReactionChangedEvent(ReactionChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnReactionChangedEvent(
+        ReactionChangedEvent eventCommand,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -597,7 +639,9 @@ public class NotificationsBackend(IServiceProvider services)
         if (!NotificationHelper.IsDeliverable(NotificationImportance.Ordinary, mode))
             return;
 
-        var (text, _) = await NotificationHelper.GetText(entry, MarkupConsumer.ReactionNotification, ChatMarkupHubFactory, cancellationToken).ConfigureAwait(false);
+        var (text, _) = await NotificationHelper
+            .GetText(entry, MarkupConsumer.ReactionNotification, ChatMarkupHubFactory, cancellationToken)
+            .ConfigureAwait(false);
         if (!entry.Content.IsNullOrEmpty())
             text = $"\"{text}\"";
         text = $"{reaction.Emoji} to {text}";
@@ -637,7 +681,9 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [EventHandler]
-    public virtual async Task OnConversationChangedEvent(ConversationChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnConversationChangedEvent(
+        ConversationChangedEvent eventCommand,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -659,7 +705,9 @@ public class NotificationsBackend(IServiceProvider services)
     // Reconciles read notifications promptly when a Read position advances, so a notification
     // read on one device is dropped (and a silent dismissal pushed) on the others without waiting
     // for the user's next notification event.
-    public virtual async Task OnReadPositionChangedEvent(ReadPositionChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnReadPositionChangedEvent(
+        ReadPositionChangedEvent eventCommand,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;
@@ -684,18 +732,21 @@ public class NotificationsBackend(IServiceProvider services)
         if (!hasNotificationInChat)
             return;
 
-        DebugLog?.LogInformation("-> OnReadPositionChangedEvent. UserId={UserId}, ChatId={ChatId}", userId, chatId);
+        DebugLog?.LogDebug("-> OnReadPositionChangedEvent. UserId={UserId}, ChatId={ChatId}", userId, chatId);
         await ApplyHardUpdate(userId, [], [], cancellationToken).ConfigureAwait(false);
     }
 
     // [EventHandler]
-    public virtual async Task OnSignedOut(UserSignedOutEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnSignedOut(
+        UserSignedOutEvent eventCommand,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
         var session = eventCommand.Session;
-        var devices = await ListDevices(eventCommand.UserId, session.Hash, null, cancellationToken).ConfigureAwait(false);
+        var devices = await ListDevices(eventCommand.UserId, session.Hash, null, cancellationToken)
+            .ConfigureAwait(false);
         if (devices.Count == 0)
             return;
 
@@ -779,7 +830,9 @@ public class NotificationsBackend(IServiceProvider services)
     // [CommandHandler]
     // The actual FCM send, run as a queued command so NATS retries it on transient failure and
     // it isn't lost if the pushing node dies mid-send.
-    public virtual async Task OnPush(NotificationsBackend_Push command, CancellationToken cancellationToken)
+    public virtual async Task OnPush(
+        NotificationsBackend_Push command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // No state change, nothing to invalidate
@@ -801,7 +854,8 @@ public class NotificationsBackend(IServiceProvider services)
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0) {
-            Log.LogInformation("No recipient devices found for notification #{NotificationId}", notification.Id);
+            DebugLog?.LogDebug("No recipient devices found for notification #{NotificationId}",
+                notification.Id);
             return;
         }
 
@@ -809,13 +863,18 @@ public class NotificationsBackend(IServiceProvider services)
         var isAdmin = account is { IsAdmin: true };
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
         var entryId = GetEntryId(notification);
-        DebugLog?.LogInformation("-> OnPush. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}, IsSilent={IsSilent}, DeviceIds#={DeviceIdCount}",
+        DebugLog?.LogDebug("-> OnPush. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}, "
+            + "IsSilent={IsSilent}, DeviceIds#={DeviceIdCount}",
             entryId, userId, notification.Id, command.IsSilent, deviceIds.Count);
-        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, info.Displayed.Count, command.IsSilent, cancellationToken).ConfigureAwait(false);
+        await FirebaseMessagingClient
+            .SendMessage(notification, deviceIds, isAdmin, info.Displayed.Count, command.IsSilent, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task OnPushDismissal(NotificationsBackend_PushDismissal command, CancellationToken cancellationToken)
+    public virtual async Task OnPushDismissal(
+        NotificationsBackend_PushDismissal command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // No state change, nothing to invalidate
@@ -829,9 +888,11 @@ public class NotificationsBackend(IServiceProvider services)
         // Badge recomputed from current state at delivery (see OnPush).
         var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
-        DebugLog?.LogInformation("-> OnPushDismissal. UserId={UserId}, Notifications#={Count}, DeviceIds#={DeviceIdCount}",
+        DebugLog?.LogDebug("-> OnPushDismissal. UserId={UserId}, Notifications#={Count}, DeviceIds#={DeviceIdCount}",
             userId, dismissed.Count, deviceIds.Count);
-        await FirebaseMessagingClient.SendDismissal(dismissed, deviceIds, info.Displayed.Count, cancellationToken).ConfigureAwait(false);
+        await FirebaseMessagingClient
+            .SendDismissal(dismissed, deviceIds, info.Displayed.Count, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // Fetches each distinct chat's Read position once (in parallel) instead of one sequential
@@ -939,7 +1000,10 @@ public class NotificationsBackend(IServiceProvider services)
         return !NotificationHelper.IsDeliverable(NotificationHelper.GetImportance(notification.Kind), mode);
     }
 
-    private async Task<ChatNotificationMode> GetNotificationMode(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+    private async Task<ChatNotificationMode> GetNotificationMode(
+        UserId userId,
+        ChatId chatId,
+        CancellationToken cancellationToken)
     {
         var kvas = ServerKvasBackend.ForUser(userId);
         return await kvas.ChatUserSettings(chatId)
@@ -965,7 +1029,8 @@ public class NotificationsBackend(IServiceProvider services)
         IReadOnlyList<UserId> userIds,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogInformation("-> EnqueueMessageRelatedNotifications. ChatId={ChatId}, EntryId={EntryId}, Kind={Kind}, UserIds#={UserIdCount}",
+        DebugLog?.LogDebug("-> EnqueueMessageRelatedNotifications. ChatId={ChatId}, EntryId={EntryId}, "
+            + "Kind={Kind}, UserIds#={UserIdCount}",
             chatId, entryId, kind, userIds.Count);
 
         if (entryId is not null && entryId.ChatId != chatId)
@@ -1007,7 +1072,8 @@ public class NotificationsBackend(IServiceProvider services)
                     LeadText = content,
                     LeadCount = 1,
                 };
-            await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
+            await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
@@ -1243,7 +1309,8 @@ public class NotificationsBackend(IServiceProvider services)
             dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
                 .FirstAsync(x => x.Id == userId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            (info, dismissed, silentById, reAnchored) = await Reconcile(dbUserNotifications.ToModel()).ConfigureAwait(false);
+            (info, dismissed, silentById, reAnchored) = await Reconcile(dbUserNotifications.ToModel())
+                .ConfigureAwait(false);
             dbUserNotifications.UpdateFrom(info);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -1269,7 +1336,8 @@ public class NotificationsBackend(IServiceProvider services)
             .Select(g => g.MaxBy(n => n.SentAt)!)
             .ToList();
         foreach (var notification in toPush)
-            context.Operation.AddEvent(new NotificationsBackend_Push(notification, silentById.GetValueOrDefault(notification.Id)));
+            context.Operation.AddEvent(
+                new NotificationsBackend_Push(notification, silentById.GetValueOrDefault(notification.Id)));
 
         // Partial-read re-anchors update the banner content silently (a reduction, never an alert).
         // Tags already pushed above are skipped — OnPush sends the converged (re-anchored) state,
@@ -1280,7 +1348,8 @@ public class NotificationsBackend(IServiceProvider services)
 
         // A newly displayed mention (re)starts the per-user reminder flow, which re-alerts unread
         // mentions until they're read. It's keyed by user, so repeated starts just resume it.
-        var hasNewMention = notifications.Any(n => n.Kind == NotificationKind.Mention && info.Displayed.Any(d => d.Id == n.Id));
+        var hasNewMention = notifications.Any(n =>
+            n.Kind == NotificationKind.Mention && info.Displayed.Any(d => d.Id == n.Id));
         if (hasNewMention)
             context.Operation.AddEvent(FlowHub.NewResumeEvent<Flows.MentionReminderFlow>(userId.Value));
         if (dismissed.Count > 0) {
@@ -1293,10 +1362,15 @@ public class NotificationsBackend(IServiceProvider services)
         }
         return;
 
-        async Task<(UserNotificationInfo Info, IReadOnlyList<Notification> Dismissed, Dictionary<NotificationId, bool> SilentById, List<Notification> ReAnchored)> Reconcile(UserNotificationInfo committed)
+        async Task<(
+            UserNotificationInfo Info,
+            IReadOnlyList<Notification> Dismissed,
+            Dictionary<NotificationId, bool> SilentById,
+            List<Notification> ReAnchored)> Reconcile(UserNotificationInfo committed)
         {
             var now = Clocks.SystemClock.Now;
-            var readPositions = await GetReadPositions(userId, committed.Displayed.Concat(notifications), cancellationToken)
+            var readPositions = await GetReadPositions(
+                    userId, committed.Displayed.Concat(notifications), cancellationToken)
                 .ConfigureAwait(false);
             var current = committed;
             var dismissed = new List<Notification>();
@@ -1337,7 +1411,8 @@ public class NotificationsBackend(IServiceProvider services)
                     continue;
                 }
 
-                var shouldBeep = NotificationBeepPolicy.ShouldBeep(related.Kind, related.BeepCount, related.LastBeepAt, now);
+                var shouldBeep = NotificationBeepPolicy.ShouldBeep(
+                    related.Kind, related.BeepCount, related.LastBeepAt, now);
                 var text = NotificationHelper.ComposeAggregatedText(related);
                 var updated = related with {
                     Text = text,
@@ -1362,7 +1437,9 @@ public class NotificationsBackend(IServiceProvider services)
                     continue; // nothing newly read here (fully-read ones were already dropped above)
 
                 var reanchored = await ReAnchor(related, read + 1, cancellationToken).ConfigureAwait(false);
-                current = current with { Displayed = current.Displayed.WithUpdate(n => n.Id == related.Id, _ => reanchored) };
+                current = current with {
+                    Displayed = current.Displayed.WithUpdate(n => n.Id == related.Id, _ => reanchored),
+                };
                 reAnchored.Add(reanchored);
             }
 
