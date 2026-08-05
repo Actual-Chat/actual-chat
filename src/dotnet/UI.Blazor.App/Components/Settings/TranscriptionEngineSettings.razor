@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Transcription
 @inherits ComputedStateComponent<AppUIHub, TranscriptionEngineSettings.Model>
 @{
 #pragma warning disable IL2091
@@ -14,99 +13,110 @@
 
     <FormBlock>
         <InputRadioGroup
-            Name="theme"
-            DisplayName="Theme"
-            @bind-Value="_formModel.Engine">
+            Name="transcriber"
+            DisplayName="Transcriber"
+            @bind-Value="_formModel.SelectedId">
 
-            <TileItem
-                Class="@GetTileItemClass(TranscriptionEngine.Deepgram)"
-                Click="@(_ => OnTileClick(TranscriptionEngine.Deepgram))">
-                <Icon>
-                    <FormRadio
-                        Id="@_formModel.DeepgramFormId"
-                        Value="@TranscriptionEngine.Deepgram"/>
-                </Icon>
-                <Content>
-                    <Label InputId="@_formModel.DeepgramFormId" Text="Deepgram"></Label>
-                </Content>
-            </TileItem>
-
-            <TileItem
-                Class="@GetTileItemClass(TranscriptionEngine.Google)"
-                Click="@(_ => OnTileClick(TranscriptionEngine.Google))">
-                <Icon>
-                    <FormRadio
-                        Id="@_formModel.GoogleFormId"
-                        Value="@TranscriptionEngine.Google"/>
-                </Icon>
-                <Content>
-                    <Label InputId="@_formModel.GoogleFormId" Text="Google Cloud"></Label>
-                </Content>
-            </TileItem>
+            @foreach (var option in Options) {
+                var formId = _formModel.GetFormId(option.Id);
+                <TileItem
+                    Class="@GetTileItemClass(option.Id)"
+                    Click="@(_ => OnTileClick(option.Id))">
+                    <Icon>
+                        <FormRadio
+                            Id="@formId"
+                            Value="@option.Id"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@formId" Text="@option.Title"></Label>
+                    </Content>
+                </TileItem>
+            }
 
         </InputRadioGroup>
     </FormBlock>
 </Form>
 
 @code {
+    private static readonly Option[] Options = [
+        new("", "Automatic"),
+        new(TranscriberId.SonioxStream.Value, "Soniox, no re-transcription"),
+        new(TranscriberId.NewPair(TranscriberId.SonioxStream, TranscriberId.SonioxOffline).Value,
+            "Soniox + Soniox re-transcription"),
+        new(TranscriberId.NewPair(TranscriberId.SonioxStream, TranscriberId.OpenAIOffline).Value,
+            "Soniox + OpenAI re-transcription"),
+        new(TranscriberId.NewPair(TranscriberId.SonioxStream, TranscriberId.ElevenLabsOffline).Value,
+            "Soniox + ElevenLabs re-transcription"),
+        new(TranscriberId.NewPair(TranscriberId.DeepgramStream, TranscriberId.OpenAIOffline).Value,
+            "Deepgram + OpenAI re-transcription"),
+        new(TranscriberId.ElevenLabsStream.Value, "ElevenLabs, no re-transcription"),
+        new(TranscriberId.NewPair(TranscriberId.ElevenLabsStream, TranscriberId.ElevenLabsOffline).Value,
+            "ElevenLabs + ElevenLabs re-transcription"),
+        new(TranscriberId.GoogleStream.Value, "Google Cloud"),
+    ];
+
     private FormModel _formModel = null!;
 
     protected override void OnInitialized() {
         _formModel = new (ComponentIdGenerator);
-        _formModel.EngineChanged += OnEngineChanged;
+        _formModel.SelectedIdChanged += OnSelectedIdChanged;
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await UserSettingsUI.UserTranscriptionEngineSettings().Get(cancellationToken).ConfigureAwait(false);
-        return new(settings.TranscriptionEngine);
+        var settings = await UserSettingsUI.UserTranscriptionEngineSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        return new(settings.Transcriber);
     }
 
-    private async Task OnEngineChanged(TranscriptionEngine engine) {
-        var settings = new UserTranscriptionEngineSettings { TranscriptionEngine = engine };
+    private async Task OnSelectedIdChanged(string transcriberId) {
+        var settings = new UserTranscriptionEngineSettings { Transcriber = transcriberId };
         await UserSettingsUI.UserTranscriptionEngineSettings().Set(settings, CancellationToken.None);
         await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
 
-    private void OnTileClick(TranscriptionEngine engine)
-        => _formModel.Engine = engine;
+    private void OnTileClick(string transcriberId)
+        => _formModel.SelectedId = transcriberId;
 
-    private string GetTileItemClass(TranscriptionEngine engine)
-        => _formModel.Engine == engine ? "selected transparent" : "transparent";
+    private string GetTileItemClass(string transcriberId)
+        => _formModel.SelectedId == transcriberId ? "selected transparent" : "transparent";
 
     // Nested types
 
+    public sealed record Option(string Id, string Title);
+
     public sealed class FormModel {
-        private TranscriptionEngine _engine;
+        private string _selectedId = "";
 
         private string FormId { get; }
-        public string DeepgramFormId { get; }
-        public string GoogleFormId { get; }
 
-        public TranscriptionEngine Engine {
-            get => _engine;
+        public string SelectedId {
+            get => _selectedId;
             set {
-                if (_engine == value)
+                if (_selectedId == value)
                     return;
 
-                _engine = value;
-                _ = EngineChanged?.Invoke(value);
+                _selectedId = value;
+                _ = SelectedIdChanged?.Invoke(value);
             }
         }
 
-        public event Func<TranscriptionEngine, Task>? EngineChanged;
+        public event Func<string, Task>? SelectedIdChanged;
 
-        public FormModel(ComponentIdGenerator componentIdGenerator) {
-            FormId = componentIdGenerator.Next("transcription-engine-form");
-            DeepgramFormId = $"{FormId}-use-deepgram";
-            GoogleFormId = $"{FormId}-use-google";
+        public FormModel(ComponentIdGenerator componentIdGenerator)
+            => FormId = componentIdGenerator.Next("transcription-engine-form");
+
+        // Transcriber ids carry ':' and '~', which aren't usable in an HTML id.
+        public string GetFormId(string transcriberId) {
+            var suffix = transcriberId.IsNullOrEmpty()
+                ? "auto"
+                : new string(transcriberId.Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-').ToArray());
+            return $"{FormId}-{suffix}";
         }
 
-        public void FromModel(Model model) {
-            _engine = model.Engine;
-        }
+        public void FromModel(Model model)
+            => _selectedId = model.TranscriberId;
     }
 
-    // Nested types
-
-    public sealed record Model(TranscriptionEngine Engine);
+    public sealed record Model(string TranscriberId);
 }
