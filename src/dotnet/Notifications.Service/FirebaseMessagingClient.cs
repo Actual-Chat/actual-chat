@@ -228,7 +228,10 @@ public class FirebaseMessagingClient(
             { Constants.Notification.MessageDataKeys.Kind, NotificationKind.SpeechStarted.ToString() },
             { Constants.Notification.MessageDataKeys.ChatId, chatId.Value },
             { Constants.Notification.MessageDataKeys.AuthorId, authorId.Value },
-            { Constants.Notification.MessageDataKeys.Timestamp, ((long)startedAt.EpochOffset.TotalMilliseconds).ToString() },
+            {
+                Constants.Notification.MessageDataKeys.Timestamp,
+                ((long)startedAt.EpochOffset.TotalMilliseconds).ToString()
+            },
         };
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
@@ -245,6 +248,9 @@ public class FirebaseMessagingClient(
         var batchResponse = await FirebaseMessaging
             .SendEachForMulticastAsync(multicastMessage, cancellationToken)
             .ConfigureAwait(false);
+        Log.LogInformation(
+            "SpeechStarted wake for chat '{ChatId}': FCM accepted {SuccessCount}/{Total}",
+            chatId, batchResponse.SuccessCount, deviceIds.Count);
         await HandleBatchResponse(batchResponse, deviceIds, cancellationToken).ConfigureAwait(false);
     }
 

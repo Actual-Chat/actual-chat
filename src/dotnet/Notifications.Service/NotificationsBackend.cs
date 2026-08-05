@@ -782,8 +782,13 @@ public class NotificationsBackend(IServiceProvider services)
             .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
             .ConfigureAwait(false);
         var activeUserIds = await GetActiveParticipantUserIds(chatId, cancellationToken).ConfigureAwait(false);
-        await userIds
+        var targetUserIds = userIds
             .Where(userId => userId != speaker?.UserId && !activeUserIds.Contains(userId))
+            .ToList();
+        Log.LogInformation(
+            "SpeechStarted in chat '{ChatId}': {TargetCount}/{MemberCount} wake candidate(s), {ActiveCount} active skipped",
+            chatId, targetUserIds.Count, userIds.Length, activeUserIds.Count);
+        await targetUserIds
             .Select(async userId => {
                 try {
                     await SendWalkieTalkieWake(userId, chatId, authorId, startedAt, cancellationToken)
@@ -1060,11 +1065,16 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task SendWalkieTalkieWake(
         UserId userId, ChatId chatId, AuthorId authorId, Moment startedAt, CancellationToken cancellationToken)
     {
-        if (!await IsArmedForWalkieTalkie(userId, chatId, cancellationToken).ConfigureAwait(false))
+        if (!await IsArmedForWalkieTalkie(userId, chatId, cancellationToken).ConfigureAwait(false)) {
+            Log.LogInformation("Walkie wake for user '{UserId}' in chat '{ChatId}': not armed", userId, chatId);
             return;
+        }
+
         var mode = await GetNotificationMode(userId, chatId, cancellationToken).ConfigureAwait(false);
-        if (mode == ChatNotificationMode.Muted)
+        if (mode == ChatNotificationMode.Muted) {
+            Log.LogInformation("Walkie wake for user '{UserId}' in chat '{ChatId}': muted", userId, chatId);
             return;
+        }
 
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
@@ -1076,15 +1086,24 @@ public class NotificationsBackend(IServiceProvider services)
             .Where(d => d.DeviceType == DeviceType.iOSPttApp)
             .Select(d => d.DeviceId)
             .ToList();
-        if (fcmDeviceIds.Count == 0 && pttDeviceIds.Count == 0)
+        if (fcmDeviceIds.Count == 0 && pttDeviceIds.Count == 0) {
+            Log.LogInformation(
+                "Walkie wake for user '{UserId}' in chat '{ChatId}': no wake-capable devices among {DeviceCount}",
+                userId, chatId, devices.Count);
             return;
+        }
 
         lock (_wakePending) {
             _wakePending.Prune();
-            if (!_wakePending.TryAdd((userId, chatId)))
+            if (!_wakePending.TryAdd((userId, chatId))) {
+                Log.LogInformation("Walkie wake for user '{UserId}' in chat '{ChatId}': deduped", userId, chatId);
                 return;
+            }
         }
 
+        Log.LogInformation(
+            "Walkie wake for user '{UserId}' in chat '{ChatId}': sending to {FcmCount} FCM / {PttCount} PTT device(s)",
+            userId, chatId, fcmDeviceIds.Count, pttDeviceIds.Count);
         if (fcmDeviceIds.Count != 0)
             await FirebaseMessagingClient
                 .SendSpeechStartedWake(chatId, authorId, startedAt, fcmDeviceIds, cancellationToken)
