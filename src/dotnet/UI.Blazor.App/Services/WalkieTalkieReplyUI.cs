@@ -2,12 +2,15 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+// Not a compute service: it has no compute methods, and a sealed class gets no generated
+// proxy, so a fusion.AddService registration would fail on first resolution.
+
 /// <summary>
 /// Coordinates a walkie-talkie voice reply: resolves the target chat, opens the hot mic,
 /// and runs a cold-start dead-man switch that closes the mic if no voice is heard in time.
 /// The on-screen trigger and native triggers drive it via <see cref="RequestReply"/>/<see cref="StopReply"/>.
 /// </summary>
-public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
+public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
     private readonly object _lock = new();
     private CancellationTokenSource? _coldStartCts;
