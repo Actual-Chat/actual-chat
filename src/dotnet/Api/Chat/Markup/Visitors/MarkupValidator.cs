@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public record MarkupValidator : MarkupVisitor<bool>
+public sealed record MarkupValidator : MarkupVisitor<bool>
 {
     public enum AggregationMode { All, Any }
 
@@ -60,6 +60,7 @@ public record MarkupValidator : MarkupVisitor<bool>
     protected override bool VisitPreformattedText(PreformattedTextMarkup markup) => _predicate(markup);
     protected override bool VisitNewLine(NewLineMarkup markup) => _predicate(markup);
     protected override bool VisitUnparsed(UnparsedTextMarkup markup) => _predicate(markup);
+    protected override bool VisitHashtag(HashtagMarkup markup) => _predicate(markup);
 
     protected override bool VisitUnknown(Markup markup) => _predicate(markup);
 }

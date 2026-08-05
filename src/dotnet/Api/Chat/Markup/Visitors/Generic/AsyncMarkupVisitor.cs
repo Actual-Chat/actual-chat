@@ -25,6 +25,7 @@ public abstract record AsyncMarkupVisitor<TResult>
             PreformattedTextMarkup preformattedTextMarkup => VisitPreformattedText(preformattedTextMarkup, cancellationToken),
             NewLineMarkup newLineMarkup => VisitNewLine(newLineMarkup, cancellationToken),
             UnparsedTextMarkup unparsedMarkup => VisitUnparsed(unparsedMarkup, cancellationToken),
+            HashtagMarkup hashtagMarkup => VisitHashtag(hashtagMarkup, cancellationToken),
             _ => VisitUnknown(markup, cancellationToken),
         };
 
@@ -47,6 +48,7 @@ public abstract record AsyncMarkupVisitor<TResult>
     protected abstract ValueTask<TResult> VisitPreformattedText(PreformattedTextMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitNewLine(NewLineMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitUnparsed(UnparsedTextMarkup markup, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResult> VisitHashtag(HashtagMarkup markup, CancellationToken cancellationToken);
 
     protected virtual ValueTask<TResult> VisitUnknown(Markup markup, CancellationToken cancellationToken)
         => throw new ArgumentOutOfRangeException(nameof(markup));

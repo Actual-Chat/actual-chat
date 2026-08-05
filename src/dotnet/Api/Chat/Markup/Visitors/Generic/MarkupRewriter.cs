@@ -66,6 +66,7 @@ public abstract record MarkupRewriter<TState> : MarkupVisitorWithState<TState, M
     protected override Markup VisitPreformattedText(PreformattedTextMarkup markup, ref TState state) => markup;
     protected override Markup VisitNewLine(NewLineMarkup markup, ref TState state) => markup;
     protected override Markup VisitUnparsed(UnparsedTextMarkup markup, ref TState state) => markup;
+    protected override Markup VisitHashtag(HashtagMarkup markup, ref TState state) => markup;
 
     protected override Markup VisitUnknown(Markup markup, ref TState state) => markup;
 }

@@ -26,6 +26,7 @@ namespace ActualChat.Chat;
 [Union(16, typeof(MarkupSeq))]
 [Union(17, typeof(StylizedMarkup))]
 [Union(18, typeof(UrlMarkup))]
+[Union(19, typeof(HashtagMarkup))]
 public abstract class Markup : ISanitized
 {
     protected static ArrayPool<Markup> MarkupArrayPool = ArrayPool<Markup>.Shared;

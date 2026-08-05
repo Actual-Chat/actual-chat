@@ -28,14 +28,16 @@ export class TextInput implements Disposable {
             .pipe(
                 takeUntil(this.disposed$),
                 debounceTime(this.options.debounce),
-                switchMap((e: InputEvent) => this.blazorRef.invokeMethodAsync('OnTextChanged', (e.target as HTMLInputElement).value))
+                switchMap((e: InputEvent) =>
+                    this.blazorRef.invokeMethodAsync('OnTextChanged', (e.target as HTMLInputElement).value))
             ).subscribe();
 
         fromEvent(this.element, 'paste')
             .pipe(
                 takeUntil(this.disposed$),
                 debounceTime(this.options.debounce),
-                switchMap((e: ClipboardEvent) => this.blazorRef.invokeMethodAsync('OnPaste', e.clipboardData?.getData('Text'))),
+                switchMap((e: ClipboardEvent) =>
+                    this.blazorRef.invokeMethodAsync('OnPaste', e.clipboardData?.getData('Text'))),
             ).subscribe();
 
         const closeOnBlurSelector = this.options.closeOnBlurSelector;
@@ -47,6 +49,7 @@ export class TextInput implements Disposable {
                     const related = e.relatedTarget as Node | null;
                     if (boundary && related && boundary.contains(related))
                         return;
+
                     void this.blazorRef.invokeMethodAsync('NotifyBlur');
                 });
         }
@@ -65,8 +68,7 @@ export class TextInput implements Disposable {
         await this.blazorRef.invokeMethodAsync('OnTextChanged', '');
     }
 
-    /** Called by Blazor */
-    // TODO: looks like it's not used anymore, remove it?
+    // Called by Blazor
     public set(value: string | undefined): void {
         this.element.value = value ?? '';
     }

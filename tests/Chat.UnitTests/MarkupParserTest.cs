@@ -454,9 +454,12 @@ code
     [Fact]
     public void SpecialTest_CssRuleCase()
     {
-        var p = Parse<ParagraphMarkup>("--background-message-hover: #f3f4f6;", out var text);
-        var m = p.Content.Should().BeOfType<PlainTextMarkup>().Subject;
-        m.Text.Should().Be(text);
+        // A hex color is an unavoidable hashtag false positive; the round-trip text stays exact.
+        var p = Parse<ParagraphMarkup>("--background-message-hover: #f3f4f6;", out _);
+        var seq = p.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items[0].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("--background-message-hover: ");
+        seq.Items[1].Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be("#f3f4f6");
+        seq.Items[2].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(";");
     }
 
     [Fact]
@@ -466,7 +469,6 @@ code
         var m = p.Content.Should().BeOfType<PlainTextMarkup>().Subject;
         m.Text.Should().Be(text);
     }
-
 
     [Fact]
     public void SpecialTest_DoubleSmileCase()
@@ -864,9 +866,9 @@ code
     [Fact]
     public void HeaderRequiresWhitespaceAfterHashes()
     {
-        // No space after # means it's not a header
+        // No space after # means it's not a header (it's a hashtag now)
         var m = Parse<ParagraphMarkup>("#NotAHeader");
-        m.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("#NotAHeader");
+        m.Content.Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be("#NotAHeader");
     }
 
     [Fact]
@@ -1304,6 +1306,129 @@ code
         var mention = seq.Items[0].Should().BeAssignableTo<MentionMarkup>().Subject;
         mention.Id.Value.Should().Be(id);
         MarkupFormatter.Default.Format(seq.Items[1]).Should().Be(tail);
+    }
+
+    [Fact]
+    public void HashtagTest()
+    {
+        var p = Parse<ParagraphMarkup>("#promo", out var text);
+        p.Content.Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be(text);
+
+        p = Parse<ParagraphMarkup>("#promo-2_x", out text);
+        var m = p.Content.Should().BeOfType<HashtagMarkup>().Subject;
+        m.Text.Should().Be(text);
+        m.Tag.Should().Be("promo-2_x");
+
+        p = Parse<ParagraphMarkup>("#тег", out text);
+        p.Content.Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be(text);
+
+        p = Parse<ParagraphMarkup>("see #promo now", out _);
+        var seq = p.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items[1].Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be("#promo");
+    }
+
+    [Fact]
+    public void HashtagFollowedByPunctuationTest()
+    {
+        var p = Parse<ParagraphMarkup>("#promo, right", out _);
+        var seq = p.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items[0].Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be("#promo");
+        seq.Items[1].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(", right");
+    }
+
+    [Fact]
+    public void HashtagInStylizedTextTest()
+    {
+        var p = Parse<ParagraphMarkup>("**#promo**", out _);
+        var m = p.Content.Should().BeOfType<StylizedMarkup>().Subject;
+        m.Content.Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be("#promo");
+    }
+
+    [Fact]
+    public void AdjacentHashtagsArePlainTextTest()
+    {
+        // Tags must be whitespace-separated; a '#' run with no separator is not a tag at all
+        var p = Parse<ParagraphMarkup>("#a#b", out var text);
+        p.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void WhitespaceSeparatedHashtagsTest()
+    {
+        var p = Parse<ParagraphMarkup>("#a #b", out _);
+        var seq = p.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items[0].Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be("#a");
+        seq.Items[1].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" ");
+        seq.Items[2].Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be("#b");
+    }
+
+    [Fact]
+    public void MidWordHashIsNotAHashtagTest()
+    {
+        var p = Parse<ParagraphMarkup>("c#5", out var text);
+        p.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+
+        p = Parse<ParagraphMarkup>("item#2", out text);
+        p.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void AllDigitTokenIsNotAHashtagTest()
+    {
+        var p = Parse<ParagraphMarkup>("#4121", out var text);
+        p.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void LoneOrTrailingHashIsPlainTextTest()
+    {
+        var p = Parse<ParagraphMarkup>("#", out var text);
+        p.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+
+        p = Parse<ParagraphMarkup>("#-x", out text);
+        p.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+
+        p = Parse<ParagraphMarkup>("#promo#", out text);
+        p.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void TooLongHashtagIsPlainTextTest()
+    {
+        var tooLong = "#" + new string('a', 65);
+        var p = Parse<ParagraphMarkup>(tooLong, out var text);
+        p.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+
+        var maxLength = "#" + new string('a', 64);
+        p = Parse<ParagraphMarkup>(maxLength, out text);
+        p.Content.Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void HashtagDoesNotBreakHeadersTest()
+    {
+        var h = Parse<HeaderMarkup>("# Title");
+        h.Level.Should().Be(1);
+        MarkupFormatter.Default.Format(h.Content).Should().Be("Title");
+
+        h = Parse<HeaderMarkup>("# Title with #tag", validateFormat: false);
+        var seq = h.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items[^1].Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be("#tag");
+    }
+
+    [Fact]
+    public void HashtagInPreformattedTextStaysTextTest()
+    {
+        var p = Parse<ParagraphMarkup>("`#promo`", out _);
+        p.Content.Should().BeOfType<PreformattedTextMarkup>().Which.Text.Should().Be("#promo");
+    }
+
+    [Fact]
+    public void HashtagAtLineStartIsNotAHeaderTest()
+    {
+        var p = Parse<ParagraphMarkup>("#promo\nmore", false);
+        var seq = p.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items[0].Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be("#promo");
     }
 
     [Theory]

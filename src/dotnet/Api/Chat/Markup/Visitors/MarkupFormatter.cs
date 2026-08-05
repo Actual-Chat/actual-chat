@@ -141,6 +141,9 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
 
     protected override void VisitUnparsed(UnparsedTextMarkup markup, ref StringBuilder state)
         => state.Append(markup.Format());
+
+    protected override void VisitHashtag(HashtagMarkup markup, ref StringBuilder state)
+        => state.Append(markup.Format());
 }
 
 public sealed record MarkupFormatter(
