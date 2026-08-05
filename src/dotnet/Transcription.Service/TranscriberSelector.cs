@@ -26,11 +26,11 @@ public sealed class TranscriberSelector(ITranscriberRegistry registry, IServiceP
     {
         // "Automatic" means the best result end to end, so it always takes the ranked retranscriber:
         // measured on real recordings, an offline pass still fixes words a self-refining stream fused.
-        // An explicit pick is taken literally instead - bare "Soniox" has to stay a single pass.
-        if (!preferredId.IsNone && !preferredId.IsPair
-            && streamInfo is { Retranscriber: null } && !streamInfo.IsOfflinePassNeeded) {
-            Log.LogInformation("Retranscription skipped: {TranscriberId} is {Kind}",
-                streamInfo.Id, streamInfo.Kind);
+        // A bare explicit pick names the one transcriber to use, so it stays a single pass whatever
+        // its kind - asking for a retranscriber is what the "{stream}~{retranscriber}" form is for.
+        if (!preferredId.IsNone && !preferredId.IsPair && streamInfo is { Retranscriber: null }) {
+            Log.LogInformation("Retranscription skipped: {TranscriberId} was picked explicitly",
+                streamInfo.Id);
             return null;
         }
 
