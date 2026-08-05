@@ -270,6 +270,16 @@ public static partial class Constants
             public static readonly TimeSpan SilentPrefixDuration = TimeSpan.Zero;
             public static readonly TimeSpan SilentSuffixDuration = TimeSpan.Zero;
         }
+
+        public static class ElevenLabs
+        {
+            public static readonly double Speed = 2;
+            public static readonly TimeSpan SilentPrefixDuration = TimeSpan.Zero;
+            public static readonly TimeSpan SilentSuffixDuration = TimeSpan.Zero;
+            // VAD commits a segment once speech stops; manual commits would have to guess where.
+            public static readonly double VadThreshold = 0.5;
+            public static readonly double VadSilenceThresholdSeconds = 0.5;
+        }
     }
 
     public static class Recaptcha
