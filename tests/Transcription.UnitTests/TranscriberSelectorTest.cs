@@ -11,10 +11,10 @@ public sealed class TranscriberSelectorTest(ITestOutputHelper @out) : TestBase(@
     private const string OtherOffline = "b-offline";
 
     [Fact]
-    public void AutomaticRetranscribesEvenASelfRefinedStream()
+    public void AutomaticTakesTheRankedRetranscriber()
     {
         // arrange
-        var selector = NewSelector(TranscriberKind.StreamSelfRefined);
+        var selector = NewSelector();
 
         // act
         var offline = selector.GetOffline(new TranscriptionOptions(), TranscriberId.None);
@@ -24,10 +24,10 @@ public sealed class TranscriberSelectorTest(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
-    public void ExplicitSelfRefinedStreamSkipsRetranscription()
+    public void ExplicitBareStreamSkipsRetranscription()
     {
         // arrange
-        var selector = NewSelector(TranscriberKind.StreamSelfRefined, out var registry);
+        var selector = NewSelector(out var registry);
         var id = TranscriberId.NewBuiltin(Stream);
 
         // act
@@ -38,26 +38,10 @@ public sealed class TranscriberSelectorTest(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
-    public void ExplicitStreamOnlySkipsRetranscriptionToo()
+    public void ExplicitPairRetranscribes()
     {
         // arrange
-        // A StreamOnly stream benefits from an offline pass, but "no re-transcription" in the
-        // picker has to mean it - this is what silently refined ElevenLabs with Soniox.
-        var selector = NewSelector(TranscriberKind.StreamOnly, out var registry);
-        var id = TranscriberId.NewBuiltin(Stream);
-
-        // act
-        var offline = selector.GetOffline(new TranscriptionOptions(), id, registry.GetInfo(id));
-
-        // assert
-        offline.Should().BeNull();
-    }
-
-    [Fact]
-    public void ExplicitPairOverridesTheSelfRefinedSkip()
-    {
-        // arrange
-        var selector = NewSelector(TranscriberKind.StreamSelfRefined, out var registry);
+        var selector = NewSelector(out var registry);
         var id = TranscriberId.NewPair(TranscriberId.NewBuiltin(Stream), TranscriberId.NewBuiltin(Offline));
 
         // act
@@ -71,7 +55,7 @@ public sealed class TranscriberSelectorTest(ITestOutputHelper @out) : TestBase(@
     public void ExplicitPairTakesTheNamedRetranscriberOverTheRanking()
     {
         // arrange
-        var selector = NewSelector(TranscriberKind.StreamSelfRefined, out var registry);
+        var selector = NewSelector(out var registry);
         var id = TranscriberId.NewPair(TranscriberId.NewBuiltin(Stream), TranscriberId.NewBuiltin(OtherOffline));
 
         // act
@@ -83,10 +67,10 @@ public sealed class TranscriberSelectorTest(ITestOutputHelper @out) : TestBase(@
 
     // Private methods
 
-    private static TranscriberSelector NewSelector(TranscriberKind kind)
-        => NewSelector(kind, out _);
+    private static TranscriberSelector NewSelector()
+        => NewSelector(out _);
 
-    private static TranscriberSelector NewSelector(TranscriberKind kind, out TranscriberRegistry registry)
+    private static TranscriberSelector NewSelector(out TranscriberRegistry registry)
     {
         var settings = new TranscriptionSettings {
             StreamRanking = Stream,
@@ -96,8 +80,7 @@ public sealed class TranscriberSelectorTest(ITestOutputHelper @out) : TestBase(@
             settings,
             [new TestTranscriber(new TranscriberInfo {
                 Id = TranscriberId.NewBuiltin(Stream),
-                DriverId = "test",
-                Kind = kind,
+                Kind = TranscriberKind.Stream,
             })],
             [
                 NewOffline(Offline),
@@ -111,8 +94,7 @@ public sealed class TranscriberSelectorTest(ITestOutputHelper @out) : TestBase(@
     private static TestOfflineTranscriber NewOffline(string key)
         => new(new TranscriberInfo {
             Id = TranscriberId.NewBuiltin(key),
-            DriverId = "test",
-            Kind = TranscriberKind.OfflineOnly,
+            Kind = TranscriberKind.Offline,
         });
 
     // Nested types

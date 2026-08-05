@@ -29,10 +29,9 @@ public sealed class SonioxTranscriber : ITranscriber
 
     public TranscriberInfo Info { get; } = new() {
         Id = TranscriberId.SonioxStream,
-        DriverId = "soniox",
         // Soniox re-decides earlier tokens as more audio arrives, so its live output already
         // carries the correction an offline pass would otherwise provide.
-        Kind = TranscriberKind.StreamSelfRefined,
+        Kind = TranscriberKind.Stream,
         Languages = SonioxLanguage.Supported,
         DetectLanguages = SonioxLanguage.Supported,
         IsLanguageDetectionSupported = true,

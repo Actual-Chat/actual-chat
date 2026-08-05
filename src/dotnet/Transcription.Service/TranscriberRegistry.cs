@@ -32,7 +32,7 @@ public sealed class TranscriberRegistry : ITranscriberRegistry
             _streamRanking,
             _streamRankingOverrides,
             x => x.Info,
-            x => x.IsStream);
+            x => x.Kind.IsStream());
 
     public IReadOnlyList<IOfflineTranscriber> ListOffline(TranscriptionOptions options, TranscriberId preferredId)
         => List(options,
@@ -41,7 +41,7 @@ public sealed class TranscriberRegistry : ITranscriberRegistry
             _offlineRanking,
             _offlineRankingOverrides,
             x => x.Info,
-            x => x.IsOffline);
+            x => x.Kind.IsOffline());
 
     public ITranscriber? GetStream(TranscriberId id)
         => _streams.GetValueOrDefault(id.PrimaryId);
@@ -60,7 +60,7 @@ public sealed class TranscriberRegistry : ITranscriberRegistry
     {
         var primary = GetStream(id.PrimaryId);
         var retranscriber = _offlines.GetValueOrDefault(id.RetranscriberId!);
-        if (primary == null || retranscriber == null || !retranscriber.Info.IsOffline)
+        if (primary == null || retranscriber == null || !retranscriber.Info.Kind.IsOffline())
             return null;
 
         var primaryInfo = primary.Info;

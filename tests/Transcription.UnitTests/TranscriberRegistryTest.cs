@@ -144,8 +144,7 @@ public class TranscriberRegistryTest(ITestOutputHelper @out) : TestBase(@out)
         bool isLanguageDetectionSupported = false)
         => new(new TranscriberInfo {
             Id = TranscriberId.NewBuiltin(key),
-            DriverId = "test",
-            Kind = TranscriberKind.StreamOnly,
+            Kind = TranscriberKind.Stream,
             Languages = languages == null ? new ApiSet<Language>() : new ApiSet<Language>(languages),
             IsLanguageDetectionSupported = isLanguageDetectionSupported,
         });
@@ -153,8 +152,7 @@ public class TranscriberRegistryTest(ITestOutputHelper @out) : TestBase(@out)
     private static TestOfflineTranscriber NewOffline(string key)
         => new(new TranscriberInfo {
             Id = TranscriberId.NewBuiltin(key),
-            DriverId = "test",
-            Kind = TranscriberKind.OfflineOnly,
+            Kind = TranscriberKind.Offline,
         });
 
     // Nested types

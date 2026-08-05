@@ -13,5 +13,4 @@ public class TranscriptionSettings
     public string OfflineRanking { get; set; } = "soniox-offline,openai-offline";
     public Dictionary<string, string> StreamRankingOverrides { get; set; } = new();
     public Dictionary<string, string> OfflineRankingOverrides { get; set; } = new();
-    public Dictionary<string, TranscriberKind> KindOverrides { get; set; } = new();
 }

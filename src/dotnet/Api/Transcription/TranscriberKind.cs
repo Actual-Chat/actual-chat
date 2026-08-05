@@ -1,12 +1,20 @@
 namespace ActualChat.Transcription;
 
 /// <summary>
-/// Which transcription stages a transcriber covers, and whether an offline pass
-/// after it would add anything.
+/// Which stage a transcriber covers. A stream may be paired with an offline
+/// retranscriber; an offline one can't run on its own.
 /// </summary>
 public enum TranscriberKind
 {
-    StreamOnly = 1,
-    OfflineOnly = 2,
-    StreamSelfRefined = 4,
+    Stream = 1,
+    Offline = 2,
+}
+
+public static class TranscriberKindExt
+{
+    public static bool IsStream(this TranscriberKind kind)
+        => kind == TranscriberKind.Stream;
+
+    public static bool IsOffline(this TranscriberKind kind)
+        => kind == TranscriberKind.Offline;
 }

@@ -5,7 +5,7 @@ using ActualLab.Fusion.Blazor;
 namespace ActualChat;
 
 // Identifies a transcriber *configuration* rather than a vendor, so configurations sharing a
-// DriverId rank independently. Built-in keys are "{provider}-{mode}", with room for a model part
+// vendor rank independently. Built-in keys are "{provider}-{mode}", with room for a model part
 // ("google-gemini-offline") once a provider exposes more than one model per mode.
 
 /// <summary>
