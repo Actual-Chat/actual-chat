@@ -26,7 +26,3 @@ The **quoted snippet is the identity** — match on it first. The line number is
 the original start line and only a hint, since it drifts as the file changes;
 the rule is an abbreviated label, since its wording changes as the guide is
 edited. The reason can be as short as whose decision it was.
-
-## src/dotnet/UI.Blazor.App/Services/WalkieTalkiePlatform.cs
-
-- L4 `Platform hooks for the walkie-talkie session:` — removed `<see cref="WalkieTalkieSession"/>` cross-reference (App.Maui type unreachable from UI.Blazor.App) per task-2-brief.md
