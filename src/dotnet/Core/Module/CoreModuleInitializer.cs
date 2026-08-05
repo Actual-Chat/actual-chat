@@ -13,7 +13,7 @@ namespace ActualChat.Module;
 /// </summary>
 public static partial class CoreModuleInitializer
 {
-    private static volatile int _isConfigured;
+    private static int _isConfigured;
     private static readonly Lock Lock = new();
 
     // Root of the Load() chain — Core has no upstream module.
@@ -43,6 +43,13 @@ public static partial class CoreModuleInitializer
             var keylessMessagePack = new MessagePackByteSerializer(keylessOptions);
             Serializers.KeylessMessagePack = keylessMessagePack;
             Serializers.KeylessMessagePackTypeDecorating = new TypeDecoratingByteSerializer(keylessMessagePack);
+            var clientFormats = ImmutableList.Create(
+                RpcSerializationFormat.MessagePackV6,
+                RpcSerializationFormat.MessagePackV6_LZ4,
+                RpcSerializationFormat.MessagePackV6_LZ4F,
+                RpcSerializationFormat.MessagePackV6C,
+                RpcSerializationFormat.MessagePackV6C_LZ4,
+                RpcSerializationFormat.MessagePackV6C_LZ4F);
 
             // RPC setup
             var isServer = RuntimeInfo.IsServer;
@@ -53,22 +60,15 @@ public static partial class CoreModuleInitializer
                 var messagePackV6CK = new RpcSerializationFormat("msgpack6ck",
                     () => new RpcByteArgumentSerializerV4(Serializers.KeylessMessagePack),
                     peer => new RpcByteMessageSerializerV5Compact(peer));
-                RpcSerializationFormat.All = ImmutableList.Create(
+                RpcSerializationFormat.All = clientFormats.AddRange([
                     RpcSerializationFormat.SystemJsonV5,
                     RpcSerializationFormat.SystemJsonV5NP,
-                    RpcSerializationFormat.MessagePackV6,
-                    RpcSerializationFormat.MessagePackV6_LZ4,
-                    RpcSerializationFormat.MessagePackV6C,
-                    RpcSerializationFormat.MessagePackV6C_LZ4,
                     messagePackV6K,
-                    messagePackV6CK);
+                    messagePackV6CK,
+                ]);
             }
             else
-                RpcSerializationFormat.All = ImmutableList.Create(
-                    RpcSerializationFormat.MessagePackV6,
-                    RpcSerializationFormat.MessagePackV6_LZ4,
-                    RpcSerializationFormat.MessagePackV6C,
-                    RpcSerializationFormat.MessagePackV6C_LZ4);
+                RpcSerializationFormat.All = clientFormats;
 
             RpcSerializationFormatResolver.Default
 #if DEBUG
