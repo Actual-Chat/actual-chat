@@ -266,9 +266,23 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         AuthorId authorId,
         long? entryLid,
         bool transcriptionOn,
+        bool hasVoice,
         CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
+
+        // Best-effort wake trigger: per utterance (before the dedup/early-return below), voice-only,
+        // and never allowed to fail stream registration.
+        if (hasVoice)
+            try {
+                await Services.Queues()
+                    .Enqueue(new SpeechStartedEvent(chatId, authorId, Clocks.SystemClock.Now), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, "Failed to enqueue SpeechStartedEvent for chat '{ChatId}'", chatId);
+            }
+
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
 
         var now = Clocks.SystemClock.Now;
@@ -671,6 +685,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (close)
             await CloseCall(chatId).ConfigureAwait(false);
     }
+
+    // Legacy methods
+
+    public Task LegacyOnStreamRegistered(
+        ChatId chatId,
+        AuthorId authorId,
+        long? entryLid,
+        bool transcriptionOn,
+        CancellationToken cancellationToken)
+        => OnStreamRegistered(chatId, authorId, entryLid, transcriptionOn, true, cancellationToken);
 
     // Protected/internal methods
 

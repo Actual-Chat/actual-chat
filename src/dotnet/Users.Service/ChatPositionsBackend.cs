@@ -42,9 +42,9 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
         }
 
         // Guard against the client's "unbounded" sentinel (long.MaxValue) being persisted as a
-        // read position. OnSet is forward-only for reads, so a stored MaxValue would mark the chat
-        // permanently fully-read and suppress every notification. Clamp it to the chat's last entry.
-        if (kind == ChatPositionKind.Read && position.EntryLid == long.MaxValue) {
+        // read/heard position. OnSet is forward-only for both, so a stored MaxValue would mark the
+        // chat permanently fully-read/heard and suppress every notification. Clamp to the last entry.
+        if (kind is ChatPositionKind.Read or ChatPositionKind.Heard && position.EntryLid == long.MaxValue) {
             var maxLid = await ChatsBackend.GetMaxLid(chatId, true, cancellationToken).ConfigureAwait(false);
             position = position with { EntryLid = maxLid };
         }
@@ -67,7 +67,7 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
             dbContext.Add(dbChatPosition);
             hasChanges = true;
         }
-        else if (force || kind != ChatPositionKind.Read || position.EntryLid > dbChatPosition.EntryLid) {
+        else if (force || kind == ChatPositionKind.View || position.EntryLid > dbChatPosition.EntryLid) {
             dbChatPosition.UpdateFrom(position);
             hasChanges = true;
         }
@@ -76,14 +76,15 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.KeylessSet(hasChanges);
 
-        if (kind == ChatPositionKind.Read && hasChanges) {
-            // Let the notifications backend reconcile this user's read notifications instead of
-            // waiting for their next notification event (cross-device read dismissal). Read
-            // advances are frequent, so collapse them to one event per (user, chat) per window
-            // via a delay-bucketed uuid (later advances in the window are skipped on conflict).
-            context.Operation
-                .AddEvent(new ReadPositionChangedEvent(userId, chatId, position.EntryLid))
-                .SetDelayBy(TimeSpan.Zero, Constants.Notification.ReadReconcileWindow, $"ReadPosChanged:{userId.Value}:{chatId.Value}");
+        if (hasChanges && kind is ChatPositionKind.Read or ChatPositionKind.Heard) {
+            if (kind == ChatPositionKind.Read)
+                // Let the notifications backend reconcile this user's read notifications instead of
+                // waiting for their next notification event (cross-device read dismissal). Read
+                // advances are frequent, so collapse them to one event per (user, chat) per window
+                // via a delay-bucketed uuid (later advances in the window are skipped on conflict).
+                context.Operation
+                    .AddEvent(new ReadPositionChangedEvent(userId, chatId, position.EntryLid))
+                    .SetDelayBy(TimeSpan.Zero, Constants.Notification.ReadReconcileWindow, $"ReadPosChanged:{userId.Value}:{chatId.Value}");
 
             var stat = await ChatsBackend.GetReadPositionsStat(chatId, cancellationToken).ConfigureAwait(false);
             var needUpdateStat = stat is null || MightUpdateStat(stat, userId, position.EntryLid);

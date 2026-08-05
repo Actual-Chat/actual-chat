@@ -24,6 +24,7 @@ namespace ActualChat;
 [MemoryPackUnion(12, typeof(UserTranscodingTestSettings))]
 [MemoryPackUnion(13, typeof(FakeDeviceContactOptions))]
 [MemoryPackUnion(14, typeof(UserReplaySettings))]
+[MemoryPackUnion(17, typeof(UserWalkieTalkieSettings))]
 // Chat-User settings
 [MemoryPackUnion(50, typeof(ChatUserSettings))]
 [MemoryPackUnion(51, typeof(ChatInviteSettings))]
@@ -49,6 +50,7 @@ namespace ActualChat;
 [Union(14, typeof(UserReplaySettings))]
 [Union(15, typeof(RecentMentions))]
 [Union(16, typeof(RecentGifs))]
+[Union(17, typeof(UserWalkieTalkieSettings))]
 // Chat-User settings
 [Union(50, typeof(ChatUserSettings))]
 [Union(51, typeof(ChatInviteSettings))]

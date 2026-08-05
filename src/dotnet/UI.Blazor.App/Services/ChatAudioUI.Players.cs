@@ -13,6 +13,10 @@ public partial class ChatAudioUI
     private readonly MutableState<ReplayState?> _replayState;
     private readonly AudioFocusRequester _audioFocusRequester;
     private AudioFocusScope? _audioFocusScope;
+    private int _audioFocusDenialCount;
+
+    // Advances on every refused acquisition - the state sync answers those by dropping the state.
+    public int AudioFocusDenialCount => Volatile.Read(ref _audioFocusDenialCount);
 
     // Compute methods
 
@@ -92,6 +96,26 @@ public partial class ChatAudioUI
         _ = Hub.AudioAttachmentPlayer.Stop();
     }
 
+    public async Task StartWalkieTalkieReplay(
+        ChatId chatId, Moment startAt, IReadOnlyCollection<ChatId> listeningChatsToRestore)
+    {
+        // Wake-driven StartReplay variant: no confirm modal, and the listening set restored
+        // when the replay ends is the armed-chat set supplied by the wake handler.
+        lock (Lock) {
+            if (_listeningChatsBeforeReplay.IsEmpty)
+                _listeningChatsBeforeReplay = listeningChatsToRestore.ToImmutableHashSet();
+        }
+        await ClearListeningChats().ConfigureAwait(false);
+
+        var speed = ReplaySettings.Value.Speed;
+        DebugLog?.LogInformation("StartWalkieTalkieReplay: chatId={ChatId}, startAt={StartAt}, speed={Speed}",
+            chatId, startAt, speed);
+
+        StopReplay();
+        _replayState.Value = new ReplayState(chatId, startAt, default, speed);
+        _ = Hub.AudioAttachmentPlayer.Stop();
+    }
+
     public void PauseReplay(Moment pausedAt)
     {
         var state = _replayState.Value;
@@ -122,6 +146,8 @@ public partial class ChatAudioUI
         }
 
         _audioFocusScope = await AudioFocusUI.TryAcquire(_audioFocusRequester).ConfigureAwait(false);
+        if (_audioFocusScope is null)
+            Interlocked.Increment(ref _audioFocusDenialCount);
         return _audioFocusScope;
     }
 

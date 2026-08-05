@@ -1,0 +1,79 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Services.Gestures
+@implements IDisposable
+@{
+    var lastGesture = _lastGesture is { } g ? g.Kind.ToString() : "none yet";
+}
+
+<Tile Class="ptt-practice">
+    <TileItem IsHoverable="false">
+        <Icon><i class="icon-talking text-2xl"></i></Icon>
+        <Content>Practice</Content>
+        <Caption>@(_isOn ? "Try a gesture - it won't transmit" : "Off")</Caption>
+        <Right>
+            <Toggle IsChecked="@_isOn" IsCheckedChanged="@OnToggle"/>
+        </Right>
+    </TileItem>
+    @if (_isOn) {
+        <div class="c-readout">
+            <div>Samples: @GestureUI.SampleCount</div>
+            <div>Shake peak: @GestureUI.ShakePeakDeviation.ToString("F2") g</div>
+            <div>Last gesture: @lastGesture</div>
+        </div>
+    }
+</Tile>
+
+@code {
+    private bool _isOn;
+    private GestureEvent? _lastGesture;
+    private CancellationTokenSource? _refreshCts;
+
+    [Inject] private AppUIHub Hub { get; init; } = null!;
+
+    private GestureUI GestureUI => Hub.GestureUI;
+
+    public void Dispose()
+        => Stop();
+
+    private void OnToggle(bool isOn) {
+        if (isOn)
+            Start();
+        else
+            Stop();
+        StateHasChanged();
+    }
+
+    private void Start() {
+        _isOn = true;
+        _lastGesture = null;
+        GestureUI.PracticeGestureDetected += OnGesture;
+        GestureUI.IsPracticeMode = true;
+        var cts = new CancellationTokenSource();
+        _refreshCts = cts;
+        _ = BackgroundTask.Run(() => RefreshLoop(cts.Token), CancellationToken.None);
+    }
+
+    private void Stop() {
+        if (!_isOn)
+            return;
+
+        _isOn = false;
+        GestureUI.IsPracticeMode = false;
+        GestureUI.PracticeGestureDetected -= OnGesture;
+        _refreshCts.CancelAndDisposeSilently();
+        _refreshCts = null;
+    }
+
+    private async Task RefreshLoop(CancellationToken cancellationToken) {
+        // The readout is a liveness indicator - a dead sensor must look dead, not mysterious.
+        while (!cancellationToken.IsCancellationRequested) {
+            await Task.Delay(500, cancellationToken).ConfigureAwait(true);
+            await InvokeAsync(StateHasChanged).ConfigureAwait(true);
+        }
+    }
+
+    private void OnGesture(GestureEvent gesture) {
+        _lastGesture = gesture;
+        _ = InvokeAsync(StateHasChanged);
+    }
+}

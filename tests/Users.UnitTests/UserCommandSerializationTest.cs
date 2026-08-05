@@ -112,6 +112,14 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
+    public void ChatPositions_Set_Heard()
+    {
+        var position = new ChatPosition(42, "origin");
+        var cmd = new ChatPositions_Set(TestSession, TestChatId, ChatPositionKind.Heard, position);
+        cmd.AssertPassesThroughSerializers();
+    }
+
+    [Fact]
     public void ChatUsages_RegisterUsage_Basic()
     {
         var cmd = new ChatUsages_RegisterUsage(TestSession, ChatUsageListKind.ViewedGroupChats, TestChatId);
@@ -213,6 +221,14 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var position = new ChatPosition(42, "origin");
         var cmd = new ChatPositionsBackend_Set(TestUserId, TestChatId, ChatPositionKind.Read, position);
+        cmd.AssertPassesThroughSerializers();
+    }
+
+    [Fact]
+    public void ChatPositionsBackend_Set_Heard()
+    {
+        var position = new ChatPosition(42, "origin");
+        var cmd = new ChatPositionsBackend_Set(TestUserId, TestChatId, ChatPositionKind.Heard, position);
         cmd.AssertPassesThroughSerializers();
     }
 

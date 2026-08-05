@@ -1,0 +1,211 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Hosting
+@using ActualChat.UI.Blazor.App.Services.Gestures
+@inherits ComputedStateComponent<AppUIHub, PushToTalkSettings.Model>
+@{
+    var m = State.Value;
+    var hasSensors = HostInfo.HostKind.IsMauiApp() && GestureUI.Feed.IsAccelerometerAvailable;
+    var canAddChat = m.Chats.Count < UserWalkieTalkieSettings.MaxChatCount;
+}
+
+<div class="push-to-talk-settings">
+<TileTopic Topic="Push to Talk chats"/>
+<Tile>
+    @foreach (var chat in m.Chats) {
+        var isUnavailable = chat.Title is null;
+        <TileItem IsHoverable="false">
+            <Icon><i class="@(isUnavailable ? "icon-alert-circle" : "icon-talking") text-2xl"></i></Icon>
+            <Content>@(chat.Title ?? "Unavailable chat")</Content>
+            <Right>
+                <ButtonRound Class="btn-xs btn-danger" Tooltip="Remove" Click="@(() => OnRemove(chat.Id))">
+                    <i class="icon-minus-circle text-2xl"></i>
+                </ButtonRound>
+            </Right>
+        </TileItem>
+    }
+    @if (m.Chats.Count == 0) {
+        <p class="c-description">
+            No chats yet. A Push to Talk chat may wake your device when someone starts speaking.
+        </p>
+    }
+</Tile>
+<Button Class="add-avatar-btn" Click="@OnAddChat" IsDisabled="@(!canAddChat)">
+    <Icon><i class="icon-plus text-xl"></i></Icon>
+    <Title>@(canAddChat ? "Add chat" : $"Up to {UserWalkieTalkieSettings.MaxChatCount} chats")</Title>
+</Button>
+
+@if (HostInfo.HostKind.IsMauiApp()) {
+    <TileTopic Topic="Answer gestures"/>
+    <Tile>
+        @if (hasSensors) {
+            <TileItem Click="@OnToggleFlip">
+                <Icon><i class="icon-refresh text-2xl"></i></Icon>
+                <Content>Flip to talk</Content>
+                <Caption>Rotate the phone 90° and back</Caption>
+                <Right><Toggle IsChecked="@m.Settings.IsFlipToTalkEnabled" IsCheckedChanged="@(_ => OnToggleFlip())"/></Right>
+            </TileItem>
+            <TileItem Click="@OnToggleShake">
+                <Icon><i class="icon-alert-circle text-2xl"></i></Icon>
+                <Content>Double shake</Content>
+                <Caption>Shake the phone twice</Caption>
+                <Right><Toggle IsChecked="@m.Settings.IsDoubleShakeEnabled" IsCheckedChanged="@(_ => OnToggleShake())"/></Right>
+            </TileItem>
+        }
+        @if (HostInfo.AppKind == AppKind.Android) {
+            <TileItem Click="@OnToggleHeadsetButton">
+                <Icon><i class="icon-headphones-fill text-2xl"></i></Icon>
+                <Content>Headset button</Content>
+                <Caption>Press the button on your earbuds to reply</Caption>
+                <Right><Toggle IsChecked="@(m.Settings.IsHeadsetButtonEnabled ?? true)" IsCheckedChanged="@(_ => OnToggleHeadsetButton())"/></Right>
+            </TileItem>
+        }
+        @if (hasSensors) {
+            @if (m.Settings.IsDoubleShakeEnabled) {
+                <TileItem IsHoverable="false">
+                    <Icon><i class="icon-settings text-2xl"></i></Icon>
+                    <Content>Shake sensitivity</Content>
+                    <Right>
+                        <div class="c-sensitivity">
+                            @foreach (var value in SensitivityOrder) {
+                                var isSelected = m.Settings.ShakeSensitivity == value;
+                                <Button
+                                    Class="@($"btn-xs {(isSelected ? "btn-primary" : "")}")"
+                                    Click="@(() => OnSetSensitivity(value))">
+                                    @value.ToString()
+                                </Button>
+                            }
+                        </div>
+                    </Right>
+                </TileItem>
+            }
+            <TileItem Click="@OnToggleAlwaysOn">
+                <Icon><i class="icon-infinity text-2xl"></i></Icon>
+                <Content>Always listen for gestures</Content>
+                <Caption>Uses more battery. Off: gestures work only right after someone speaks.</Caption>
+                <Right><Toggle IsChecked="@m.Settings.AreGesturesAlwaysOn" IsCheckedChanged="@(_ => OnToggleAlwaysOn())"/></Right>
+            </TileItem>
+        } else {
+            <p class="c-description">This device has no motion sensor, so gestures are unavailable.</p>
+        }
+    </Tile>
+
+    @if (HostInfo.AppKind == AppKind.Ios) {
+        <TileTopic Topic="Lock Screen"/>
+        <Tile>
+            <TileItem Click="@OnTogglePttTransmit">
+                <Icon><i class="icon-talking text-2xl"></i></Icon>
+                <Content>Lock Screen talk button</Content>
+                <Caption>Reply from the Lock Screen without unlocking</Caption>
+                <Right><Toggle IsChecked="@(m.Settings.IsPttTransmitEnabled ?? true)" IsCheckedChanged="@(_ => OnTogglePttTransmit())"/></Right>
+            </TileItem>
+        </Tile>
+    }
+
+    @if (hasSensors) {
+        <TileTopic Topic="Practice"/>
+        <PushToTalkPracticePanel/>
+    }
+}
+
+<TileTopic Topic="Reply window"/>
+<Tile>
+    @foreach (var window in HotWindows) {
+        var isSelected = m.Settings.HotWindow == window;
+        <TileItem Click="@(() => OnSetHotWindow(window))">
+            <Icon><i class="icon-clock-2 text-2xl"></i></Icon>
+            <Content>@($"{window.TotalSeconds:F0} seconds")</Content>
+            <Caption>How long the mic stays open in silence</Caption>
+            <Right>
+                @if (isSelected) {
+                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
+                }
+            </Right>
+        </TileItem>
+    }
+</Tile>
+
+<TileTopic Topic="Cues"/>
+<Tile>
+    <TileItem Click="@OnToggleCues">
+        <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
+        <Content>Audible cues</Content>
+        <Caption>Play a sound when a reply starts and ends</Caption>
+        <Right><Toggle IsChecked="@m.Settings.AreAudibleCuesEnabled" IsCheckedChanged="@(_ => OnToggleCues())"/></Right>
+    </TileItem>
+</Tile>
+</div>
+
+@code {
+    private static readonly ShakeSensitivity[] SensitivityOrder =
+        [ShakeSensitivity.Low, ShakeSensitivity.Medium, ShakeSensitivity.High];
+    private static readonly TimeSpan[] HotWindows =
+        [TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(120)];
+
+    private GestureUI GestureUI => Hub.GestureUI;
+    private IChats Chats => Hub.Chats;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.UserWalkieTalkieSettings().Get(cancellationToken).ConfigureAwait(false);
+        var chats = new List<ChatItem>(settings.PttChatIds.Length);
+        foreach (var chatId in settings.PttChatIds) {
+            var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+            chats.Add(new ChatItem(chatId, chat?.Title));
+        }
+        return new Model(settings, chats);
+    }
+
+    private Task OnRemove(ChatId chatId)
+        => UserSettingsUI.UserWalkieTalkieSettings().Update(x => x.WithoutPttChat(chatId), CancellationToken.None);
+
+    private Task OnAddChat()
+        => ModalUI.Show(new PttChatPickerModal.Model(
+            State.Value.Chats.Select(c => c.Id).ToHashSet(),
+            UserWalkieTalkieSettings.MaxChatCount - State.Value.Chats.Count));
+
+    private Task OnToggleFlip()
+        => UserSettingsUI.UserWalkieTalkieSettings()
+            .Update(x => x with { IsFlipToTalkEnabled = !x.IsFlipToTalkEnabled }, CancellationToken.None);
+
+    private Task OnToggleShake()
+        => UserSettingsUI.UserWalkieTalkieSettings()
+            .Update(x => x with { IsDoubleShakeEnabled = !x.IsDoubleShakeEnabled }, CancellationToken.None);
+
+    private Task OnToggleHeadsetButton()
+        => UserSettingsUI.UserWalkieTalkieSettings()
+            .Update(
+                x => x with { IsHeadsetButtonEnabled = !(x.IsHeadsetButtonEnabled ?? true) },
+                CancellationToken.None);
+
+    private Task OnTogglePttTransmit()
+        => UserSettingsUI.UserWalkieTalkieSettings()
+            .Update(
+                x => x with { IsPttTransmitEnabled = !(x.IsPttTransmitEnabled ?? true) },
+                CancellationToken.None);
+
+    private Task OnToggleAlwaysOn()
+        => UserSettingsUI.UserWalkieTalkieSettings()
+            .Update(x => x with { AreGesturesAlwaysOn = !x.AreGesturesAlwaysOn }, CancellationToken.None);
+
+    private Task OnToggleCues()
+        => UserSettingsUI.UserWalkieTalkieSettings()
+            .Update(x => x with { AreAudibleCuesEnabled = !x.AreAudibleCuesEnabled }, CancellationToken.None);
+
+    private Task OnSetSensitivity(ShakeSensitivity sensitivity)
+        => UserSettingsUI.UserWalkieTalkieSettings()
+            .Update(x => x with { ShakeSensitivity = sensitivity }, CancellationToken.None);
+
+    private Task OnSetHotWindow(TimeSpan hotWindow)
+        => UserSettingsUI.UserWalkieTalkieSettings()
+            .Update(x => x with { HotWindow = hotWindow }, CancellationToken.None);
+
+    // Nested types
+
+    public sealed record Model(UserWalkieTalkieSettings Settings, IReadOnlyList<ChatItem> Chats) {
+        public static readonly Model None = new(new UserWalkieTalkieSettings(), []);
+    }
+
+    public sealed record ChatItem(ChatId Id, string? Title);
+}

@@ -5,7 +5,7 @@ namespace ActualChat.Users;
 /// <summary>
 /// Specifies the type of position tracked in a chat.
 /// </summary>
-public enum ChatPositionKind { Read = 0, View };
+public enum ChatPositionKind { Read = 0, View, Heard };
 
 /// <summary>
 /// Represents a user's position within a chat conversation.

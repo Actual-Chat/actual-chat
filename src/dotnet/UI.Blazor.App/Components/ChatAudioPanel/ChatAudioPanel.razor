@@ -72,6 +72,9 @@
             </div>
             <RecorderToggle Chat="@Chat"/>
         </div>
+        <div class="walkie-reply-button">
+            <WalkieReplyToggle Chat="@Chat"/>
+        </div>
         @if (IsNarrow) {
             <VoiceSettingsButton Chat="@Chat" IsNarrow="true" />
         }

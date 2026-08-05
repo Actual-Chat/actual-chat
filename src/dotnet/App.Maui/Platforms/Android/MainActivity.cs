@@ -87,6 +87,7 @@ public partial class MainActivity : MauiAppCompatActivity
         }
 
         BlazorWebViewApp.EnsureStarted();
+        CloseHeadlessScope();
 
         Interlocked.Exchange(ref _current, this);
         // If app is sent to background with back button
@@ -266,6 +267,18 @@ public partial class MainActivity : MauiAppCompatActivity
              .SetMediaType(visualMediaType)
              .Build();
         _pickVisualMediaLauncher.Launch(pickVisualMediaRequest);
+    }
+
+    private void CloseHeadlessScope()
+    {
+        // A live headless scope means a walkie reply may be recording with no UI on screen.
+        // TryDetachCurrent clears _current synchronously - a wake or a headset press racing this
+        // must see no headless scope, not the one that's about to be stopped and disposed.
+        if (HeadlessBlazorScope.TryDetachCurrent("MainActivity.OnCreate") is not { } scope)
+            return;
+
+        _ = BackgroundTask.Run(
+            () => WalkieTalkieSession.StopAndDispose(scope), Log, "Failed to close the headless walkie scope");
     }
 
     private void DumpMemoryInfo()

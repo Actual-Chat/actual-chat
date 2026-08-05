@@ -5,6 +5,7 @@ using ActualChat.MediaPlayback;
 using ActualChat.Notifications;
 using ActualChat.Streaming;
 using ActualChat.UI.App.Services;
+using ActualChat.UI.Blazor.App.Services.Gestures;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -57,6 +58,9 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public VideoQualityUI VideoQualityUI => field ??= Services.GetRequiredService<VideoQualityUI>();
     public AudioDiagnosticsUI AudioDiagnosticsUI => field ??= Services.GetRequiredService<AudioDiagnosticsUI>();
     public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
+    public IncomingVoiceActivityUI IncomingVoiceActivityUI => field ??= Services.GetRequiredService<IncomingVoiceActivityUI>();
+    public WalkieTalkieReplyUI WalkieTalkieReplyUI => field ??= Services.GetRequiredService<WalkieTalkieReplyUI>();
+    public GestureUI GestureUI => field ??= Services.GetRequiredService<GestureUI>();
     public LiveSessionUI LiveSessionUI => field ??= Services.GetRequiredService<LiveSessionUI>();
     public IncomingCallUI IncomingCallUI => field ??= Services.GetRequiredService<IncomingCallUI>();
     public LiveBlockUI LiveBlockUI => field ??= Services.GetRequiredService<LiveBlockUI>();

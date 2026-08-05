@@ -1,12 +1,19 @@
+using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Services.Gestures;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public enum AudioWidgetMode { Replaying, Listening, Recording }
 public sealed record AudioWidgetChatInfo(ChatId Id, string Title, string PicUrl, int ExtraChatCount);
-public sealed record AudioWidgetState(AudioWidgetMode Mode, AudioWidgetChatInfo Chat, bool IsPaused);
+public sealed record AudioWidgetState(
+    AudioWidgetMode Mode, AudioWidgetChatInfo Chat, bool IsPaused, bool CanPause = true);
 
 public class AudioWidget : IDisposable
 {
+    private static readonly TimeSpan AnswerWindowExpiryDelay = TimeSpan.FromMilliseconds(250);
+
     private readonly ComputedState<AudioWidgetState?> _state;
+    private readonly bool _isAnswerWindowSupported;
     private AudioWidgetState? _lastState;
 
     private AppUIHub Hub { get; }
@@ -14,6 +21,7 @@ public class AudioWidget : IDisposable
     private IChats Chats => Hub.Chats;
     private IAccounts Accounts => Hub.Accounts;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
     private UrlMapper UrlMapper => Hub.UrlMapper;
 
     public IState<AudioWidgetState?> State => _state;
@@ -21,6 +29,7 @@ public class AudioWidget : IDisposable
     public AudioWidget(AppUIHub hub)
     {
         Hub = hub;
+        _isAnswerWindowSupported = hub.HostInfo.AppKind == AppKind.Android;
         _state = hub.StateFactory.NewComputed(
             new ComputedState<AudioWidgetState?>.Options() {
                 InitialValue = null,
@@ -29,10 +38,14 @@ public class AudioWidget : IDisposable
             },
             ComputeState);
         _state.Updated += OnStateUpdated;
+        if (_isAnswerWindowSupported)
+            IncomingVoiceActivityUI.IncomingVoiceStamped += OnIncomingVoiceStamped;
     }
 
     public virtual void Dispose()
     {
+        if (_isAnswerWindowSupported)
+            IncomingVoiceActivityUI.IncomingVoiceStamped -= OnIncomingVoiceStamped;
         _state.Updated -= OnStateUpdated;
         _state.Dispose();
     }
@@ -44,17 +57,30 @@ public class AudioWidget : IDisposable
 
     protected void InvokeAction(string actionName)
     {
-        var replayState = ChatAudioUI.ReplayState.Value;
-        if (replayState is not null)
-            InvokeReplayAction(replayState, actionName);
-        else {
-            var state = _state.Value;
-            if (state is { Mode: AudioWidgetMode.Listening })
-                InvokeListeningAction(state.Chat.Id, actionName);
+        // Routes on what the notification is showing, not on ReplayState: a replay state whose
+        // player isn't playing leaves ComputeState showing something else entirely.
+        if (_state.Value is not { } state)
+            return;
+
+        switch (state.Mode) {
+        case AudioWidgetMode.Replaying:
+            if (ChatAudioUI.ReplayState.Value is { } replayState)
+                InvokeReplayAction(replayState, actionName);
+            break;
+        case AudioWidgetMode.Listening:
+            InvokeListeningAction(state.Chat.Id, actionName);
+            break;
         }
     }
 
     // Private methods
+
+    private void OnIncomingVoiceStamped()
+    {
+        // The stamps are a plain dictionary, so a stamp landing or being cleared invalidates
+        // nothing on its own - and the answer-window state depends on both.
+        _state.Invalidate();
+    }
 
     private void OnStateUpdated(State state, StateEventKind eventKind)
     {
@@ -113,13 +139,48 @@ public class AudioWidget : IDisposable
             }
         }
 
-        if (mode is not { } vMode)
-            return null;
+        var canPause = true;
+        if (mode is not { } vMode) {
+            if (await GetAnswerWindowChatId(cancellationToken).ConfigureAwait(false) is not { } answerChatId)
+                return null;
+
+            // Nothing plays in the answer-window state, so there is no player a Pause could reach.
+            vMode = AudioWidgetMode.Listening;
+            chatId = answerChatId;
+            canPause = false;
+        }
 
         var chatInfo = await GetChatInfo(chatId!).ConfigureAwait(false);
         if (extraChatCount > 0)
             chatInfo = chatInfo with { ExtraChatCount = extraChatCount };
-        return new AudioWidgetState(vMode, chatInfo, isPaused);
+        return new AudioWidgetState(vMode, chatInfo, isPaused, canPause);
+    }
+
+    private async Task<ChatId?> GetAnswerWindowChatId(CancellationToken cancellationToken)
+    {
+        // Android routes the headset button through the media session, which lives and dies with this
+        // widget's foreground service - so on Android the widget has to outlive playback for as long
+        // as the walkie answer window is open. Every other host returns here immediately.
+        if (!_isAnswerWindowSupported)
+            return null;
+
+        var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        if (pttChatIds.Count == 0)
+            return null;
+
+        var now = Hub.Clocks.ServerClock.Now;
+        var recencyWindow = Constants.Audio.WalkieTalkieReplyRecencyWindow;
+        var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
+        var answer = GestureActivationPolicy.GetAnswerWindowChat(
+            pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
+        if (answer is not { } vAnswer)
+            return null;
+
+        // Nothing invalidates this state when the window merely lapses - without the
+        // auto-invalidation the widget would never tear itself down.
+        var expiresIn = vAnswer.At + recencyWindow - now + AnswerWindowExpiryDelay;
+        Computed.GetCurrent().Invalidate(expiresIn, false);
+        return vAnswer.ChatId;
     }
 
     private async Task<AudioWidgetChatInfo> GetChatInfo(ChatId chatId)
@@ -162,6 +223,7 @@ public class AudioWidget : IDisposable
     {
         switch (actionName) {
         case ActionNames.Stop:
+            IncomingVoiceActivityUI.ClearIncomingVoice(chatId);
             _ = ChatAudioUI.SetListeningState(chatId, false);
             break;
         case ActionNames.Pause:

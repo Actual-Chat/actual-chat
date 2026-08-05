@@ -29,6 +29,10 @@ public class ChatPositions(IServiceProvider services) : DbServiceBase<UsersDbCon
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, kind, position) = command;
+        if (kind == ChatPositionKind.Heard)
+            throw StandardError.Constraint(
+                "Heard position can't be set directly - it's owned by the server-side ack path.");
+
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)

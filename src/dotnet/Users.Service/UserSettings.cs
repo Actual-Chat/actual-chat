@@ -10,6 +10,26 @@ namespace ActualChat.Users;
 /// </summary>
 public class UserSettings : IUserSettings
 {
+    private static readonly Dictionary<string, Type> KeyToType = new() {
+        [nameof(UserAppSettings)] = typeof(UserAppSettings),
+        [nameof(UserEmailsSettings)] = typeof(UserEmailsSettings),
+        [nameof(UserLanguageSettings)] = typeof(UserLanguageSettings),
+        [nameof(UserListeningSettings)] = typeof(UserListeningSettings),
+        [nameof(UserNavbarSettings)] = typeof(UserNavbarSettings),
+        [nameof(UserReactionSettings)] = typeof(UserReactionSettings),
+        [nameof(UserAvatarSettings)] = typeof(UserAvatarSettings),
+        [nameof(UserTranscriptionEngineSettings)] = typeof(UserTranscriptionEngineSettings),
+        [nameof(UserOnboardingSettings)] = typeof(UserOnboardingSettings),
+        [nameof(UserBubbleSettings)] = typeof(UserBubbleSettings),
+        [nameof(UserChatRecordingDetectedLanguage)] = typeof(UserChatRecordingDetectedLanguage),
+        [nameof(UserTranscodingTestSettings)] = typeof(UserTranscodingTestSettings),
+        [nameof(FakeDeviceContactOptions)] = typeof(FakeDeviceContactOptions),
+        [nameof(UserReplaySettings)] = typeof(UserReplaySettings),
+        [nameof(UserWalkieTalkieSettings)] = typeof(UserWalkieTalkieSettings),
+        [nameof(RecentMentions)] = typeof(RecentMentions),
+        [nameof(RecentGifs)] = typeof(RecentGifs),
+    };
+
     private static KvasSerializer Serializer => Kvas.KvasExt.Serializer;
 
     private IAccounts Accounts { get; }
@@ -40,6 +60,11 @@ public class UserSettings : IUserSettings
             return;
 
         var (session, key, value) = command;
+        // Null for a singleton key = an unknown union tag deserialized to null; deleting the row
+        // would silently wipe the settings. Parameterized "@" keys keep null-as-delete.
+        if (value is null && KeyToType.ContainsKey(key))
+            throw StandardError.Constraint($"A null value is not allowed for the '{key}' settings key.");
+
         value?.ValidateKey(key);
 
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
@@ -117,23 +142,4 @@ public class UserSettings : IUserSettings
         // Simple keys: the key is the type name
         return KeyToType.GetValueOrDefault(key) ?? typeof(StoredSettings);
     }
-
-    private static readonly Dictionary<string, Type> KeyToType = new(StringComparer.Ordinal) {
-        [nameof(UserAppSettings)] = typeof(UserAppSettings),
-        [nameof(UserEmailsSettings)] = typeof(UserEmailsSettings),
-        [nameof(UserLanguageSettings)] = typeof(UserLanguageSettings),
-        [nameof(UserListeningSettings)] = typeof(UserListeningSettings),
-        [nameof(UserNavbarSettings)] = typeof(UserNavbarSettings),
-        [nameof(UserReactionSettings)] = typeof(UserReactionSettings),
-        [nameof(UserAvatarSettings)] = typeof(UserAvatarSettings),
-        [nameof(UserTranscriptionEngineSettings)] = typeof(UserTranscriptionEngineSettings),
-        [nameof(UserOnboardingSettings)] = typeof(UserOnboardingSettings),
-        [nameof(UserBubbleSettings)] = typeof(UserBubbleSettings),
-        [nameof(UserChatRecordingDetectedLanguage)] = typeof(UserChatRecordingDetectedLanguage),
-        [nameof(UserTranscodingTestSettings)] = typeof(UserTranscodingTestSettings),
-        [nameof(FakeDeviceContactOptions)] = typeof(FakeDeviceContactOptions),
-        [nameof(UserReplaySettings)] = typeof(UserReplaySettings),
-        [nameof(RecentMentions)] = typeof(RecentMentions),
-        [nameof(RecentGifs)] = typeof(RecentGifs),
-    };
 }

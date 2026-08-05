@@ -38,8 +38,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
 
         // act
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, false, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, false, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, false, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, false, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
@@ -113,8 +113,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_080);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live!.SessionStartedAt.Should().NotBeNull();
 
@@ -165,8 +165,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_090);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -196,8 +196,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_100);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -259,8 +259,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_180);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -304,8 +304,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_190);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         for (var i = 0; i < 3; i++)
@@ -349,8 +349,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_110);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -410,8 +410,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_120);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -485,8 +485,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_160);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -565,8 +565,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_130);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -625,8 +625,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_135);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -696,8 +696,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_150);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -772,8 +772,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_170);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -836,8 +836,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_200);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         for (var i = 0; i < 3; i++)
@@ -903,8 +903,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_240);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -976,8 +976,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_250);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
@@ -1088,8 +1088,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_210);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         for (var i = 0; i < 2; i++)
@@ -1133,8 +1133,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_320);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
@@ -1171,7 +1171,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var (chat, _) = await Tester.CreateAndGetChat(false, "join-records-test");
         var peerId = AuthorId.New(chat.Id, 777_310);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         chatUI.SelectChatOnNavigation(chat.Id);
@@ -1195,8 +1195,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_330);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         await chatAudioUI.SetListeningState(chat.Id, true);
@@ -1223,9 +1223,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var peerId = AuthorId.New(chat.Id, 777_340);
         var peer2Id = AuthorId.New(chat.Id, 777_341);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         // 2+ => SessionStartedAt latches
-        await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
@@ -1260,8 +1260,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var peerId = AuthorId.New(chat.Id, 777_350);
         var peer2Id = AuthorId.New(chat.Id, 777_351);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         for (var i = 0; i < 3; i++)
@@ -1309,8 +1309,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_400);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         // A title so the block has a card, but the summary covers only V (EndEntryLid = v) - the entries
@@ -1369,8 +1369,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_410);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
@@ -1437,8 +1437,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_411);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
@@ -1508,8 +1508,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_420);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
@@ -1575,8 +1575,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_420);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {

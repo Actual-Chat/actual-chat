@@ -40,6 +40,10 @@ public abstract class TuneUI : ProcessorBase
         [Tune.ChangeAttachments] = new ([20] /*, "change-attachments"*/),
         [Tune.ChangeLanguage] = new ([20, 20] /*, "change-language"*/),
         [Tune.ShowMenu] = new ([20] /*, "show-menu"*/),
+        // Walkie-talkie
+        [Tune.WalkieReplyEnded] = new ([100, 50, 100]),
+        [Tune.WalkieReplyNothingHeard] = new ([80]),
+        [Tune.WalkieGestureDetected] = new ([40]),
     };
     // Suppress redundant tactile feedback fired as a side-effect of starting
     // recording: ConfirmRecording (mic-live signal ~0.5–1 s after start) and
@@ -69,6 +73,11 @@ public abstract class TuneUI : ProcessorBase
             _backendRef ??= DotNetObjectReference.Create(this);
             await Hub.JS.InvokeVoidAsync(JSInitMethod, _backendRef, Tunes).ConfigureAwait(false);
         }
+        catch (JSDisconnectedException e) {
+            // The headless walkie-talkie scope marks its runtime disconnected up front, so this
+            // is the expected path on every wake - not something triage should be pointed at.
+            Log.LogWarning(e, "Initialize skipped: the JS runtime is disconnected");
+        }
         catch (Exception e) {
             Log.LogError(e, "Initialize failed");
         }
@@ -80,22 +89,24 @@ public abstract class TuneUI : ProcessorBase
         return Task.CompletedTask;
     }
 
-    public Task Play(Tune tune)
+    public Task Play(Tune tune, bool mustPlay = true)
     {
+        // mustPlay: false still opens the follow-up window - a caller that mutes BeginRecording
+        // otherwise gets MORE feedback, because its follow-ups stop being suppressed.
         if (IsSuppressed(tune))
             return Task.CompletedTask;
 
         OnBeforePlay(tune);
-        return PlayInternal(tune);
+        return mustPlay ? PlayInternal(tune) : Task.CompletedTask;
     }
 
-    public Task PlayAndWait(Tune tune)
+    public Task PlayAndWait(Tune tune, bool mustPlay = true)
     {
         if (IsSuppressed(tune))
             return Task.CompletedTask;
 
         OnBeforePlay(tune);
-        return PlayAndWaitInternal(tune);
+        return mustPlay ? PlayAndWaitInternal(tune) : Task.CompletedTask;
     }
 
     protected abstract Task PlayInternal(Tune tune);
@@ -146,6 +157,9 @@ public enum Tune
     DragStart,
     ChangeToggle,
     ClickButton,
+    WalkieReplyEnded,
+    WalkieReplyNothingHeard,
+    WalkieGestureDetected,
 }
 
 /// <summary>

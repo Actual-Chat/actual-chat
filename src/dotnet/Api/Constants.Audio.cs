@@ -65,6 +65,24 @@ public static partial class Constants
         // Streaming / channel sizing
         public const int StreamingChannelCapacity = 1024;
         public static readonly TimeSpan ListeningDuration = TimeSpan.FromSeconds(60);
+        // Walkie-talkie mode (docs/superpowers/specs/2026-07-13-walkie-talkie-android-design.md).
+        // Invariant: must stay > the server's NotificationsSettings.WalkieTalkieWakeTtl (30s).
+        public static readonly TimeSpan WalkieTalkieIdleTimeout = TimeSpan.FromMinutes(5);
+        public static readonly TimeSpan WalkieTalkieIdleCheckPeriod = TimeSpan.FromSeconds(15);
+        // Debounces GestureUI's activation loop: its inputs invalidate far more often than the
+        // idle-check period, and it runs on battery-sensitive mobile clients.
+        public static readonly TimeSpan WalkieTalkieGestureCheckMinPeriod = TimeSpan.FromSeconds(0.25);
+        // Matches the wake push's FCM TTL; older wakes skip replay-from-start and go live.
+        public static readonly TimeSpan WalkieTalkieStaleWakeAge = TimeSpan.FromSeconds(60);
+        public static readonly TimeSpan WalkieTalkieReplyColdStartTimeout = TimeSpan.FromSeconds(15);
+        public static readonly TimeSpan WalkieTalkieReplyRecencyWindow = TimeSpan.FromSeconds(150);
+        // Apple PTT transmit: the framework chimes when it activates the session, not when our
+        // recorder exists, so audio is captured natively across the gap. Capacity must stay <=
+        // 10 s, which is AppleAudioCapture's outBuffer size at RecordingSampleRate.
+        public static readonly TimeSpan WalkieTalkiePttTransmitStartupTimeout = TimeSpan.FromSeconds(8);
+        public static readonly TimeSpan WalkieTalkiePreRollCapacity = TimeSpan.FromSeconds(8);
+        public static readonly TimeSpan WalkieTalkiePreRollMinDuration = TimeSpan.FromSeconds(0.4);
+        public static readonly TimeSpan WalkieTalkiePreRollFlushDelay = TimeSpan.FromSeconds(1.5);
         public static readonly TimeSpan RecordingDuration = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxRealtimeStreamDrift = TimeSpan.FromSeconds(1.5);
         public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(3);

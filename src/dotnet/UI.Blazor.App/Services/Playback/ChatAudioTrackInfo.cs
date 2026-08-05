@@ -7,6 +7,8 @@ public record ChatAudioTrackInfo : TrackInfo
     public ChatEntry? AudioEntry { get; }
     public Chat.Chat? Chat { get; }
     public Author? Author { get; }
+    public ChatEntryId? EntryId { get; }
+    public string StreamId { get; init; } = "";
 
     // Primary constructor for entry-based playback
     public ChatAudioTrackInfo(ChatEntry audioEntry, Chat.Chat chat, Author author)
@@ -15,6 +17,7 @@ public record ChatAudioTrackInfo : TrackInfo
         AudioEntry = audioEntry;
         Chat = chat;
         Author = author;
+        EntryId = audioEntry.Id;
     }
 
     // Constructor for RTC stream-based playback (always streaming)
@@ -23,6 +26,7 @@ public record ChatAudioTrackInfo : TrackInfo
     {
         Chat = chat;
         Author = author;
+        EntryId = entryId;
     }
 
     public static Symbol ComposeTrackId(ChatEntry entry)

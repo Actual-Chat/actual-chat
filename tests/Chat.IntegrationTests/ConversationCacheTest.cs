@@ -120,8 +120,8 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         var conversations = Tester.AppServices.GetRequiredService<IConversationsBackend>();
 
         // Two streamers latch the session - only a latched one owns a range and renders a card.
-        await live.OnStreamRegistered(chatId, author!.Id, null, true, default);
-        await live.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_071), null, true, default);
+        await live.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+        await live.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_071), null, true, true, default);
         var state = await live.GetState(chatId, default);
         state!.SessionStartedAt.Should().NotBeNull("the session must latch or these tests don't bite");
 

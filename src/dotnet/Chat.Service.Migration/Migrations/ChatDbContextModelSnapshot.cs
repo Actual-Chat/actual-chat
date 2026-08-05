@@ -449,6 +449,9 @@ namespace ActualChat.Chat.Migrations
                     b.HasKey("Id")
                         .HasName("pk_chat_entries");
 
+                    b.HasIndex("AudioId")
+                        .HasFilter("\"kind\" = 0 AND \"audio_id\" IS NOT NULL");
+
                     b.HasIndex("ContentStreamId")
                         .HasFilter("\"kind\" = 0 AND \"content_stream_id\" IS NOT NULL");
 

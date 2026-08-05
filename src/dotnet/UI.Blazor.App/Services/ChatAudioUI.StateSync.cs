@@ -23,6 +23,7 @@ public partial class ChatAudioUI
             AsyncChain.From(StartStopReplayingPlayers),
             AsyncChain.From(StopReplayWhenRecordingStarts),
             AsyncChain.From(StopListeningWhenIdle),
+            AsyncChain.From(StopListeningWhenIdleInBackground),
             AsyncChain.From(StopRecordingAndReplayOnDeviceAwake),
             AsyncChain.From(UpdateNextBeepAt),
             AsyncChain.From(PlayBeep),
@@ -210,7 +211,8 @@ public partial class ChatAudioUI
             // audioSession is set to 'play-and-record' after getUserMedia,
             // and WebKit AEC does not register the DestinationFallbackTrait
             // playback path, so a tune playing into a live mic feeds back.
-            await TuneUI.PlayAndWait(Tune.BeginRecording).ConfigureAwait(false);
+            await TuneUI.PlayAndWait(Tune.BeginRecording, mustPlay: !Volatile.Read(ref _isBeginTuneSuppressed))
+                .ConfigureAwait(false);
             // Install before StartRecording so we don't miss a fast false→true→false
             // transition (e.g., pipeline dies during JS init).
             var whenRecorderStopped = ForegroundTask.Run(async () => {
@@ -233,10 +235,7 @@ public partial class ChatAudioUI
                     .ConfigureAwait(false),
                 abortToken);
             whenIdle = ForegroundTask.Run(async () => {
-                var options = new RecordingIdleOptions(
-                    Constants.Audio.RecordingDuration,
-                    AudioSettings.IdleRecordingPreCountdownTimeout,
-                    AudioSettings.IdleRecordingCheckPeriod);
+                var options = GetRecordingIdleOptions((TimeSpan?)_recordingIdleDurationBox, AudioSettings);
                 var streamingIdleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, abortToken);
                 await foreach (var serverStopAt in streamingIdleBoundaries.ConfigureAwait(false))
                     _stopRecordingAt.Value = serverStopAt.Convert(serverClock, cpuClock);
@@ -603,6 +602,63 @@ public partial class ChatAudioUI
             _stopListeningAtMap.Value = _stopListeningAtMap.Value.Remove(chatId);
     }
 
+    // Walkie-talkie hot->armed drop: in background (or a headless wake session), stop ALL
+    // listening - including ListeningMode.Forever chats, which the watcher above deliberately
+    // never stops - after WalkieTalkieIdleTimeout of silence. The FCM wake push re-arms us.
+    private async Task StopListeningWhenIdleInBackground(CancellationToken cancellationToken)
+    {
+        // Only platforms with a wake path that re-arms dropped listening:
+        // FCM data pushes on Android, Apple Push to Talk on iOS.
+        if (HostInfo.AppKind is not (AppKind.Android or AppKind.Ios))
+            return;
+
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        var backgroundStateTracker = Hub.Services.GetRequiredService<BackgroundStateTracker>();
+        var serverClock = Clocks.ServerClock;
+        Moment? idleSince = null;
+        Moment? lastActiveAt = null;
+        while (!cancellationToken.IsCancellationRequested) {
+            await Clocks.CpuClock.Delay(Constants.Audio.WalkieTalkieIdleCheckPeriod, cancellationToken)
+                .ConfigureAwait(false);
+
+            var isBackground = backgroundStateTracker.IsBackground.Value || IsWalkieTalkieHeadless;
+            if (!isBackground) {
+                (idleSince, lastActiveAt) = (null, null);
+                continue;
+            }
+
+            var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
+            var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
+            if (listeningChatIds.IsEmpty || _replayState.Value is not null || recordingChatId is not null) {
+                (idleSince, lastActiveAt) = (null, null);
+                continue;
+            }
+
+            var now = serverClock.Now;
+            idleSince ??= now;
+            var hasAnyActivity = false;
+            foreach (var chatId in listeningChatIds)
+                if (await LiveStreamUI.HasActivity(chatId, cancellationToken).ConfigureAwait(false)) {
+                    hasAnyActivity = true;
+                    break;
+                }
+            if (hasAnyActivity)
+                lastActiveAt = now;
+
+            var dropAt = WalkieTalkie.ComputeIdleDropAt(
+                hasAnyActivity, lastActiveAt, idleSince.Value, Constants.Audio.WalkieTalkieIdleTimeout);
+            if (dropAt is null || now < dropAt)
+                continue;
+
+            Log.LogInformation(
+                "Walkie-talkie: {Count} listening chat(s) idle in background, dropping to armed",
+                listeningChatIds.Count);
+            await ClearListeningChats().ConfigureAwait(false);
+            (idleSince, lastActiveAt) = (null, null);
+        }
+    }
+
     private async Task StopRecordingAndReplayOnDeviceAwake(CancellationToken cancellationToken)
     {
         await DeviceAwakeUI.WhenSleepDetected(cancellationToken).ConfigureAwait(false);
@@ -832,6 +888,12 @@ public partial class ChatAudioUI
 
     private async Task ShowRecordingTroubleshooter(TimeSpan delay, CancellationToken cancellationToken) {
         await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+        if (!Hub.WhenInitialized.IsCompleted) {
+            // A headless scope has no renderer, so Dispatcher would throw and WhenInitialized never completes.
+            Log.LogWarning("Recording issue, but there is no renderer to show the troubleshooter in");
+            return;
+        }
+
         await Dispatcher.InvokeAsync(async () => {
             var model = new RecordingTroubleshooterModal.Model(null, true);
             var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);

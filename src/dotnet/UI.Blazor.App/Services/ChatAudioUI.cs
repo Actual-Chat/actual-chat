@@ -18,6 +18,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
+    // Boxed because the CLR forbids volatile on Nullable<TimeSpan>; null means "no override".
+    private volatile object? _recordingIdleDurationBox;
+    private bool _isBeginTuneSuppressed;
 
     private IChats Chats => Hub.Chats;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
@@ -38,6 +41,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private new ILogger? DebugLog => DebugMode ? Log : null;
 
     public bool IsAudioSyncEnabled { get; set; } = true;
+    public bool IsWalkieTalkieHeadless { get; set; }
     public SyncedState<UserReplaySettings> ReplaySettings { get; init; }
     public IState<ReplayState?> ReplayState => _replayState;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time
@@ -105,8 +109,21 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
     {
         await Hub.ChatUI.WhenReady.ConfigureAwait(false);
-        return await UserSettingsUI.UserListeningSettings()
-            .Get(x => x.AlwaysListenedChatIds.ToList(), cancellationToken)
+        var alwaysListened = await UserSettingsUI.UserListeningSettings()
+            .Get(x => x.AlwaysListenedChatIds, cancellationToken)
+            .ConfigureAwait(false);
+        // A PTT chat wakes you to hear someone, so it must also be listened to -
+        // arming alone starts no player.
+        var pttChatIds = await GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        return alwaysListened.Concat(pttChatIds).Distinct().ToList();
+    }
+
+    [ComputeMethod(MinCacheDuration = 300)] // Synced
+    public virtual async Task<List<ChatId>> GetPttChatIds(CancellationToken cancellationToken)
+    {
+        await Hub.ChatUI.WhenReady.ConfigureAwait(false);
+        return await UserSettingsUI.UserWalkieTalkieSettings()
+            .Get(x => x.PttChatIds.ToList(), cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -160,8 +177,33 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return Task.FromResult(recordingChat?.ChatId);
     }
 
-    public ValueTask SetRecordingChatId(ChatId? chatId)
+    public bool IsRecording()
+        => ActiveChatsUI.ActiveChats.Value.Any(c => c.IsRecording);
+
+    public static RecordingIdleOptions GetRecordingIdleOptions(TimeSpan? idleDuration, AudioSettings audioSettings)
     {
+        if (idleDuration is not { } duration)
+            return new RecordingIdleOptions(
+                Constants.Audio.RecordingDuration,
+                audioSettings.IdleRecordingPreCountdownTimeout,
+                audioSettings.IdleRecordingCheckPeriod);
+
+        var preCountdown = Constants.Audio.RecordingDuration - audioSettings.IdleRecordingPreCountdownTimeout;
+        return new RecordingIdleOptions(
+            duration,
+            (duration - preCountdown).Positive(),
+            audioSettings.IdleRecordingCheckPeriod);
+    }
+
+    public ValueTask SetRecordingChatId(
+        ChatId? chatId,
+        bool isPushToTalk = false,
+        TimeSpan? idleDuration = null,
+        bool mustPlayBeginTune = true)
+    {
+        _recordingIdleDurationBox = chatId is null ? null : (object?)idleDuration;
+        // Publication: RecordChat reads this from its own flow right before opening the mic.
+        Volatile.Write(ref _isBeginTuneSuppressed, chatId is not null && !mustPlayBeginTune);
         if (chatId is not null)
             Hub.AudioAttachmentPlayer.OnConversationJoined();
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
@@ -184,22 +226,29 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
                 // Begin recording
                 var chat = activeChats.FirstOrDefault(c => c.ChatId == chatId);
+                var mustListen = !isPushToTalk;
                 if (chat == null)
-                    chat = new ActiveChat(chatId, true, true, now, now);
+                    chat = new ActiveChat(chatId, mustListen, true, now, mustListen ? now : default);
                 else {
+                    var isListening = mustListen || chat.IsListening;
                     chat = chat with {
-                        IsListening = true,
+                        IsListening = isListening,
                         IsRecording = true,
                         Recency = now,
-                        ListeningRecency = chat.IsListening ? chat.ListeningRecency : now,
+                        ListeningRecency = isListening && !chat.IsListening ? now : chat.ListeningRecency,
                     };
                 }
                 activeChats = activeChats.WithOrReplace(chat, true).ToArray();
-                // Turn off listening for all the rest chats
-                activeChats = activeChats.WithUpdate(
-                    c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
-                    c => c with { IsRecording = false, IsListening = false })
-                    .ToArray();
+                // Turn off listening for all the rest chats if mustListen
+                activeChats = mustListen
+                    ? activeChats.WithUpdate(
+                        c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
+                        c => c with { IsRecording = false, IsListening = false })
+                        .ToArray()
+                    : activeChats.WithUpdate(
+                        c => c.ChatId != chatId && c.IsRecording,
+                        c => c with { IsRecording = false })
+                        .ToArray();
                 return activeChats;
 
                 async Task RestoreListening(CancellationToken ct)

@@ -181,6 +181,7 @@ public sealed class ChatListeningPlayer : ChatPlayer
             RecordedAt = streamInfo.BeginsAt + skipTo,
             SourceRecordedAt = sourceRecordedAt,
             TargetBufferSize = targetBufferSize,
+            StreamId = streamInfo.StreamId,
         };
 
         playback.Play(trackInfo, audioSource, playAt, cancellationToken);

@@ -12,6 +12,7 @@ using ActualChat.UI.Blazor.App.Components.Settings;
 using ActualChat.UI.Blazor.App.Pages.Landing;
 using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.App.Services.Gestures;
 using ActualChat.UI.Blazor.App.Testing;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
@@ -73,6 +74,12 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         // Live stream UI
         fusion.AddService<LiveStreamUI>(ServiceLifetime.Scoped);
+        fusion.AddService<IncomingVoiceActivityUI>(ServiceLifetime.Scoped);
+        services.AddScoped(c => new WalkieTalkieReplyUI(c.AppUIHub()));
+        if (!HostInfo.HostKind.IsMauiApp())
+            services.AddScoped(_ => new SensorFeed()); // MauiSensorFeed is registered in MauiAppModule
+        services.AddScoped(c => new GestureUI(c.AppUIHub()));
+        services.AddScoped(c => new WalkieTalkieSessionCore(c.AppUIHub()));
         fusion.AddService<LiveSessionUI>(ServiceLifetime.Scoped);
         fusion.AddService<LiveBlockUI>(ServiceLifetime.Scoped);
         fusion.AddService<IncomingCallUI>(ServiceLifetime.Scoped);
@@ -140,6 +147,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<PeerContactEditorModal.Model, PeerContactEditorModal>()
             .Add<LeaveChatConfirmationModal.Model, LeaveChatConfirmationModal>()
             .Add<ForwardMessageModal.Model, ForwardMessageModal>()
+            .Add<PttChatPickerModal.Model, PttChatPickerModal>()
             .Add<ShareModalModel, ShareModal>()
             .Add<IncomingShareModal.Model, IncomingShareModal>()
             .Add<DownloadAppModal.Model, DownloadAppModal>()

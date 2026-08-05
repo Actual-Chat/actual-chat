@@ -65,6 +65,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [EventHandler]
     Task OnReadPositionChangedEvent(ReadPositionChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
+    Task OnSpeechStartedEvent(SpeechStartedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
     Task OnSignedOut(UserSignedOutEvent eventCommand, CancellationToken cancellationToken);
 }
 

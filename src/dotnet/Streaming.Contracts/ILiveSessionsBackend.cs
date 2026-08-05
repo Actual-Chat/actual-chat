@@ -33,6 +33,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         AuthorId authorId,
         long? entryLid,
         bool transcriptionOn,
+        bool hasVoice,
         CancellationToken cancellationToken);
     Task SetParticipation(
         ChatId chatId,
@@ -65,4 +66,14 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
     // Either party hangs up an answered call
     Task LeaveCall(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
+
+    // Legacy methods
+
+    [LegacyName(nameof(OnStreamRegistered), "2.15.9999")]
+    Task LegacyOnStreamRegistered(
+        ChatId chatId,
+        AuthorId authorId,
+        long? entryLid,
+        bool transcriptionOn,
+        CancellationToken cancellationToken);
 }

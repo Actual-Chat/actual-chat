@@ -214,6 +214,40 @@ public class FirebaseMessagingClient(
         await HandleBatchResponse(batchResponse, deviceIds, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task SendSpeechStartedWake(
+        ChatId chatId,
+        AuthorId authorId,
+        Moment startedAt,
+        IReadOnlyCollection<Symbol> deviceIds,
+        CancellationToken cancellationToken)
+    {
+        if (deviceIds.Count == 0)
+            return;
+
+        var data = new Dictionary<string, string>() {
+            { Constants.Notification.MessageDataKeys.Kind, NotificationKind.SpeechStarted.ToString() },
+            { Constants.Notification.MessageDataKeys.ChatId, chatId.Value },
+            { Constants.Notification.MessageDataKeys.AuthorId, authorId.Value },
+            { Constants.Notification.MessageDataKeys.Timestamp, ((long)startedAt.EpochOffset.TotalMilliseconds).ToString() },
+        };
+        var multicastMessage = new MulticastMessage {
+            Tokens = deviceIds.Select(id => id.Value).ToList(),
+            Data = data,
+            // Android-only data message: a wake for stale speech is useless, so the short
+            // TTL + per-chat collapse key keep at most the latest wake queued per device.
+            Android = new AndroidConfig {
+                Data = data,
+                Priority = Priority.High,
+                TimeToLive = TimeSpan.FromSeconds(60),
+                CollapseKey = $"speech-started-{chatId.Value}",
+            },
+        };
+        var batchResponse = await FirebaseMessaging
+            .SendEachForMulticastAsync(multicastMessage, cancellationToken)
+            .ConfigureAwait(false);
+        await HandleBatchResponse(batchResponse, deviceIds, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task HandleBatchResponse(
         BatchResponse batchResponse,
         IReadOnlyCollection<Symbol> deviceIds,

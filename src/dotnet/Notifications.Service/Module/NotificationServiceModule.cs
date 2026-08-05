@@ -9,7 +9,7 @@ using FirebaseAdmin.Messaging;
 namespace ActualChat.Notifications.Module;
 
 public sealed class NotificationServiceModule(IServiceProvider moduleServices)
-    : HostModule(moduleServices), IServerModule
+    : HostModule<NotificationsSettings>(moduleServices), IServerModule
 {
     private static readonly Lock FirebaseAppFactoryLock = new();
 
@@ -34,6 +34,19 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
             }
         });
         services.AddSingleton<IFirebaseMessagingClient, FirebaseMessagingClient>();
+
+        // Direct APNs - Push to Talk wakes only (FCM can't deliver pushtotalk pushes)
+        services.AddSingleton<IApnsClient, ApnsClient>();
+        services.AddHttpClient(ApnsClient.HttpClientName)
+            .ConfigureHttpClient((c, httpClient) => {
+                var s = c.GetRequiredService<NotificationsSettings>();
+                httpClient.BaseAddress = new Uri(s.ApplePushUseSandbox
+                    ? "https://api.sandbox.push.apple.com"
+                    : "https://api.push.apple.com");
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler {
+                EnableMultipleHttp2Connections = true,
+            });
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

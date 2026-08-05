@@ -9,6 +9,7 @@
     var showMyAccount = !isGuest;
     var showLogout = !isGuest;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
+    var showPushToTalk = HostInfo.HostKind.IsMauiApp() && m.EnableIncompleteUI;
     var quitTitle = $"Quit {CoreConstants.AppName}";
 }
 
@@ -38,21 +39,28 @@
             </ChildContent>
         </SettingsTab>
 
-        <SettingsTab @key="4" TabIndex="4" Title="Application" Id="@SettingsTabId.App" IconClass="icon-settings">
+        @if (showPushToTalk) {
+            <SettingsTab @key="4" TabIndex="4" Title="Push to Talk" Id="@SettingsTabId.PushToTalk"
+                IconClass="icon-talking">
+                <PushToTalkSettings/>
+            </SettingsTab>
+        }
+
+        <SettingsTab @key="5" TabIndex="5" Title="Application" Id="@SettingsTabId.App" IconClass="icon-settings">
             <AppSettings/>
         </SettingsTab>
 
         @if (showMyAccount) {
-            <SettingsTab @key="5" TabIndex="5" Title="Sessions" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
+            <SettingsTab @key="6" TabIndex="6" Title="Sessions" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
                 <SessionSettings/>
             </SettingsTab>
-            <SettingsTab @key="6" TabIndex="6" Title="API Keys" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
+            <SettingsTab @key="7" TabIndex="7" Title="API Keys" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
                 <ApiKeySettings/>
             </SettingsTab>
         }
 
         @if (showMyAccount) {
-            <SettingsTab @key="7" TabIndex="7" Title="Privacy" Id="@SettingsTabId.Privacy" IconClass="icon-lock">
+            <SettingsTab @key="8" TabIndex="8" Title="Privacy" Id="@SettingsTabId.Privacy" IconClass="icon-lock">
                 <PrivacySettings/>
             </SettingsTab>
         }
@@ -110,8 +118,10 @@
         // Hide the Log Viewer in SSB — it can't capture/show local logs there.
         var showLogViewer = Hub.LogUI.CanCapture
             && await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new ComputedModel(account, tabId) {
             ShowLogViewer = showLogViewer,
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -138,6 +148,7 @@
 
     public sealed record ComputedModel(AccountFull AccountFull, string? TabId) {
         public bool ShowLogViewer { get; init; }
+        public bool EnableIncompleteUI { get; init; }
     }
 
     public sealed record Model(string? TabId = null) {

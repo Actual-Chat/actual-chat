@@ -4,6 +4,7 @@ using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Flows;
 using ActualChat.Notifications.Db;
+using ActualChat.Notifications.Module;
 using ActualChat.Queues;
 using ActualChat.Sharding;
 using ActualChat.Users;
@@ -20,9 +21,16 @@ namespace ActualChat.Notifications;
 public class NotificationsBackend(IServiceProvider services)
     : ShardedDbServiceBase<NotificationDbContext>(services), INotificationsBackend
 {
+    private const int WakePendingCapacity = 10_000;
+
     // Per-user soft-update buffers, owned by this shard. Entries are lost on restart by design
     // (see docs/plans/notif-api.md); a committed hard update always re-reads from the DB.
     private readonly ConcurrentDictionary<UserId, SoftBuffer> _softBuffers = new();
+    // Suppresses duplicate wakes per (user, chat) while a just-sent wake is presumed in flight.
+    // Not thread-safe by itself - always access under lock.
+    private readonly RecentlySeenMap<(UserId UserId, ChatId ChatId), Unit> _wakePending = new(
+        WakePendingCapacity,
+        services.GetRequiredService<NotificationsSettings>().WalkieTalkieWakeTtl);
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
@@ -34,6 +42,7 @@ public class NotificationsBackend(IServiceProvider services)
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IUserPresencesBackend UserPresencesBackend { get; } = services.GetRequiredService<IUserPresencesBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
+    private NotificationsSettings Settings { get; } = services.GetRequiredService<NotificationsSettings>();
     private IDbEntityResolver<string, DbExplicitNotification> DbExplicitNotificationResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbExplicitNotification>>();
 
@@ -41,6 +50,7 @@ public class NotificationsBackend(IServiceProvider services)
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IFirebaseMessagingClient FirebaseMessagingClient { get; }
         = services.GetRequiredService<IFirebaseMessagingClient>();
+    private IApnsClient ApnsClient { get; } = services.GetRequiredService<IApnsClient>();
     private FlowHub FlowHub { get; } = services.FlowHub();
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
@@ -754,6 +764,40 @@ public class NotificationsBackend(IServiceProvider services)
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
+    [EventHandler]
+    public virtual async Task OnSpeechStartedEvent(SpeechStartedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (chatId, authorId, startedAt) = eventCommand;
+        if (!Settings.EnableWalkieTalkiePush)
+            return;
+
+        var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        if (userIds.Length > Settings.WalkieTalkieMaxChatMembers)
+            return;
+
+        var speaker = await AuthorsBackend
+            .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        var activeUserIds = await GetActiveParticipantUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        await userIds
+            .Where(userId => userId != speaker?.UserId && !activeUserIds.Contains(userId))
+            .Select(async userId => {
+                try {
+                    await SendWalkieTalkieWake(userId, chatId, authorId, startedAt, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception e) when (e is not OperationCanceledException) {
+                    Log.LogError(e,
+                        "Walkie-talkie wake failed for user '{UserId}' in chat '{ChatId}'", userId, chatId);
+                }
+            })
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     // Private methods
 
     private async Task SendChatMessageNotification(
@@ -853,6 +897,7 @@ public class NotificationsBackend(IServiceProvider services)
         notification = displayed;
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
+        devices = devices.Where(d => d.DeviceType != DeviceType.iOSPttApp).ToList();
         if (devices.Count == 0) {
             DebugLog?.LogDebug("No recipient devices found for notification #{NotificationId}",
                 notification.Id);
@@ -882,6 +927,7 @@ public class NotificationsBackend(IServiceProvider services)
         var (userId, dismissed) = command;
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
+        devices = devices.Where(d => d.DeviceType != DeviceType.iOSPttApp).ToList();
         if (devices.Count == 0)
             return;
 
@@ -1010,6 +1056,51 @@ public class NotificationsBackend(IServiceProvider services)
             .Get(x => x.NotificationMode, cancellationToken)
             .ConfigureAwait(false);
     }
+
+    private async Task SendWalkieTalkieWake(
+        UserId userId, ChatId chatId, AuthorId authorId, Moment startedAt, CancellationToken cancellationToken)
+    {
+        if (!await IsArmedForWalkieTalkie(userId, chatId, cancellationToken).ConfigureAwait(false))
+            return;
+        var mode = await GetNotificationMode(userId, chatId, cancellationToken).ConfigureAwait(false);
+        if (mode == ChatNotificationMode.Muted)
+            return;
+
+        var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
+        var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
+        var fcmDeviceIds = devices
+            .Where(d => d.DeviceType == DeviceType.AndroidApp)
+            .Select(d => d.DeviceId)
+            .ToList();
+        var pttDeviceIds = devices
+            .Where(d => d.DeviceType == DeviceType.iOSPttApp)
+            .Select(d => d.DeviceId)
+            .ToList();
+        if (fcmDeviceIds.Count == 0 && pttDeviceIds.Count == 0)
+            return;
+
+        lock (_wakePending) {
+            _wakePending.Prune();
+            if (!_wakePending.TryAdd((userId, chatId)))
+                return;
+        }
+
+        if (fcmDeviceIds.Count != 0)
+            await FirebaseMessagingClient
+                .SendSpeechStartedWake(chatId, authorId, startedAt, fcmDeviceIds, cancellationToken)
+                .ConfigureAwait(false);
+
+        if (pttDeviceIds.Count != 0) {
+            // The PTT system UI needs a channel/speaker label at push time, before any RPC.
+            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            await ApnsClient
+                .SendPushToTalkWake(chatId, startedAt, chat?.Title.NullIfEmpty() ?? "Voxt", pttDeviceIds, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private Task<bool> IsArmedForWalkieTalkie(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+        => ServerKvasBackend.IsWalkieTalkieArmed(userId, chatId, cancellationToken);
 
     private static (ChatId? ChatId, long EntryLid) GetReadAnchor(Notification notification)
         => notification switch {

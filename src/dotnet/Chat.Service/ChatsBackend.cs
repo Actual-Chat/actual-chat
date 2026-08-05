@@ -667,6 +667,26 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return new ReadPositionsStatBackend(chatId, dbReadPositionsStat.StartTrackingEntryLid, topReadPositions);
     }
 
+    public async Task<ChatEntryId?> FindEntryIdByAudioStreamId(
+        ChatId chatId, string audioStreamId, CancellationToken cancellationToken)
+    {
+        if (audioStreamId.IsNullOrEmpty())
+            return default;
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sid = await dbContext.ChatEntries
+            .Where(e => e.ChatId == chatId.Value && e.Kind == 0 && e.AudioId == audioStreamId)
+            .Select(e => e.Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (sid == null)
+            return default;
+
+        return ChatEntryId.Parse(sid);
+    }
+
     // [ComputeMethod]
     public virtual async Task<PlaceChatId?> GetPlaceChatIdByAlias(PlaceId placeId, AliasId aliasId, CancellationToken cancellationToken)
     {

@@ -71,6 +71,16 @@ public class NotificationData(string messageId, Dictionary<string, string> data)
         }
     }
 
+    // The wake push's speech-start moment (epoch ms in the Timestamp data key).
+    public Moment? StartedAt {
+        get {
+            data.TryGetValue(Constants.Notification.MessageDataKeys.Timestamp, out var sTimestamp);
+            return long.TryParse(sTimestamp, out var epochMs)
+                ? new Moment(epochMs * 10_000)
+                : null;
+        }
+    }
+
     public IReadOnlyList<string> DismissedTags
         => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.DismissedTags, "")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

@@ -30,8 +30,8 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
             await Tester.CreateTextEntry(chat.Id, $"entry {i}");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, CancellationToken.None);
-        await liveBackend.OnStreamRegistered(chat.Id, AuthorId.New(chat.Id, 777_072), null, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, AuthorId.New(chat.Id, 777_072), null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live!.SessionStartedAt.Should().NotBeNull("the session must latch or this test doesn't bite");
 

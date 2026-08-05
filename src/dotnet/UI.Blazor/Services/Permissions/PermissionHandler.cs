@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -13,6 +14,8 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
     protected TimeSpan? ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);
 
     public IState<bool?> Cached => _cached;
+    // False in a headless scope: nothing ever renders there, so there is no dispatcher to prompt on.
+    public bool CanPrompt => DispatcherResolver.WhenInitialized.IsCompleted;
 
     protected PermissionHandler(UIHub hub, bool mustStart = true) : base(hub)
     {
@@ -73,8 +76,19 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
             return true;
 
         releaser.MarkLockedLocally();
-        if (!DispatcherResolver.WhenInitialized.IsCompleted)
+        if (!CanPrompt) {
+            // Only MAUI has headless scopes, where WhenInitialized never completes and awaiting it
+            // parks forever. Elsewhere it just means "too early", and Get may need JS interop.
+            if (HostInfo.HostKind == HostKind.MauiApp) {
+                Log.LogDebug("Check (no dispatcher)");
+                var isGrantedNow = await Get(cancellationToken).ConfigureAwait(false);
+                SetUnsafe(isGrantedNow);
+                return isGrantedNow;
+            }
+
             await DispatcherResolver.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         return await DispatcherResolver.Dispatcher.InvokeAsync(async () => {
             Log.LogDebug("Check");
             var isGranted = await Get(cancellationToken).ConfigureAwait(false);

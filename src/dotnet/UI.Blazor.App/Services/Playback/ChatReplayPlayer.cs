@@ -139,12 +139,14 @@ public sealed class ChatReplayPlayer : ChatPlayer
                         SourceRecordedAt = streamInfo.BeginsAt,
                         Speed = speed,
                         TargetBufferSize = targetBufferSize,
+                        StreamId = streamInfo.StreamId,
                     }
                     : new ChatAudioTrackInfo(ChatId, streamInfo.EntryId, chat, author) {
                         RecordedAt = streamInfo.BeginsAt,
                         SourceRecordedAt = streamInfo.BeginsAt,
                         Speed = speed,
                         TargetBufferSize = targetBufferSize,
+                        StreamId = streamInfo.StreamId,
                     };
                 var playAt = Clocks.CpuClock.Now;
                 var process = playback.Play(trackInfo, audioSource, playAt, cancellationToken);

@@ -136,6 +136,7 @@ export default withMermaid(defineConfig({
               { text: "Receiver", link: "/live-audio/07-receiver" },
               { text: "Diagnostics and tuning", link: "/live-audio/08-diagnostics-and-tuning" },
               { text: "Glossary", link: "/live-audio/09-glossary" },
+              { text: "Walkie-talkie", link: "/live-audio/10-walkie-talkie" },
             ],
           },
           {
