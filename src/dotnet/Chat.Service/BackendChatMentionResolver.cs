@@ -1,14 +1,12 @@
-
 namespace ActualChat.Chat;
 
-public class BackendChatMentionResolver(IServiceProvider services, ChatId chatId) : IChatMentionResolver
+public sealed class BackendChatMentionResolver(IServiceProvider services, ChatId chatId) : IChatMentionResolver
 {
-    public ChatId ChatId { get; } = chatId;
-
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<IPlacesBackend>();
+    public ChatId ChatId { get; } = chatId;
 
     ValueTask<Author?> IMentionResolver<Author>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
         => ResolveAuthor(mention, cancellationToken);
@@ -17,7 +15,8 @@ public class BackendChatMentionResolver(IServiceProvider services, ChatId chatId
         if (mention.Id.Target is not AuthorId authorId)
             return null;
 
-        return await AuthorsBackend.Get(ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+        return await AuthorsBackend.Get(ChatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     ValueTask<string?> IMentionResolver<string>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
@@ -32,13 +31,15 @@ public class BackendChatMentionResolver(IServiceProvider services, ChatId chatId
     {
         switch (mention) {
         case AuthorMention am: {
-            var author = await AuthorsBackend.Get(ChatId, am.AuthorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+            var author = await AuthorsBackend.Get(ChatId, am.AuthorId, RequestedAuthorKind.Full, cancellationToken)
+                .ConfigureAwait(false);
             var name = author?.Avatar.Name ?? am.Name;
             return new AuthorMention(am.Id, name) { Author = author };
         }
         case UserMention um: {
             var accountTask = AccountsBackend.Get(um.UserId, cancellationToken);
-            var authorTask = AuthorsBackend.GetByUserId(ChatId, um.UserId, RequestedAuthorKind.Default, cancellationToken);
+            var authorTask = AuthorsBackend.GetByUserId(
+                ChatId, um.UserId, RequestedAuthorKind.Default, cancellationToken);
             var account = await accountTask.ConfigureAwait(false);
             var author = await authorTask.ConfigureAwait(false);
             var name = account?.Avatar.Name ?? um.Name;
@@ -70,15 +71,20 @@ public class BackendChatMentionResolver(IServiceProvider services, ChatId chatId
         }
     }
 
-    // A cross-place chat mention renders as "Place › Chat Title"; same-place and placeless
-    // chats render as just the title.
-    private async ValueTask<string> FormatChatName(string title, PlaceId? chatPlaceId, CancellationToken cancellationToken)
+    // Private methods
+
+    private async ValueTask<string> FormatChatName(
+        string title, PlaceId? chatPlaceId, CancellationToken cancellationToken)
     {
+        // A cross-place chat mention renders as "Place › Chat Title"; same-place and placeless
+        // chats render as just the title.
         if (chatPlaceId is null)
             return title;
+
         var hostPlaceId = (ChatId as PlaceChatId)?.PlaceId;
         if (hostPlaceId == chatPlaceId)
             return title;
+
         var place = await PlacesBackend.Get(chatPlaceId, cancellationToken).ConfigureAwait(false);
         var placeTitle = place?.Title.NullIfEmpty();
         return placeTitle is null ? title : $"{placeTitle} › {title}";

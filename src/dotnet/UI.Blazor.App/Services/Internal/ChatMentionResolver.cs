@@ -1,13 +1,12 @@
 namespace ActualChat.UI.Blazor.App.Services.Internal;
 
-internal class ChatMentionResolver(IServiceProvider services, ChatId chatId) : IChatMentionResolver
+internal sealed class ChatMentionResolver(IServiceProvider services, ChatId chatId) : IChatMentionResolver
 {
     private Session Session { get; } = services.Session();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
     private IPlaces Places => field ??= services.GetRequiredService<IPlaces>();
-
     public ChatId ChatId { get; } = chatId;
 
     ValueTask<Author?> IMentionResolver<Author>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
@@ -70,15 +69,20 @@ internal class ChatMentionResolver(IServiceProvider services, ChatId chatId) : I
         }
     }
 
-    // A cross-place chat mention renders as "Place › Chat Title"; same-place and placeless
-    // chats render as just the title.
-    private async ValueTask<string> FormatChatName(string title, PlaceId? chatPlaceId, CancellationToken cancellationToken)
+    // Private methods
+
+    private async ValueTask<string> FormatChatName(
+        string title, PlaceId? chatPlaceId, CancellationToken cancellationToken)
     {
+        // A cross-place chat mention renders as "Place › Chat Title"; same-place and placeless
+        // chats render as just the title.
         if (chatPlaceId is null)
             return title;
+
         var hostPlaceId = (ChatId as PlaceChatId)?.PlaceId;
         if (hostPlaceId == chatPlaceId)
             return title;
+
         var place = await Places.Get(Session, chatPlaceId, cancellationToken).ConfigureAwait(false);
         var placeTitle = place?.Title.NullIfEmpty();
         return placeTitle is null ? title : $"{placeTitle} › {title}";
