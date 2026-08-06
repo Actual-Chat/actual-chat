@@ -1,4 +1,5 @@
 using ActualChat.Testing.Host;
+using ActualChat.Users.Module;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -49,6 +50,50 @@ public class PhonesTest(AppHostFixture fixture, ITestOutputHelper @out)
         var result = await phones.ParseWithCountryFallback(session, input, CancellationToken.None);
         result.Should().NotBeNull();
         result.Should().Be(ActualChat.Phone.Parse(expected));
+    }
+
+    [Fact]
+    public async Task ParseWithCountryFallback_PredefinedPhoneIgnoresGeoIp()
+    {
+        // App-review scenario: a predefined test number entered from a Singapore IP
+        // must resolve to the predefined phone, not to a +65 national number.
+        var phones = AppHost.Services.GetRequiredService<IPhones>();
+        var settings = AppHost.Services.GetRequiredService<UsersSettings>();
+        var session = await CreateSessionWithIp("165.21.0.1"); // SG
+        var oldPredefinedTotps = settings.PredefinedTotps;
+        settings.PredefinedTotps = new Dictionary<string, int> {
+            { "15551234567", 111111 },
+        };
+        try {
+            var result = await phones.ParseWithCountryFallback(session, "15551234567", CancellationToken.None);
+            result.Should().Be(ActualChat.Phone.Parse("1-5551234567"));
+        }
+        finally {
+            settings.PredefinedTotps = oldPredefinedTotps;
+        }
+    }
+
+    [Fact]
+    public async Task ParseWithCountryFallback_PrefersValidPlusPrefixOverInvalidGeoIpParse()
+    {
+        var phones = AppHost.Services.GetRequiredService<IPhones>();
+        var session = await CreateSessionWithIp("8.8.8.8"); // US
+
+        // Not a valid US number, but a valid UK number with '+' prefix
+        var result = await phones.ParseWithCountryFallback(session, "447911123456", CancellationToken.None);
+        result.Should().Be(ActualChat.Phone.Parse("44-7911123456"));
+    }
+
+    [Fact]
+    public async Task ParseWithCountryFallback_PrefersPossibleGeoIpParseOverPossiblePlusPrefix()
+    {
+        var phones = AppHost.Services.GetRequiredService<IPhones>();
+        var session = await CreateSessionWithIp("8.8.8.8"); // US
+
+        // Possible-but-invalid both as a US national number and as "+55..." (Brazil);
+        // the GeoIP interpretation must win.
+        var result = await phones.ParseWithCountryFallback(session, "5555555500", CancellationToken.None);
+        result.Should().Be(ActualChat.Phone.Parse("1-5555555500"));
     }
 
     [Theory]
