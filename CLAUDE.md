@@ -98,6 +98,15 @@ The only exception is when `/server-loop` is running - in this case you should t
 
 **Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
 
+## Before merging a feature branch to dev
+
+When work reaches "ready for PR / merge / final review", ask the developer
+whether to run the `/prepare-merge` skill
+(`.claude/skills/prepare-merge/SKILL.md`) first. It rebases the branch onto
+`origin/dev`, squashes it into a few meaningful commits, and deletes the
+branch's superpowers plans/specs — dev history should record features, not
+fix trails. Don't run it unprompted; ask first.
+
 # Use cross-platform PowerShell
 
 `pwsh` (cross-platform PowerShell) command is available on any OS you run, so use it.

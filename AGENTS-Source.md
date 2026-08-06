@@ -95,3 +95,12 @@ The only exception is when `/server-loop` is running - in this case you should t
 **Running the server (Docker watch mode)**: The host runs `./run-watch.cmd` — it auto-rebuilds and restarts the server when you change files. After editing code, poll `tmp/watch-dotnet.log` until you see `Now listening on:` (ready) or `error` (fix and wait again). Do not use `/server-start` or `/server-restart` — the watch process owns the server. Frontend build output: `tmp/watch-web.log`.
 
 **Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
+
+## Before merging a feature branch to dev
+
+When work reaches "ready for PR / merge / final review", ask the developer
+whether to run the `/prepare-merge` skill
+(`.claude/skills/prepare-merge/SKILL.md`) first. It rebases the branch onto
+`origin/dev`, squashes it into a few meaningful commits, and deletes the
+branch's superpowers plans/specs — dev history should record features, not
+fix trails. Don't run it unprompted; ask first.
