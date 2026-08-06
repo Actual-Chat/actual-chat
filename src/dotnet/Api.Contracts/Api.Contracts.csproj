@@ -17,4 +17,8 @@
     <PackageReference Include="RestEase.SourceGenerator" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="$(RootNamespace).Core.UnitTests$(AssemblyPublicKey)" />
+  </ItemGroup>
+
 </Project>

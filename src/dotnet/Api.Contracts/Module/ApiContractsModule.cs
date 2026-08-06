@@ -99,7 +99,9 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
     public void ConfigureFusionClients(FusionBuilder fusion)
     {
         var hostKind = HostInfo.HostKind;
-        var useRpcSwitchingClient = Constants.Rpc.UseHttpClient; // HostInfo.HostKind is HostKind.MauiApp
+        // RpcHttpClient relies on SocketsHttpHandler, which WASM doesn't support, so the
+        // switching client (and thus the HTTP transport fallback) is MAUI-only.
+        var useRpcSwitchingClient = hostKind.IsMauiApp();
         fusion.Rpc.AddWebSocketClient(c => {
             var options = RpcWebSocketClientOptions.Default with {
                 ConnectionUriResolver = peer => {
@@ -224,13 +226,8 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         if (useRpcSwitchingClient) {
             var services = fusion.Services;
             services.RemoveAll(d => d.ServiceType == typeof(RpcClient));
-            services.AddSingleton(c => {
-                var rpcWebSocketClient = c.GetRequiredService<RpcWebSocketClient>();
-                var rpcHttpClient = c.GetRequiredService<RpcHttpClient>();
-                return new RpcSwitchingClient(c, rpcWebSocketClient, rpcHttpClient) {
-                    StartPromoted = Constants.Rpc.UseHttpClient,
-                };
-            });
+            services.AddSingleton(c => new RpcServerProbe(c));
+            services.AddSingleton(CreateRpcSwitchingClient);
             services.AddAlias<RpcClient, RpcSwitchingClient>();
         }
 
@@ -260,6 +257,30 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                         h.UseCookies = false;
                 });
         });
+    }
+
+    // Private methods
+
+    private static RpcSwitchingClient CreateRpcSwitchingClient(IServiceProvider c)
+    {
+        // BackgroundStateTracker may be scoped (web); resolving it from this singleton's
+        // root scope throws under ValidateScopes — treat as absent (i.e. foreground).
+        var backgroundStateTrackerLazy = LazySlim.New(() => {
+            try {
+                return c.GetService<BackgroundStateTracker>();
+            }
+            catch {
+                return null;
+            }
+        });
+        var settings = RpcSwitchingClient.Options.Default with {
+            StartIndex = Constants.Rpc.SwitchingClientStartIndex,
+            ServerProbe = c.GetRequiredService<RpcServerProbe>().IsServerReachable,
+            IsBackgroundGetter = () => backgroundStateTrackerLazy.Value is { IsBackground.Value: true },
+        };
+        return new RpcSwitchingClient(c, settings,
+            c.GetRequiredService<RpcWebSocketClient>(),
+            c.GetRequiredService<RpcHttpClient>());
     }
 
     // Nested types
