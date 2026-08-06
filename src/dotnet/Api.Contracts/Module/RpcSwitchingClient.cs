@@ -1,42 +1,40 @@
 using ActualLab.Rpc;
-using ActualLab.Rpc.Clients;
 using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Module;
 
-public sealed class RpcSwitchingClient : RpcAlternatingClient
+/// <summary>
+/// An <see cref="RpcClient"/> that connects via <see cref="Clients"/><c>[0]</c> and rotates
+/// to the next client once the current one fails to hold a connection, wrapping around
+/// after the last one.
+/// </summary>
+public sealed class RpcSwitchingClient : RpcClient
 {
-    private const int StrikesToPromote = 3;
-    private const string ProbePath = "/rpc/check";
-    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
-
-    private HttpClient? _probeClient;
-    private readonly LazySlim<BackgroundStateTracker?> _backgroundStateTracker;
-
-    private RpcWebSocketClient RpcWebSocketClient { get; }
-    private RpcHttpClient RpcHttpClient { get; }
-    private UrlMapper UrlMapper => field ??= Services.UrlMapper();
-
-    public bool StartPromoted { get; init; }
-
-    public RpcSwitchingClient(
-        IServiceProvider services,
-        RpcWebSocketClient rpcWebSocketClient,
-        RpcHttpClient rpcHttpClient
-        ) : base(services, rpcWebSocketClient, rpcHttpClient)
+    public sealed record Options
     {
-        RpcWebSocketClient = rpcWebSocketClient;
-        RpcHttpClient = rpcHttpClient;
-        _backgroundStateTracker = LazySlim.New(() => {
-            // BackgroundStateTracker may be scoped (web); resolving from this singleton's
-            // root scope throws under ValidateScopes — treat as absent (i.e. foreground).
-            try {
-                return Services.GetService<BackgroundStateTracker>();
-            }
-            catch {
-                return null;
-            }
-        });
+        public static readonly Options Default = new();
+
+        public int StartIndex { get; init; }
+        public int StrikesToSwitch { get; init; } = 3;
+        public TimeSpan MinHealthyConnectionDuration { get; init; } = TimeSpan.FromSeconds(10);
+        public MomentClock? Clock { get; init; }
+        public Func<CancellationToken, Task<bool>>? ServerProbe { get; init; }
+        public Func<bool>? IsBackgroundGetter { get; init; }
+    }
+
+    private MomentClock Clock => field ??= Settings.Clock ?? Hub.SystemClock;
+
+    public Options Settings { get; }
+    public RpcClient[] Clients { get; }
+
+    public RpcSwitchingClient(IServiceProvider services, Options settings, params RpcClient[] clients)
+        : base(services)
+    {
+        if (clients.Length == 0)
+            throw new ArgumentOutOfRangeException(nameof(clients));
+
+        Settings = settings;
+        Clients = clients;
     }
 
     public override Task<RpcConnection> ConnectRemote(
@@ -45,14 +43,11 @@ public sealed class RpcSwitchingClient : RpcAlternatingClient
         CancellationToken cancellationToken)
     {
         var state = GetOrAddState(clientPeer);
-        if (state.IsPromoted) {
-            state.LastClient = RpcHttpClient;
-            state.LastConnectionStartedAt = Hub.SystemClock.Now;
-            return RpcHttpClient.Connect(clientPeer, connectionState, cancellationToken);
-        }
-
-        state.ProbeTask = ProbeServer(cancellationToken);
-        return base.ConnectRemote(clientPeer, connectionState, cancellationToken);
+        state.ConnectedAt = default;
+        state.ProbeTask = Settings.ServerProbe?.Invoke(cancellationToken);
+        var client = Clients[state.Index];
+        state.LastClient = client;
+        return client.Connect(clientPeer, connectionState, cancellationToken);
     }
 
     public override void OnConnectionStateChange(
@@ -60,110 +55,102 @@ public sealed class RpcSwitchingClient : RpcAlternatingClient
         RpcPeerConnectionState connectionState)
     {
         var state = GetOrAddState(clientPeer);
-        // Capture LastClient before base clears it in its Disconnected branch.
-        var lastClient = state.LastClient;
-        base.OnConnectionStateChange(clientPeer, connectionState);
         if (connectionState.IsConnected()) {
-            state.Strikes = 0;
+            state.ConnectedAt = Clock.Now;
             state.ProbeTask = null;
             return;
         }
         if (connectionState.IsDisconnected())
-            _ = HandleDisconnected(state, lastClient, connectionState);
+            state.WhenDisconnectHandled = HandleDisconnected(state);
     }
 
-    // Protected and private methods
+    public State? GetState(RpcClientPeer clientPeer)
+        => clientPeer.Extensions.KeylessGet<State>();
 
-    protected override RpcAlternatingClient.State CreateState()
-        => new State { IsPromoted = StartPromoted };
-
-    private State GetOrAddState(RpcClientPeer clientPeer)
+    public static (int Index, int Strikes) GetNextPosition(
+        int index,
+        int strikes,
+        int clientCount,
+        int strikesToSwitch,
+        bool isHealthy)
     {
-        var existing = clientPeer.Extensions.KeylessGet<RpcAlternatingClient.State>();
-        if (existing is State s)
-            return s;
+        if (isHealthy)
+            return (index, 0);
 
-        s = (State)CreateState();
-        clientPeer.Extensions.KeylessSet<RpcAlternatingClient.State>(s);
-        return s;
+        strikes++;
+        return strikes < strikesToSwitch
+            ? (index, strikes)
+            : ((index + 1) % clientCount, 0);
     }
 
-    private async Task HandleDisconnected(
-        State state, RpcClient? lastClient, RpcPeerConnectionState connectionState)
+    // Protected/internal methods
+
+    // It's internal to be accessible from tests
+    internal async Task HandleDisconnected(State state)
     {
         try {
-            if (state.IsPromoted)
-                return;
-            if (connectionState.Error is not TimeoutException)
-                return;
-            if (lastClient != RpcWebSocketClient)
-                return;
-            var isBackground = _backgroundStateTracker.Value is { IsBackground.Value: true };
-            if (isBackground)
-                return;
+            var connectedAt = state.ConnectedAt;
             var probeTask = state.ProbeTask;
-            if (probeTask is null)
+            state.ConnectedAt = default;
+            state.ProbeTask = null;
+            if (Settings.IsBackgroundGetter?.Invoke() == true)
                 return;
 
-            bool reachable;
-            try {
-                reachable = await probeTask.ConfigureAwait(false);
-            }
-            catch {
-                reachable = false;
-            }
-            state.ProbeTask = null;
-
-            if (!reachable) {
+            if (probeTask is not null && !await IsServerReachable(probeTask).ConfigureAwait(false)) {
+                // The server is unreachable, so this disconnect says nothing about the current client.
                 state.Strikes = 0;
                 return;
             }
 
-            state.Strikes++;
-            if (state.Strikes < StrikesToPromote)
+            // A transport that connects and dies seconds later still reports Connected, so only
+            // the connection's lifetime tells us whether the current client actually works.
+            var isHealthy = connectedAt != default
+                && Clock.Now - connectedAt >= Settings.MinHealthyConnectionDuration;
+            var index = state.Index;
+            (state.Index, state.Strikes) = GetNextPosition(
+                index, state.Strikes, Clients.Length, Settings.StrikesToSwitch, isHealthy);
+            if (state.Index == index)
                 return;
 
-            state.IsPromoted = true;
-            Log.LogWarning(
-                "Switching RPC client from WebSocket to HTTP after {Strikes} consecutive WS connect timeouts",
-                state.Strikes);
+            Log.LogWarning("Switching RPC client: [{OldIndex}] {OldClient} -> [{NewIndex}] {NewClient}",
+                index, Clients[index].GetType().Name, state.Index, Clients[state.Index].GetType().Name);
         }
         catch (Exception e) {
             Log.LogError(e, "HandleDisconnected failed");
         }
     }
 
-    private async Task<bool> ProbeServer(CancellationToken cancellationToken)
+    // Private methods
+
+    private State GetOrAddState(RpcClientPeer clientPeer)
     {
-        var url = UrlMapper.BaseUrl.TrimSuffix("/") + ProbePath;
-        var httpClient = _probeClient ??= RpcHttpClient.Options.HttpClientFactory.Invoke(Services);
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(ProbeTimeout);
+        if (clientPeer.Extensions.KeylessGet<State>() is { } existing)
+            return existing;
+
+        var state = new State { Index = Settings.StartIndex % Clients.Length };
+        clientPeer.Extensions.KeylessSet(state);
+        return state;
+    }
+
+    private static async Task<bool> IsServerReachable(Task<bool> probeTask)
+    {
         try {
-            using var response = await httpClient.GetAsync(url, cts.Token).ConfigureAwait(false);
-            var success = response.IsSuccessStatusCode;
-            Log.LogWarning(
-                "RPC probe to {Url}: {Status} ({StatusCode})",
-                url, success ? "OK" : "FAILED", (int)response.StatusCode);
-            return success;
+            return await probeTask.ConfigureAwait(false);
         }
-        catch (Exception e) {
-            Log.LogWarning(e, "RPC probe to {Url}: FAILED", url);
+        catch {
             return false;
         }
     }
 
     // Nested types
 
-    private new sealed class State : RpcAlternatingClient.State
+    public sealed class State
     {
+        public int Index { get; set; }
         public int Strikes { get; set; }
-        public bool IsPromoted { get; set; }
+        public Moment ConnectedAt { get; set; }
+        public RpcClient? LastClient { get; set; }
         public Task<bool>? ProbeTask { get; set; }
-
-        // RpcSwitchingClient drives promotion via Strikes/ProbeTask; we don't want the base
-        // alternation logic to blacklist the WS client after a single failure.
-        public override bool IsFailed(RpcClientPeer clientPeer, RpcPeerConnectionState connectionState)
-            => false;
+        public Task? WhenDisconnectHandled { get; set; }
     }
 }
