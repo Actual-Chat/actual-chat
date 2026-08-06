@@ -185,7 +185,7 @@
     public sealed class FormModel(ComponentIdGenerator? componentIdGenerator)
         : FormModel<FormModel>("avatar-editor", componentIdGenerator)
     {
-        [Required, MinLength(1)] public string Name { get; set; } = "";
+        [Required] public string Name { get; set; } = "";
         public string NameFieldId { get; set; } = "";
         public string Bio { get; set; } = "";
         public string BioFieldId { get; set; } = "";
