@@ -24,7 +24,6 @@ namespace ActualChat;
 [MemoryPackUnion(12, typeof(UserTranscodingTestSettings))]
 [MemoryPackUnion(13, typeof(FakeDeviceContactOptions))]
 [MemoryPackUnion(14, typeof(UserReplaySettings))]
-[MemoryPackUnion(17, typeof(UserWalkieTalkieSettings))]
 // Chat-User settings
 [MemoryPackUnion(50, typeof(ChatUserSettings))]
 [MemoryPackUnion(51, typeof(ChatInviteSettings))]

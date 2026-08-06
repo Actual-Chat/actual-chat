@@ -10,7 +10,7 @@ namespace ActualChat.Transcription;
 /// Chat-derived hints passed to a transcriber to improve recognition —
 /// what was said just before and what the conversation is about.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record TranscriptionContext
 {
     public static readonly TranscriptionContext None = new();
@@ -18,14 +18,14 @@ public sealed partial record TranscriptionContext
     // The summary is the more influential half per token, but it must not crowd out the prefix.
     private const double SummaryBudgetShare = 0.4;
 
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public ApiArray<TranscriptionAuthor> Authors { get; init; } = ApiArray<TranscriptionAuthor>.Empty;
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [DataMember(Order = 1), Key(1)]
     public ApiArray<TranscriptionContextEntry> Prefix { get; init; } = ApiArray<TranscriptionContextEntry>.Empty;
-    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
+    [DataMember(Order = 2), Key(2)]
     public string Summary { get; init; } = "";
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsNone => Prefix.Count == 0 && Summary.IsNullOrEmpty() && Authors.Count == 0;
 
     public TranscriptionContextText Render(int maxChars)

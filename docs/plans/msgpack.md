@@ -1,6 +1,7 @@
 # MessagePack Migration Plan
 
-> **Status:** Phases 1–3 are complete; phase 4 (removing `[DataContract]`) is next.
+> **Status:** Phases 1–3 are complete; phase 4 (removing `[DataContract]`) was **dropped** —
+> `[DataContract]`/`[DataMember]` are kept as Newtonsoft.Json's markup.
 > For the resulting target state — which serializer owns which path, and the attribute
 > convention — see [Serialization](../architecture/serialization.md).
 
@@ -160,11 +161,15 @@ What remains carries MemoryPack: 68 types across 83 files, all inside the retain
 resolves all 32 of the MemoryPack-serializable AOT entries plus 315 MessagePack ones without
 dynamic IL emit, and the AOT keep-lists have been regenerated against that set.
 
-## Phase 4: Remove `[DataContract]` / `[DataMember]` (PLANNED)
+## Phase 4: Remove `[DataContract]` / `[DataMember]` (DROPPED)
 
-Independent of MemoryPack. `[DataContract]` is read by Newtonsoft.Json (where it switches the
-type to opt-in) and, for types without `[MessagePackObject]`, by MessagePack's dynamic
-resolver — while System.Text.Json ignores it entirely. Replacing it with serializer-native
-attributes removes that ambiguity. The rationale, the verified behavior matrix, and the
-per-type migration risk are documented in
-[Serialization](../architecture/serialization.md#migrating-off-datacontract).
+Originally planned on the grounds that `[DataContract]` is read by two serializers and ignored
+by the third. It isn't happening: `[DataContract]`/`[DataMember]` are kept as **Newtonsoft.Json's**
+markup, which is the serializer that actually honors them. The ambiguity the phase was meant to
+remove is already removed by the rule that a `[DataContract]` type must also be
+`[MessagePackObject]` — where `[Key]` is present, MessagePack ignores the DataContract
+annotations entirely (verified byte-identical).
+
+The verified behavior matrix and what would move if a specific type ever did drop
+`[DataContract]` are documented in
+[Serialization](../architecture/serialization.md#attribute-conventions).

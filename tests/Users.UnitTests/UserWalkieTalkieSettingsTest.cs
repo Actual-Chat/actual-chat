@@ -5,7 +5,6 @@ namespace ActualChat.Users.UnitTests;
 public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
-    private static readonly KvasSerializer MemoryPackKvasSerializer = new() { PreferMemoryPack = true };
 
     [Fact]
     public void DefaultsAreSafe()
@@ -33,9 +32,9 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
         };
 
         // act
-        using var buffer = MemoryPackKvasSerializer.Write(e2Era);
+        using var buffer = KvasSerializer.Default.Write(e2Era);
         var bytes = buffer.WrittenMemory;
-        var settings = MemoryPackKvasSerializer.Read<UserWalkieTalkieSettings>(ref bytes);
+        var settings = KvasSerializer.Default.Read<UserWalkieTalkieSettings>(ref bytes);
 
         // assert
         settings.PttChatIds.Should().Equal(e2Era.PttChatIds);
@@ -54,9 +53,9 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
         var truncated = new TruncatedUserWalkieTalkieSettings { PttChatIds = [TestChatId] };
 
         // act
-        using var buffer = MemoryPackKvasSerializer.Write(truncated);
+        using var buffer = KvasSerializer.Default.Write(truncated);
         var bytes = buffer.WrittenMemory;
-        var settings = MemoryPackKvasSerializer.Read<UserWalkieTalkieSettings>(ref bytes);
+        var settings = KvasSerializer.Default.Read<UserWalkieTalkieSettings>(ref bytes);
 
         // assert
         settings.PttChatIds.Should().Equal(truncated.PttChatIds);
@@ -117,39 +116,47 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     {
         // StoredSettings has no JSON polymorphism config (only [MemoryPackUnion]/[Union] tags), so
         // AssertPassesThroughAllSerializers on the base-typed cast fails in the JSON passes for every
-        // settings type, not just this one. Exercise the two wire formats the union is actually
+        // settings type, not just this one. Exercise the wire formats the union is actually
         // registered for, matching StoredSettingsSerializationTest.AssertBaseTypeRoundTrip.
-        var mp = ((StoredSettings)settings).PassThroughMemoryPackByteSerializer(Out);
-        assertion(mp, settings);
         var msgp = ((StoredSettings)settings).PassThroughMessagePackByteSerializer(Out);
         assertion(msgp, settings);
+
+        // MemoryPack is a legacy read path, so only settings predating the MessagePack write path
+        // are [MemoryPackable]; the rest have no formatter to exercise.
+        if (!SerializationCodeGen.IsMemoryPackable(typeof(T))) {
+            Out.WriteLine($"Skipped MemoryPack: {typeof(T).Name} isn't [MemoryPackable].");
+            return;
+        }
+
+        var mp = ((StoredSettings)settings).PassThroughMemoryPackByteSerializer(Out);
+        assertion(mp, settings);
     }
 
     // Nested types
 
-    // An exact copy of UserWalkieTalkieSettings as E2 shipped it - orders 0..7, no headset button.
-    [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+    // An exact copy of UserWalkieTalkieSettings as E2 shipped it - keys 0..7, no headset button.
+    [DataContract, MessagePackObject]
     public sealed partial record E2UserWalkieTalkieSettings
     {
-        [DataMember, MemoryPackOrder(0)] public ChatId[] PttChatIds { get; init; } = [];
-        [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
-        [DataMember, MemoryPackOrder(2)] public bool IsFlipToTalkEnabled { get; init; } = true;
-        [DataMember, MemoryPackOrder(3)] public bool IsDoubleShakeEnabled { get; init; } = true;
-        [DataMember, MemoryPackOrder(4)] public ShakeSensitivity ShakeSensitivity { get; init; }
-        [DataMember, MemoryPackOrder(5)] public bool AreGesturesAlwaysOn { get; init; }
-        [DataMember, MemoryPackOrder(6)] public TimeSpan HotWindow { get; init; } = TimeSpan.FromSeconds(60);
-        [DataMember, MemoryPackOrder(7)] public bool AreAudibleCuesEnabled { get; init; } = true;
+        [DataMember, Key(0)] public ChatId[] PttChatIds { get; init; } = [];
+        [DataMember, Key(1)] public string Origin { get; init; } = "";
+        [DataMember, Key(2)] public bool IsFlipToTalkEnabled { get; init; } = true;
+        [DataMember, Key(3)] public bool IsDoubleShakeEnabled { get; init; } = true;
+        [DataMember, Key(4)] public ShakeSensitivity ShakeSensitivity { get; init; }
+        [DataMember, Key(5)] public bool AreGesturesAlwaysOn { get; init; }
+        [DataMember, Key(6)] public TimeSpan HotWindow { get; init; } = TimeSpan.FromSeconds(60);
+        [DataMember, Key(7)] public bool AreAudibleCuesEnabled { get; init; } = true;
     }
 
     // Stops before HotWindow and AreAudibleCuesEnabled, both of which have property initializers.
-    [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+    [DataContract, MessagePackObject]
     public sealed partial record TruncatedUserWalkieTalkieSettings
     {
-        [DataMember, MemoryPackOrder(0)] public ChatId[] PttChatIds { get; init; } = [];
-        [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
-        [DataMember, MemoryPackOrder(2)] public bool IsFlipToTalkEnabled { get; init; } = true;
-        [DataMember, MemoryPackOrder(3)] public bool IsDoubleShakeEnabled { get; init; } = true;
-        [DataMember, MemoryPackOrder(4)] public ShakeSensitivity ShakeSensitivity { get; init; }
-        [DataMember, MemoryPackOrder(5)] public bool AreGesturesAlwaysOn { get; init; }
+        [DataMember, Key(0)] public ChatId[] PttChatIds { get; init; } = [];
+        [DataMember, Key(1)] public string Origin { get; init; } = "";
+        [DataMember, Key(2)] public bool IsFlipToTalkEnabled { get; init; } = true;
+        [DataMember, Key(3)] public bool IsDoubleShakeEnabled { get; init; } = true;
+        [DataMember, Key(4)] public ShakeSensitivity ShakeSensitivity { get; init; }
+        [DataMember, Key(5)] public bool AreGesturesAlwaysOn { get; init; }
     }
 }

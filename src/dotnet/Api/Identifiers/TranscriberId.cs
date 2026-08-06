@@ -13,7 +13,7 @@ namespace ActualChat;
 /// <c>u:{key}</c> for user-supplied ones, and <c>{stream}~{retranscriber}</c> for a pair.
 /// </summary>
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
-[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[DataContract]
 [JsonConverter(typeof(StringLikeJsonConverter<TranscriberId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<TranscriberId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<TranscriberId>))]

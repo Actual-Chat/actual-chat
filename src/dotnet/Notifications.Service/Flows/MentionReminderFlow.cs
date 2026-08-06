@@ -11,11 +11,11 @@ namespace ActualChat.Notifications.Flows;
 /// remaining mention has exhausted its re-alerts.
 /// </summary>
 [Flow(DelayQuanta = 60)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial class MentionReminderFlow : PeriodicFlow
 {
     // Persisted state. Orders continue after PeriodicFlow's 0..2 with a gap for future base state.
-    [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
+    [DataMember(Order = 10), Key(10)]
     public Dictionary<string, int> ReAlertCounts { get; set; } = new();
 
     public static bool IsDue(Notification mention, Moment now)

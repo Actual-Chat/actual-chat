@@ -13,7 +13,7 @@ namespace ActualChat.Chat.Flows;
 /// <c>ILiveSessionsBackend.FinalizeSession</c>.
 /// </summary>
 [Flow(ResumeTimeout = 60, DelayQuanta = 15)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 {
     private const int MaxEntries = 1000;
@@ -33,7 +33,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
 
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), Key(0)]
     public long LastSummaryEndLid { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
