@@ -1,9 +1,10 @@
 using ActualChat.Geo;
+using ActualChat.Users.Module;
 using PhoneNumbers;
 
 namespace ActualChat.Users.Phone;
 
-public class Phones(IAccounts accounts) : IPhones
+public class Phones(IAccounts accounts, UsersSettings settings) : IPhones
 {
     // [ComputeMethod]
     public virtual Task<ActualChat.Phone?> Parse(string phone, CancellationToken cancellationToken)
@@ -16,25 +17,43 @@ public class Phones(IAccounts accounts) : IPhones
         if (phone.IsNullOrEmpty())
             return null;
 
-        // 1. Try as-is (works when input has country code, e.g. "+1 (201) 555-0123")
+        // 1. Predefined test numbers (e.g. app-review accounts) must resolve exactly,
+        // no matter which country the caller's IP maps to
+        var digits = ActualChat.Phone.NormalizePart(phone);
+        if (settings.PredefinedTotps.ContainsKey(digits)) {
+            var predefined = PhoneExt.ParseNullable("+" + digits, null);
+            if (predefined != null)
+                return predefined;
+        }
+
+        // 2. Try as-is (works when input has country code, e.g. "+1 (201) 555-0123")
         var result = PhoneExt.ParseNullable(phone, null);
         if (result != null)
             return result;
 
-        // 2. Try with user's detected region from GeoIP (handles national numbers like "(201) 555-0123")
+        // 3. Two candidate interpretations: a national number in the GeoIP country
+        // (e.g. "(201) 555-0123") and an international number typed without '+'
+        // (e.g. "12015550123"). A valid one beats a merely possible one; GeoIP wins ties.
+        var util = PhoneNumberUtil.GetInstance();
         var sessionInfo = await accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         var countryCode = await GeoIP.ToCountryCode(sessionInfo?.IPAddress ?? "").ConfigureAwait(false);
-        if (!countryCode.IsNullOrEmpty()) {
-            result = PhoneExt.ParseNullable(phone, countryCode);
-            if (result != null)
-                return result;
-        }
-
-        // 3. Try with '+' prefix (user typed international number without '+', e.g. "12015550123")
+        PhoneNumber? geoIpNumber = null;
+        if (!countryCode.IsNullOrEmpty())
+            PhoneFormatterExt.TryParse(util, phone, countryCode, out geoIpNumber);
+        PhoneNumber? plusNumber = null;
         if (!phone.StartsWith('+'))
-            result = PhoneExt.ParseNullable("+" + phone, null);
+            PhoneFormatterExt.TryParse(util, "+" + phone, null, out plusNumber);
 
-        return result;
+        if (geoIpNumber != null && util.IsValidNumber(geoIpNumber))
+            return geoIpNumber.ToPhone();
+        if (plusNumber != null && util.IsValidNumber(plusNumber))
+            return plusNumber.ToPhone();
+        if (geoIpNumber != null && util.IsPossibleNumber(geoIpNumber))
+            return geoIpNumber.ToPhone();
+        if (plusNumber != null && util.IsPossibleNumber(plusNumber))
+            return plusNumber.ToPhone();
+
+        return null;
     }
 
     // [ComputeMethod]
