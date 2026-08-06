@@ -40,8 +40,13 @@ public sealed class ServerRunCommand(CliContext context) : PlanCommand<ServerRun
 
         if (settings.IsPublished) {
             var exePath = Server.PublishedExePath;
-            plan.Add(new RunStep(exePath, settings.ExtraArgs) {
+            // The server derives its content root from the working directory, so it has to run from
+            // PublishDir - anywhere else appsettings*.json aren't found and DbSettings silently falls back
+            // to the in-memory DB. Executable must be absolute: Process.Start resolves a relative one
+            // against WorkingDirectory rather than the current directory.
+            plan.Add(new RunStep(Path.GetFullPath(exePath), settings.ExtraArgs) {
                 RequiredPath = exePath,
+                WorkingDirectory = Path.GetFullPath(Server.PublishDir),
                 Environment = environment,
             });
 
