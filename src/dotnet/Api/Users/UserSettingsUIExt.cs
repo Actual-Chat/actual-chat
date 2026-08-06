@@ -50,4 +50,8 @@ public static class UserSettingsUIExt
 
     public static UserSettingsAccessor<UserReplaySettings> UserReplaySettings(this UserSettingsUI settingsUI)
         => new(settingsUI, nameof(UserReplaySettings));
+
+    public static UserSettingsAccessor<UserWalkieTalkieSettings> UserWalkieTalkieSettings(
+        this UserSettingsUI settingsUI)
+        => new(settingsUI, nameof(UserWalkieTalkieSettings));
 }
