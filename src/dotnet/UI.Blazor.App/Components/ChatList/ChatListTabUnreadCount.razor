@@ -34,11 +34,13 @@
         var chatListFilter = ChatListFilter;
         // Done w/ preps for .ConfigureAwait(false)
 
-        var count = await ChatListUI.GetUnreadChatCount(placeId, chatListFilter, cancellationToken).ConfigureAwait(false);
+        var count = await ChatListUI.GetUnreadChatCount(placeId, chatListFilter, cancellationToken)
+            .ConfigureAwait(false);
         if (count <= 0)
             return new(count);
 
-        var unmutedCount = await ChatListUI.GetUnmutedUnreadChatCount(placeId, chatListFilter, cancellationToken).ConfigureAwait(false);
+        var unmutedCount = await ChatListUI.GetUnmutedUnreadChatCount(placeId, chatListFilter, cancellationToken)
+            .ConfigureAwait(false);
         return new(count, unmutedCount <= 0);
     }
 
@@ -50,9 +52,12 @@
         if (placeChatListSettings != PlaceChatListSettings)
             return;
 
-        var firstUnreadChat = list.FirstOrDefault(c => c.UnmutedUnreadCount > 0)
-            ?? list.FirstOrDefault(c => c.UnreadCount > 0);
-        if (firstUnreadChat == null || firstUnreadChat.Id == ChatUI.SelectedChatId.Value)
+        // The selected chat is excluded: its raw count can be non-zero while its badge is
+        // gated off, and it sorts first - resolving to it would make the click a silent no-op.
+        var selectedChatId = ChatUI.SelectedChatId.Value?.GetThreadOutermostParentOrSelf();
+        var firstUnreadChat = list.FirstOrDefault(c => c.UnmutedUnreadCount > 0 && c.Id != selectedChatId)
+            ?? list.FirstOrDefault(c => c.UnreadCount > 0 && c.Id != selectedChatId);
+        if (firstUnreadChat == null)
             return;
 
         _ = History.NavigateTo(Links.Chat(firstUnreadChat.Id));

@@ -3,16 +3,16 @@
 @implements ISortableListBackend
 @{
     var m = State.Value;
-    var chats = m.Chats;
+    var items = m.Items;
     var iconSize = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
 }
 
-@if (chats.Any()) {
+@if (items.Any()) {
     <div class=c-delimiter></div>
 }
 
 <div @ref="Ref" class="navbar-chat-buttons">
-    @foreach (var chatInfo in chats) {
+    @foreach (var (chatInfo, unreadState) in items) {
         var attributes = new Dictionary<string, object> {
             { "data-chat-id", chatInfo.Id },
         };
@@ -32,8 +32,8 @@
             </ChildContent>
             <BadgeContent>
                 <UnreadCount
-                    Value="@chatInfo.UnreadCount"
-                    HasMentions="@chatInfo.HasUnreadMentions"
+                    Value="@unreadState.Count"
+                    HasMentions="@unreadState.HasOwnMention"
                     NotificationMode="@chatInfo.ChatUserSettings.NotificationMode"/>
             </BadgeContent>
         </NavbarGroupSelectionButton>
@@ -70,12 +70,20 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var navbarSettings = await Hub.NavbarUI.Settings.Use(cancellationToken).ConfigureAwait(false);
-        var maybeChats = await navbarSettings.PinnedChats
-            .Select(id => Hub.ChatUI.Get(id, cancellationToken))
+        var maybeItems = await navbarSettings.PinnedChats
+            .Select(GetItem)
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
-        var chats = maybeChats.SkipNullItems().ToList();
-        return new() { Chats = chats };
+        return new() { Items = maybeItems.Where(x => x is not null).Select(x => x!.Value).ToList() };
+
+        async Task<(ChatInfo Chat, ChatUnreadState UnreadState)?> GetItem(ChatId chatId) {
+            var chatInfo = await Hub.ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chatInfo == null)
+                return null;
+
+            var unreadState = await Hub.ChatUI.GetUnreadState(chatId, cancellationToken).ConfigureAwait(false);
+            return (chatInfo, unreadState);
+        }
     }
 
     [JSInvokable]
@@ -84,7 +92,7 @@
 
     // Nested types
 
-    public record Model {
-        public List<ChatInfo> Chats { get; init; } = [];
+    public sealed record Model {
+        public List<(ChatInfo Chat, ChatUnreadState UnreadState)> Items { get; init; } = [];
     }
 }

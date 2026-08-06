@@ -296,10 +296,16 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var isReadingTail = await IsReadingTail(chatId, cancellationToken).ConfigureAwait(false);
         return isReadingTail
             ? default
-            : new ChatUnreadState(chatInfo.UnreadCount, chatInfo.HasUnreadOwnMention);
+            : new ChatUnreadState(
+                chatInfo.UnreadCount,
+                chatInfo.HasUnreadOwnMention,
+                chatInfo.UnmutedUnreadCount > 0 && chatInfo.UnreadCount > 0);
     }
 
-    [ComputeMethod]
+    // Consolidated so streaming-expansion flaps of the end anchor (pushed out, then restored by the
+    // sticky-edge scroll-back) don't propagate: the wrapper serves the old value during the window
+    // and recomputes once after it - only a genuine pin/unpin changes the result.
+    [ComputeMethod(ConsolidationDelay = 0.25)]
     public virtual async Task<bool> IsReadingTail(ChatId chatId, CancellationToken cancellationToken)
     {
         // Must stay in sync with what actually advances the read position (ChatView) - suppressing
@@ -308,7 +314,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return false;
 
         var itemVisibility = await ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
-        if (itemVisibility.ChatId != chatId || !itemVisibility.IsEndAnchorVisible)
+        if (itemVisibility.ChatId != chatId || !itemVisibility.IsPinnedToEnd)
             return false;
 
         var lastPresentAt = await UserActivityUI.LastPresentAt.Use(cancellationToken).ConfigureAwait(false);

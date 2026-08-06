@@ -351,8 +351,19 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Observing new entries
         var entries = entryReader.Observe(chatIdRange.End, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
+            // An observed entry carries a real server-delivered lid, so the anti-synthetic-lid clamp
+            // in UpdateReadPosition may trust it - without this the eager advance below is clamped
+            // back to the tail GetData knew before its update delay, i.e. silently no-ops.
+            _lastKnownEntryLid = Math.Max(_lastKnownEntryLid, entry.LocalId);
             if (entry.AuthorId != authorId) {
                 lastEntryLid = entry.LocalId;
+                // Pinned to the end = the entry is (about to be) on screen; advance immediately
+                // instead of waiting for the IntersectionObserver round trip, so the raw unread
+                // count never rises for the chat being watched. The !IsEmpty guard keeps a retained
+                // pinned flag from marking anything read while no items are actually rendered.
+                var itemVisibility = ItemVisibility.Value;
+                if (itemVisibility.IsPinnedToEnd && !itemVisibility.IsEmpty && ChatUI.IsUserPresent())
+                    UpdateReadPosition(lastEntryLid);
                 continue;
             }
 
@@ -398,6 +409,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
             ResetNewMessagesLineState();
             _itemVisibility.Value = ChatViewItemVisibility.Empty;
+            // A report from the pre-suspend rendering may have landed while we awaited visibility
+            ChatUI.ResetItemVisibility(chatId);
         }
 
         // Update delay: we want to collect as many dependencies as possible here,

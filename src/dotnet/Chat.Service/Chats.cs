@@ -539,10 +539,27 @@ public partial class Chats(IServiceProvider services) : IChats
                     LinkPreviewMode = linkPreviewMode,
                     ClientId = command.ClientId,
                 }));
+            var userId = chat.Rules.Account.Require().Id;
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
             if (chatId is PeerChatId peerChatId)
-                await EnsureOwnPeerContactStored(peerChatId, chat.Rules.Account.Require().Id, cancellationToken)
+                await EnsureOwnPeerContactStored(peerChatId, userId, cancellationToken)
                     .ConfigureAwait(false);
+            var readPosition = await ChatPositionsBackend
+                .Get(userId, chatId, ChatPositionKind.Read, cancellationToken)
+                .ConfigureAwait(false);
+            // Advance only for caught-up authors: a scalar read position can't exclude just this
+            // entry, and advancing from behind would wipe the chat's real unreads. Compared against
+            // the new entry's own lid so an insert that races ours can't be skipped over.
+            var isCaughtUp = readPosition.EntryLid >= textEntry.LocalId - 1;
+            if (isCaughtUp)
+                try {
+                    var setPositionCommand = new ChatPositionsBackend_Set(
+                        userId, chatId, ChatPositionKind.Read, new ChatPosition(textEntry.LocalId));
+                    await Commander.Call(setPositionCommand, true, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    Log.LogError(e, "Failed to advance own read position in chat {ChatId}", chatId);
+                }
         }
 
         return textEntry;

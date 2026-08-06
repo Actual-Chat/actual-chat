@@ -109,46 +109,6 @@ export class FiniteList extends VirtualList {
         void this.requestData();
     }
 
-    // Wrapper coordinates of the item at `index`, counting the separators that come before it.
-    private topOf(index: number): number {
-        return index * this.itemSize + this.separatorsBefore(index) * this.separatorSize;
-    }
-
-    // How many separators sit above `index`. A separator index is the item it follows, so an index
-    // equal to it is still below the separator.
-    private separatorsBefore(index: number): number {
-        const indexes = this.separatorIndexes;
-        let low = 0;
-        let high = indexes.length;
-        while (low < high) {
-            const mid = (low + high) >> 1;
-            if (indexes[mid] < index)
-                low = mid + 1;
-            else
-                high = mid;
-        }
-        return low;
-    }
-
-    // The inverse of topOf: the index whose row contains `offset`.
-    private indexAt(offset: number): number {
-        if (this.itemSize <= 0)
-            return 0;
-
-        let index = Math.floor(offset / this.itemSize);
-        // Each separator above pushes the answer earlier, and removing them can never uncover another
-        // one below - so this converges in as many steps as there are separators in the way, i.e. one
-        // for the chat list.
-        for (let pass = 0; pass < IndexAtMaxPasses; pass++) {
-            const next = Math.floor((offset - this.separatorsBefore(index) * this.separatorSize) / this.itemSize);
-            if (next === index)
-                break;
-
-            index = next;
-        }
-        return Math.max(0, index);
-    }
-
     protected buildDataQuery(): VirtualListDataQuery | null {
         const rs = this.renderState;
         if (rs.count === 0 || (rs.hasVeryFirstItem && rs.hasVeryLastItem))
@@ -185,6 +145,46 @@ export class FiniteList extends VirtualList {
     }
 
     // Private methods
+
+    // Wrapper coordinates of the item at `index`, counting the separators that come before it.
+    private topOf(index: number): number {
+        return index * this.itemSize + this.separatorsBefore(index) * this.separatorSize;
+    }
+
+    // The inverse of topOf: the index whose row contains `offset`.
+    private indexAt(offset: number): number {
+        if (this.itemSize <= 0)
+            return 0;
+
+        let index = Math.floor(offset / this.itemSize);
+        // Each separator above pushes the answer earlier, and removing them can never uncover another
+        // one below - so this converges in as many steps as there are separators in the way, i.e. one
+        // for the chat list.
+        for (let pass = 0; pass < IndexAtMaxPasses; pass++) {
+            const next = Math.floor((offset - this.separatorsBefore(index) * this.separatorSize) / this.itemSize);
+            if (next === index)
+                break;
+
+            index = next;
+        }
+        return Math.max(0, index);
+    }
+
+    // How many separators sit above `index`. A separator index is the item it follows, so an index
+    // equal to it is still below the separator.
+    private separatorsBefore(index: number): number {
+        const indexes = this.separatorIndexes;
+        let low = 0;
+        let high = indexes.length;
+        while (low < high) {
+            const mid = (low + high) >> 1;
+            if (indexes[mid] < index)
+                low = mid + 1;
+            else
+                high = mid;
+        }
+        return low;
+    }
 
     // The size source is any regular item; irregular ones (block separators) carry extra height and
     // would poison the estimate. Sticking to one key while it stays rendered keeps the value from
@@ -279,7 +279,7 @@ export class FiniteList extends VirtualList {
     private updateItemVisibility(): void {
         const isEndAnchorVisible = this.renderState.hasVeryLastItem
             && this.ref.scrollTop + this.ref.clientHeight >= this.ref.scrollHeight - 1;
-        void this.reportVisibility([...this.visibleKeys], isEndAnchorVisible, isEndAnchorVisible);
+        void this.reportVisibility([...this.visibleKeys], isEndAnchorVisible);
     }
 
     // Keys that left the DOM are dropped, but the rest keep their state: clearing the whole set here
