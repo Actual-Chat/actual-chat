@@ -1,4 +1,3 @@
-﻿using System.Diagnostics;
 using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
 using Microsoft.EntityFrameworkCore;

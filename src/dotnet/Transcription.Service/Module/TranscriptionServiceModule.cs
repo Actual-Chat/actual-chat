@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.Module;
 
 namespace ActualChat.Transcription.Module;

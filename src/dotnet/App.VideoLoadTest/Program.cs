@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Net.WebSockets;
-using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Security;
 using ActualChat.Streaming;

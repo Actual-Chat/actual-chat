@@ -1,7 +1,5 @@
 using ActualChat.Contacts;
-using ActualChat.Search;
 using ActualChat.Testing.Host;
-using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;

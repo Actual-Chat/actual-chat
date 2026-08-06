@@ -1,5 +1,3 @@
-using ActualChat.Transcription;
-
 namespace ActualChat.Transcription.UnitTests;
 
 public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out)

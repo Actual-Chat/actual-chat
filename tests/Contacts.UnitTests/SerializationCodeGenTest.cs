@@ -1,5 +1,3 @@
-using ActualChat.Testing;
-
 namespace ActualChat.Contacts.UnitTests;
 
 public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)

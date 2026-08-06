@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualLab.Generators;
 
 namespace ActualChat.App.Server.Module;

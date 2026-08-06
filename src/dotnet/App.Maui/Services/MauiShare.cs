@@ -1,5 +1,4 @@
-﻿using ActualChat.UI.Blazor.Components;
-using Microsoft.Maui.ApplicationModel.DataTransfer;
+using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.App.Maui.Services;
 

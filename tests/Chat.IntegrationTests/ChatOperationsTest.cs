@@ -4,7 +4,6 @@ using ActualChat.Contacts;
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
 using ActualChat.Queues;
-using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 

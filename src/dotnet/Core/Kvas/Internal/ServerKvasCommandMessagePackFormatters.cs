@@ -1,4 +1,3 @@
-using ActualLab.Fusion;
 using MessagePack.Formatters;
 
 namespace ActualChat.Kvas.Internal;

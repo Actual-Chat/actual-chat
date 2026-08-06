@@ -1,4 +1,3 @@
-using ActualChat.Diff;
 using MessagePack.Formatters;
 
 namespace ActualChat.Serialization.Internal;

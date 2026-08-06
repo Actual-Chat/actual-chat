@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;

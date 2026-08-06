@@ -1,6 +1,5 @@
 using ActualChat.Contacts;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.App.Services;

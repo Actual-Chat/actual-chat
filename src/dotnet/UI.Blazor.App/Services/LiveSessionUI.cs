@@ -1,4 +1,4 @@
-﻿using ActualChat.Live;
+using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;

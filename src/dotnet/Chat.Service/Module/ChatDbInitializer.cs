@@ -1,6 +1,5 @@
 using ActualChat.Chat.Db;
 using ActualChat.Db;
-using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.Module;

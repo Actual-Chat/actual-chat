@@ -1,4 +1,3 @@
-using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;

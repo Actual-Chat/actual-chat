@@ -1,5 +1,4 @@
-﻿using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Services;
+﻿using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.UI.Blazor.UnitTests;

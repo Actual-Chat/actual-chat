@@ -1,4 +1,3 @@
-using ActualChat.Media;
 
 namespace ActualChat.Media.UnitTests;
 

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using ActualChat.Users;
 
 namespace ActualChat.Testing.Host;
 

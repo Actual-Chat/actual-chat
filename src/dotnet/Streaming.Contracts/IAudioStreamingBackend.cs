@@ -1,6 +1,5 @@
 using ActualChat.Attributes;
 using ActualChat.Audio;
-using ActualChat.Hosting;
 using ActualChat.Sharding;
 using ActualChat.Transcription;
 using ActualLab.Rpc;

@@ -1,5 +1,4 @@
 using ActualChat.App.Server.Module;
-using ActualChat.Hosting;
 using static System.Console;
 
 namespace ActualChat.App.Server;

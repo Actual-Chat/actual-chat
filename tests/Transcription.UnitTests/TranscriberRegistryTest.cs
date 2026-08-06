@@ -1,5 +1,4 @@
 using ActualChat.Audio;
-using ActualChat.Transcription;
 using ActualChat.Transcription.Module;
 
 namespace ActualChat.Transcription.UnitTests;

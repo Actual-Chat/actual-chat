@@ -1,4 +1,3 @@
-using Android.App;
 using AndroidX.Core.App;
 using ActualChat.Notifications;
 using ActualChat.UI.Blazor.App.Services;

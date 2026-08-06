@@ -1,5 +1,3 @@
-using ActualChat.Hosting;
-
 namespace ActualChat.App.Server.Initializers;
 
 /// <summary>

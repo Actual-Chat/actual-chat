@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.Contacts;
 
 public class ExternalContactHashes(IAccounts accounts, IExternalContactHashesBackend backend, ICommander commander) : IExternalContactHashes

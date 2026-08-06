@@ -299,6 +299,7 @@
     <Using Include="ActualChat.DependencyInjection" />
     <!-- <Using Include="ActualChat.Diagnostics" /> -->
     <Using Include="ActualChat.Diff" />
+    <Using Include="ActualChat.Hosting" />
     <Using Include="ActualChat.IO" />
     <Using Include="ActualChat.Mathematics" />
     <Using Include="ActualChat.Chat" />

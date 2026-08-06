@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.MLSearch.Engine;
 using OpenSearch.Client;
 using OpenSearch.Net;

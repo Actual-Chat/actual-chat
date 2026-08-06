@@ -1,4 +1,3 @@
-﻿using ActualChat.Users;
 #pragma warning disable CS0618 // Type or member is obsolete
 
 namespace ActualChat.Contacts;

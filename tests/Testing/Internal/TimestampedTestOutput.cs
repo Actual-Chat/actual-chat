@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace ActualChat.Testing.Internal;
 
 public class TimestampedTestOutput(ITestOutputHelper wrapped) : ITestOutputWrapper

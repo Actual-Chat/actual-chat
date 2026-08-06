@@ -1,5 +1,3 @@
-using ActualChat.Chat;
-using ActualChat.Contacts;
 using ActualChat.Hashing;
 
 namespace ActualChat.Contacts.UnitTests;

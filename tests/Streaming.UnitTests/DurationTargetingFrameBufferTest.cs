@@ -1,5 +1,3 @@
-using ActualChat.Media;
-
 namespace ActualChat.Streaming.UnitTests;
 
 public class DurationTargetingFrameBufferTest

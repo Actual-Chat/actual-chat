@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace ActualChat.Core.UnitTests;
 
 public static class Awaiter

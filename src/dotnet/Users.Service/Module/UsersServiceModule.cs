@@ -1,9 +1,7 @@
 using System.Security.Claims;
 using ActualChat.Authentication;
 using ActualChat.Db.Module;
-using ActualChat.Hosting;
 using ActualChat.Kvas;
-using ActualChat.Resilience;
 using ActualChat.Redis.Module;
 using ActualChat.Security;
 using ActualChat.Users.Db;

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using ActualChat.Queues;
 
 namespace ActualChat.Testing.Host;

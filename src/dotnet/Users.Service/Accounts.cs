@@ -1,7 +1,5 @@
 using ActualChat.Contacts;
 using ActualChat.Geo;
-using ActualChat.Hosting;
-using ActualChat.Logging;
 using ActualChat.Notifications;
 using ActualChat.Security;
 using UAParser;

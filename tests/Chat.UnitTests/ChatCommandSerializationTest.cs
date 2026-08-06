@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 
 namespace ActualChat.Chat.UnitTests;
 

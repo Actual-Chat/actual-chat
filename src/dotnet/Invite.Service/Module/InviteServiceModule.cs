@@ -1,5 +1,4 @@
 using ActualChat.Db.Module;
-using ActualChat.Hosting;
 using ActualChat.Invite.Db;
 using ActualChat.Redis.Module;
 

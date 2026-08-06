@@ -1,4 +1,3 @@
-using System.Globalization;
 using TimeZoneConverter;
 
 namespace ActualChat.Core.UnitTests;

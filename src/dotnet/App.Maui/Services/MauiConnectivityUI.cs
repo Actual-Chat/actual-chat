@@ -1,7 +1,5 @@
 using ActualChat.UI.Blazor;
-using ActualChat.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services;
 

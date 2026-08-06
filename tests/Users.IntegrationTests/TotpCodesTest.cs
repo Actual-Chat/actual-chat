@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.Resilience;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Module;

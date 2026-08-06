@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.Media.Db;
 using ActualChat.Media.Resources;
 using ActualLab.Fusion.EntityFramework;

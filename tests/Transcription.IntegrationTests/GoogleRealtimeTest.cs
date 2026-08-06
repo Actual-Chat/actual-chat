@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.Extensions.Configuration;
 using EndpointingSensitivity = Google.Cloud.Speech.V2.StreamingRecognitionFeatures.Types.EndpointingSensitivity;

@@ -2,7 +2,6 @@ using ActualChat.Hashing;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 

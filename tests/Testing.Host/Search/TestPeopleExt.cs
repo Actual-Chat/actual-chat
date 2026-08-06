@@ -1,4 +1,3 @@
-using ActualChat.Users;
 
 namespace ActualChat.Testing.Host;
 

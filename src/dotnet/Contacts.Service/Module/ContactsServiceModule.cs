@@ -1,6 +1,5 @@
 using ActualChat.Contacts.Db;
 using ActualChat.Db.Module;
-using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
 

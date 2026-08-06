@@ -1,6 +1,3 @@
-using System.Globalization;
-using ActualChat.Transcription;
-
 namespace ActualChat.Transcription.UnitTests;
 
 public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)

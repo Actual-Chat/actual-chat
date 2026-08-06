@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;

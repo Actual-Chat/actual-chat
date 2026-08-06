@@ -1,4 +1,3 @@
-using System.Globalization;
 using ActualChat.Time;
 
 namespace ActualChat.Core.UnitTests.Time;

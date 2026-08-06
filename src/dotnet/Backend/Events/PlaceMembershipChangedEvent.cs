@@ -1,5 +1,3 @@
-using ActualChat.Contacts;
-
 namespace ActualChat;
 
 [DataContract, MessagePackObject(true)]

@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.Maui.Services;
 
 namespace ActualChat.App.Maui.Services;

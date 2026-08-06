@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Hashing;
 
 namespace ActualChat.Testing.Host;

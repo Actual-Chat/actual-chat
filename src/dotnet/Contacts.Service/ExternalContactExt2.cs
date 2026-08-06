@@ -1,5 +1,4 @@
 using ActualChat.Contacts.Db;
-using ActualChat.Users;
 
 namespace ActualChat.Contacts;
 

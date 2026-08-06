@@ -1,7 +1,6 @@
 using ActualChat.Db.Module;
 using ActualChat.Flows.Db;
 using ActualChat.Flows.Infrastructure;
-using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 
 namespace ActualChat.Flows.Module;

@@ -1,5 +1,3 @@
-using ActualChat.Hosting;
-using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;

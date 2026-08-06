@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.Notifications;
 using Notification = ActualChat.Notifications.Notification;
 

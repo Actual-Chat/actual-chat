@@ -1,5 +1,4 @@
 using ActualChat.Attributes;
-using ActualChat.Hosting;
 using ActualLab.Internal;
 
 namespace ActualChat;

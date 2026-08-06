@@ -1,5 +1,4 @@
 using ActualChat.UI.Blazor.App.Module;
-using Microsoft.JSInterop;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using ActualChat.Db;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;

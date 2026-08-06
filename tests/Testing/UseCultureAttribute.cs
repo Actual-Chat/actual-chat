@@ -1,4 +1,3 @@
-using System.Globalization;
 using Xunit.Sdk;
 
 namespace ActualChat.Testing;

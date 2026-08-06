@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using ChatModel = ActualChat.Chat.Chat;
 

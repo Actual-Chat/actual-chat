@@ -1,5 +1,3 @@
-using ActualChat.Transcription;
-
 namespace ActualChat.Transcription.UnitTests;
 
 // The silence resource is loaded by name from the assembly that hosts TranscriberHelper,

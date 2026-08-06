@@ -1,6 +1,5 @@
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
-using ActualChat.UI.Blazor.Components;
 using Bunit;
 using Bunit.TestDoubles;
 

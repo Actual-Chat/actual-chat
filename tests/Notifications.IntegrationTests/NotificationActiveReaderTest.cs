@@ -1,6 +1,5 @@
 using ActualChat.Queues;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 
 namespace ActualChat.Notifications.IntegrationTests;
 

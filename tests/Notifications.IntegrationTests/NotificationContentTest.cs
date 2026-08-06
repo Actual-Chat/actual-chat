@@ -1,7 +1,4 @@
-using ActualChat.Chat;
-using ActualChat.Media;
 using ActualChat.Testing.Host;
-using ActualChat.Testing.Host.Assertion;
 using ActualChat.Uploads;
 
 namespace ActualChat.Notifications.IntegrationTests;

@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;

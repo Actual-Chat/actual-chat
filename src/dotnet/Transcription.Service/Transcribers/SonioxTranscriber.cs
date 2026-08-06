@@ -1,7 +1,5 @@
 using System.Net.WebSockets;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ActualChat.Audio;
 using ActualChat.Module;
 using static ActualChat.Constants.Transcription.Soniox;

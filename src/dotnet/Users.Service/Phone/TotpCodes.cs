@@ -3,7 +3,6 @@ using ActualChat.Hashing;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualLab.Redis;
-using StackExchange.Redis;
 
 namespace ActualChat.Users.Phone;
 

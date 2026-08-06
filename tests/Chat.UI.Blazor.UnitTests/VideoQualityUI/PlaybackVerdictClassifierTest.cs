@@ -1,5 +1,3 @@
-using ActualChat.Media;
-using ActualChat.Streaming;
 using static ActualChat.UI.Blazor.App.Services.VideoQualityUI;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;

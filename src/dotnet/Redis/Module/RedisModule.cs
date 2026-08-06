@@ -1,8 +1,7 @@
 using ActualChat.Configuration;
-using ActualChat.Hosting;
 using ActualChat.Module;
-using StackExchange.Redis;
 using ActualLab.Redis;
+using StackExchange.Redis;
 
 namespace ActualChat.Redis.Module;
 

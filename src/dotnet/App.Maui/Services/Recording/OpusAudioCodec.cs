@@ -1,7 +1,6 @@
 using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.UI.Blazor.App.Components;
-using Microsoft.Extensions.Logging;
 
 #if WINDOWS || ANDROID
 using OpusSharp.Core.Extensions;

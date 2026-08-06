@@ -1,4 +1,3 @@
-using ActualChat.Performance;
 using ActualChat.Testing.Internal;
 
 namespace ActualChat.Testing;

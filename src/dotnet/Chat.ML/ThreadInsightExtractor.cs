@@ -1,9 +1,7 @@
-using System.Net;
 using ActualChat.AI;
 using ActualLab.IO;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using HttpOperationException = Microsoft.SemanticKernel.HttpOperationException;
 
 namespace ActualChat.Chat.ML;
 

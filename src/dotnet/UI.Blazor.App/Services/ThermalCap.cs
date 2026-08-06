@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

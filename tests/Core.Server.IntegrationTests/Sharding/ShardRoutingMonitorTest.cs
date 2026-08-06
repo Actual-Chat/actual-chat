@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Sharding;

@@ -1,6 +1,3 @@
-using System.Collections.Concurrent;
-using System.Globalization;
-
 namespace ActualChat.Testing.Internal;
 
 public class CapturingTestOutput(ITestOutputHelper wrapped) : ITestOutputWrapper

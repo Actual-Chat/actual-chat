@@ -1,5 +1,4 @@
-﻿using ActualChat.Security;
-using ActualChat.Users;
+using ActualChat.Security;
 using Android.Content;
 using Android.Gms.Auth.Api.SignIn;
 using Android.Gms.Common;

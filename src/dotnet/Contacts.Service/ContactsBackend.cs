@@ -1,6 +1,5 @@
 using ActualChat.Contacts.Db;
 using ActualChat.Db;
-using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Redis;
 using ActualLab.Resilience;

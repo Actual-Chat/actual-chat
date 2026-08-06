@@ -1,5 +1,4 @@
 using ActualChat.Contacts;
-using ActualLab.Fusion.UI;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

@@ -1,5 +1,4 @@
 using ActualChat.Attributes;
-using ActualChat.Hosting;
 using ActualChat.Sharding;
 
 // [assembly: BackendService(nameof(HostRole.OneServer), ServiceMode.Local, Priority = 1)]

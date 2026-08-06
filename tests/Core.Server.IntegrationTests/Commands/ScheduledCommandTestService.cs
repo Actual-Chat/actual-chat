@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Rpc;

@@ -1,5 +1,4 @@
 using ActualChat.Search;
-using ActualChat.Users;
 
 /// <summary>
 /// Frontend service for AI-powered search across contacts and chat entries.

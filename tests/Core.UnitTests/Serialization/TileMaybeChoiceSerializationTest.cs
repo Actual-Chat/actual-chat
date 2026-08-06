@@ -1,5 +1,4 @@
 using ActualChat.Serialization.Internal;
-using MessagePack.Formatters;
 using MessagePack.Resolvers;
 
 namespace ActualChat.Core.UnitTests.Serialization;

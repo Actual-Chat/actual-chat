@@ -1,5 +1,4 @@
 using ActualChat.Hashing;
-using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Users.AvatarIcons;
 using ActualChat.Users.Module;

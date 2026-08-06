@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.IntegrationTests;

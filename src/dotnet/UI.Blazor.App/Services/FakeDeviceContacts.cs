@@ -1,7 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

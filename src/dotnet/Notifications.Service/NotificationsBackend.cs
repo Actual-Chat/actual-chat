@@ -1,12 +1,9 @@
-using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Flows;
 using ActualChat.Notifications.Db;
 using ActualChat.Queues;
-using ActualChat.Sharding;
-using ActualChat.Users;
 using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;

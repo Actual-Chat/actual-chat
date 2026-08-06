@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.UI.Blazor.Components;
 
 public abstract class AccountBadgeBase : ComputedStateComponent<UIHub, AccountBadgeBase.Model>

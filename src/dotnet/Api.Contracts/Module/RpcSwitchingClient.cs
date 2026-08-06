@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
 using ActualLab.Rpc.Infrastructure;
