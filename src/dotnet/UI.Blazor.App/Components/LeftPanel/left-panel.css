@@ -80,9 +80,16 @@
     @apply overflow-hidden;
     @apply relative z-0;
 }
+/* The border lives on the wrapper, not on .c-content: .c-content is clamped to max-h-14,
+   so a border there would be drawn inside those 56px and end up 1px above the chat header's
+   separator, which sits below its own 56px .c-content. */
+.left-panel-content-header {
+    @apply border-b border-separator;
+}
 .left-panel-content-header.place {
     @apply relative;
     @apply flex-y;
+    @apply border-0;
 }
 .left-panel-content-header.place .box-wrapper {
     @apply h-14;
@@ -104,13 +111,11 @@
     @apply ordinary-header;
     @apply gap-x-1;
     @apply px-2;
-    @apply border-b border-separator;
 }
 .left-panel-content-header.place > .c-content {
     @apply flex-y;
     @apply min-h-26 max-h-26;
     @apply rounded-br-xl md:rounded-bl-xl;
-    @apply border-0;
     @apply overflow-hidden;
 }
 .left-panel-content-header > .c-content > .c-title {
