@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using ActualChat.Contacts;
-using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Notifications;

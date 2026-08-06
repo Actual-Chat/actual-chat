@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 using ActualLab.Rpc;
 using AwesomeAssertions.Equivalency;
 using Microsoft.AspNetCore.Authentication.Google;

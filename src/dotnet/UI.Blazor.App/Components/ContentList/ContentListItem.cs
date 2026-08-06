@@ -1,5 +1,3 @@
-using ActualChat.Chat;
-using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.UI.Blazor.App.Components;
 

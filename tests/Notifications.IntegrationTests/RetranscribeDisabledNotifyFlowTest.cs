@@ -1,6 +1,4 @@
 using ActualChat.Transcription.Module;
-using ActualChat.Chat.Module;
-using ActualChat.Streaming.Module;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Notifications.IntegrationTests;

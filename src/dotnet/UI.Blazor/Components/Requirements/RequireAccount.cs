@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.UI.Blazor.Components;
 
 public sealed class RequireAccount : RequirementComponent

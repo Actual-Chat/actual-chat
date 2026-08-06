@@ -1,4 +1,3 @@
-using System.Globalization;
 
 namespace ActualChat.UI.Blazor.App.Components;
 

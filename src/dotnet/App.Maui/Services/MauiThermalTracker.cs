@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 #if IOS || MACCATALYST
 using Foundation;
 #endif

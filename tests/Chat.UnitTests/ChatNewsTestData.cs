@@ -1,4 +1,3 @@
-using ActualChat.Hashing;
 using MediaModel = ActualChat.Media.Media;
 
 namespace ActualChat.Chat.UnitTests;

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using ActualChat.Notifications;
 
 namespace ActualChat.Testing.Host;

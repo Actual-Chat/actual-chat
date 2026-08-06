@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Services.Gestures;
 
 namespace ActualChat.UI.Blazor.App.Services;

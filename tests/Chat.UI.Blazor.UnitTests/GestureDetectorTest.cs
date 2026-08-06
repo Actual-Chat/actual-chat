@@ -1,5 +1,4 @@
 using ActualChat.UI.Blazor.App.Services.Gestures;
-using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 

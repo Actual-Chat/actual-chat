@@ -1,6 +1,4 @@
 using ActualChat.Contacts;
-using ActualChat.Hosting;
-using ActualChat.Logging;
 using ActualChat.Transcription;
 
 namespace ActualChat.Chat;

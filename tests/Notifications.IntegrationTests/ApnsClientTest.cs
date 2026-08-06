@@ -1,10 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
-using ActualChat.Notifications;
 using ActualChat.Notifications.Module;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Notifications.IntegrationTests;
 

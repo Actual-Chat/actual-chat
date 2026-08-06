@@ -1,4 +1,3 @@
-using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

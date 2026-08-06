@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 

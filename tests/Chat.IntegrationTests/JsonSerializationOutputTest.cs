@@ -1,5 +1,4 @@
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Users;
 using ICommand = ActualLab.CommandR.ICommand;
 
 namespace ActualChat.Chat.IntegrationTests;

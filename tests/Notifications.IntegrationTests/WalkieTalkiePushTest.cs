@@ -1,9 +1,7 @@
-using ActualChat.Chat;
 using ActualChat.Live;
 using ActualChat.Notifications.Module;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 
 namespace ActualChat.Notifications.IntegrationTests;
 

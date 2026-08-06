@@ -1,5 +1,4 @@
 using ActualChat.Live;
-using ActualChat.Sharding;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Streaming.IntegrationTests;

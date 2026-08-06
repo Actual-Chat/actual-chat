@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;

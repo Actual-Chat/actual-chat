@@ -1,4 +1,3 @@
-using ActualChat.Users;
 
 namespace ActualChat.Live;
 

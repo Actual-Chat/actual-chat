@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 using AwesomeAssertions.Equivalency;
 
 namespace ActualChat.Contacts.IntegrationTests;

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using ActualChat.App.Server;
 using ActualChat.App.Server.Initializers;
 using ActualChat.Chat.Module;

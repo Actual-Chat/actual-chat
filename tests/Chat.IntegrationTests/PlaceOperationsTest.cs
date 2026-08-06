@@ -3,7 +3,6 @@ using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Queues;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 
 namespace ActualChat.Chat.IntegrationTests;
 

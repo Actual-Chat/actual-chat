@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-using ActualChat.Audio;
-using ActualChat.Hosting;
+﻿using ActualChat.Audio;
 
 namespace Core.Audio.UnitTests;
 

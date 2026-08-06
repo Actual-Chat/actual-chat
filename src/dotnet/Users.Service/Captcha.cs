@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Users.Module;
 using Google.Api.Gax.ResourceNames;

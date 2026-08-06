@@ -1,7 +1,6 @@
 using ActualChat.Contacts.Db;
-using ActualChat.Users;
-using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Contacts;
 

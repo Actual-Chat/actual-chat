@@ -1,5 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;

@@ -4,7 +4,6 @@ using ActualChat.UI.Blazor.App.Module;
 using ActualLab.Diagnostics;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
-using Microsoft.JSInterop;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

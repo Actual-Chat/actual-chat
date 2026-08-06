@@ -1,5 +1,3 @@
-using ActualLab.Serialization;
-
 namespace ActualChat.Testing;
 
 // Mirrors ActualLab.Testing's serializer matrix minus MemoryPack. ActualLab's

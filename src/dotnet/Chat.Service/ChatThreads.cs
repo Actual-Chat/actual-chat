@@ -1,6 +1,5 @@
 using ActualChat.Chat.ML;
 using ActualChat.Contacts;
-using ActualChat.Users;
 
 namespace ActualChat.Chat;
 

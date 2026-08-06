@@ -2,7 +2,6 @@ using System.Text;
 using ActualChat.Kvas;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 // ReSharper disable WithExpressionModifiesAllMembers
 

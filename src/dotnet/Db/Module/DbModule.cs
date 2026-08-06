@@ -1,5 +1,4 @@
 using ActualChat.Configuration;
-using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;

@@ -1,5 +1,3 @@
-using ActualChat.Chat;
-
 namespace ActualChat.UI.Blazor.Components;
 
 // What VisualMediaViewerModal pages through: a windowed, newest-first list of

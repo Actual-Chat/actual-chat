@@ -1,4 +1,3 @@
-using System.Globalization;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf.WellKnownTypes;
 

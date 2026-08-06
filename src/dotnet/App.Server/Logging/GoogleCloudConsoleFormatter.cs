@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Text;
-using ActualChat.App.Server.Module;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 

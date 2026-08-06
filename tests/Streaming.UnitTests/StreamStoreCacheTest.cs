@@ -1,4 +1,3 @@
-using System.Threading.Channels;
 using ActualChat.Streaming.Services;
 
 namespace ActualChat.Streaming.UnitTests;

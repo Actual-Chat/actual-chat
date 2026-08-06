@@ -1,6 +1,5 @@
 using ActualChat.Aot;
 using ActualChat.Module;
-using Microsoft.JSInterop;
 
 namespace ActualChat.UI.Blazor.Module;
 

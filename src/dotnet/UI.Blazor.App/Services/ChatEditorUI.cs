@@ -1,6 +1,5 @@
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Fusion.Client;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;

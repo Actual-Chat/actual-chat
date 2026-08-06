@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualLab.Fusion.Diagnostics;
 

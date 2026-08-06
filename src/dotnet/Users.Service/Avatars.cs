@@ -1,4 +1,3 @@
-using ActualChat.Kvas;
 
 namespace ActualChat.Users;
 

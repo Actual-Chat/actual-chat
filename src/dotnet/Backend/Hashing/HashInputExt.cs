@@ -1,5 +1,3 @@
-using System.Buffers;
-
 namespace ActualChat.Hashing;
 
 public static class ServerHashInputExt

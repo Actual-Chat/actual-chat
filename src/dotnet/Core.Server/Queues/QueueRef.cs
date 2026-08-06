@@ -1,4 +1,3 @@
-using ActualLab.Resilience;
 
 namespace ActualChat.Queues;
 

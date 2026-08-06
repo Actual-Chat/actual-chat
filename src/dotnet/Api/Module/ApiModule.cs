@@ -1,5 +1,4 @@
 using ActualChat.Contacts;
-using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 
 namespace ActualChat.Module;

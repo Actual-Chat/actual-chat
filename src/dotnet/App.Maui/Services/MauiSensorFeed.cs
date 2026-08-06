@@ -1,6 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
-using Microsoft.Maui.Devices.Sensors;
 
 namespace ActualChat.App.Maui.Services;
 

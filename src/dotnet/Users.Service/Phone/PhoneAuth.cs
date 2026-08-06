@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using ActualChat.Hashing;
-using ActualChat.Hosting;
 using ActualChat.Resilience;
 using ActualChat.Rpc;
 using ActualChat.Users.Db;

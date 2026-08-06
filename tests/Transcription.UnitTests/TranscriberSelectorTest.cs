@@ -1,6 +1,5 @@
 using ActualChat.Audio;
 using ActualChat.Transcription.Module;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.Transcription.UnitTests;
 

@@ -1,6 +1,5 @@
 using System.Net.WebSockets;
 using System.Text;
-using System.Text.Json;
 using ActualChat.Audio;
 
 namespace ActualChat.Transcription.IntegrationTests;

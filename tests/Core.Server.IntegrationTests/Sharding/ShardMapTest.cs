@@ -1,5 +1,3 @@
-using ActualChat.Hosting;
-
 namespace ActualChat.Core.Server.IntegrationTests.Sharding;
 
 public class ShardMapTest(ITestOutputHelper @out) : TestBase(@out)

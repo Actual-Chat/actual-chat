@@ -6,7 +6,6 @@ using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Audio;
-using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using ActualChat.UI;
 using ActualChat.UI.App.Services;

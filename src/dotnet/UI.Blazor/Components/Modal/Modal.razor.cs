@@ -1,4 +1,4 @@
-﻿using ActualChat.UI.Blazor.Components.Internal;
+using ActualChat.UI.Blazor.Components.Internal;
 
 namespace ActualChat.UI.Blazor.Components;
 

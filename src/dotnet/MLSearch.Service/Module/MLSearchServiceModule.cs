@@ -1,11 +1,10 @@
 using ActualChat.Db.Module;
-using ActualChat.Hosting;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
+using ActualChat.MLSearch.Flows;
 using ActualChat.Redis.Module;
 using ActualChat.Search;
-using ActualChat.MLSearch.Flows;
 
 namespace ActualChat.MLSearch.Module;
 

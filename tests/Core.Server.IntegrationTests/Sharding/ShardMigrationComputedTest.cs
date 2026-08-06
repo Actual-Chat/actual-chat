@@ -1,5 +1,4 @@
 using ActualChat.Attributes;
-using ActualChat.Hosting;
 using ActualChat.Testing.Host;
 using ActualChat.Rpc;
 using ActualLab.Rpc;

@@ -1,6 +1,5 @@
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

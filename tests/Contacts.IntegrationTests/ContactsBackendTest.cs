@@ -1,7 +1,6 @@
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
-using ActualChat.Users;
 
 namespace ActualChat.Contacts.IntegrationTests;
 

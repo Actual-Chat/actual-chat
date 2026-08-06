@@ -1,6 +1,5 @@
 using ActualChat.Audio;
 using ActualChat.Streaming;
-using ActualChat.Users;
 using ActualLab.Rpc;
 
 namespace ActualChat.Testing.Host;

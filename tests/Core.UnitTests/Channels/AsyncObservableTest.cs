@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 namespace ActualChat.Core.UnitTests.Channels;
 
 public class AsyncObservableTest

@@ -1,6 +1,5 @@
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
-using Android.App;
 using Android.Content;
 using Android.OS;
 using Android.Provider;

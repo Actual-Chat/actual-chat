@@ -1,7 +1,6 @@
 using ActualChat.Flows;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Versioning;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users.Flows;

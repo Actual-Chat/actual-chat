@@ -1,11 +1,7 @@
-using ActualChat.Hosting;
-using ActualChat.Performance;
 using ActualChat.Testing.Internal;
 using MartinCostello.Logging.XUnit;
-using Microsoft.EntityFrameworkCore; // For EF Core log filters
 using Microsoft.Extensions.Hosting;
 using Xunit.DependencyInjection;
-using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Testing;
 

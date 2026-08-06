@@ -1,6 +1,3 @@
-using System.Text;
-using Cysharp.Text;
-
 namespace ActualChat.Chat.ML;
 
 internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriever) : IChatDialogFormatter

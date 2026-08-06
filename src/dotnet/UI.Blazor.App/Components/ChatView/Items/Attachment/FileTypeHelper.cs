@@ -1,5 +1,4 @@
 using System.Collections.Frozen;
-using ActualChat.Media;
 
 namespace ActualChat.UI.Blazor.App.Components;
 

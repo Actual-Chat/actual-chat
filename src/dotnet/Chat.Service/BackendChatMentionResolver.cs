@@ -1,24 +1,14 @@
-using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
-public class BackendChatMentionResolver : IChatMentionResolver
+public class BackendChatMentionResolver(IServiceProvider services, ChatId chatId) : IChatMentionResolver
 {
-    private IAuthorsBackend AuthorsBackend { get; }
-    private IAccountsBackend AccountsBackend { get; }
-    private IChatsBackend ChatsBackend { get; }
-    private IPlacesBackend PlacesBackend { get; }
+    public ChatId ChatId { get; } = chatId;
 
-    public ChatId ChatId { get; }
-
-    public BackendChatMentionResolver(IServiceProvider services, ChatId chatId)
-    {
-        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        ChatsBackend = services.GetRequiredService<IChatsBackend>();
-        PlacesBackend = services.GetRequiredService<IPlacesBackend>();
-        ChatId = chatId;
-    }
+    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<IPlacesBackend>();
 
     ValueTask<Author?> IMentionResolver<Author>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
         => ResolveAuthor(mention, cancellationToken);

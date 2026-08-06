@@ -1,9 +1,6 @@
-using ActualChat.Hosting;
 using ActualChat.Mcp.Auth;
 using ActualChat.Mcp.Module;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
 
 // ReSharper disable once CheckNamespace
 namespace ActualChat.Mcp;

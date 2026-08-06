@@ -1,6 +1,5 @@
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Kubernetes.Module;

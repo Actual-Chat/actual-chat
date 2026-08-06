@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization.Metadata;
-using ActualChat.Hosting;
 using ActualChat.Mcp.Tools;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ModelContextProtocol.Protocol;

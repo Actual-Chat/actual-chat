@@ -1,5 +1,4 @@
 using ActualChat.AspNetCore;
-using ActualChat.Hosting;
 using ActualChat.Resilience;
 using ActualLab.Caching;
 using ActualLab.Interception;

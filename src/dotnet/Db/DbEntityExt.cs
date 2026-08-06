@@ -1,6 +1,5 @@
 using ActualLab.Fusion.EntityFramework.Operations;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Db;

@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using IResult = Microsoft.AspNetCore.Http.IResult;
 

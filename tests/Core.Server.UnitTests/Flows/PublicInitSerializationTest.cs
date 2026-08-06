@@ -1,5 +1,3 @@
-using ActualLab.Testing;
-
 namespace ActualChat.Core.Server.UnitTests.Flows;
 
 // Verifies whether MessagePack-CSharp can write to public `init` setters

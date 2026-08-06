@@ -1,6 +1,4 @@
-﻿using ActualChat.Diff;
-
-namespace ActualChat.Core.UnitTests.Diff;
+﻿namespace ActualChat.Core.UnitTests.Diff;
 
 public class DiffEngineTest
 {

@@ -1,5 +1,4 @@
 using ActualChat.Contacts;
-using ActualChat.Users;
 
 namespace ActualChat.Testing.Host;
 

@@ -1,5 +1,4 @@
 using ActualChat.MLSearch.Documents;
-using ActualChat.Users;
 
 namespace ActualChat.MLSearch;
 

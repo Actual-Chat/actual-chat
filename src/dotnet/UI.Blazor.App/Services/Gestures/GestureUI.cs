@@ -1,8 +1,5 @@
-using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
-using ActualLab.Resilience;
 
 namespace ActualChat.UI.Blazor.App.Services.Gestures;
 

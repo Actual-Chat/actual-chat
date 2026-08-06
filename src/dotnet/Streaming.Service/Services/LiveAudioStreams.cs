@@ -2,7 +2,6 @@ using ActualChat.Audio;
 using ActualChat.Diagnostics;
 using ActualChat.Live;
 using ActualChat.Transcription;
-using ActualChat.Users;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming.Services;

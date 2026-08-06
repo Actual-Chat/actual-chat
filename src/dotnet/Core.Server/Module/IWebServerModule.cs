@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using Microsoft.AspNetCore.Builder;
 
 namespace ActualChat.Module;

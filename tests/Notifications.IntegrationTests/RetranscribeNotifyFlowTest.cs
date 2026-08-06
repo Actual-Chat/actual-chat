@@ -1,7 +1,5 @@
 using ActualChat.Transcription.Module;
 using ActualChat.Audio;
-using ActualChat.Chat.Module;
-using ActualChat.Streaming;
 using ActualChat.Streaming.Module;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;

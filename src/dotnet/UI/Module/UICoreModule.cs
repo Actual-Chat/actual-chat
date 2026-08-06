@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Module;

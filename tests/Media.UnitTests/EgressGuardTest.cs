@@ -1,5 +1,4 @@
 using System.Net;
-using ActualChat.Hosting;
 using ActualChat.Media.Module;
 using ActualChat.Resilience;
 using Microsoft.Extensions.Hosting;

@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using Microsoft.Maui.Graphics;
 
 namespace ActualChat.Maui;

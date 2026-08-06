@@ -1,6 +1,5 @@
 using ActualChat.Flows;
 using ActualChat.Queues;
-using ActualChat.Users;
 
 namespace ActualChat.Notifications.Flows;
 
