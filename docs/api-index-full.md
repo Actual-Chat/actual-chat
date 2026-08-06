@@ -1028,6 +1028,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `RecorderStateHub` - Recording state management.
 - `SearchUI` - Unified search across chats.
 - `SendingMessages` - Message sending with retry logic.
+- `WebApp` - Root Blazor component of the web (server & WASM) app.
 
 
 ## ActualChat.UI.App
@@ -1035,11 +1036,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `AppServerInstanceSelector` - Selects which app server instance to connect to.
 - `IncomingShareSuggestions` - Handles OS-level incoming share suggestions.
 - `VideoTranscoder` - Transcodes video files for upload/playback.
-
-
-## ActualChat.UI.Blazor.AppPack
-
-- `WebApp` - Web app entry point and packaging glue (used by ILRepack).
 
 
 ## ActualChat.Mjml.Blazor

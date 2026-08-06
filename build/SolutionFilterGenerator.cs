@@ -16,7 +16,6 @@ public static class SolutionFilterGenerator
             .Where(x => !x.Contains("Maui", StringComparison.OrdinalIgnoreCase)
                 && !x.Contains("App.Wasm", StringComparison.OrdinalIgnoreCase)
                 && !x.Contains("App.Server", StringComparison.OrdinalIgnoreCase)
-                && !x.Contains("AppPack", StringComparison.OrdinalIgnoreCase)
                 && !x.Contains("App.ConsoleClient", StringComparison.OrdinalIgnoreCase)
                 && !x.Contains("App.AspireHost", StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Replace('/', '\\'))

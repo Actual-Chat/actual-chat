@@ -70,10 +70,6 @@
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
 
-    <!-- UseAppPack -->
-    <UseAppPack Condition="'$(UseAppPack)' == ''">false</UseAppPack>
-    <AppPackDir>$(RepoRoot)artifacts/repacked/$(Configuration)/</AppPackDir>
-
     <!-- Assembly name & root namespace -->
     <BaseName>ActualChat</BaseName>
     <AssemblyName>$(BaseName).$(MSBuildProjectName)</AssemblyName>

@@ -134,7 +134,6 @@ public sealed class ServerPublishCommand(CliContext context) : PlanCommand<Serve
                 "publish", Server.ProjectPath,
                 "-noLogo",
                 "-c", settings.Configuration,
-                "-p:UseAppPack=false",
                 ..settings.ExtraArgs,
             ])
             .AddOutput(Server.PublishedExePath);

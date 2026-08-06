@@ -151,7 +151,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             app.MapRazorComponents<RootServerPage>()
                 .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
-                .AddAdditionalAssemblies(typeof(WebApp).Assembly) // UI.Blazor.AppPack
                 .AddAdditionalAssemblies(typeof(UIHub).Assembly) // UI.Blazor
                 .AddAdditionalAssemblies(typeof(AppUIHub).Assembly); // UI.Blazor.App
         }

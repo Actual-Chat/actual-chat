@@ -270,7 +270,6 @@
     <PackageVersion Include="bunit" Version="2.7.2" />
     <PackageVersion Include="FlakyTest.XUnit" Version="2.4.10" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.4" />
-    <PackageVersion Include="ILRepack.Lib.MSBuild.Task" Version="2.0.45" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="11.0.100-preview.6.26359.118" />

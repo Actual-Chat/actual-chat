@@ -12,7 +12,7 @@ public sealed class MauiBlazorApp : AppBase
     private MauiWebViewPageContextTracker? _pageContextTracker;
 
     static MauiBlazorApp()
-        => OtherUIAssemblies = [typeof(WebApp).Assembly, typeof(MauiBlazorApp).Assembly];
+        => OtherUIAssemblies = [typeof(UIHub).Assembly, typeof(MauiBlazorApp).Assembly];
 
     public override void Dispose()
     {
