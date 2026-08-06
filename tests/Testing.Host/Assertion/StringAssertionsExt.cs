@@ -59,6 +59,35 @@ public static class StringAssertionsExt
                 .FailWith("Expected text {0} to contain word {1}{reason} but it does not", text, expected);
             return new AndConstraint<TAssertions>((TAssertions)assertions);
         }
+
+        public AndConstraint<TAssertions> ContainAnyWord(
+            IReadOnlyCollection<string> expected,
+            [StringSyntax(StringSyntaxAttribute.CompositeFormat)] string because = "",
+            params object[] becauseArgs)
+        {
+            var text = assertions.Subject;
+            var words = text.SplitIntoWords().Select(Stem).ToList();
+            var expectedStemmedWords = expected.Select(Stem).ToList();
+            assertions.CurrentAssertionChain.BecauseOf(because, becauseArgs)
+                .ForCondition(expectedStemmedWords.Any(x => words.Contains(x, StringComparer.OrdinalIgnoreCase)))
+                .FailWith("Expected text {0} to contain any of words {1}{reason} but it contains none", text, expected);
+            return new AndConstraint<TAssertions>((TAssertions)assertions);
+        }
+
+        public AndConstraint<TAssertions> NotContainAnyWord(
+            IReadOnlyCollection<string> unexpected,
+            [StringSyntax(StringSyntaxAttribute.CompositeFormat)] string because = "",
+            params object[] becauseArgs)
+        {
+            var text = assertions.Subject;
+            var words = text.SplitIntoWords().Select(Stem).ToList();
+            var found = unexpected.FirstOrDefault(x => words.Contains(Stem(x), StringComparer.OrdinalIgnoreCase));
+            assertions.CurrentAssertionChain.BecauseOf(because, becauseArgs)
+                .ForCondition(found is null)
+                .FailWith("Expected text {0} to contain none of words {1}{reason} but it contains {2}",
+                    text, unexpected, found);
+            return new AndConstraint<TAssertions>((TAssertions)assertions);
+        }
     }
 
     private static string Stem(string text)
