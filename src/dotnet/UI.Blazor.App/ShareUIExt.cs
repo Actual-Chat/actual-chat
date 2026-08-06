@@ -24,6 +24,14 @@ public static class ShareUIExt
             : await shareUI.Share(shareModel).ConfigureAwait(false);
     }
 
+    public static async Task<ModalRef?> Share(
+        this ShareUI shareUI, PlaceId placeId, CancellationToken cancellationToken = default)
+    {
+        var shareModel = await shareUI.GetModel(placeId, cancellationToken).ConfigureAwait(true);
+        return shareModel == null ? null
+            : await shareUI.Share(shareModel).ConfigureAwait(false);
+    }
+
     public static async Task<ModalRef?> ShareOwnAccount(
         this ShareUI shareUI, CancellationToken cancellationToken = default)
     {
