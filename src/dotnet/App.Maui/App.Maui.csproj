@@ -148,30 +148,7 @@
     </ProjectReference>
     <ProjectReference Include="..\Core.Audio\Core.Audio.csproj" />
     <ProjectReference Include="..\Maui\Maui.csproj" />
-  </ItemGroup>
-  <!-- UseAppPack == false -->
-  <ItemGroup Condition="!$(UseAppPack)">
-    <ProjectReference Include="..\UI.Blazor.AppPack\UI.Blazor.AppPack.csproj" />
-  </ItemGroup>
-  <!-- UseAppPack == true -->
-  <ItemGroup Condition="$(UseAppPack)">
-    <ProjectReference Include="..\UI.Blazor.AppPack\UI.Blazor.AppPack.csproj" ReferenceOutputAssembly="false" />
-    <Reference Include="ActualChat.UI.Blazor.AppPack">
-      <HintPath>$(AppPackDir)ActualChat.UI.Blazor.AppPack.dll</HintPath>
-    </Reference>
-    <!-- A few more packages should be referenced transitively in this case -->
-    <PackageReference Include="CommunityToolkit.HighPerformance" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
-    <PackageReference Include="Microsoft.Extensions.Http" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
-    <PackageReference Include="Microsoft.Extensions.Logging" />
-    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
-    <PackageReference Include="Microsoft.JSInterop.WebAssembly" />
-    <PackageReference Include="RestEase" />
-    <PackageReference Include="SauceControl.Blake2Fast" />
-    <PackageReference Include="System.Reactive" />
-    <PackageReference Include="Ulid" />
-    <PackageReference Include="ZString" />
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
 
   <!-- Package references -->
@@ -276,7 +253,6 @@
     <TrimmerRootAssembly Include="ActualChat.Api.Contracts" RootMode="All" />
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="All" />
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="All" />
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.AppPack" RootMode="All" />
   </ItemGroup>
   <!-- Windows ILLink needs "ActualChat" (the App.Maui output after AssemblyName=$(BaseName)
        override) explicitly rooted. Android's ILLink (Xamarin.Android linker pipeline) fails
@@ -370,7 +346,6 @@
     <!-- Trimming -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
-    <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
     <!-- ReadyToRun: composite, partial per UsePartialR2R above. Android is the one target
          where partial is also MAUI's own default - Microsoft.Maui.Controls.targets appends
          crossgen2's `partial` switch unless _MauiPublishReadyToRunPartial is false, and

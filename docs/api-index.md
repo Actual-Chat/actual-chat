@@ -363,7 +363,6 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `ActualChat.App.VideoLoadTest` — video pipeline load tester
 - `ActualChat.App.AotHelper` — generates AOT-friendly type "keeps" for trimming
 - `ActualChat.UI.App` — `AppServerInstanceSelector`, `IncomingShareSuggestions`, `VideoTranscoder`
-- `ActualChat.UI.Blazor.AppPack` — `WebApp` packaging glue
 
 
 ## MAUI Shared (`ActualChat.Maui`)
