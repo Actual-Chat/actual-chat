@@ -1,5 +1,4 @@
 using ActualChat.Invite.Db;
-using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -218,8 +217,7 @@ public class InvitesBackend(IServiceProvider services)
         Task OnUseForPlace(PlaceId placeId)
             => OnUseForChat(placeId.RootChatId);
 
-        async Task OnUseForChat(ChatId chatId)
-        {
+        async Task OnUseForChat(ChatId chatId) {
             _ = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
 
             var dbActivationKey = new DbActivationKey(invite.Id);

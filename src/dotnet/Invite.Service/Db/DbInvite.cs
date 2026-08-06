@@ -20,9 +20,6 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
     private static ITextSerializer<LegacyInviteDetails> LegacyDetailsSerializer { get; } =
         Serializers.SystemJson.ToTyped<LegacyInviteDetails>();
 
-    private DateTime _createdAt;
-    private DateTime _expiresOn;
-
     public DbInvite() { }
     public DbInvite(Invite invite) => UpdateFrom(invite);
 
@@ -34,13 +31,13 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string CreatedBy { get; set; } = "";
 
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime ExpiresOn {
-        get => _expiresOn.DefaultKind(DateTimeKind.Utc);
-        set => _expiresOn = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public string DetailsJson { get; set; } = "";
