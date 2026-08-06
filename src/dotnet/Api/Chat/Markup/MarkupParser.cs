@@ -179,6 +179,25 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, Markup> Mention =
         SafeTryOneOf(NamedMention, UnnamedMention);
 
+    // Hashtag: '#' + a letter or '_', then letters, digits, '_', '-'. Only matches at an element
+    // boundary — a mid-word '#' (c#5, item#2) stays inside the plain-text run because '#' is not
+    // a special char for NotSpecialOrWhitespaceChar. All-digit tokens (#4121) are not hashtags,
+    // and adjacent tags must be whitespace-separated — the trailing guard fails on '#a#b', which
+    // then backtracks into a single plain-text run.
+    private const int MaxHashtagLength = 64;
+    private static readonly Parser<char, char> HashtagFirstChar =
+        Token(c => char.IsLetter(c) || c is '_').Labelled("letter or '_'");
+    private static readonly Parser<char, char> HashtagChar =
+        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-').Labelled("letter, digit, '_', or '-'");
+    private static readonly Parser<char, Markup> Hashtag = (
+        from head in Char('#').Then(HashtagFirstChar)
+        from tail in HashtagChar.ManyString()
+        select "#" + head + tail)
+        .Where(s => s.Length <= 1 + MaxHashtagLength)
+        .Before(Lookahead(Not(Char('#'))))
+        .Select(s => (Markup)new HashtagMarkup(s))
+        .Debug("#");
+
     // Preformatted text opener - the guard keeps a ``` code block fence out of an inline code span
     private static readonly Parser<char, Pidgin.Unit> PreformattedTextStart =
         Lookahead(Not(CodeBlockToken.Before(NotPreToken.OrEnd())));
@@ -316,7 +335,7 @@ public partial class MarkupParser : IMarkupParser
             var textMarkupKind = UseUnparsedTextMarkup ? TextMarkupKind.Unparsed : TextMarkupKind.Plain;
 
             var preformattedText = CreatePreformattedText();
-            var nonStylizedMarkup = SafeTryOneOf(Mention, preformattedText, Url, NonWhitespaceText).Debug("T");
+            var nonStylizedMarkup = SafeTryOneOf(Mention, preformattedText, Url, Hashtag, NonWhitespaceText).Debug("T");
             var boldMarkup = CreateStylized(Try(BoldToken), TextStyle.Bold).Debug("**");
             var italicMarkup = CreateStylized(ItalicToken, TextStyle.Italic).Debug("*");
             var spoilerMarkup = CreateStylized(Try(SpoilerToken), TextStyle.Spoiler).Debug("||");

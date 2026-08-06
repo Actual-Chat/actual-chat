@@ -74,6 +74,11 @@
     public ValueTask Clear()
         => JSRef?.InvokeVoidAsync("clear") ?? default;
 
+    public ValueTask SetText(string text) {
+        Text = text;
+        return JSRef?.InvokeVoidAsync("set", text) ?? default;
+    }
+
     [JSInvokable]
     public Task OnTextChanged(string text) {
         Text = text;

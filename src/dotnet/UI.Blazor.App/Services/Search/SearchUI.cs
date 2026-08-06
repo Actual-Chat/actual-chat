@@ -38,7 +38,6 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
 
     private ISearch Search => Hub.Search;
     private LocalSearchUI LocalSearch => field ??= Services.GetRequiredService<LocalSearchUI>();
-    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private HighlightUI HighlightUI => Hub.HighlightUI;
 
@@ -96,6 +95,21 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
     {
         var expandedScopes = await ExtendedLimits.Use(StopToken).ConfigureAwait(false);
         return expandedScopes.Contains(scope);
+    }
+
+    public void SearchFor(string text)
+    {
+        var wasOpen = _isShowRecentOn.Value || _isSearchModeOn.Value;
+        PanelsUI.Left.SetIsVisible(true);
+        ShowRecent(true);
+        _placeId.Value = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : null;
+        if (!wasOpen)
+            ResetFilters();
+        _typeFilter.Value = SearchTypeFilter.Messages;
+        _text.Value = text;
+        // The left panel's search input deliberately doesn't track Text changes,
+        // so an externally set text must be pushed into it explicitly.
+        _ = UIEventHub.Publish(new SearchTextSetEvent(text));
     }
 
     public void Clear()

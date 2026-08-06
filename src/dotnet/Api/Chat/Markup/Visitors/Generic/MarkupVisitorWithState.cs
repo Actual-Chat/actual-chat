@@ -25,6 +25,7 @@ public abstract record MarkupVisitorWithState<TState, TResult>
             PreformattedTextMarkup preformattedTextMarkup => VisitPreformattedText(preformattedTextMarkup, ref state),
             NewLineMarkup newLineMarkup => VisitNewLine(newLineMarkup, ref state),
             UnparsedTextMarkup unparsedMarkup => VisitUnparsed(unparsedMarkup, ref state),
+            HashtagMarkup hashtagMarkup => VisitHashtag(hashtagMarkup, ref state),
             _ => VisitUnknown(markup, ref state),
         };
 
@@ -47,6 +48,7 @@ public abstract record MarkupVisitorWithState<TState, TResult>
     protected abstract TResult VisitPreformattedText(PreformattedTextMarkup markup, ref TState state);
     protected abstract TResult VisitNewLine(NewLineMarkup markup, ref TState state);
     protected abstract TResult VisitUnparsed(UnparsedTextMarkup markup, ref TState state);
+    protected abstract TResult VisitHashtag(HashtagMarkup markup, ref TState state);
 
     protected virtual TResult VisitUnknown(Markup markup, ref TState state)
         => throw new ArgumentOutOfRangeException(nameof(markup));
@@ -114,6 +116,9 @@ public abstract record MarkupVisitorWithState<TState>
         case UnparsedTextMarkup unparsedMarkup:
             VisitUnparsed(unparsedMarkup, ref state);
             break;
+        case HashtagMarkup hashtagMarkup:
+            VisitHashtag(hashtagMarkup, ref state);
+            break;
         default:
             VisitUnknown(markup, ref state);
             break;
@@ -148,6 +153,7 @@ public abstract record MarkupVisitorWithState<TState>
     protected abstract void VisitPreformattedText(PreformattedTextMarkup markup, ref TState state);
     protected abstract void VisitNewLine(NewLineMarkup markup, ref TState state);
     protected abstract void VisitUnparsed(UnparsedTextMarkup markup, ref TState state);
+    protected abstract void VisitHashtag(HashtagMarkup markup, ref TState state);
 
     protected virtual void VisitUnknown(Markup markup, ref TState state)
         => throw new ArgumentOutOfRangeException(nameof(markup));

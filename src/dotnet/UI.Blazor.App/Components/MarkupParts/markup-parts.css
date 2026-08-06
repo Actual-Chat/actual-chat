@@ -62,6 +62,14 @@
     @apply cursor-pointer no-underline hover:underline text-primary;
 }
 
+.hashtag-markup {
+    @apply text-primary font-medium;
+    @apply cursor-pointer no-underline hover:underline;
+}
+.hashtag-markup .highlight {
+    @apply bg-[var(--highlighted)];
+}
+
 /* Spoiler (masked) text: an SVG stencil (blur → alpha threshold → re-blur, see SpoilerFilterDefs)
    turns the text into an unreadable frosted blob until tapped; auto-hides later, tap again to hide. */
 :root, .theme-light {

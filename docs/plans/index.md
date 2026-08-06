@@ -13,6 +13,14 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### Hashtags
+
+[Hashtags](./hashtags.md) — `#hashtag` markup parsed into a new
+`HashtagMarkup`, rendered as a clickable link that opens the left-panel
+search with the tag and the Messages filter applied. Exact-match hashtag
+search folds into the `Search.Service` analyzer (below); an optional DB
+registry for autocomplete/trending is deferred. (#4121)
+
 ### AI search & indexing — MLSearch → PostgreSQL
 
 [MLSearch: OpenSearch → PostgreSQL](./mlsearch-postgres-fts.md) — replace
