@@ -104,6 +104,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public virtual async Task<ChatInfo?> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
         // DebugLog?.LogDebug("Get({ChatId})", chatId.Value);
+        if (_readPositionStates.IsDisposed)
+            return null;
+
         var contact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (contact == null)
             return null;
@@ -140,6 +143,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return result;
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // A disposed pool means this ChatUI's circuit is gone, so its computed graph is dead:
+            // fail terminally instead of logging + rethrowing on every recompute.
+            if (_readPositionStates.IsDisposed)
+                return null;
+
             Log.LogError(e, "Get({ChatId}) failed", chatId.Value);
             throw;
         }
