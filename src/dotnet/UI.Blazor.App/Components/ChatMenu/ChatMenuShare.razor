@@ -1,0 +1,37 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+@{
+    var chat = Chat;
+    if (!CanShare(chat))
+        return;
+
+    var title = chat.Id is PeerChatId
+        ? "Share contact"
+        : chat.IsPublic
+            ? "Share chat"
+            : "Share chat join link";
+}
+
+<MenuEntry
+    Icon="icon-share text-2xl"
+    Text="@title"
+    Click="@OnClick">
+</MenuEntry>
+
+@code {
+    private ShareUI ShareUI => Hub.ShareUI;
+    private Chat Chat => ChatState.Chat;
+
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+
+    private static bool CanShare(Chat chat) {
+        if (chat.HasSingleAuthor)
+            return false;
+        if (chat.Id is PeerChatId)
+            return true;
+        return chat.IsPublic || chat.Rules.CanInvite();
+    }
+
+    private Task OnClick()
+        => ShareUI.Share(Chat.Id);
+}
