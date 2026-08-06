@@ -33,7 +33,6 @@ public sealed class InviteServiceModule(IServiceProvider moduleServices)
         dbModule.AddDbContextServices<InviteDbContext>(services, db => {
             // DbInvite
             db.AddEntityResolver<string, DbInvite>();
-            db.AddEntityResolver<string, DbActivationKey>();
         });
     }
 }

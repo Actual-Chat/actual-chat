@@ -818,7 +818,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `Invites` - Implementation of IInvites for invitation management.
 - `InvitesBackend` - Implementation of IInvitesBackend.
 - `LegacyInvites` - Legacy invite handling for backward compatibility.
-- `DbActivationKey` - Database entity for activation keys.
 - `DbInvite` - Database entity for invites.
 - `InviteDbContext` - EF Core context for invites.
 - `InviteDbInitializer` - Database initializer for invites.

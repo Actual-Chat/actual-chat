@@ -22,19 +22,6 @@ namespace ActualChat.Invite.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("ActualChat.Invite.Db.DbActivationKey", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id")
-                        .UseCollation("C");
-
-                    b.HasKey("Id")
-                        .HasName("pk_invite_activation_keys");
-
-                    b.ToTable("invite_activation_keys");
-                });
-
             modelBuilder.Entity("ActualChat.Invite.Db.DbInvite", b =>
                 {
                     b.Property<string>("Id")

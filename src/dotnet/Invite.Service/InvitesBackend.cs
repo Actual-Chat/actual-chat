@@ -14,8 +14,6 @@ public class InvitesBackend(IServiceProvider services)
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbInvite> DbInviteResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbInvite>>();
-    private IDbEntityResolver<string, DbActivationKey> DbActivationKeyResolver { get; }
-        = services.GetRequiredService<IDbEntityResolver<string, DbActivationKey>>();
 
     // [ComputeMethod]
     public virtual async Task<Invite?> Get(string id, CancellationToken cancellationToken)
@@ -48,13 +46,6 @@ public class InvitesBackend(IServiceProvider services)
         if (nextExpiresOn is { } expiresOn)
             AutoInvalidate(expiresOn, now);
         return invites;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<bool> IsValid(string activationKey, CancellationToken cancellationToken)
-    {
-        var dbActivationKey = await DbActivationKeyResolver.Get(activationKey, cancellationToken).ConfigureAwait(false);
-        return dbActivationKey != null;
     }
 
     // [ComputeMethod]
@@ -158,9 +149,6 @@ public class InvitesBackend(IServiceProvider services)
                 _ = PseudoGetAll(invInvite.GetSearchKey());
                 _ = Get(invInvite.Id, default);
             }
-            var invActivationKey = context.Operation.Items.KeylessGet<string>();
-            if (invActivationKey != null)
-                _ = IsValid(invActivationKey, default);
             return default!;
         }
 
@@ -218,10 +206,6 @@ public class InvitesBackend(IServiceProvider services)
 
         async Task OnUseForChat(ChatId chatId) {
             _ = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-
-            var dbActivationKey = new DbActivationKey(invite.Id);
-            dbContext.Add(dbActivationKey);
-            context.Operation.Items.KeylessSet(dbActivationKey.Id);
 
             // This key is hidden from the client-facing KVAS APIs, so it has to be written
             // via the backend one. It records the granted chat - which the switch above picks
