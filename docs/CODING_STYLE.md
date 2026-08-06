@@ -475,26 +475,26 @@ public interface IMediaBackend : IComputeService, IBackendService
     Task OnCopyChat(MediaBackend_CopyChat command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] MediaId Id,
-    [property: DataMember, MemoryPackOrder(1)] Change<Media> Change
+    [property: Key(0)] MediaId Id,
+    [property: Key(1)] Change<Media> Change
 ) : ICommand<Media?>, IBackendCommand, IHasShardKey<MediaId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]
     public MediaId ShardKey => Id;
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaBackend_CopyChat(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] string CorrelationId,
-    [property: DataMember, MemoryPackOrder(2)] MediaId[] MediaIds
+    [property: Key(0)] ChatId ChatId,
+    [property: Key(1)] string CorrelationId,
+    [property: Key(2)] MediaId[] MediaIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }
 ```
@@ -573,16 +573,9 @@ public class Chats(IServiceProvider services) : IChats
    entirely when there is no logger, and logging configuration isn't changed at
    runtime. Types that are always DI-constructed keep a non-nullable `ILogger`.
 
-2. **API records** should be fully serializable,
-   which typically implies the presence of the following attributes:
-```csharp
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: MemoryPackConstructor, SerializationConstructor, JsonConstructor]
-public sealed partial record TextEntry(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] long LocalId,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] string Content)
-{ }
-```
+2. **API records** should be fully serializable — see
+   [Serialization Attributes](#serialization-attributes) below for the rules and the
+   attribute set.
 
 3. **.ConfigureAwait(false)** must be used in all async calls
    in service layer code, and **.ConfigureAwait(true)** is typically needed
@@ -758,6 +751,55 @@ public override async Task Require(CancellationToken cancellationToken)
     for client-local data.** Use `ToApiXxx` only for data crossing the
     serialization/RPC boundary (compute-method results, command results, API
     contracts); for client-only collections use `List<T>`, arrays, `Dictionary<,>`, etc.
+
+### Serialization Attributes
+
+Three serializers are live and every serializable type must work in **all three**:
+Newtonsoft.Json (operation log), System.Text.Json (JS interop), MessagePack (RPC and all
+binary storage). Mark each one up with **its own** attributes.
+
+```csharp
+[MessagePackObject]
+public sealed partial record TextEntry(
+    [property: Key(0)] ChatId ChatId,
+    [property: Key(1)] long LocalId,
+    [property: Key(2)] string Content
+) : IHasShardKey<ChatId>
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]
+    public ChatId ShardKey => ChatId;
+}
+```
+
+The key rules:
+
+- **No `System.Runtime.Serialization` attributes.** `[DataContract]`, `[DataMember]`, and
+  `[IgnoreDataMember]` are not neutral metadata — Newtonsoft honors them (`[DataContract]`
+  silently flips a type into opt-in mode), MessagePack partly honors them, System.Text.Json
+  ignores them entirely. Use serializer-native attributes instead. `System.Runtime.Serialization`
+  is a global using, so nothing stops you from typing them by accident.
+- **Type:** `[MessagePackObject]`. Required, not optional — AOT has no dynamic resolver.
+  Newtonsoft and STJ need no type-level attribute.
+- **Include a member:** `[Key(N)]`. The `MsgPack004` analyzer fails the build if a public
+  member has neither `[Key]` nor `[IgnoreMember]`, so coverage is compiler-enforced.
+- **Exclude a member:** `[JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]` — all three,
+  every time. Miss one and the member leaks into that serializer. Unqualified `JsonIgnore` is
+  System.Text.Json's; Newtonsoft's must be written out in full. This matters most for computed
+  properties like `ShardKey`, whose getter can throw on a deserialized instance.
+- **`[Key]` and `[Union]` ordinals are wire format.** Append; never renumber or reuse one on a
+  type that has shipped.
+- **Never add MemoryPack attributes.** MemoryPack is a read-only legacy leg for bytes already
+  persisted (Flow state and KVAS blobs). The only case where you write a new
+  `[MemoryPackOrder]` is adding a member to a type that is already `[MemoryPackable]`.
+- **Backend commands must be Newtonsoft-serializable** — they go into the operation log, along
+  with everything reachable from them. Delegating API commands are never persisted.
+- **Existing code still carries `[DataContract]`/`[DataMember]` widely.** Don't copy it into a
+  new type, and don't strip it from an existing one as a drive-by: doing so flips Newtonsoft
+  from opt-in to opt-out for that type, which changes what lands in the operation log.
+
+Full detail — the verified per-serializer behavior matrix, the MemoryPack closure, unions,
+constructor attributes, and the test helpers that catch shape divergence — is in
+[`architecture/serialization.md`](architecture/serialization.md).
 
 ### Test Conventions
 

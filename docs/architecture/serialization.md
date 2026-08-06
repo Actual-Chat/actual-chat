@@ -2,10 +2,18 @@
 
 Voxt serializes the same types through several serializers at once. This page describes
 which serializer owns which path, what each one actually honors, and the attribute
-convention we are converging on.
+convention that follows from that.
 
 Everything in the "What each serializer honors" table was verified empirically against
 this repository's serializer configuration, not taken from upstream documentation.
+
+**The short version.** Three serializers are live — Newtonsoft.Json, System.Text.Json,
+MessagePack — and every serializable type must work in all three. MemoryPack is not a
+serialization target anymore; it survives only as a read leg for bytes already persisted.
+Markup is always the owning serializer's own attributes: `System.Runtime.Serialization`
+attributes are being removed, because two of the three serializers read them and reach
+different conclusions while the third ignores them. See
+[Attribute conventions](#attribute-conventions).
 
 ## The serializers and what each one owns
 
@@ -13,8 +21,8 @@ this repository's serializer configuration, not taken from upstream documentatio
 |---|---|---|
 | **Newtonsoft.Json** | Operation log and event log | `DbOperation.CommandJson`, `DbOperation.ItemsJson`, `DbEvent` |
 | **System.Text.Json** | Blazor → JavaScript interop | Everything crossing the JS boundary |
-| **MessagePack** | RPC wire format | All RPC payloads (`msgpack6`, `msgpack6c`, `msgpack6k`, `msgpack6ck`) |
-| **MemoryPack** | Legacy reads only | Pre-existing DB blobs; never written for new data |
+| **MessagePack** | RPC wire format, KVAS, Flow state | All RPC payloads; everything binary that is *written* |
+| **MemoryPack** | Nothing — read-only legacy leg | Decoding KVAS and Flow blobs written by earlier versions |
 
 ### Newtonsoft.Json — the operation log
 
@@ -44,23 +52,95 @@ in practice STJ over RPC is unused.
 
 STJ output is camelCase.
 
-### MessagePack — the RPC wire format
+### MessagePack — every binary path
 
-The only binary format written today. Server offers `msgpack6`, `msgpack6c`, `msgpack6k`,
-`msgpack6ck`; clients offer `msgpack6` / `msgpack6c` (`CoreModuleInitializer`).
+The only binary format **written** today: RPC payloads, KVAS values, and Flow state all go
+out as MessagePack. `CoreModuleInitializer` registers six client formats — `msgpack6`,
+`msgpack6c`, and an LZ4 / LZ4-frame variant of each (`msgpack6-lz4`, `msgpack6c-lz4`,
+`msgpack6-lz4f`, `msgpack6c-lz4f`) — and the server adds `json5`, `json5np`, plus the
+keyless `msgpack6k` / `msgpack6ck`. The negotiated default is `msgpack6` on the server,
+`msgpack6c-lz4` in WASM (no outbound compression there), and `msgpack6c-lz4f` on every other
+client; `DEBUG` builds pin plain `msgpack6`.
 
-### MemoryPack — legacy reads only
+`Serializers.MessagePack` is also `ByteSerializer.Default`, so anything that reaches for the
+ambient binary serializer gets MessagePack.
 
-MemoryPack is **never written** for new data. It survives on exactly two read paths, both
-for blobs already sitting in the database:
+### MemoryPack — a read-only legacy leg
 
-- **KVAS** — `KvasSerializer` reads marker byte `0x0` as MemoryPack, `0x1` as MessagePack,
-  and always *writes* MessagePack (unless `PreferMemoryPack` is set).
+**MemoryPack is no longer a serialization target.** It was removed from every path that
+writes new bytes; what remains decodes blobs that earlier app versions already wrote.
+
+What the removal took out (`7012092087`, *drop MemoryPack from everything but flows and
+KVAS*):
+
+- the `mempack5` / `mempack6` RPC formats — RPC negotiates MessagePack only;
+- `[MemoryPackable]` / `[MemoryPackOrder]` on every API contract, command, event, and domain
+  model outside the retained closure below;
+- the `ApiNullable8<T>` bridges — private 8-byte shadow properties that existed solely so
+  MemoryPack could carry a `Nullable<T>` (`ChatEntry.MemoryPackEndsAt`,
+  `Upload.MemoryPackLength`, `Device.MemoryPackAccessedAt`, …);
+- most `StringLikeMemoryPackFormatter` registrations;
+- the per-type MemoryPack `CodeKeeper` keeps. `Directory.Build.props` now sets the
+  `MemoryPackByteSerializer.IsEnabled` feature switch to `false` with `Trim="true"`, so the
+  generic serializer is trimmed away and only the non-generic
+  `MemoryPackByteSerializer.Default` survives.
+
+Two read paths remain, and neither of them writes:
+
+- **KVAS** — `KvasSerializer` dispatches on a leading marker byte: `0x0` → MemoryPack,
+  `0x1` → MessagePack, anything else → legacy unmarked JSON. `Write` always emits `0x1`.
+  The `PreferMemoryPack` switch that flips it is **test-only** — it exists so tests can
+  manufacture a legacy-shaped blob and prove the read leg still decodes it
+  (`UserWalkieTalkieSettingsTest`, `StoredSettingsSerializationTest`).
 - **Flows** — `FlowData.FlowSerializer` is a `VersionedByteSerializer` whose format 0 is
-  MessagePack, with MemoryPack as the legacy fallback leg.
+  `Serializers.MessagePackTypeDecorating`, with `Serializers.MemoryPackTypeDecorating` as the
+  `legacy:` leg for flow state persisted before the format byte existed.
 
-The rule that follows: **MemoryPack attributes belong only on types whose bytes are already
-persisted in the database.** Nothing else needs them, and nothing new should acquire them.
+#### The retained closure
+
+74 types still carry MemoryPack markup, one per file, all reachable from those two paths:
+
+| Group | Types |
+|---|---|
+| Flows | every `Flow` subclass and the state reachable from it, plus `FlowId`, `FlowData<TFlow>`, `FlowReadiness`, `IndexingFlowCursor` |
+| KVAS | the `StoredSettings` union base and 21 of its members — `User*Settings`, `ChatUserSettings`, `ChatInviteSettings`, `ChatListSettings`, `LocalAppSettings`, `LocalOnboardingSettings`, … |
+| Reachable value types | `Range<T>`, `MediaRef`, `ChatEntrySlim`, `TranscriptionContext` and friends, `HashedExternalContact` |
+| Identifiers | the 11 id types those reach — `[MemoryPackable(GenerateType.NoGenerate)]` plus a custom formatter, including the legacy `Language` formatters |
+
+Note that KVAS blobs are not only server-side: `LocalAppSettings` and `LocalOnboardingSettings`
+live in client-local storage, so the read leg has to survive on devices too.
+
+#### The rule
+
+> **MemoryPack attributes are allowed only on a type whose bytes are already persisted
+> somewhere.** Never add `[MemoryPackable]`, `[MemoryPackOrder]`, `[MemoryPackUnion]`, or
+> `[MemoryPackIgnore]` to anything new.
+
+The one case where you *do* write a new `[MemoryPackOrder]` is **adding a member to a type
+already inside the closure** — its existing blobs must keep deserializing, so the MemoryPack
+numbering has to continue from where they left off. That numbering is independent of the
+`[Key]` numbering and the two have already drifted apart on older types (`ChatUserSettings`
+pairs `MemoryPackOrder(3)` with `Key(2)`), so append to each sequence separately rather than
+assuming they match.
+
+`UserWalkieTalkieSettings.IsHeadsetButtonEnabled` is the worked example: added as
+`[MemoryPackOrder(8), Key(8)]`, and typed `bool?` rather than `bool` precisely because a
+member absent from an older blob deserializes as `default(T)` — a `bool ... = true` property
+initializer does not survive the gap.
+
+A brand-new type has no legacy blobs by definition, so it gets MessagePack markup only —
+including a new `StoredSettings` member, which needs `[Union(N, …)]` and no `[MemoryPackUnion]`.
+`StoredSettings` already shows both shapes: it declares 23 `[Union]` members but only 21
+`[MemoryPackUnion]` ones — `RecentGifs` and `RecentMentions` were added MessagePack-only and
+work fine that way.
+
+#### What unblocks full removal
+
+Steps 2 and 3 of [phase 3](../plans/msgpack.md#phase-3-remove-memorypack-complete) — dropping
+the NuGet packages and the `MemoryPack` global using — stay open until the persisted blobs are
+migrated or aged out. Concretely: every `0x0`-marked KVAS value rewritten as `0x1`, every
+pre-format-byte Flow row re-serialized, and no installed client still holding local settings
+written by an older build.
 
 ## What each serializer honors
 
@@ -135,15 +215,18 @@ The sweep is complete — no public property is now excluded from MessagePack bu
 System.Text.Json — and it was format-neutral: MessagePack verified byte-identical across all
 354 types, while 28 types' JSON shrank by exactly the leaked members.
 
-## Target convention
+## Attribute conventions
 
-**Support all three live serializers on everything serializable, using each serializer's own
-attributes, and drop the `System.Runtime.Serialization` ones.**
+> **Everything serializable supports all three live serializers, and each serializer is marked
+> up with its own attributes. `System.Runtime.Serialization` attributes — `[DataContract]`,
+> `[DataMember]`, `[IgnoreDataMember]` — are not used.**
 
 `[DataContract]`/`[DataMember]` are the problem precisely because they are *not* neutral
 metadata: two different serializers read them and reach different conclusions, while the third
 ignores them. Removing them takes the ambiguity out rather than trying to keep three
-interpretations aligned.
+interpretations aligned. Note that `System.Runtime.Serialization` is a **global using**
+(`Directory.Build.props`), so these attributes are always one careless keystroke away —
+there is no missing-`using` error to catch them.
 
 ### Declaring a serializable type
 
@@ -154,10 +237,15 @@ public sealed partial record SomeType(
     [property: Key(1)] long Version);
 ```
 
+- **Type** — `[MessagePackObject]`. Under AOT the dynamic resolver is unavailable, so this is
+  mandatory rather than optional; see [`docs/native-aot.md`](../native-aot.md).
+  `[MessagePackObject(true)]` keys by property name instead of by integer slot — use it where
+  a stable name is worth more than compactness. Newtonsoft and STJ need no type-level
+  attribute: with no `[DataContract]`, both serialize all public properties by default.
 - **Include** — `[Key(N)]`. MessagePack's analyzer (`MsgPack004`) fails the build if a public
   member of a `[MessagePackObject]` type has neither `[Key]` nor `[IgnoreMember]`, so coverage
-  is compiler-enforced. Newtonsoft and STJ need nothing: with no `[DataContract]`, both
-  serialize all public properties by default.
+  is compiler-enforced. **`[Key]` ordinals are wire format** — never renumber or reuse one on
+  a type that has already shipped; append instead.
 - **Exclude** — all three, every time:
 
   ```csharp
@@ -166,20 +254,55 @@ public sealed partial record SomeType(
   ```
 
   Omitting any one of the three leaks the member into that serializer. `[IgnoreDataMember]`
-  is not a substitute for `[JsonIgnore]` — see finding 3.
+  is not a substitute for `[JsonIgnore]` — see finding 3. This matters more without
+  `[DataContract]`, not less: Newtonsoft is then in opt-out mode, so an unmarked computed
+  property goes into the operation log.
 
-- **MemoryPack** — add `[MemoryPackable]` / `[MemoryPackOrder]` **only** for types whose bytes
-  already exist in the database (Flows and their reachable state, the `StoredSettings` union,
-  the legacy `Language` formatters). New types never get them.
+  Unqualified `JsonIgnore` is System.Text.Json's; Newtonsoft's must always be written out in
+  full. Both are needed — they are different attributes.
+- **Unions** (polymorphic payloads) — `[Union(N, typeof(TDerived))]` on the base, alongside
+  `[MessagePackObject]`. Same rule as `[Key]`: the tags are wire format, so append rather than
+  renumber.
+- **Constructors** — a record whose primary constructor doesn't cover every serialized member
+  needs the deserializer pointed at the right one:
+  `[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]`.
+  `SerializationConstructor` is MessagePack's; the two `JsonConstructor`s are STJ's and
+  Newtonsoft's.
+- **MemoryPack** — never, on anything new. See [the rule](#the-rule) above for the one
+  exception.
 
-This is why the existing four-attribute idiom
-`[JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]` (142 occurrences)
-is correct today and becomes a clean three once `[DataContract]` is gone.
+### Backend commands have a fourth requirement
+
+The operation log is Newtonsoft-serialized, so **every non-delegating backend command, and
+every type reachable from one, must round-trip through Newtonsoft.Json.** An API command that
+only delegates to a backend command is never persisted and carries no such requirement.
+
+### Cheat sheet
+
+| Intent | Write |
+|---|---|
+| Serializable type | `[MessagePackObject]` |
+| Serializable type, name-keyed | `[MessagePackObject(true)]` |
+| Include a member | `[Key(N)]` — or `[property: Key(N)]` in a primary constructor |
+| Exclude a member | `[JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]` |
+| Polymorphic base | `[MessagePackObject]` + `[Union(N, typeof(TDerived))]` per subtype |
+| Pick a constructor | `[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]` |
+| Anything from `System.Runtime.Serialization` | — don't |
 
 ## Migrating off `[DataContract]`
 
-Current surface in `src/dotnet/`: ~505 `[DataContract]`, ~1977 `[DataMember]`,
-449 `[MessagePackObject]`, 1417 `[Key(`.
+**The convention above is in force for new code; the sweep over existing code has not run yet.**
+Current surface in `src/dotnet/`, counted at the time of writing:
+
+| | `[DataContract]` | `[DataMember]` | `[IgnoreDataMember]` | `[MessagePackObject]` | `[Key(N)]` | `[IgnoreMember]` |
+|---|---|---|---|---|---|---|
+| Occurrences | 534 | 1632 | 422 | 474 | 1461 | 343 |
+
+So the dominant idiom you will actually see in the tree is still `[DataContract, MessagePackObject]`
+(367 types) with `[property: DataMember, Key(N)]` members (651). That is expected: MessagePack
+support was added *alongside* the DataContract markup rather than replacing it, and finding 2
+is what makes leaving it there harmless in the meantime. Don't copy it into a new type, and
+don't strip it from an existing one as a drive-by — see the hazard below.
 
 Removing `[DataContract]` + `[DataMember]` from a type that already has
 `[MessagePackObject]` + `[Key]`:
@@ -209,6 +332,13 @@ Two complementary helpers, both in `tests/Testing/`:
 serializer and checks it comes back equal. This is necessary but not sufficient: a member that
 one serializer emits and another silently drops still round-trips fine on the serializer that
 keeps it, so round-trip equality cannot see a shape divergence.
+
+It mirrors ActualLab.Testing's serializer matrix **minus MemoryPack** — a general serializable
+type is not expected to be MemoryPack-able anymore. The legacy read leg is covered where it
+actually exists instead: `FlowSerializationTestBase.MemoryPack_RoundTrip` runs only when
+`SerializationCodeGen.IsMemoryPackable(typeof(TFlow))` and skips otherwise, and the KVAS
+settings tests write through a `PreferMemoryPack = true` serializer to produce legacy bytes on
+purpose.
 
 **`AssertSameShapeAcrossSerializers`** (`SerializationShapeTestExt`) closes that gap. It
 serializes once per serializer — using `MessagePackSerializer.ConvertToJson` to bring the binary
@@ -266,6 +396,8 @@ asserted, since dropping `[DataContract]` moves Newtonsoft's output by design.
 
 ## Related
 
+- [`docs/CODING_STYLE.md` → Serialization Attributes](../CODING_STYLE.md#serialization-attributes)
+  — the short rule list, for when you just need to know what to type.
 - [`docs/plans/msgpack.md`](../plans/msgpack.md) — the MemoryPack → MessagePack migration
   plan. Phases 1–3 are complete; phase 4 (removing `[DataContract]`) is next.
 - [`docs/native-aot.md`](../native-aot.md) — why the AOT resolver chain excludes dynamic
