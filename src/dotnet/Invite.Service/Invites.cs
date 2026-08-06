@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.Invite;
 
 /// <summary>
@@ -8,20 +6,15 @@ namespace ActualChat.Invite;
 public class Invites(IServiceProvider services) : IInvites
 {
     private static readonly TimeSpan MinInviteLifespan = TimeSpan.FromHours(1);
-    private IChats? _chats;
-    private IPlaces? _places;
-    private IAccounts? _accounts;
-    private MomentClockSet? _clocks;
-    private ILogger? _log;
 
     private IServiceProvider Services { get; } = services;
     private IInvitesBackend Backend { get; } = services.GetRequiredService<IInvitesBackend>();
-    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private IPlaces Places => _places ??= Services.GetRequiredService<IPlaces>();
-    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
+    private IChats Chats => field ??= Services.GetRequiredService<IChats>();
+    private IPlaces Places => field ??= Services.GetRequiredService<IPlaces>();
+    private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private ICommander Commander { get; } = services.Commander();
-    private MomentClockSet Clocks => _clocks ??= Services.GetRequiredService<MomentClockSet>();
-    private ILogger Log => _log ??= Services.LogFor<Invites>();
+    private MomentClockSet Clocks => field ??= Services.GetRequiredService<MomentClockSet>();
+    private ILogger Log => field ??= Services.LogFor<Invites>();
 
     // [ComputeMethod]
     public virtual async Task<Invite[]> ListChatInvites(
