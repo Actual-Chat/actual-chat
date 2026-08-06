@@ -4,9 +4,10 @@ namespace ActualChat.UI.Blazor.App.Services;
 public sealed record ChatViewItemVisibility(
     ChatId ChatId,
     IReadOnlySet<ChatMessageKey> VisibleKeys,
-    bool IsEndAnchorVisible)
+    bool IsEndAnchorVisible,
+    bool IsPinnedToEnd)
 {
-    public static readonly ChatViewItemVisibility Empty = new(null!, ImmutableHashSet<ChatMessageKey>.Empty, false);
+    public static readonly ChatViewItemVisibility Empty = new(null!, ImmutableHashSet<ChatMessageKey>.Empty, false, false);
 
     public long MinMessageLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Min(x => x.LocalId);
     public long MaxMessageLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Max(x => x.LocalId);
@@ -33,7 +34,8 @@ public sealed record ChatViewItemVisibility(
             source.VisibleKeys
                 .Select(ChatMessageKey.Parse)
                 .ToHashSet(),
-            source.IsEndAnchorVisible)
+            source.IsEndAnchorVisible,
+            source.IsPinnedToEnd)
     { }
 
     public bool IsScrollRequired(long entryLid)
@@ -66,6 +68,9 @@ public sealed record ChatViewItemVisibility(
             return false;
 
         if (IsEndAnchorVisible != other.IsEndAnchorVisible)
+            return false;
+
+        if (IsPinnedToEnd != other.IsPinnedToEnd)
             return false;
 
         foreach (var key in other.VisibleKeys)

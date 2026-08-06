@@ -78,7 +78,8 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     }
 
     [JSInvokable]
-    public Task UpdateItemVisibility(string identity, HashSet<string> visibleKeys, bool isEndAnchorVisible)
+    public Task UpdateItemVisibility(
+        string identity, HashSet<string> visibleKeys, bool isEndAnchorVisible, bool isPinnedToEnd)
     {
         if (JSRef == null!) // The component is disposed
             return Task.CompletedTask;
@@ -87,7 +88,8 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
             Log.LogWarning("Expected JS identity to be {Identity}, but has {ActualIdentity}", Identity, identity);
             return Task.CompletedTask;
         }
-        LastReportedItemVisibility = new VirtualListItemVisibility(identity, visibleKeys, isEndAnchorVisible);
+        LastReportedItemVisibility = new VirtualListItemVisibility(
+            identity, visibleKeys, isEndAnchorVisible, isPinnedToEnd);
         ItemVisibilityChanged?.Invoke(LastReportedItemVisibility);
         return Task.CompletedTask;
     }

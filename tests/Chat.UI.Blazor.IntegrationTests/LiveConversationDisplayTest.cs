@@ -741,6 +741,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 ChatMessageKey.New(ChatMessageKind.None, v + 3),
                 ChatMessageKey.New(ChatMessageKind.None, v + 4),
             },
+            false,
             false));
 
         // act 1 - a summary pass widens the live pipeline's known coverage over v+3/v+4, but they're
@@ -758,6 +759,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, tailEntry.LocalId) },
+            false,
             false));
 
         // assert - the boundary advances past v+3/v+4, folding them
@@ -1342,6 +1344,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
+            false,
             false));
 
         // assert - the governed boundary (not just the summary-covered range) advances to the viewport
@@ -1458,6 +1461,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, idRange.End - 1) },
+            false,
             false));
 
         // assert - the fold stops below the streaming entry
@@ -1514,6 +1518,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
+            false,
             false));
 
         long foldedBoundary = 0;
@@ -1580,6 +1585,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             => chatUI.SetItemVisibility(new ChatViewItemVisibility(
                 chat.Id,
                 new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, lid) },
+                false,
                 false));
 
         // drive the fold boundary up to the live tail
@@ -1653,6 +1659,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
+            false,
             false));
 
         long foldedBoundary = 0;
@@ -1737,6 +1744,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
+            false,
             false));
 
         // assert - the count is the true number of folded messages, not a lid-span approximation
