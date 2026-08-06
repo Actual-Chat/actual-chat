@@ -78,10 +78,6 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         ```
         В этом коде `number = 5`.
         """)]
-    [InlineData("ru", "I saw a bank", "I was heading towards the river", "Я направлялся к реке", "Я увидел берег")]
-    [InlineData("ru", "I saw a bank", "I need to go to the bank to withdraw money", "Мне нужно пойти в банк, чтобы снять деньги.", "Я увидел банк")]
-    [InlineData("fr", "I saw a bank", "I was heading towards the river", "Je me dirigeais vers la rivière", "J'ai vu une rive")]
-    [InlineData("fr", "I saw a bank", "I need to go to the bank to withdraw money", "Je dois aller à la banque pour retirer de l'argent", "J'ai vu une banque")]
     public async Task ShouldTranslateWithContext(string targetLanguage, string text, string context, string translatedContext, string expected)
     {
         // arrange
@@ -95,6 +91,39 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
 
         // assert
         translated.Should().BeSimilarTo(expected, minSimilarity);
+    }
+
+    [Theory]
+    [InlineData("ru", "I was heading towards the river", "Я направлялся к реке",
+        new[] { "берег" }, new[] { "банк" })]
+    [InlineData("ru", "I need to go to the bank to withdraw money", "Мне нужно пойти в банк, чтобы снять деньги.",
+        new[] { "банк" }, new[] { "берег" })]
+    [InlineData("fr", "I was heading towards the river", "Je me dirigeais vers la rivière",
+        new[] { "rive", "berge", "rivage" }, new[] { "banque" })]
+    [InlineData("fr", "I need to go to the bank to withdraw money", "Je dois aller à la banque pour retirer de l'argent",
+        new[] { "banque" }, new[] { "rive", "berge", "rivage" })]
+    public async Task ShouldUseContextToPickWordSense(
+        string targetLanguage,
+        string context,
+        string translatedContext,
+        string[] expectedSenseWords,
+        string[] wrongSenseWords)
+    {
+        // "I saw a bank" is short enough that comparing the whole sentence flips on harmless phrasing
+        // ("Я увидел берег" vs "Я увидел берег реки"); the only thing under test is which sense of
+        // "bank" the context selects.
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
+        var cancellationToken = cts.Token;
+        var context1 = new TranslationResult(context, translatedContext);
+
+        // act
+        var translated = await Translator.Translate(
+            "I saw a bank", Language.Parse(targetLanguage), [context1], cancellationToken);
+        WriteLine($"Translated text: \n{translated}");
+
+        // assert
+        translated.Should().ContainAnyWord(expectedSenseWords);
+        translated.Should().NotContainAnyWord(wrongSenseWords);
     }
 
     [Theory]
