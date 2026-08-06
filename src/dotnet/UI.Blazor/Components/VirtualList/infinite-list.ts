@@ -1010,6 +1010,11 @@ export class InfiniteList extends VirtualList {
             this.ref.classList.toggle('sticky-end', isStickyEnd);
         if (wasPinned !== edge)
             this.repinChainAnchor(wasPinned);
+
+        // Pin/unpin can happen without any item entering or leaving the viewport, so nothing else
+        // would re-report isPinnedToEnd
+        if ((wasPinned === VirtualListEdge.End) !== isStickyEnd)
+            this.updateVisibilityThrottled();
     }
 
     // Letting go of an edge holds what is on screen; taking one hands the placement back to the model.
@@ -1839,7 +1844,6 @@ export class InfiniteList extends VirtualList {
         this.screenAnchor = null;
     }
 
-
     // Puts the anchored element back where the interaction left it. Returns whether it had to move, or
     // null when there is nothing left to hold - the anchor expired, or the correction has run away.
     private correctScreenAnchor(): boolean | null {
@@ -1974,7 +1978,10 @@ export class InfiniteList extends VirtualList {
         const isEndAnchorVisible = !document.hidden
             && this.renderState.hasVeryLastItem
             && (this.isChainWithinViewport || (this.distanceToEndEdge() ?? Infinity) <= EdgeEpsilon);
-        void this.reportVisibility(visibleKeys.sort(), isEndAnchorVisible);
+        // A level signal for the badge gate: stays true while the list follows its end edge, even
+        // when a streaming expansion momentarily pushes the anchor out before the follow catches up.
+        const isPinnedToEnd = isEndAnchorVisible || this.pinnedEdge === VirtualListEdge.End;
+        void this.reportVisibility(visibleKeys.sort(), isEndAnchorVisible, isPinnedToEnd);
     }
 
     // Tracked per spacer rather than recomputed from the callback's entries: a callback carrying only

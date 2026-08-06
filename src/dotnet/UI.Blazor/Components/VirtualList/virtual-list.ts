@@ -146,13 +146,14 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
         }
     }
 
-    protected async reportVisibility(visibleKeys: string[], isEndAnchorVisible: boolean): Promise<void> {
+    protected async reportVisibility(
+        visibleKeys: string[], isEndAnchorVisible: boolean, isPinnedToEnd: boolean): Promise<void> {
         if (this.isDisposed)
             return;
 
         try {
             await this.blazorRef.invokeMethodAsync(
-                'UpdateItemVisibility', this.identity, visibleKeys, isEndAnchorVisible);
+                'UpdateItemVisibility', this.identity, visibleKeys, isEndAnchorVisible, isPinnedToEnd);
         }
         catch (e) {
             // DisposeAsync drops BlazorRef right after the JS dispose(), so a call that passed the

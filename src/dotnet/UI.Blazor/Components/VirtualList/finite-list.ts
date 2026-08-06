@@ -279,7 +279,7 @@ export class FiniteList extends VirtualList {
     private updateItemVisibility(): void {
         const isEndAnchorVisible = this.renderState.hasVeryLastItem
             && this.ref.scrollTop + this.ref.clientHeight >= this.ref.scrollHeight - 1;
-        void this.reportVisibility([...this.visibleKeys], isEndAnchorVisible);
+        void this.reportVisibility([...this.visibleKeys], isEndAnchorVisible, isEndAnchorVisible);
     }
 
     // Keys that left the DOM are dropped, but the rest keep their state: clearing the whole set here
