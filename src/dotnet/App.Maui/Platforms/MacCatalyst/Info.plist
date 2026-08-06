@@ -51,7 +51,7 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.social-networking</string>
 	<key>MinimumOSVersion</key>
-	<string>15.0</string>
+	<string>17.0</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>CFBundleURLTypes</key>
