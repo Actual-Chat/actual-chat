@@ -8,7 +8,12 @@ The same traces also drive our R2R exclusion list, which is a size question rath
 startup-time one — see [app-bundles.md](./app-bundles.md) for that and for everything else
 that makes up the app packages.
 
-## Recording a startup profile
+**For `.mibc` profiles, ReadyToRun settings and tiered-compilation settings, see
+[startup-profiling.md](./startup-profiling.md)** — that's where the recording workflow, the
+partial-R2R configuration and the measured numbers live. This page covers CPU profiling:
+where time goes at startup, and how to read the traces without being misled.
+
+## Recording a CPU profile
 
 ### 1. Build a tracing-enabled APK
 
@@ -18,56 +23,47 @@ on, `android-tracing-env.txt` is packaged as an `AndroidEnvironment` file, which
 tracer attaches**. That's what lets a trace cover process startup rather than starting
 somewhere in the middle.
 
-```bash
-./r-android-dev.cmd -p:IsTracingEnabled=true
-```
-
 A normal build has no diagnostic port at all, so `dotnet-trace` simply won't find it.
 If the app appears to hang on launch, check whether you're running a tracing build with
 nothing attached — that's the intended behavior, not a bug.
 
 ### 2. Collect
 
-The app connects to **device** port 9000; the dsrouter that `dotnet-trace` starts listens
-on **host** port 9001. Hence the reverse mapping:
+`scripts/Record-AndroidStartupProfiles.ps1` builds, installs and records in one go; it
+handles the port mapping (the app connects to **device** 9000, the dsrouter listens on
+**host** 9001) and gives the collector time to bind before `am start`.
 
 ```bash
-adb shell am force-stop chat.actual.dev.app
-adb reverse tcp:9000 tcp:9001
-
-# start the collector FIRST - the app is suspended waiting for it
-dotnet-trace collect --dsrouter android --duration 00:00:05 \
-  --profile dotnet-sampled-thread-time \
-  --providers Microsoft-Windows-DotNETRuntime:0x1F000080018:5 \
-  -o startup.nettrace
-
-# ...then, in another shell, launch
-adb shell am start -S -W -n chat.actual.dev.app/.MainActivity
+pwsh scripts/Record-AndroidStartupProfiles.ps1 -Runs 3 -Mode Sampling -Build
 ```
 
-Give the collector a few seconds to bind before `am start`, or the app's connect attempt
-races the router.
-
-`scripts/Record-AndroidStartupProfiles.ps1` does all of the above in a loop, so you get
-several cold starts to compare instead of one:
-
-```bash
-pwsh scripts/Record-AndroidStartupProfiles.ps1 -Runs 3 -Duration 00:00:05
-```
+`-Mode Sampling` is the one for "where is time going". The other modes record method events
+instead and feed the `.mibc` pipeline — see [startup-profiling.md](./startup-profiling.md).
 
 ### Choosing the profile
 
 - **`dotnet-sampled-thread-time`** — samples .NET thread stacks (~100 Hz). This is the one
-  that answers "where is time going".
+  that answers "where is time going", and what `-Mode Sampling` selects.
 - **`cpu-sampling` does not work here.** `dotnet-trace list-profiles` marks it
   `(collect-linux)`: it's kernel-event based and is rejected by `collect` with
   *"The specified profile 'cpu-sampling' does not apply to `dotnet-trace collect`"*.
-- The extra `--providers` line is Loader (`0x8`) + JIT (`0x10`) at Verbose. Without it most
-  frames don't symbolicate — managed method names come from `MethodLoadVerbose` and from
-  the rundown emitted at session stop. Adding it took unresolved frames from ~77% to ~66%
-  in the same scenario.
+- The `--providers` line is Loader (`0x8`) + JIT (`0x10`) + Type (`0x80000`) at Verbose.
+  Without it most frames don't symbolicate — managed method names come from
+  `MethodLoadVerbose` and from the rundown emitted at session stop. Adding it took
+  unresolved frames from ~77% to ~66% in the same scenario.
 
-A 5-second capture is roughly 210-230 MB.
+A 5-second sampled capture is roughly 210-230 MB; 10 s is enough to cover startup, since
+the app is up in ~1 s and the `*ServiceStarter` work is done by ~6 s.
+
+### Measuring startup time
+
+`scripts/Measure-AndroidStartup.ps1` runs N cold starts against a **non-tracing** build and
+reports three numbers: `am start` TotalTime, and the app's own `LoadingUI` markers
+`MarkChatListLoaded` (this is `LoadingUI.ChatListLoadTime`, the figure the app displays) and
+`MarkRendered`. Report the minimum — the spread is device noise.
+
+Don't measure startup on a tracing build: EventPipe emits hundreds of MB per run and swamps
+what you're measuring.
 
 ## Reading the trace: two traps
 

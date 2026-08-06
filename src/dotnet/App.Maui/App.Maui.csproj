@@ -53,6 +53,23 @@
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
+  <!-- Partial ReadyToRun: compile what _Profiling/merged.mibc lists and leave the rest as
+       IL. Default on, because on Android and Windows a miss costs one JIT compile and the
+       image shrinks several-fold (Android 111 -> 19MB, Windows 234 -> 15MB).
+
+       Off for Apple targets, and it must stay that way: there is no JIT there, so anything
+       missing from the image is *interpreted* for the life of the process rather than
+       compiled once. The size win is not worth that.
+
+       Delete artifacts/obj/App.Maui/<config>/R2R/ when toggling this - _CreateR2RImages
+       takes its Inputs from the project files, the compile list and the pgo files, not
+       from the crossgen2 argument properties, so flipping it alone leaves the previous
+       composite in place and the build quietly ships the image you meant to replace. -->
+  <PropertyGroup>
+    <UsePartialR2R Condition="'$(UsePartialR2R)' == ''">true</UsePartialR2R>
+    <UsePartialR2R Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))">false</UsePartialR2R>
+  </PropertyGroup>
+
   <!-- CoreCLR runtime settings — .NET 11 runs MAUI on CoreCLR on every platform,
        so these apply everywhere (they're ignored under Native AOT, which has no JIT) -->
   <PropertyGroup>
@@ -69,6 +86,21 @@
          hard errors on Server GC. -->
     <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
+
+  <!-- Delay tier-1 call counting past startup. Tiering counts calls into R2R code too, so
+       a composite-R2R startup spends real time re-jitting methods that already had native
+       code: measured 1869 -> 119 jitted methods on Android, 2553 -> 446 on Windows.
+       15s covers startup (app is up in ~1s, the *ServiceStarter work is done by ~6s) and
+       then lets tier 1 happen normally, so long sessions still get optimized code.
+
+       This is the config-file form of DOTNET_TC_CallCountingDelayMs, verified to be honored
+       (the numbers above are from a runtimeconfig-only run, env var cleared). Prefer it over
+       the env var: it travels with the app instead of with whoever launched it.
+       Do NOT reach for TieredCompilation_CallCounting=0 - that disables *counting*, which
+       promotes everything as soon as the delay expires: measured 1200 -> 1416 promotions. -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.Runtime.TieredCompilation.CallCountingDelayMs" Value="15000" />
+  </ItemGroup>
 
   <!-- Trimming & feature switches -->
   <PropertyGroup>
@@ -300,12 +332,35 @@
     <EmbedAssembliesIntoApk Condition="'$(EmbedAssembliesIntoApk)' == ''">False</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
-  <!-- Our own startup profile, recorded on-device via Build-Tracing-A.cmd + Trace-A.cmd
-       and converted by _Profiling/CreateMibc-A.cmd. crossgen2 uses it to lay out the
-       composite image hot-first; MAUI's own profiles are still passed alongside it. -->
+  <!-- Our own startup profile - the union of on-device Android and on-desktop Windows
+       recordings. Regenerate with /mibc-update, or by hand via
+       scripts/Record-{Android,Windows}StartupProfiles.ps1 + scripts/New-StartupMibc.ps1.
+       See docs/startup-profiling.md. It reaches crossgen2 as -m:.
+
+       The file carries method *names* only - `dotnet-pgo dump` reports 0 methods with
+       block counts, edge counts or class histograms - so it is useless to a full build:
+       there is nothing for the JIT to consume, and hot-first ordering would need
+       crossgen2's `method-layout` switch, which neither we nor the SDK ever pass (it
+       defaults to DefaultSort = layout off). Verified on device rather than inferred:
+       methods this file lists were still being jitted by a full build compiled with it.
+       A method list is exactly what `partial` consumes, which is where it earns its keep.
+
+       MAUI ships its own generic profiles and adds them to _ReadyToRunPgoFiles alongside
+       this one (Microsoft.Maui.Controls.targets, _MauiUseDefaultReadyToRunPgoFiles). What
+       does *not* arrive is the runtime pack's tools/StandardOptimizationData.mibc: it is
+       absent from RuntimeList.xml, so it is not a `pgodata` asset and
+       PublishReadyToRunUseRuntimePackOptimizationData picks up nothing. -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\android.mibc" />
+    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\merged.mibc" />
   </ItemGroup>
+
+  <!-- ActualChat.r2r.map.csv, next to the composite: every method crossgen2 actually
+       compiled, generic instantiations included. It is the only way to tell a jit event
+       that means "no native code existed" from one that means "tier 1 promotion" - the
+       distinction the raw jitted-method count hides. Costs build time, not app size. -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <PublishReadyToRunCrossgen2CompositeExtraArgs>$(PublishReadyToRunCrossgen2CompositeExtraArgs);--mapcsv</PublishReadyToRunCrossgen2CompositeExtraArgs>
+  </PropertyGroup>
 
   <!-- Android: Release configuration (CoreCLR + composite R2R). The common NAOT
        block at the end overrides PublishTrimmed / TrimMode / PublishReadyToRun* when
@@ -316,20 +371,21 @@
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
-    <!-- ReadyToRun: composite, and full rather than partial. MAUI 11 defaults to
-         crossgen2's partial mode, driven by the generic .mibc profiles it ships; those
-         are recorded from template apps and cover only 18% of the methods we actually
-         run at startup, which shrank the composite image 107MB to 5MB and cost ~20-25%
-         of startup time.
+    <!-- ReadyToRun: composite, partial per UsePartialR2R above. Android is the one target
+         where partial is also MAUI's own default - Microsoft.Maui.Controls.targets appends
+         crossgen2's `partial` switch unless _MauiPublishReadyToRunPartial is false, and
+         feeds crossgen2 its generic .mibc files alongside ours. (That file lives in the
+         microsoft.maui.controls.build.tasks NuGet package, not under dotnet/packs - grep
+         the package cache too before concluding the property is unused.)
 
-         Measured with our own profile driving partial (_Profiling/android.mibc):
-         15.4MB composite / 76.9MB APK vs 116MB / 104MB here, and startup came out the
-         same. We ship full anyway: equal startup for 27MB is a bad trade when the full
-         image also means less JIT for the whole session, not just the first screen:
-         fewer compilation pauses, smoother scrolling and navigation later on. -->
+         18.6MB composite / 35.8k methods compiled, against 111.4MB / 362.6k for full. Not
+         merely smaller: crossgen2 roots from the profile in partial mode and ignores it
+         entirely in full mode, so exact generic instantiations that full silently skips -
+         the ArrayPoolBuffer<byte> / RadixHeapSet<GenericTimeoutSlot> shapes - get compiled
+         here and do not on a full build. -->
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
-    <_MauiPublishReadyToRunPartial>false</_MauiPublishReadyToRunPartial>
+    <_MauiPublishReadyToRunPartial>$(UsePartialR2R)</_MauiPublishReadyToRunPartial>
     <!-- -50ms to startup time: -->
     <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
     <!-- Must be commented out: r8/d8 is the default now, specifying them explicitly
@@ -412,7 +468,15 @@
   </PropertyGroup>
 
   <!-- iOS: Release configuration (CoreCLR + composite R2R; there's no JIT on device, so
-       whatever R2R doesn't cover runs on CoreCLR's interpreter) -->
+       whatever R2R doesn't cover runs on CoreCLR's interpreter)
+
+       Keep this FULL. Android and Windows moved to mibc-driven partial R2R for the size
+       win, and the reasoning does not carry over: there, anything left out of the image is
+       jitted, so a miss costs one compilation. Here a miss is interpreted for the life of
+       the process, which is far worse than the bytes are worth. Nothing switches Apple
+       targets to partial today - MAUI's default is Android-only - so this is a warning
+       against "making it consistent", not a setting. -->
+
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-ios|AnyCPU'">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
@@ -496,6 +560,24 @@
        crossgen2 runtime pack (symptomatic of the same runtime-pack gap as dotnet/sdk#54013
        but on the R2R path instead of NAOT). -->
     <!-- <PublishReadyToRunCrossgen2ExtraArgs>&#45;&#45;embed-pgo-data;&#45;&#45;mibc:$(MSBuildThisFileDirectory)_Profiling\merged.mibc</PublishReadyToRunCrossgen2ExtraArgs> -->
+  </PropertyGroup>
+
+  <!-- Windows: the same mibc-driven partial R2R as Android, but nothing sets it up for us -
+       MAUI's partial default is gated on TargetPlatformIdentifier == 'android', so crossgen2's
+       `partial` switch has to be passed by hand here.
+
+       merged.mibc is the union of the Android and Windows recordings (scripts/
+       Record-*StartupProfiles.ps1 plus scripts/New-StartupMibc.ps1, which rebuilds the
+       union every time either half is re-recorded). Windows on the Android profile alone
+       resolved only ~47% of it and knew nothing about WinUI, WinRT or NAudio: 23.9k methods
+       compiled against 34.0k here, for 2.7MB more image. -->
+
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
+    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\merged.mibc" />
+  </ItemGroup>
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
+    <PublishReadyToRunCrossgen2CompositeExtraArgs Condition="'$(UsePartialR2R)' == 'true'">$(PublishReadyToRunCrossgen2CompositeExtraArgs);--partial</PublishReadyToRunCrossgen2CompositeExtraArgs>
+    <PublishReadyToRunCrossgen2CompositeExtraArgs>$(PublishReadyToRunCrossgen2CompositeExtraArgs);--mapcsv</PublishReadyToRunCrossgen2CompositeExtraArgs>
   </PropertyGroup>
   <!-- Windows: NAudio is not AOT-compatible for its [ComImport]-based COM wrappers
        (MMDeviceEnumeratorComObject..ctor() emits InvalidProgramException under NAOT even
