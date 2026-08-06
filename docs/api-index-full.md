@@ -165,7 +165,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `PlaybackCommands` - Playback command definitions.
 - `PlayerCommands` - Player command definitions.
 - `ServerKvasBackendClient` - Client for server KVAS backend.
-- `ServerKvasInviteKey` (record) - KVAS key for invites.
 - `ServerSettingsKvasClient` - Client for server settings via KVAS.
 - `GuestIdOption` (enum) - Guest ID options.
 - `LocalStorage` - Local browser storage access.

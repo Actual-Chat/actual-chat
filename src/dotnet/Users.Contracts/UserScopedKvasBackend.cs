@@ -3,8 +3,11 @@ namespace ActualChat.Users;
 /// <summary>
 /// User-scoped KVAS backed by <see cref="IServerKvasBackend"/>.
 /// </summary>
-public sealed class UserScopedKvasBackend(IServerKvasBackend serverKvasBackend, UserId userId)
-    : ServerKvasBackendClient(serverKvasBackend, GetUserPrefix(userId.Require()))
+public sealed class UserScopedKvasBackend(
+    IServerKvasBackend serverKvasBackend,
+    UserId userId,
+    bool isOutermost = false
+    ) : ServerKvasBackendClient(serverKvasBackend, GetUserPrefix(userId.Require()), isOutermost)
 {
     public UserId UserId { get; } = userId.Require();
 

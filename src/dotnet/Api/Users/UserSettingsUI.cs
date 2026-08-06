@@ -1,3 +1,5 @@
+using ActualChat.Kvas;
+
 namespace ActualChat.Users;
 
 /// <summary>
@@ -15,6 +17,9 @@ public sealed class UserSettingsUI(IServiceProvider services, Session session)
 
     public async Task<StoredSettings?> Get(string key, CancellationToken cancellationToken = default)
     {
+        if (KvasKeys.IsHidden(key))
+            return null;
+
         if (Temporals.IsReal) {
             var value = await Temporals.Get<StoredSettings>(key).ConfigureAwait(false);
             if (value is not null)
@@ -25,6 +30,7 @@ public sealed class UserSettingsUI(IServiceProvider services, Session session)
 
     public Task Set(string key, StoredSettings? value, CancellationToken cancellationToken = default)
     {
+        KvasKeys.RequireNotHidden(key);
         if (Temporals.IsReal && value is not null)
             Temporals.Set(key, value);
 

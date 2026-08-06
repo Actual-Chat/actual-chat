@@ -1,18 +1,17 @@
 using ActualChat.Invite.Db;
+using ActualChat.Kvas;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Invite;
 
-/// <summary>
-/// Backend service implementation for managing invite links and activation keys.
-/// </summary>
 public class InvitesBackend(IServiceProvider services)
     : DbServiceBase<InviteDbContext>(services), IInvitesBackend
 {
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
+    private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbInvite> DbInviteResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbInvite>>();
     private IDbEntityResolver<string, DbActivationKey> DbActivationKeyResolver { get; }
@@ -63,7 +62,6 @@ public class InvitesBackend(IServiceProvider services)
         UserId accountId,
         string inviteId,
         CancellationToken cancellationToken)
-
     {
         var invite = await Get(inviteId, cancellationToken).ConfigureAwait(false);
         if (invite is null)
@@ -100,6 +98,7 @@ public class InvitesBackend(IServiceProvider services)
 
                 return null;
             }
+
             return new InviteChatLinkPreview(chat, null);
         }
         case PlaceInvite placeInvite: {
@@ -165,7 +164,6 @@ public class InvitesBackend(IServiceProvider services)
             return default!;
         }
 
-        var session = command.Session;
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -208,6 +206,7 @@ public class InvitesBackend(IServiceProvider services)
         default:
             throw StandardError.Format<Invite>();
         }
+
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -224,11 +223,13 @@ public class InvitesBackend(IServiceProvider services)
             dbContext.Add(dbActivationKey);
             context.Operation.Items.KeylessSet(dbActivationKey.Id);
 
-            var userSettingsUI = Services.UserSettingsUI(session);
-            await userSettingsUI.Set(
-                ChatInviteSettings.GetKey(chatId),
-                new ChatInviteSettings { ActivationKey = dbActivationKey.Id },
-                cancellationToken).ConfigureAwait(false);
+            // This key is hidden from the client-facing KVAS APIs, so it has to be written
+            // via the backend one. It records the granted chat - which the switch above picks
+            // contextually, so it can't be re-derived from the invite later.
+            var settings = new ChatInviteSettings { InviteId = invite.Id.Value };
+            await ServerKvasBackend.ForUser(account.Id, isOutermost: true)
+                .Set(ChatInviteSettings.GetKey(chatId), settings, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 

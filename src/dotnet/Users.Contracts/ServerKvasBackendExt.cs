@@ -1,15 +1,18 @@
 namespace ActualChat.Users;
 
-/// <summary>
-/// Extension methods for <see cref="IServerKvasBackend"/>.
-/// </summary>
 public static class ServerKvasBackendExt
 {
-    public static UserScopedKvasBackend ForUser(this IServerKvasBackend serverKvasBackend, Account account)
-        => serverKvasBackend.ForUser(account.Id);
+    public static UserScopedKvasBackend ForUser(
+        this IServerKvasBackend serverKvasBackend,
+        Account account,
+        bool isOutermost = false)
+        => serverKvasBackend.ForUser(account.Id, isOutermost);
 
-    public static UserScopedKvasBackend ForUser(this IServerKvasBackend serverKvasBackend, UserId userId)
-        => new(serverKvasBackend, userId);
+    public static UserScopedKvasBackend ForUser(
+        this IServerKvasBackend serverKvasBackend,
+        UserId userId,
+        bool isOutermost = false)
+        => new(serverKvasBackend, userId, isOutermost);
 
     public static async Task<bool> IsWalkieTalkieArmed(
         this IServerKvasBackend serverKvasBackend,

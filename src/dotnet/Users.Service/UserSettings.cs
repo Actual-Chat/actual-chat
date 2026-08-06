@@ -1,4 +1,3 @@
-using ActualChat.Invite;
 using ActualChat.Kvas;
 using CommunityToolkit.HighPerformance.Buffers;
 
@@ -8,7 +7,7 @@ namespace ActualChat.Users;
 /// Server-side implementation of <see cref="IUserSettings"/>.
 /// Translates between <see cref="StoredSettings"/> and raw bytes stored in <see cref="IServerKvasBackend"/>.
 /// </summary>
-public class UserSettings : IUserSettings
+public class UserSettings(IServiceProvider services) : IUserSettings
 {
     private static readonly Dictionary<string, Type> KeyToType = new() {
         [nameof(UserAppSettings)] = typeof(UserAppSettings),
@@ -32,22 +31,17 @@ public class UserSettings : IUserSettings
 
     private static KvasSerializer Serializer => Kvas.KvasExt.Serializer;
 
-    private IAccounts Accounts { get; }
-    private IServerKvasBackend KvasBackend { get; }
-    private ICommander Commander { get; }
-    private ILogger Log { get; }
-
-    public UserSettings(IServiceProvider services)
-    {
-        Log = services.LogFor(GetType());
-        Accounts = services.GetRequiredService<IAccounts>();
-        KvasBackend = services.GetRequiredService<IServerKvasBackend>();
-        Commander = services.Commander();
-    }
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IServerKvasBackend KvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
+    private ICommander Commander { get; } = services.Commander();
+    private ILogger Log { get; } = services.LogFor<UserSettings>();
 
     // [ComputeMethod]
     public virtual async Task<StoredSettings?> Get(Session session, string key, CancellationToken cancellationToken = default)
     {
+        if (KvasKeys.IsHidden(key))
+            return null;
+
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
         var data = await KvasBackend.Get(prefix, key, cancellationToken).ConfigureAwait(false);
         return Deserialize(data, key);
@@ -60,6 +54,7 @@ public class UserSettings : IUserSettings
             return;
 
         var (session, key, value) = command;
+        KvasKeys.RequireNotHidden(key);
         // Null for a singleton key = an unknown union tag deserialized to null; deleting the row
         // would silently wipe the settings. Parameterized "@" keys keep null-as-delete.
         if (value is null && KeyToType.ContainsKey(key))
@@ -132,10 +127,9 @@ public class UserSettings : IUserSettings
         if (key[0] == '@') {
             if (key.StartsWith(ChatUserSettings.KeyPrefix))
                 return typeof(ChatUserSettings);
-            if (key.StartsWith(ChatInviteSettings.KeyPrefix))
-                return typeof(ChatInviteSettings);
             if (key.StartsWith(AddChatMembersBannerUserSettings.KeyPrefix))
                 return typeof(AddChatMembersBannerUserSettings);
+
             return typeof(StoredSettings);
         }
 
