@@ -70,6 +70,10 @@ public static partial class CoreModuleInitializer
             else
                 RpcSerializationFormat.All = clientFormats;
 
+            // The resolver caches DefaultFormats on its first read, which may happen before this runs -
+            // so assigning RpcSerializationFormat.All alone doesn't stop clients from pinning ?f=mempack*.
+            RpcSerializationFormatResolver.DefaultFormats = RpcSerializationFormat.All;
+
             RpcSerializationFormatResolver.Default
 #if DEBUG
                 = new(RpcSerializationFormat.MessagePackV6.Key);
