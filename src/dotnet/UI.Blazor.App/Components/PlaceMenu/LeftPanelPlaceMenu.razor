@@ -7,6 +7,13 @@
     Text="New chat"
     Click="OnCreateChatClick">
 </MenuEntry>
+@if (_canShare) {
+    <MenuEntry
+        Icon="icon-share text-2xl"
+        Text="Share place"
+        Click="OnShareClick">
+    </MenuEntry>
+}
 @if (_canInvite) {
     <MenuEntry
         Icon="icon-person-add"
@@ -41,6 +48,7 @@
     private bool _isOwner;
     private bool _canLeave;
     private bool _canInvite;
+    private bool _canShare;
 
     private IPlaces Places => Hub.Places;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -54,6 +62,7 @@
         var place = await Places.Get(session, _placeId, default).ConfigureAwait(false);
         _isOwner = place?.Rules.IsOwner() ?? false;
         _canInvite = place?.Rules.CanInvite() ?? false;
+        _canShare = place != null && (place.IsPublic || _canInvite);
         var canLeave = place != null && place.Rules.CanLeave();
         if (canLeave && _isOwner) {
             var ownerIds = await Places.ListOwnerIds(session, _placeId, default).ConfigureAwait(false);
@@ -77,4 +86,7 @@
 
     private void OnInviteMembersClick()
         => _ = ModalUI.Show(new AddMemberModal.Model(_placeId));
+
+    private Task OnShareClick()
+        => ShareUI.Share(_placeId);
 }
