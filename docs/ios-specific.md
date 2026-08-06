@@ -140,6 +140,12 @@ Both are reachable in a shipped build if ever needed: see
 
 ## Shrinking the R2R image, and why we don't
 
+**Android and Windows now ship partial R2R; iOS deliberately does not.** There a miss costs
+one JIT compile, here it is interpreted for the life of the process — so the same size win
+buys a permanent slowdown. `UsePartialR2R` is forced `false` for `-ios` / `-maccatalyst` in
+`App.Maui.csproj`. The profile pipeline and the settings both platforms use are described in
+[startup-profiling.md](./startup-profiling.md); this section is why none of it applies here.
+
 Two ways to precompile less and interpret more were built and measured on device
 (2026-08-01, `net11.0-ios` / `ios-arm64` / Release, dev-signed, clean builds). **Neither
 shipped**, but the mechanics are worth recording because the surrounding docs got them
@@ -155,8 +161,11 @@ wrong, and because the failure mode is not the one you'd expect.
 | Launch → chat list rendered | ~2.3 s | **2.5 s** | not run |
 
 **Partial mode is reachable on Apple targets.** MAUI's `_MauiPublishReadyToRunPartial`
-does not exist in any installed SDK or workload pack — it is a dead property, and the
-claim that partial is Android-only was wrong. crossgen2's own `--partial` works here,
+is real — `Microsoft.Maui.Controls.targets` in the `microsoft.maui.controls.build.tasks`
+package (not under `dotnet/packs`, which is why grepping there finds nothing) appends
+`--partial` unless it is `false`. But that `PropertyGroup` is gated on
+`'$(TargetPlatformIdentifier)' == 'android'`, so on Apple targets the property is inert
+and nothing turns partial on for you. crossgen2's own `--partial` works here,
 appended to `PublishReadyToRunCrossgen2CompositeExtraArgs`, with profiles supplied as
 `PublishReadyToRunPgoFiles` items (they reach crossgen2 as `-m:`).
 
@@ -170,11 +179,12 @@ point is that uncompiled methods still have IL for the interpreter to run.
 `PublishReadyToRunUseRuntimePackOptimizationData` (default `true`) picks up nothing. The
 composite image is laid out without any profile at all.
 
-**`_Profiling/android.mibc` does transfer to `ios-arm64`.** It drives partial mode without
-the generic-instantiation failure that blocks the Windows→Android direction (see the
-comment above `PublishReadyToRunCrossgen2ExtraArgs` in `App.Maui.csproj`). It is still an
-Android recording, so it covers the shared startup path and knows nothing about
-`Microsoft.iOS`, the ObjC registrar, or the Apple audio paths — those run interpreted.
+**`_Profiling/merged.mibc` does transfer to `ios-arm64`.** It drives partial mode without a
+generic-instantiation failure. (The Windows→Android direction used to crash crossgen2 on
+`MemoryPack` instantiations; as of 2026-08-06 that no longer reproduces — Android builds
+cleanly on the merged profile.) It is still an Android + Windows recording, so it covers the
+shared startup path and knows nothing about `Microsoft.iOS`, the ObjC registrar, or the Apple
+audio paths — those would run interpreted, which is precisely why partial is wrong here.
 
 **Excluding most assemblies needs explicit `-r:` references.** For a normal composite build
 the SDK passes crossgen2 *zero* references, because every assembly is an input. Exclude
@@ -431,8 +441,9 @@ rejects an explicit `PublishTrimmed` outright (*"iOS projects do not support set
 'PublishTrimmed'"*), so the knob is `MtouchLink` — `None` / `SdkOnly` / `Full`.
 
 **ReadyToRun is full here, but not because partial is unavailable.** Partial mode works on
-Apple targets and was measured on device; we don't ship it. See
-[Shrinking the R2R image, and why we don't](#shrinking-the-r2r-image-and-why-we-dont).
+Apple targets and was measured on device; we don't ship it, even though Android and Windows
+do. See [Shrinking the R2R image, and why we don't](#shrinking-the-r2r-image-and-why-we-dont)
+and [startup-profiling.md](./startup-profiling.md).
 
 **The launch surface has to be painted explicitly.** The `UIWindow` and the root view
 controller's view are white by default and show for a frame between the launch

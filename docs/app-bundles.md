@@ -336,12 +336,14 @@ LZ4-compressed before the APK's own deflate, so raw numbers overstate its share.
 
 **Which assemblies are cold.**
 
-1. `src/dotnet/App.Maui/Build-Tracing-AR.cmd` — publish and install a Release build with
-   `IsTracingEnabled=true`.
-2. `src/dotnet/App.Maui/Trace-A.cmd` — record the cold start over `dotnet-dsrouter` with
-   `Microsoft-Windows-DotNETRuntime:0x1F000080018:5` (Loader + JIT keywords, plus the
-   end-of-session rundown).
-3. Parse the `.nettrace` with a `Microsoft.Diagnostics.Tracing.TraceEvent` reader:
+1. `pwsh scripts/Record-AndroidStartupProfiles.ps1 -Runs 3 -Mode Methods -Build` — publishes
+   and installs a Release build with `IsTracingEnabled=true`, then records cold starts with
+   `Microsoft-Windows-DotNETRuntime:0x1F000080018:5` (Loader + JIT + Type keywords, plus the
+   end-of-session rundown). See [startup-profiling.md](./startup-profiling.md).
+2. For a method list rather than sizes, `pwsh scripts/New-StartupMibc.ps1 -Platform Android`
+   is enough — `dotnet-pgo dump` on the result gives every method that ran, by assembly.
+3. For IL body sizes, parse the `.nettrace` with a
+   `Microsoft.Diagnostics.Tracing.TraceEvent` reader:
    subscribe to `ClrTraceEventParser`'s `LoaderModuleLoad` and the `MethodLoadVerbose` /
    `MethodDCStopVerbose` families, key methods by `ModuleID`, and join against the
    `MethodDefinition` table of each assembly in
