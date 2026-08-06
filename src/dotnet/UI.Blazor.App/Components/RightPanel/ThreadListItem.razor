@@ -79,8 +79,10 @@
         var chatId = chat.Id;
         var chatStateTask = ChatUI.GetState(chatId, false, cancellationToken);
         var previewTask = ChatUI.GetPreview(chatId, cancellationToken);
+        var unreadStateTask = ChatUI.GetUnreadState(chatId, cancellationToken);
         var chatState = await chatStateTask.ConfigureAwait(false);
         var preview = await previewTask.ConfigureAwait(false);
+        var unreadState = await unreadStateTask.ConfigureAwait(false);
         if (chatState == null)
             return Model.None;
 
@@ -88,8 +90,8 @@
         return new() {
             Chat = chatState.Chat,
             NotificationMode = chatState.Info.ChatUserSettings.NotificationMode,
-            UnreadCount = chatState.Info.UnreadCount,
-            HasUnreadMentions = chatState.Info.HasUnreadMentions,
+            UnreadCount = unreadState.Count,
+            HasUnreadMentions = unreadState.HasOwnMention,
             LastTextEntry = lastEntry,
             LastTextEntryText = preview.Text,
         };

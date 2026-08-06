@@ -147,7 +147,7 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
     }
 
     protected async reportVisibility(
-        visibleKeys: string[], isEndAnchorVisible: boolean, isPinnedToEnd: boolean): Promise<void> {
+        visibleKeys: string[], isEndAnchorVisible: boolean, isPinnedToEnd = isEndAnchorVisible): Promise<void> {
         if (this.isDisposed)
             return;
 

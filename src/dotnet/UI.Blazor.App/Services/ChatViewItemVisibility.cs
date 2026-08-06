@@ -7,7 +7,8 @@ public sealed record ChatViewItemVisibility(
     bool IsEndAnchorVisible,
     bool IsPinnedToEnd)
 {
-    public static readonly ChatViewItemVisibility Empty = new(null!, ImmutableHashSet<ChatMessageKey>.Empty, false, false);
+    public static readonly ChatViewItemVisibility Empty
+        = new(null!, ImmutableHashSet<ChatMessageKey>.Empty, false, false);
 
     public long MinMessageLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Min(x => x.LocalId);
     public long MaxMessageLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Max(x => x.LocalId);
@@ -44,15 +45,14 @@ public sealed record ChatViewItemVisibility(
         if (!found)
             return true;
 
-        var hasBefore = VisibleKeys.Any(x => x.LocalId < entryLid || (x.LocalId == entryLid && x.Kind != ChatMessageKind.None));
+        var hasBefore = VisibleKeys.Any(x => x.LocalId < entryLid
+            || (x.LocalId == entryLid && x.Kind != ChatMessageKind.None));
         var hasAfter = VisibleKeys.Any(x => x.LocalId > entryLid);
 
         if (!hasBefore && !hasAfter) // the only visible item
             return false;
-
         if (hasBefore && hasAfter)
             return false;
-
         if (!hasAfter && IsEndAnchorVisible) // the last item
             return false;
 
@@ -63,13 +63,10 @@ public sealed record ChatViewItemVisibility(
     {
         if (ChatId != other.ChatId)
             return false;
-
         if (VisibleKeys.Count != other.VisibleKeys.Count)
             return false;
-
         if (IsEndAnchorVisible != other.IsEndAnchorVisible)
             return false;
-
         if (IsPinnedToEnd != other.IsPinnedToEnd)
             return false;
 
