@@ -25,6 +25,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
     private IServiceProvider Services { get; }
     private Session Session { get; }
     private ChatId ChatId { get; }
+    private Moment CatchUpFrom { get; }
     private ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
@@ -33,11 +34,13 @@ public sealed class ListeningStreamMuxer : WorkerBase
 
     public ChannelReader<MuxedAudioStreamItem> Output => _output.Reader;
 
-    public ListeningStreamMuxer(IServiceProvider services, Session session, ChatId chatId)
+    public ListeningStreamMuxer(
+        IServiceProvider services, Session session, ChatId chatId, Moment catchUpFrom = default)
     {
         Services = services;
         Session = session;
         ChatId = chatId;
+        CatchUpFrom = catchUpFrom;
         _output = ChannelExt.Create<MuxedAudioStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
     }
@@ -146,6 +149,8 @@ public sealed class ListeningStreamMuxer : WorkerBase
             // audio buffer; this only caps how much old audio we send.
             var skipTo = SystemClock.Now - streamInfo.BeginsAt;
             skipTo = (skipTo - Constants.Audio.MaxRealtimeStreamDrift).Positive();
+            if (streamInfo.IsCatchUpTarget(CatchUpFrom))
+                skipTo = TimeSpan.Zero;
             var rpcStream = await LiveAudioStreams
                 .GetStream(Session, streamId, skipTo, streamStopToken)
                 .ConfigureAwait(false);

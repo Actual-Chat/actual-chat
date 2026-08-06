@@ -36,6 +36,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         chat.Require();
         if (!chat.Rules.Has(ChatPermissions.ReadAudio))
             return [];
+
         return await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -145,13 +146,14 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     public async Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
         Session session,
         ChatId chatId,
+        Moment catchUpFrom,
         CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
 
-        var muxer = new ListeningStreamMuxer(Services, session, chatId);
+        var muxer = new ListeningStreamMuxer(Services, session, chatId, catchUpFrom);
         var stream = ToLiveAsyncEnumerable(muxer, muxer.Output, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
@@ -174,6 +176,13 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     }
 
     // Legacy methods
+
+    [Obsolete("2026.08: Use GetListeningStream - it also takes catchUpFrom.")]
+    public Task<RpcStream<MuxedAudioStreamItem>> LegacyGetListeningStream(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+        => GetListeningStream(session, chatId, default, cancellationToken);
 
     public Task LegacyChangeSettings(
         Session session,
@@ -268,8 +277,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     private static async IAsyncEnumerable<MuxedAudioStreamItem> ToReplayAsyncEnumerable(
         ReplayStreamMuxer muxer,
         ChannelReader<MuxedAudioStreamItem> reader,
-        [EnumeratorCancellation]
-        CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         try {
             await foreach (var item in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))

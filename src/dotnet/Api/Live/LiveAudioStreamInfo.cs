@@ -27,4 +27,10 @@ public sealed partial record LiveAudioStreamInfo
     // JustText authors: transcribed, never fanned out. Negative so older entries default to voice.
     [DataMember(Order = 7), Key(7)]
     public bool IsTextOnly { get; init; }
+
+    public bool IsCatchUpTarget(Moment catchUpFrom)
+        // Shared by ListeningStreamMuxer (serve from t=0) and ChatListeningPlayer (skip the
+        // client-side stale trim) - both sides must pick the same streams.
+        => catchUpFrom != default
+            && BeginsAt + Constants.Audio.ListeningCatchUpTolerance >= catchUpFrom;
 }

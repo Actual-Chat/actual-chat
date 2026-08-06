@@ -46,7 +46,9 @@ public sealed class ChatListeningPlayer : ChatPlayer
 
         // Connect to Live Hub with automatic reconnection
         var streamProcessor = new ListeningStreamProcessor(
-            Hub.Services, Session, ChatId, cancellationToken.CreateLinkedTokenSource());
+            Hub.Services, Session, ChatId,
+            ChatAudioUI.GetListeningCatchUp(ChatId),
+            cancellationToken.CreateLinkedTokenSource());
         await using var _ = streamProcessor.ConfigureAwait(false);
 
         streamProcessor.StreamStarted +=
@@ -99,6 +101,11 @@ public sealed class ChatListeningPlayer : ChatPlayer
                 var playAt = Moment.Max(streamInfo.BeginsAt, minPlayAt);
                 if (playAt >= streamInfo.BeginsAt + Constants.Chat.MaxEntryDuration)
                     return;
+
+                // The server serves a wake catch-up stream from t=0 - re-trimming it here would
+                // throw away exactly the part the catch-up exists to deliver.
+                if (streamInfo.IsCatchUpTarget(ChatAudioUI.GetListeningCatchUp(ChatId)))
+                    playAt = streamInfo.BeginsAt;
 
                 // Report end-to-end audio latency
                 _ = Hub.LiveAudioStreams

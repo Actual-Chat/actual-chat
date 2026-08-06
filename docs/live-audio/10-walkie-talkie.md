@@ -230,16 +230,20 @@ and in the live WebView scope.
    `platform.OnForegroundWakeHandled` — the user is in the app and a forced
    replay would hijack their state.
 3. **Background branch**: plays `Tune.NotifyOnNewAudioMessageAfterDelay`
-   explicitly (the replay path bypasses `ChatListeningPlayer`, which normally
-   plays it), then builds the **restore set** from
-   `GetChatsYouNeedToKeepListeningTo` plus the trigger chat.
-4. **Stale-wake branch**: `WalkieTalkie.IsStaleWake(startedAt, now)` — older than
-   `WalkieTalkieStaleWakeAge` (60 s, matching the FCM TTL) — skips
-   replay-from-start and simply resumes listening on every chat in the restore
-   set. A fresh wake instead calls
-   `ChatAudioUI.StartWalkieTalkieReplay(chatId, startedAt, restoreSet)`, the
-   confirm-modal-free variant of `StartReplay` whose post-replay restore set is
-   the one supplied here.
+   explicitly (the cold boot outlives `ChatListeningPlayer`'s stream-start cue
+   window), then builds the **armed set** from
+   `GetChatsYouNeedToKeepListeningTo` plus the trigger chat and starts listening
+   on every chat in it.
+4. **Catch-up**: a fresh wake — `WalkieTalkie.IsStaleWake(startedAt, now)` false,
+   i.e. younger than `WalkieTalkieStaleWakeAge` (60 s, matching the FCM TTL) —
+   first stamps `ChatAudioUI.SetListeningCatchUp(chatId, startedAt)`. The
+   listening player passes that anchor to `GetListeningStream`, and the
+   server-side `ListeningStreamMuxer` serves streams whose `BeginsAt` is at/after
+   the anchor (`LiveAudioStreamInfo.IsCatchUpTarget`, ±2 s tolerance) **from
+   t=0** instead of trimming to the live edge — the trigger utterance plays from
+   its first word even though the boot took seconds, then playback continues
+   live. All other streams, all other listeners, and stale wakes get the normal
+   live-edge trim.
 5. Fires `platform.OnPlaybackStarted(hub, chatId)`.
 
 `Transmit(isHeadless, platform, cancellationToken)` refuses to open the mic when
@@ -545,7 +549,8 @@ the flag is later turned off; only the UI for changing it goes away.
 | `WalkieTalkieIdleTimeout` | 5 min | Background silence after which listening drops from hot to armed |
 | `WalkieTalkieIdleCheckPeriod` | 15 s | Poll period of the idle-drop loop; also the answer-window expiry floor in `GestureUI` |
 | `WalkieTalkieGestureCheckMinPeriod` | 0.25 s | Debounce floor for `GestureUI`'s activation loop |
-| `WalkieTalkieStaleWakeAge` | 60 s | Older wakes skip replay-from-start and go straight to live listening |
+| `WalkieTalkieStaleWakeAge` | 60 s | Older wakes skip the from-start catch-up and go straight to live listening |
+| `ListeningCatchUpTolerance` | 2 s | Clock-fuzz allowance between a wake's `startedAt` and the target stream's `BeginsAt` |
 | `WalkieTalkieReplyColdStartTimeout` | 15 s | Cold-start dead-man: no voice within this and the mic closes with the "nothing heard" cue |
 | `WalkieTalkieReplyRecencyWindow` | 150 s | The answer window — how long after incoming voice a hands-free reply may start |
 | `WalkieTalkiePttTransmitStartupTimeout` | 8 s | Whole-boot budget for an Apple PTT transmit |
@@ -566,7 +571,7 @@ Cross-invariants worth keeping in mind when tuning these:
   re-arming wake would be suppressed as a duplicate.
 - **`WalkieTalkieStaleWakeAge` = the push TTL (60 s).** A wake that outlives the
   transport's own queue lifetime is by definition stale, so it must not trigger
-  a replay-from-start.
+  a from-start catch-up.
 - **`AudioSession`'s owner watchdog > `WalkieTalkieIdleTimeout`.** It runs at
   `WalkieTalkieIdleTimeout + 1 min`; anything shorter would revert a live walkie
   session, during which the PTT owner legitimately persists with no callback in

@@ -40,7 +40,7 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var liveStreamTask = liveStreams.GetListeningStream(session, chat.Id, cts.Token);
+        var liveStreamTask = liveStreams.GetListeningStream(session, chat.Id, default, cts.Token);
         var liveStream = await liveStreamTask;
 
         // Collect items in background

@@ -18,12 +18,14 @@ public sealed class ListeningStreamProcessor : WorkerBase
     public IServiceProvider Services { get; }
     public Session Session { get; }
     public ChatId ChatId { get; }
+    public Moment CatchUpFrom { get; }
 
     public event Action<LiveAudioStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
     public ListeningStreamProcessor(IServiceProvider services,
         Session session,
         ChatId chatId,
+        Moment catchUpFrom = default,
         CancellationTokenSource? stopTokenSource = null
         ) : base(stopTokenSource)
     {
@@ -33,17 +35,25 @@ public sealed class ListeningStreamProcessor : WorkerBase
         Services = services;
         Session = session;
         ChatId = chatId;
+        CatchUpFrom = catchUpFrom;
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var liveStreams = Services.GetRequiredService<ILiveAudioStreams>();
+        var clocks = Services.Clocks();
         var demuxerLog = Services.LogFor<AudioStreamDemuxer>();
 
         var itemStream = new ResilientStream<MuxedAudioStreamItem> {
             Provider = async ct => {
+                // Re-evaluated per (re)connect: a reconnect after the wake window must not
+                // re-play the trigger utterance from its start.
+                var catchUpFrom = WalkieTalkie.IsStaleWake(CatchUpFrom, clocks.ServerClock.Now)
+                    ? default
+                    : CatchUpFrom;
                 DebugLog?.LogInformation("-> LiveStreams.GetListeningStream({ChatId})", ChatId);
-                var stream = await liveStreams.GetListeningStream(Session, ChatId, ct).ConfigureAwait(false);
+                var stream = await liveStreams.GetListeningStream(Session, ChatId, catchUpFrom, ct)
+                    .ConfigureAwait(false);
                 DebugLog?.LogInformation("<- LiveStreams.GetListeningStream({ChatId})", ChatId);
                 return stream;
             },

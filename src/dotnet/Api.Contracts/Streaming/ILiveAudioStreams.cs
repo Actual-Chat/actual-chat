@@ -25,9 +25,12 @@ public interface ILiveAudioStreams : IComputeService
         string streamId,
         CancellationToken cancellationToken);
 
+    // Streams beginning at/after catchUpFrom (default = none) are served from t=0, not the live edge
+    [LegacyName("GetListeningStream_NewUnused", "2.15.9999")]
     Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
         Session session,
         ChatId chatId,
+        Moment catchUpFrom,
         CancellationToken cancellationToken);
 
     Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
@@ -55,6 +58,13 @@ public interface ILiveAudioStreams : IComputeService
         CancellationToken cancellationToken);
 
     // Legacy methods
+
+    [LegacyName(nameof(GetListeningStream), "2.15.9999")]
+    [Obsolete("2026.08: Use GetListeningStream - it also takes catchUpFrom.")]
+    Task<RpcStream<MuxedAudioStreamItem>> LegacyGetListeningStream(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken);
 
     [LegacyName("ChangeSettings", "2.9.9999")]
     Task LegacyChangeSettings(

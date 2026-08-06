@@ -100,7 +100,7 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
 
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
 
-        var stream = await liveStreams.GetListeningStream(session, chat.Id, CancellationToken.None);
+        var stream = await liveStreams.GetListeningStream(session, chat.Id, default, CancellationToken.None);
 
         stream.Should().NotBeNull();
     }
@@ -126,7 +126,7 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var stream = await liveStreams.GetListeningStream(session, chat.Id, cts.Token);
+        var stream = await liveStreams.GetListeningStream(session, chat.Id, default, cts.Token);
 
         // Stream should not throw when enumerated (even if empty)
         var items = new List<MuxedAudioStreamItem>();

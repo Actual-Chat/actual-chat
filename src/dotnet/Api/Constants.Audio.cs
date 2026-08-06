@@ -72,8 +72,10 @@ public static partial class Constants
         // Debounces GestureUI's activation loop: its inputs invalidate far more often than the
         // idle-check period, and it runs on battery-sensitive mobile clients.
         public static readonly TimeSpan WalkieTalkieGestureCheckMinPeriod = TimeSpan.FromSeconds(0.25);
-        // Matches the wake push's FCM TTL; older wakes skip replay-from-start and go live.
+        // Matches the wake push's FCM TTL; older wakes skip catch-up-from-start and go live.
         public static readonly TimeSpan WalkieTalkieStaleWakeAge = TimeSpan.FromSeconds(60);
+        // Clock-fuzz allowance between a wake's startedAt and the target stream's BeginsAt.
+        public static readonly TimeSpan ListeningCatchUpTolerance = TimeSpan.FromSeconds(2);
         public static readonly TimeSpan WalkieTalkieReplyColdStartTimeout = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan WalkieTalkieReplyBackgroundHotWindow = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan WalkieTalkieReplyRecencyWindow = TimeSpan.FromSeconds(150);

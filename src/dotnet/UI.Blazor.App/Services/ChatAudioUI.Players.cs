@@ -9,6 +9,7 @@ public partial class ChatAudioUI
 
     private volatile ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
+    private readonly ConcurrentDictionary<ChatId, Moment> _listeningCatchUpAnchors = new();
     private ImmutableHashSet<ChatId> _listeningChatsBeforeReplay = ImmutableHashSet<ChatId>.Empty;
     private readonly MutableState<ReplayState?> _replayState;
     private readonly AudioFocusRequester _audioFocusRequester;
@@ -96,24 +97,20 @@ public partial class ChatAudioUI
         _ = Hub.AudioAttachmentPlayer.Stop();
     }
 
-    public async Task StartWalkieTalkieReplay(
-        ChatId chatId, Moment startAt, IReadOnlyCollection<ChatId> listeningChatsToRestore)
+    public void SetListeningCatchUp(ChatId chatId, Moment anchor)
+        // Wake-driven from-start join: the next listening player run for this chat asks the
+        // server to serve streams beginning at/after the anchor from t=0.
+        => _listeningCatchUpAnchors[chatId] = anchor;
+
+    public Moment GetListeningCatchUp(ChatId chatId)
     {
-        // Wake-driven StartReplay variant: no confirm modal, and the listening set restored
-        // when the replay ends is the armed-chat set supplied by the wake handler.
-        lock (Lock) {
-            if (_listeningChatsBeforeReplay.IsEmpty)
-                _listeningChatsBeforeReplay = listeningChatsToRestore.ToImmutableHashSet();
-        }
-        await ClearListeningChats().ConfigureAwait(false);
+        if (!_listeningCatchUpAnchors.TryGetValue(chatId, out var anchor))
+            return default;
+        if (!WalkieTalkie.IsStaleWake(anchor, ServerNow))
+            return anchor;
 
-        var speed = ReplaySettings.Value.Speed;
-        DebugLog?.LogInformation("StartWalkieTalkieReplay: chatId={ChatId}, startAt={StartAt}, speed={Speed}",
-            chatId, startAt, speed);
-
-        StopReplay();
-        _replayState.Value = new ReplayState(chatId, startAt, default, speed);
-        _ = Hub.AudioAttachmentPlayer.Stop();
+        _listeningCatchUpAnchors.TryRemove(chatId, out _);
+        return default;
     }
 
     public void PauseReplay(Moment pausedAt)

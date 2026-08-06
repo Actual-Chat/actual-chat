@@ -88,6 +88,12 @@ someone's monologue they don't get 30 s of replay first — the live feed
 is "almost-live", not "from-the-start". (Replay-mode subscribers use
 `GetReplayStream` instead.)
 
+One exception: `GetListeningStream` takes a `catchUpFrom` moment (default =
+none), and streams whose `BeginsAt` is at/after it are served from t=0 with no
+trim. The walkie-talkie wake passes the trigger utterance's start there so the
+cold boot doesn't cost the listener the first seconds — see
+[doc 10](10-walkie-talkie.md).
+
 ### Per-author merge in the muxer
 
 Same logic as `LiveAudioBackend.Register` but at the streaming level: if

@@ -20,7 +20,11 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
         => _disposeCts.CancelAndDisposeSilently();
 
     public async Task StartPlayback(
-        ChatId chatId, Moment startedAt, bool isForeground, bool isHeadless, WalkieTalkiePlatform platform)
+        ChatId chatId,
+        Moment startedAt,
+        bool isForeground,
+        bool isHeadless,
+        WalkieTalkiePlatform platform)
     {
         var chatAudioUI = Hub.ChatAudioUI;
         if (isHeadless)
@@ -38,21 +42,22 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
             return;
         }
 
-        // The replay path bypasses ChatListeningPlayer, which normally plays this cue on
-        // stream-start after a long lull - so the wake plays it explicitly.
+        // The cold boot outlives ChatListeningPlayer's stream-start cue window, so the wake
+        // plays it explicitly.
         _ = Hub.TuneUI.Play(Tune.NotifyOnNewAudioMessageAfterDelay);
 
-        // The server gates wakes on the same settings; re-read them for the restore set.
-        var restoreSet = await chatAudioUI.GetChatsYouNeedToKeepListeningTo(CancellationToken.None)
+        // The server gates wakes on the same settings; re-read them for the armed set.
+        var armedChatIds = await chatAudioUI.GetChatsYouNeedToKeepListeningTo(CancellationToken.None)
             .ConfigureAwait(false);
-        if (!restoreSet.Contains(chatId))
-            restoreSet = [..restoreSet, chatId];
+        if (!armedChatIds.Contains(chatId))
+            armedChatIds = [..armedChatIds, chatId];
 
-        if (WalkieTalkie.IsStaleWake(startedAt, Hub.Clocks.SystemClock.Now))
-            foreach (var armedChatId in restoreSet)
-                await chatAudioUI.SetListeningState(armedChatId, true).ConfigureAwait(false);
-        else
-            await chatAudioUI.StartWalkieTalkieReplay(chatId, startedAt, restoreSet).ConfigureAwait(false);
+        // A fresh wake joins the trigger utterance from its start (it's still streaming or just
+        // ended); a stale one goes straight to live listening.
+        if (!WalkieTalkie.IsStaleWake(startedAt, Hub.Clocks.SystemClock.Now))
+            chatAudioUI.SetListeningCatchUp(chatId, startedAt);
+        foreach (var armedChatId in armedChatIds)
+            await chatAudioUI.SetListeningState(armedChatId, true).ConfigureAwait(false);
 
         _ = platform.OnPlaybackStarted(Hub, chatId);
     }
