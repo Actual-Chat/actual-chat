@@ -5,26 +5,20 @@ namespace ActualChat.Users;
 /// <summary>
 /// Frontend service for server-side key-value storage with session-based access control.
 /// </summary>
-public class ServerKvas : IServerKvas
+public class ServerKvas(IServiceProvider services) : IServerKvas
 {
-    private IAccounts Accounts { get; }
-    private IServerKvasBackend Backend { get; }
-    private ICommander Commander { get; }
-    private MomentClockSet Clocks { get; }
-    private ILogger Log { get; }
-
-    public ServerKvas(IServiceProvider services)
-    {
-        Log = services.LogFor(GetType());
-        Clocks = services.Clocks();
-        Accounts = services.GetRequiredService<IAccounts>();
-        Backend = services.GetRequiredService<IServerKvasBackend>();
-        Commander = services.Commander();
-    }
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IServerKvasBackend Backend { get; } = services.GetRequiredService<IServerKvasBackend>();
+    private ICommander Commander { get; } = services.Commander();
+    private MomentClockSet Clocks { get; } = services.Clocks();
+    private ILogger Log { get; } = services.LogFor<ServerKvas>();
 
     // [ComputeMethod]
     public virtual async Task<byte[]?> Get(Session session, string key, CancellationToken cancellationToken = default)
     {
+        if (KvasKeys.IsHidden(key))
+            return null;
+
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
         return await Backend.Get(prefix, key, cancellationToken).ConfigureAwait(false);
 
@@ -114,8 +108,14 @@ public class ServerKvas : IServerKvas
     }
 
     // [CommandHandler]
-    public virtual async Task OnMigrateGuestKeys(ServerKvas_MigrateGuestKeys command, CancellationToken cancellationToken = default)
+    public virtual async Task OnMigrateGuestKeys(
+        ServerKvas_MigrateGuestKeys command,
+        CancellationToken cancellationToken = default)
     {
+        // Nothing dispatches this command anymore: its last user was invite activation, which now
+        // requires a signed-in account. Kept for now in case guest-to-user hand-off comes back -
+        // if it does, TryMigrateKeys must start skipping KvasKeys.HiddenPrefix keys, since
+        // moving those across an identity boundary would move access grants with them.
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
@@ -173,6 +173,7 @@ public class ServerKvas : IServerKvas
         return guestId is null ? null : UserScopedKvasBackend.GetUserPrefix(guestId);
     }
 
+    // Unused - see OnMigrateGuestKeys, its only caller
     private async ValueTask<Dictionary<string, byte[]>?> TryMigrateKeys(
         string fromPrefix,
         string toPrefix,
@@ -187,7 +188,7 @@ public class ServerKvas : IServerKvas
         Dictionary<string, byte[]> movedKeys;
         HashSet<string> skippedKeys;
         using (Computed.BeginIsolation()) {
-            movedKeys = new Dictionary<string, byte[]>() {
+            movedKeys = new Dictionary<string, byte[]> {
                 { Kvas.KvasExt.MigratedKey, KvasSerializer.SerializedTrue },
             };
             skippedKeys = new HashSet<string>();
@@ -220,6 +221,7 @@ public class ServerKvas : IServerKvas
 
     private static void RequireValidItem(string key, byte[]? value)
     {
+        KvasKeys.RequireNotHidden(key);
         key.RequireMaxLength(ServerKvas_Set.MaxKeyLength);
         if (value is { } v && v.Length > ServerKvas_Set.MaxValueLength)
             throw StandardError.Constraint("Value is too big.");

@@ -2518,13 +2518,27 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private async Task<bool> HasActivatedInvite(UserId userId, ChatId chatId, CancellationToken cancellationToken)
     {
+        // The key is hidden from client-facing KVAS APIs, so only OnUseForChat could have written
+        // it, and it names the chat the invite was actually used for.
         var settings = await ServerKvasBackend.ForUser(userId)
             .Get<ChatInviteSettings>(ChatInviteSettings.GetKey(chatId), cancellationToken)
             .ConfigureAwait(false);
-        if (settings is not { ActivationKey: { Length: > 0 } activationKey })
+        if (settings is not { InviteId.Length: > 0 })
             return false;
 
-        return await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
+        var invite = await InvitesBackend.Get(settings.InviteId, cancellationToken).ConfigureAwait(false);
+        if (invite is null)
+            return false;
+
+        // Revoke() zeroes Remaining, so CanUse covers revoked, exhausted and expired alike
+        var now = Clocks.SystemClock.Now;
+        if (!invite.CanUse(now))
+            return false;
+
+        if (invite.ExpiresOn > now)
+            Computed.GetCurrent().Invalidate(invite.ExpiresOn - now);
+
+        return true;
     }
 
     private Task<ILookup<ChatEntryId, ChatEntryAttachment>> GetAttachments(IEnumerable<DbChatEntry> dbEntries, CancellationToken cancellationToken)

@@ -1,7 +1,7 @@
 using ActualChat.Chat.Db;
 using ActualChat.Contacts;
 using ActualChat.Invite;
-using ActualChat.Users;
+using ActualChat.Kvas;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
@@ -22,6 +22,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     private IRoles Roles => field ??= Services.GetRequiredService<IRoles>();
     private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
     private IAuthorsBackend Backend => field ??= Services.GetRequiredService<IAuthorsBackend>();
+    private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Author?> Get(
@@ -52,6 +53,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             var avatar = author.Avatar with { Name = preferredPeerName };
             author = author with { Avatar = avatar };
         }
+
         return author;
     }
 
@@ -236,15 +238,14 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             });
         author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
-        var userSettingsUI = Services.UserSettingsUI(session);
-        var inviteSettings = (ChatInviteSettings?)await userSettingsUI
-            .Get(ChatInviteSettings.GetKey(chatId), cancellationToken)
+        // Membership supersedes the invite grant, so drop it
+        var userKvas = ServerKvasBackend.ForUser(account.Id, isOutermost: true);
+        var inviteSettingsKey = ChatInviteSettings.GetKey(chatId);
+        var inviteSettings = await userKvas
+            .Get<ChatInviteSettings>(inviteSettingsKey, cancellationToken)
             .ConfigureAwait(false);
-        if (inviteSettings?.ActivationKey is not null) {
-            // Remove the invite
-            var removeCommand = new UserSettings_Set(session, ChatInviteSettings.GetKey(chatId), null);
-            await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
-        }
+        if (inviteSettings is not null)
+            await userKvas.Set(inviteSettingsKey, null, cancellationToken).ConfigureAwait(false);
 
         return author;
     }
@@ -264,6 +265,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return;
+
         chat.Rules.Require(ChatPermissions.Leave);
 
         if (chat.Rules.IsOwner()) {
@@ -442,6 +444,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         var changeRoleCommand = new Authors_ChangeRole(session, authorId, SystemRole.Owner, true);
         await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
     }
+
+    // Private methods
 
     private async Task ChangeSystemRoleMembership(
         ChatId chatId,
