@@ -44,8 +44,8 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
     }
 
     [JSInvokable]
-    public void OnLocation(double latitude, double longitude, double? accuracy, double? heading)
-        => SetCached(new GeoPoint(latitude, longitude, (float?)accuracy, (float?)heading));
+    public void OnLocation(double latitude, double longitude, double? accuracy, double? heading, double timestamp)
+        => SetCached(new JsGeoFix(latitude, longitude, accuracy, heading, timestamp).ToGeoFix());
 
     [JSInvokable]
     public void OnError(int code)
@@ -60,10 +60,13 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
 
     // Protected/internal methods
 
-    protected override Task<GeoPoint?> Fetch(bool mustBeFresh, CancellationToken cancellationToken)
-        => _hub.JS
-            .InvokeAsync<GeoPoint?>(JSGetCurrentMethod, cancellationToken, mustBeFresh)
-            .AsTask();
+    protected override async Task<GeoFix?> Fetch(bool mustBeFresh, CancellationToken cancellationToken)
+    {
+        var jsFix = await _hub.JS
+            .InvokeAsync<JsGeoFix?>(JSGetCurrentMethod, cancellationToken, mustBeFresh)
+            .ConfigureAwait(false);
+        return jsFix?.ToGeoFix();
+    }
 
     // Private methods
 
@@ -76,5 +79,20 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
         }
         _blazorRef.DisposeSilently();
         _blazorRef = null;
+    }
+
+    // Nested types
+
+    private sealed record JsGeoFix(
+        double Latitude,
+        double Longitude,
+        double? Accuracy,
+        double? Bearing,
+        double Timestamp)
+    {
+        public GeoFix ToGeoFix()
+            => new (
+                new GeoPoint(Latitude, Longitude, (float?)Accuracy, (float?)Bearing),
+                new Moment(TimeSpan.FromMilliseconds(Timestamp)));
     }
 }

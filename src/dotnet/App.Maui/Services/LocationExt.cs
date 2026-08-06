@@ -1,7 +1,12 @@
+using ActualChat.UI.Blazor.App.Services;
+
 namespace ActualChat.App.Maui.Services;
 
 public static class LocationExt
 {
+    public static GeoFix ToGeoFix(this Microsoft.Maui.Devices.Sensors.Location location)
+        => new (location.ToGeoPoint(), new Moment(location.Timestamp));
+
     public static GeoPoint ToGeoPoint(this Microsoft.Maui.Devices.Sensors.Location location)
     {
         var accuracy = location.Accuracy is { } a ? (float)a : (float?)null;

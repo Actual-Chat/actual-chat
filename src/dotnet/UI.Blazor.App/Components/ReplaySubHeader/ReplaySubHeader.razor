@@ -69,7 +69,7 @@
         </div>
         <div class="c-playback">
             @if (isLoading) {
-                <div class="replay-spinner animate-spin"></div>
+                <Spinner/>
             } else {
             @if (ScreenSize.IsWide()) {
                 <ButtonRound Tooltip="Backward" Click="@OnBackward" Class="btn-xs btn-transparent hover-primary-icon">

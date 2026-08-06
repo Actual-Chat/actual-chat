@@ -144,6 +144,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.SignInWizard>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.SignOutButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.SignOutOrSignInBlock>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Spinner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.StartupTimeBar>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Stepper>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Tab>();
@@ -645,6 +646,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.SignInWizard), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.SignOutButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.SignOutOrSignInBlock), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.Spinner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.StartupTimeBar), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.Stepper), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.Tab), AotTypeKind.Component),

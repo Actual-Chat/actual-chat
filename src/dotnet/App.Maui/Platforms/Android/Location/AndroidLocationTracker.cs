@@ -60,8 +60,8 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
 
     // Protected/internal methods
 
-    internal static void ReportLocation(GeoPoint point)
-        => _instance?.SetCached(point);
+    internal static void ReportLocation(GeoFix fix)
+        => _instance?.SetCached(fix);
 
     internal static void ReportError(GeoTrackingError error)
         => _instance?.SetError(error);
