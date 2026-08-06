@@ -74,11 +74,18 @@
     private MutableState<MapType> _mapType = null!;
     private MutableState<bool> _isMapTypeMenuOpen = null!;
     private MapView? _mapView;
+    private FuncWorker? _refreshWorker;
 
     private LocationUI LocationUI => Hub.LocationUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public override async ValueTask DisposeAsync() {
+        await _refreshWorker.DisposeSilentlyAsync();
+        _refreshWorker = null;
+        await base.DisposeAsync();
+    }
 
     protected override void OnInitialized() {
         _mapType = StateFactory.NewMutable(
@@ -87,6 +94,8 @@
         _isMapTypeMenuOpen = StateFactory.NewMutable(
             false,
             StateCategories.Get(GetType(), nameof(_isMapTypeMenuOpen)));
+        // Merely viewing the map is no reason to pop the troubleshooter up.
+        _refreshWorker = FuncWorker.Start(ct => LocationUI.RunLocationRefreshLoop(false, ct), Hub.StopToken);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

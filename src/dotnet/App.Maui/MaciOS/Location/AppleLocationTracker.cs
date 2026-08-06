@@ -76,7 +76,7 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
     private void OnLocationsUpdated(object? sender, CLLocationsUpdatedEventArgs e)
     {
         if (e.Locations.LastOrDefault() is { } location)
-            SetCached(location.ToGeoPoint());
+            SetCached(location.ToGeoFix());
     }
 
     private void OnFailed(object? sender, NSErrorEventArgs e)

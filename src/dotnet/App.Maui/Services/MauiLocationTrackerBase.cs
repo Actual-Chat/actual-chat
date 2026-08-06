@@ -3,15 +3,15 @@ using ActualChat.UI.Blazor.App.Services;
 namespace ActualChat.App.Maui.Services;
 public abstract class MauiLocationTrackerBase(AppUIHub hub) : LocationTrackerBase(hub)
 {
-    protected override async Task<GeoPoint?> Fetch(bool mustBeFresh, CancellationToken cancellationToken)
+    protected override async Task<GeoFix?> Fetch(bool mustBeFresh, CancellationToken cancellationToken)
     {
         if (!mustBeFresh && await Geolocation.Default.GetLastKnownLocationAsync().ConfigureAwait(false) is { } cached)
-            return cached.ToGeoPoint();
+            return cached.ToGeoFix();
 
         var accuracy = await GetGeolocationAccuracy(cancellationToken).ConfigureAwait(false);
         var request = new GeolocationRequest(accuracy, Constants.Location.GetTimeout);
         var location = await Geolocation.Default.GetLocationAsync(request, cancellationToken).ConfigureAwait(false);
-        return location?.ToGeoPoint();
+        return location?.ToGeoFix();
     }
 
     protected async Task<GeolocationAccuracy> GetGeolocationAccuracy(CancellationToken cancellationToken)

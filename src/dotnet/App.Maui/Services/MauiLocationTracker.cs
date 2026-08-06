@@ -51,7 +51,7 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
     }
 
     private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
-        => SetCached(e.Location.ToGeoPoint());
+        => SetCached(e.Location.ToGeoFix());
 
     private void OnListeningFailed(object? sender, GeolocationListeningFailedEventArgs e)
     {

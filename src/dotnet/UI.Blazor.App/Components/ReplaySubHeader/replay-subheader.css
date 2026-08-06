@@ -83,9 +83,9 @@ a.c-title {
     @apply rounded-full;
     @apply bg-cancel;
 }
-.replay-subheader .replay-spinner {
-    @apply flex-none w-6 h-6 m-1 rounded-full;
-    border: 2px solid var(--border-replay);
+.replay-subheader .spinner {
+    @apply m-1;
+    border-color: var(--border-replay);
     border-top-color: var(--text-01);
 }
 .replay-subheader .c-actions {

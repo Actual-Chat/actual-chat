@@ -59,6 +59,9 @@
     @apply text-2xl;
     color: var(--location-accent);
 }
+.share-location-modal .c-actions .btn-tile .spinner {
+    color: var(--location-accent);
+}
 .share-location-modal .c-menu-backdrop {
     @apply fixed inset-0 z-10;
 }

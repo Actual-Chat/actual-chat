@@ -223,8 +223,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         if (Tracker.Error.Value is not null)
             return;
 
-        var point = await Tracker.Get(false, cancellationToken).ConfigureAwait(false);
-        if (point is null)
+        if (await Tracker.Get(false, cancellationToken).ConfigureAwait(false) is not { Point: var point })
             return;
 
         // Not initialized yet (InitializeShares failed to get a point or to post); next cycle retries
@@ -244,8 +243,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         if (activeShares.All(x => x.LocationId is not null))
             return activeShares;
 
-        var point = await Tracker.Get(false, cancellationToken).ConfigureAwait(false);
-        if (point is null)
+        if (await Tracker.Get(false, cancellationToken).ConfigureAwait(false) is not { Point: var point })
             return activeShares;
 
         return await activeShares.Select(x => InitializeShare(x, point, cancellationToken))

@@ -2,31 +2,32 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTracker
 {
-    private readonly MutableState<GeoPoint?> _cachedLocation;
+    private readonly MutableState<GeoFix?> _cachedFix;
     private readonly MutableState<GeoTrackingError?> _error;
 
-    public IState<GeoTrackingError?> Error => _error;
     protected bool IsTracking { get; set; }
+    public IState<GeoTrackingError?> Error => _error;
 
     protected LocationTrackerBase(AppUIHub hub) : base(hub)
     {
-        _cachedLocation = hub.StateFactory.NewMutable(
-            (GeoPoint?)null,
-            StateCategories.Get(GetType(), nameof(_cachedLocation)));
+        _cachedFix = hub.StateFactory.NewMutable(
+            (GeoFix?)null,
+            StateCategories.Get(GetType(), nameof(_cachedFix)));
         _error = hub.StateFactory.NewMutable(
             (GeoTrackingError?)null,
             StateCategories.Get(GetType(), nameof(Error)));
     }
 
-    public async Task<GeoPoint?> Get(bool mustBeFresh = false, CancellationToken cancellationToken = default)
+    public async Task<GeoFix?> Get(bool mustBeFresh = false, CancellationToken cancellationToken = default)
     {
-        var trackedLocation = await _cachedLocation.Use(cancellationToken).ConfigureAwait(false);
+        var cachedFix = await _cachedFix.Use(cancellationToken).ConfigureAwait(false);
         if (!mustBeFresh)
-            return trackedLocation ?? await Fetch(false, cancellationToken).ConfigureAwait(false);
+            return cachedFix ?? await Fetch(false, cancellationToken).ConfigureAwait(false);
 
+        // Healthy tracking isn't enough: the watch updates once per UpdatePeriod, and keeps stale fixes on failure.
         var isTrackingHealthy = IsTracking && _error.Value is null;
-        if (isTrackingHealthy && await _cachedLocation.Use(cancellationToken).ConfigureAwait(false) is { } point)
-            return point;
+        if (isTrackingHealthy && cachedFix is not null)
+            return cachedFix;
 
         var fetched = await Fetch(true, cancellationToken).ConfigureAwait(false);
         if (fetched is not null)
@@ -40,15 +41,15 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
 
     // Protected/internal methods
 
-    protected abstract Task<GeoPoint?> Fetch(bool mustBeFresh, CancellationToken cancellationToken);
+    protected abstract Task<GeoFix?> Fetch(bool mustBeFresh, CancellationToken cancellationToken);
 
     protected Task<GeoTrackingAccuracy> GetAccuracy(CancellationToken cancellationToken)
         => Hub.LocalSettings.LocalAppSettings().Get(x => x.LocationAccuracyOrDefault, cancellationToken);
 
-    protected void SetCached(GeoPoint? point)
+    protected void SetCached(GeoFix? fix)
     {
-        _cachedLocation.Value = point;
-        if (point is not null)
+        _cachedFix.Value = fix;
+        if (fix is not null)
             _error.Value = null;
     }
 
