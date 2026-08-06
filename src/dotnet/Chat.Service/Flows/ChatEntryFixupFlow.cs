@@ -64,7 +64,7 @@ public partial class ChatEntryFixupFlow : Flow<Unit>
         var removedCount = 0;
         var cursor = cursorLid;
         // Mid-sweep runs resume past an already pinned cursor
-        var cursorAdvancing = startLid == cursorLid;
+        var isCursorAdvancing = startLid == cursorLid;
         var tilesScanned = 0;
         var isIncomplete = false;
         var scanLid = startLid;
@@ -83,14 +83,14 @@ public partial class ChatEntryFixupFlow : Flow<Unit>
                     continue;
 
                 if (!entry.IsContentStreaming) {
-                    if (cursorAdvancing)
+                    if (isCursorAdvancing)
                         cursor = entry.LocalId + 1;
                     continue;
                 }
 
                 if (entry.BeginsAt >= staleBefore) {
                     // Streaming, not yet stale - we'll revisit it on a future kick.
-                    cursorAdvancing = false;
+                    isCursorAdvancing = false;
                     continue;
                 }
 
@@ -108,17 +108,17 @@ public partial class ChatEntryFixupFlow : Flow<Unit>
                         removedCount++;
                     else
                         closedCount++;
-                    if (cursorAdvancing)
+                    if (isCursorAdvancing)
                         cursor = entry.LocalId + 1;
                 }
                 catch (Exception e) {
                     Console.LogError($"Failed to fix-up entry #{entry.Id}: {e.Message}", e);
-                    cursorAdvancing = false;
+                    isCursorAdvancing = false;
                 }
             }
 
             // Skips gaps the per-entry update can't
-            if (cursorAdvancing)
+            if (isCursorAdvancing)
                 cursor = scanLid;
         }
 

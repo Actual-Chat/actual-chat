@@ -8,11 +8,11 @@ Everything in the "What each serializer honors" table was verified empirically a
 this repository's serializer configuration, not taken from upstream documentation.
 
 **The short version.** Three serializers are live — Newtonsoft.Json, System.Text.Json,
-MessagePack — and every serializable type must work in all three. MemoryPack is not a
-serialization target anymore; it survives only as a read leg for bytes already persisted.
-Markup is always the owning serializer's own attributes: `System.Runtime.Serialization`
-attributes are being removed, because two of the three serializers read them and reach
-different conclusions while the third ignores them. See
+MessagePack — and every serializable type must work in all three. Each serializer is marked up
+with **its own** attributes: `[DataContract]`/`[DataMember]` are Newtonsoft's,
+`[MessagePackObject]`/`[Key]` are MessagePack's, `[JsonIgnore]` is System.Text.Json's. MemoryPack
+is not a serialization target at all anymore; it survives only as a read leg for two kinds of
+already-persisted blob — legacy stored settings and legacy flow state. See
 [Attribute conventions](#attribute-conventions).
 
 ## The serializers and what each one owns
@@ -42,7 +42,7 @@ Relevant settings (`NewtonsoftJsonSerializer.DefaultSettings`):
 - `TypeNameHandling.Auto` — polymorphic payloads carry `$type`
 - `NullValueHandling.Ignore`
 - `ContractResolver = new DefaultContractResolver()` — **this is the resolver that honors
-  `[DataContract]`**, and it is the root of the attribute problem described below
+  `[DataContract]`**, which is what makes it Newtonsoft's markup rather than anyone else's
 
 ### System.Text.Json — the JS boundary
 
@@ -98,41 +98,76 @@ Two read paths remain, and neither of them writes:
 
 #### The retained closure
 
-74 types still carry MemoryPack markup, one per file, all reachable from those two paths:
+66 types still carry MemoryPack markup, one per file, all reachable from those two paths:
 
 | Group | Types |
 |---|---|
-| Flows | every `Flow` subclass and the state reachable from it, plus `FlowId`, `FlowData<TFlow>`, `FlowReadiness`, `IndexingFlowCursor` |
-| KVAS | the `StoredSettings` union base and 21 of its members — `User*Settings`, `ChatUserSettings`, `ChatInviteSettings`, `ChatListSettings`, `LocalAppSettings`, `LocalOnboardingSettings`, … |
-| Reachable value types | `Range<T>`, `MediaRef`, `ChatEntrySlim`, `TranscriptionContext` and friends, `HashedExternalContact` |
-| Identifiers | the 11 id types those reach — `[MemoryPackable(GenerateType.NoGenerate)]` plus a custom formatter, including the legacy `Language` formatters |
+| Flows | every pre-cutoff `Flow` subclass and the state reachable from it, plus `FlowId`, `FlowData<TFlow>`, `FlowReadiness`, `IndexingFlowCursor` |
+| KVAS | the `StoredSettings` union base and 20 of its members — `User*Settings`, `ChatUserSettings`, `ChatInviteSettings`, `ChatListSettings`, `LocalAppSettings`, `LocalOnboardingSettings`, … |
+| Reachable value types | `Range<T>`, `MediaRef`, `ChatEntrySlim`, `HashedExternalContact` |
+| Identifiers | the 10 id types those reach — `[MemoryPackable(GenerateType.NoGenerate)]` plus a hand-written formatter registered in `ApiModuleInitializer`, including the legacy `Language` formatters |
+
+The identifier list is the sharpest test of the "reachable from" rule: an id type gets MemoryPack
+markup **and** a `MemoryPackFormatterProvider.Register` call in `ApiModuleInitializer`, or
+neither. `TranscriberId` had the attribute but no registration — dead markup, since nothing could
+ever have serialized it through MemoryPack.
 
 Note that KVAS blobs are not only server-side: `LocalAppSettings` and `LocalOnboardingSettings`
 live in client-local storage, so the read leg has to survive on devices too.
 
 #### The rule
 
-> **MemoryPack attributes are allowed only on a type whose bytes are already persisted
-> somewhere.** Never add `[MemoryPackable]`, `[MemoryPackOrder]`, `[MemoryPackUnion]`, or
-> `[MemoryPackIgnore]` to anything new.
+> **Only legacy stored settings and legacy flow state need MemoryPack.** Those are the two read
+> paths, and nothing else. If some other type carries `[MemoryPackable]`, the only legitimate
+> reason is that it is *reachable from* a settings type or a flow — a member's type, an element
+> type, an identifier one of them stores.
 
-The one case where you *do* write a new `[MemoryPackOrder]` is **adding a member to a type
-already inside the closure** — its existing blobs must keep deserializing, so the MemoryPack
-numbering has to continue from where they left off. That numbering is independent of the
-`[Key]` numbering and the two have already drifted apart on older types (`ChatUserSettings`
-pairs `MemoryPackOrder(3)` with `Key(2)`), so append to each sequence separately rather than
-assuming they match.
+Never add `[MemoryPackable]`, `[MemoryPackOrder]`, `[MemoryPackUnion]`, or `[MemoryPackIgnore]`
+to anything new.
 
-`UserWalkieTalkieSettings.IsHeadsetButtonEnabled` is the worked example: added as
-`[MemoryPackOrder(8), Key(8)]`, and typed `bool?` rather than `bool` precisely because a
-member absent from an older blob deserializes as `default(T)` — a `bool ... = true` property
-initializer does not survive the gap.
+##### The cutoff: when the MessagePack write path shipped
+
+A type needs MemoryPack only if a **released** build could have written a MemoryPack blob of it.
+`bcfbc3f750` (2026-04-16) made `KvasSerializer.Write` unconditionally MessagePack and put
+MessagePack in front of the Flow serializer, but the dev merge date isn't the boundary — release
+branches are cut from dev and can take cherry-picks, so what matters is the first release that
+carried the change:
+
+| Release | Cut | MessagePack write path |
+|---|---|---|
+| `release/v2.7` | 2026-04-10 | no — the last MemoryPack-writing release |
+| `release/v2.8` | 2026-05-18 | yes — the first one with it |
+
+So **a type introduced after 2026-05-18 (plus a few days' margin) cannot have MemoryPack blobs
+anywhere** and must be MessagePack-only. Check with
+`git log --follow --diff-filter=A --format=%ad --date=short -- <file>`, and use the date the
+type reached `dev`, not the date its branch started.
+
+Two flows sit inside that margin and keep their markup deliberately:
+`ChatEntryContentIndexingFlow` and `ChatMediaIndexingFlow`, both 2026-05-21. They are three days
+past the v2.8 cut and cost nothing to leave as they are, so they stay rather than being trimmed
+on a technicality.
+
+##### Adding a member to a type already inside the closure
+
+This is the one case where you *do* write a new `[MemoryPackOrder]`: the type's existing blobs
+must keep deserializing, so its MemoryPack numbering has to continue from where they left off.
+That numbering is independent of the `[Key]` numbering and the two have already drifted apart
+on older types (`ChatUserSettings` pairs `MemoryPackOrder(3)` with `Key(2)`), so append to each
+sequence separately rather than assuming they match.
+
+Either way, a member added later is absent from older blobs and deserializes as `default(T)` —
+a property initializer does not survive the gap. That is why `UserWalkieTalkieSettings.IsHeadsetButtonEnabled`
+is `bool?` and read as `?? true` rather than a `bool ... = true`. This applies to MessagePack
+just as much as to MemoryPack, so it holds for post-cutoff types too.
+
+##### New types
 
 A brand-new type has no legacy blobs by definition, so it gets MessagePack markup only —
 including a new `StoredSettings` member, which needs `[Union(N, …)]` and no `[MemoryPackUnion]`.
-`StoredSettings` already shows both shapes: it declares 23 `[Union]` members but only 21
-`[MemoryPackUnion]` ones — `RecentGifs` and `RecentMentions` were added MessagePack-only and
-work fine that way.
+`StoredSettings` shows both shapes: it declares 23 `[Union]` members but only 20
+`[MemoryPackUnion]` ones, because `RecentGifs`, `RecentMentions`, and `UserWalkieTalkieSettings`
+are MessagePack-only.
 
 #### What unblocks full removal
 
@@ -140,7 +175,7 @@ Steps 2 and 3 of [phase 3](../plans/msgpack.md#phase-3-remove-memorypack-complet
 the NuGet packages and the `MemoryPack` global using — stay open until the persisted blobs are
 migrated or aged out. Concretely: every `0x0`-marked KVAS value rewritten as `0x1`, every
 pre-format-byte Flow row re-serialized, and no installed client still holding local settings
-written by an older build.
+written by a pre-v2.8 build.
 
 ## What each serializer honors
 
@@ -218,45 +253,59 @@ System.Text.Json — and it was format-neutral: MessagePack verified byte-identi
 ## Attribute conventions
 
 > **Everything serializable supports all three live serializers, and each serializer is marked
-> up with its own attributes. `System.Runtime.Serialization` attributes — `[DataContract]`,
-> `[DataMember]`, `[IgnoreDataMember]` — are not used.**
+> up with its own attributes.** No attribute is expected to mean the same thing to two of them.
 
-`[DataContract]`/`[DataMember]` are the problem precisely because they are *not* neutral
-metadata: two different serializers read them and reach different conclusions, while the third
-ignores them. Removing them takes the ambiguity out rather than trying to keep three
-interpretations aligned. Note that `System.Runtime.Serialization` is a **global using**
-(`Directory.Build.props`), so these attributes are always one careless keystroke away —
-there is no missing-`using` error to catch them.
+| Serializer | Type | Include member | Exclude member |
+|---|---|---|---|
+| **Newtonsoft.Json** | `[DataContract]` | `[DataMember(Order = N)]` | `[IgnoreDataMember]` / `[Newtonsoft.Json.JsonIgnore]` |
+| **System.Text.Json** | — | — (every public property) | `[JsonIgnore]` |
+| **MessagePack** | `[MessagePackObject]` | `[Key(N)]` | `[IgnoreMember]` |
+| **MemoryPack** | `[MemoryPackable]` | `[MemoryPackOrder(N)]` | `[MemoryPackIgnore]` — legacy blobs only |
+
+`[DataContract]`/`[DataMember]` are **Newtonsoft's** markup. They are the one place this scheme
+could go wrong, because MessagePack's *dynamic* resolver also reads them — but only for a type
+without `[MessagePackObject]`. Where `[MessagePackObject]` + `[Key]` is present, `[Key]` wins and
+the DataContract annotations have no effect on the wire format at all (finding 2, verified
+byte-identical). That is what keeps them unambiguous, and it is why the next rule is not
+optional.
+
+> **A `[DataContract]` type must also be `[MessagePackObject]`.** Never one without the other.
+> Otherwise MessagePack falls back to reading the DataContract annotations — the ambiguous
+> case — and that path needs dynamic IL emit, so it doesn't work under AOT either.
 
 ### Declaring a serializable type
 
 ```csharp
-[MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record SomeType(
-    [property: Key(0)] ChatId ChatId,
-    [property: Key(1)] long Version);
+    [property: DataMember, Key(0)] ChatId ChatId,
+    [property: DataMember, Key(1)] long Version);
 ```
 
-- **Type** — `[MessagePackObject]`. Under AOT the dynamic resolver is unavailable, so this is
-  mandatory rather than optional; see [`docs/native-aot.md`](../native-aot.md).
-  `[MessagePackObject(true)]` keys by property name instead of by integer slot — use it where
-  a stable name is worth more than compactness. Newtonsoft and STJ need no type-level
-  attribute: with no `[DataContract]`, both serialize all public properties by default.
-- **Include** — `[Key(N)]`. MessagePack's analyzer (`MsgPack004`) fails the build if a public
-  member of a `[MessagePackObject]` type has neither `[Key]` nor `[IgnoreMember]`, so coverage
-  is compiler-enforced. **`[Key]` ordinals are wire format** — never renumber or reuse one on
-  a type that has already shipped; append instead.
-- **Exclude** — all three, every time:
+- **Type** — `[DataContract, MessagePackObject]`. Under AOT the dynamic resolver is unavailable,
+  so `[MessagePackObject]` is mandatory rather than optional; see
+  [`docs/native-aot.md`](../native-aot.md). `[MessagePackObject(true)]` keys by property name
+  instead of by integer slot — use it where a stable name is worth more than compactness.
+  System.Text.Json needs no type-level attribute.
+- **Include** — `[DataMember, Key(N)]`. MessagePack's analyzer (`MsgPack004`) fails the build if
+  a public member of a `[MessagePackObject]` type has neither `[Key]` nor `[IgnoreMember]`, so
+  MessagePack coverage is compiler-enforced. **`[DataMember]` is not** — and on a
+  `[DataContract]` type a member without it is silently dropped from the operation log
+  (finding 1). That one is on you.
+- **`[Key]` ordinals are wire format** — never renumber or reuse one on a type that has already
+  shipped; append instead. `[DataMember(Order = N)]` only controls Newtonsoft's output order and
+  may be omitted.
+- **Exclude** — all four, every time:
 
   ```csharp
-  [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]
+  [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
   public ChatId ShardKey => ChatId;
   ```
 
-  Omitting any one of the three leaks the member into that serializer. `[IgnoreDataMember]`
-  is not a substitute for `[JsonIgnore]` — see finding 3. This matters more without
-  `[DataContract]`, not less: Newtonsoft is then in opt-out mode, so an unmarked computed
-  property goes into the operation log.
+  Omitting any one leaks the member into that serializer. `[IgnoreDataMember]` is not a
+  substitute for `[JsonIgnore]` — see finding 3. On a `[DataContract]` type the Newtonsoft pair
+  is belt-and-braces (opt-in already excludes an unmarked member), but writing all four keeps the
+  intent explicit and survives the type later losing `[DataContract]`.
 
   Unqualified `JsonIgnore` is System.Text.Json's; Newtonsoft's must always be written out in
   full. Both are needed — they are different attributes.
@@ -281,48 +330,41 @@ only delegates to a backend command is never persisted and carries no such requi
 
 | Intent | Write |
 |---|---|
-| Serializable type | `[MessagePackObject]` |
-| Serializable type, name-keyed | `[MessagePackObject(true)]` |
-| Include a member | `[Key(N)]` — or `[property: Key(N)]` in a primary constructor |
-| Exclude a member | `[JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]` |
+| Serializable type | `[DataContract, MessagePackObject]` |
+| Serializable type, name-keyed | `[DataContract, MessagePackObject(true)]` |
+| Include a member | `[DataMember, Key(N)]` — or `[property: DataMember, Key(N)]` in a primary constructor |
+| Exclude a member | `[JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]` |
 | Polymorphic base | `[MessagePackObject]` + `[Union(N, typeof(TDerived))]` per subtype |
 | Pick a constructor | `[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]` |
-| Anything from `System.Runtime.Serialization` | — don't |
+| Legacy settings / flow blob | add `[MemoryPackable]` + `[MemoryPackOrder(N)]` — nothing else, ever |
 
-## Migrating off `[DataContract]`
-
-**The convention above is in force for new code; the sweep over existing code has not run yet.**
 Current surface in `src/dotnet/`, counted at the time of writing:
 
 | | `[DataContract]` | `[DataMember]` | `[IgnoreDataMember]` | `[MessagePackObject]` | `[Key(N)]` | `[IgnoreMember]` |
 |---|---|---|---|---|---|---|
 | Occurrences | 534 | 1632 | 422 | 474 | 1461 | 343 |
 
-So the dominant idiom you will actually see in the tree is still `[DataContract, MessagePackObject]`
-(367 types) with `[property: DataMember, Key(N)]` members (651). That is expected: MessagePack
-support was added *alongside* the DataContract markup rather than replacing it, and finding 2
-is what makes leaving it there harmless in the meantime. Don't copy it into a new type, and
-don't strip it from an existing one as a drive-by — see the hazard below.
+The dominant idiom in the tree is `[DataContract, MessagePackObject]` (367 types) with
+`[property: DataMember, Key(N)]` members (651) — which is exactly the convention above.
 
-Removing `[DataContract]` + `[DataMember]` from a type that already has
-`[MessagePackObject]` + `[Key]`:
+## If you ever do remove `[DataContract]` from a type
 
-- **MessagePack** — no change (finding 2).
+Not a goal, and not a drive-by cleanup — but if there's a reason to, know what moves:
+
+- **MessagePack** — no change (finding 2), provided `[MessagePackObject]` + `[Key]` stay.
 - **System.Text.Json** — no change; it never honored them.
 - **Newtonsoft.Json** — **this is the one that changes.** The type flips from opt-in to
   opt-out, so property order changes to declaration order, and any public property that
-  was excluded *only* by virtue of lacking `[DataMember]` starts being serialized.
+  was excluded *only* by virtue of lacking `[DataMember]` starts being serialized — silently, and
+  into the operation log if it's reachable from a backend command.
 
-So the migration's real work is per-type: every public member that must stay out of the
-operation log needs an explicit `[Newtonsoft.Json.JsonIgnore]` before `[DataContract]` comes
-off. Members that already carry `[IgnoreDataMember]` remain excluded (Newtonsoft honors it
-without `[DataContract]`), but the convention above replaces it with the explicit trio anyway.
+So every public member that must stay out needs an explicit `[Newtonsoft.Json.JsonIgnore]` first.
+Members already carrying `[IgnoreDataMember]` stay excluded — Newtonsoft honors it without
+`[DataContract]`.
 
-Six types currently override the opt-in behavior by hand and can drop the override along
-with `[DataContract]`:
-
-`UserIdentity`, `Choice<T,TAlt>`, `Range<T>`, `Tile<T>`, `Maybe<T>`, `Device` — all carry
-`[Newtonsoft.Json.JsonObject(MemberSerialization.OptOut)]`.
+Six types override the opt-in behavior by hand and would drop the override along with
+`[DataContract]`: `UserIdentity`, `Choice<T,TAlt>`, `Range<T>`, `Tile<T>`, `Maybe<T>`, `Device` —
+all carry `[Newtonsoft.Json.JsonObject(MemberSerialization.OptOut)]`.
 
 ## Testing
 
@@ -392,13 +434,14 @@ it is produced locally from the pre-refactor build, and its absence just means "
 yet", so CI stays green without it. Verification rebuilds each value, re-serializes it, and
 asserts the MessagePack bytes are **identical** — sound because two independent generations
 produce byte-identical output across all 354 types. JSON differences are reported but not
-asserted, since dropping `[DataContract]` moves Newtonsoft's output by design.
+asserted, since a change to a type's Newtonsoft markup may move that output by design.
 
 ## Related
 
 - [`docs/CODING_STYLE.md` → Serialization Attributes](../CODING_STYLE.md#serialization-attributes)
   — the short rule list, for when you just need to know what to type.
 - [`docs/plans/msgpack.md`](../plans/msgpack.md) — the MemoryPack → MessagePack migration
-  plan. Phases 1–3 are complete; phase 4 (removing `[DataContract]`) is next.
+  plan. Phases 1–3 are complete; phase 4 (removing `[DataContract]`) was dropped — see
+  [Attribute conventions](#attribute-conventions) for why it stays.
 - [`docs/native-aot.md`](../native-aot.md) — why the AOT resolver chain excludes dynamic
   IL emit, which is what makes `[MessagePackObject]` mandatory rather than optional.
