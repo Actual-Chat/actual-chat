@@ -50,7 +50,9 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
     {
         var accuracy = location.HasAccuracy ? location.Accuracy : (float?)null;
         var bearing = location.HasBearing ? location.Bearing : (float?)null;
-        AndroidLocationTracker.ReportLocation(new GeoPoint(location.Latitude, location.Longitude, accuracy, bearing));
+        var point = new GeoPoint(location.Latitude, location.Longitude, accuracy, bearing);
+        // Location.Time is the fix's UTC epoch ms
+        AndroidLocationTracker.ReportLocation(new GeoFix(point, new Moment(TimeSpan.FromMilliseconds(location.Time))));
     }
 
     public void OnProviderDisabled(string provider)

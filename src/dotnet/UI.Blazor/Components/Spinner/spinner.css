@@ -1,0 +1,9 @@
+/* A ring drawn in the current text color - unlike /dist/images/loading-spinner.svg, which is
+   white-only and thus limited to dark overlays. Override w/h to resize, border-color to tint. */
+.spinner {
+    @apply flex-none;
+    @apply w-6 h-6;
+    @apply rounded-full;
+    border: 0.125rem solid currentColor;
+    border-top-color: transparent;
+}

@@ -10,6 +10,11 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 {
     private const string OwnMarkerId = "own-location";
     private static readonly TimeSpan RemainingTextUpdatePeriod = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan CurrentLocationRefreshPeriod = TimeSpan.FromSeconds(10);
+
+    private readonly MutableState<bool> _isRefreshing = hub.StateFactory.NewMutable(
+        false,
+        StateCategories.Get(typeof(LocationUI), nameof(_isRefreshing)));
 
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
     private LiveLocationReporter Reporter => field ??= Hub.Services.GetRequiredService<LiveLocationReporter>();
@@ -94,6 +99,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             cLocation = await Computed
                 .Capture(() => SharedLocations.Get(Session, chatId, id, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
+
         return cLocation.Value is not { Duration.Ticks: > 0 };
     }
 
@@ -120,10 +126,8 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
     [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<bool> IsOwnLive(ChatId chatId, CancellationToken cancellationToken)
-    {
-        // Consolidated: any sharer's position fix invalidates GetOwnLive, and almost none of that flips this bool.
-        return await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false) != null;
-    }
+        // Consolidated: any sharer's fix invalidates GetOwnLive, and almost none of that flips this bool.
+        => await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false) != null;
 
     [ComputeMethod]
     public virtual async Task<SharedLocation?> GetOwnLive(ChatId chatId, CancellationToken cancellationToken)
@@ -188,11 +192,12 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     [ComputeMethod]
     public virtual async Task<GeoPoint?> GetCurrentLocation(CancellationToken cancellationToken)
     {
-        if (await IsPermissionGranted(cancellationToken).ConfigureAwait(false) != true)
-            return null;
-
-        return await Tracker.Get(false, cancellationToken).ConfigureAwait(false);
+        var fix = await GetCurrentFix(false, cancellationToken).ConfigureAwait(false);
+        return fix?.Point;
     }
+
+    public Task<bool> IsRefreshing(CancellationToken cancellationToken)
+        => _isRefreshing.Use(cancellationToken);
 
     [ComputeMethod]
     public virtual async Task<bool?> IsPermissionGranted(CancellationToken cancellationToken)
@@ -219,7 +224,6 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
     public async Task ShowShareLocationModal(ChatId chatId)
     {
-        _ = BackgroundTask.Run(() => RefreshCurrentLocation(false, Hub.StopToken), Hub.StopToken);
         var isSharing = await IsOwnLive(chatId, Hub.StopToken).ConfigureAwait(true);
         var model = new ShareLocationModal.Model { ChatId = chatId, IsSharing = isSharing };
         var modalRef = await Hub.ModalUI.Show(model, Hub.StopToken).ConfigureAwait(true);
@@ -234,7 +238,6 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             if (!await LocationPermission.CheckOrRequest().ConfigureAwait(true))
                 return;
 
-            // TODO: before allowing to send current location we need to wait for fresh location in share modal
             await SendCurrentLocation(chatId, Hub.StopToken).ConfigureAwait(true);
             return;
         }
@@ -249,11 +252,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     public Task ShowLocationMapModal(ChatId chatId, SharedLocationId? locationId = null)
-    {
-        // The own marker appears only once there's a fix, and merely viewing the map is no reason to troubleshoot.
-        _ = BackgroundTask.Run(() => RefreshCurrentLocation(false, Hub.StopToken), Hub.StopToken);
-        return Hub.ModalUI.Show(new LocationMapModal.Model(chatId, locationId), Hub.StopToken);
-    }
+        => Hub.ModalUI.Show(new LocationMapModal.Model(chatId, locationId), Hub.StopToken);
 
     public void StartSharing(ChatId chatId, TimeSpan duration)
         => Reporter.StartSharing(chatId, duration);
@@ -263,7 +262,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
     public async Task SendCurrentLocation(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (await Tracker.Get(false, cancellationToken).ConfigureAwait(false) is not { } point)
+        if (await Tracker.Get(false, cancellationToken).ConfigureAwait(false) is not { Point: var point })
             return;
 
         var change = Change.Create(new SharedLocationDiff { Point = point, LiveDuration = TimeSpan.Zero });
@@ -278,15 +277,56 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<GeoPoint?> RefreshCurrentLocation(
+    public Task RunLocationRefreshLoop(bool mustTroubleshootOnFirstRun, CancellationToken cancellationToken)
+    {
+        return AsyncChain.From(Refresh)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
+            .AppendDelay(CurrentLocationRefreshPeriod)
+            .CycleForever()
+            .RunIsolated(cancellationToken);
+
+        async Task Refresh(CancellationToken cancellationToken1) {
+            await RefreshCurrentLocation(mustTroubleshootOnFirstRun, cancellationToken1).ConfigureAwait(false);
+            mustTroubleshootOnFirstRun = false;
+        }
+    }
+
+    public Task<GeoPoint?> RefreshCurrentLocation(
         bool mustTroubleshoot,
         CancellationToken cancellationToken = default)
     {
-        if (!await LocationPermission.CheckOrRequest(true, mustTroubleshoot, cancellationToken).ConfigureAwait(false))
+        // The flag is set synchronously, so IsRefreshing is already true when the caller renders next.
+        _isRefreshing.Value = true;
+        return Refresh();
+
+        async Task<GeoPoint?> Refresh() {
+            try {
+                var isGranted = await LocationPermission
+                    .CheckOrRequest(true, mustTroubleshoot, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!isGranted)
+                    return null;
+
+                // The fresh fix lands in the tracker, so GetCurrentFix and its dependents recompute with it.
+                var fix = await Tracker.Get(true, cancellationToken).ConfigureAwait(false);
+                return fix?.Point;
+            }
+            finally {
+                _isRefreshing.Value = false;
+            }
+        }
+    }
+
+    // Protected/internal methods
+
+    [ComputeMethod]
+    protected virtual async Task<GeoFix?> GetCurrentFix(bool mustBeFresh, CancellationToken cancellationToken)
+    {
+        if (await IsPermissionGranted(cancellationToken).ConfigureAwait(false) != true)
             return null;
 
-        // The fresh fix lands in the tracker, so GetCurrentLocation and its dependents recompute with it.
-        return await Tracker.Get(true, cancellationToken).ConfigureAwait(false);
+        return await Tracker.Get(mustBeFresh, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

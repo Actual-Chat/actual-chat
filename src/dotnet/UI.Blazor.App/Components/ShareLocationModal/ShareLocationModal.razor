@@ -33,20 +33,33 @@
                             <i class="icon-map"></i>
                         </button>
                     }
-                    <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
-                        <i class="icon-navigation-pointer"></i>
+                    <button
+                        type="button"
+                        class="c-map-menu-item"
+                        @onclick="@OnLocate">
+                        @if (m.IsLocating) {
+                            <Spinner/>
+                        } else {
+                            <i class="icon-navigation-pointer"></i>
+                        }
                     </button>
                 </div>
             }
         </div>
         <div class="c-actions">
-            <ButtonTile Class="c-send-current" Click="@OnSendCurrent">
-                <Icon><i class="icon-marker-pin"></i></Icon>
+            <ButtonTile
+                Class="c-send-current"
+                Click="@OnSendCurrent">
+                <Icon>
+                    @if (m.IsLocating) {
+                        <Spinner/>
+                    } else {
+                        <i class="icon-marker-pin"></i>
+                    }
+                </Icon>
                 <Content>
                     <div class="c-text">Send my current location</div>
-                    @if (m.AccuracyText is { } accuracyText) {
-                        <div class="c-caption">@accuracyText</div>
-                    }
+                    <div class="c-caption">@m.AccuracyText</div>
                 </Content>
             </ButtonTile>
             <ButtonTile Class="c-share-live" Click="@OnShareLive">
@@ -94,6 +107,7 @@
     private MutableState<bool> _isMapTypeMenuOpen = null!;
     private MutableState<bool> _isDurationMenuOpen = null!;
     private MapView? _mapView;
+    private FuncWorker? _refreshWorker;
 
     private LocationUI LocationUI => Hub.LocationUI;
     private LocationPermissionHandler LocationPermission
@@ -101,6 +115,12 @@
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public override async ValueTask DisposeAsync() {
+        await _refreshWorker.DisposeSilentlyAsync();
+        _refreshWorker = null;
+        await base.DisposeAsync();
+    }
 
     protected override void OnInitialized() {
         _mapType = StateFactory.NewMutable(
@@ -112,6 +132,7 @@
         _isDurationMenuOpen = StateFactory.NewMutable(
             false,
             StateCategories.Get(GetType(), nameof(_isDurationMenuOpen)));
+        _refreshWorker = FuncWorker.Start(ct => LocationUI.RunLocationRefreshLoop(true, ct), Hub.StopToken);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -128,13 +149,15 @@
         var isDurationMenuOpen = await _isDurationMenuOpen.Use(cancellationToken).ConfigureAwait(false);
         var ownMarker = await LocationUI.GetOwnMarker(ModalModel.ChatId, cancellationToken).ConfigureAwait(false);
         var isPermissionGranted = await LocationUI.IsPermissionGranted(cancellationToken).ConfigureAwait(false);
+        var isLocating = ownMarker is null && await LocationUI.IsRefreshing(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new ComputedModel {
-            OwnMarker =  ownMarker,
+            OwnMarker = ownMarker,
             MustRequestPermission = ownMarker is null && isPermissionGranted != true,
-            IsMapTypeMenuOpen =  isMapTypeMenuOpen,
-            IsDurationMenuOpen =  isDurationMenuOpen,
-            MapType =  mapType,
+            IsLocating = isLocating,
+            IsMapTypeMenuOpen = isMapTypeMenuOpen,
+            IsDurationMenuOpen = isDurationMenuOpen,
+            MapType = mapType,
             EnableIncompleteUI = enableIncompleteUI,
         };
     }
@@ -148,6 +171,7 @@
         => Modal.Close();
 
     private void OnSendCurrent() {
+        // Any staleness is handled by SendCurrentLocation, which re-takes the fix when it's not recent.
         ModalModel.SendCurrentRequested = true;
         Modal.Close();
     }
@@ -175,7 +199,6 @@
     }
 
     private async Task OnLocate() {
-        // TODO: show ui loading state while locating cause it might take a while
         if (await LocationUI.RefreshCurrentLocation(true, Hub.StopToken).ConfigureAwait(true) is not { } point)
             return;
 
@@ -186,7 +209,10 @@
     // Nested types
 
     public sealed record ComputedModel {
-        public static readonly ComputedModel None = new() { OwnMarker = null };
+        public static readonly ComputedModel None = new() {
+            OwnMarker = null,
+            IsLocating = true,
+        };
 
         public required MapMarker? OwnMarker { get; init; }
         public string? AccuracyText
@@ -194,6 +220,7 @@
                 ? $"Accurate to {GeoPointExt.DistanceText(accuracy)}"
                 : null;
         public bool MustRequestPermission { get; init; }
+        public bool IsLocating { get; init; }
         public MapType MapType { get; init; } = MapType.Map;
         public bool IsMapTypeMenuOpen { get; init; }
         public bool IsDurationMenuOpen { get; init; }
