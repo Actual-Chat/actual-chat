@@ -1,0 +1,43 @@
+.pinned-bar {
+    @apply flex items-center gap-2;
+    @apply h-12 px-2;
+    @apply border border-separator rounded-md;
+    @apply bg-01;
+    @apply cursor-pointer select-none;
+}
+.pinned-bar:hover {
+    @apply bg-02;
+}
+.pinned-bar > .c-indicator {
+    @apply flex-y gap-0.5 self-stretch shrink-0;
+    @apply w-0.5;
+    @apply my-2;
+}
+.pinned-bar > .c-indicator > .c-seg {
+    @apply flex-1;
+    @apply w-full;
+    @apply rounded-full;
+    @apply opacity-30;
+    @apply bg-primary-hover;
+}
+.pinned-bar > .c-indicator > .c-seg.active {
+    @apply opacity-100;
+    @apply bg-primary;
+}
+.pinned-bar > .c-center {
+    @apply flex-1 flex-y justify-center;
+    @apply min-w-0;
+}
+.pinned-bar > .c-center > .c-title {
+    @apply flex items-center gap-1.5;
+}
+.pinned-bar > .c-center > .c-title > .c-label {
+    @apply text-primary text-xs font-medium;
+}
+.pinned-bar > .c-center > .c-title > .c-counter {
+    @apply text-03 text-xxs;
+}
+.pinned-bar > .c-center > .c-text {
+    @apply truncate;
+    @apply text-02 text-sm leading-tight;
+}

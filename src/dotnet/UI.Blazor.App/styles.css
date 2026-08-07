@@ -26,6 +26,7 @@
 @import './Components/ChatView/Items/Reactions/reaction-badge.css';
 @import './Components/ChatView/Items/Reactions/message-reactions.css';
 @import './Components/ChatView/Items/Threads/threads.css';
+@import './Components/ChatView/PinnedBar/pinned-bar.css';
 @import './Components/ChatView/chat-view.css';
 @import './Components/ClientUpgradeCover/client-upgrade-cover.css';
 @import './Components/ChatView/Navigation/navigate-to-unread-or-end.css';

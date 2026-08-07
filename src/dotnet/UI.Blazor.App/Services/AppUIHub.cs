@@ -48,6 +48,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public ActiveChatsUI ActiveChatsUI => field ??= Services.GetRequiredService<ActiveChatsUI>();
     public AuthorUI AuthorUI => field ??= Services.GetRequiredService<AuthorUI>();
     public SelectionUI SelectionUI => field ??= Services.GetRequiredService<SelectionUI>();
+    public ChatPinsUI ChatPinsUI => field ??= Services.GetRequiredService<ChatPinsUI>();
     public ChatEditorUI ChatEditorUI => field ??= Services.GetRequiredService<ChatEditorUI>();
     public ChatListUI ChatListUI => field ??= Services.GetRequiredService<ChatListUI>();
     public NotificationsPanelUI NotificationsPanelUI => field ??= Services.GetRequiredService<NotificationsPanelUI>();
