@@ -92,7 +92,7 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
             if (isOnline == _jsIsOnline)
                 continue;
 
-            await Hub.JS.InvokeVoidAsync(JSSetOnlineMethod, CancellationToken.None, isOnline).ConfigureAwait(false);
+            await PushToJS(JSSetOnlineMethod, isOnline).ConfigureAwait(false);
             _jsIsOnline = isOnline;
         }
     }
@@ -113,11 +113,22 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
                 _connectionInfo.Set((RpcConnectionInfo?)null);
             }
             if (isConnected != _jsIsConnected) {
-                await JS.InvokeVoidAsync(JSSetConnectedMethod, CancellationToken.None, isConnected).ConfigureAwait(false);
+                await PushToJS(JSSetConnectedMethod, isConnected).ConfigureAwait(false);
                 _jsIsConnected = isConnected;
             }
             await connectionState.WhenNext(cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task PushToJS(string method, bool value)
+    {
+        // A headless scope has no page to push to, and this whole chain runs under RetryForever -
+        // so letting the disconnect escape would restart it about once a second, forever. The C#
+        // state above is what the app consumes; only the DOM mirror is lost.
+        try {
+            await JS.InvokeVoidAsync(method, CancellationToken.None, value).ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) { }
     }
 
     private async Task ResetReconnectDelaysWhenComeOnline(CancellationToken cancellationToken)

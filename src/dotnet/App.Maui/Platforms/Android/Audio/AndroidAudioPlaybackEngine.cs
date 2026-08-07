@@ -1,6 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.Services;
 using Android.Media;
 using AudioFormat = Android.Media.AudioFormat;
 using AudioSource = ActualChat.Audio.AudioSource;
@@ -36,6 +37,7 @@ internal sealed class AndroidAudioPlaybackEngine(
     private int _isEnded;
     private long _nextLagReportAtTicks;
 
+    private AudioFocusUI AudioFocusUI => field ??= services.GetRequiredService<AudioFocusUI>();
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
     private MomentClockSet Clocks => field ??= services.GetRequiredService<MomentClockSet>();
     private ILogger Log => field ??= services.LogFor<AndroidAudioPlaybackEngine>();
@@ -45,6 +47,11 @@ internal sealed class AndroidAudioPlaybackEngine(
         Log.LogDebug("Play called: id={Id}", info.TrackId);
         if (_decodeAndFeedTask is not null)
             return;
+
+        // Before the track exists, not after: Android hands the communication route back to the
+        // earpiece once it decides the focus holder is idle, and a wake takes focus seconds before
+        // its first frames arrive - a track built then stays on the earpiece for its whole life.
+        await AudioFocusUI.EnsureOutputRoute().ConfigureAwait(false);
 
         var audioSource = (AudioSource)source;
         _remainingPreSkip = audioSource.Format.PreSkip;

@@ -76,6 +76,10 @@ public static partial class Constants
         public static readonly TimeSpan WalkieTalkieStaleWakeAge = TimeSpan.FromSeconds(60);
         // Clock-fuzz allowance between a wake's startedAt and the target stream's BeginsAt.
         public static readonly TimeSpan ListeningCatchUpTolerance = TimeSpan.FromSeconds(2);
+        // Must outlast ServerTimeSync's first sync (3s startup delay + a few RPC round trips).
+        public static readonly TimeSpan ServerClockWaitTimeout = TimeSpan.FromSeconds(10);
+        // Short: a walkie reply that waits longer than this has already lost its answer window.
+        public static readonly TimeSpan ConnectivityWaitTimeout = TimeSpan.FromSeconds(3);
         public static readonly TimeSpan WalkieTalkieReplyColdStartTimeout = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan WalkieTalkieReplyBackgroundHotWindow = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan WalkieTalkieReplyRecencyWindow = TimeSpan.FromSeconds(150);

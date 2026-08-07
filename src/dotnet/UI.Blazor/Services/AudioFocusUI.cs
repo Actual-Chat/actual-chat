@@ -45,6 +45,12 @@ public class AudioFocusUI : ProcessorBase
     public virtual Task TryRecover(CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 
+    public virtual Task EnsureOutputRoute()
+        // Called right before audio is produced. Android hands the communication route back to its
+        // earpiece default once it decides a focus holder has gone idle, which a wake always hits:
+        // focus is taken seconds before the first frames arrive.
+        => Task.CompletedTask;
+
     public virtual Task WarmUp()
         => Task.CompletedTask;
 

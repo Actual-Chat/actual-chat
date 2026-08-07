@@ -15,6 +15,7 @@ public static class MauiPreferences
     private const string IsDataCollectionEnabledKey = "analytics";
     private const string ThemeKey = "Theme";
     private const string MinReportableClientVersionKey = "min_reportable_client_version";
+    private const string IsWalkieArmedKey = "is_walkie_armed";
 
     private static readonly Lock Lock = new();
     private static readonly ConcurrentDictionary<string, object?> Cache = new();
@@ -42,6 +43,13 @@ public static class MauiPreferences
     public static string? MinReportableClientVersion {
         get => Get<string>(MinReportableClientVersionKey).NullIfEmpty();
         set => Set(MinReportableClientVersionKey, value ?? "");
+    }
+
+    public static bool IsWalkieArmed {
+        // Mirrors the app's armed-chat state so MainActivity can raise the walkie foreground
+        // service while still in the foreground - the app's own state arrives far too late.
+        get => Get<bool?>(IsWalkieArmedKey) ?? false;
+        set => Set(IsWalkieArmedKey, value);
     }
 
     public static string? GetHostIp(string hostName)

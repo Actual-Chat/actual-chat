@@ -138,29 +138,34 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             .ConfigureAwait(false);
         var current = new Dictionary<ChatId, ParticipationKind>();
         var lastHeartbeatAt = Clocks.CpuClock.Now;
-        while (!cancellationToken.IsCancellationRequested) {
-            var next = cParticipations.Value;
-            var now = Clocks.CpuClock.Now;
-            var isHeartbeat = now - lastHeartbeatAt >= HeartbeatInterval;
-            if (isHeartbeat)
-                lastHeartbeatAt = now;
+        try {
+            while (!cancellationToken.IsCancellationRequested) {
+                var next = cParticipations.Value;
+                var now = Clocks.CpuClock.Now;
+                var isHeartbeat = now - lastHeartbeatAt >= HeartbeatInterval;
+                if (isHeartbeat)
+                    lastHeartbeatAt = now;
 
-            foreach (var chatId in current.Keys.Except(next.Keys).ToList()) {
-                await SetParticipation(chatId, current[chatId], false, cancellationToken).ConfigureAwait(false);
-                current.Remove(chatId);
-            }
-            foreach (var (chatId, kind) in next)
-                if (isHeartbeat || !current.TryGetValue(chatId, out var existing) || existing != kind) {
-                    await SetParticipation(chatId, kind, true, cancellationToken).ConfigureAwait(false);
-                    current[chatId] = kind;
+                foreach (var chatId in current.Keys.Except(next.Keys).ToList()) {
+                    await SetParticipation(chatId, current[chatId], false, cancellationToken).ConfigureAwait(false);
+                    current.Remove(chatId);
                 }
+                foreach (var (chatId, kind) in next)
+                    if (isHeartbeat || !current.TryGetValue(chatId, out var existing) || existing != kind) {
+                        await SetParticipation(chatId, kind, true, cancellationToken).ConfigureAwait(false);
+                        current[chatId] = kind;
+                    }
 
-            using var cts = cancellationToken.CreateLinkedTokenSource();
-            var whenInvalidated = cParticipations.WhenInvalidated(cts.Token);
-            var whenHeartbeat = Clocks.CpuClock.Delay(HeartbeatInterval, cts.Token);
-            await Task.WhenAny(whenInvalidated, whenHeartbeat).ConfigureAwait(false);
-            cts.CancelAndDisposeSilently();
-            cParticipations = await cParticipations.Update(cancellationToken).ConfigureAwait(false);
+                using var cts = cancellationToken.CreateLinkedTokenSource();
+                var whenInvalidated = cParticipations.WhenInvalidated(cts.Token);
+                var whenHeartbeat = Clocks.CpuClock.Delay(HeartbeatInterval, cts.Token);
+                await Task.WhenAny(whenInvalidated, whenHeartbeat).ConfigureAwait(false);
+                cts.CancelAndDisposeSilently();
+                cParticipations = await cParticipations.Update(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally {
+            await ClearParticipations(current).ConfigureAwait(false);
         }
     }
 
@@ -220,6 +225,20 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     }
 
     // Private methods
+
+    private async Task ClearParticipations(Dictionary<ChatId, ParticipationKind> current)
+    {
+        // A scope torn down whole (app closed, headless session disposed) never reaches the loop's
+        // own "chat left the set" branch, so the server kept believing we were here for the whole
+        // 90s ParticipantStaleness - and suppressed every walkie wake as "already present".
+        foreach (var (chatId, kind) in current)
+            try {
+                await SetParticipation(chatId, kind, false, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Couldn't clear participation in chat #{ChatId}", chatId);
+            }
+    }
 
     private void StartCallWatch(ChatId chatId)
     {

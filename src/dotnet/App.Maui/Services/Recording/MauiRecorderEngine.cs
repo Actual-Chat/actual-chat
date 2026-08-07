@@ -56,8 +56,15 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         // Stop any existing recording first
         await Stop(cancellationToken).ConfigureAwait(false);
 
-        // Wait for online before starting
-        await ConnectivityUI.WhenConnected(cancellationToken).ConfigureAwait(false);
+        // Bounded: a scope that never starts ConnectivityUI would wedge the mic here forever.
+        try {
+            await ConnectivityUI.WhenConnected(cancellationToken)
+                .WaitAsync(Constants.Audio.ConnectivityWaitTimeout, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            Log.LogWarning("Start: no connectivity signal yet, starting the recorder anyway");
+        }
 
         // Create a new recording context
         var recordingCts = cancellationToken.CreateLinkedTokenSource();

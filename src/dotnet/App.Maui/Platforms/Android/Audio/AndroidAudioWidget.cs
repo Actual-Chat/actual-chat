@@ -10,6 +10,7 @@ public class AndroidAudioWidget : AudioWidget
     private static volatile AndroidAudioWidget? _instance;
     private static bool _isShown;
     private static bool _isWakeOwned;
+    private static int _lastIsArmed = -1;
     private static ILogger? _log;
 
     private bool _isDisposed;
@@ -60,6 +61,19 @@ public class AndroidAudioWidget : AudioWidget
     }
 
     public static void Hide() => HideImpl();
+
+    protected override void OnArmedChanged(bool isArmed)
+    {
+        // MainActivity reads this on the next launch, when the widget owning the state doesn't exist
+        // yet - the widget only appears once Blazor has rendered, far too late for a foreground
+        // service start to still count as one. Written on change only: this lands on disk, and
+        // ComputeState runs orders of magnitude more often than the armed set changes.
+        var value = isArmed ? 1 : 0;
+        if (Interlocked.Exchange(ref _lastIsArmed, value) == value)
+            return;
+
+        MauiPreferences.IsWalkieArmed = isArmed;
+    }
 
     protected override void OnStateChanged(AudioWidgetState? state, AudioWidgetState? oldState)
         => _ = DispatchToBlazor(_ => {

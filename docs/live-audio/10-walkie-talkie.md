@@ -234,7 +234,13 @@ and in the live WebView scope.
    window), then builds the **armed set** from
    `GetChatsYouNeedToKeepListeningTo` plus the trigger chat and starts listening
    on every chat in it.
-4. **Catch-up**: a fresh wake — `WalkieTalkie.IsStaleWake(startedAt, now)` false,
+4. **Clock**: forces `ServerTimeSync.EnsureSynced` as a background task. Its own
+   loop only starts syncing after a 3 s settling delay, and everything wanting
+   server time queues behind that. Note the sync worker runs headless at all
+   only because `StartScopedServices` starts it — `AfterFirstRender` never runs
+   without a WebView, and a never-ready `ServerClock` used to hang listening
+   outright.
+5. **Catch-up**: a fresh wake — `WalkieTalkie.IsStaleWake(startedAt, now)` false,
    i.e. younger than `WalkieTalkieStaleWakeAge` (60 s, matching the FCM TTL) —
    first stamps `ChatAudioUI.SetListeningCatchUp(chatId, startedAt)`. The
    listening player passes that anchor to `GetListeningStream`, and the
@@ -243,8 +249,10 @@ and in the live WebView scope.
    t=0** instead of trimming to the live edge — the trigger utterance plays from
    its first word even though the boot took seconds, then playback continues
    live. All other streams, all other listeners, and stale wakes get the normal
-   live-edge trim.
-5. Fires `platform.OnPlaybackStarted(hub, chatId)`.
+   live-edge trim. The anchor also lets the listening player skip the
+   `ServerClock.WhenReady` wait entirely — a catch-up stream is clock-independent,
+   and the anchor itself is server time, so it doubles as the player's `startAt`.
+6. Fires `platform.OnPlaybackStarted(hub, chatId)`.
 
 `Transmit(isHeadless, platform, cancellationToken)` refuses to open the mic when
 `WalkieTalkie.MayTransmit(isPracticeMode, recordingChatId)` is false — rehearsing
@@ -382,6 +390,16 @@ re-issues the foreground service with the microphone type. The hold must be
 taken **synchronously inside the native callback** (media button, gesture) that
 opens the reply, because that's where Android hands out the while-in-use
 exemption a background mic start needs.
+
+Re-issuing is not enough on its own, though: Android evaluates the while-in-use
+grant on **every** `startForeground`, and denies it whenever the app is in the
+background at that moment — so a service first started by a wake can never
+record, however it is re-typed. That's what `AudioWidgetMode.Armed` is for. While
+any chat is armed, `AudioWidget.GetArmedChat` keeps the widget state non-null, so
+the foreground service runs continuously, started from the foreground (with the
+microphone type) at arming time. The service then latches the mic type: once
+granted, every later `startForeground` keeps it, because those all run in the
+background and dropping the type would forfeit the grant permanently.
 
 ### `ReplyTargetResolver`
 

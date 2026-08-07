@@ -212,9 +212,29 @@ public partial class ChatAudioUI
             return whenPlaying;
 
         var serverClock = Clocks.ServerClock;
-        await serverClock.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(true);
+        // A wake catch-up carries its own server-time anchor and is served from the stream's start,
+        // so it needs no clock - and on a cold headless boot the first sync is seconds away, which
+        // is the very delay the catch-up exists to erase.
+        var catchUpFrom = GetListeningCatchUp(chatId);
+        if (catchUpFrom == default) {
+            // Bounded: the clock is synced by a background worker, so anything that keeps that worker
+            // from running (a wake-driven headless scope used to) would otherwise wedge listening
+            // here for the life of the scope - silently, since a hang throws nothing.
+            try {
+                await serverClock.WhenReady
+                    .WaitAsync(Constants.Audio.ServerClockWaitTimeout, cancellationToken)
+                    .ConfigureAwait(true);
+            }
+            catch (TimeoutException) {
+                Log.LogWarning(nameof(StartListeningPlayer)
+                    + ": server clock isn't synced yet, starting the listener for chat #{ChatId} anyway", chatId);
+            }
+        }
+
         await Chats.Get(Hub.Session, chatId, cancellationToken).ConfigureAwait(true); // Just to cache it
-        return await player.Start(serverClock.Now, cancellationToken).ConfigureAwait(false);
+        // The anchor is server time straight from the wake, so it beats an unsynced clock's Now.
+        var startAt = catchUpFrom != default ? catchUpFrom : serverClock.Now;
+        return await player.Start(startAt, cancellationToken).ConfigureAwait(false);
     }
 
     private Task<Task> StartReplayPlayer(ChatId chatId, Moment startAt, CancellationToken cancellationToken)

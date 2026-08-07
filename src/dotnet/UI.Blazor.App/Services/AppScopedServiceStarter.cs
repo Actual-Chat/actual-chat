@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class AppScopedServiceStarter
 {
-    private volatile string? _sessionHash;
+    private string? _sessionHash;
 
     private AppUIHub Hub { get; }
     private Tracer Tracer { get; }
@@ -27,7 +27,6 @@ public sealed class AppScopedServiceStarter
             Log.LogError("{Method} is called more than once", nameof(PrepareFirstRender));
             return; // Already prepared
         }
-
         if (oldSessionHash is not null)
             throw StandardError.Internal("Session hash is already set.");
 
@@ -116,16 +115,9 @@ public sealed class AppScopedServiceStarter
 
             // Starting less important UI services
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
-            if (hostKind.IsServer() || hostKind.IsMauiApp())
-                // Server & MAUI register ServerTimeSync scoped (bound to the per-circuit / per-WebView-page
-                // IJSRuntime), not hosted, so its background sync loop must be started here — once first
-                // render guarantees JS is ready (see BlazorUICoreModule).
-                Hub.Services.GetService<ServerTimeSync>()?.Start();
             Hub.Services.GetRequiredService<SessionTokens>().Start();
             Hub.Services.GetRequiredService<BackgroundActivityUI>().Start();
-            Hub.Services.GetRequiredService<ConnectivityUI>().Start();
             Hub.Services.GetRequiredService<ReconnectUI>().Start();
-            _ = Hub.AudioFocusUI.WarmUp(); // Pre-initialize audio HAL for faster first recording
             StartScopedServices(Hub.Services);
             _ = Hub.AudioWidget; // Touch. Auto-starts on construction; WebView-only - see StartScopedServices
             _ = Hub.VideoQualityUI; // Touch. Constructor calls Start(); chains gate on first video activity.
@@ -162,6 +154,16 @@ public sealed class AppScopedServiceStarter
         // SafeJSRuntime - see HeadlessBlazorScope. AudioWidget is deliberately absent: the wake
         // handler owns the foreground service, and every widget output parks on DispatchToBlazor.
         var hub = services.GetRequiredService<AppUIHub>();
+        // These three belong here rather than in AfterFirstRender because a headless scope never
+        // renders, and each one silently wedges an audio path when it doesn't run:
+        // - ServerTimeSync: ServerClock.WhenReady never completes, so the listening player hangs.
+        // - ConnectivityUI: IsConnected is seeded false on MAUI and only its worker ever sets it,
+        //   so the recorder's WhenConnected wait never returns and no walkie reply can record.
+        // - AudioFocusUI.WarmUp: without it every wake takes a cold Normal -> InCommunication
+        //   transition, and the first track is built before the route reaches the speaker.
+        services.GetService<ServerTimeSync>()?.Start();
+        services.GetRequiredService<ConnectivityUI>().Start();
+        _ = hub.AudioFocusUI.WarmUp();
         _ = hub.TuneUI;
         _ = hub.IncomingVoiceActivityUI;
         hub.GestureUI.Start();
@@ -180,7 +182,8 @@ public sealed class AppScopedServiceStarter
         if (!isDataCollectionEnabled.HasValue)
             return;
 
-        await dataCollectionSettingsUI.UpdateState(isDataCollectionEnabled.Value, cancellationToken).ConfigureAwait(false);
+        await dataCollectionSettingsUI.UpdateState(isDataCollectionEnabled.Value, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task StartHostedServices()

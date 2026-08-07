@@ -30,14 +30,24 @@ public class RecordingActivityClient
     }
 
     public ValueTask SetRecording(bool isRecording)
-        => JS.InvokeVoidAsync(JSSetRecordingMethod, isRecording);
+        => Push(JSSetRecordingMethod, isRecording);
 
     public ValueTask SetVoiceActive(bool isVoiceActive)
-        => JS.InvokeVoidAsync(JSSetVoiceActiveMethod, isVoiceActive);
+        => Push(JSSetVoiceActiveMethod, isVoiceActive);
 
     public void SetAudioPower(double power)
         => _audioPowerCoalescer.Submit(power);
 
     private ValueTask SetAudioPowerInternal(double power)
-        => JS.InvokeVoidAsync(JSSetAudioPowerMethod, power);
+        => Push(JSSetAudioPowerMethod, power);
+
+    private async ValueTask Push(string method, object value)
+    {
+        // A headless walkie session has no page to draw on, and this is only a visualization
+        // channel - letting the disconnect escape would abort the recording that feeds it.
+        try {
+            await JS.InvokeVoidAsync(method, value).ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) { }
+    }
 }

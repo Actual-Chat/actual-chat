@@ -79,6 +79,14 @@ public static partial class MauiProgram
                     return;
 
                 AppNavigationQueue.Reset();
+                if (MauiPreferences.IsWalkieArmed) {
+                    // This service is what holds the microphone grant, and Android only ever hands
+                    // that to a service started while the app is in the foreground - so stopping it
+                    // here costs every later wake its mic, with no way to earn it back.
+                    Log.LogInformation("Keeping AudioWidgetForegroundService: walkie-talkie is armed");
+                    return;
+                }
+
                 // NOTE(DF): Stop AudioWidgetForegroundService when MainActivity is destroyed,
                 // because playback and/or recording do not work anyway in this case.
                 Log.LogInformation("Stopping AudioWidgetForegroundService due to MainActivity destroy");

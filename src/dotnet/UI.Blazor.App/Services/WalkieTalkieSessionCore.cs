@@ -30,6 +30,12 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
         if (isHeadless)
             chatAudioUI.IsWalkieTalkieHeadless = true;
         chatAudioUI.Enable();
+        // Fire-and-forget: ServerTimeSync's own loop only starts syncing after a 3s settling delay,
+        // and everything downstream that wants server time would sit behind it.
+        if (Hub.Services.GetService<ServerTimeSync>() is { } serverTimeSync)
+            _ = BackgroundTask.Run(
+                () => serverTimeSync.EnsureSynced(CancellationToken.None),
+                Log, "Couldn't sync the server clock on wake", CancellationToken.None);
         // The utterance may be over by the time we boot, so HasIncomingVoice would never see an edge
         // for it and the answer window would never open.
         Hub.IncomingVoiceActivityUI.NoteIncomingVoice(chatId, startedAt);

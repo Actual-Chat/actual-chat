@@ -63,6 +63,10 @@ public static class WalkieTalkieWakeHandler
 
     private static bool ShowForegroundService(ChatId chatId, string title)
     {
+        // A wake is proof this user is armed, and it's the one signal that reaches a process the
+        // user hasn't opened yet - so the next launch can raise the mic-typed service from the
+        // foreground without waiting for the widget to work the armed set out. See MainActivity.
+        MauiPreferences.IsWalkieArmed = true;
         var context = Platform.AppContext;
         var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
         intent.SetAction(AndroidAudioWidgetForegroundService.ActionShow);

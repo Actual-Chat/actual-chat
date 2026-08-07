@@ -41,6 +41,11 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                 /* bufferSizeInBytes: */ bufferBytes);
 
             if (recorder.State != Android.Media.State.Initialized) {
+                // Usually the OS silently withholding the mic rather than a bad configuration: a
+                // foreground service started from the background gets no while-in-use permissions,
+                // which is exactly how a wake-driven walkie reply reaches this point.
+                Log.LogWarning("AudioRecord didn't initialize (state = {State}) - is the mic available?",
+                    recorder.State);
                 recorder.Release();
                 return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
             }

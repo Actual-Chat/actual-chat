@@ -2,7 +2,9 @@ using ActualChat.UI.Blazor.App.Services.Gestures;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public enum AudioWidgetMode { Replaying, Listening, Recording }
+// Armed is the idle walkie state: nothing plays, but the foreground service must stay up - see
+// AudioWidget.GetArmedChat. Append only: the value crosses to Android as an intent extra.
+public enum AudioWidgetMode { Replaying, Listening, Recording, Armed }
 public sealed record AudioWidgetChatInfo(ChatId Id, string Title, string PicUrl, int ExtraChatCount);
 public sealed record AudioWidgetState(
     AudioWidgetMode Mode, AudioWidgetChatInfo Chat, bool IsPaused, bool CanPause = true);
@@ -12,7 +14,7 @@ public class AudioWidget : IDisposable
     private static readonly TimeSpan AnswerWindowExpiryDelay = TimeSpan.FromMilliseconds(250);
 
     private readonly ComputedState<AudioWidgetState?> _state;
-    private readonly bool _isAnswerWindowSupported;
+    private readonly bool _isAndroidHost;
     private AudioWidgetState? _lastState;
 
     private AppUIHub Hub { get; }
@@ -28,7 +30,7 @@ public class AudioWidget : IDisposable
     public AudioWidget(AppUIHub hub)
     {
         Hub = hub;
-        _isAnswerWindowSupported = hub.HostInfo.AppKind == AppKind.Android;
+        _isAndroidHost = hub.HostInfo.AppKind == AppKind.Android;
         _state = hub.StateFactory.NewComputed(
             new ComputedState<AudioWidgetState?>.Options() {
                 InitialValue = null,
@@ -37,13 +39,13 @@ public class AudioWidget : IDisposable
             },
             ComputeState);
         _state.Updated += OnStateUpdated;
-        if (_isAnswerWindowSupported)
+        if (_isAndroidHost)
             IncomingVoiceActivityUI.IncomingVoiceStamped += OnIncomingVoiceStamped;
     }
 
     public virtual void Dispose()
     {
-        if (_isAnswerWindowSupported)
+        if (_isAndroidHost)
             IncomingVoiceActivityUI.IncomingVoiceStamped -= OnIncomingVoiceStamped;
         _state.Updated -= OnStateUpdated;
         _state.Dispose();
@@ -52,6 +54,9 @@ public class AudioWidget : IDisposable
     // Protected methods
 
     protected virtual void OnStateChanged(AudioWidgetState? state, AudioWidgetState? oldState)
+    { }
+
+    protected virtual void OnArmedChanged(bool isArmed)
     { }
 
     protected void InvokeAction(string actionName)
@@ -99,8 +104,15 @@ public class AudioWidget : IDisposable
     {
         ChatId? chatId = null;
         AudioWidgetMode? mode = null;
-        int extraChatCount = 0;
-        bool isPaused = false;
+        var extraChatCount = 0;
+        var isPaused = false;
+
+        // Read on every recompute, not just in the Armed branch below: the host mirrors it so the
+        // next launch can raise the foreground service before any of this state exists.
+        var pttChatIds = _isAndroidHost
+            ? await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false)
+            : [];
+        OnArmedChanged(pttChatIds.Count > 0);
 
         // Priority: Recording > Replaying > Listening
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
@@ -140,46 +152,47 @@ public class AudioWidget : IDisposable
 
         var canPause = true;
         if (mode is not { } vMode) {
-            if (await GetAnswerWindowChatId(cancellationToken).ConfigureAwait(false) is not { } answerChatId)
+            if (GetArmedChat(pttChatIds) is not { } armed)
                 return null;
 
-            // Nothing plays in the answer-window state, so there is no player a Pause could reach.
-            vMode = AudioWidgetMode.Listening;
-            chatId = answerChatId;
+            // Nothing plays while merely armed, so there is no player a Pause could reach.
+            vMode = AudioWidgetMode.Armed;
+            chatId = armed.ChatId;
+            extraChatCount = armed.ExtraChatCount;
             canPause = false;
         }
 
         var chatInfo = await GetChatInfo(chatId!).ConfigureAwait(false);
         if (extraChatCount > 0)
             chatInfo = chatInfo with { ExtraChatCount = extraChatCount };
+
         return new AudioWidgetState(vMode, chatInfo, isPaused, canPause);
     }
 
-    private async Task<ChatId?> GetAnswerWindowChatId(CancellationToken cancellationToken)
+    private (ChatId ChatId, int ExtraChatCount)? GetArmedChat(List<ChatId> pttChatIds)
     {
-        // Android routes the headset button through the media session, which lives and dies with this
-        // widget's foreground service - so on Android the widget has to outlive playback for as long
-        // as the walkie answer window is open. Every other host returns here immediately.
-        if (!_isAnswerWindowSupported)
-            return null;
-
-        var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        // Android only, and the reason is the foreground service this widget drives: Android grants
+        // microphone access on the serviceType of the last startForeground call, and only if the app
+        // wasn't in the background when it ran. A service first started by a wake therefore can never
+        // record - so while any chat is armed the service stays up, started while the app is visible.
+        // It also keeps the media session (the headset button) alive across the answer window.
         if (pttChatIds.Count == 0)
             return null;
 
+        var extraChatCount = pttChatIds.Count - 1;
         var now = Hub.Clocks.ServerClock.Now;
         var recencyWindow = Constants.Audio.WalkieTalkieReplyRecencyWindow;
         var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
         var answer = GestureActivationPolicy.GetAnswerWindowChat(
             pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
         if (answer is not { } vAnswer)
-            return null;
+            return (pttChatIds[0], extraChatCount);
 
-        // Nothing invalidates this state when the window merely lapses - without the
-        // auto-invalidation the widget would never tear itself down.
+        // Nothing invalidates this state when the window merely lapses, and without the
+        // auto-invalidation the widget would keep naming the answering chat forever.
         var expiresIn = vAnswer.At + recencyWindow - now + AnswerWindowExpiryDelay;
         Computed.GetCurrent().Invalidate(expiresIn, false);
-        return vAnswer.ChatId;
+        return (vAnswer.ChatId, extraChatCount);
     }
 
     private async Task<AudioWidgetChatInfo> GetChatInfo(ChatId chatId)
@@ -189,7 +202,6 @@ public class AudioWidget : IDisposable
             return new AudioWidgetChatInfo(chatId, "unknown chat", "", 0);
 
         var picUrl = chat.Picture is not null ? UrlMapper.ContentUrl(chat.Picture.BlobId) : "";
-
         if (!picUrl.IsNullOrEmpty() || chatId is not PeerChatId peerChatId)
             return new AudioWidgetChatInfo(chatId, chat.Title, picUrl, 0);
 

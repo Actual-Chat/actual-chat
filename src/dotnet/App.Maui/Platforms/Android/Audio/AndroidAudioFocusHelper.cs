@@ -103,6 +103,15 @@ public class AndroidAudioFocusHelper : IDisposable
             _log.LogInformation("WarmUpAudioMode: keeping InCommunication (real focus acquired)");
     }
 
+    public Task EnsureCommunicationRoute()
+        // Deliberately not driven off the device-changed callback: Android re-clears the route
+        // every ~6s for as long as a focus holder stays idle, and answering each one turned into a
+        // permanent re-assert loop (13 in 100s, measured). Asserting only when audio is about to
+        // play fixes the route where it matters and leaves an idle armed session alone.
+        => _hasFocus
+            ? _deviceRouter.SetCommunicationDeviceAsync(CancellationToken.None)
+            : Task.FromResult(false);
+
     public void AbandonFocus()
     {
         if (_focusRequest == null)
@@ -199,6 +208,10 @@ public class AndroidAudioFocusHelper : IDisposable
 
     private class ModernAudioDeviceRouter : IAudioDeviceRouter
     {
+        // ~300ms budget, matching WarmUpAudioMode's own wait for the communication pipeline.
+        private const int RouteSettleChecks = 10;
+        private const int RouteSettleCheckPeriod = 30;
+
         private readonly AudioManager _audioManager;
         private readonly ILogger _log;
         private CommunicationDeviceListener? _listener;
@@ -215,7 +228,7 @@ public class AndroidAudioFocusHelper : IDisposable
                 _listener);
         }
 
-        public Task<bool> SetCommunicationDeviceAsync(CancellationToken ct)
+        public async Task<bool> SetCommunicationDeviceAsync(CancellationToken ct)
         {
             try {
                 var devices = _audioManager.AvailableCommunicationDevices;
@@ -235,34 +248,30 @@ public class AndroidAudioFocusHelper : IDisposable
 
                 if (device == null) {
                     _log.LogWarning("No communication devices available, audio may route to earpiece");
-                    return Task.FromResult(false);
+                    return false;
                 }
 
-                // Short-circuit: if the current communication device is already the desired type, skip
                 var currentDevice = _audioManager.CommunicationDevice;
-                if (currentDevice != null && currentDevice.Type == device.Type) {
-                    _log.LogInformation("Communication device already set to: {Type}", device.Type);
-                    return Task.FromResult(true);
+                if (currentDevice == null || currentDevice.Type != device.Type) {
+                    _log.LogInformation("Setting communication device to: {Type}", device.Type);
+                    if (!_audioManager.SetCommunicationDevice(device))
+                        _log.LogWarning("SetCommunicationDevice returned false for device: {Type}", device.Type);
                 }
 
-                _log.LogInformation("Setting communication device to: {Type}", device.Type);
-
-                // SetCommunicationDevice returns true if the OS accepted the routing request.
-                // The OnCommunicationDeviceChanged callback is just a confirmation notification
-                // that can arrive with significant delay on some devices — no need to await it.
-                var success = _audioManager.SetCommunicationDevice(device);
-
-                if (!success)
-                    _log.LogWarning("SetCommunicationDevice returned false for device: {Type}", device.Type);
-                else
-                    _log.LogInformation("Communication device set to: {Type} (confirmed: {Actual})",
+                // SetCommunicationDevice only accepts the request - the route lands later, and a
+                // cold Normal -> InCommunication transition takes ~300ms to settle. Returning early
+                // lets the first AudioTrack be created while the earpiece is still selected, and a
+                // started track doesn't reliably follow a later switch: that's the wake-path bug
+                // where the first utterance played out of the earpiece for its whole duration.
+                var isRouted = await WhenCommunicationDeviceIs(device.Type, ct).ConfigureAwait(false);
+                if (!isRouted)
+                    _log.LogWarning("Communication device didn't become {Type} in time (now: {Actual})",
                         device.Type, _audioManager.CommunicationDevice?.Type);
-
-                return Task.FromResult(success);
+                return isRouted;
             }
             catch (Exception e) {
                 _log.LogWarning(e, "Failed to set communication device");
-                return Task.FromResult(false);
+                return false;
             }
         }
 
@@ -293,6 +302,18 @@ public class AndroidAudioFocusHelper : IDisposable
             _listener = null;
         }
 
+        // Private methods
+
+        private async Task<bool> WhenCommunicationDeviceIs(AudioDeviceType type, CancellationToken ct)
+        {
+            for (var i = 0; i < RouteSettleChecks; i++) {
+                if (_audioManager.CommunicationDevice?.Type == type)
+                    return true;
+
+                await Task.Delay(RouteSettleCheckPeriod, ct).ConfigureAwait(false);
+            }
+            return _audioManager.CommunicationDevice?.Type == type;
+        }
     }
 
     // Legacy Implementation (API 28-30)

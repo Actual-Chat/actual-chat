@@ -33,6 +33,13 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
         return Task.CompletedTask;
     }
 
+    public override async Task EnsureOutputRoute()
+    {
+        using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+        await _focusHelper.EnsureCommunicationRoute().ConfigureAwait(false);
+    }
+
     public override async Task WarmUp()
     {
         using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);

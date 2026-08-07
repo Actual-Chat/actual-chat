@@ -2,6 +2,7 @@ using _Microsoft.Android.Resource.Designer;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
+using ActualLab.Generators;
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
@@ -38,9 +39,21 @@ public class AndroidAudioWidgetForegroundService : Service
     private MediaSessionCompat? _mediaSession;
     private Android.App.Notification? _lastNotification;
     private int _lastMode = -1;
+    private bool _hasMicType;
     private Action<bool>? _micCapabilityHandler;
     private bool _isStopping;
     private static ILogger Log { get; } = StaticLog.For<AndroidAudioWidgetForegroundService>();
+
+    public static void TryStartArmed(Context context)
+    {
+        // Called from MainActivity while it's visible, which is the whole point: Android only grants
+        // the microphone service type when the start happens with the app in the foreground, and the
+        // widget that would otherwise raise this service arrives seconds after Blazor renders.
+        var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
+        intent.SetAction(ActionShow);
+        intent.PutExtra(IntentExtras.Mode, (int)AudioWidgetMode.Armed);
+        TryStart(context, intent);
+    }
 
     public static bool TryStart(Context context, Intent intent)
     {
@@ -105,7 +118,7 @@ public class AndroidAudioWidgetForegroundService : Service
             WalkieTalkieMicCapability.ResetHandler(micCapabilityHandler);
             _micCapabilityHandler = null;
         }
-        _requestId = Guid.NewGuid().ToString();
+        _requestId = RandomStringGenerator.Default.Next();
         Interlocked.Exchange(ref _pendingStartCount, 0);
         Volatile.Write(ref _isStopPending, false);
         if (_mediaSession is not null) {
@@ -121,7 +134,7 @@ public class AndroidAudioWidgetForegroundService : Service
 
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
     {
-        _requestId = Guid.NewGuid().ToString();
+        _requestId = RandomStringGenerator.Default.Next();
         var action = intent?.Action ?? "";
         if (action == ActionStop) {
             // The notification's Stop button - the same door the media session's OnStop takes.
@@ -138,12 +151,14 @@ public class AndroidAudioWidgetForegroundService : Service
         var mode = (AudioWidgetMode)(intent!.Extras?.GetInt(IntentExtras.Mode) ?? 0);
         if (!Enum.IsDefined(mode))
             mode = AudioWidgetMode.Listening;
+
         // Android requires StartForeground() within ~5s of StartForegroundService(). Call it up-front
         // with a placeholder so a throw while building the rich notification (unexpected mode,
         // ChatId.Parse) can't leave the service without one -> ForegroundServiceDidNotStartInTimeException.
-        StartForeground1(BuildStartingNotification(), mode);
+        StartForeground1(BuildStartingNotification(mode), mode);
         if (Volatile.Read(ref _pendingStartCount) > 0)
             Interlocked.Decrement(ref _pendingStartCount);
+
         if (Volatile.Read(ref _isStopPending) && Volatile.Read(ref _pendingStartCount) == 0) {
             // Stop() deferred to us: StartForeground() above satisfied Android, so we can go away now.
             Volatile.Write(ref _isStopPending, false);
@@ -155,6 +170,12 @@ public class AndroidAudioWidgetForegroundService : Service
 
         var chatTitle = intent.Extras!.GetString(IntentExtras.ChatTitle) ?? "Unknown chat";
         var chatSid = intent.Extras!.GetString(IntentExtras.ChatId);
+        if (chatSid.IsNullOrEmpty()) {
+            // The early armed start carries no chat yet - see TryStartArmed. StartForeground1 above
+            // already claimed the microphone type, and the widget swaps in the real notification.
+            return StartCommandResult.Sticky;
+        }
+
         var chatPicUrl = intent.Extras!.GetString(IntentExtras.ChatPicUri) ?? "";
         var extraChatCount = intent.Extras!.GetInt(IntentExtras.ExtraChatCount);
         var isPaused = intent.Extras!.GetBoolean(IntentExtras.IsPaused);
@@ -176,6 +197,7 @@ public class AndroidAudioWidgetForegroundService : Service
             AudioWidgetMode.Recording => "Recording",
             AudioWidgetMode.Listening => "Listening",
             AudioWidgetMode.Replaying => "Replaying",
+            AudioWidgetMode.Armed => "Walkie-talkie is on",
             _ => throw new ArgumentOutOfRangeException(nameof(mode)),
         };
         var title = chatTitle;
@@ -190,11 +212,14 @@ public class AndroidAudioWidgetForegroundService : Service
                 capabilities |= isPaused ? PlaybackStateCompat.ActionPlay : PlaybackStateCompat.ActionPause;
             capabilities |= PlaybackStateCompat.ActionStop;
         }
+        // Armed reports Paused, not Playing: nothing is playing, and the system media UI animates a
+        // Playing session - a permanent "something is playing" pulse for an idle walkie. Paused
+        // still keeps the session alive for the headset button, which Stopped would not.
+        var isIdle = mode is AudioWidgetMode.Armed
+            || (mode is (AudioWidgetMode.Replaying or AudioWidgetMode.Listening) && isPaused);
         var playbackStateCompat = new PlaybackStateCompat.Builder()
             .SetState(
-                mode is (AudioWidgetMode.Replaying or AudioWidgetMode.Listening) && isPaused
-                    ? PlaybackStateCompat.StatePaused
-                    : PlaybackStateCompat.StatePlaying,
+                isIdle ? PlaybackStateCompat.StatePaused : PlaybackStateCompat.StatePlaying,
                 PlaybackStateCompat.PlaybackPositionUnknown,
                 1.0f)!
             .SetActions(capabilities)!
@@ -242,7 +267,7 @@ public class AndroidAudioWidgetForegroundService : Service
             if (Volatile.Read(ref _isStopping) || Volatile.Read(ref _lastMode) == (int)mode)
                 return;
 
-            var notification = Volatile.Read(ref _lastNotification) ?? BuildStartingNotification();
+            var notification = Volatile.Read(ref _lastNotification) ?? BuildStartingNotification(mode);
             StartForeground1(notification, mode);
         }
     }
@@ -251,10 +276,16 @@ public class AndroidAudioWidgetForegroundService : Service
     {
         try {
             if (Build.VERSION.SdkInt >= BuildVersionCodes.Q) {
-                var serviceType = mode is AudioWidgetMode.Recording
+                // The mic type latches: Android re-evaluates the while-in-use grant on every
+                // startForeground, and every call after the first one happens with the app in the
+                // background - so dropping the type once would cost the grant for good.
+                var mustHaveMic = mode is AudioWidgetMode.Recording or AudioWidgetMode.Armed
+                    || Volatile.Read(ref _hasMicType);
+                var serviceType = mustHaveMic
                     ? ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback
                     : ForegroundService.TypeMediaPlayback;
                 StartForeground(NotificationId, notification, serviceType);
+                Volatile.Write(ref _hasMicType, mustHaveMic);
             }
             else
                 StartForeground(NotificationId, notification);
@@ -301,9 +332,13 @@ public class AndroidAudioWidgetForegroundService : Service
         }, TaskScheduler.Default);
     }
 
-    private Android.App.Notification BuildStartingNotification()
+    private Android.App.Notification BuildStartingNotification(AudioWidgetMode mode)
+        // Carries real text because the armed start (TryStartArmed) has no chat to name yet and
+        // this notification is all the user sees until the widget arrives, which takes as long as
+        // Blazor needs to render. A blank one reads as "walkie-talkie isn't running".
         => new NotificationCompat.Builder(this, ChannelId)
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
+            .SetContentTitle(mode is AudioWidgetMode.Armed ? "Walkie-talkie is on" : "Voxt")!
             .SetOngoing(true)!
             .Build()!;
 
