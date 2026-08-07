@@ -1,0 +1,92 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ChatPinnedBar.Model>
+@{
+    var m = State.Value;
+    if (m.Entries.Count == 0)
+        return;
+
+    var count = m.Entries.Count;
+    var index = m.Index;
+    var entry = m.Entries[index];
+    var markupHub = ChatMarkupHubFactory[Chat.Id];
+    var text = markupHub.GetMarkup(entry, MarkupConsumer.QuoteView).ToReadableText(MarkupConsumer.QuoteView);
+}
+
+<div class="pinned-bar" @onclick="OnBarClick">
+    <div class="c-indicator">
+        @for (var i = 0; i < count; i++) {
+            <span class="c-seg @(i == index ? "active" : "")"></span>
+        }
+    </div>
+    <div class="c-center">
+        <div class="c-title">
+            <span class="c-label">Pinned message</span>
+            @if (count > 1) {
+                <span class="c-counter">#@(index + 1)/@count</span>
+            }
+        </div>
+        <div class="c-text">@text</div>
+    </div>
+</div>
+
+@code {
+    // Reactive cursor: ComputeState reads it via .Use(), so advancing it recomputes the model
+    // and reliably re-renders the bar (a plain field wouldn't drive a ComputedStateComponent render).
+    private MutableState<int> _cursor = null!;
+
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _cursor = StateFactory.NewMutable(0, StateCategories.Get(GetType(), nameof(_cursor)));
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        // Hide the bar while a live video is shown in this chat so it doesn't eat vertical space.
+        if (await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false))
+            return Model.None;
+
+        var pinnedIds = await Chats.ListPinnedEntries(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (pinnedIds.Count == 0)
+            return Model.None;
+
+        var entries = new List<ChatEntry>(pinnedIds.Count);
+        foreach (var entryId in pinnedIds) {
+            var entry = await Chats.GetEntry(Session, entryId, cancellationToken).ConfigureAwait(false);
+            if (entry is { IsRemoved: false })
+                entries.Add(entry);
+        }
+        if (entries.Count == 0)
+            return Model.None;
+
+        var cursor = await _cursor.Use(cancellationToken).ConfigureAwait(false);
+        var index = ((cursor % entries.Count) + entries.Count) % entries.Count;
+        return new Model { Entries = entries.ToApiArray(), Index = index };
+    }
+
+    private void OnBarClick() {
+        var m = State.Value;
+        if (m.Entries.Count == 0)
+            return;
+
+        ChatUI.HighlightEntry(m.Entries[m.Index].Id, navigate: true);
+        _cursor.Value = m.Index + 1; // Cycle to the next pin.
+    }
+
+    public sealed record Model {
+        public static readonly Model None = new();
+        public ApiArray<ChatEntry> Entries { get; init; }
+        public int Index { get; init; }
+    }
+}

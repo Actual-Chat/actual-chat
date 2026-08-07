@@ -100,6 +100,9 @@ public interface IChats : IComputeService
     [ComputeMethod]
     Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken);
 
+    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(MinCacheDuration = 600)]
+    Task<ApiArray<ChatEntryId>> ListPinnedEntries(Session session, ChatId chatId, CancellationToken cancellationToken);
+
     // Consolidated: this is monotone - it flips false -> true once - but every read-position advance
     // by the mentioned user invalidates it for every rendered entry that mentions them.
     [ComputeMethod(ConsolidationDelay = 0.2)]
@@ -143,6 +146,9 @@ public interface IChats : IComputeService
 
     [CommandHandler]
     Task OnPublishCopiedChat(Chat_PublishCopiedChat command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnSetPinnedEntries(Chats_SetPinnedEntries command, CancellationToken cancellationToken);
 }
 
 [DataContract, MessagePackObject]
@@ -245,6 +251,14 @@ public sealed partial record Chat_CopyChatResult(
     [property: DataMember, Key(0)] bool HasChanges,
     [property: DataMember, Key(1)] bool HasErrors
 );
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Chats_SetPinnedEntries(
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] ApiArray<ChatEntryId> EntryIds
+) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming

@@ -14,6 +14,8 @@
         CanModerate="m.CanModerate"
         IsPeerChat="m.IsPeerChat"
         CanWrite="m.CanWrite"
+        CanPin="m.CanPin"
+        IsPinned="m.IsPinned"
         IsSystem="m.IsSystem">
     </MessageMenuContent>
 }
@@ -89,6 +91,10 @@
                 && chatEntry.ChatId.Kind != ChatKind.Peer
                 && (await Roles.ListOwnerIds(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false))
                     .Contains(chatEntry.AuthorId);
+            var isPeerChat = chatEntry.ChatId.Kind == ChatKind.Peer;
+            // Owner immunity doesn't apply to pinning - an Owner's message can be pinned too.
+            var canPin = rules.CanModerate() || isPeerChat;
+            var pinnedEntries = await Chats.ListPinnedEntries(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
 
             var messageModel = new MessageModel() {
                 Link = link,
@@ -98,7 +104,9 @@
                 ChatEntry = chatEntry,
                 CanWrite = rules.CanWrite(),
                 CanModerate = rules.CanModerate() && !isEntryByOwner,
-                IsPeerChat = chatEntry.ChatId.Kind == ChatKind.Peer,
+                IsPeerChat = isPeerChat,
+                CanPin = canPin,
+                IsPinned = pinnedEntries.Contains(chatEntry.Id),
                 IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
             };
             return new Model { Message = messageModel };
@@ -137,6 +145,8 @@
         public bool CanWrite { get; init; }
         public bool CanModerate { get; init; }
         public bool IsPeerChat { get; init; }
+        public bool CanPin { get; init; }
+        public bool IsPinned { get; init; }
         public ChatEntry ChatEntry { get; init; } = null!;
     }
 

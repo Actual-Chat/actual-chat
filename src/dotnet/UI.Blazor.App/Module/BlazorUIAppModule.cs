@@ -65,6 +65,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<PeerBlockUI>(ServiceLifetime.Scoped);
         fusion.AddService<BackgroundActivityUI, PlaybackAndRecordingBackgroundActivityUI>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));
+        services.AddScoped(c => new ChatPinsUI(c.AppUIHub()));
         services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));
         services.AddScoped(c => new IncomingShareUI(c.AppUIHub()));
         services.AddScoped(_ => new SentContentStorage());

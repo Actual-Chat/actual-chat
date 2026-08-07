@@ -1,4 +1,7 @@
 using ActualChat.Contacts;
+using ActualChat.Hosting;
+using ActualChat.Kvas;
+using ActualChat.Logging;
 using ActualChat.Transcription;
 
 namespace ActualChat.Chat;
@@ -1024,6 +1027,55 @@ public partial class Chats(IServiceProvider services) : IChats
                 }));
             await Commander.Call(publishCopiedChatCmd, true, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ChatEntryId>> ListPinnedEntries(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (!rules.CanRead())
+            return default;
+
+        // Chat-scoped KVAS (prefix "c/{chatId}/") - shared across all members, no migration.
+        var chatKvas = ServerKvasBackend.ForChat(chatId);
+        var pinned = await chatKvas.Get<ChatPinnedEntries>(cancellationToken).ConfigureAwait(false);
+        return pinned?.EntryIds ?? default;
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSetPinnedEntries(Chats_SetPinnedEntries command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // The nested ServerKvasBackend_SetMany handles invalidation
+
+        var (session, chatId, entryIds) = command;
+        ThrowIfPlaceRootChat(chatId);
+
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        if (!(chatId.Kind == ChatKind.Peer || chat.Rules.CanModerate()))
+            throw StandardError.NotEnoughPermissions("Only chat Owners and Moderators can pin messages.");
+
+        // Keep valid, in-chat, distinct, still-present entries; cap at MaxCount.
+        var normalized = new List<ChatEntryId>(ChatPinnedEntries.MaxCount);
+        foreach (var entryId in entryIds) {
+            if (normalized.Count >= ChatPinnedEntries.MaxCount)
+                break;
+            if (entryId.LocalId <= 0 || entryId.ChatId != chatId || normalized.Contains(entryId))
+                continue;
+
+            var entry = await this.GetEntry(session, entryId, cancellationToken).ConfigureAwait(false);
+            if (entry is { IsRemoved: false })
+                normalized.Add(entryId);
+        }
+        // Order is always by message chronology (Telegram-style); pins can't be reordered manually.
+        normalized.Sort((a, b) => a.LocalId.CompareTo(b.LocalId));
+
+        // isOutermost: this write lives in the Users DB, so it can't share Chat DB's operation scope.
+        var chatKvas = ServerKvasBackend.ForChat(chatId, isOutermost: true);
+        await chatKvas
+            .Set(new ChatPinnedEntries { EntryIds = new ApiArray<ChatEntryId>(normalized) }, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // Protected/internal methods

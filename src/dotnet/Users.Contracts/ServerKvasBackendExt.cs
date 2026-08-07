@@ -14,6 +14,12 @@ public static class ServerKvasBackendExt
         bool isOutermost = false)
         => new(serverKvasBackend, userId, isOutermost);
 
+    public static ChatScopedKvasBackend ForChat(
+        this IServerKvasBackend serverKvasBackend,
+        ChatId chatId,
+        bool isOutermost = false)
+        => new(serverKvasBackend, chatId, isOutermost);
+
     public static async Task<bool> IsWalkieTalkieArmed(
         this IServerKvasBackend serverKvasBackend,
         UserId userId,

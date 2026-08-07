@@ -18,6 +18,7 @@
     var canCopyMessageLink = !IsSystem;
     var canForward = !e.IsContentStreaming && !IsSystem && !hasSelection;
     var canStartThread = !e.IsContentStreaming && !IsSystem && !hasSelection;
+    var canPin = CanPin && isTextEntry && !IsSystem && !hasSelection;
     // Selection
     var canSelect = !e.IsContentStreaming && !IsSystem && !isSelected;
     var canUnselect = isSelected;
@@ -118,6 +119,13 @@
                 Click="@(() => SelectionUI.StartThread(e.Id))">
             </MenuEntry>
         }
+        @if (canPin) {
+            <MenuEntry
+                Icon="@(IsPinned ? "icon-unpin" : "icon-pin")"
+                Text="@(IsPinned ? "Unpin message" : "Pin message")"
+                Click="@Pin">
+            </MenuEntry>
+        }
         @if (canDelete) {
             <MenuEntry
                 Class="warning-item"
@@ -172,6 +180,7 @@
 
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private ChatPinsUI ChatPinsUI => Hub.ChatPinsUI;
     private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -184,9 +193,14 @@
     [Parameter, EditorRequired] public bool CanModerate { get; set; }
     [Parameter, EditorRequired] public bool IsPeerChat { get; set; }
     [Parameter, EditorRequired] public bool CanWrite { get; set; }
+    [Parameter, EditorRequired] public bool CanPin { get; set; }
+    [Parameter, EditorRequired] public bool IsPinned { get; set; }
 
     private Task Reply()
         => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, ChatEntry.Id, focusOnEditor: true);
+
+    private Task Pin()
+        => IsPinned ? ChatPinsUI.Unpin(ChatEntry.Id) : ChatPinsUI.Pin(ChatEntry.Id);
 
     private void ShowAllReactions()
         => _showAllReactions = true;
