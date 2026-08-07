@@ -335,8 +335,19 @@ public partial class ChatAudioUI
         var restartAttempt = 0;
         while (!cancellationToken.IsCancellationRequested) {
             var startedAt = CpuTimestamp.Now;
-            var whenPlaying = await StartListeningPlayer(chatId, cancellationToken).ConfigureAwait(false);
-            await whenPlaying.SilentAwait(false);
+            try {
+                var whenPlaying = await StartListeningPlayer(chatId, cancellationToken).ConfigureAwait(false);
+                await whenPlaying.SilentAwait(false);
+            }
+            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                // A throw here used to kill this worker silently, leaving the chat in the listening
+                // set with no player behind it - nothing retries, and the walkie wake path hits
+                // exactly that: it starts the listener on an RPC connection that reconnected a
+                // moment ago, so a transient failure is the norm rather than the exception.
+                Log.LogWarning(e,
+                    nameof(KeepListeningPlayerAlive) + ": couldn't start the listener for chat #{ChatId}",
+                    chatId);
+            }
 
             if (cancellationToken.IsCancellationRequested)
                 return;

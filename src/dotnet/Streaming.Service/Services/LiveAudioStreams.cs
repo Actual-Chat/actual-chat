@@ -152,6 +152,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
 
+        Log.LogInformation("GetListeningStream: chat '{ChatId}', catchUpFrom={CatchUpFrom}", chatId, catchUpFrom);
         var muxer = new ListeningStreamMuxer(Services, session, chatId, catchUpFrom);
         var stream = ToLiveAsyncEnumerable(muxer, muxer.Output, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);

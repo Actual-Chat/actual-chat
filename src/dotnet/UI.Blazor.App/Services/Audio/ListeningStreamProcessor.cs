@@ -51,7 +51,8 @@ public sealed class ListeningStreamProcessor : WorkerBase
                 var catchUpFrom = WalkieTalkie.IsStaleWake(CatchUpFrom, clocks.ServerClock.Now)
                     ? default
                     : CatchUpFrom;
-                DebugLog?.LogInformation("-> LiveStreams.GetListeningStream({ChatId})", ChatId);
+                Log.LogInformation("-> LiveStreams.GetListeningStream({ChatId}), catchUpFrom={CatchUpFrom}",
+                    ChatId, catchUpFrom);
                 var stream = await liveStreams.GetListeningStream(Session, ChatId, catchUpFrom, ct)
                     .ConfigureAwait(false);
                 DebugLog?.LogInformation("<- LiveStreams.GetListeningStream({ChatId})", ChatId);
