@@ -745,7 +745,10 @@
   </ItemGroup>
 
   <ItemGroup>
-      <Folder Include="Platforms\Android\Resources\Raw\" />
+      <!-- Lowercase, per the Android resource-directory spec: the SDK's default AndroidResource
+           glob is case-sensitive on Linux, so a "Raw" folder is silently skipped there while
+           still working on Windows and macOS. -->
+      <Folder Include="Platforms\Android\Resources\raw\" />
   </ItemGroup>
 
   <!-- Targets & overrides.
