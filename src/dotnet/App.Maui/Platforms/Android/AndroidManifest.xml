@@ -72,5 +72,32 @@
       <action android:name="android.intent.action.VIEW"/>
       <data android:scheme="https"/>
     </intent>
+    <!-- Lets MAUI's Map.Default.TryOpenAsync find a handler for the point it opens -->
+    <intent>
+      <action android:name="android.intent.action.VIEW"/>
+      <data android:scheme="geo"/>
+    </intent>
+    <!-- Lets AndroidMapOpener detect and launch its KnownMapApps - keep both lists in sync -->
+    <package android:name="com.google.android.apps.maps"/>
+    <package android:name="com.waze"/>
+    <package android:name="com.here.app.maps"/>
+    <package android:name="com.sygic.aura"/>
+    <package android:name="com.tomtom.gplay.navapp"/>
+    <package android:name="com.generalmagic.magicearth"/>
+    <package android:name="app.organicmaps"/>
+    <package android:name="com.mapswithme.maps.pro"/>
+    <package android:name="net.osmand"/>
+    <package android:name="net.osmand.plus"/>
+    <package android:name="com.moovit.app"/>
+    <package android:name="com.citymapper.app.release"/>
+    <package android:name="ru.yandex.yandexmaps"/>
+    <package android:name="ru.yandex.yandexnavi"/>
+    <package android:name="ru.dublgis.dgismobile"/>
+    <package android:name="com.autonavi.minimap"/>
+    <package android:name="com.baidu.BaiduMap"/>
+    <package android:name="com.tencent.map"/>
+    <package android:name="com.nhn.android.nmap"/>
+    <package android:name="net.daum.android.map"/>
+    <package android:name="com.ubercab"/>
   </queries>
 </manifest>

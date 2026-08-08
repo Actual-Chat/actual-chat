@@ -30,7 +30,11 @@
                         <i class="icon-map"></i>
                     </button>
                     <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
-                        <i class="icon-navigation-pointer"></i>
+                        @if (m.IsLocating) {
+                            <Spinner/>
+                        } else {
+                            <i class="icon-navigation-pointer"></i>
+                        }
                     </button>
                 </div>
             }
@@ -73,10 +77,12 @@
 @code {
     private MutableState<MapType> _mapType = null!;
     private MutableState<bool> _isMapTypeMenuOpen = null!;
+    private MutableState<bool> _isLocating = null!;
     private MapView? _mapView;
     private FuncWorker? _refreshWorker;
 
     private LocationUI LocationUI => Hub.LocationUI;
+    private ExternalMapOpener MapOpener => Hub.MapOpener;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -94,8 +100,13 @@
         _isMapTypeMenuOpen = StateFactory.NewMutable(
             false,
             StateCategories.Get(GetType(), nameof(_isMapTypeMenuOpen)));
+        _isLocating = StateFactory.NewMutable(
+            false,
+            StateCategories.Get(GetType(), nameof(_isLocating)));
         // Merely viewing the map is no reason to pop the troubleshooter up.
         _refreshWorker = FuncWorker.Start(ct => LocationUI.RunLocationRefreshLoop(false, ct), Hub.StopToken);
+        // Warms up the list the participant menu needs while the user is picking a participant
+        _ = MapOpener.GetApps();
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -109,6 +120,7 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var mapType = await _mapType.Use(cancellationToken).ConfigureAwait(false);
         var isMapTypeMenuOpen = await _isMapTypeMenuOpen.Use(cancellationToken).ConfigureAwait(false);
+        var isLocating = await _isLocating.Use(cancellationToken).ConfigureAwait(false);
         var chatId = ModalModel.ChatId;
         var participants = await LocationUI.ListParticipants(chatId, ModalModel.LocationId, cancellationToken)
             .ConfigureAwait(false);
@@ -120,7 +132,13 @@
         var ownMarker = await LocationUI.GetOwnMarker(chatId, cancellationToken).ConfigureAwait(false);
         var clicked = ModalModel.LocationId is { } id ? participants.FirstOrDefault(x => x.Location.Id == id) : null;
         var center = clicked?.Location ?? ownLocation ?? participants[0].Location;
-        return new ComputedModel(participants, ownPoint, ownMarker, center.Point, mapType, isMapTypeMenuOpen);
+        return new ComputedModel(participants,
+            ownPoint,
+            ownMarker,
+            center.Point,
+            mapType,
+            isMapTypeMenuOpen,
+            isLocating);
     }
 
     // Private methods
@@ -143,10 +161,18 @@
     }
 
     private async Task OnLocate() {
-        // TODO: show ui loading state while locating cause it might take a while
-        var location = await LocationUI.RefreshCurrentLocation(true, Hub.StopToken).ConfigureAwait(true);
-        if (location is { } point && _mapView is { } mapView)
-            await mapView.FlyTo(point).ConfigureAwait(false);
+        if (_isLocating.Value)
+            return;
+
+        _isLocating.Value = true;
+        try {
+            var location = await LocationUI.RefreshCurrentLocation(true, Hub.StopToken).ConfigureAwait(true);
+            if (location is { } point && _mapView is { } mapView)
+                await mapView.FlyTo(point).ConfigureAwait(false);
+        }
+        finally {
+            _isLocating.Value = false;
+        }
     }
 
     // Nested types
@@ -157,7 +183,8 @@
         MapMarker? OwnMarker,
         GeoPoint Center,
         MapType MapType = MapType.Map,
-        bool IsMapTypeMenuOpen = false
+        bool IsMapTypeMenuOpen = false,
+        bool IsLocating = false
     ) {
         public static readonly ComputedModel None = new([], null, null, new GeoPoint(0, 0));
     }

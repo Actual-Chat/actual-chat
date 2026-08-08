@@ -69,6 +69,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public KeepAwakeUI KeepAwakeUI => field ??= Services.GetRequiredService<KeepAwakeUI>();
     public ClipboardUI ClipboardUI => field ??= Services.GetRequiredService<ClipboardUI>();
     public ExternalUrlOpener ExternalUrlOpener => field ??= Services.GetRequiredService<ExternalUrlOpener>();
+    public ExternalMapOpener MapOpener => field ??= Services.GetRequiredService<ExternalMapOpener>();
     public PanelsUI PanelsUI => field ??= Services.GetRequiredService<PanelsUI>();
     public ShareUI ShareUI => field ??= Services.GetRequiredService<ShareUI>();
     public FocusUI FocusUI => field ??= Services.GetRequiredService<FocusUI>();

@@ -54,6 +54,30 @@
 	<string>17.0</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>comgooglemaps</string>
+		<string>maps</string>
+		<string>waze</string>
+		<string>here-location</string>
+		<string>com.sygic.aura</string>
+		<string>tomtomgo</string>
+		<string>magicearth</string>
+		<string>om</string>
+		<string>mapsme</string>
+		<string>osmandmaps</string>
+		<string>moovit</string>
+		<string>citymapper</string>
+		<string>yandexmaps</string>
+		<string>yandexnavi</string>
+		<string>dgis</string>
+		<string>iosamap</string>
+		<string>baidumap</string>
+		<string>qqmap</string>
+		<string>nmap</string>
+		<string>kakaomap</string>
+		<string>uber</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

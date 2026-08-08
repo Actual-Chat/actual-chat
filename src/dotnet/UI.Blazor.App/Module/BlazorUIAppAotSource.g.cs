@@ -105,6 +105,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuPin>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuRecord>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuRemoveFromActiveChats>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuShare>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuStartAnonymous>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMessageAuthorCircle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMessageDateLine>();
@@ -236,6 +237,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LogList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LogView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ManageAccountSettingsBubble>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MapAppPickerModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MapPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditor>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage>();
@@ -514,6 +516,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.VoiceCallTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Testing.TestListItemBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Testing.VirtualListTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.WebApp>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsCookiesContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsPrivacyContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsTermsContent>();
@@ -840,6 +843,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuPin), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuRecord), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuRemoveFromActiveChats), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuShare), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuStartAnonymous), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMessageAuthorCircle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMessageDateLine), AotTypeKind.Component),
@@ -971,6 +975,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.LogList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LogView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ManageAccountSettingsBubble), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MapAppPickerModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MapPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditor), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage), AotTypeKind.Component),
@@ -1249,6 +1254,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Pages.VoiceCallTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Testing.TestListItemBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Testing.VirtualListTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.WebApp), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DocsCookiesContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DocsPrivacyContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DocsTermsContent), AotTypeKind.Component),
