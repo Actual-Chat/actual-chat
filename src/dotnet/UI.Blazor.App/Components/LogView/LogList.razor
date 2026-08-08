@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
 
-<VirtualList
+<InfiniteList
     @key="nameof(LogList)"
     Class="log-list"
     DataSource="@this"
@@ -16,7 +16,7 @@
     <SkeletonBatch>
         <chat-view-skeleton class="no-scrollbar" count="@context" />
     </SkeletonBatch>
-</VirtualList>
+</InfiniteList>
 
 @code {
     private int _skeletonCount;

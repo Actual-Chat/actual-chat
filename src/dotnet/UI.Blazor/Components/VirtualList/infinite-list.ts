@@ -20,7 +20,7 @@ import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 import { DocumentEvents } from 'event-handling';
 import { type Subscription } from 'rxjs';
 
-const { warnLog, debugLog } = getLogs('VirtualList');
+const { warnLog, debugLog } = getLogs('InfiniteList');
 
 const UpdateViewportInterval = 64;
 const UpdateItemVisibilityInterval = 250;
@@ -49,7 +49,7 @@ const EdgeRepinEpsilon = 1;
 const EdgeRepinMaxPasses = 3;
 // Fixed scroll size of an infinite (scrollbar-less) list — its wrapper height. Kept well under the
 // browser's max element height (Firefox ≈ 17.9M); at ~50px/item that is still ~200k items of scroll.
-// Must match InfiniteSize in VirtualList.razor.cs.
+// Must match InfiniteSize in InfiniteList.razor.cs.
 const InfiniteSize = 1e7;
 // Min viewport-to-container gap for repinIfViewportStranded: the blank leaves a ~InfiniteSize/2 gap,
 // while legit scroll/overscroll gaps are far smaller — so no false positives.
@@ -112,29 +112,29 @@ const SkeletonWatchdogInterval = 5000;
 
 const delayMs = (ms: number): Promise<void> => new Promise<void>(resolve => setTimeout(resolve, ms));
 
-export class VirtualList {
+export class InfiniteList {
     public static enableWatchdogFixes = false;
     public static enableDebug = false;
     // Debug-only: when > 0, inject a random [0, value) ms delay before each render (debugRenderDelayMs)
     // and each data request (debugDataLoadDelayMs) to surface scroll/recenter timing races. 0 in prod.
     public static debugRenderDelayMs = 0;
     public static debugDataLoadDelayMs = 0;
-    private static readonly _instances = new Set<VirtualList>();
+    private static readonly _instances = new Set<InfiniteList>();
 
     public static dumpStateChangeLogs(lastN?: number, endStateEvery = 10): void {
-        for (const instance of VirtualList._instances) {
+        for (const instance of InfiniteList._instances) {
             console.warn(
-                `[VirtualList:${instance.identity}] State history:`,
+                `[InfiniteList:${instance.identity}] State history:`,
                 instance.getStateChangeLog(lastN, endStateEvery));
         }
     }
 
     // On-demand consistency checker. Off by default; turn on via debugUI.virtualListDebug(true)
-    // or globalThis.VirtualList.setDebugEnabled(true). Toggles every live list and all new ones.
+    // or globalThis.InfiniteList.setDebugEnabled(true). Toggles every live list and all new ones.
     public static setDebugEnabled(enabled: boolean): VirtualListDebug[] {
-        VirtualList.enableDebug = enabled;
+        InfiniteList.enableDebug = enabled;
         const result: VirtualListDebug[] = [];
-        for (const instance of VirtualList._instances) {
+        for (const instance of InfiniteList._instances) {
             if (enabled) {
                 instance.startDebug();
                 if (instance.debug)
@@ -159,9 +159,6 @@ export class VirtualList {
     private readonly defaultEdge: VirtualListEdge;
     private readonly defaultSpacerSize: number;
     private readonly expandMultiplier: number;
-    // Infinite mode: no scrollbar, wrapper fixed to InfiniteSize (the ~infinite virtual space).
-    // false = finite, size-to-fit list with a visible scrollbar (needs an accurate total count).
-    private readonly isInfinite: boolean;
     private readonly retainedItemCount: number;
     private readonly scrollController: ScrollController;
     private readonly wrapperRef: HTMLElement;
@@ -207,17 +204,15 @@ export class VirtualList {
         defaultEdge: VirtualListEdge,
         spacerSize: number,
         expandMultiplier: number,
-        isInfinite = true,
         retainedItemCount = 5,
     ) {
-        return new VirtualList(
+        return new InfiniteList(
             ref,
             backendRef,
             identity,
             defaultEdge,
             spacerSize,
             expandMultiplier,
-            isInfinite,
             retainedItemCount);
     }
 
@@ -228,14 +223,13 @@ export class VirtualList {
         defaultEdge: VirtualListEdge,
         spacerSize: number,
         expandMultiplier: number,
-        isInfinite = true,
         retainedItemCount = 5,
     ) {
         if (debugLog) {
             debugLog?.log(`constructor`);
             globalThis.virtualList = this;
         }
-        globalThis['VirtualList'] = VirtualList;
+        globalThis['InfiniteList'] = InfiniteList;
 
         this.createdAt = Date.now();
         this.ref = ref;
@@ -244,7 +238,6 @@ export class VirtualList {
         this.defaultEdge = defaultEdge;
         this.defaultSpacerSize = spacerSize;
         this.expandMultiplier = expandMultiplier;
-        this.isInfinite = isInfinite;
         this.retainedItemCount = Math.max(1, retainedItemCount);
 
         this.items = new Map<string, VirtualListItem>();
@@ -260,10 +253,9 @@ export class VirtualList {
         this.renderIndexRef = this.ref.querySelector(':scope > .data.render-index')!;
         this.endAnchorRef = this.containerRef.querySelector(':scope > .c-end-anchor')!;
         this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
-        if (this.isInfinite)
-            this.wrapperRef.style.height = `${InfiniteSize}px`;
+        this.wrapperRef.style.height = `${InfiniteSize}px`;
         this.scrollController = new ScrollController(
-            this.ref, this.isInfinite, this.containerRef, () => this.computeScrollLimits());
+            this.ref, true, this.containerRef, () => this.computeScrollLimits());
 
         this._state = {
             viewport: null,
@@ -402,10 +394,10 @@ export class VirtualList {
         };
         this.onItemSetChange([mutationRecord], this.itemSetChangeObserver);
 
-        VirtualList._instances.add(this);
+        InfiniteList._instances.add(this);
         this.skeletonWatchdogTimer = setInterval(() => this.checkSkeletonWatchdog(), SkeletonWatchdogInterval);
         this.startRevealWatch();
-        if (VirtualList.enableDebug)
+        if (InfiniteList.enableDebug)
             this.startDebug();
     };
 
@@ -416,7 +408,7 @@ export class VirtualList {
         this.debug?.stop();
         this.debug = null;
         this.scrollController.dispose();
-        VirtualList._instances.delete(this);
+        InfiniteList._instances.delete(this);
         if (this.skeletonWatchdogTimer !== null) {
             clearInterval(this.skeletonWatchdogTimer);
             this.skeletonWatchdogTimer = null;
@@ -642,7 +634,7 @@ export class VirtualList {
 
         if (warnings.length > 0) {
             console.warn(
-                `[VirtualList] ⚠ after "${reason}":\n` + warnings.map(w => `  ${w}`).join('\n'),
+                `[InfiniteList] ⚠ after "${reason}":\n` + warnings.map(w => `  ${w}`).join('\n'),
                 this.getStateChangeLog(10));
         }
     }
@@ -1071,14 +1063,14 @@ export class VirtualList {
 
         // Same state version twice in a row with visible skeletons — report
         this.skeletonWatchdogLastVersion = -1; // reset so we don't spam
-        const msg = `[VirtualList:${this.identity}] ⚠ skeleton watchdog: spacers visible on screen for 2 checks`
+        const msg = `[InfiniteList:${this.identity}] ⚠ skeleton watchdog: spacers visible on screen for 2 checks`
             + ` (stateVersion=${version})`
             + `\n  startSpacer: h=${startRect.height.toFixed(0)} visible=${startVisible}`
             + `\n  endSpacer: h=${endRect.height.toFixed(0)} visible=${endVisible}`
             + `\n  viewport: [${viewRect.top.toFixed(0)}, ${viewRect.bottom.toFixed(0)}]`
             + `\n  scrollTop: ${this.ref.scrollTop}`
             + `\n  isRendering: ${this.isRendering}`;
-        if (VirtualList.enableWatchdogFixes) {
+        if (InfiniteList.enableWatchdogFixes) {
             console.warn(msg + '\n  → requesting data', this.getStateChangeLog(10));
             void this.requestData();
         } else {
@@ -1143,8 +1135,8 @@ export class VirtualList {
             this.whenRequestDataCompleted = null;
             return;
         }
-        if (VirtualList.debugRenderDelayMs > 0)
-            await delayMs(Math.random() * VirtualList.debugRenderDelayMs);
+        if (InfiniteList.debugRenderDelayMs > 0)
+            await delayMs(Math.random() * InfiniteList.debugRenderDelayMs);
         const rs = this.parseRenderState();
         if (rs === null) {
             this.updateState('endRender: no rs', this.state, { renderStartedAt: null });
@@ -1352,7 +1344,7 @@ export class VirtualList {
                 visibleItems,
                 isEndAnchorVisible);
         } catch (e) {
-            // VirtualList.DisposeAsync disposes BlazorRef right after the JS dispose(), so a call that
+            // InfiniteList.DisposeAsync disposes BlazorRef right after the JS dispose(), so a call that
             // passed the isDisposed check above can still land on a disposed DotNetObjectReference -
             // the check can't span the await. Left unhandled, that rejection trips the error barrier.
             warnLog?.log('updateVisibleKeys: failed', e);
@@ -1606,7 +1598,7 @@ export class VirtualList {
     // "blank" (~InfiniteSize/2 gap) that no sticky edge or clamp recovers — snap back to the default edge.
     // Gated by StrandedGapThreshold so it never fires for normal scroll/overscroll/skeleton gaps.
     private repinIfViewportStranded(): void {
-        if (!this.isInfinite || this.isRendering || this.isDisposed)
+        if (this.isRendering || this.isDisposed)
             return;
         if (this.state.isScrolling)
             return; // a scroll is in flight — not stuck
@@ -1958,9 +1950,6 @@ export class VirtualList {
     // Computed on demand by ScrollController (so it always reflects the latest item sizes, edges, and
     // viewport height — incl. mobile keyboard). Reads the model + current container.top, no re-measure.
     private computeScrollLimits(): { min: number | null, max: number | null } {
-        if (!this.isInfinite)
-            return { min: null, max: null };
-
         const itemRange = this.state.itemRange;
         if (!itemRange)
             return { min: null, max: null };
@@ -2033,62 +2022,7 @@ export class VirtualList {
 
                 scrollTop = this.ref.scrollTop;
 
-                if (this.isInfinite) {
-                    totalSize = InfiniteSize; // fixed huge scroll space; chain floats around the middle
-                }
-                else {
-                    if (rs.beforeCount !== null && rs.afterCount !== null) {
-                        beforeSize = Math.floor(rs.beforeCount * this.statistics.itemSize);
-                        afterSize =  Math.floor(rs.afterCount * this.statistics.itemSize);
-                    }
-                    else {
-                        const knownRange = this.knownRange ?? new NumberRange(0,0);
-                        const estimatedTotalSize = rs.estimatedCount
-                            ? clamp(Math.floor(rs.estimatedCount * this.statistics.itemSize), knownRange.size, 5E6)
-                            : 0;
-
-                        let fullRange: NumberRange;
-                        if (this.state.isStartKnown && this.state.isEndKnown)
-                            fullRange = new NumberRange(knownRange.start, knownRange.end + endAnchorSize);
-                        else if (this.state.isStartKnown) {
-                            const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize);
-                            fullRange = new NumberRange(knownRange.start, fullRangeSize);
-                        }
-                        else if (this.state.isEndKnown) {
-                            const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize);
-                            fullRange = new NumberRange(knownRange.end - fullRangeSize, knownRange.end);
-                        }
-                        else {
-                            const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize * 2);
-                            fullRange = this.defaultEdge === VirtualListEdge.End
-                                ? new NumberRange(knownRange.end - fullRangeSize, knownRange.end)
-                                : new NumberRange(knownRange.start, knownRange.start + fullRangeSize)
-                        }
-
-                        beforeSize = clamp(start - fullRange.start, 0, fullRange.size - itemRangeSize);
-                        afterSize = clamp(fullRange.end - end, 0, fullRange.size - itemRangeSize);
-                    }
-                    if (beforeSize == 0 && !rs.hasVeryFirstItem)
-                        beforeSize = defaultSpacerSize;
-                    if (afterSize == 0 && !rs.hasVeryLastItem)
-                        afterSize = defaultSpacerSize;
-                    if (rs.hasVeryFirstItem)
-                        beforeSize = 0;
-                    if (rs.hasVeryLastItem)
-                        afterSize = 0;
-
-                    totalSize = itemRangeSize
-                        + beforeSize
-                        + afterSize
-                        + endAnchorSize;
-
-                    if (!rs.hasVeryFirstItem && !rs.hasVeryLastItem)
-                        totalSize = Math.max(totalSize, end, -start);
-                    else if (rs.hasVeryFirstItem)
-                        totalSize = Math.max(totalSize, -start);
-                    else if (rs.hasVeryLastItem)
-                        totalSize = Math.max(totalSize, end);
-                }
+                totalSize = InfiniteSize; // fixed huge scroll space; chain floats around the middle
 
                 // offset = wrapper coordinate of the first loaded item; container.top = offset - startSpacer.
                 offset = start;
@@ -2102,20 +2036,16 @@ export class VirtualList {
                     }
                 };
 
-                if (this.isInfinite) {
-                    // Re-center only if the chain drifted within a viewport of a wrapper edge (fast fling).
-                    const margin = Math.max(this.ref.clientHeight, defaultSpacerSize);
-                    if (start < margin || end > InfiniteSize - margin)
-                        reCenter();
-                }
-                else if (offset < 0 || (rs.hasVeryFirstItem && offset > 0))
+                // Re-center only if the chain drifted within a viewport of a wrapper edge (fast fling).
+                const margin = Math.max(this.ref.clientHeight, defaultSpacerSize);
+                if (start < margin || end > InfiniteSize - margin)
                     reCenter();
 
                 // Bottom cap: clip the wrapper to the newest so scrolling down hard-stops there natively (no
                 // chain reposition — safe, unlike a top cap). After re-center so `end` is final. End-edge only:
                 // on a Start-edge list this cap leaves no room below short content to scroll its first item up
                 // to the viewport top, stranding a single item / the empty placeholder at the bottom.
-                if (this.isInfinite && rs.hasVeryLastItem && CutVirtualSpaceAtBottom
+                if (rs.hasVeryLastItem && CutVirtualSpaceAtBottom
                     && this.defaultEdge === VirtualListEdge.End) {
                     totalSize = end + endAnchorSize;
                     bottomCapped = true;
@@ -2197,8 +2127,7 @@ export class VirtualList {
 
                 // debugLog?.log(`syncLayoutAfterRender: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
-                if (this.isInfinite)
-                    this.scrollController.clampToLimits();
+                this.scrollController.clampToLimits();
 
                 result.resolve(undefined);
             }
@@ -2225,9 +2154,6 @@ export class VirtualList {
 
     // No scrollTop change: the cornerstone is held fixed, so writing containerTop alone keeps the view put.
     private repinContainerToModel(): void {
-        if (!this.isInfinite)
-            return;
-
         const itemRange = this.state.itemRange;
         if (!itemRange)
             return;
@@ -2398,16 +2324,7 @@ export class VirtualList {
             }
         }
 
-        const isCornerstoneRangeMissing = !cornerstoneItem?.range;
-        // Finite-only: pull the first item back to 0 when the very-first item is loaded but drifted.
-        // Infinite lists float around InfiniteSize/2, so this doesn't apply (rubber-band handles ends).
-        const removedFirstItem =
-            !this.isInfinite &&
-            this.defaultEdge === VirtualListEdge.Start &&
-            cornerstoneItemIndex === 0 &&
-            rs.hasVeryFirstItem &&
-            (cornerstoneItem?.range?.start ?? 0) > 0;
-        const needsRangeReset = isCornerstoneRangeMissing || removedFirstItem;
+        const needsRangeReset = !cornerstoneItem?.range;
         if (needsRangeReset) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
             this.rebuildItemRangeFromAnchor(true);
@@ -2493,42 +2410,13 @@ export class VirtualList {
         let cornerstoneItemIndex = 0;
         let cornerstoneItem = orderedItems[0];
 
-        if (this.isInfinite) {
-            // Center the chain in the virtual space. On a re-anchor it rigidly shifts the whole chain by a
-            // fixed delta (returned); syncLayoutAfterRender shifts scrollTop by the same amount, so no jump.
-            cornerstoneItemIndex = findCenterItemIndex();
-            cornerstoneItem = orderedItems[cornerstoneItemIndex];
-            const half = Math.floor(cornerstoneItem.size! / 2);
-            const base = Math.round(InfiniteSize / 2);
-            cornerstoneItem.range = new NumberRange(base - half, base - half + cornerstoneItem.size!);
-        }
-        else if (rs.beforeCount !== null && rs.afterCount !== null) {
-            // Finite list with known counts: anchor the first item below its before-region.
-            cornerstoneItem.range = new NumberRange(
-                Math.floor(rs.beforeCount * this.statistics.itemSize),
-                Math.floor(rs.beforeCount * this.statistics.itemSize) + cornerstoneItem.size!);
-        }
-        else if (canUseViewport && !rs.hasVeryFirstItem) {
-            // Anchor the center item at the current viewport center.
-            const query = rs.query;
-            const viewportCenter = viewport
-                ? viewport.start + viewport.size / 2
-                : query.isNone
-                    ? 0
-                    : query.virtualRange.start + query.virtualRange.size / 2;
-            cornerstoneItemIndex = findCenterItemIndex();
-            cornerstoneItem = orderedItems[cornerstoneItemIndex];
-            cornerstoneItem.range = new NumberRange(
-                Math.floor(viewportCenter - cornerstoneItem.size! / 2),
-                Math.ceil(viewportCenter + cornerstoneItem.size! / 2)
-            );
-        }
-        else if (!rs.hasVeryFirstItem) {
-            // No counts and not at the very first item: leave room for a start spacer.
-            cornerstoneItem.range = new NumberRange(defaultSpacerSize, defaultSpacerSize + cornerstoneItem.size!);
-        }
-        else
-            cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size!);
+        // Center the chain in the virtual space. On a re-anchor it rigidly shifts the whole chain by a
+        // fixed delta (returned); syncLayoutAfterRender shifts scrollTop by the same amount, so no jump.
+        cornerstoneItemIndex = findCenterItemIndex();
+        cornerstoneItem = orderedItems[cornerstoneItemIndex];
+        const half = Math.floor(cornerstoneItem.size! / 2);
+        const base = Math.round(InfiniteSize / 2);
+        cornerstoneItem.range = new NumberRange(base - half, base - half + cornerstoneItem.size!);
 
         this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
         // The rigid-shift delta is only computable from items that had a range before the rebuild; a
@@ -2541,22 +2429,13 @@ export class VirtualList {
         const newItemRange = new NumberRange(
             orderedItems[0].range!.start,
             orderedItems[orderedItems.length - 1].range!.end);
-        if (!this.isInfinite && fullRangeSize) {
-            this.updateState('rebuildItemRangeFromAnchor: fullRange', this.state, {
-                itemRange: newItemRange,
-                minStart: 0,
-                maxEnd: fullRangeSize + endAnchorSize,
-            });
-        }
-        else {
-            this.updateState('rebuildItemRangeFromAnchor', this.state, {
-                itemRange: newItemRange,
-                minStart: newItemRange.start,
-                maxEnd: newItemRange.end,
-                isEndKnown: rs.hasVeryLastItem,
-                isStartKnown: rs.hasVeryFirstItem,
-            });
-        }
+        this.updateState('rebuildItemRangeFromAnchor', this.state, {
+            itemRange: newItemRange,
+            minStart: newItemRange.start,
+            maxEnd: newItemRange.end,
+            isEndKnown: rs.hasVeryLastItem,
+            isStartKnown: rs.hasVeryFirstItem,
+        });
         return rangeDelta;
     }
 
@@ -2591,8 +2470,8 @@ export class VirtualList {
         debugLog?.log(`requestData: query:`, query, query.virtualRange, this.state.itemRange);
         this.updateState('requestData: sending', this.state, { lastQueryTime: Date.now(), lastQuery: this.state.query });
         warnLog?.log(`Data request: ${this.renderedWindowInfo()} query.expected=${query.expectedCount ?? '?'}`);
-        if (VirtualList.debugDataLoadDelayMs > 0)
-            await delayMs(Math.random() * VirtualList.debugDataLoadDelayMs);
+        if (InfiniteList.debugDataLoadDelayMs > 0)
+            await delayMs(Math.random() * InfiniteList.debugDataLoadDelayMs);
         this.debug?.onRequestData();
         await this.blazorRef.invokeMethodAsync('RequestData', this.state.query);
     }

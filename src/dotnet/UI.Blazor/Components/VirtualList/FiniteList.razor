@@ -1,0 +1,87 @@
+@namespace ActualChat.UI.Blazor.Components
+@typeparam TItem
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Components.Internal
+@inherits VirtualList<TItem>
+@{
+#pragma warning disable IL2026
+
+    var renderIndex = RenderIndex++;
+    var data = Data;
+    var renderState = new VirtualListRenderState {
+        RenderIndex = renderIndex,
+        Query = Query,
+        KeyRange = data.KeyRange,
+        Count = data.Count,
+        BeforeCount = data.BeforeCount,
+        AfterCount = data.AfterCount,
+        EstimatedCount = data.EstimatedCount,
+        HasVeryFirstItem = data.HasVeryFirstItem,
+        HasVeryLastItem = data.HasVeryLastItem,
+        ScrollToKey = data.ScrollToKey,
+        ScrollToKeyInTheMiddle = data.ScrollToKeyInTheMiddle,
+    };
+    var items = data.Items;
+    var startSkeletonCount = data.BeforeCount is { } beforeCount && beforeCount < SkeletonCount
+        ? beforeCount
+        : SkeletonCount;
+    var endSkeletonCount = data.AfterCount is { } afterCount && afterCount < SkeletonCount
+        ? afterCount
+        : SkeletonCount;
+    LastData = data;
+    Query = VirtualListDataQuery.None;
+}
+
+<div @ref="Ref"
+     class="@Class virtual-list finite-list no-scrollbar"
+     style="@Style">
+
+    <div @key="@VirtualListSpecialKeys.RenderIndex"
+         data-render-index="@renderIndex"
+         class="data render-index">
+    </div>
+
+    <div @key="@VirtualListSpecialKeys.RenderState"
+         class="data render-state">
+        @* RenderAtDepth ensures the JSON here is rendered once every item is rendered *@
+        <RenderAtDepth RenderKey="@renderState" Depth="5">
+            @Serializers.SystemJson.Write(context)
+        </RenderAtDepth>
+    </div>
+
+    <div @key="@VirtualListSpecialKeys.Wrapper"
+         class="c-wrapper c-initially-hidden">
+
+        <ul @key="@VirtualListSpecialKeys.Container"
+            class="c-virtual-container">
+
+            <li @key="@VirtualListSpecialKeys.Spacer"
+                class="c-spacer-start">
+                <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+            </li>
+
+            @for (var i = 0; i < items.Count; i++) {
+                var item = items[i];
+                @if (item.IsGroup) {
+                    <li @key="@item.RenderKey" class="group">
+                        @Item(item)
+                    </li>
+                } else {
+                    <li @key="@item.RenderKey"
+                        class="item"
+                        data-key="@item.Key"
+                        data-skip="@item.ShouldSkipKey"
+                        data-vl-size-source="@(item.HasRegularSize ? "" : null)">
+                        @Item(item)
+                    </li>
+                }
+            }
+
+            <li @key="@VirtualListSpecialKeys.EndSpacer"
+                class="c-spacer-end">
+                <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+            </li>
+
+        </ul>
+    </div>
+</div>

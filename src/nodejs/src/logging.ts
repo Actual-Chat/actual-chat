@@ -43,6 +43,8 @@ export type LogScope =
     | 'DelayedInvoker'
     | 'FileDownload'
     | 'FileUpload'
+    | 'FiniteList'
+    | 'InfiniteList'
     | 'EmojiPreview'
     | 'EventHandling'
     | 'Gestures'
@@ -155,6 +157,8 @@ const defaults: Record<LogScope, LogLevel> = {
     DelayedInvoker: LogLevel.Warn,
     FileDownload: LogLevel.Warn,
     FileUpload: LogLevel.Warn,
+    FiniteList: LogLevel.Warn,
+    InfiniteList: LogLevel.Warn,
     EmojiPreview: LogLevel.Warn,
     EventHandling: LogLevel.Warn,
     Gestures: LogLevel.Warn,

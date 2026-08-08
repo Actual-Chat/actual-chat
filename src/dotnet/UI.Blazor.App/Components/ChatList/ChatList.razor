@@ -5,11 +5,10 @@
 }
 
 @* ChatListKind.All *@
-<VirtualList
+<FiniteList
     @ref="_virtualListRef"
     Class="chat-list chat-list-all"
     DataSource="@this"
-    IsInfinite="false"
     ExpandMultiplier="3"
     SkeletonCount="@_skeletonCount"
     ItemVisibilityChanged="@OnItemVisibilityChanged"
@@ -24,10 +23,10 @@
     <SkeletonBatch>
         <chat-list-skeleton count="@context" />
     </SkeletonBatch>
-</VirtualList>
+</FiniteList>
 
 @code {
-    private VirtualList<ChatListItemModel>? _virtualListRef;
+    private FiniteList<ChatListItemModel>? _virtualListRef;
     private int _skeletonCount;
 
     private ChatUI ChatUI => Hub.ChatUI;

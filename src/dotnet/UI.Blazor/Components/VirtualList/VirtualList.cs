@@ -1,35 +1,32 @@
 using ActualChat.UI.Blazor.Components.Internal;
-using ActualChat.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Fusion.Internal;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public static class VirtualList
-{
-    // Wrapper height of an infinite (scrollbar-less) list. Must match InfiniteSize in virtual-list.ts.
-    public const double InfiniteSize = 10_000_000;
-    public static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VirtualList.create";
-}
-
-public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, VirtualListData<TItem>>, IVirtualListBackend
+/// <summary>
+/// Shared plumbing for the two virtualized lists — <see cref="FiniteList{TItem}"/> and
+/// <see cref="InfiniteList{TItem}"/>: the data-source round trip, the JS bridge and item
+/// visibility. All geometry belongs to the derived component.
+/// </summary>
+public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, VirtualListData<TItem>>, IVirtualListBackend
     where TItem : class, IVirtualListItem
 {
     private VirtualListData<TItem>? _initialData;
 
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
-    private ElementReference Ref { get; set; }
-    private IJSObjectReference JSRef { get; set; } = null!;
-    private DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
+    protected ElementReference Ref { get; set; }
+    protected IJSObjectReference JSRef { get; set; } = null!;
+    protected DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
-    private VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
+    protected VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
     // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
-    private VirtualListData<TItem> Data => State?.LastNonErrorValue ?? VirtualListData<TItem>.None;
-    private VirtualListData<TItem> LastData { get; set; } = VirtualListData<TItem>.None;
-    private VirtualListItemVisibility LastReportedItemVisibility { get; set; } = VirtualListItemVisibility.Empty;
+    protected VirtualListData<TItem> Data => State?.LastNonErrorValue ?? VirtualListData<TItem>.None;
+    protected VirtualListData<TItem> LastData { get; set; } = VirtualListData<TItem>.None;
+    protected VirtualListItemVisibility LastReportedItemVisibility { get; set; } = VirtualListItemVisibility.Empty;
 
-    private int RenderIndex { get; set; } = 0;
+    protected int RenderIndex { get; set; }
 
     [Parameter] public string Identity { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
@@ -42,22 +39,22 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     [Parameter] public RenderFragment<int>? Skeleton { get; set; }
     [Parameter] public RenderFragment<int>? SkeletonBatch { get; set; }
     [Parameter] public int SkeletonCount { get; set; } = 10;
-    [Parameter] public double SpacerSize { get; set; } = 1000;
-    [Parameter] public VirtualListEdge DefaultEdge { get; set; }
     [Parameter] public double ExpandMultiplier { get; set; } = 2;
-    // Infinite mode (default): no scrollbar, the wrapper is a fixed huge scroll space (InfiniteSize) and
-    // the list can over-scroll past the first/last item, with a magnet dragging it back to the edge.
-    // Set false for finite lists with a visible scrollbar — their data source must report the total item
-    // count so spacers size the scroll range accurately for the thumb.
-    [Parameter] public bool IsInfinite { get; set; } = true;
-    [Parameter] public bool ShowOverscrollCue { get; set; }
-    [Parameter] public int RetainedItemCount { get; set; } = 5;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
     [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    public VirtualList() { }
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+        RenderIndex = 0;
+        LastData = VirtualListData<TItem>.None;
+    }
 
     [JSInvokable]
     public async Task RequestData(VirtualListDataQuery query)
@@ -83,6 +80,16 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
         return Task.CompletedTask;
     }
 
+    public async ValueTask Reset()
+    {
+        RenderIndex = 0;
+        Query = VirtualListDataQuery.None;
+        LastData = VirtualListData<TItem>.None;
+        LastReportedItemVisibility = VirtualListItemVisibility.Empty;
+        StateHasChanged();
+        await JSRef.InvokeVoidAsync("reset");
+    }
+
     public override async Task SetParametersAsync(ParameterView parameters)
     {
         parameters.SetParameterProperties(this);
@@ -104,26 +111,9 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
         await base.SetParametersAsync(ParameterView.Empty);
     }
 
-    public override async ValueTask DisposeAsync()
-    {
-        await base.DisposeAsync();
-        await JSRef.DisposeSilentlyAsync("dispose");
-        JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
-        RenderIndex = 0;
-        LastData = VirtualListData<TItem>.None;
-    }
+    // Protected methods
 
-    public async ValueTask Reset()
-    {
-        RenderIndex = 0;
-        Query = VirtualListDataQuery.None;
-        LastData = VirtualListData<TItem>.None;
-        LastReportedItemVisibility = VirtualListItemVisibility.Empty;
-        StateHasChanged();
-        await JSRef.InvokeVoidAsync("reset");
-    }
+    protected abstract ValueTask<IJSObjectReference> CreateJSRef();
 
     protected override bool ShouldRender()
     {
@@ -143,16 +133,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
 
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(VirtualList.JSCreateMethod,
-                Ref,
-                BlazorRef,
-                Identity,
-                DefaultEdge,
-                SpacerSize,
-                ExpandMultiplier,
-                IsInfinite,
-                RetainedItemCount
-                );
+            JSRef = await CreateJSRef();
         }
     }
 
@@ -170,7 +151,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = Query;
-
         var lastData = LastData;
         VirtualListData<TItem> data;
         var computed = Computed.GetCurrent();
