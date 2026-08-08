@@ -4,6 +4,10 @@
 @{
     var m = State.Value;
     var sm = m.Streaming;
+    // Streamed text is a prefix, so its tail is mid-token: parsed in incomplete mode it renders as
+    // markup right away instead of showing raw '**' - and a spoiler is masked rather than exposed.
+    // Plain text keeps the per-character animation below; there's no markup to lose.
+    var streamingMarkup = StreamingMarkupExt.ParseOrNullIfPlainText(sm.RetainedText + sm.ChangedText + sm.AnimatedText);
     var message = Message;
     var entry = m.Entry;
     // The server fills a location entry's content with a maps-link fallback for clients that don't
@@ -96,24 +100,28 @@
                 IsVoiceActive="@true"
                 IsLanguageKnown="@m.IsChatLanguageSelected"/>
         }
-        @if (!sm.RetainedText.IsNullOrEmpty()) {
-            <span class="retained">@sm.RetainedText</span>
-        }
-        <span class="changes">
-            <span class="changed-item">@sm.ChangedText</span>
-            @{
-                for (var spanIndex = 0; spanIndex < AnimationSpanCount; spanIndex++) {
-                    var spanStart = sm.AnimatedText.Length * spanIndex / AnimationSpanCount;
-                    var spanEnd = sm.AnimatedText.Length * (spanIndex + 1) / AnimationSpanCount;
-                    if (spanStart >= spanEnd)
-                        continue;
-
-                    var spanDelay = (int)Math.Round(AnimationSpanDurationMs * spanIndex);
-                    var style = $"transition-delay: {spanDelay}ms;";
-                    <span class="change-item" style="@style">@sm.AnimatedText[spanStart..spanEnd]</span>
-                }
+        @if (streamingMarkup is not null) {
+            <MarkupView Markup="@streamingMarkup"/>
+        } else {
+            @if (!sm.RetainedText.IsNullOrEmpty()) {
+                <span class="retained">@sm.RetainedText</span>
             }
-        </span>
+            <span class="changes">
+                <span class="changed-item">@sm.ChangedText</span>
+                @{
+                    for (var spanIndex = 0; spanIndex < AnimationSpanCount; spanIndex++) {
+                        var spanStart = sm.AnimatedText.Length * spanIndex / AnimationSpanCount;
+                        var spanEnd = sm.AnimatedText.Length * (spanIndex + 1) / AnimationSpanCount;
+                        if (spanStart >= spanEnd)
+                            continue;
+
+                        var spanDelay = (int)Math.Round(AnimationSpanDurationMs * spanIndex);
+                        var style = $"transition-delay: {spanDelay}ms;";
+                        <span class="change-item" style="@style">@sm.AnimatedText[spanStart..spanEnd]</span>
+                    }
+                }
+            </span>
+        }
         @if (!sm.Tail.IsNullOrEmpty()) {
             <span>…@sm.Tail</span>
         }
