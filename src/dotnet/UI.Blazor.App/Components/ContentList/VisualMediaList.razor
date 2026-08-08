@@ -8,7 +8,7 @@
 
 <div class="content-list-with-visor" @ref="Ref">
 <ContentListDateVisor/>
-<VirtualList
+<InfiniteList
     @key="@Identity"
     Class="content-list-tab content-list-grid"
     Identity="@Identity"
@@ -60,7 +60,7 @@
     <Skeleton>
         <div class="c-skeleton"></div>
     </Skeleton>
-</VirtualList>
+</InfiniteList>
 </div>
 
 @code {

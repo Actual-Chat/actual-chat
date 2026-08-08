@@ -24,10 +24,19 @@ allowed-tools:
 
 # /virtual-list-debug — debug the VirtualList
 
-The VirtualList (`src/dotnet/UI.Blazor/Components/VirtualList/virtual-list.ts`) is the
-column-reverse, absolutely-positioned list used for chat messages and the sidebar. It is
-subtle: every visible item is positioned by a precomputed model, and the most common bugs are
-**visual jumps while scrolling**, **blank/partial-blank viewport**, and **stuck loading**.
+There are **two** virtualized lists, with deliberately different machinery:
+
+- **`InfiniteList`** (`infinite-list.ts`) — the absolutely-positioned list used for chat messages,
+  the content tabs and the log view. No scrollbar; the wrapper is a fixed huge scroll space and
+  items are held in place by anchoring. Everything below is about this one.
+- **`FiniteList`** (`finite-list.ts`) — used by `ChatList` (the sidebar). Known item count, uniform
+  item height, real scrollbar. An item's position is `index * itemSize`, so loading a different
+  window cannot move what is on screen — the no-jump invariant is structural rather than
+  maintained. See "FiniteList" at the end; most of this skill does not apply to it.
+
+`InfiniteList` is subtle: every visible item is positioned by a precomputed model, and the most
+common bugs are **visual jumps while scrolling**, **blank/partial-blank viewport**, and
+**stuck loading**.
 
 This skill gives you (1) the instrumentation to *catch* those bugs with enough detail to fix
 them, and (2) the invariants to *reason* about them. Read both halves before touching geometry —
@@ -59,8 +68,8 @@ list and every new one:
 
 ```js
 // In the page console / via evaluate_script:
-debugUI.virtualListDebug(true)         // preferred; warns if VirtualList not loaded yet
-globalThis.VirtualList.setDebugEnabled(true)   // same thing, lower level
+debugUI.virtualListDebug(true)          // preferred; warns if InfiniteList isn't loaded yet
+globalThis.InfiniteList.setDebugEnabled(true)   // same thing, lower level
 ```
 
 Disable with `false`. State is per-page, so a **reload drops it** — re-enable after navigating.
@@ -129,6 +138,7 @@ is integer-floored and shifts a few px on reflow, so sub-tolerance deviation isn
 | `scrolltop-out-of-range` | `scrollTop` outside `[0, scrollHeight-clientHeight]` (top-to-bottom convention) | bad scroll write |
 | `anchor-jump` | timer-detected: a keyed item still on screen moved by more than scrollTop should account for (`Δtop + Δscroll > JumpEps`) | re-layout without compensating scroll |
 | `render-jump` | render-detected: a visible anchored item moved during a render with no intentional scroll (bracketed inside `restoreScrollPosition`) | **the no-jump-invariant violation** — chase these for "it jumps when I scroll" |
+| `scroll-clamp` | the scroll range shrank out from under the viewport, leaving `scrollTop` pulled back and pinned at the new maximum | a wrapper resize while parked near the end. `anchor-jump` is *structurally blind* to this — content and scroll move together, so its `Δtop + Δscroll` is exactly 0 — which is why it needs its own check. The signature is deliberately narrow (range must shrink, scroll must go back, and the result must be pinned at the new max): the list has several scroll-write paths and only one stamps `lastProgrammaticScrollAt`, so a looser "scroll moved by itself" test is far too noisy |
 
 `render-jump` detail carries `{ key, before, after, drift, scrollType, renderIndex }` — the item
 that jumped and by how much, which is what you need to fix anchoring.
@@ -145,15 +155,11 @@ vs `scrollHeight`) over pixel reads where possible — they're stabler. Validate
 
 ## Part 2 — The invariants (what "correct" means)
 
-There are **two modes**, distinguished by whether the list has a scrollbar.
+This section is about **`InfiniteList`**. The scrollbar case (sidebar / contacts, `chat-list`) is
+`FiniteList` now — a separate component with its own, much smaller invariant set; see the
+"FiniteList" section below.
 
-### Mode A — with scrollbar (sidebar / contacts, `chat-list`)
-
-The scrollbar thumb position must be precise, so the list's **total size must be accurate** —
-the model's height has to match real content. Simpler to reason about; the main obligation is an
-honest total size.
-
-### Mode B — no scrollbar (chat view) — the hard one
+### `InfiniteList` — no scrollbar (chat view) — the hard one
 
 Everything is **absolutely positioned**: the container is positioned, and spacers plus
 fixed-size item slots place every item on one tall virtual vertical space. scrollTop=0 is the
@@ -263,15 +269,56 @@ coordinate system fixed and sidesteps the re-origin jumps.
 
 ## Files
 
-- `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list.ts` — the list; debug hooks:
+- `src/dotnet/UI.Blazor/Components/VirtualList/infinite-list.ts` — the anchored list; debug hooks:
   `static enableDebug` / `setDebugEnabled`, `startDebug`, `captureViewportAnchor`,
-  `noteRenderJump` wiring in `restoreScrollPosition`.
-- `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list-debug.ts` — the checker (this skill's core).
+  `noteRenderJump` wiring in `restoreScrollPosition`. Registers `globalThis.InfiniteList`.
+- `src/dotnet/UI.Blazor/Components/VirtualList/finite-list.ts` — the index-positioned list.
+  Registers `globalThis.FiniteList`; `FiniteList.debugDataLoadDelayMs` injects data latency.
+- `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list-debug.ts` — the checker. Currently
+  instruments `InfiniteList` only.
 - `src/dotnet/UI.Blazor/Services/DebugUI/debug-ui.ts` — `virtualListDebug()`, `listVirtualListViolations()`.
 - `tmp/vl-violation-watch.mjs` — the drain-to-file watchdog.
-- `IsInfinite` parameter (`VirtualList.razor.cs`), **default `true`**. Infinite = no scrollbar, wrapper
-  fixed to `InfiniteSize` (`10_000_000` — defined in both `VirtualList.razor.cs` and `virtual-list.ts`,
-  kept in sync; well under the browser's max element height) so the list behaves as ~infinite and can
-  over-scroll past the first/last item. Finite lists (`IsInfinite="false"` — currently just `ChatList`,
-  the sidebar) size-to-fit from the data source's total item count for an accurate scrollbar thumb. In infinite mode `geometryItemSize` is unused — spacers hold skeletons and the container is
-  positioned to retain anchor positions; finite mode uses `geometryItemSize` → `statistics.itemSize`.
+- `.claude/skills/virtual-list-debug/vl-scroll-trace.js` — per-frame scroll/position tracer; the only thing that catches a scroll clamp.
+- `InfiniteSize` (`10_000_000`) is defined in both `InfiniteList.razor.cs` and `infinite-list.ts`
+  and must stay in sync; it is well under the browser's max element height.
+
+## FiniteList
+
+`ChatList` is the only user. Model:
+
+```
+top(i)       = i * itemSize
+startSpacer  = firstLoadedIndex * itemSize
+endSpacer    = (N - lastLoadedIndex - 1) * itemSize
+wrapper      = content-driven (no explicit height write)
+```
+
+`itemSize` is measured from a **designated row** rather than estimated: `IVirtualListItem.HasRegularSize`
+(false for `ChatListItemModel.IsLastItemInBlock`, the pinned-block separator) projects to
+`data-vl-size-source` on the `li`, and the list measures the first such row and sticks to it. No running
+average, so nothing drifts.
+
+Two things that bit during development and will bite again:
+
+- **A render arrives in several Blazor batches.** The items and the render-state JSON land in
+  different ones (that is what `RenderAtDepth Depth="5"` is for). Laying spacers out against a
+  half-updated pair moves everything below them by the whole spacer delta. `endRender` gates on the
+  JSON's own `renderIndex` advancing — the only reliable "everything is consistent" signal.
+- **Capture the scroll anchor in the rAF read phase**, immediately before writing spacers — not on
+  scroll. An anchor captured at scroll time and restored later scrolls the user back to where they
+  were, which is the bug this component exists to remove.
+
+### Validating it
+
+`render-jump`/`anchor-jump` measure `dTop + dScroll`, which is identically 0 when the browser clamps
+`scrollTop` — so the checker is structurally blind to a clamp, and it equally *false-positives* on a
+correct compensation (content held still while scrollTop moves). For `FiniteList` the honest metric is:
+**while the user is not scrolling, does anything on screen move?**
+
+Rig: `/bot-army 400 0` as an admin test agent, mobile emulation, `FiniteList.debugDataLoadDelayMs = 2500`,
+then fling with a relative `scrollBy` loop and measure `dTop` of items visible in consecutive frames,
+outside the fling windows. Baseline: 618/620 idle frames with zero movement; the 2 outliers are a
+single-frame 250px flicker when landing at the very top mid-load.
+
+Note the tab must be foregrounded (`select_page` with `bringToFront`) — a backgrounded tab throttles
+rAF to ~1 Hz and every number you measure will be garbage.

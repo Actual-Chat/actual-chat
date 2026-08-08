@@ -24,7 +24,6 @@ const LateResizeMs = 2500;
 export interface VirtualListDebugTarget {
     readonly identity: string;
     readonly defaultEdge: VirtualListEdge;
-    readonly isInfinite: boolean;
     readonly isContainerRevealed: boolean;
     readonly ref: HTMLElement;
     readonly wrapperRef: HTMLElement;
@@ -125,6 +124,7 @@ export class VirtualListDebug {
     private lastResizeLogAt = 0;
     // No-jump tracking: a keyed item's viewport-relative position across consecutive checks.
     private lastAnchor: { key: string; top: number; scrollTop: number; time: number } | null = null;
+    private lastScroll: { scrollTop: number; scrollHeight: number; time: number } | null = null;
     private lastRendering = false;
     // Anchor captured at render start (before Blazor mutates nodes). Capturing later — inside
     // syncLayoutAfterRender — sees the DOM already shifted by inserted items but not yet compensated
@@ -196,6 +196,9 @@ export class VirtualListDebug {
         const jump = this.checkAnchorJump(s);
         if (jump)
             found.push(jump);
+        const clamp = this.checkScrollClamp(s);
+        if (clamp)
+            found.push(clamp);
         for (const v of found)
             this.report(v);
 
@@ -210,6 +213,39 @@ export class VirtualListDebug {
         const anchor = this.preRenderAnchor;
         this.preRenderAnchor = null;
         return anchor;
+    }
+
+    // A wrapper resize that leaves scrollTop past its new maximum makes the browser clamp it. Content
+    // and scroll then move together, so anchor-jump's Δtop + Δscroll is exactly 0 and it cannot see
+    // this — yet the user sees the list jump backwards. This check is the only one that catches it.
+    private checkScrollClamp(s: VlSnapshot): VlViolation | null {
+        const prev = this.lastScroll;
+        this.lastScroll = { scrollTop: s.scrollTop, scrollHeight: s.scrollHeight, time: s.time };
+        if (!prev || s.isRendering || s.time - prev.time > 300)
+            return null;
+
+        // The signature is specific, and deliberately so: the list has several scroll-write paths and
+        // only one of them stamps lastProgrammaticScrollAt, so "scroll moved on its own" alone is far
+        // too noisy. A clamp is the scroll range shrinking out from under the viewport, which leaves
+        // scrollTop pulled back and pinned at the new maximum.
+        const dHeight = s.scrollHeight - prev.scrollHeight;
+        const dScroll = s.scrollTop - prev.scrollTop;
+        if (dHeight >= -JumpEps || dScroll >= -JumpEps)
+            return null;
+        if (Math.abs(s.scrollTop - (s.scrollHeight - s.clientHeight)) > JumpEps)
+            return null; // not pinned at the new max — something else moved the scroll
+
+        return {
+            code: 'scroll-clamp',
+            message: `scrollHeight shrank ${Math.round(dHeight)}px under the viewport, pulling scrollTop back ${Math.round(-dScroll)}px`,
+            detail: {
+                dScroll: Math.round(dScroll),
+                dHeight: Math.round(dHeight),
+                scrollTop: Math.round(s.scrollTop),
+                scrollHeight: s.scrollHeight,
+            },
+            snapshot: s,
+        };
     }
 
     // No-jump invariant: between two consecutive checks a keyed item that is still on screen must
@@ -384,7 +420,7 @@ export class VirtualListDebug {
             clientHeight: el.clientHeight,
             isRendering: vl.isRendering,
             isScrolling: vl.state.isScrolling,
-            isInfinite: vl.isInfinite,
+            isInfinite: true,
             renderIndex: vl.state.renderState.renderIndex,
             hasFirst: vl.state.renderState.hasVeryFirstItem,
             hasLast: vl.state.renderState.hasVeryLastItem,
@@ -527,7 +563,7 @@ function viewportGap(_vl: VirtualListDebugTarget, s: VlSnapshot, geom: Geom): Vl
 // viewport); the top must be flush when Start-preferred (or taller). The non-preferred edge of a
 // short fully-loaded list legitimately has a gap, so it is not checked.
 function voidPastEdge(vl: VirtualListDebugTarget, s: VlSnapshot): VlViolation | null {
-    if (!s.isInfinite || s.isScrolling || s.isRendering || s.itemRange == null)
+    if (s.isScrolling || s.isRendering || s.itemRange == null)
         return null;
 
     const contentTop = s.itemRange[0];

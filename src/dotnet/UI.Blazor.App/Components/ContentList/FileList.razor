@@ -5,7 +5,7 @@
 
 <div class="content-list-with-visor">
 <ContentListDateVisor/>
-<VirtualList
+<InfiniteList
     @key="@Identity"
     Class="content-list-tab content-list-rows"
     Identity="@Identity"
@@ -46,7 +46,7 @@
     <Skeleton>
         <div class="c-skeleton"></div>
     </Skeleton>
-</VirtualList>
+</InfiniteList>
 </div>
 
 @code {

@@ -279,10 +279,10 @@ export class DebugUI {
      *  When on, every live list checks its geometry ~10×/s plus on data-request and render,
      *  logging inconsistencies and accumulating them in globalThis.__vlDebugs[identity]. */
     public static virtualListDebug(enable = true): void {
-        const vl = (globalThis as Record<string, unknown>).VirtualList as
+        const vl = (globalThis as Record<string, unknown>).InfiniteList as
             { setDebugEnabled?: (e: boolean) => unknown } | undefined;
         if (!vl?.setDebugEnabled) {
-            console.warn('virtualListDebug: VirtualList is not loaded yet');
+            console.warn('virtualListDebug: InfiniteList is not loaded yet');
             return;
         }
 

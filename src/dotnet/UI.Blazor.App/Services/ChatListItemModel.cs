@@ -6,4 +6,5 @@ public record ChatListItemModel(int Position, Chat.Chat Chat, bool IsLastItemInB
     public string RenderKey => Chat.Id.Value;
     public bool IsGroup => false;
     public bool ShouldSkipKey => false;
+    public bool HasRegularSize => !IsLastItemInBlock;
 }

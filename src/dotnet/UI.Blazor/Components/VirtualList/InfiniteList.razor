@@ -2,7 +2,7 @@
 @typeparam TItem
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Components.Internal
-@inherits ComputedStateComponent<UIHub, VirtualListData<TItem>>
+@inherits VirtualList<TItem>
 @{
 #pragma warning disable IL2026
 
@@ -20,7 +20,6 @@
     var hasVeryFirstItem = data.HasVeryFirstItem;
     var hasVeryLastItem = data.HasVeryLastItem;
     var showOverscrollCue = ShowOverscrollCue
-        && IsInfinite
         && hasVeryFirstItem;
     var spacerStyleDisplay = hasVeryFirstItem
         ? "none"

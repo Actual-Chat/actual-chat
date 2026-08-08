@@ -54,6 +54,12 @@ body.narrow .list-view-layout:has(.audio-panel-header) .virtual-list > .c-wrappe
     overflow-anchor: none;
 }
 
+/* FiniteList keeps the container in flow: its spacers cover the unloaded ranges exactly, so the
+   wrapper height is content-driven and there is no wrapper-height write to clamp scrollTop. */
+.virtual-list.finite-list > .c-wrapper > ul.c-virtual-container {
+    @apply relative;
+}
+
 .chat-list.virtual-list > .c-wrapper > ul.c-virtual-container {
     @apply gap-y-0.5;
 }
