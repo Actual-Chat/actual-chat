@@ -1,0 +1,19 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+{
+  "Validation_Required_Format": "{0} फ़ील्ड ज़रूरी है।",
+  "Validation_MinLength_Format": "{0} फ़ील्ड में कम से कम {1} अक्षर होने चाहिए।",
+  "Validation_EmailAddress_Format": "{0} एक मान्य ईमेल पता नहीं है।",
+
+  "Validation_EmailInvalid": "ईमेल पता अमान्य है।",
+  "Validation_PhoneInvalidCharacters": "फ़ोन नंबर में अमान्य वर्ण हैं।",
+  "Validation_PhoneTooShort": "फ़ोन नंबर बहुत छोटा है।",
+  "Validation_PhoneTooLong": "फ़ोन नंबर बहुत लंबा है।",
+  "Validation_PhoneOrEmailRequired": "फ़ोन नंबर या ईमेल पता दर्ज करें।",
+  "Validation_AliasTooShort": "कस्टम लिंक बहुत छोटा है।",
+  "Validation_AliasInvalidCharacters": "कस्टम लिंक में सिर्फ़ 0-9, a-Z, - और _ हो सकते हैं।",
+  "Validation_DeleteConfirmationRequired": "मिटाने की पुष्टि ज़रूरी है",
+  "Validation_DeleteConfirmationInvalid": "पुष्टि के लिए DELETE लिखें",
+
+  "Field_PhoneOrEmail": "फ़ोन या ईमेल"
+}

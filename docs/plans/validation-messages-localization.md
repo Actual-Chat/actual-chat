@@ -3,7 +3,7 @@
 **Date:** 2026-08-05
 **Branch:** `feat/3721-app-localization` (follow-up to `docs/plans/app-localization.md`
 and `docs/plans/server-strings-localization.md`)
-**Status:** Draft — design settled; decisions recorded in §8, remaining questions in §9
+**Status:** Approved — design settled, all questions resolved in §8
 
 ## 0. TL;DR
 
@@ -35,7 +35,7 @@ sites. The entire mechanism is one index plus a new `Messages.<lang>.json` catal
 needs for the ~264 constant server error messages, several of which are parameterized
 and therefore need exactly tier 2. One mechanism, two consumers.
 
-Cost: ~15 new catalog keys × 14 languages, ~1 day of code.
+Cost: ~16 new catalog keys × 14 languages, ~1 day of code.
 
 ## 1. Inventory — what is not localized today
 
@@ -68,7 +68,15 @@ too, but it is a server settings-binding message never shown to a user — out o
   "This link is available." / "This link is already in use."
 
 Not validation results, but they render into the same `form-section-validation` element
-and would look wrong left in English beside localized errors. Tier 1.
+and would look wrong left in English beside localized errors.
+
+**These go through the ordinary `Strings.*.json` catalog, not the reverse index.** They
+are static text the component owns, so `CODING_STYLE.md → Localization` applies as
+written: a typed `AppStrings` member, compile-time-safe. The reverse index exists for
+text the component *receives* and cannot key on; inverting a string we could simply have
+keyed is strictly worse. `LocalizedMessage` therefore wraps only the validation branch of
+`AliasValidationMessage` — passing an already-localized hint through it would reverse-look
+up a translated string, miss, and hand it to tier 3 for a second translation.
 
 ### 1.4 Built-in DataAnnotations messages
 
@@ -114,23 +122,42 @@ lines apart in the same file, with nothing tying them together:
 | `SignIn/Modal/ProviderSelectStep.razor:314` | *(none — label is inside the input)* | "Phone or email" | — |
 
 So a user editing their account sees a field labelled **User link** and, on error,
-*"The Short name field is required."* And `EmailSettings` already renders a **localized**
-label above a validation message that says "Email" in English — the exact bug this plan
-is meant to fix, shipped today, one line apart in intent.
+*"The Short name field is required."*
+
+**Correction (2026-08-07, from in-browser testing).** This section originally claimed
+`EmailSettings` renders a localized label above an English "Email" message. It didn't
+render a message at all — and neither did the account editor's email field, which is the
+only place `[AppEmailAddress]` reaches a user. Both passed `For="() => email"`, where
+`email` is a Razor-local copy (`var email = _form.Email ?? ""`): `FieldIdentifier.Create`
+keys on the closure object + `"email"` while the validator records against
+`(_form, "Email")`, so `GetValidationMessages` returned nothing and the slot stayed empty.
+`EmailSettings` compounded it — `IsValid(() => email)` was likewise always true, so
+`EmailVerifier` showed for invalid addresses.
+
+Fixed here (`For="() => _form.Email"`, `IsValid(() => _emailForm.Email)`) because the
+first row of §1.1's inventory — `Validators.Email`, "Email address is invalid." — is
+otherwise unreachable, and localizing text that never renders localizes nothing. A sweep
+of all 40 `For="() => …"` bindings found these two and no others. Note `EmailSettings`
+is currently not mounted anywhere (`51cdee9536 fix: settings modal` dropped its only
+usage), so only the account editor's fix is observable.
 
 This is why §4.4 takes `{0}` from the `FormSection`'s own label rather than maintaining a
 parallel catalog of field names keyed on `[Display]`. `[Display]` stays as it is, but
 stops being load-bearing.
 
-**Totals: 9 message sentences + 2 hints + 3 templates + 1 labelless-field fallback = 15
-catalog entries** (14 if `[RegularExpression]` is omitted per §1.4).
+**Totals: 9 message sentences + 3 templates + 1 labelless-field fallback = 13
+`Messages.*` entries** (12 if `[RegularExpression]` is omitted per §1.4), plus 3 ordinary
+`Strings.*` keys for the two hints above and the one below.
 
-One more is deferred, not counted: `ChatSettings/PlaceAliasRequiredValidationMessage.razor:4`
-renders a static "Custom place link should be set first." into the same
-`form-section-validation` slot and carries a `TODO: localize`. It is worth noting *how* it
-was missed — the inventory above was built by tracing `GetValidationMessages()`, and that
-component never calls it; it just renders a sentence into the validation slot. Sweeping
-for the CSS class instead is the reliable net, and should be re-run when implementing.
+`ChatSettings/PlaceAliasRequiredValidationMessage.razor:4` renders a static "Custom place
+link should be set first." into the same `form-section-validation` slot and carries a
+`TODO: localize`. It is worth noting *how* it was missed — the inventory above was built
+by tracing `GetValidationMessages()`, and that component never calls it; it just renders a
+sentence into the validation slot. Sweeping for the CSS class instead is the reliable net.
+That sweep (re-run at implementation time) returns exactly four sites: the two render
+sites listed in §2, this component, and `AudioBlobDownloadTestPage`'s `@_status` (a dev
+page, out of scope). Like the §1.3 hints, this one is component-owned static text, so it gets an
+ordinary `Strings.*` key rather than an indexed one.
 
 ## 2. Why the existing machinery doesn't reach them
 
@@ -329,11 +356,15 @@ Non-field args keep the pass-through rule, which remains correct without configu
 - `[RegularExpression]`'s `{1}` = "^DELETE$" → verbatim. Important: a translated regex
   would be a bug.
 
-**Which arg is the field name.** All three templates in use put it at `{0}`
-(§1.4). The plan therefore adopts *"arg 0 is the field name when the host supplies a
-label"* — a convention, pinned by a test, not a law. If a fourth template ever violates
-it, replace the convention with three lines of per-template metadata naming the field-arg
-index; that is the intended escape, and it is cheap.
+**Which arg is the field name.** All three templates in use put it at `{0}` (§1.4), so
+the rule is *"arg 0 of a `Validation_` template is the field name"*. The prefix condition
+is not decoration: §7's server messages are templated too
+(`"You can send up to {0} messages…"`) and their arg 0 is a count, not a field — an
+unconditional convention would substitute a form label into it. The index therefore
+decides per entry at build time, from the same prefix routing §4.2 already performs, and
+carries the answer on the compiled template. A fourth `Validation_` template that puts the
+field elsewhere replaces that one-line rule with an explicit arg index; the escape is
+already in the right place.
 
 **Fallback when there is no label.** `ProviderSelectStep.razor` renders its label inside
 the input and passes no `Label` (§1.5). For sites like it, fall back to a small
@@ -396,17 +427,31 @@ Call sites:
 
 - `FormSection.razor:49` → `<LocalizedMessage Text="@messages.First()" FieldLabel="@Label"/>`.
   `Label` is already a parameter of `FormSection`, so this is local — no plumbing.
-- `AliasValidationMessage.razor:21` → same, for the validation message and the two hints
-  at `:107-108`. It renders as a `ValidationMessage` fragment *inside* a `FormSection`,
-  so it cannot read `Label` itself — give it a `FieldLabel` parameter and pass it at the
-  three call sites (`OwnAccountEditorModal:45`, `EditChatTypeModalPage:79`,
-  `PlaceSettingsEditTypeModalPage:68`), each of which has the enclosing section's `Label`
-  a few lines above in the same markup block.
+- `AliasValidationMessage.razor:21` → same, for the validation branch only (the two hints
+  at `:107-108` are ordinary catalog strings — §1.3). It renders as a `ValidationMessage`
+  fragment *inside* a `FormSection`, so it cannot read `Label` itself and needs a
+  `FieldLabel` parameter.
 
-  Cascading it from `FormSection` was considered and rejected: `FormSection` currently
-  has no `CascadingValue` (it only *consumes* the `EditContext` cascade), so this would
-  add a component layer to the render path of all 28 forms to save three explicit
-  parameters.
+  **`FormSection.ValidationMessage` becomes a `RenderFragment<string>` carrying the
+  section's `Label`**, so the three call sites write `<ValidationMessage
+  Context="fieldLabel">` … `FieldLabel="@fieldLabel"`. Passing the literal instead
+  (`FieldLabel="Custom link"` four lines under `Label="Custom link"`) would recreate at
+  four lines' distance exactly the drift §4.4 exists to eliminate — and the screen pass
+  that localizes `Label` is precisely the moment someone would update one and not the
+  other.
+
+  The change is cheap: only four sites use the fragment (`OwnAccountEditorModal:44`,
+  `EditChatTypeModalPage:75`, `PlaceSettingsEditTypeModalPage:67`, and
+  `AudioBlobDownloadTestPage:18`). The fourth ignores the label but still needs an explicit
+  `Context=`: it nests inside `Form`'s own child content, and Razor rejects two enclosing
+  fragments both binding the implicit `context` (RZ9999). Worth knowing before assuming
+  "content that ignores the context compiles unchanged" — it does only where no outer
+  typed fragment is in scope.
+
+  Cascading from `FormSection` was considered and rejected: `FormSection` currently has
+  no `CascadingValue` (it only *consumes* the `EditContext` cascade), so this would add a
+  component layer to the render path of all 28 forms. `RenderFragment<string>` gets the
+  same structural coupling with no extra component and no cascade.
 
 ### 4.7 Extending `AppLocalizationTest` to a second catalog
 
@@ -438,16 +483,18 @@ bijection invariant keeps its full strength instead of acquiring a carve-out.
    `UI.Blazor.csproj`; teach `AppStringLocalizer.LoadAll` to load and merge both files.
 2. `MessageIndex` + `MessageLocalizer` in `UI.Blazor/Resources/`, with the index-build
    validations (adjacent placeholders, per-index uniqueness).
-3. `LocalizedMessage.razor` with its `FieldLabel` parameter; wire both render sites and
-   the three `AliasValidationMessage` call sites (§4.6). Nothing changes yet — the index
-   is empty, everything falls through to English.
+3. `LocalizedMessage.razor` with its `FieldLabel` parameter; `FormSection.ValidationMessage`
+   → `RenderFragment<string>`; wire both render sites and the three
+   `AliasValidationMessage` call sites (§4.6). Nothing changes yet — the index is empty,
+   everything falls through to English.
 4. `IUITextLocalizer` in `UI.Blazor/Services/`; implement on `LocalizationUI`; register
    in `BlazorUIAppModule`.
 5. Parameterize `AppLocalizationTest` over the two catalogs (§4.7).
-6. Add the 15 keys to `Messages.en.json`, English values matching runtime output exactly.
+6. Add the 13 keys to `Messages.en.json`, English values matching runtime output exactly,
+   and the 3 ordinary `Strings.*` keys of §1.3 with their `AppStrings` members.
 7. Write the guard test (§5). It should pass at this point — that is what proves step 6
    got the English right.
-8. Translate into the other 13 languages (13 × 15 = 195 strings).
+8. Translate into the other 13 languages (13 × 16 = 208 strings).
 9. Fallback telemetry (§5) + render tests.
 
 Steps 1–5 are behavior-neutral and can land independently of the translation work.
@@ -470,6 +517,11 @@ in the sequence where English output changes, so it wants its own commit.
   unsubmittable. Mitigated by the fact that both of those messages are catalogued at
   tier 1 from day one. The rule to keep: anything with a literal token or a technical
   constraint gets an exact entry, never the fallback.
+- **Tier 3 does not substitute the label.** It hands the raw English message to the
+  translator, so an uncatalogued templated message comes back naming the field by its
+  `[Display]` value ("Short name") rather than by its label ("User link"). The fallback
+  is therefore not merely lower-quality than tiers 1–2, it is *inconsistent* with them —
+  which is another reason the guard test is what keeps the three templates catalogued.
 - **English-value drift.** §4.5's byte-match requirement is unusual and will surprise
   someone. The separate `Messages.*` file is the main mitigation (§4.2); back it with a
   header comment naming the constraint and pointing at the guard test.
@@ -478,9 +530,10 @@ in the sequence where English output changes, so it wants its own commit.
   has a different review standard — but it is real overhead.
 - **Index build cost** is a one-time static parse of a small JSON — negligible, and
   unlike the single-file variant it does not re-parse the 373-key catalog.
-- **The "arg 0 is the field name" convention** (§4.4) is not enforced by the type system.
-  A future template that puts the field elsewhere would silently substitute the label
-  into the wrong slot. Pinned by a test; the escape is per-template metadata.
+- **The "arg 0 of a `Validation_` template is the field name" rule** (§4.4) is not
+  enforced by the type system. A future template that puts the field elsewhere would
+  silently substitute the label into the wrong slot. Pinned by a test; the escape is an
+  explicit arg index on the compiled template.
 - **Label quality now shows up in error messages.** Substituting the label means a vague
   or over-long label degrades the message too ("The Custom link field is required."). Not
   new — it is the same string the user already sees — but it does couple two things that
@@ -528,9 +581,12 @@ and `AsyncDataAnnotationsValidator`), submit invalid input and assert the render
 name (`OwnAccountEditorModal`'s alias field) — that case is the whole point of §4.4 and
 would otherwise go untested.
 
-**Telemetry.** Count tier-3 fallbacks per distinct message. This is the production
-signal for "what should be catalogued next" and the backstop for a guard test that
-missed a path.
+**Telemetry.** Count tier-3 fallbacks — the production signal for "what should be
+catalogued next" and the backstop for a guard test that missed a path. Note the counter
+must **not** be tagged with the message: uncatalogued text is unbounded by definition, and
+that is precisely the wrong thing to make a metric dimension. Ship an untagged counter
+(`app.ui.localization.fallback.count`) for the rate, and log each *distinct* message once
+at Warning for the identity — logs tolerate high cardinality, metrics don't.
 
 ## 6. Rejected alternatives
 
@@ -638,13 +694,44 @@ should be preserved.")]`, which exists because `MinLengthAttribute` reflects on 
 With `MinLength` gone it is probably dead, but it is AOT-trimming machinery and this
 repo does NativeAOT builds — verify against an AOT build before removing.
 
+**Q6 — should this plan absorb the form-label localization pass it now depends on?**
+*(2026-08-06)* Decided: **no — stay narrow.** §4.4 renders the label into the message, so
+until a screen's labels are localized its messages carry an English noun in a translated
+sentence. That is acceptable, for three reasons in ascending weight:
+
+1. **The output is self-consistent by construction.** The message names the field with the
+   exact string rendered above (or, under `IsLabelInsideInput`, inside — `FormSection.razor:35`
+   renders the label either way) the input. English label → English noun the user is
+   looking at. There is no state in which message and screen disagree. The rejected
+   `Field_*` catalog would have produced the opposite: a *translated* field name above an
+   *English* label, which reads as a bug rather than as an untranslated screen. The
+   coupling §4.4 introduces is what makes the interim state benign.
+2. **A label-only pass produces a worse artifact than doing nothing.** Of the 27
+   components hosting a `FormSection`, exactly 4 use the localizer at all —
+   `TranscriptionSettings`, `ApiKeyCreateFormPage`, `EmailSettings`, `LanguageSettings`,
+   all Settings-modal tabs, i.e. `app-localization.md` §2's MVP screen. The other 23 have
+   **zero** `L.` usages; they are untouched, not half-done. Translating one attribute in
+   each yields a modal whose title is "Edit account" and whose button is "Save", with one
+   translated noun inside one error sentence — and Phase 2 reopens every one of those
+   files anyway, so the review cost is paid twice.
+3. **Where it matters today it is already correct.** Both validated forms on the one
+   localized screen (`EmailSettings` → `Email`, `ApiKeyCreateFormPage` → `Name` /
+   `ExpiresInDaysText`) already pass `Label="@L.*"`, so their messages are fully localized
+   on day one with no label work at all.
+
+The rule this leaves behind, and the only place the two efforts touch: **a screen's Phase-2
+localization pass localizes its `FormSection` `Label`s, and its validation messages follow
+with no extra work.**
+
+*Confirmed on the first such pass (2026-08-07, `OwnAccountEditorModal`).* Localizing that
+screen needed 5 new keys — the four field labels already existed as `YourAccount_*`, and
+`Common_Save`/`Common_Cancel` were reused — plus `Common_Optional` in the shared `Label`
+component and `Common_Verified`/`Common_Unverified` in `VerificationStatus`. Its
+validation messages changed from `Заполните поле «Name».` to `Заполните поле «Имя».` with
+no edit to any validator, attribute, catalog entry or form model: the label is the only
+input. That is the entire mechanism paying off, and the reason to keep the two efforts
+separate.
+
 ## 9. Open questions
 
-1. **Form labels are still English — and this design now depends on them.** §4.4 renders
-   the label into the validation message, so until labels are localized the message
-   carries an English noun inside a translated sentence (no worse than a `Field_*`
-   catalog would have been, and it fixes itself when labels land — but the coupling is
-   now real). `OwnAccountEditorModal.razor` alone has `Title="Edit account"`,
-   `Label="Name"`, `Label="User link"`; `EmailSettings.razor:24` is already localized, so
-   the work is half-done today. Should this plan absorb the label pass for the ~11 form
-   sections it touches, or stay narrow and accept the interim mixed-language output?
+None.

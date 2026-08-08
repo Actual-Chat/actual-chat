@@ -1,4 +1,5 @@
 using ActualChat.Concurrency;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -8,7 +9,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <see cref="ITranslations.GetTranslatedUIText"/>, concurrent calls are throttled and deduplicated
 /// by a <see cref="ConcurrentProcessor{TKey,TResult}"/>.
 /// </summary>
-public class LocalizationUI : UIServiceBase<AppUIHub>, IComputeService, IAsyncDisposable
+public class LocalizationUI : UIServiceBase<AppUIHub>, IUITextLocalizer, IComputeService, IAsyncDisposable
 {
     private const int ConcurrencyLevel = 10;
     private readonly ConcurrentProcessor<Key, string> _localizations;

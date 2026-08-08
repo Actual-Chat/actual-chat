@@ -1,0 +1,22 @@
+// Reverse-indexed catalog: MessageIndex maps a runtime-produced English message back to
+// its key here, so the English value below MUST byte-match what the app actually produces.
+// ValidationMessageLocalizationTest is what keeps that true - see
+// docs/plans/validation-messages-localization.md.
+// Ordinary UI text belongs in Strings.*.json, not here.
+{
+  "Validation_Required_Format": "The {0} field is required.",
+  "Validation_MinLength_Format": "The field {0} must be a string or array type with a minimum length of '{1}'.",
+  "Validation_EmailAddress_Format": "The {0} field is not a valid e-mail address.",
+
+  "Validation_EmailInvalid": "Email address is invalid.",
+  "Validation_PhoneInvalidCharacters": "Phone number contains invalid characters.",
+  "Validation_PhoneTooShort": "Phone number is too short.",
+  "Validation_PhoneTooLong": "Phone number is too long.",
+  "Validation_PhoneOrEmailRequired": "Enter a phone number or email address.",
+  "Validation_AliasTooShort": "Custom link is too short.",
+  "Validation_AliasInvalidCharacters": "Custom link should contain only 0-9, a-Z, - and _.",
+  "Validation_DeleteConfirmationRequired": "Delete confirmation is required",
+  "Validation_DeleteConfirmationInvalid": "Please enter DELETE to confirm",
+
+  "Field_PhoneOrEmail": "Phone or email"
+}

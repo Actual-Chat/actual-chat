@@ -34,6 +34,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<IStringLocalizer<Strings>, AppStringLocalizer>();
         services.AddScoped<IStringLocalizer>(c => c.GetRequiredService<IStringLocalizer<Strings>>());
         fusion.AddService<LocalizationUI>(ServiceLifetime.Scoped);
+        services.AddAlias<IUITextLocalizer, LocalizationUI>(ServiceLifetime.Scoped);
         // Replaces the base UIActionFailureTracker (registered by fusion.AddBlazor) with one that
         // localizes failure messages before publishing them.
         services.AddScoped<UIActionFailureTracker>(c => new

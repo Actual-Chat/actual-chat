@@ -1,0 +1,19 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+{
+  "Validation_Required_Format": "“{0}”为必填项。",
+  "Validation_MinLength_Format": "“{0}”至少需要 {1} 个字符。",
+  "Validation_EmailAddress_Format": "“{0}”不是有效的电子邮件地址。",
+
+  "Validation_EmailInvalid": "电子邮件地址无效。",
+  "Validation_PhoneInvalidCharacters": "电话号码包含无效字符。",
+  "Validation_PhoneTooShort": "电话号码太短。",
+  "Validation_PhoneTooLong": "电话号码太长。",
+  "Validation_PhoneOrEmailRequired": "请输入电话号码或电子邮件地址。",
+  "Validation_AliasTooShort": "自定义链接太短。",
+  "Validation_AliasInvalidCharacters": "自定义链接只能包含 0-9、a-Z、- 和 _。",
+  "Validation_DeleteConfirmationRequired": "需要确认删除",
+  "Validation_DeleteConfirmationInvalid": "请输入 DELETE 以确认",
+
+  "Field_PhoneOrEmail": "电话或邮箱"
+}

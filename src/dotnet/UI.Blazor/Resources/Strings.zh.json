@@ -408,5 +408,15 @@
   "NotificationMode_Title": "通知:",
   "NotificationMode_AllMessages": "所有消息",
   "NotificationMode_ImportantOnly": "仅重要消息",
-  "NotificationMode_Muted": "已静音"
+  "NotificationMode_Muted": "已静音",
+
+  "Alias_LinkAvailable": "该链接可用。",
+  "Alias_LinkInUse": "该链接已被占用。",
+  "Alias_PlaceLinkRequired": "请先为空间设置自定义链接。",
+
+  "AccountEditor_Title": "编辑账号",
+  "AccountEditor_DeleteAccount": "删除账号",
+  "Common_Optional": "（可选）",
+  "Common_Verified": "已验证",
+  "Common_Unverified": "未验证"
 }

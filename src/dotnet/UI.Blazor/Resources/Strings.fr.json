@@ -408,5 +408,15 @@
   "NotificationMode_Title": "Notifications :",
   "NotificationMode_AllMessages": "Tous les messages",
   "NotificationMode_ImportantOnly": "Importants uniquement",
-  "NotificationMode_Muted": "Désactivées"
+  "NotificationMode_Muted": "Désactivées",
+
+  "Alias_LinkAvailable": "Ce lien est disponible.",
+  "Alias_LinkInUse": "Ce lien est déjà utilisé.",
+  "Alias_PlaceLinkRequired": "Définissez d’abord un lien personnalisé pour l’espace.",
+
+  "AccountEditor_Title": "Modifier le compte",
+  "AccountEditor_DeleteAccount": "Supprimer le compte",
+  "Common_Optional": " (facultatif)",
+  "Common_Verified": "Vérifié",
+  "Common_Unverified": "Non vérifié"
 }

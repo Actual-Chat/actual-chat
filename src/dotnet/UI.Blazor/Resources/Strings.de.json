@@ -408,5 +408,15 @@
   "NotificationMode_Title": "Benachrichtigungen:",
   "NotificationMode_AllMessages": "Alle Nachrichten",
   "NotificationMode_ImportantOnly": "Nur wichtige",
-  "NotificationMode_Muted": "Stummgeschaltet"
+  "NotificationMode_Muted": "Stummgeschaltet",
+
+  "Alias_LinkAvailable": "Dieser Link ist verfügbar.",
+  "Alias_LinkInUse": "Dieser Link ist bereits vergeben.",
+  "Alias_PlaceLinkRequired": "Lege zuerst einen eigenen Link für den Place fest.",
+
+  "AccountEditor_Title": "Konto bearbeiten",
+  "AccountEditor_DeleteAccount": "Konto löschen",
+  "Common_Optional": " (optional)",
+  "Common_Verified": "Bestätigt",
+  "Common_Unverified": "Nicht bestätigt"
 }

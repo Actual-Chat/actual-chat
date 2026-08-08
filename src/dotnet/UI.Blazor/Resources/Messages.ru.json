@@ -1,0 +1,19 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+{
+  "Validation_Required_Format": "Заполните поле «{0}».",
+  "Validation_MinLength_Format": "Поле «{0}» должно содержать не менее {1} символов.",
+  "Validation_EmailAddress_Format": "«{0}» — некорректный адрес электронной почты.",
+
+  "Validation_EmailInvalid": "Некорректный адрес электронной почты.",
+  "Validation_PhoneInvalidCharacters": "Номер телефона содержит недопустимые символы.",
+  "Validation_PhoneTooShort": "Номер телефона слишком короткий.",
+  "Validation_PhoneTooLong": "Номер телефона слишком длинный.",
+  "Validation_PhoneOrEmailRequired": "Введите номер телефона или адрес электронной почты.",
+  "Validation_AliasTooShort": "Пользовательская ссылка слишком короткая.",
+  "Validation_AliasInvalidCharacters": "Пользовательская ссылка может содержать только 0-9, a-Z, - и _.",
+  "Validation_DeleteConfirmationRequired": "Требуется подтверждение удаления",
+  "Validation_DeleteConfirmationInvalid": "Введите DELETE для подтверждения",
+
+  "Field_PhoneOrEmail": "Телефон или эл. почта"
+}

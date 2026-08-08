@@ -408,5 +408,15 @@
   "NotificationMode_Title": "通知:",
   "NotificationMode_AllMessages": "すべてのメッセージ",
   "NotificationMode_ImportantOnly": "重要なもののみ",
-  "NotificationMode_Muted": "ミュート"
+  "NotificationMode_Muted": "ミュート",
+
+  "Alias_LinkAvailable": "このリンクは使用できます。",
+  "Alias_LinkInUse": "このリンクはすでに使われています。",
+  "Alias_PlaceLinkRequired": "先にスペースのカスタムリンクを設定してください。",
+
+  "AccountEditor_Title": "アカウントを編集",
+  "AccountEditor_DeleteAccount": "アカウントを削除",
+  "Common_Optional": "（任意）",
+  "Common_Verified": "確認済み",
+  "Common_Unverified": "未確認"
 }

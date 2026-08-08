@@ -408,5 +408,15 @@
   "NotificationMode_Title": "Сповіщення:",
   "NotificationMode_AllMessages": "Усі повідомлення",
   "NotificationMode_ImportantOnly": "Лише важливі",
-  "NotificationMode_Muted": "Вимкнені"
+  "NotificationMode_Muted": "Вимкнені",
+
+  "Alias_LinkAvailable": "Це посилання вільне.",
+  "Alias_LinkInUse": "Це посилання вже зайняте.",
+  "Alias_PlaceLinkRequired": "Спочатку задайте власне посилання простору.",
+
+  "AccountEditor_Title": "Редагування облікового запису",
+  "AccountEditor_DeleteAccount": "Видалити обліковий запис",
+  "Common_Optional": " (необов’язково)",
+  "Common_Verified": "Підтверджено",
+  "Common_Unverified": "Не підтверджено"
 }

@@ -408,5 +408,15 @@
   "NotificationMode_Title": "सूचनाएँ:",
   "NotificationMode_AllMessages": "सभी संदेश",
   "NotificationMode_ImportantOnly": "केवल महत्वपूर्ण",
-  "NotificationMode_Muted": "म्यूट"
+  "NotificationMode_Muted": "म्यूट",
+
+  "Alias_LinkAvailable": "यह लिंक उपलब्ध है।",
+  "Alias_LinkInUse": "यह लिंक पहले से इस्तेमाल में है।",
+  "Alias_PlaceLinkRequired": "पहले स्पेस के लिए कस्टम लिंक सेट करें।",
+
+  "AccountEditor_Title": "खाता संपादित करें",
+  "AccountEditor_DeleteAccount": "खाता मिटाएँ",
+  "Common_Optional": " (वैकल्पिक)",
+  "Common_Verified": "सत्यापित",
+  "Common_Unverified": "असत्यापित"
 }

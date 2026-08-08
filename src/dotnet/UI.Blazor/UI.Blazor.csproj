@@ -18,6 +18,7 @@
        satellite resources (the ".es." in the filename would otherwise trigger that). -->
   <ItemGroup>
     <EmbeddedResource Include="Resources\Strings.*.json" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="Resources\Messages.*.json" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>
 
   <ItemGroup>

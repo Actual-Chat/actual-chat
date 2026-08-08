@@ -1,13 +1,17 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
+@using Microsoft.Extensions.Localization
 
 <label for="@(InputId.NullIfEmpty() ?? "-")" class="@Class">
     <span>@Text</span>
     @if (!IsRequired) {
-        <span> (optional)</span>
+        <span>@L.Common_Optional</span>
     }
 </label>
 
 @code {
+    // TODO: instead inherit FusionComponentBase<UIHub> and remove this line
+    [Inject] private IStringLocalizer L { get; init; } = null!;
+
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string InputId { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";

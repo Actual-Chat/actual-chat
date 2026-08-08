@@ -408,5 +408,15 @@
   "NotificationMode_Title": "Notifications:",
   "NotificationMode_AllMessages": "All messages",
   "NotificationMode_ImportantOnly": "Important only",
-  "NotificationMode_Muted": "Muted"
+  "NotificationMode_Muted": "Muted",
+
+  "Alias_LinkAvailable": "This link is available.",
+  "Alias_LinkInUse": "This link is already in use.",
+  "Alias_PlaceLinkRequired": "Custom place link should be set first.",
+
+  "AccountEditor_Title": "Edit account",
+  "AccountEditor_DeleteAccount": "Delete account",
+  "Common_Optional": " (optional)",
+  "Common_Verified": "Verified",
+  "Common_Unverified": "Unverified"
 }

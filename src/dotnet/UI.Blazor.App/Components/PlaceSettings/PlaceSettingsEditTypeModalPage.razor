@@ -64,10 +64,11 @@
                                  InputId="@_form.AliasIdFormId"
                                  Label="Custom link"
                                  IsLabelInsideInput="true">
-                        <ValidationMessage>
+                        <ValidationMessage Context="fieldLabel">
                             <AliasValidationMessage
                                 For="@(() => _form.ActualAliasId)"
                                 Scope="@AliasValidationMessage.AliasScope.Place"
+                                FieldLabel="@fieldLabel"
                                 CurrentAliasId="@_form.CurrentAliasId"
                                 AliasIdReader="@(() => _form.ActualAliasId)" />
                         </ValidationMessage>

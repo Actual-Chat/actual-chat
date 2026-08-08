@@ -408,5 +408,15 @@
   "NotificationMode_Title": "알림:",
   "NotificationMode_AllMessages": "모든 메시지",
   "NotificationMode_ImportantOnly": "중요한 알림만",
-  "NotificationMode_Muted": "음소거"
+  "NotificationMode_Muted": "음소거",
+
+  "Alias_LinkAvailable": "사용할 수 있는 링크입니다.",
+  "Alias_LinkInUse": "이미 사용 중인 링크입니다.",
+  "Alias_PlaceLinkRequired": "먼저 스페이스의 맞춤 링크를 설정하세요.",
+
+  "AccountEditor_Title": "계정 편집",
+  "AccountEditor_DeleteAccount": "계정 삭제",
+  "Common_Optional": " (선택 사항)",
+  "Common_Verified": "인증됨",
+  "Common_Unverified": "미인증"
 }

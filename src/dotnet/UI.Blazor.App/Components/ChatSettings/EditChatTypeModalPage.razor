@@ -72,13 +72,14 @@
                                  InputId="@_form.AliasIdFormId"
                                  Label="Custom link"
                                  IsLabelInsideInput="true">
-                        <ValidationMessage>
+                        <ValidationMessage Context="fieldLabel">
                             @if (_isPlaceAliasRequired) {
                                 <PlaceAliasRequiredValidationMessage/>
                             } else {
                                 <AliasValidationMessage
                                     For="@(() => _form.ActualAliasId)"
                                     Scope="@AliasValidationMessage.AliasScope.Chat(_placeId)"
+                                    FieldLabel="@fieldLabel"
                                     CurrentAliasId="@_form.CurrentAliasId"
                                     AliasIdReader="@(() => _form.ActualAliasId)"/>
                             }

@@ -408,5 +408,15 @@
   "NotificationMode_Title": "Bildirimler:",
   "NotificationMode_AllMessages": "Tüm mesajlar",
   "NotificationMode_ImportantOnly": "Yalnızca önemliler",
-  "NotificationMode_Muted": "Sessize alındı"
+  "NotificationMode_Muted": "Sessize alındı",
+
+  "Alias_LinkAvailable": "Bu bağlantı kullanılabilir.",
+  "Alias_LinkInUse": "Bu bağlantı zaten kullanılıyor.",
+  "Alias_PlaceLinkRequired": "Önce alan için özel bağlantı belirleyin.",
+
+  "AccountEditor_Title": "Hesabı düzenle",
+  "AccountEditor_DeleteAccount": "Hesabı sil",
+  "Common_Optional": " (isteğe bağlı)",
+  "Common_Verified": "Doğrulandı",
+  "Common_Unverified": "Doğrulanmadı"
 }

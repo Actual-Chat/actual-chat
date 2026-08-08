@@ -408,5 +408,15 @@
   "NotificationMode_Title": "Уведомления:",
   "NotificationMode_AllMessages": "Все сообщения",
   "NotificationMode_ImportantOnly": "Только важные",
-  "NotificationMode_Muted": "Отключены"
+  "NotificationMode_Muted": "Отключены",
+
+  "Alias_LinkAvailable": "Эта ссылка свободна.",
+  "Alias_LinkInUse": "Эта ссылка уже занята.",
+  "Alias_PlaceLinkRequired": "Сначала задайте пользовательскую ссылку пространства.",
+
+  "AccountEditor_Title": "Редактирование аккаунта",
+  "AccountEditor_DeleteAccount": "Удалить аккаунт",
+  "Common_Optional": " (необязательно)",
+  "Common_Verified": "Подтверждено",
+  "Common_Unverified": "Не подтверждено"
 }

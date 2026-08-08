@@ -1,0 +1,19 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+{
+  "Validation_Required_Format": "'{0}'은(는) 필수 항목입니다.",
+  "Validation_MinLength_Format": "'{0}'은(는) {1}자 이상이어야 합니다.",
+  "Validation_EmailAddress_Format": "'{0}'은(는) 유효한 이메일 주소가 아닙니다.",
+
+  "Validation_EmailInvalid": "이메일 주소가 올바르지 않습니다.",
+  "Validation_PhoneInvalidCharacters": "전화번호에 사용할 수 없는 문자가 있습니다.",
+  "Validation_PhoneTooShort": "전화번호가 너무 짧습니다.",
+  "Validation_PhoneTooLong": "전화번호가 너무 깁니다.",
+  "Validation_PhoneOrEmailRequired": "전화번호 또는 이메일 주소를 입력하세요.",
+  "Validation_AliasTooShort": "맞춤 링크가 너무 짧습니다.",
+  "Validation_AliasInvalidCharacters": "맞춤 링크에는 0-9, a-Z, - 및 _ 만 사용할 수 있습니다.",
+  "Validation_DeleteConfirmationRequired": "삭제 확인이 필요합니다",
+  "Validation_DeleteConfirmationInvalid": "확인하려면 DELETE를 입력하세요",
+
+  "Field_PhoneOrEmail": "전화번호 또는 이메일"
+}

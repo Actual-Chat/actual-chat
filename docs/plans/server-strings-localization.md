@@ -174,6 +174,20 @@ loader exists but is private to `AppStringLocalizer`) — hence the promotions b
 
 ### 4.1 Error messages (category A)
 
+> **Update (2026-08-06): the mechanism this section describes now exists — don't write a
+> second one.** `docs/plans/validation-messages-localization.md` shipped `MessageIndex` +
+> `MessageLocalizer` (`UI.Blazor/Resources/`) as a *general* message-localization index:
+> exact match, `{0}`-template reverse-match, and a `Messages.<lang>.json` catalog whose
+> `Error_` prefix is reserved for exactly this plan's ~264 constants. `LocalizationUI`
+> (behind `IUITextLocalizer`) is the AI fallback, already cached by the compute cache, and
+> `LocalizedMessage` is the sync-first / async-swap render component.
+>
+> So `ServerMessageLocalizer` should not be written: its step 2 is `MessageIndex`'s exact
+> index, its step 4 is `IUITextLocalizer`, and the "optional later hardening" template-match
+> below is already implemented and tested. What remains from this section is the *content*
+> work — the generator script, `Error_*` entries in `Messages.en.json`, translations, and
+> the drift test — plus everything from §4.3 onward, which is unaffected.
+
 ```
 server throw StandardError.Constraint("You can't …")
         │ RPC (message text only)

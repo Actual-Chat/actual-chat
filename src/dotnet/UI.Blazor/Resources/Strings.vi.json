@@ -408,5 +408,15 @@
   "NotificationMode_Title": "Thông báo:",
   "NotificationMode_AllMessages": "Tất cả tin nhắn",
   "NotificationMode_ImportantOnly": "Chỉ tin quan trọng",
-  "NotificationMode_Muted": "Đã tắt tiếng"
+  "NotificationMode_Muted": "Đã tắt tiếng",
+
+  "Alias_LinkAvailable": "Liên kết này khả dụng.",
+  "Alias_LinkInUse": "Liên kết này đã được sử dụng.",
+  "Alias_PlaceLinkRequired": "Trước tiên hãy đặt liên kết tùy chỉnh cho không gian.",
+
+  "AccountEditor_Title": "Chỉnh sửa tài khoản",
+  "AccountEditor_DeleteAccount": "Xóa tài khoản",
+  "Common_Optional": " (tùy chọn)",
+  "Common_Verified": "Đã xác minh",
+  "Common_Unverified": "Chưa xác minh"
 }

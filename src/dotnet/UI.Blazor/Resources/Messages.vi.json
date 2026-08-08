@@ -1,0 +1,19 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+{
+  "Validation_Required_Format": "Trường “{0}” là bắt buộc.",
+  "Validation_MinLength_Format": "Trường “{0}” phải có ít nhất {1} ký tự.",
+  "Validation_EmailAddress_Format": "“{0}” không phải là địa chỉ email hợp lệ.",
+
+  "Validation_EmailInvalid": "Địa chỉ email không hợp lệ.",
+  "Validation_PhoneInvalidCharacters": "Số điện thoại chứa ký tự không hợp lệ.",
+  "Validation_PhoneTooShort": "Số điện thoại quá ngắn.",
+  "Validation_PhoneTooLong": "Số điện thoại quá dài.",
+  "Validation_PhoneOrEmailRequired": "Hãy nhập số điện thoại hoặc địa chỉ email.",
+  "Validation_AliasTooShort": "Liên kết tùy chỉnh quá ngắn.",
+  "Validation_AliasInvalidCharacters": "Liên kết tùy chỉnh chỉ được chứa 0-9, a-Z, - và _.",
+  "Validation_DeleteConfirmationRequired": "Cần xác nhận xóa",
+  "Validation_DeleteConfirmationInvalid": "Nhập DELETE để xác nhận",
+
+  "Field_PhoneOrEmail": "Điện thoại hoặc email"
+}

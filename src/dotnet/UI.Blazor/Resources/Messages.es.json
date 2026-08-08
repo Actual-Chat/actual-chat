@@ -1,0 +1,19 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+{
+  "Validation_Required_Format": "El campo «{0}» es obligatorio.",
+  "Validation_MinLength_Format": "El campo «{0}» debe tener al menos {1} caracteres.",
+  "Validation_EmailAddress_Format": "«{0}» no es una dirección de correo válida.",
+
+  "Validation_EmailInvalid": "La dirección de correo no es válida.",
+  "Validation_PhoneInvalidCharacters": "El número de teléfono contiene caracteres no válidos.",
+  "Validation_PhoneTooShort": "El número de teléfono es demasiado corto.",
+  "Validation_PhoneTooLong": "El número de teléfono es demasiado largo.",
+  "Validation_PhoneOrEmailRequired": "Introduce un número de teléfono o una dirección de correo.",
+  "Validation_AliasTooShort": "El enlace personalizado es demasiado corto.",
+  "Validation_AliasInvalidCharacters": "El enlace personalizado solo puede contener 0-9, a-Z, - y _.",
+  "Validation_DeleteConfirmationRequired": "Se requiere la confirmación de eliminación",
+  "Validation_DeleteConfirmationInvalid": "Escribe DELETE para confirmar",
+
+  "Field_PhoneOrEmail": "Teléfono o correo"
+}

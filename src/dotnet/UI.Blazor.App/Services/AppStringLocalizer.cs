@@ -60,15 +60,18 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
     private static Dictionary<Language, Dictionary<string, string>> LoadAll()
     {
         var result = new Dictionary<Language, Dictionary<string, string>>();
-        var assembly = typeof(Strings).Assembly;
         foreach (var lang in LanguageUI.SupportedUILanguages) {
-            using var stream = assembly.GetManifestResourceStream($"Strings.{lang.PrimarySubtag}.json");
-            if (stream == null)
+            var subtag = lang.IsoCode;
+            var strings = StringCatalog.Load(StringCatalog.StringsPrefix, subtag);
+            if (strings == null)
                 continue;
 
-            var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(stream);
-            if (dict != null)
-                result[lang] = dict;
+            var messages = StringCatalog.Load(StringCatalog.MessagesPrefix, subtag);
+            if (messages != null)
+                foreach (var (key, value) in messages)
+                    strings[key] = value;
+            // TODO(FC): check again if we need to merge 2 different translation sets into a single one?
+            result[lang] = strings;
         }
         return result;
     }

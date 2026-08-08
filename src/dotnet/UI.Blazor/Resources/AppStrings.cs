@@ -2,6 +2,7 @@ using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.Resources;
 
+// TODO: think of better name
 public static class AppStrings
 {
     extension(IStringLocalizer l)
@@ -30,6 +31,9 @@ public static class AppStrings
         public string Common_Mute => l["Common_Mute"].Value;
         public string Common_Start => l["Common_Start"].Value;
         public string Common_Stop => l["Common_Stop"].Value;
+        public string Common_Optional => l["Common_Optional"].Value;
+        public string Common_Verified => l["Common_Verified"].Value;
+        public string Common_Unverified => l["Common_Unverified"].Value;
 
         public string Settings_Title => l["Settings_Title"].Value;
         public string Settings_Language => l["Settings_Language"].Value;
@@ -425,5 +429,12 @@ public static class AppStrings
         public string NotificationMode_AllMessages => l["NotificationMode_AllMessages"].Value;
         public string NotificationMode_ImportantOnly => l["NotificationMode_ImportantOnly"].Value;
         public string NotificationMode_Muted => l["NotificationMode_Muted"].Value;
+
+        public string AccountEditor_Title => l["AccountEditor_Title"].Value;
+        public string AccountEditor_DeleteAccount => l["AccountEditor_DeleteAccount"].Value;
+
+        public string Alias_LinkAvailable => l["Alias_LinkAvailable"].Value;
+        public string Alias_LinkInUse => l["Alias_LinkInUse"].Value;
+        public string Alias_PlaceLinkRequired => l["Alias_PlaceLinkRequired"].Value;
     }
 }

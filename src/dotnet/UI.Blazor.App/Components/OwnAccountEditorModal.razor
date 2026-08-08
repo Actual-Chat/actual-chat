@@ -17,7 +17,7 @@
     <AsyncDataAnnotationsValidator @ref="_validator"/>
     <DialogFrame
         Class="own-account-editor-modal"
-        Title="Edit account"
+        Title="@L.AccountEditor_Title"
         HasCloseButton="true"
         NarrowViewSettings="@DialogFrameNarrowViewSettings.ForFormSubmitButton()"
         ButtonsClass="full-width">
@@ -27,7 +27,7 @@
                 For="() => _form.Name"
                 IsRequired="true"
                 InputId="@_form.NameFieldId"
-                Label="Name"
+                Label="@L.YourAccount_Name"
                 IsLabelInsideInput="true">
                 <TextBox
                     @bind-Value="@_form.Name"
@@ -39,12 +39,13 @@
             <FormSection Class="form-section-alias"
                          For="() => _form.AliasId"
                          InputId="@_form.AliasIdFormId"
-                         Label="User link"
+                         Label="@L.YourAccount_UserLink"
                          IsLabelInsideInput="true">
-                <ValidationMessage>
+                <ValidationMessage Context="fieldLabel">
                     <AliasValidationMessage
                         For="@(() => _form.AliasId)"
                         Scope="@AliasValidationMessage.AliasScope.Account"
+                        FieldLabel="@fieldLabel"
                         CurrentAliasId="@_form.CurrentAliasId"
                         AliasIdReader="@(() => _form.AliasId)"/>
                 </ValidationMessage>
@@ -69,9 +70,9 @@
             </FormSection>
 
             <FormSection
-                For="() => email"
+                For="() => _form.Email"
                 InputId="@_form.EmailFieldId"
-                Label="Email"
+                Label="@L.YourAccount_Email"
                 IsLabelInsideInput="true">
                 <ChildContent>
                     <TextBox
@@ -91,7 +92,7 @@
             <FormSection
                 For="() => _form.Phone"
                 InputId="@_form.PhoneFieldId"
-                Label="Phone"
+                Label="@L.YourAccount_Phone"
                 Class="grow"
                 IsLabelInsideInput="true">
                 <ChildContent>
@@ -124,7 +125,7 @@
                     </Icon>
                     <Content>
                         <div class="c-text">
-                            Delete account
+                            @L.AccountEditor_DeleteAccount
                         </div>
                     </Content>
                 </ButtonTile>
@@ -137,13 +138,13 @@
                     Type="@ButtonType.Button"
                     Class="btn-modal"
                     Click="OnCancel">
-                    Cancel
+                    @L.Common_Cancel
                 </Button>
                 <Button
                     Type="@ButtonType.Submit"
                     Class="btn-modal btn-primary"
                     IsDisabled="@(!_formRef.IsValid)">
-                    Save
+                    @L.Common_Save
                 </Button>
             </FormButtons>
         </Buttons>

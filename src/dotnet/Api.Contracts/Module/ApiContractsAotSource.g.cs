@@ -508,6 +508,9 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.Translation>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.Translation>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.Translation>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UITextKind>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UITextKind>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UITextKind>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.VisualMediaItem>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.VisualMediaItem>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.VisualMediaItem>>>>();
@@ -1646,6 +1649,7 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.Formatters.GenericDictionaryFormatter`3[[System.String, System.Private.CoreLib],[ActualChat.Streaming.ReceiveQuality, ActualChat.Api.Contracts],[ActualLab.Api.ApiMap`2[[System.String, System.Private.CoreLib],[ActualChat.Streaming.ReceiveQuality, ActualChat.Api.Contracts]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericDictionaryFormatter`3[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib],[ActualLab.Api.ApiMap`2[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Chat.ChatContentKind, ActualChat.Api]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Chat.UITextKind, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.CompatibilityLevel, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Hosting.ThermalLevel, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Live.ParticipationKind, ActualChat.Api]], MessagePack");

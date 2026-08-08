@@ -1,0 +1,70 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Diagnostics
+@using ActualChat.UI.Blazor.Services
+@using Microsoft.Extensions.Localization
+@inherits FusionComponentBase<UIHub>
+@_message
+
+@code {
+    private static readonly ConcurrentDictionary<string, Unit> ReportedFallbacks = new();
+
+    private string _message = "";
+    private string _lastText = "";
+    private string _lastFieldLabel = "";
+    private int _version;
+
+    private ILogger Log => field ??= Services.LogFor(GetType());
+
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string FieldLabel { get; set; } = "";
+
+    protected override void OnParametersSet() {
+        if (Text == _lastText && FieldLabel == _lastFieldLabel)
+            return;
+
+        _lastText = Text;
+        _lastFieldLabel = FieldLabel;
+        _message = Text;
+        var version = ++_version;
+        if (Text.IsNullOrEmpty())
+            return;
+
+        // Services are resolved optionally: both of them live in UI.Blazor.App, and English
+        // is the only sensible output in a host that doesn't have that layer.
+        // TODO: i made this class inherit FusionCOmponetBase, so use existing services
+        // TODO: but better inherit ComputedStateComponent and make this computable
+        var localized = Services.GetService<IStringLocalizer>()?.TryMessage(Text, FieldLabel);
+        if (localized != null) {
+            _message = localized;
+            return;
+        }
+
+        var localizer = Services.GetService<IUITextLocalizer>();
+        if (localizer == null)
+            return;
+
+        ReportFallback(Text);
+        _ = Translate(localizer, Text, version);
+    }
+
+    private async Task Translate(IUITextLocalizer localizer, string text, int version) {
+        try {
+            var translated = await localizer.Get(text).ConfigureAwait(true);
+            if (version != _version || translated == _message)
+                return;
+
+            _message = translated;
+            StateHasChanged();
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to localize: {Message}", text);
+        }
+    }
+
+    // TODO: what does it give us??? what's the point of this?
+    private void ReportFallback(string text) {
+        AppUIMeters.MessageLocalizationFallbackCount.Add(1);
+        if (ReportedFallbacks.TryAdd(text, default))
+            Log.LogWarning("No catalog entry for message: {Message}", text);
+    }
+}
