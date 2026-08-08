@@ -1,0 +1,45 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<MapAppPickerModal.Model>
+@inherits ComponentBase<UIHub>
+
+<DialogFrame
+    Title="Open in"
+    Class="map-app-picker-modal modal-sm"
+    HasCloseButton="true"
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
+    <Body>
+    <FormBlock Class="first last">
+        @foreach (var mapApp in _mapApps) {
+            <TileItem Click="@(() => OnClick(mapApp))">
+                <Icon>
+                    <img class="c-icon" src="@mapApp.IconUrl" alt="" draggable="false"/>
+                </Icon>
+                <Content>@mapApp.Title</Content>
+            </TileItem>
+        }
+    </FormBlock>
+    </Body>
+</DialogFrame>
+
+@code {
+    private IReadOnlyList<MapApp> _mapApps = [];
+
+    private ExternalMapOpener MapOpener => Hub.MapOpener;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+        => _mapApps = await MapOpener.GetApps().ConfigureAwait(true);
+
+    // Private methods
+
+    private async Task OnClick(MapApp mapApp) {
+        Modal.Close();
+        await MapOpener.Open(mapApp, ModalModel.Point, ModalModel.Name).ConfigureAwait(false);
+    }
+
+    // Nested types
+
+    public sealed record Model(GeoPoint Point, string? Name);
+}

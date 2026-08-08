@@ -48,6 +48,13 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<AppServerInstanceSelector>(c => new MauiAppServerInstanceSelector(c.UIHub()));
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
         services.AddScoped<ExternalUrlOpener>(c => new MauiExternalUrlOpener(c.UIHub()));
+#if ANDROID
+        services.AddScoped<ExternalMapOpener>(c => new AndroidMapOpener(c.AppUIHub()));
+#elif IOS || MACCATALYST
+        services.AddScoped<ExternalMapOpener>(c => new AppleMapOpener(c.AppUIHub()));
+#else
+        services.AddScoped<ExternalMapOpener>(c => new MauiMapOpener(c.AppUIHub()));
+#endif
         services.AddScoped<IMediaMetadataUI>(c => new MediaMetadataUI(c.AppUIHub()));
         services.AddSingleton<ReloadUI>(c => new MauiReloadUI(c)); // Replaces scoped ReloadUI
         services.AddSingleton<BackgroundStateTracker>(_ => new MauiBackgroundStateTracker()); // Replaces scoped WebBackgroundStateTracker

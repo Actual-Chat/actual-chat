@@ -162,6 +162,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<EmojiModal.Model, EmojiModal>()
             .Add<ReportModal.Model, ReportModal>()
             .Add<LocationMapModal.Model, LocationMapModal>()
+            .Add<MapAppPickerModal.Model, MapAppPickerModal>()
             .Add<ShareLocationModal.Model, ShareLocationModal>()
         );
         // IBannerViews

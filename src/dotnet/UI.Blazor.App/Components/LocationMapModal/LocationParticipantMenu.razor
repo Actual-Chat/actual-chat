@@ -3,24 +3,33 @@
 
 <div class="location-participant-menu">
     <MenuEntry
-        Text="Open in Google Maps"
-        Click="@OnOpenInGoogleMaps">
-        <IconContent>
-            <img class="c-google-maps-icon" src="/dist/images/google-maps-pin.png" alt="" draggable="false"/>
-        </IconContent>
-    </MenuEntry>
+        Icon="icon-map"
+        Text="Open"
+        Click="@OnOpen"/>
+    @if (_hasMapApps) {
+        <MenuEntry
+            Icon="icon-external-link"
+            Text="Open in..."
+            Click="@OnOpenInMapApp"/>
+    }
     <MenuEntry
         Icon="icon-copy"
-        Text="Copy location link"
+        Text="Copy link"
         Click="@OnCopyLink"/>
 </div>
 
 @code {
     private ChatId _chatId = null!;
     private SharedLocationId _locationId = null!;
+    private bool _hasMapApps;
 
     private ISharedLocations SharedLocations => Hub.SharedLocations;
+    private IAuthors Authors => Hub.Authors;
+    private ExternalMapOpener MapOpener => Hub.MapOpener;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+
+    protected override async Task OnInitializedAsync()
+        => _hasMapApps = await MapOpener.GetApps().ConfigureAwait(true) is { Count: > 0 };
 
     protected override void OnParametersSet() {
         if (Arguments is not [var sChatId, var sLocationId])
@@ -30,24 +39,40 @@
         _locationId = SharedLocationId.Parse(sLocationId);
     }
 
-    private async Task OnOpenInGoogleMaps() {
-        if (await GetPoint().ConfigureAwait(true) is not { } point)
+    // Private methods
+
+    private async Task OnOpenInMapApp() {
+        if (await GetLocation().ConfigureAwait(true) is not { } location)
             return;
 
+        var authorName = await GetAuthorName(location).ConfigureAwait(true);
         await WhenClosed.ConfigureAwait(true);
-        await Hub.ExternalUrlOpener.Open(point.ToGoogleMapsUrl()).ConfigureAwait(false);
+        await ModalUI.Show(new MapAppPickerModal.Model(location.Point, authorName)).ConfigureAwait(false);
+    }
+
+    private async Task OnOpen() {
+        if (await GetLocation().ConfigureAwait(true) is not { } location)
+            return;
+
+        var authorName = await GetAuthorName(location).ConfigureAwait(true);
+        await WhenClosed.ConfigureAwait(true);
+        await MapOpener.Open(location.Point, authorName).ConfigureAwait(false);
     }
 
     private async Task OnCopyLink() {
-        if (await GetPoint().ConfigureAwait(true) is not { } point)
+        if (await GetLocation().ConfigureAwait(true) is not { } location)
             return;
 
         await WhenClosed.ConfigureAwait(true);
-        await ClipboardUI.WriteText(point.ToOpenStreetMapUrl()).ConfigureAwait(false);
+        await ClipboardUI.WriteText(location.Point.ToOpenStreetMapUrl()).ConfigureAwait(false);
     }
 
-    private async Task<GeoPoint?> GetPoint(CancellationToken cancellationToken = default) {
-        var location = await SharedLocations.Get(Session, _chatId, _locationId, cancellationToken).ConfigureAwait(false);
-        return location?.Point;
+    private Task<SharedLocation?> GetLocation()
+        => SharedLocations.Get(Session, _chatId, _locationId, CancellationToken.None);
+
+    private async Task<string?> GetAuthorName(SharedLocation location) {
+        var author = await Authors.Get(Session, _chatId, location.AuthorId, CancellationToken.None)
+            .ConfigureAwait(true);
+        return author?.Avatar.Name;
     }
 }

@@ -1,0 +1,9 @@
+.map-app-picker-modal .tile-item-icon {
+    @apply items-center;
+}
+.map-app-picker-modal .c-icon {
+    @apply w-8 h-8;
+    @apply rounded-lg;
+    /* Not every icon is square - the Google Maps pin isn't */
+    @apply object-contain;
+}
