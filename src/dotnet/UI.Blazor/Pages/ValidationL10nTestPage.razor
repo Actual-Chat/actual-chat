@@ -1,0 +1,103 @@
+@page "/test/validation-l10n"
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@using ActualChat.Localization
+@using ActualChat.Validation
+@using ActualChat.UI.Blazor.Services
+
+<MainHeader>Validation Localization Test Page</MainHeader>
+
+<div class="test-page-wrapper">
+<div class="flex-y gap-y-4 m-6 w-96">
+    <div class="flex-x gap-x-2 items-center">
+        <span class="font-medium">UI language:</span>
+        <select class="border rounded px-2 py-1" @onchange="OnLanguageChanged">
+            @foreach (var (isoCode, title) in SupportedLanguages) {
+                <option value="@isoCode" selected="@(isoCode == _isoCode)">@title</option>
+            }
+        </select>
+    </div>
+
+    <Form @ref="_form" Class="flex-y gap-y-2" EditContext="@_editContext">
+        <AsyncDataAnnotationsValidator/>
+        <FormSection For="() => _model.Name" InputId="name" Label="@Localized(nameof(ValidationStrings.Field_Name))">
+            <TextBox Id="name" @bind-Value="_model.Name"/>
+        </FormSection>
+        <FormSection For="() => _model.Email" InputId="email" Label="@Localized(nameof(ValidationStrings.Field_Email))">
+            <TextBox Id="email" @bind-Value="_model.Email"/>
+        </FormSection>
+        <FormSection
+            For="() => _model.PhoneOrEmail"
+            InputId="phoneOrEmail"
+            Label="@Localized(nameof(ValidationStrings.Field_Phone))">
+            <TextBox Id="phoneOrEmail" @bind-Value="_model.PhoneOrEmail"/>
+        </FormSection>
+    </Form>
+
+    <div class="flex-y gap-y-1 text-sm p-3 rounded bg-01 border">
+        <div class="font-medium">Diagnostics</div>
+        <div>CultureInfo.CurrentUICulture: <b>@Describe(CultureInfo.CurrentUICulture)</b></div>
+        <div>CultureInfo.CurrentCulture: <b>@Describe(CultureInfo.CurrentCulture)</b></div>
+        <div>UILanguageState.IsoCode: <b>@_isoCode</b></div>
+        <div>Sample number/date: <b>@(1234567.89.ToString("N2", CultureInfo.CurrentCulture))</b> /
+            <b>@(new DateTime(2026, 8, 8).ToString("D", CultureInfo.CurrentCulture))</b></div>
+    </div>
+</div>
+</div>
+
+@code {
+    private static readonly (string IsoCode, string Title)[] SupportedLanguages = [
+        ("en", "English"),
+        ("ru", "Russian"),
+        ("de", "German"),
+        ("es", "Spanish"),
+    ];
+
+    private readonly Model _model = new();
+    private EditContext _editContext = null!;
+    private Form? _form;
+    private string _isoCode = "en";
+
+    [Inject] private UILanguageState UILanguageState { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        _editContext = new EditContext(_model);
+        _isoCode = UILanguageState.IsoCode;
+    }
+
+    private void OnLanguageChanged(ChangeEventArgs e) {
+        _isoCode = e.Value as string ?? "en";
+        UILanguageState.IsoCode = _isoCode;
+        _editContext.Validate();
+    }
+
+    private string Localized(string name) {
+        using var _ = UILanguage.Change(_isoCode);
+        return ValidationStrings.Get(name);
+    }
+
+    private static string Describe(CultureInfo culture)
+        => culture.Equals(CultureInfo.InvariantCulture) ? "(invariant)" : $"'{culture.Name}'";
+
+    public class Model {
+        [Display(Name = nameof(ValidationStrings.Field_Name), ResourceType = typeof(ValidationStrings))]
+        [Required(ErrorMessageResourceName = nameof(ValidationStrings.Validation_Required),
+            ErrorMessageResourceType = typeof(ValidationStrings))]
+        [StringLength(20, MinimumLength = 3,
+            ErrorMessageResourceName = nameof(ValidationStrings.Validation_StringLength),
+            ErrorMessageResourceType = typeof(ValidationStrings))]
+        public string Name { get; set; } = "ab";
+
+        [Display(Name = nameof(ValidationStrings.Field_Email), ResourceType = typeof(ValidationStrings))]
+        [Required(ErrorMessageResourceName = nameof(ValidationStrings.Validation_Required),
+            ErrorMessageResourceType = typeof(ValidationStrings))]
+        [EmailAddress(ErrorMessageResourceName = nameof(ValidationStrings.Validation_EmailAddress),
+            ErrorMessageResourceType = typeof(ValidationStrings))]
+        public string Email { get; set; } = "not-an-email";
+
+        // Async validator - exercises the AsyncValidator path, not Validator.TryValidateObject
+        [Display(Name = nameof(ValidationStrings.Field_Phone), ResourceType = typeof(ValidationStrings))]
+        [PhoneOrEmailAsync]
+        public string PhoneOrEmail { get; set; } = "neither";
+    }
+}

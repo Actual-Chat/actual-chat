@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Field_Email" xml:space="preserve"><value>E-Mail</value></data>
+  <data name="Field_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Field_Phone" xml:space="preserve"><value>Telefonnummer</value></data>
+  <data name="Validation_Required" xml:space="preserve"><value>„{0}“ ist erforderlich.</value></data>
+  <data name="Validation_StringLength" xml:space="preserve"><value>„{0}“ muss zwischen {2} und {1} Zeichen lang sein.</value></data>
+  <data name="Validation_EmailAddress" xml:space="preserve"><value>„{0}“ ist keine gültige E-Mail-Adresse.</value></data>
+  <data name="Validation_PhoneOrEmail" xml:space="preserve"><value>Geben Sie eine Telefonnummer oder E-Mail-Adresse ein.</value></data>
+</root>

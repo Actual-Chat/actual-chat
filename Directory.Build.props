@@ -93,6 +93,9 @@
 
     <!-- Globalization: must be invariant in every executable! -->
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Allows CultureInfo("ru") etc. to exist as resource-lookup keys for .resx localization.
+         Culture data stays invariant: formatting, parsing and sorting are unaffected. -->
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
 
     <!-- Generators -->
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>

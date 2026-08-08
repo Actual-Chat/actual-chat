@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ActualChat.Localization;
 
 namespace ActualChat.Validation;
 
@@ -24,6 +25,6 @@ public sealed class PhoneOrEmailAsyncAttribute : AsyncValidationAttribute
                 : validationContext.Error(ErrorMessage ?? error);
         }
 
-        return validationContext.Error(ErrorMessage ?? "Enter a phone number or email address.");
+        return validationContext.Error(ErrorMessage ?? ValidationStrings.Validation_PhoneOrEmail);
     }
 }

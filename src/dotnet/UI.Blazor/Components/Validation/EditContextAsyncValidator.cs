@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using ActualChat.Localization;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.Components;
@@ -18,6 +20,10 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private UIHub Hub { get; }
     private IServiceProvider Services => Hub.Services;
     private ILogger Log { get; }
+
+    // Read per call: the worker thread's ExecutionContext is captured at Start(), so an
+    // AsyncLocal set outside would never reach it - the language must be re-applied here.
+    private string UILanguageIsoCode => Services.GetRequiredService<UILanguageState>().IsoCode;
 
     public EditContextAsyncValidator(EditContext editContext, UIHub hub)
     {
@@ -67,6 +73,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private async Task<bool> ValidateAll(CancellationToken cancellationToken)
     {
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
+        using var _1 = UILanguage.Change(UILanguageIsoCode);
         var validationContext = new ValidationContext(_editContext.Model, Services, null);
         var validationResults = new List<ValidationResult>();
         Validator.TryValidateObject(_editContext.Model, validationContext, validationResults, true);
@@ -86,6 +93,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private async Task ValidateProperty(FieldIdentifier fieldIdentifier, CancellationToken cancellationToken)
     {
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
+        using var _1 = UILanguage.Change(UILanguageIsoCode);
         var validationContext = new ValidationContext(_editContext.Model, Services, null) {
             MemberName = fieldIdentifier.FieldName,
         };
