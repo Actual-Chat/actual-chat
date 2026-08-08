@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using ActualChat.Hosting;
 using Bunit;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
@@ -73,7 +75,22 @@ public class FormSectionLocalizationTest
 
     private static BunitContext NewContext()
     {
+        // LocalizedMessage derives from FusionComponentBase<UIHub>, so rendering a FormSection
+        // needs a resolvable UIHub - the smallest set its constructor reads eagerly.
+        var hostInfo = new HostInfo {
+            HostKind = HostKind.Server,
+            AppKind = AppKind.Unknown,
+            Environment = Environments.Development,
+            BaseUrl = $"https://{Constants.Hosts.LocalVoxt}",
+            IsTested = true,
+        };
         var context = new BunitContext();
+        context.Services
+            .AddSingleton(_ => hostInfo)
+            .AddSingleton(c => new Features(c))
+            .AddSingleton(_ => new UrlMapper(hostInfo))
+            .AddScoped<UIHub>()
+            .AddFusion(fusion => fusion.AddBlazor());
         context.Services.AddSingleton<IStringLocalizer>(new TestStringLocalizer(new() {
             ["Validation_Required_Format"] = "<{0}>!",
         }));
