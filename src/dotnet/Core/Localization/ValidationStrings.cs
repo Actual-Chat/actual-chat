@@ -24,5 +24,8 @@ public static class ValidationStrings
     public static string Validation_PhoneOrEmail => Get(nameof(Validation_PhoneOrEmail));
 
     public static string Get(string name)
-        => ResourceManager.GetString(name, UILanguage.Current) ?? name;
+        => GetOrDefault(name) ?? name;
+
+    public static string? GetOrDefault(string name)
+        => ResourceManager.GetString(name, UILanguage.Current);
 }

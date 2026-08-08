@@ -11,4 +11,11 @@
   <data name="Validation_StringLength" xml:space="preserve"><value>Поле «{0}» должно содержать от {2} до {1} символов.</value></data>
   <data name="Validation_EmailAddress" xml:space="preserve"><value>«{0}» — недопустимый адрес электронной почты.</value></data>
   <data name="Validation_PhoneOrEmail" xml:space="preserve"><value>Введите номер телефона или адрес электронной почты.</value></data>
+  <data name="Validation_MinLength" xml:space="preserve"><value>Поле «{0}» должно содержать не менее {1} символов.</value></data>
+  <data name="Validation_MaxLength" xml:space="preserve"><value>Поле «{0}» должно содержать не более {1} символов.</value></data>
+  <data name="Validation_Range" xml:space="preserve"><value>Поле «{0}» должно быть между {1} и {2}.</value></data>
+  <data name="Validation_Phone" xml:space="preserve"><value>«{0}» — недопустимый номер телефона.</value></data>
+  <data name="Validation_Url" xml:space="preserve"><value>«{0}» — недопустимый URL.</value></data>
+  <data name="Validation_Compare" xml:space="preserve"><value>Поля «{0}» и «{1}» не совпадают.</value></data>
+  <data name="Validation_RegularExpression" xml:space="preserve"><value>Поле «{0}» имеет неверный формат.</value></data>
 </root>

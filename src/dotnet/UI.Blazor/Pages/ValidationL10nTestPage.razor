@@ -79,24 +79,17 @@
     private static string Describe(CultureInfo culture)
         => culture.Equals(CultureInfo.InvariantCulture) ? "(invariant)" : $"'{culture.Name}'";
 
+    // Stock attributes, no localization annotation: LocalizingValidator maps the attribute
+    // type to a ValidationStrings key, and {0} comes from the Field_<Property> convention.
     public class Model {
-        [Display(Name = nameof(ValidationStrings.Field_Name), ResourceType = typeof(ValidationStrings))]
-        [Required(ErrorMessageResourceName = nameof(ValidationStrings.Validation_Required),
-            ErrorMessageResourceType = typeof(ValidationStrings))]
-        [StringLength(20, MinimumLength = 3,
-            ErrorMessageResourceName = nameof(ValidationStrings.Validation_StringLength),
-            ErrorMessageResourceType = typeof(ValidationStrings))]
+        [Required]
+        [StringLength(20, MinimumLength = 3)]
         public string Name { get; set; } = "ab";
 
-        [Display(Name = nameof(ValidationStrings.Field_Email), ResourceType = typeof(ValidationStrings))]
-        [Required(ErrorMessageResourceName = nameof(ValidationStrings.Validation_Required),
-            ErrorMessageResourceType = typeof(ValidationStrings))]
-        [EmailAddress(ErrorMessageResourceName = nameof(ValidationStrings.Validation_EmailAddress),
-            ErrorMessageResourceType = typeof(ValidationStrings))]
+        [Required]
+        [EmailAddress]
         public string Email { get; set; } = "not-an-email";
 
-        // Async validator - exercises the AsyncValidator path, not Validator.TryValidateObject
-        [Display(Name = nameof(ValidationStrings.Field_Phone), ResourceType = typeof(ValidationStrings))]
         [PhoneOrEmailAsync]
         public string PhoneOrEmail { get; set; } = "neither";
     }

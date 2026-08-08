@@ -76,7 +76,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
         using var _1 = UILanguage.Change(UILanguageIsoCode);
         var validationContext = new ValidationContext(_editContext.Model, Services, null);
         var validationResults = new List<ValidationResult>();
-        Validator.TryValidateObject(_editContext.Model, validationContext, validationResults, true);
+        LocalizingValidator.ValidateObject(validationContext, validationResults);
         await ClearAndAddValidationResults(null, validationResults).ConfigureAwait(false);
 
         // Skip async validation for properties that already have sync errors
@@ -102,7 +102,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
             return;
 
         var results = new List<ValidationResult>();
-        Validator.TryValidateProperty(ctx.Value, validationContext, results);
+        LocalizingValidator.ValidateProperty(ctx, results);
         await ClearAndAddValidationResults(fieldIdentifier, results).ConfigureAwait(false);
 
         // Run async validation only if sync validation passed for this property

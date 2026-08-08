@@ -19,10 +19,10 @@ public static class AsyncValidationModel
     {
         var properties = (
             from property in type.GetProperties()
-            let asyncValidationAttributes = property.GetCustomAttributes<AsyncValidationAttribute>().ToList()
-            let hasValidationAttributes = property.GetCustomAttributes<ValidationAttribute>().Any()
-            where hasValidationAttributes || asyncValidationAttributes.Count != 0
-            select new ValidatedProperty(property, asyncValidationAttributes)
+            let validationAttributes = property.GetCustomAttributes<ValidationAttribute>().ToList()
+            let asyncValidationAttributes = validationAttributes.OfType<AsyncValidationAttribute>().ToList()
+            where validationAttributes.Count != 0
+            select new ValidatedProperty(property, asyncValidationAttributes, validationAttributes)
             ).ToDictionary(x => x.Property.Name);
         return new ValidatedType(type, properties);
     }
@@ -59,7 +59,8 @@ public static class AsyncValidationModel
             ValidationContext validationContext, ValidatedProperty property)
         {
             var propertyValue = property.Property.GetValue(validationContext.ObjectInstance);
-            var context = new ValidationContext(validationContext.ObjectInstance, validationContext, validationContext.Items) {
+            var context = new ValidationContext(
+                validationContext.ObjectInstance, validationContext, validationContext.Items) {
                 MemberName = property.Property.Name,
             };
             return new PropertyValidationContext(context, property, propertyValue);
@@ -68,7 +69,14 @@ public static class AsyncValidationModel
 
     public sealed record ValidatedProperty(
         PropertyInfo Property,
-        IReadOnlyList<AsyncValidationAttribute> AsyncAttributes);
+        IReadOnlyList<AsyncValidationAttribute> AsyncAttributes,
+        IReadOnlyList<ValidationAttribute> Attributes)
+    {
+        private DisplayAttribute? Display { get; } = Property.GetCustomAttribute<DisplayAttribute>();
+
+        // Resolved per call rather than cached: [Display(ResourceType)] must follow the current language.
+        public string DisplayName => Display?.GetName() ?? Property.Name;
+    }
 
     public sealed record PropertyValidationContext(
         ValidationContext ValidationContext,

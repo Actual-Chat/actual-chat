@@ -11,4 +11,11 @@
   <data name="Validation_StringLength" xml:space="preserve"><value>El campo «{0}» debe tener entre {2} y {1} caracteres.</value></data>
   <data name="Validation_EmailAddress" xml:space="preserve"><value>«{0}» no es una dirección de correo electrónico válida.</value></data>
   <data name="Validation_PhoneOrEmail" xml:space="preserve"><value>Introduzca un número de teléfono o correo electrónico.</value></data>
+  <data name="Validation_MinLength" xml:space="preserve"><value>El campo «{0}» debe tener al menos {1} caracteres.</value></data>
+  <data name="Validation_MaxLength" xml:space="preserve"><value>El campo «{0}» debe tener como máximo {1} caracteres.</value></data>
+  <data name="Validation_Range" xml:space="preserve"><value>El campo «{0}» debe estar entre {1} y {2}.</value></data>
+  <data name="Validation_Phone" xml:space="preserve"><value>«{0}» no es un número de teléfono válido.</value></data>
+  <data name="Validation_Url" xml:space="preserve"><value>«{0}» no es una URL válida.</value></data>
+  <data name="Validation_Compare" xml:space="preserve"><value>«{0}» y «{1}» no coinciden.</value></data>
+  <data name="Validation_RegularExpression" xml:space="preserve"><value>El campo «{0}» tiene un formato no válido.</value></data>
 </root>
