@@ -157,6 +157,13 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
         animator.StartAnimation();
     }
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options {
+                Category = GetStateCategory(t),
+                UpdateDelayer = FixedDelayer.MinDelay,
+            });
+
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
         var step = await ShareUI.GetStep(cancellationToken).ConfigureAwait(false);
