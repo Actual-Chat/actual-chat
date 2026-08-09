@@ -12,9 +12,12 @@ public class ShareViewController : UIViewController
     public override void LoadView()
     {
         _app = ShareExtensionApplication.Bootstrap(this);
-        if (_app == null)
-            return;
-
-        View = new ShareView(_app.Services.IosHub());
+        // Leaving View unset makes UIKit throw NSInvalidArgumentException ("attempt to insert nil
+        // object"), so a failed bootstrap used to crash the extension outright - which also killed
+        // the failure report Bootstrap had just started sending.
+        View = _app is null
+            ? new ErrorContentView("Something went wrong. Please try again.",
+                (_, _) => _ = ExtensionContext?.CompleteRequestAsync([]))
+            : new ShareView(_app.Services.IosHub());
     }
 }

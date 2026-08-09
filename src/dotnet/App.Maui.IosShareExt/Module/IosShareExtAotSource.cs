@@ -26,6 +26,7 @@ internal class IosShareExtAotSource : IAotSource
         CodeKeeper.Keep<ContactListView>();
         CodeKeeper.Keep<ContactSelectionView>();
         CodeKeeper.Keep<ContactView>();
+        CodeKeeper.Keep<ErrorContentView>();
         CodeKeeper.Keep<ErrorView>();
         CodeKeeper.Keep<PlaceListView>();
         CodeKeeper.Keep<PlaceView>();
