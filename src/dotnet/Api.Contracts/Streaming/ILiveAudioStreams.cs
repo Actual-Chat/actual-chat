@@ -41,7 +41,10 @@ public interface ILiveAudioStreams : IComputeService
         double speed,
         CancellationToken cancellationToken);
 
-    [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
+    // The call completes only when its stream does, so the default 30s DelayTimeout is pure log noise
+    [RpcMethod(
+        RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect,
+        DelayTimeout = double.PositiveInfinity)]
     Task PushStream(
         Session session,
         string chatId,
