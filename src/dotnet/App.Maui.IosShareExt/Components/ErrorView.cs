@@ -11,45 +11,16 @@ public class ErrorView(IosHub hub) : ComputedStateView<ErrorView.Model>(hub)
     {
         TranslatesAutoresizingMaskIntoConstraints = false;
 
-        // Label
-        var label = new UILabel {
+        var contentView = new ErrorContentView(model.Message, Safe(UIKitExt.CloseApp)) {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            TextAlignment = UITextAlignment.Center,
-            Text = model.Message,
-            Font = UIFont.SystemFontOfSize(24),
-            TextColor = UIColor.White,
         };
+        AddSubview(contentView);
 
-        // Image
-        var imageView = new UIImageView(UIImage.FromBundle("error-barrier-image.png")) {
-            TranslatesAutoresizingMaskIntoConstraints = false,
-            ContentMode = UIViewContentMode.ScaleAspectFit,
-        };
-
-        // Close button
-        var closeButton = UIButton.FromType(UIButtonType.System);
-        closeButton.TranslatesAutoresizingMaskIntoConstraints = false;
-        closeButton.SetTitle("Close", UIControlState.Normal);
-        closeButton.TitleLabel.Font = UIFont.SystemFontOfSize(20, UIFontWeight.Semibold);
-        closeButton.TouchUpInside += Safe(UIKitExt.CloseApp);
-
-        // Vertical stack view
-        var stackView = new UIStackView([imageView, label, closeButton]) {
-            TranslatesAutoresizingMaskIntoConstraints = false,
-            Axis = UILayoutConstraintAxis.Vertical,
-            Alignment = UIStackViewAlignment.Fill,
-            Distribution = UIStackViewDistribution.Fill,
-            Spacing = 20,
-        };
-        AddSubview(stackView);
-
-        // Layout constraints
         NSLayoutConstraint.ActivateConstraints([
-            stackView.CenterYAnchor.ConstraintEqualTo(CenterYAnchor, -25),
-            stackView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, 24),
-            stackView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor, -24),
-
-            imageView.HeightAnchor.ConstraintEqualTo(164),
+            contentView.TopAnchor.ConstraintEqualTo(TopAnchor),
+            contentView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+            contentView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+            contentView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
         ]);
     }
 
