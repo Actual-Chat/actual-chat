@@ -149,6 +149,13 @@ public static class MauiDiagnostics
         // disposer.Register(disposable);
     }
 
+    public static void CaptureAndFlush(Exception error, TimeSpan flushTimeout)
+    {
+        // Both calls are no-ops when the SDK isn't initialized, so callers don't have to check
+        SentrySdk.CaptureException(error);
+        SentrySdk.Flush(flushTimeout);
+    }
+
     public static void CreateSentryTraceProvider()
     {
         // TODO: fix PlatformNotSupportedException inside OpenTelemetry.
