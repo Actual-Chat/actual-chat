@@ -544,7 +544,8 @@ public partial class ChatUI
         var liveBlockRange = liveBlockId is { } lbId
             ? new Range<long>(lbId.StartEntryLid, overlay?.BlockEndLid ?? long.MaxValue)
             : default;
-        var groupedTiles = GroupExpandedConversations(groupedItems, liveBlockId, liveBlockRange, materializedBlockId);
+        var groupedTiles = GroupExpandedConversations(
+            groupedItems, liveBlockId, liveBlockRange, materializedBlockId, Log);
         return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter);
 
         bool TryGetIdTilesToLoad(
@@ -1104,9 +1105,10 @@ public partial class ChatUI
         }
     }
 
-    private static List<ChatMessage> GroupExpandedConversations(
+    // It's internal to be accessible from tests
+    internal static List<ChatMessage> GroupExpandedConversations(
         IReadOnlyList<ChatMessage> messages, ConversationId? liveBlockId, Range<long> liveBlockRange,
-        ConversationId? materializedBlockId)
+        ConversationId? materializedBlockId, ILogger? log)
     {
         // Wrap every item of one expanded conversation into a single ExpandedConversationMessage in
         // source order - the block is the sticky containing element for the conversation header and
@@ -1118,15 +1120,24 @@ public partial class ChatUI
         var result = new List<ChatMessage>();
         Conversation? blockConversation = null;
         var blockItems = new List<ChatMessage>();
+        var emittedBlockIds = new HashSet<ConversationId>();
 
-        foreach (var item in messages) {
+        // Index of each conversation's last item. A Conversation-less item before it is an interruption
+        // *inside* that conversation, not its end - which is the one question the lid ranges below can't
+        // answer reliably: a frozen BlockEndLid, or an entry not yet part of the conversation, falls
+        // outside them, ends the block, and lets the items after it open a second one.
+        var lastIndexById = new Dictionary<ConversationId, int>();
+        for (var i = 0; i < messages.Count; i++)
+            if (messages[i].Conversation is { } itemConversation)
+                lastIndexById[itemConversation.Id] = i;
+
+        for (var i = 0; i < messages.Count; i++) {
+            var item = messages[i];
             var conversation = item.Conversation;
             var isLiveBlock = liveBlockId != null && blockConversation?.Id == liveBlockId;
             // A Conversation-less item is held by its lid alone, so the live block's range must cover the
             // conversation as well: the frozen BlockEndLid stops at the summary that was live when the
-            // viewer left, and a later summary stretches the conversation past it. An item in that gap
-            // would otherwise end the block and let the items after it open a second one - two blocks
-            // under one "{V}-conversation-block" @key, which tears the render down.
+            // viewer left, and a later summary stretches the conversation past it.
             var blockRange = blockConversation == null
                 ? default
                 : isLiveBlock
@@ -1137,11 +1148,13 @@ public partial class ChatUI
             var belongs = blockConversation != null
                 && (conversation != null
                     ? conversation.Id == blockConversation.Id
-                    // Range.Contains excludes End, so a still-live [V, ∞) range needs the open-ended form -
-                    // a closed block's range carries a real BlockEndLid and uses Contains as usual.
-                    : blockRange.End == long.MaxValue
-                        ? item.Id >= blockRange.Start
-                        : blockRange.Contains(item.Id));
+                    : i < lastIndexById.GetValueOrDefault(blockConversation.Id, -1)
+                        // Range.Contains excludes End, so a still-live [V, ∞) range needs the open-ended
+                        // form - a closed block carries a real BlockEndLid and uses Contains as usual.
+                        // Keeps the frozen tail past the conversation's last item inside the block.
+                        || (blockRange.End == long.MaxValue
+                            ? item.Id >= blockRange.Start
+                            : blockRange.Contains(item.Id)));
             if (belongs) {
                 blockItems.Add(item);
                 continue;
@@ -1166,23 +1179,38 @@ public partial class ChatUI
             if (blockConversation == null)
                 return;
 
+            var conversation = blockConversation;
+            var items = blockItems;
+            blockConversation = null;
+            blockItems = [];
+
+            // Every block is keyed by conversation.Id.StartEntryLid, so a second one for the same
+            // conversation is a duplicate @key - Blazor throws and tears the whole render down. The
+            // loop above should make this unreachable; if it ever isn't, emit the items inline (they
+            // keep their own keys and their order) and lose only the visual grouping.
+            if (!emittedBlockIds.Add(conversation.Id)) {
+                log?.LogWarning(
+                    "GroupExpandedConversations: conversation {ConversationId} would open a second block",
+                    conversation.Id);
+                result.AddRange(items);
+                return;
+            }
+
             // The ongoing live block closes with the animated live footer; a completed (materialized)
             // block ends with the same regular conversation footer every expanded conversation gets.
             // It's appended as the block's last child rather than emitted inline at EndEntryLid (the
             // GetTile path), because the frozen tail kept inside the block extends past that lid.
-            if (blockConversation.Id == liveBlockId)
-                blockItems.Add(materializedBlockId == null
-                    ? new LiveConversationFooter(blockConversation) {
+            if (conversation.Id == liveBlockId)
+                items.Add(materializedBlockId == null
+                    ? new LiveConversationFooter(conversation) {
                         Kind = ChatMessageKind.ConversationEnd,
-                        PreviousMessage = blockItems.Count > 0 ? blockItems[^1] : null,
+                        PreviousMessage = items.Count > 0 ? items[^1] : null,
                     }
-                    : new ConversationFooter(blockConversation) {
+                    : new ConversationFooter(conversation) {
                         Kind = ChatMessageKind.ConversationEnd,
-                        PreviousMessage = blockItems.Count > 0 ? blockItems[^1] : null,
+                        PreviousMessage = items.Count > 0 ? items[^1] : null,
                     });
-            result.Add(new ExpandedConversationMessage(blockConversation, blockItems));
-            blockConversation = null;
-            blockItems = [];
+            result.Add(new ExpandedConversationMessage(conversation, items));
         }
     }
 
