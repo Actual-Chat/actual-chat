@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using ActualChat.Audio;
@@ -20,6 +21,7 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
     };
 
     private CoreServerSettings CoreServerSettings { get; }
+    private IHttpClientFactory HttpClientFactory { get; }
     private MomentClockSet Clocks { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
     private ILogger Log { get; }
@@ -43,6 +45,7 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
         CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
+        HttpClientFactory = services.HttpClientFactory();
         OggOpusStreamConverter = new OggOpusStreamConverter(new OggOpusStreamConverter.Options {
             PageDuration = TimeSpan.FromMilliseconds(200),
         });
@@ -57,12 +60,14 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
         if (apiKey.IsNullOrEmpty())
             throw StandardError.Configuration("CoreSettings:SonioxKey is not set.");
 
+        // Created per call, but the factory pools the underlying handler - this runs once per voice message.
+        var httpClient = HttpClientFactory.CreateClient(nameof(SonioxOfflineTranscriber));
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        string? fileId = null;
+        string? transcriptionId = null;
         try {
-            using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-            var fileId = await UploadAudio(httpClient, audioSource, cancellationToken).ConfigureAwait(false);
-            var transcriptionId = await CreateTranscription(httpClient, fileId, options, audioSource, cancellationToken)
+            fileId = await UploadAudio(httpClient, audioSource, cancellationToken).ConfigureAwait(false);
+            transcriptionId = await CreateTranscription(httpClient, fileId, options, audioSource, cancellationToken)
                 .ConfigureAwait(false);
             await WaitForCompletion(httpClient, transcriptionId, cancellationToken).ConfigureAwait(false);
             return await GetTranscript(httpClient, transcriptionId, cancellationToken).ConfigureAwait(false);
@@ -71,9 +76,46 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
             Log.LogError(e, "Soniox offline transcription failed");
             return null;
         }
+        finally {
+            // Cleanup is fire-and-forget to keep two Soniox round-trips off the transcription latency path.
+            // It takes over httpClient here and disposes it once the deletes are done.
+            _ = BackgroundTask.Run(() => Cleanup(httpClient, transcriptionId, fileId),
+                Log,
+                "Soniox cleanup failed",
+                CancellationToken.None);
+        }
     }
 
     // Private methods
+
+    private async Task Cleanup(HttpClient httpClient, string? transcriptionId, string? fileId)
+    {
+        // Soniox caps the stored file count per organization, so uploads must be dropped even when transcription fails.
+        // Deleting the transcription also deletes its associated files, hence the extra NotFound tolerance below.
+        using (httpClient) {
+            if (transcriptionId != null)
+                await Delete(httpClient, $"transcriptions/{transcriptionId}").ConfigureAwait(false);
+            if (fileId != null)
+                await Delete(httpClient, $"files/{fileId}").ConfigureAwait(false);
+        }
+    }
+
+    private async Task Delete(HttpClient httpClient, string path)
+    {
+        // Cleanup runs from a finally block, so it uses CancellationToken.None and never throws.
+        // NotFound means the transcription delete already cascaded to the file; Conflict means the
+        // transcription is still processing, which is expected when the caller cancelled mid-flight.
+        try {
+            using var response = await httpClient
+                .DeleteAsync($"{BaseUrl}/{path}", CancellationToken.None)
+                .ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode && response.StatusCode is not (HttpStatusCode.NotFound or HttpStatusCode.Conflict))
+                Log.LogWarning("Soniox cleanup of {Path} failed: {StatusCode}", path, (int)response.StatusCode);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Soniox cleanup of {Path} failed", path);
+        }
+    }
 
     private async Task<string> UploadAudio(
         HttpClient httpClient,

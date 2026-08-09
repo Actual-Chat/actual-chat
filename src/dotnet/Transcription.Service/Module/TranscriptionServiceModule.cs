@@ -10,6 +10,7 @@ public sealed class TranscriptionServiceModule(IServiceProvider moduleServices)
         if (!HostInfo.HasRole(HostRole.OneBackendServer))
             return;
 
+        services.AddHttpClient();
         services.AddSingleton<ITranscriberRegistry>(c => new TranscriberRegistry(
             c.GetRequiredService<TranscriptionSettings>(),
             c.GetServices<ITranscriber>(),
