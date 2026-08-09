@@ -105,7 +105,7 @@ public class AsyncValidationTest(ITestOutputHelper @out) : TestBase(@out)
 
     private sealed class PhoneModel
     {
-        [AppPhone, Display(Name = "Phone")]
+        [PhoneNumber, Display(Name = "Phone")]
         public string Phone { get; set; } = "";
     }
 

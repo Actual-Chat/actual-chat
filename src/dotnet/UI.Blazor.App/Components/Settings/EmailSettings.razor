@@ -77,7 +77,7 @@
     // Nested types
 
     public sealed class EmailFormModel {
-        [AppEmailAddress, Display(Name = "Email")] public string? Email { get; set; }
+        [Email, Display(Name = "Email")] public string? Email { get; set; }
 
         private string FormId { get; }
         public string EmailFieldId { get; init; }

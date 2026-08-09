@@ -3,8 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace ActualChat.Validation;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter)]
-// TODO: better name? suggest alternatives
-public sealed class AppPhoneAttribute : ValidationAttribute
+public sealed class PhoneNumberAttribute : ValidationAttribute
 {
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
