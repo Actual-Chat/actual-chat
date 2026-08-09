@@ -215,6 +215,10 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
             chatId,
             null,
             Change.Update(new ChatDiff { IsArchived = true })));
+        var summarize = () => Moderator.Commander.Call(new Chats_Change(Moderator.Session,
+            chatId,
+            null,
+            Change.Update(new ChatDiff { IsSummarized = true })));
         var remove = () => Moderator.Commander.Call(
             new Chats_Change(Moderator.Session, chatId, null, Change.Remove(new ChatDiff())));
 
@@ -223,6 +227,7 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         updated.Description.Should().Be("moderated description");
         await makePublic.Should().ThrowAsync<Exception>();
         await archive.Should().ThrowAsync<Exception>();
+        await summarize.Should().ThrowAsync<Exception>();
         await remove.Should().ThrowAsync<Exception>();
     }
 

@@ -330,13 +330,14 @@ public partial class Chats(IServiceProvider services) : IChats
 
                 if (change.IsUpdate(out var chatDiff2)) {
                     // Moderators get EditProperties, but structural properties stay Owner-only.
-                    if (!chat.Rules.IsOwner() && chatDiff2.RequiresOwner())
+                    // A peer chat has no Owner at all, so ValidatePeerChatChangeConstraints gates it instead.
+                    if (chat.Id is PeerChatId)
+                        ValidatePeerChatChangeConstraints(chatDiff2);
+                    else if (!chat.Rules.IsOwner() && chatDiff2.RequiresOwner())
                         throw ChatPermissionsExt.NotEnoughPermissions(ChatPermissions.Owner);
 
                     await ValidatePlaceChatChangeConstraints((chat.Id as PlaceChatId)?.PlaceId, chatDiff2)
                         .ConfigureAwait(false);
-                    if (chat.Id is PeerChatId)
-                        ValidatePeerChatChangeConstraints(chatDiff2);
                 }
             }
         }
