@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace ActualChat.Validation;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter)]
-public sealed class AppEmailAddressAttribute : ValidationAttribute
+public sealed class EmailAttribute : ValidationAttribute
 {
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {

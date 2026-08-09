@@ -239,10 +239,10 @@
         [Required, Display(Name = "Name")]
         public string Name { get; set; } = "";
         public string NameFieldId { get; set; } = "";
-        [AppEmailAddress, Display(Name = "Email")]
+        [Email, Display(Name = "Email")]
         public string? Email { get; set; }
         public string EmailFieldId { get; set; } = "";
-        [AppPhone, Display(Name = "Phone")]
+        [PhoneNumber, Display(Name = "Phone")]
         public string Phone { get; set; } = "";
         public Phone? ParsedPhone { get; set; }
         public string PhoneFieldId { get; set; } = "";
