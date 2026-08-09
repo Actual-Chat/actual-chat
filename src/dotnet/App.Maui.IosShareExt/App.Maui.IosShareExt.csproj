@@ -112,6 +112,35 @@
     <Registrar>managed-static</Registrar>
   </PropertyGroup>
 
+  <!-- The macios SDK never strips an app extension's binaries: Xamarin.Shared.targets sets
+       _PostProcess=false when IsAppExtension, and the host app only post-processes the items an
+       extension hands back with IsAppExtension=true - which is just the .appex executable. That
+       is harmless for every other framework, since App.Maui ships its own copy and strips that,
+       but the R2R composite is ours alone and the SDK relocates it into the app's Frameworks/,
+       so nothing ever touches it: it shipped with a 621k-entry symbol table, 126MB of a 179MB
+       framework. Stripping leaves the _RTR_HEADER_* symbol the module registration links
+       against, exactly as the SDK's own strip does for App.Maui's composite.
+       No dSYM on purpose - managed stack traces come from the runtime, so a second ~180MB
+       symbol bundle per build isn't worth what native symbolication of R2R code would add. -->
+  <Target Name="_StripR2RFramework"
+          Condition="'$(CreateR2RFramework)' == 'true' And '$(IsMacEnabled)' == 'true'"
+          AfterTargets="_CreateR2RFramework"
+          DependsOnTargets="_PrepareR2RModules"
+          Inputs="@(_R2RModule->'%(FrameworkOutput)')"
+          Outputs="@(_R2RModule->'$(_R2RModuleIntermediateOutputPath)%(ShortName).r2r.stripped')">
+    <SymbolStrip
+      SessionId="$(BuildSessionId)"
+      Executable="%(_R2RModule.FrameworkOutput)"
+      Kind="Framework"
+      StripPath="$(StripPath)" />
+    <Touch
+      Files="@(_R2RModule->'$(_R2RModuleIntermediateOutputPath)%(ShortName).r2r.stripped')"
+      AlwaysCreate="true" />
+    <ItemGroup>
+      <FileWrites Include="@(_R2RModule->'$(_R2RModuleIntermediateOutputPath)%(ShortName).r2r.stripped')" />
+    </ItemGroup>
+  </Target>
+
   <!-- Workaround for excluding C# files from compilation for non-iOS targets -->
   <ItemGroup Condition="!$(TargetFramework.Contains('-ios'))">
     <Using Remove="@(Using)" />
