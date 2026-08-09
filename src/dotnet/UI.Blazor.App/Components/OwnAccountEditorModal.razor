@@ -242,7 +242,7 @@
         [AppEmailAddress, Display(Name = "Email")]
         public string? Email { get; set; }
         public string EmailFieldId { get; set; } = "";
-        [PhoneAsync, Display(Name = "Phone")]
+        [AppPhone, Display(Name = "Phone")]
         public string Phone { get; set; } = "";
         public Phone? ParsedPhone { get; set; }
         public string PhoneFieldId { get; set; } = "";

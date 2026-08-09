@@ -302,9 +302,6 @@
     <Using Include="ActualChat.Performance" />
     <Using Include="ActualChat.Serialization" />
     <Using Include="ActualChat.Validation" />
-    <!-- Resolve ambiguity: .NET 11 added System.ComponentModel.DataAnnotations.AsyncValidationAttribute,
-         which collides with ours in files that import DataAnnotations -->
-    <Using Include="ActualChat.Validation.AsyncValidationAttribute" Alias="AsyncValidationAttribute" />
     <!-- ActualLab.* -->
     <Using Include="ActualLab" />
     <Using Include="ActualLab.Api" />

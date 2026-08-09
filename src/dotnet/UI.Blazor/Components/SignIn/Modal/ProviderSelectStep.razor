@@ -311,7 +311,7 @@
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
-        [PhoneOrEmailAsync, Display(Name = "Phone or email")]
+        [PhoneOrEmail, Display(Name = "Phone or email")]
         public string PhoneOrEmail { get; set; } = "";
         public string PhoneOrEmailFieldId { get; set; } = "";
     }
