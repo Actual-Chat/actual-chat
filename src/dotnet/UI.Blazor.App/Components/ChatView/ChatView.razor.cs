@@ -418,6 +418,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             cChatIdRange = await Computed.Capture(
                 () => Chats.GetIdRange(Session, chatId, cancellationToken),
                 cancellationToken);
+        // Rethrows via Use() to register the dependency - an isolated failure has nothing to recover on,
+        // so the view would stay stale for Fusion's 30s error horizon rather than until access returns.
+        if (cChatIdRange.HasError)
+            await cChatIdRange.Use(cancellationToken);
+
         var chatIdRange = cChatIdRange.Value;
         var dataQuery = GetChatDataQuery(query,
             renderedData,
