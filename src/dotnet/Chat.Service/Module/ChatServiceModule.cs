@@ -164,6 +164,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // Embeddings
         var embeddingSettings = Cfg.Settings<EmbeddingSettings>();
+        services.AddHttpClient();
         services.TryAddSingleton(embeddingSettings);
         services.TryAddSingleton<IEmbeddingsCalculator, EmbeddingsCalculator>();
 

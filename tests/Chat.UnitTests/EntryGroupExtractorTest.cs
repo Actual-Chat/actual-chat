@@ -270,7 +270,9 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
             // PredictionsUri = "http://localhost:28080/predictions/Alibaba-NLP_gte-multilingual-base",
             PredictionsUri = "http://localhost:8000/v1/embeddings", // Experimenting with another (much faster!) model served with vllm
         };
-        var extractor = new EntryGroupExtractor(new EmbeddingsCalculator(settings), log);
+        var httpClientFactory = new ServiceCollection().AddHttpClient()
+            .BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
+        var extractor = new EntryGroupExtractor(new EmbeddingsCalculator(settings, httpClientFactory), log);
         var initialState = new ExtractorState(null, null);
         var entries = await ReadTestEntries("./data/chat_entries.zip");
 

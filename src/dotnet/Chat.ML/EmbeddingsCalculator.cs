@@ -17,8 +17,11 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    public EmbeddingsCalculator(EmbeddingSettings embeddingSettings)
+    private IHttpClientFactory HttpClientFactory { get; }
+
+    public EmbeddingsCalculator(EmbeddingSettings embeddingSettings, IHttpClientFactory httpClientFactory)
     {
+        HttpClientFactory = httpClientFactory;
         if (!embeddingSettings.PredictionsUri.IsNullOrEmpty())
             _predictionsUri = new Uri(embeddingSettings.PredictionsUri, UriKind.Absolute);
     }
@@ -28,7 +31,7 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
         if (_predictionsUri is null)
             throw StandardError.Internal("PredictionsUri is not configured at EmbeddingSettings.");
 
-        using var client = new HttpClient();
+        using var client = HttpClientFactory.CreateClient(nameof(EmbeddingsCalculator));
 
         // TODO(AK): Tokenize and limit text to MaxTokenCount
         // TODO(AK): Use OpenAI compatible embeddings API!
