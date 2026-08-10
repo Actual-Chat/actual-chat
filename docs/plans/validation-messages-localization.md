@@ -47,24 +47,24 @@ Cost: ~16 new catalog keys × 14 languages, ~1 day of code.
 | `Core/Validation/Validators.Phone.cs:20` | "Phone number contains invalid characters." |
 | `Core/Validation/Validators.Phone.cs:24` | "Phone number is too short." |
 | `Core/Validation/Validators.Phone.cs:26` | "Phone number is too long." |
-| `Core/Validation/PhoneOrEmailAsyncAttribute.cs:27` | "Enter a phone number or email address." |
-| `UI.Blazor.App/Components/ChatSettings/AliasIdAttribute.cs:15` | "Custom link is too short." |
-| `UI.Blazor.App/Components/ChatSettings/AliasIdAttribute.cs:17` | "Custom link should contain only 0-9, a-Z, - and _." |
+| `Core/Validation/PhoneOrEmailAttribute.cs:27` | "Enter a phone number or email address." |
+| `UI.Blazor.App/Components/ChatSettings/AliasIdAttribute.cs:14` | "Custom link is too short." |
+| `UI.Blazor.App/Components/ChatSettings/AliasIdAttribute.cs:16` | "Custom link should contain only 0-9, a-Z, - and _." |
 
 All 7 are tier-1 exact matches. **None of this code changes** — we catalog its current
 output rather than converting it to emit keys.
 
 ### 1.2 Inline `ErrorMessage =` literals
 
-- `UI.Blazor.App/Components/DeleteAccountModal.razor:80` — "Delete confirmation is required"
-- `UI.Blazor.App/Components/DeleteAccountModal.razor:81` — "Please enter DELETE to confirm"
+- `UI.Blazor.App/Components/DeleteAccountModal.razor:83` — "Delete confirmation is required"
+- `UI.Blazor.App/Components/DeleteAccountModal.razor:84` — "Please enter DELETE to confirm"
 
 Also tier 1, also unchanged. (`MLSearch.Service/Module/MLSearchSettings.cs:26` has one
 too, but it is a server settings-binding message never shown to a user — out of scope.)
 
 ### 1.3 Adjacent hardcoded hints rendered in the same slot
 
-- `UI.Blazor.App/Components/ChatSettings/AliasValidationMessage.razor:107,108` —
+- `UI.Blazor.App/Components/ChatSettings/AliasValidationMessage.razor:109,110` —
   "This link is available." / "This link is already in use."
 
 Not validation results, but they render into the same `form-section-validation` element
@@ -97,7 +97,7 @@ Verified against .NET 10 (`ValidationAttribute.FormatErrorMessage`):
 | `[MaxLength]` / `[StringLength]` / `[Range]` | *(not used in any UI form today)* |
 
 These are the tier-2 templates. Only the first three are needed now — the sole
-`[RegularExpression]` usage (`DeleteAccountModal.razor:81`) overrides `ErrorMessage`, so
+`[RegularExpression]` usage (`DeleteAccountModal.razor:84`) overrides `ErrorMessage`, so
 its framework text never renders. Add it anyway if you want the guard test to stay quiet
 when someone uses it bare later; the plan leaves it out and lets the test say so.
 
@@ -114,9 +114,9 @@ lines apart in the same file, with nothing tying them together:
 | Component | `FormSection Label=` | `[Display(Name = …)]` | |
 |---|---|---|---|
 | `OwnAccountEditorModal.razor` | "Name" / "Phone" / "Email" | same | ✓ |
-| `OwnAccountEditorModal.razor:42,248` | **"User link"** | **"Short name"** | ✗ |
+| `OwnAccountEditorModal.razor:42,250` | **"User link"** | **"Short name"** | ✗ |
 | `ChatSettings/EditChatTypeModalPage:73,199` | **"Custom link"** | **"Short name"** | ✗ |
-| `PlaceSettings/PlaceSettingsEditTypeModalPage:65,226` | **"Custom link"** | **"Short name"** | ✗ |
+| `PlaceSettings/PlaceSettingsEditTypeModalPage:65,227` | **"Custom link"** | **"Short name"** | ✗ |
 | `Settings/EmailSettings.razor:24,79` | **`@L.Email_Label`** (localized) | **"Email"** (literal) | ✗ |
 | `Onboarding/{AvatarStep,PhoneStep,TimeZoneStep}` | "Name" / "Phone" / "Time zone" | same | ✓ |
 | `SignIn/Modal/ProviderSelectStep.razor:314` | *(none — label is inside the input)* | "Phone or email" | — |
@@ -127,7 +127,7 @@ So a user editing their account sees a field labelled **User link** and, on erro
 **Correction (2026-08-07, from in-browser testing).** This section originally claimed
 `EmailSettings` renders a localized label above an English "Email" message. It didn't
 render a message at all — and neither did the account editor's email field, which is the
-only place `[AppEmailAddress]` reaches a user. Both passed `For="() => email"`, where
+only place `[Email]` reaches a user. Both passed `For="() => email"`, where
 `email` is a Razor-local copy (`var email = _form.Email ?? ""`): `FieldIdentifier.Create`
 keys on the closure object + `"email"` while the validator records against
 `(_form, "Email")`, so `GetValidationMessages` returned nothing and the slot stayed empty.
@@ -161,19 +161,28 @@ ordinary `Strings.*` key rather than an indexed one.
 
 ## 2. Why the existing machinery doesn't reach them
 
-1. **`InvariantGlobalization=true`** (`Directory.Build.props:101`) — the standard
+1. **`InvariantGlobalization=true`** (`Directory.Build.props:95`) — the standard
    `CultureInfo`-driven DataAnnotations story (`ErrorMessageResourceType` + satellite
    `.resx`) does not work here. Same constraint that forced `AppStringLocalizer`; see
    `docs/plans/app-localization.md` §1.
 2. **Two validator implementations.** 24 components use Blazor's stock
    `<DataAnnotationsValidator/>`; 4 use our `<AsyncDataAnnotationsValidator/>` →
    `EditContextAsyncValidator`. We control only the second, so its
-   `AppendValidationResults` (`Components/Validation/EditContextAsyncValidator.cs:129`)
+   `AppendValidationResults` (`Components/Validation/EditContextAsyncValidator.cs:124`)
    is **not** a usable choke point — it would cover 4 forms out of 28.
+
+   Still true after #4134 rewrote `EditContextAsyncValidator` onto the BCL's
+   `Validator.TryValidateObjectAsync` / `TryValidatePropertyAsync`: the split is about
+   *which forms* each validator covers, not about how either one validates. That rewrite
+   does open a second door this plan didn't have — both paths now build their
+   `ValidationContext` with the service provider, so an app-owned attribute could resolve
+   `IStringLocalizer` and return localized text directly. Rejected for the same reason
+   tier 1 exists: it reaches only attributes we own, leaving the BCL's `[Required]` and
+   `[EmailAddress]` — the bulk of the surface — still English.
 3. **The real choke point is render-time.** Exactly two components read validation
    messages for display:
-   - `UI.Blazor/Components/Form/FormSection.razor:11` → rendered at `:49`
-   - `UI.Blazor.App/Components/ChatSettings/AliasValidationMessage.razor:6` → rendered at `:21`
+   - `UI.Blazor/Components/Form/FormSection.razor:11` → rendered at `:50`
+   - `UI.Blazor.App/Components/ChatSettings/AliasValidationMessage.razor:6` → rendered at `:17`
 
    (`UI.Blazor/Components/Form/Form.cs:97` also calls `GetValidationMessages()`, but
    only to test emptiness — unaffected.)
@@ -191,7 +200,7 @@ ordinary `Strings.*` key rather than an indexed one.
   the byte-match constraint (§4.5) differ.
 - **`AppStringLocalizer`** (`UI.Blazor.App/Services/`) — forward key → text lookup.
   Registered scoped as both `IStringLocalizer<Strings>` and non-generic
-  `IStringLocalizer` (`Module/BlazorUIAppModule.cs:35-36`). Its `this[name, args]`
+  `IStringLocalizer` (`Module/BlazorUIAppModule.cs:34-35`). Its `this[name, args]`
   overload already does the `string.Format` tier 2 needs, and it already reports
   `ResourceNotFound` correctly.
 - **`AppStrings`** (`UI.Blazor/Resources/AppStrings.cs`) — the
@@ -201,7 +210,7 @@ ordinary `Strings.*` key rather than an indexed one.
   `[ComputeMethod] Get(string)` short-circuits to the input for English, otherwise
   `ConcurrentProcessor`-throttled AI translation via `ITranslations.GetTranslatedUIText`
   (`UITextKind.ErrorMessage`), cached by the Fusion compute cache.
-- **`ComponentBase<THub>.L`** (`UI.Blazor/BaseTypes/ComponentBase.cs:44`, same member on
+- **`ComponentBase<THub>.L`** (`UI.Blazor/BaseTypes/ComponentBase.cs:43`, same member on
   `ComputedStateComponent`, `ComputedRenderStateComponent`, `FusionComponentBase`) — the
   localizer shortcut components already use. `AliasValidationMessage.razor` inherits
   `ComponentBase<AppUIHub>` and has `L`; `FormSection.razor` inherits Blazor's plain
@@ -425,10 +434,10 @@ translator flags them — start with none.
 
 Call sites:
 
-- `FormSection.razor:49` → `<LocalizedMessage Text="@messages.First()" FieldLabel="@Label"/>`.
+- `FormSection.razor:50` → `<LocalizedMessage Text="@messages.First()" FieldLabel="@Label"/>`.
   `Label` is already a parameter of `FormSection`, so this is local — no plumbing.
-- `AliasValidationMessage.razor:21` → same, for the validation branch only (the two hints
-  at `:107-108` are ordinary catalog strings — §1.3). It renders as a `ValidationMessage`
+- `AliasValidationMessage.razor:17` → same, for the validation branch only (the two hints
+  at `:109-110` are ordinary catalog strings — §1.3). It renders as a `ValidationMessage`
   fragment *inside* a `FormSection`, so it cannot read `Label` itself and needs a
   `FieldLabel` parameter.
 
@@ -549,7 +558,7 @@ through tier 1 or tier 2 — never tier 3.
   `[EmailAddress]`) × a representative `[Display]` name, asserting the framework's
   actual `FormatErrorMessage` output matches a template.
 - One row per app-validator branch: `Validators.Email.Validate` (3 branches),
-  `Validators.Phone.Validate` (3), `PhoneOrEmailAsyncAttribute`, `AliasIdAttribute` (2),
+  `Validators.Phone.Validate` (3), `PhoneOrEmailAttribute`, `AliasIdAttribute` (2),
   `DeleteAccountModal`'s two `ErrorMessage` literals.
 
 This is what makes the English byte-match requirement safe. A .NET upgrade that rewords
