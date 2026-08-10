@@ -160,7 +160,12 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
                 return lastData; // Current computed is already invalidated, so no reason to waste our time re-rendering right now
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);
+            // Identity (the chat id for the chat view) is what lets this be correlated with the
+            // server-side stack: an RPC error reaches the client as ExceptionInfo - type and
+            // message only - so the client stack never says which call actually threw.
+            Log.LogError(e,
+                "DataSource.GetData failed for {Identity} on query = {Query}",
+                Identity, query);
             throw;
         }
         return data;
