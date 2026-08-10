@@ -393,15 +393,20 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act
         var spoken = await CreateSpokenEntry(chat.Id, "spoken after leave");
-        var typed = await Tester.CreateTextEntry(chat.Id, "typed after leave");
+        // Enough typed entries to run well past an id-tile boundary (the first layer holds 5). A single
+        // entry lands in a tile that's loaded for other reasons, so it can't catch a whole tile being
+        // excluded from the load - which is exactly how the outer id-tile selection used to hide these.
+        var typed = new List<ChatEntry>();
+        for (var i = 0; i < 12; i++)
+            typed.Add(await Tester.CreateTextEntry(chat.Id, $"typed after leave {i}"));
 
-        // assert (sustained - the spoken entry never surfaces, the typed one always does)
+        // assert (sustained - the spoken entry never surfaces, every typed one does)
         await Task.Delay(1000);
         var items2 = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
         var lids = LeafEntryLids(items2);
         lids.Should().NotContain(spoken.Id.LocalId);
-        lids.Should().Contain(typed.Id.LocalId);
-        lids.Should().Equal([..frozenLeafLids, typed.Id.LocalId]);
+        lids.Should().Contain(typed.Select(e => e.Id.LocalId));
+        lids.Should().Equal([..frozenLeafLids, ..typed.Select(e => e.Id.LocalId)]);
     }
 
     [Fact]

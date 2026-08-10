@@ -631,8 +631,21 @@ public partial class ChatUI
                 })
                 .Where(r => !r.IsEmpty)
                 .ToList();
-            if (!hiddenLiveTailRange.IsEmpty)
-                excludedRanges.Add(hiddenLiveTailRange);
+            // hiddenLiveTailRange runs to long.MaxValue so the per-entry filter in GetChatItemsInternal
+            // can hide spoken entries wherever they land. Excluding that whole span here would be a
+            // different thing entirely: an id tile dropped here is never fetched, and the messages typed
+            // during the call live in those tiles - so they vanished as soon as one crossed a tile
+            // boundary. Bound it to what the call itself covers; past that only typed entries exist and
+            // they must load. The bounded range still spans the block's start lid, which is what makes an
+            // entry-less block (video-only, no summary yet) emit its card at all - liveBlockFoldRange is
+            // empty then, so the select above contributes nothing for it.
+            var hiddenTailToExclude = liveConversation is { } hiddenTailConversation
+                ? new Range<long>(
+                    hiddenLiveTailRange.Start,
+                    Math.Max(hiddenLiveTailRange.Start, hiddenTailConversation.EndEntryLid + 1))
+                : hiddenLiveTailRange;
+            if (!hiddenLiveTailRange.IsEmpty && !hiddenTailToExclude.IsEmpty)
+                excludedRanges.Add(hiddenTailToExclude);
 
             var merged = showConversations
                 ? entryIdRanges
