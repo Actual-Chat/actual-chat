@@ -12,6 +12,14 @@ public sealed record ChatViewItemVisibility(
     public long MaxMessageLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Max(x => x.LocalId);
     public bool IsEmpty => VisibleKeys.Count == 0;
 
+    // Same as MaxMessageLid, minus the placeholders - use this one wherever the lid is about to
+    // become a read position, since a placeholder's synthetic lid would mark the chat read to its end.
+    public long MaxEntryLid { get; } = VisibleKeys
+        .Where(x => !x.Kind.IsPlaceholder())
+        .Select(x => x.LocalId)
+        .DefaultIfEmpty(-1)
+        .Max();
+
     public IReadOnlyList<ChatEntryId> VisibleTextEntryIds => field ??= VisibleKeys
         .Where(c => c.Kind == ChatMessageKind.None)
         .OrderBy(x => x.LocalId)

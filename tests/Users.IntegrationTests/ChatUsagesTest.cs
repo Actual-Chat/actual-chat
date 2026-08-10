@@ -120,7 +120,9 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
         await using var reader = appHost.NewWebClientTester(Out);
         var account = await reader.SignInAsUniqueBob();
         var (readableChatId, _) = await reader.CreateChat(false);
-        var readablePosition = new ChatPosition(10);
+        // Read positions are clamped to the chat's last entry, so this one must point at a real entry
+        var readableEntry = await reader.CreateTextEntry(readableChatId, "Hi");
+        var readablePosition = new ChatPosition(readableEntry.LocalId);
         var unreadablePosition = new ChatPosition(20);
 
         // act

@@ -38,6 +38,18 @@ public class ChatPositions(IServiceProvider services) : DbServiceBase<UsersDbCon
         if (chat is null)
             return;
 
+        if (kind == ChatPositionKind.Read) {
+            // Read positions are stored forward-only, so one past the chat's end permanently marks
+            // entries that don't exist yet as read. Clients overshoot in more than one way: the
+            // "unbounded" long.MaxValue sentinel, and the synthetic lids the chat view gives to
+            // placeholder items - an optimistic send, the audio-recording skeleton.
+            // View positions are excluded: they're overwritten freely and mean "where you were".
+            var idRange = await Chats.GetIdRange(session, chatId, cancellationToken).ConfigureAwait(false);
+            var maxLid = idRange.End - 1;
+            if (position.EntryLid > maxLid)
+                position = position with { EntryLid = maxLid };
+        }
+
         var backendCommand = new ChatPositionsBackend_Set(account.Id, chatId, kind, position);
         await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
     }
