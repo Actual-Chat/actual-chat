@@ -73,6 +73,7 @@ public sealed class OfflineTranscriberComparisonTest(
             .AddSingleton<IConfiguration>(_ => configuration)
             .AddSingleton(MomentClockSet.Default)
             .AddSingleton(_ => configuration.Settings<CoreServerSettings>(nameof(CoreSettings)))
+            .AddSoniox()
             .AddTestLogging(Out)
             .BuildServiceProvider();
     }

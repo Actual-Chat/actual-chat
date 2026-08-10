@@ -12,6 +12,8 @@ namespace ActualChat.Transcription;
 /// </summary>
 public sealed class ElevenLabsOfflineTranscriber : IOfflineTranscriber
 {
+    public const string HttpClientName = nameof(ElevenLabsOfflineTranscriber);
+
     private const string Url = "https://api.elevenlabs.io/v1/speech-to-text";
     private const string Model = "scribe_v2";
     private static readonly JsonSerializerOptions JsonOptions = new() {
@@ -19,6 +21,7 @@ public sealed class ElevenLabsOfflineTranscriber : IOfflineTranscriber
     };
 
     private CoreServerSettings CoreServerSettings { get; }
+    private IHttpClientFactory HttpClientFactory { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
     private ILogger Log { get; }
     public TranscriberInfo Info { get; } = new() {
@@ -33,6 +36,7 @@ public sealed class ElevenLabsOfflineTranscriber : IOfflineTranscriber
     {
         Log = services.LogFor(GetType());
         CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
+        HttpClientFactory = services.HttpClientFactory();
         OggOpusStreamConverter = new OggOpusStreamConverter(new OggOpusStreamConverter.Options {
             PageDuration = TimeSpan.FromMilliseconds(200),
         });
@@ -48,7 +52,7 @@ public sealed class ElevenLabsOfflineTranscriber : IOfflineTranscriber
             throw StandardError.Configuration("CoreSettings:ElevenLabsKey is not set.");
 
         try {
-            using var httpClient = new HttpClient();
+            using var httpClient = HttpClientFactory.CreateClient(HttpClientName);
             httpClient.DefaultRequestHeaders.Add("xi-api-key", apiKey);
 
             var stream = await ToOggStream(audioSource, cancellationToken).ConfigureAwait(false);

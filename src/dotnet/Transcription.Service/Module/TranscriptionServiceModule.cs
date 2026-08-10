@@ -28,10 +28,12 @@ public sealed class TranscriptionServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<ITranscriber, GoogleTranscriber>();
         services.AddSingleton<ITranscriber, DeepgramTranscriber>();
         if (!coreSettings.SonioxKey.IsNullOrEmpty()) {
+            services.AddSoniox();
             services.AddSingleton<ITranscriber, SonioxTranscriber>();
             services.AddSingleton<IOfflineTranscriber, SonioxOfflineTranscriber>();
         }
         if (!coreSettings.ElevenLabsKey.IsNullOrEmpty()) {
+            services.AddHttpClient(ElevenLabsOfflineTranscriber.HttpClientName);
             services.AddSingleton<ITranscriber, ElevenLabsTranscriber>();
             services.AddSingleton<IOfflineTranscriber, ElevenLabsOfflineTranscriber>();
         }
