@@ -314,12 +314,16 @@
        See docs/startup-profiling.md. It reaches crossgen2 as -m:.
 
        The file carries method *names* only - `dotnet-pgo dump` reports 0 methods with
-       block counts, edge counts or class histograms - so it is useless to a full build:
-       there is nothing for the JIT to consume, and hot-first ordering would need
-       crossgen2's `method-layout` switch, which neither we nor the SDK ever pass (it
-       defaults to DefaultSort = layout off). Verified on device rather than inferred:
-       methods this file lists were still being jitted by a full build compiled with it.
-       A method list is exactly what `partial` consumes, which is where it earns its keep.
+       block counts, edge counts or class histograms - so it cannot inform block layout or
+       devirtualization, and hot-first ordering would need crossgen2's `method-layout`
+       switch, which neither we nor the SDK ever pass (it defaults to DefaultSort = off).
+
+       It does still ROOT in a full build - corrected 2026-08-09. This comment previously
+       called it useless outside `partial`; that was wrong. ReadyToRunProfilingRootProvider
+       is added unconditionally (crossgen2/Program.cs:576), outside the `if (!partial)` that
+       guards the other root providers. The old claim rested on profile-listed methods still
+       being jitted on Android - which is tier-1 rejit, something this build does ~1,200
+       times per cold start. See docs/startup-profiling.md.
 
        MAUI ships its own generic profiles and adds them to _ReadyToRunPgoFiles alongside
        this one (Microsoft.Maui.Controls.targets, _MauiUseDefaultReadyToRunPgoFiles). What
@@ -396,6 +400,24 @@
        Trim="true" makes it a trimmer feature switch, not just a runtime one. -->
   <ItemGroup>
     <RuntimeHostConfigurationOption Include="ArgumentList.AllowGenerics" Value="false" Trim="true" />
+  </ItemGroup>
+
+  <!-- iOS: startup profile. The opposite purpose to Android's. There a profile SHRINKS the
+       image (a miss costs one jit); here a miss is interpreted for the life of the process,
+       so the profile exists to ADD what a full build cannot enumerate statically: value-type
+       generic instantiations, async state-machine boxes, and the reflection-created
+       serializers / converters / interception types nothing references from code.
+
+       ios-interactive.mibc is a device recording of a real session (chats + recording +
+       call paths), not a synthetic launch - a launch-only profile leaves the audio paths
+       interpreted. Re-record per docs/ios-specific.md -> Measuring what runs interpreted.
+
+       Measured 2026-08-09 on device: interpreted methods 2835 -> 140 (-95%), compiled
+       324,076 -> 328,066, bundle 268MB -> 269MB. The residue is objc_msgSend stubs and
+       runtime-emitted accessors, neither of which can ever be precompiled. -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) and '$(Configuration)' == 'Release'">
+    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\ios-interactive.mibc" />
+    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\merged.mibc" />
   </ItemGroup>
 
   <!-- Apple build properties -->

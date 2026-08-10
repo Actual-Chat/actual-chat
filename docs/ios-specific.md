@@ -179,6 +179,11 @@ point is that uncompiled methods still have IL for the interpreter to run.
 `PublishReadyToRunUseRuntimePackOptimizationData` (default `true`) picks up nothing. The
 composite image is laid out without any profile at all.
 
+That is about the *runtime pack's* profile. A profile we supply ourselves via
+`PublishReadyToRunPgoFiles` does reach crossgen2 and does root in full mode - measured
+2026-08-09, +3,691 methods including the 1,524 async state-machine boxes. See
+[startup-profiling.md](./startup-profiling.md#the-profile-roots-in-a-full-build-too--it-just-doesnt-order-it).
+
 **`_Profiling/merged.mibc` does transfer to `ios-arm64`.** It drives partial mode without a
 generic-instantiation failure. (The Windows→Android direction used to crash crossgen2 on
 `MemoryPack` instantiations; as of 2026-08-06 that no longer reproduces — Android builds

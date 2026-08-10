@@ -136,23 +136,52 @@ Two traps when cross-referencing the map against a `.mibc`:
 
 ## What the experiments established
 
-### The profile does nothing in a full build
+### The profile roots in a full build too — it just doesn't order it
 
-`dotnet-pgo dump` reports **0 methods with block counts, edge counts or class histograms** —
-a trace-derived `.mibc` is a method *list*, nothing more. In non-partial mode crossgen2 does
-not root from it, and hot-first ordering would need `--method-layout`, which defaults to
-`DefaultSort` (layout disabled) and which neither we nor the SDK ever pass.
+**Corrected 2026-08-09.** This section previously said crossgen2 ignores the profile outside
+partial mode. That is wrong, and it mattered: it is the reason iOS shipped without one.
 
-Verified on device rather than inferred: `RadixHeapSet\`1<GenericTimeoutSlot>` appears 8
-times in the profile that built the shipping full image, and 5 of those methods were still
-being jitted at runtime.
+`ReadyToRunProfilingRootProvider` is added **unconditionally** — `crossgen2/Program.cs:576`,
+outside the `if (!partial)` that guards the visibility/XML/library root providers. Partial
+mode does not *enable* profile rooting; it removes everything else, leaving only the profile.
 
-**So partial mode is not merely "full minus some code".** crossgen2 roots from the profile
-only in partial mode, and the profile names exact generic instantiations — including
-value-type ones, which have no shared `__Canon` representation and which a full build
-silently skips if it cannot enumerate them statically. The partial image contains
-`ArrayPoolBuffer_1<UInt8>__GetMemory` and `RadixHeapSet_1<GenericTimeoutSlot>__ExtractMinSet`;
-the full image did not.
+Measured on `net11.0-ios` / `ios-arm64` / Release, feeding a device-recorded `.mibc` to an
+otherwise unchanged full build:
+
+| | baseline | with profile |
+|---|---|---|
+| compiled methods | 324,076 | **327,767** (+3,691) |
+| `AsyncStateMachineBox` instantiations | 19,299 | **20,823 (+1,524)** |
+| `MessagePackByteSerializer_1<ParticipationKind>` | 0 | 4 |
+
+That `+1,524` is exactly the number of interpreted `AsyncTaskMethodBuilder` methods the
+device trace recorded — not approximately, the same number. Every instantiation named in the
+profile landed in the image.
+
+What *is* still true, and is probably what the original claim conflated:
+
+- A trace-derived `.mibc` carries **no block counts, edge counts or class histograms**
+  (`dotnet-pgo dump` reports 0 of each). It is a method list. It roots; it cannot inform
+  block layout or devirtualization.
+- Hot-first **ordering** would need `--method-layout`, which defaults to `DefaultSort`
+  (layout disabled) and which neither we nor the SDK ever pass. So the profile changes
+  *which* methods are compiled, never their order.
+
+The original evidence — `RadixHeapSet\`1<GenericTimeoutSlot>` named in the profile yet
+"still being jitted at runtime" on Android — does not show what it appeared to. Android has
+a JIT and tiering, and this same document measures that ~1,200 of 1,675 methods jitted
+during a cold start are **tier-1 promotions, not first compiles**. A method present in the
+R2R image is jitted again on promotion. The observation is consistent with rooting having
+worked all along.
+
+**Partial mode is still not merely "full minus some code".** In partial the profile is the
+*only* root source, so it decides the whole image rather than adding to it. Its real value in
+both modes is that it names exact generic instantiations — including value-type ones, which
+have no shared `__Canon` representation and which a full build silently skips when it cannot
+enumerate them statically. That is why the partial image contained
+`ArrayPoolBuffer_1<UInt8>__GetMemory` and `RadixHeapSet_1<GenericTimeoutSlot>__ExtractMinSet`
+and the full image did not — but as the table above shows, a full build fed the same names
+gets them too.
 
 ### Most startup "JIT" is tier-1 rejit
 
