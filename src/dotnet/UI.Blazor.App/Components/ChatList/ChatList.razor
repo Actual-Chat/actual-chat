@@ -28,6 +28,9 @@
 @code {
     private FiniteList<ChatListItemModel>? _virtualListRef;
     private int _skeletonCount;
+    private bool _hasParameters;
+    private PlaceId? _lastPlaceId;
+    private ChatListSettings? _lastSettings;
 
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
@@ -47,6 +50,14 @@
 
     protected override void OnParametersSet() {
         DebugLog?.LogDebug("OnParametersSet: {List}", ChatListKind.All);
+        // Reset the virtual list only when its data source context actually changes, not on every
+        // parent re-render: a bare re-render (e.g. the notifications widget updating unread counts)
+        // would otherwise re-hide the freshly revealed list and leave its items invisible.
+        if (_hasParameters && _lastPlaceId == PlaceId && _lastSettings == Settings)
+            return;
+        _hasParameters = true;
+        _lastPlaceId = PlaceId;
+        _lastSettings = Settings;
         _ = _virtualListRef?.Reset();
     }
 }
