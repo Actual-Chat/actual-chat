@@ -360,9 +360,26 @@ tool that already gave up. `DiagnosticSuspend=true` exists so the app can sit wa
 The `create-mibc` MVID mismatch warnings are expected, for the same reason as on Android:
 the on-device assemblies are IL-stripped and the `-r` set is not.
 
-Two build-time notes: `--mapcsv` is now on for iOS Release as well as Android, because on
+A build-time note: `--mapcsv` is now on for iOS Release as well as Android, because on
 iOS the map is the only way to separate "never compiled, interpreted forever" from noise.
-And we deliberately feed **no** `.mibc` to iOS — see *Shrinking the R2R image* above.
+
+### The three profiles iOS Release feeds crossgen2
+
+`ios-interactive.mibc` and `merged.mibc` are recordings — they know which instantiations a
+real session actually ran, which nothing static can. `aothelper.mibc` is emitted from the
+current tree by `update-aot-helpers.cmd`, from the CodeKeeper type set plus what ActualLab's
+proxy keepers and the async machinery construct reflectively.
+
+Regenerate `aothelper.mibc` whenever the keeper set moves; it costs one command and no
+device. It is not a replacement for the recordings — on its own it reaches 99.3% of the
+methods they cover (2,314 short of 328,443, measured 2026-08-10) — but it does not go stale,
+so it backstops them as the code drifts away from the last recording.
+
+Two things it deliberately does not do. It leaves a generic method's own type arguments at
+`object`: varying them over every value type in the app tripled the profile to close ~14
+methods. And it names no framework generics beyond what our types reach — `JsonTypeInfo<T>`,
+comparers, LINQ iterators and friends were measured at +5 MB of bundle to close 187 methods,
+because we can identify the definition but not which arguments are live.
 
 ### First results (2026-08-09, launch only)
 

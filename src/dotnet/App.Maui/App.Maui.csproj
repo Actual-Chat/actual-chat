@@ -412,12 +412,20 @@
        call paths), not a synthetic launch - a launch-only profile leaves the audio paths
        interpreted. Re-record per docs/ios-specific.md -> Measuring what runs interpreted.
 
+       aothelper.mibc is the static counterpart, emitted by update-aot-helpers.cmd from the
+       CodeKeeper type set plus what ActualLab's proxy keepers and the async machinery build
+       reflectively. A recording only covers what that session ran and goes stale as the code
+       moves; this is regenerated from the current tree. On its own it reaches 99.3% of the
+       methods the two recordings cover, so it is the safety net when they age - not a
+       replacement, since it cannot know which instantiations actually run.
+
        Measured 2026-08-09 on device: interpreted methods 2835 -> 140 (-95%), compiled
        324,076 -> 328,066, bundle 268MB -> 269MB. The residue is objc_msgSend stubs and
        runtime-emitted accessors, neither of which can ever be precompiled. -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios')) and '$(Configuration)' == 'Release'">
     <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\ios-interactive.mibc" />
     <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\merged.mibc" />
+    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\aothelper.mibc" />
   </ItemGroup>
 
   <!-- Apple build properties -->

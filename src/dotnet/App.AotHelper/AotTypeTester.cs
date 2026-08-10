@@ -69,7 +69,7 @@ public static class AotTypeTester
     /// In JIT mode, Assembly.Load triggers module initializers.
     /// In Native AOT, we force-register AotSources directly so ILC includes the code.
     /// </summary>
-    private static void EnsureAssembliesLoaded()
+    public static void EnsureAssembliesLoaded()
     {
         var loaded = AppDomain.CurrentDomain.GetAssemblies()
             .Select(a => a.GetName().Name)
