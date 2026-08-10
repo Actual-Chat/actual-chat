@@ -76,9 +76,14 @@ build that is already published.
 iOS records the **opposite** list, and for the opposite reason. On Android and Windows a
 profile exists to *shrink* the image: a miss costs one JIT compile, so partial mode trades
 size for a little cold JIT. On iOS there is no JIT and nothing to shrink toward — a miss is
-interpreted for the life of the process — so **no `.mibc` is fed to iOS at all**
-(`PublishReadyToRunPgoFiles` is Android-gated, deliberately). What is worth recording here
-is not "what to compile" but "what we failed to compile": the interpreted set.
+interpreted for the life of the process — so what is worth recording here is not "what to
+compile" but "what we failed to compile": the interpreted set.
+
+That set is then fed back in. iOS Release supplies **three** `.mibc` files to crossgen2 —
+`ios-interactive.mibc`, `merged.mibc` and `aothelper.mibc` — to compile away what would
+otherwise stay interpreted, not to shrink anything: it costs ~1MB of bundle and removes 95%
+of the interpreted methods (2835 → 140, measured on device 2026-08-09). See
+[ios-specific.md → The three profiles iOS Release feeds crossgen2](./ios-specific.md#the-three-profiles-ios-release-feeds-crossgen2).
 
 The mechanism is the same `-Mode Jit` mask (`0x1C000080018`). There is no JIT on iOS, so
 every method it reports had to be built by the interpreter at runtime.
