@@ -1981,8 +1981,6 @@ export class InfiniteList {
         let scrollTopOffset = 0;
         let offset = 0;
         let totalSize = 0;
-        let beforeSize = 0;
-        let afterSize = 0;
         let spacerSize = 0;
         let endSpacerSize = 0;
         let totalSizeDiff = 0;

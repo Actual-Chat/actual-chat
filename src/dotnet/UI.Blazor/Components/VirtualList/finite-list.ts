@@ -375,7 +375,7 @@ export class FiniteList {
 
     private parseRenderState(): VirtualListRenderState | null {
         const rsJson = this.renderStateRef.textContent;
-        if (rsJson == null || rsJson === '')
+        if (!rsJson)
             return null;
 
         try {
