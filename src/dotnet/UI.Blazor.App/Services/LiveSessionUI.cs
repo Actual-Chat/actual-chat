@@ -44,6 +44,23 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
     }
 
+    [ComputeMethod(ConsolidationDelay = 0)]
+    public virtual async Task<LiveBlockSnapshot?> GetBlockSnapshot(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Consolidated at the SOURCE deliberately: everything downstream of AmIInLiveConversation has to
+        // stay immediately reactive, so the churn has to be absorbed here rather than on their outputs.
+        var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return state is null
+            ? null
+            : new LiveBlockSnapshot(
+                state.SessionStartedAt is not null,
+                state.EffectiveVisibleStartLid,
+                state.ContextStartLid,
+                state.EndEntryLid,
+                state.IsExpandedByDefault,
+                state.LastSummaryAt.EpochOffsetTicks > 0);
+    }
+
     [ComputeMethod]
     public virtual Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken)
         => LiveSessions.GetState(Session, chatId, cancellationToken);
@@ -348,3 +365,16 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
     }
 }
+
+/// <summary>
+/// The live-session fields the block and the chat view render from, projected so the rest of
+/// <see cref="LiveSessionState"/> - participants, rules, ring state, activity - can churn without
+/// invalidating them.
+/// </summary>
+public sealed record LiveBlockSnapshot(
+    bool IsLatched,
+    long VisibleStartLid,
+    long ContextStartLid,
+    long EndEntryLid,
+    bool IsExpandedByDefault,
+    bool HasSummary);

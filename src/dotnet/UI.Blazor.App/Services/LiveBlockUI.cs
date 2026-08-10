@@ -56,7 +56,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         // the frozen template fresh; it no longer owns whether the overlay exists.
         var chatState = await GetOrCreateChatState(chatId, cancellationToken).ConfigureAwait(false);
         var baseState = await chatState.State.Use(cancellationToken).ConfigureAwait(false);
-        var raw = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        var raw = await LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken).ConfigureAwait(false);
         var amInLive = raw != null
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         lock (Lock) {
@@ -74,10 +74,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         // Cached (this is a [ComputeMethod]) but counts real messages via a full read of the swallowed
         // range on each recompute - never approximate with a lid span, since lids have gaps.
         var blockState = await GetBlockState(chatId, cancellationToken).ConfigureAwait(false);
-        var raw = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        if (raw is not { SessionStartedAt: not null })
+        var raw = await LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken).ConfigureAwait(false);
+        if (raw is not { IsLatched: true })
             return 0;
-        var v = raw.EffectiveVisibleStartLid;
+        var v = raw.VisibleStartLid;
         var effectiveBoundary = Math.Min(blockState.FoldBoundaryLid, blockState.RevealedBoundaryLid);
         if (effectiveBoundary <= v)
             return 0;
@@ -167,7 +167,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
     }
 
     private static LiveBlockOverlay? DeriveOverlay(
-        ChatFoldState chatState, long foldBoundaryLid, LiveSessionState? raw, bool amInLive)
+        ChatFoldState chatState, long foldBoundaryLid, LiveBlockSnapshot? raw, bool amInLive)
     {
         if (!chatState.WasAttending || chatState.Template is not { } t)
             return null;
@@ -209,7 +209,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         if (chatId is null)
             return GovernorInputs.None;
 
-        var raw = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        var raw = await LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken).ConfigureAwait(false);
         var visibility = await Hub.ChatUI.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
         var isJoined = raw != null
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
@@ -229,17 +229,17 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         // attending latch is seeded here too - whichever caller creates the state first (this read
         // path or the governor loop) must agree on it, or a join immediately followed by a leave (no
         // governor iteration lands in between) would never mark the viewer as having attended.
-        LiveSessionState? raw;
+        LiveBlockSnapshot? raw;
         bool isJoined;
         FrozenTemplate? template = null;
         using (Computed.BeginIsolation()) {
-            raw = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+            raw = await LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken).ConfigureAwait(false);
             isJoined = raw != null
                 && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
             // Seed the template alongside the attending latch: a join immediately followed by a leave
             // (before the governor's first iteration) must still freeze, so WasAttending never outruns
             // the template GetBlockState needs to derive the overlay.
-            if (raw is { SessionStartedAt: not null } && isJoined)
+            if (raw is { IsLatched: true } && isJoined)
                 template = await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false);
         }
         var foldEndLid = GetRawFoldEndLid(raw);
@@ -259,12 +259,12 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         }
     }
 
-    private async Task<FrozenTemplate> BuildTemplate(ChatId chatId, LiveSessionState raw, CancellationToken cancellationToken)
+    private async Task<FrozenTemplate> BuildTemplate(ChatId chatId, LiveBlockSnapshot raw, CancellationToken cancellationToken)
     {
         Range<long> chatIdRange;
         using (Computed.BeginIsolation())
             chatIdRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var v = raw.EffectiveVisibleStartLid;
+        var v = raw.VisibleStartLid;
         return new FrozenTemplate(
             v,
             chatIdRange.End,
@@ -272,12 +272,12 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             ConversationId.New(chatId, v),
             ConversationId.New(chatId, raw.ContextStartLid > 0 ? raw.ContextStartLid : v),
             raw.IsExpandedByDefault,
-            raw.LastSummaryAt.EpochOffsetTicks > 0);
+            raw.HasSummary);
     }
 
-    private static long GetRawFoldEndLid(LiveSessionState? raw)
-        => raw is { SessionStartedAt: not null, LastSummaryAt.EpochOffsetTicks: > 0 }
-            && raw.EndEntryLid >= raw.EffectiveVisibleStartLid
+    private static long GetRawFoldEndLid(LiveBlockSnapshot? raw)
+        => raw is { IsLatched: true, HasSummary: true }
+            && raw.EndEntryLid >= raw.VisibleStartLid
             ? raw.EndEntryLid + 1
             : 0;
 
@@ -317,7 +317,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         // While the viewer is attending a live session, keep a frozen template ready - the exact
         // descriptor GetBlockState needs to freeze the block the instant they leave or it closes. The
         // template stops refreshing once !isJoined, so its tail start captures the leave moment.
-        var template = raw is { SessionStartedAt: not null } && isJoined
+        var template = raw is { IsLatched: true } && isJoined
             ? await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false)
             : null;
 
@@ -351,8 +351,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             }
             state = state with { IsDissolving = isTierOneClose && !chatState.DissolveDone };
 
-            if (raw is { SessionStartedAt: not null }) {
-                var v = raw.EffectiveVisibleStartLid;
+            if (raw is { IsLatched: true }) {
+                var v = raw.VisibleStartLid;
                 var minVisibleLid = visibility.ChatId == chatId && !visibility.IsEmpty
                     ? visibility.VisibleMessageLids.Where(lid => lid >= v).DefaultIfEmpty(long.MaxValue).Min()
                     : long.MaxValue;
@@ -424,7 +424,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
     protected sealed record GovernorInputs(
         ChatId? ChatId,
-        LiveSessionState? Raw,
+        LiveBlockSnapshot? Raw,
         ChatViewItemVisibility Visibility,
         bool IsJoined)
     {

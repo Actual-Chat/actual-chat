@@ -1,3 +1,5 @@
+using System.Diagnostics.Metrics;
+using ActualChat.Diagnostics;
 using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -71,6 +73,11 @@ public sealed record ConversationViewState(
 public partial class ChatUI
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
+    // Exported to Google Cloud via the server's OTel metrics pipeline (AppUIInstruments.Meter is
+    // registered there); on MAUI the same numbers ride the enclosing GetVirtualListData span to Sentry.
+    private static readonly Histogram<long> GetChatItemsDuration = AppUIInstruments.Meter
+        .CreateHistogram<long>("actualchat.chat_ui.get_chat_items.duration", "ms",
+            "GetChatItems wall-clock duration, split by phase");
 
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
     public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
@@ -139,12 +146,16 @@ public partial class ChatUI
     {
         // DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, dataQuery, shownReadyEntryLid);
         var startedAt = CpuTimestamp.Now;
+        // Captured to detect a background stretch inside this build: GetData gates on visibility before
+        // calling us, but the app can background AFTER that gate, and the in-flight RPCs below then don't
+        // complete until it returns - which would land the whole background period in the live phase.
+        var cIsVisible = isPrefetch ? null : BrowserInfo.IsVisible.Computed;
         // Each of these is a separate RPC round-trip on a remote client, and none of them depends on
         // another, so they're all issued before the first await. Awaiting them in sequence cost ~4 x RTT
         // per rebuild - a full second on a 200ms+ link, which is invisible on Blazor Server.
         var chatTask = Chats.Get(Session, chatId, cancellationToken);
         var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
-        var rawLiveTask = Hub.LiveSessionUI.GetState(chatId, cancellationToken);
+        var rawLiveTask = Hub.LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken);
         var blockStateTask = Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken);
         var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
@@ -174,10 +185,16 @@ public partial class ChatUI
             return ChatItems.Empty;
         }
 
+        // These are all in flight already, so each timestamp marks when that await stopped blocking -
+        // the first long delta is the straggler, the rest complete immediately behind it.
+        var chatAt = CpuTimestamp.Now;
         var liveConversation = await liveConversationTask.ConfigureAwait(false);
+        var conversationAt = CpuTimestamp.Now;
         var amInLiveConversation = liveConversation != null
             && await Hub.LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        var amInLiveAt = CpuTimestamp.Now;
         var rawLive = await rawLiveTask.ConfigureAwait(false);
+        var snapshotAt = CpuTimestamp.Now;
         var blockState = await blockStateTask.ConfigureAwait(false);
         var overlay = blockState.Overlay;
 
@@ -188,9 +205,9 @@ public partial class ChatUI
         // *effective* boundary below the monotonic one once the reader asks for more (§7), so
         // revealed rows stay visible even as the governor keeps advancing.
         var effectiveFoldBoundaryLid = Math.Min(blockState.FoldBoundaryLid, blockState.RevealedBoundaryLid);
-        var liveFoldRange = rawLive is { SessionStartedAt: not null }
-            && effectiveFoldBoundaryLid > rawLive.EffectiveVisibleStartLid
-                ? new Range<long>(rawLive.EffectiveVisibleStartLid, effectiveFoldBoundaryLid)
+        var liveFoldRange = rawLive is { IsLatched: true }
+            && effectiveFoldBoundaryLid > rawLive.VisibleStartLid
+                ? new Range<long>(rawLive.VisibleStartLid, effectiveFoldBoundaryLid)
                 : default;
 
         ConversationId? liveBlockId;
@@ -524,18 +541,45 @@ public partial class ChatUI
             var metaMs = (long)(metaAt - liveAt).TotalMilliseconds;
             var loadMs = (long)(loadAt - metaAt).TotalMilliseconds;
             var buildMs = totalMs - liveMs - metaMs - loadMs;
-            if (totalMs > 500)
-                Log.LogWarning(
-                    "GetChatItems: {ChatId} took {TotalMs}ms "
-                    + "(live {LiveMs}, meta {MetaMs}, load {LoadMs}, build {BuildMs}) for {DataQuery}",
-                    chatId, totalMs, liveMs, metaMs, loadMs,
-                    buildMs, dataQuery.Format());
-            else
-                DebugLog?.LogDebug(
-                    "GetChatItems: {ChatId} took {TotalMs}ms "
-                    + "(live {LiveMs}, meta {MetaMs}, load {LoadMs}, build {BuildMs}) for {DataQuery}",
-                    chatId, totalMs, liveMs, metaMs, loadMs,
-                    buildMs, dataQuery.Format());
+            // A build that spanned a background stretch measures wall-clock time nobody waited for, so it
+            // is tagged and kept out of the histogram - otherwise every percentile grows a tail of
+            // expected background waits that read as stalls.
+            var wasBackgrounded = cIsVisible is null
+                || !cIsVisible.IsConsistent()
+                || !cIsVisible.Value
+                || !BrowserInfo.IsVisible.Value;
+            var activity = Activity.Current;
+            if (activity != null) {
+                activity.SetTag("AC.GetChatItems.TotalMs", totalMs);
+                activity.SetTag("AC.GetChatItems.LiveMs", liveMs);
+                activity.SetTag("AC.GetChatItems.ChatMs", (long)(chatAt - startedAt).TotalMilliseconds);
+                activity.SetTag("AC.GetChatItems.ConversationMs", (long)(conversationAt - chatAt).TotalMilliseconds);
+                activity.SetTag("AC.GetChatItems.AmInLiveMs", (long)(amInLiveAt - conversationAt).TotalMilliseconds);
+                activity.SetTag("AC.GetChatItems.SnapshotMs", (long)(snapshotAt - amInLiveAt).TotalMilliseconds);
+                activity.SetTag("AC.GetChatItems.BlockStateMs", (long)(liveAt - snapshotAt).TotalMilliseconds);
+                activity.SetTag("AC.GetChatItems.MetaMs", metaMs);
+                activity.SetTag("AC.GetChatItems.LoadMs", loadMs);
+                activity.SetTag("AC.GetChatItems.BuildMs", buildMs);
+                activity.SetTag("AC.GetChatItems.WasBackgrounded", wasBackgrounded);
+            }
+            if (!wasBackgrounded) {
+                RecordPhase(totalMs, "total");
+                RecordPhase(liveMs, "live");
+                RecordPhase((long)(chatAt - startedAt).TotalMilliseconds, "live.chat");
+                RecordPhase((long)(conversationAt - chatAt).TotalMilliseconds, "live.conversation");
+                RecordPhase((long)(amInLiveAt - conversationAt).TotalMilliseconds, "live.am-in-live");
+                RecordPhase((long)(snapshotAt - amInLiveAt).TotalMilliseconds, "live.snapshot");
+                RecordPhase((long)(liveAt - snapshotAt).TotalMilliseconds, "live.block-state");
+                RecordPhase(metaMs, "meta");
+                RecordPhase(loadMs, "load");
+                RecordPhase(buildMs, "build");
+            }
+            DebugLog?.LogDebug(
+                "GetChatItems: {ChatId} took {TotalMs}ms "
+                + "(live {LiveMs}, meta {MetaMs}, load {LoadMs}, build {BuildMs}, backgrounded {WasBackgrounded}) "
+                + "for {DataQuery}",
+                chatId, totalMs, liveMs, metaMs, loadMs,
+                buildMs, wasBackgrounded, dataQuery.Format());
         }
 
         if (expandedConversations.Count == 0 && liveBlockId == null)
@@ -1219,6 +1263,9 @@ public partial class ChatUI
             result.Add(new ExpandedConversationMessage(conversation, items));
         }
     }
+
+    private static void RecordPhase(long elapsedMs, string phase)
+        => GetChatItemsDuration.Record(elapsedMs, new KeyValuePair<string, object?>("phase", phase));
 
     private Task PrefetchChatInfo(ChatId chatId, CancellationToken cancellationToken)
         // DebugLog?.LogDebug("PrefetchTiles: {ChatId} {IdRange}", chatId, idRange);
