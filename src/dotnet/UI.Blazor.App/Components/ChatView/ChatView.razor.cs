@@ -216,7 +216,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         await WhenInitialized;
         if (updateReadPosition)
             _shownReadEntryLid.Value = UpdateReadPosition(entryLid);
-        _nextNavigation.Value = new ChatViewNavigation(entryLid, highlight, KeepConversationsCollapsed: keepConversationsCollapsed);
+        var navigation = new ChatViewNavigation(entryLid, highlight, KeepConversationsCollapsed: keepConversationsCollapsed);
+        Log.LogWarning(
+            "NAVCALL entryLid={EntryLid} highlight={Highlight} updateReadPosition={UpdateReadPosition} "
+            + "keepCollapsed={KeepCollapsed} hash={Hash}",
+            entryLid, highlight, updateReadPosition, keepConversationsCollapsed,
+            RuntimeHelpers.GetHashCode(navigation));
+        _nextNavigation.Value = navigation;
     }
 
     public override string ToString()
