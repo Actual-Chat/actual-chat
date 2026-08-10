@@ -72,6 +72,10 @@ public static partial class Constants
         public static readonly TileStack<int> ChatTileStack = TileStacks.Int5To20;
         public static readonly TimeSpan MaxEntryDuration = TimeSpan.FromMinutes(3);
         public static readonly TimeSpan StreamingEntryFixupDelay = MaxEntryDuration + TimeSpan.FromSeconds(30);
+        // How long after the last interaction we still count an open chat at its tail as "being read".
+        // Much longer than Presence.ActivityPeriod: reading a long message without touching anything
+        // is normal, while a user who walked away must stop consuming unread messages.
+        public static readonly TimeSpan ReadingGracePeriod = TimeSpan.FromMinutes(3);
         // 2x the editor's large-paste threshold, which is per paste rather than per message
         public const int MaxEntryTextLength = 64 * 1024;
         public const int NonContactPeerMessageLimit = 2;

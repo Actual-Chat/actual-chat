@@ -23,8 +23,12 @@ export class UserActivityUI {
         documentEvents.visibilityChange$.subscribe(() => {
             if (!document.hidden)
                 this.onInteraction();
-            else
+            else {
+                // Bypasses the throttle - the hidden transition must reach .NET right away,
+                // otherwise presence lingers for up to notifyPeriodMs after the tab is gone.
                 this.onInteraction(0, true);
+                void this.notifyBackend();
+            }
         })
         documentEvents.pointerMove$.subscribe(() => this.onInteraction());
         documentEvents.pointerDown$.subscribe(() => this.onInteraction());
@@ -47,10 +51,8 @@ export class UserActivityUI {
     }
 
     private static notifyBackend = async () => {
-        const willBeActiveForMs = this._activeUntil - Date.now();
-        if (willBeActiveForMs <= 0)
-            return;
-
+        // Zero is meaningful here: it's how .NET learns the user is no longer present
+        const willBeActiveForMs = Math.max(0, this._activeUntil - Date.now());
         debugLog?.log(`notifyBackend`);
         await this._blazorRef.invokeMethodAsync('OnInteraction', willBeActiveForMs);
     }
