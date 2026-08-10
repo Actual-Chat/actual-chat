@@ -6,6 +6,7 @@ using ActualChat.Maui;
 using ActualChat.Maui.Module;
 using ActualChat.Module;
 using ActualChat.UI.Module;
+using ActualLab.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Hosting;
@@ -41,7 +42,11 @@ public sealed class ShareExtensionApplication : IHasServices, IAsyncDisposable
         var log = new OSLogLogger(nameof(ShareViewController));
         try {
             Platform.Init(() => controller);
-            var app = new ShareExtensionApplication(GetOrCreateServices(log).CreateAsyncScope());
+            var services = GetOrCreateServices(log);
+            // Before the scope, so the refresh gets the whole scope-create + view-build window
+            // to land the session ahead of ShareUI's first Accounts.GetOwn.
+            RefreshSessionAndConnection(services, log);
+            var app = new ShareExtensionApplication(services.CreateAsyncScope());
             // Nothing tells us the previous share sheet is gone - UIKit just drops its
             // controller - so a new session is the only point where the old one can be
             // released. Leaking it piles up another RPC client, another set of workers,
@@ -82,6 +87,19 @@ public sealed class ShareExtensionApplication : IHasServices, IAsyncDisposable
             return _services = services;
         }
     }
+
+    private static void RefreshSessionAndConnection(IServiceProvider services, ILogger log)
+        // Both outlive a share now that the process is reused: the main app may have rotated the
+        // stored session id, and the client peer may be minutes into RetryDelaySeq.Exp(1, 180)
+        // after a share that ran without network. Off the scene-create path - that's #4137's budget.
+        => _ = BackgroundTask.Run(async () => {
+            await services.GetRequiredService<SessionInitializer>()
+                .Refresh(CancellationToken.None)
+                .ConfigureAwait(false);
+            var rpcHub = services.RpcHub();
+            rpcHub.GetClientPeer(RpcRef.Default).ResetConnectionAttemptIndex();
+            rpcHub.InternalServices.ClientPeerReconnectDelayer.CancelDelays();
+        }, log, "Failed to refresh the session and the connection");
 
     private static void ReportBootstrapFailure(Exception error, Task? whenSentryReady, ILogger log)
     {
