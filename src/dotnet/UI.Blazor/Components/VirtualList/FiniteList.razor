@@ -62,13 +62,15 @@
 
             @for (var i = 0; i < items.Count; i++) {
                 var item = items[i];
+                var edgeClass = (data.HasVeryFirstItem && i == 0 ? " c-first" : "")
+                    + (data.HasVeryLastItem && i == items.Count - 1 ? " c-last" : "");
                 @if (item.IsGroup) {
-                    <li @key="@item.RenderKey" class="group">
+                    <li @key="@item.RenderKey" class="group@(edgeClass)">
                         @Item(item)
                     </li>
                 } else {
                     <li @key="@item.RenderKey"
-                        class="item"
+                        class="item@(edgeClass)"
                         data-key="@item.Key"
                         data-skip="@item.ShouldSkipKey"
                         data-vl-size-source="@(item.HasRegularSize ? "" : null)">
