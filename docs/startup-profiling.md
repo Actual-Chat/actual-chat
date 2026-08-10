@@ -71,6 +71,28 @@ No dsrouter and no special build: `dotnet-trace collect -- <exe>` launches the a
 and suspends it until the session is live, so the trace covers process startup against the
 build that is already published.
 
+### iOS — the inverse recording
+
+iOS records the **opposite** list, and for the opposite reason. On Android and Windows a
+profile exists to *shrink* the image: a miss costs one JIT compile, so partial mode trades
+size for a little cold JIT. On iOS there is no JIT and nothing to shrink toward — a miss is
+interpreted for the life of the process — so **no `.mibc` is fed to iOS at all**
+(`PublishReadyToRunPgoFiles` is Android-gated, deliberately). What is worth recording here
+is not "what to compile" but "what we failed to compile": the interpreted set.
+
+The mechanism is the same `-Mode Jit` mask (`0x1C000080018`). There is no JIT on iOS, so
+every method it reports had to be built by the interpreter at runtime.
+
+Full recipe, traps and first results:
+[ios-specific.md → Measuring what runs interpreted](./ios-specific.md#measuring-what-runs-interpreted).
+Short version — build with `-p:EnableDiagnostics=true -p:DiagnosticSuspend=true` (the macios
+SDK bakes `DOTNET_DiagnosticPorts` into the bundle), **launch the app first**, then
+`dotnet-dsrouter ios`, then `dotnet-trace`, then `dotnet-pgo create-mibc` as usual.
+
+First run (2026-08-09, launch only) found **2,835 interpreted methods**, 94% of them generic
+instantiations and 882 instantiated purely over value types — the shapes a full-mode image
+cannot enumerate statically.
+
 ### How many runs
 
 **Two or three.** Cold starts barely vary: going from 3 merged traces to 7 added 210 methods
@@ -93,7 +115,9 @@ buys real coverage — Windows on the Android profile alone resolved ~47% of it 
 
 `ActualChat.r2r.map.csv` (next to the composite) lists every method crossgen2 compiled,
 generic instantiations included. It is the only way to tell a JIT event that means *"no
-native code existed"* from one that means *"tier-1 promotion"*.
+native code existed"* from one that means *"tier-1 promotion"*. As of
+2026-08-09 it is emitted for iOS Release builds too, where it serves the opposite
+purpose: separating "never compiled, interpreted forever" from noise.
 
 To measure what a build still jits, record with `-Mode Jit` and run it through
 `New-StartupMibc.ps1`: the resulting method list **is** the set of methods startup had to
@@ -201,6 +225,9 @@ is permanent and the size win is not worth it. `UsePartialR2R` is forced `false`
 Partial mode was measured on device anyway (2026-08-01: 339 MB → 141 MB bundle, startup
 unchanged) and then **opening a chat hung**. See
 [ios-specific.md → Shrinking the R2R image, and why we don't](./ios-specific.md#shrinking-the-r2r-image-and-why-we-dont).
+
+What iOS records instead is the interpreted set — see *Recording a profile → iOS* above
+and [ios-specific.md → Measuring what runs interpreted](./ios-specific.md#measuring-what-runs-interpreted).
 
 ## Still open
 

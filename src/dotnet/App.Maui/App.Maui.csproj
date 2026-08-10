@@ -333,8 +333,14 @@
   <!-- ActualChat.r2r.map.csv, next to the composite: every method crossgen2 actually
        compiled, generic instantiations included. It is the only way to tell a jit event
        that means "no native code existed" from one that means "tier 1 promotion" - the
-       distinction the raw jitted-method count hides. Costs build time, not app size. -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+       distinction the raw jitted-method count hides. Costs build time, not app size.
+
+       On iOS it earns its keep the other way round: there is no jit and no tiering, so
+       cross-referencing the map against a -Mode Jit trace names the methods that run
+       interpreted for the life of the process. Mostly value-type generic instantiations,
+       which a full-mode image cannot enumerate statically. See
+       docs/ios-specific.md -> Measuring what runs interpreted. -->
+  <PropertyGroup Condition="($(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios'))) and '$(Configuration)' == 'Release'">
     <PublishReadyToRunCrossgen2CompositeExtraArgs>$(PublishReadyToRunCrossgen2CompositeExtraArgs);--mapcsv</PublishReadyToRunCrossgen2CompositeExtraArgs>
   </PropertyGroup>
 

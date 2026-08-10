@@ -226,6 +226,188 @@ silent failure.
 The practical consequence: on Apple targets a green build proves nothing about an
 exclusion. Anything re-added to that list has to be exercised on device, not just compiled.
 
+### `FilterReadyToRunAssemblies` is a Debug-only knob
+
+`Microsoft.Sdk.R2R.targets` — the Apple-only R2R target, present in the iOS and MacCatalyst
+SDK packs and nowhere else in the SDK — defaults it on outside Release:
+
+```xml
+<FilterReadyToRunAssemblies Condition="'$(FilterReadyToRunAssemblies)' == '' And '$(Configuration)' != 'Release'">true</FilterReadyToRunAssemblies>
+```
+
+`_SelectR2RAssemblies` then adds every **non-NuGet** assembly to `PublishReadyToRunExclude`
+("user assembly" = anything without `NuGetPackageId` metadata), so in Debug our own code is
+interpreted and only the framework is in the image. It hashes just the *non-user* set, and
+`_TouchR2ROutputs` touches the R2R outputs when that hash is unchanged — which is how an
+incremental Debug build skips crossgen2 entirely.
+
+**In Release the property is empty and the target never runs**, so setting it to `false`
+there does nothing; Release compiles 183/184 assemblies either way. It is recommended as a
+workaround on dotnet/macios#26269, but that reporter was running a filtered build; ours
+never is.
+
+Both this target and `_ComputeInstructionSetForCrossgen2` are gated on
+`'$(RuntimeIdentifiers)' == ''` — *plural*. iOS sets the singular `RuntimeIdentifier` so
+both run; Android sets the plural one and silently skips both.
+
+## The composite is compiled for `armv8-a`
+
+Measured 2026-08-09 on `dev`, Release / `net11.0-ios` / `ios-arm64`:
+
+```
+_ComputedInstructionSet     = armv8-a
+Crossgen2ExtraArgs          = ;--strip-inlining-info;--strip-debug-info;--instruction-set:armv8-a
+SupportedOSPlatformVersion  = 16.4
+```
+
+`armv8-a` is the ARMv8.0 **baseline**: no LSE atomics (v8.1), no FP16 or dot product (v8.2),
+no `LDAPR` (v8.3). Every method in the composite is compiled to it, and there is no tier-1
+rejit here to make up the difference later.
+
+`_ComputeInstructionSetForCrossgen2` (in `Microsoft.Sdk.R2R.targets`, on by default, opt out
+with `ComputeInstructionSetForReadyToRun=false`) derives it from `SupportedOSPlatformVersion`.
+It is a step function, not a slider:
+
+| `SupportedOSPlatformVersion` | `_ComputedInstructionSet` |
+|---|---|
+| 16.4 (ours) | `armv8-a` |
+| 17.0 | `armv8-a` |
+| **18.0** | **`armv8.3-a`** |
+| 26.0 | `armv8.3-a` |
+
+The cliff is where iOS 18 drops the A11 devices (iPhone 8 / X), leaving A12 Bionic —
+ARMv8.3-A — as the floor. Nothing between 16.4 and 18.0 moves it, nothing above 18.0 moves
+it further. The flag does reach the composite: `Microsoft.NET.CrossGen.targets:506-507`
+hands `Crossgen2ExtraCommandLineArgs` and `Crossgen2CompositeExtraCommandLineArgs` to the
+same task.
+
+**Raising the floor to 18.0 is the entire lever, and it costs iOS 16.4/17 support.** What it
+buys has *not* been measured — only the flag has. Build both and compare on device before
+trading those users away.
+
+## Measuring what runs interpreted
+
+**Every method in a JIT trace is an interpreted method.** There is no JIT on iOS, so a
+runtime method-compile event can only mean the interpreter had to build byte code. The
+Android `-Mode Jit` recording means "cold JIT" there and means "interpreted" here.
+
+It works because the interpreter shares the JIT's prestub path: `MethodDesc::JitCompileCode`
+emits `ETW::MethodLog::MethodJitting` / `MethodJitted` (`prestub.cpp:834,860`) whether
+`JitCompileCodeLocked` returned native code or interpreter byte code.
+
+**Not via the perf map.** `PerfMap::LogInterpreterMethod` writes a literal `[Interpreter]`
+tag per method, which would drop dsrouter from the loop entirely — but it landed in
+dotnet/runtime#129989 on 2026-07-01 and is **not** in preview 6. Verified: `strings` on
+`microsoft.netcore.app.runtime.ios-arm64/11.0.0-preview.6.26359.118/.../libcoreclr.dylib`
+finds `%s/perf-%d.map` and `PerfMapJitDumpPath`, but no `[Interpreter]`. Re-check after a
+runtime bump.
+
+### The recipe
+
+The diagnostic port is baked into the bundle by the SDK — no csproj change needed.
+`Xamarin.Shared.props:201-222` turns any of `DiagnosticAddress` / `DiagnosticPort` /
+`DiagnosticSuspend` / `DiagnosticListenMode` into `EnableDiagnostics=true` and emits a
+`_BundlerEnvironmentVariables Include="DOTNET_DiagnosticPorts"` item. `EnableDiagnostics`
+also keeps `EventSourceSupport` and `MetricsSupport` from being trimmed out of an optimized
+build (`Xamarin.Shared.Sdk.targets:137,139`).
+
+Both helper scripts live in `tmp/` on the Mac and are **gitignored**, like every other iOS
+build script there (`build-ios-dev.sh`, `build-ios-signed.sh`, ...) — they hard-code the
+device UDID, keychain path and `DEVELOPER_DIR`. The commands below are therefore given in
+full, and are the actual contents.
+
+`tmp/build-ios-trace.sh` adds:
+
+```
+-p:EnableDiagnostics=true -p:DiagnosticAddress=127.0.0.1 -p:DiagnosticPort=9000 \
+-p:DiagnosticListenMode=listen -p:DiagnosticSuspend=true
+```
+
+Confirm it landed — `artifacts/out/linker-cache/main.arm64.mm` should contain
+`setenv ("DOTNET_DiagnosticPorts", "127.0.0.1:9000,listen,suspend", 0);`.
+
+Then `tmp/trace-ios.sh`, whose order is the load-bearing part:
+
+```bash
+xcrun devicectl device process launch --device $UDID chat.actual.dev.app   # suspends, holds :9000
+dotnet-dsrouter ios -v debug &                                             # connects over usbmux
+dotnet-trace collect -p <dsrouter-pid> \
+  --providers "Microsoft-Windows-DotNETRuntime:0x1C000080018:5" \
+  --buffersize 512 --duration 00:00:40 -o ios-interp.nettrace
+```
+
+`0x1C000080018` is the Android script's `-Mode Jit` mask. Convert with the repo's own tool
+(`dotnet-pgo.cmd` is not executable on the Mac — call the dll):
+
+```bash
+dotnet tools/dotnet-pgo/dotnet-pgo.dll create-mibc \
+  --trace ios-interp.nettrace --output ios-interp.mibc --compressed \
+  --reference "artifacts/out/R2R/*.dll"
+dotnet tools/dotnet-pgo/dotnet-pgo.dll dump -i ios-interp.mibc -o ios-interp-dump.txt
+```
+
+**Start the tracer before the app and it looks like a runtime bug.** dsrouter dials the
+device the moment a diagnostic tool attaches to its IPC socket; if the app is not up yet you
+get `Failed USBMuxConnectByPort: device = 11, port = 9000, result = 61` (ECONNREFUSED) and
+then an `EndOfStreamException` out of dotnet-trace, and dsrouter will not retry against a
+tool that already gave up. `DiagnosticSuspend=true` exists so the app can sit waiting.
+
+The `create-mibc` MVID mismatch warnings are expected, for the same reason as on Android:
+the on-device assemblies are IL-stripped and the `-r` set is not.
+
+Two build-time notes: `--mapcsv` is now on for iOS Release as well as Android, because on
+iOS the map is the only way to separate "never compiled, interpreted forever" from noise.
+And we deliberately feed **no** `.mibc` to iOS — see *Shrinking the R2R image* above.
+
+### First results (2026-08-09, launch only)
+
+One cold launch to a rendered chat list, 40 s capture, no user interaction:
+**2,835 methods ran interpreted.**
+
+| assembly | methods | | assembly | methods |
+|---|---:|---|---|---:|
+| S.P.CoreLib | 1278 | | ActualChat.Core | 56 |
+| System.Text.Json | 459 | | MessagePack | 39 |
+| ActualLab.Fusion | 255 | | System.Collections.Immutable | 39 |
+| ActualLab.Interception | 212 | | ActualLab.Rpc | 35 |
+| System.Linq | 137 | | ActualLab.Fusion.Blazor | 31 |
+| ActualLab.Core | 98 | | MemoryPack.Core | 9 |
+| Pidgin | 82 | | ActualChat.UI.Blazor | 4 |
+| Microsoft.iOS | 64 | | | |
+
+**94% are generic instantiations** (2,663 of 2,835); 882 are instantiated purely over value
+types. That is exactly the shape a full-mode image cannot enumerate statically, and the map
+confirms it directly:
+
+```
+$ grep MethodWithGCInfo ActualChat.r2r.map.csv | grep -o 'RangeMessagePackFormatter[^,]*'
+RangeMessagePackFormatter_1<System___Canon>__Deserialize
+RangeMessagePackFormatter_1<System___Canon>__Serialize
+RangeMessagePackFormatter_1<System___Canon>___ctor
+```
+
+Only the shared `__Canon` form is in the image. The `<int64>` instantiation appears in none
+of the 324,076 compiled methods, and the trace shows it being built at runtime. Same story
+for `StringLikeMessagePackFormatter<HashString>`, `MessagePackByteSerializer<bool>` and
+`FeatureDef<bool>`.
+
+This is the one category where rooting from reachable code should help — a fake call *is* a
+static enumeration point, which is what full mode lacks. Untested. Verify any such change
+against `map.csv` rather than assuming.
+
+### Traps
+
+**The dev provisioning profile has no `com.apple.developer.push-to-talk`.** A dev-signed
+device build of current `dev` fails with `error MT7140` because `Entitlements.dev.plist`
+requests it. Stripping the key (`plutil -remove "com\.apple\.developer\.push-to-talk"`)
+unblocks the build at the cost of PTT in that build — fine for profiling, useless for
+profiling the walkie path itself. Fixing it properly means adding the entitlement to the
+`chat.actual.dev.app` profile in the portal.
+
+**The share extension gets the diagnostic port too.** `DOTNET_DiagnosticPorts` is written
+into both `main.arm64.mm` files, so `App.Maui.IosShareExt` would also try to listen on 9000.
+It only runs when sharing, so it has not collided yet.
+
 ## How this went wrong once
 
 `RuntimeFeature.IsDynamicCodeSupported` was **`false`** on iOS between the .NET 11 sweep
