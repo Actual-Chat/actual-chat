@@ -338,9 +338,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task NewEntriesAfterLeaveStayHidden()
+    public async Task NewSpokenEntriesAfterLeaveStayHiddenButTypedOnesSurface()
     {
-        // The freeze must hold going forward too - a message posted after hang-up can't sneak in.
+        // The freeze holds for what the call produces - a transcribed entry landing after hang-up can't
+        // sneak in. It must not hold for what the viewer types: the hidden tail runs to long.MaxValue, so
+        // hiding by lid alone also swallowed typed messages, and the sender never saw their own message.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -390,12 +392,16 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(10));
 
         // act
-        await Tester.CreateTextEntry(chat.Id, "posted after leave");
+        var spoken = await CreateSpokenEntry(chat.Id, "spoken after leave");
+        var typed = await Tester.CreateTextEntry(chat.Id, "typed after leave");
 
-        // assert (sustained - the new entry's lid must never surface)
+        // assert (sustained - the spoken entry never surfaces, the typed one always does)
         await Task.Delay(1000);
         var items2 = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
-        LeafEntryLids(items2).Should().Equal(frozenLeafLids);
+        var lids = LeafEntryLids(items2);
+        lids.Should().NotContain(spoken.Id.LocalId);
+        lids.Should().Contain(typed.Id.LocalId);
+        lids.Should().Equal([..frozenLeafLids, typed.Id.LocalId]);
     }
 
     [Fact]
@@ -1264,7 +1270,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
         for (var i = 0; i < 3; i++)
-            await Tester.CreateTextEntry(chat.Id, $"a-{i}");   // v, v+1, v+2
+            await CreateSpokenEntry(chat.Id, $"a-{i}");   // v, v+1, v+2
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
             Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v + 2, MessageCount = 3,
         }, CancellationToken.None);
@@ -1284,7 +1290,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act - two more entries land, then a second summary advances EndEntryLid past the parked boundary
         for (var i = 0; i < 2; i++)
-            await Tester.CreateTextEntry(chat.Id, $"b-{i}");   // v+3, v+4
+            await CreateSpokenEntry(chat.Id, $"b-{i}");   // v+3, v+4
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
             Title = "Recap", Description = "d2", Summary = "s2", EndEntryLid = v + 4, MessageCount = 5,
         }, CancellationToken.None);
@@ -1690,6 +1696,19 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }
 
         return sb.ToString();
+    }
+
+    // An entry the call itself produced. CreateTextEntry alone makes a typed message, which the
+    // hidden tail deliberately keeps visible - only what was spoken hides from a non-joined viewer.
+    private async Task<ChatEntry> CreateSpokenEntry(ChatId chatId, string text)
+    {
+        var entry = await Tester.CreateTextEntry(chatId, text);
+        return await Tester.Commander.Call(new ChatsBackend_ChangeEntry(
+            entry.Id,
+            entry.Version,
+            Change.Update(new ChatEntryDiff {
+                Audio = new ChatEntryAudio { MediaId = MediaId.Parse("fake:mediaid") },
+            })));
     }
 
     private static List<long> LeafEntryLids(ChatItems items)
