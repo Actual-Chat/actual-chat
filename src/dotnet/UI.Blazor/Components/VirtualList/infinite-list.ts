@@ -825,14 +825,14 @@ export class InfiniteList {
             const item = this.items.get(key);
             if (item) {
                 const itemRef = entry.target as HTMLElement;
-                if (size == 0)
+                if (size == 0 && !isLaidOut(itemRef))
                     itemRefsWithWrongSize.push(itemRef);
                 else {
                     this.debug?.noteItemMeasure(key, size, item.createdAt, itemRef);
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
                     const oldSize = item.size;
-                    if (oldSize && oldSize > 0 && size > 0 && size != oldSize) {
+                    if (oldSize && oldSize > 0 && size != oldSize) {
                         existingResizedCount++;
                         itemsWereMeasured = true;
                         totalExistingSizeDiff += size - oldSize;
@@ -845,7 +845,8 @@ export class InfiniteList {
                         item.range = new NumberRange(item.range.start, item.range.start + size);
 
                     this.sizeCache.set(key, size);
-                    this.statistics.addItem(item.size);
+                    if (size > 0)
+                        this.statistics.addItem(size);
                 }
             } else {
                 const hasRemoved = this.unmeasuredItems.delete(key);
@@ -2202,7 +2203,7 @@ export class InfiniteList {
             const boundingRect = itemRef.getBoundingClientRect();
             const size = Math.ceil(boundingRect.height + this.rowGap);
 
-            if (size > 0) {
+            if (size > 0 || isLaidOut(itemRef)) {
                 item.size = size;
                 if (item.range)
                     item.range = new NumberRange(item.range.start, item.range.start + size);
@@ -2641,6 +2642,14 @@ export class InfiniteList {
 // Helper functions
 function getItemKey(itemRef: HTMLElement | null): string | null {
     return itemRef?.dataset?.key ?? null;
+}
+
+// Tells a 0px measurement that is a bad read (display:none, detached mid-render) from one that is
+// the truth: an item that is laid out and simply renders nothing generates a box, it is just empty.
+// The live conversation card is exactly that once its block is expanded, and keeping its last
+// non-zero size reserves that many px of unreachable space below the newest message.
+function isLaidOut(itemRef: HTMLElement): boolean {
+    return itemRef.getClientRects().length > 0;
 }
 
 /**
