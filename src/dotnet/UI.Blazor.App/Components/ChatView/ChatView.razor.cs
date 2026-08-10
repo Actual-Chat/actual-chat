@@ -102,9 +102,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 StateCategories.Get(type, nameof(ShownReadEntryLid)));
             _readPositionLease = await ChatUI.LeaseReadPositionState(Chat.Id, DisposeToken);
             _viewPositionLease = await ChatUI.LeaseViewPositionState(Chat.Id, DisposeToken);
-            _shownReadEntryLid.Value = _readPositionLease.Resource.Value.EntryLid;
-            if (_viewPositionLease.Resource.Value.EntryLid is 0)
-                _viewPositionLease.Resource.Value = _readPositionLease.Resource.Value;
+            var readPosition = _readPositionLease.Resource.Value;
+            _shownReadEntryLid.Value = readPosition.EntryLid;
+            if (_viewPositionLease.Resource.Value.EntryLid is 0 && readPosition.EntryLid > 0)
+                _viewPositionLease.Resource.Value = readPosition;
             _whenInitializedSource.TrySetResult();
             _updateReadStateTask = AsyncChain.From(UpdateReadState)
                 .Log(LogLevel.Debug, Log)
@@ -421,7 +422,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var isFirstRender = renderedData.IsNone && query.IsNone;
         var readEntryLid = GetReadEntryLid();
         var viewEntryLid = ViewPosition.Value.EntryLid;
-        var hasViewEntry = viewEntryLid != 0 && viewEntryLid != long.MaxValue;
+        var hasViewEntry = viewEntryLid > 0 && viewEntryLid != long.MaxValue;
         var nav = await _nextNavigation.Use(cancellationToken)
             ?? (isFirstRender && hasViewEntry ? new ChatViewNavigation(viewEntryLid, false, false, true) : null);
         if (ReferenceEquals(nav, renderedData.NavigationState)) // Handles null case as well

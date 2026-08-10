@@ -43,6 +43,7 @@ public class ReportPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         heard.EntryLid.Should().Be(entry.Id.LocalId);
 
         var read = await positionsBackend.Get(account.Id, chat.Id, ChatPositionKind.Read, CancellationToken.None);
+        // 0, not ChatPosition.None: creating the chat seeded a Read row at its (empty) end
         read.EntryLid.Should().Be(0);
 
         var chatsBackend = services.GetRequiredService<IChatsBackend>();
@@ -86,7 +87,7 @@ public class ReportPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         var positionsBackend = services.GetRequiredService<IChatPositionsBackend>();
         var heard = await positionsBackend.Get(account.Id, chat.Id, ChatPositionKind.Heard, CancellationToken.None);
-        heard.EntryLid.Should().Be(0);
+        heard.EntryLid.Should().Be(ChatPosition.None.EntryLid);
     }
 
     [Fact]

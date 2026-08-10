@@ -26,7 +26,7 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
     {
         var id = DbChatPosition.ComposeId(userId, chatId, kind);
         var dbChatPosition = await DbChatPositionResolver.Get(id, cancellationToken).ConfigureAwait(false);
-        return dbChatPosition?.ToModel() ?? new ChatPosition();
+        return dbChatPosition?.ToModel() ?? ChatPosition.None;
     }
 
     // [CommandHandler]
