@@ -46,7 +46,6 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
             && ScrollToKey == other.ScrollToKey
             && Items.SequenceEqual(other.Items));
 
-
     // Private members
 
     private static int CalculateCount(TItem item)
@@ -59,13 +58,14 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
 
     private static TItem? GetFirst(IReadOnlyList<TItem> items)
     {
+        // Must resolve to a leaf: a group's own Key is its first item's, so returning the group
+        // itself collapses KeyRange onto the group's start - and skip-key items around a group
+        // are exactly what makes the scan land on one (e.g. the live block's header/footer).
         if (items.Count == 0)
             return null;
 
-        if (items[0] is IVirtualListGroup<TItem> group)
-            return GetFirst(group.Items);
-
-        return items.SkipWhile(i => i.ShouldSkipKey).FirstOrDefault();
+        var firstItem = items.SkipWhile(i => i.ShouldSkipKey).FirstOrDefault();
+        return firstItem is IVirtualListGroup<TItem> group ? GetFirst(group.Items) : firstItem;
     }
 
     private static TItem? GetLast(IReadOnlyList<TItem> items)
@@ -73,9 +73,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
         if (items.Count == 0)
             return null;
 
-        if (items[^1] is IVirtualListGroup<TItem> group)
-            return GetLast(group.Items);
-
-        return items.Reverse().SkipWhile(i => i.ShouldSkipKey).FirstOrDefault();
+        var lastItem = items.Reverse().SkipWhile(i => i.ShouldSkipKey).FirstOrDefault();
+        return lastItem is IVirtualListGroup<TItem> group ? GetLast(group.Items) : lastItem;
     }
 }
