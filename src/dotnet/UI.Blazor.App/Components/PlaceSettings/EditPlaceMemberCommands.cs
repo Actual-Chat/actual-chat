@@ -75,7 +75,7 @@ public static class EditPlaceMemberCommands
         var text = isModerator
             ? $"{authorName} is now a Moderator"
             : $"{authorName} is no longer a Moderator";
-        hub.ToastUI.Show(text, "icon-star-2", ToastDismissDelay.Short);
+        hub.ToastUI.Show(text, "icon-shield", ToastDismissDelay.Short);
     }
 
     // Private methods
@@ -87,6 +87,6 @@ public static class EditPlaceMemberCommands
         if (result.HasError)
             return;
 
-        hub.ToastUI.Show($"{authorName} is promoted to Owner", "icon-star", ToastDismissDelay.Short);
+        hub.ToastUI.Show($"{authorName} is promoted to Owner", "icon-crown", ToastDismissDelay.Short);
     }
 }

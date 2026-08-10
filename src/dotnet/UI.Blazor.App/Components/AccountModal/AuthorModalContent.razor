@@ -45,7 +45,7 @@
         @if (m is { CanPromoteToOwner: true }) {
             <TileItem Class="tile-promote-to-owner" Click="@OnPromoteToOwner">
                 <Icon>
-                    <i class="icon-admin02 text-2xl text-03"></i>
+                    <i class="icon-crown text-2xl text-03"></i>
                 </Icon>
                 <Content>
                     Promote to Owner
@@ -59,7 +59,7 @@
         @if (m is { CanSetModerator: true }) {
             <TileItem Class="tile-set-moderator" Click="@(() => OnSetModeratorClick(!m.IsModerator))">
                 <Icon>
-                    <i class="icon-star-2 text-2xl text-03"></i>
+                    <i class="icon-shield text-2xl text-03"></i>
                 </Icon>
                 <Content>
                     @(m.IsModerator ? "Remove Moderator" : "Make Moderator")

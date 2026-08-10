@@ -16,7 +16,7 @@
 
     @if (m.CanPromoteToOwner) {
         <MenuEntry
-            Icon="icon-star"
+            Icon="icon-crown"
             Text="Promote to Owner"
             Click="@(() => OnPromoteToOwnerClick(m.Author))">
         </MenuEntry>
@@ -24,7 +24,7 @@
 
     @if (m.CanSetModerator) {
         <MenuEntry
-            Icon="icon-star-2"
+            Icon="icon-shield"
             Text="@(m.IsModerator ? "Remove Moderator" : "Make Moderator")"
             Click="@(() => OnSetModeratorClick(m.Author, !m.IsModerator))">
         </MenuEntry>
