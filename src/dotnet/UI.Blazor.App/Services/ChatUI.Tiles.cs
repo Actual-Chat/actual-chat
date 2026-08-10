@@ -13,7 +13,8 @@ public sealed record ConversationViewState(
     Range<long> HiddenLiveTailRange,
     ConversationId? LiveBlockConversationId,
     Range<long> LiveFoldRange,
-    ConversationId? MaterializedBlockId)
+    ConversationId? MaterializedBlockId,
+    long? LiveBlockRenderLid)
 {
     public bool Equals(ConversationViewState? other)
     {
@@ -32,6 +33,7 @@ public sealed record ConversationViewState(
             && LiveBlockConversationId == other.LiveBlockConversationId
             && LiveFoldRange == other.LiveFoldRange
             && MaterializedBlockId == other.MaterializedBlockId
+            && LiveBlockRenderLid == other.LiveBlockRenderLid
             && ExpandedConversations.SetEquals(other.ExpandedConversations);
     }
 
@@ -61,6 +63,7 @@ public sealed record ConversationViewState(
             LiveBlockConversationId,
             LiveFoldRange,
             MaterializedBlockId,
+            LiveBlockRenderLid,
             ExpandedConversations.Count);
         foreach (var conversationId in ExpandedConversations)
             hash ^= conversationId.GetHashCode(); // XOR - the set has no order
@@ -362,9 +365,15 @@ public partial class ChatUI
         }
         var loadAt = CpuTimestamp.Now;
 
+        // The block is keyed by V while live and by ContextStartLid once materialized; pinning the
+        // render key to the latter keeps one DOM identity across the close (see ChatMessage.RenderKey).
+        var liveBlockRenderLid = materializedBlockId?.StartEntryLid
+            ?? (rawLive is { SessionStartedAt: not null, ContextStartLid: > 0 } liveWithContext
+                ? liveWithContext.ContextStartLid
+                : null);
         var conversationView = new ConversationViewState(
             showConversations, expandedConversations, hiddenLiveTailRange,
-            liveBlockId, liveBlockFoldRange, materializedBlockId);
+            liveBlockId, liveBlockFoldRange, materializedBlockId, liveBlockRenderLid);
         var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
         var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
         var tiles = new List<VirtualListTile<ChatMessage>>();
@@ -544,7 +553,8 @@ public partial class ChatUI
         var liveBlockRange = liveBlockId is { } lbId
             ? new Range<long>(lbId.StartEntryLid, overlay?.BlockEndLid ?? long.MaxValue)
             : default;
-        var groupedTiles = GroupExpandedConversations(groupedItems, liveBlockId, liveBlockRange, materializedBlockId);
+        var groupedTiles = GroupExpandedConversations(
+            groupedItems, liveBlockId, liveBlockRange, materializedBlockId, liveBlockRenderLid);
         return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter);
 
         bool TryGetIdTilesToLoad(
@@ -718,7 +728,7 @@ public partial class ChatUI
             throw new ArgumentOutOfRangeException(nameof(lidRange));
 
         var (showConversations, expandedConversations, hiddenLiveTailRange,
-            liveBlockId, liveFoldRange, materializedBlockId) = conversationView;
+            liveBlockId, liveFoldRange, materializedBlockId, liveBlockRenderLid) = conversationView;
 
         var chatSendingMessages = chatSendingMessagesWrapper.Value;
         var requestedIdRange = prevMessage == null
@@ -1016,6 +1026,7 @@ public partial class ChatUI
                 PreviousMessage = prevMessage,
                 HasSplitHeader = hasSplitHeader,
                 HasSplitFooter = conversation.Id == liveBlockId,
+                StableRenderLid = conversation.Id == liveBlockId ? liveBlockRenderLid : null,
             };
             // Can't skip adding a conversation message even if it's the same as previous message
             // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
@@ -1106,7 +1117,7 @@ public partial class ChatUI
 
     private static List<ChatMessage> GroupExpandedConversations(
         IReadOnlyList<ChatMessage> messages, ConversationId? liveBlockId, Range<long> liveBlockRange,
-        ConversationId? materializedBlockId)
+        ConversationId? materializedBlockId, long? liveBlockRenderLid)
     {
         // Wrap every item of one expanded conversation into a single ExpandedConversationMessage in
         // source order - the block is the sticky containing element for the conversation header and
@@ -1180,7 +1191,9 @@ public partial class ChatUI
                         Kind = ChatMessageKind.ConversationEnd,
                         PreviousMessage = blockItems.Count > 0 ? blockItems[^1] : null,
                     });
-            result.Add(new ExpandedConversationMessage(blockConversation, blockItems));
+            result.Add(new ExpandedConversationMessage(blockConversation, blockItems) {
+                StableRenderLid = blockConversation.Id == liveBlockId ? liveBlockRenderLid : null,
+            });
             blockConversation = null;
             blockItems = [];
         }

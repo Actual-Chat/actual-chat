@@ -19,8 +19,10 @@ public sealed class ConversationViewStateKeyTest
         IImmutableSet<ConversationId> setB = ImmutableHashSet.Create(expanded);
 
         // act
-        var a = new ConversationViewState(true, setA, new Range<long>(1, 5), expanded, new Range<long>(1, 5), null);
-        var b = new ConversationViewState(true, setB, new Range<long>(1, 5), expanded, new Range<long>(1, 5), null);
+        var a = new ConversationViewState(
+            true, setA, new Range<long>(1, 5), expanded, new Range<long>(1, 5), null, null);
+        var b = new ConversationViewState(
+            true, setB, new Range<long>(1, 5), expanded, new Range<long>(1, 5), null, null);
 
         // assert
         setA.Should().NotBeSameAs(setB, "distinct instances are required or this test is vacuous");
@@ -40,6 +42,7 @@ public sealed class ConversationViewStateKeyTest
             new Range<long>(9100, long.MaxValue),
             liveBlockId,
             new Range<long>(9000, 9100),
+            null,
             null);
 
         // act

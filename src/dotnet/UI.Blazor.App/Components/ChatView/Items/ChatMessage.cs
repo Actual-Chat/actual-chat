@@ -5,7 +5,13 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
 {
     public ChatMessageKey Key => field ??= ChatMessageKey.New(Kind, Id);
     string IVirtualListItem.Key => Key.Value;
+    string IVirtualListItem.RenderKey
+        // Pinned to the lid the live block settles on at close, so its @key survives that change.
+        => StableRenderLid is { } lid && lid != Id
+            ? ChatMessageKey.Format(Kind, lid)
+            : Key.Value;
     public long Id { get; } = id;
+    public long? StableRenderLid { get; init; }
 
     public bool ShouldSkipKey { get; init; }
 
