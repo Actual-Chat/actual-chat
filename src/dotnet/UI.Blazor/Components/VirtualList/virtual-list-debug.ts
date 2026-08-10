@@ -562,6 +562,12 @@ function viewportGap(_vl: VirtualListDebugTarget, s: VlSnapshot, geom: Geom): Vl
 // discovered edge. The bottom must be flush when End-preferred (or content is taller than the
 // viewport); the top must be flush when Start-preferred (or taller). The non-preferred edge of a
 // short fully-loaded list legitimately has a gap, so it is not checked.
+//
+// The bottom is measured against the DOM, the top against itemRange, because only the bottom is
+// capped: CutVirtualSpaceAtBottom sizes the wrapper to itemRange.end + endAnchorSize, so
+// (scrollTop + clientHeight) - contentBottom is identically <= 0 in model coordinates and a
+// model-side bottom check can never fire. The gap the user sees there is the model overshooting
+// the DOM - the newest item's bottom resting above the viewport with no scroll left to close it.
 function voidPastEdge(vl: VirtualListDebugTarget, s: VlSnapshot): VlViolation | null {
     if (s.isScrolling || s.isRendering || s.itemRange == null)
         return null;
@@ -569,13 +575,21 @@ function voidPastEdge(vl: VirtualListDebugTarget, s: VlSnapshot): VlViolation | 
     const contentTop = s.itemRange[0];
     const contentBottom = s.itemRange[1] + vl.state.endAnchorSize;
     const tall = contentBottom - contentTop > s.clientHeight;
-    const voidBelow = (s.scrollTop + s.clientHeight) - contentBottom;
+    const isAtBottom = (s.scrollHeight - s.clientHeight) - s.scrollTop <= Eps;
+    const voidBelow = s.lastContentBottom == null
+        ? 0
+        : s.clientHeight - vl.state.endAnchorSize - s.lastContentBottom;
     const voidAbove = contentTop - s.scrollTop;
-    if (s.hasLast && (tall || vl.defaultEdge === VirtualListEdge.End) && voidBelow > GapEps)
+    if (s.hasLast && (tall || vl.defaultEdge === VirtualListEdge.End) && isAtBottom && voidBelow > GapEps)
         return {
             code: 'void-below-newest',
             message: `settled ${Math.round(voidBelow)}px past the newest item`,
-            detail: { voidBelow: Math.round(voidBelow), scrollTop: s.scrollTop, contentBottom: Math.round(contentBottom) },
+            detail: {
+                voidBelow: Math.round(voidBelow),
+                scrollTop: s.scrollTop,
+                lastContentBottom: s.lastContentBottom,
+                modelContentBottom: Math.round(contentBottom),
+            },
             snapshot: s,
         };
     if (s.hasFirst && (tall || vl.defaultEdge === VirtualListEdge.Start) && voidAbove > GapEps)
