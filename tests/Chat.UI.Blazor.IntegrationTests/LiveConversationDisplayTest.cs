@@ -730,13 +730,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             lids.Should().Contain(v + 4);
             beforeLids = lids;
         }, TimeSpan.FromSeconds(10));
-        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+        chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> {
                 ChatMessageKey.New(ChatMessageKind.None, v + 3),
                 ChatMessageKey.New(ChatMessageKind.None, v + 4),
             },
-            false);
+            false));
 
         // act 1 - a summary pass widens the live pipeline's known coverage over v+3/v+4, but they're
         // still the topmost visible entries, so the viewport guard holds the fold there regardless
@@ -750,10 +750,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act 2 - the reader scrolls further: a later message becomes the topmost visible one
         var tailEntry = await Tester.CreateTextEntry(chat.Id, "tail-3");
-        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+        chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, tailEntry.LocalId) },
-            false);
+            false));
 
         // assert - the boundary advances past v+3/v+4, folding them
         await ComputedTest.When(async ct => {
@@ -1334,10 +1334,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act - viewport top sits at the 6th entry: everything above it (incl. un-summarised rows) must fold
         var viewportTop = lids[5];
-        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+        chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
-            false);
+            false));
 
         // assert - the governed boundary (not just the summary-covered range) advances to the viewport
         // top, so un-summarised rows above it are swallowed too
@@ -1393,10 +1393,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act - viewport top sits at the last entry, so a large range folds
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var viewportTop = idRange.End - 1;
-        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+        chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
-            false);
+            false));
 
         long foldedBoundary = 0;
         await ComputedTest.When(async ct => {
@@ -1459,10 +1459,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
 
         void SetViewportTop(long lid)
-            => chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+            => chatUI.SetItemVisibility(new ChatViewItemVisibility(
                 chat.Id,
                 new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, lid) },
-                false);
+                false));
 
         // drive the fold boundary up to the live tail
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
@@ -1532,10 +1532,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act - viewport top sits at the last entry, so a large range folds
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var viewportTop = idRange.End - 1;
-        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+        chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
-            false);
+            false));
 
         long foldedBoundary = 0;
         await ComputedTest.When(async ct => {
@@ -1616,10 +1616,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act - viewport top sits at the 6th real entry, folding the 5 real rows above it (plus the
         // interleaved system entry, which must not count towards SwallowedCount)
         var viewportTop = lids[5];
-        chatUI.ItemVisibility.Value = new ChatViewItemVisibility(
+        chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
-            false);
+            false));
 
         // assert - the count is the true number of folded messages, not a lid-span approximation
         await ComputedTest.When(async ct => {
