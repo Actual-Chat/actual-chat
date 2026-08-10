@@ -3,9 +3,10 @@ using ActualLab.Internal;
 
 namespace ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 
-public interface IStatefulView : IHasServices, IAsyncDisposable
+public interface IStatefulView : IHasServices
 {
     State State { get; }
+    void DisposeStates();
 }
 
 public interface IStatefulView<T> : IStatefulView
@@ -15,6 +16,8 @@ public interface IStatefulView<T> : IStatefulView
 
 public abstract class StatefulView : UIView, IStatefulView, IEnumerable<UIView>
 {
+    private int _isDisposed;
+
     protected IosHub Hub { get; }
     public IServiceProvider Services => Hub.Services;
     protected UICommander UICommander => Hub.UICommander;
@@ -22,8 +25,8 @@ public abstract class StatefulView : UIView, IStatefulView, IEnumerable<UIView>
     protected State State { get; private set; } = null!;
     protected Action<State, StateEventKind> StateChanged { get; set; }
     protected ILogger Log => field ??= Hub.LogFor(GetType());
+    public bool IsDisposed => Volatile.Read(ref _isDisposed) != 0;
 
-    // Explicit IState implementation
     State IStatefulView.State => State;
 
     protected StatefulView(IosHub hub)
@@ -44,11 +47,35 @@ public abstract class StatefulView : UIView, IStatefulView, IEnumerable<UIView>
         EnsureStateIsCreated();
     }
 
-    public virtual ValueTask DisposeAsync()
+    public void DisposeStates()
     {
-        if (State is IDisposable d)
-            d.Dispose();
-        return default;
+        // Drops the states without touching the native view, which Dispose is free to do only
+        // once UIKit is done with the view - a disposed managed peer that still gets a callback
+        // (ContactListView is a live IUICollectionViewDelegate) takes the extension down.
+        if (Interlocked.Exchange(ref _isDisposed, 1) != 0)
+            return;
+
+        DisposeStatesCore();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        // A native dispose has to take the states with it, or a State outlives its view and
+        // keeps recomputing (and keeps its scoped services alive). Never on the finalizer
+        // path: touching other managed objects there isn't safe.
+        if (disposing)
+            DisposeStates();
+
+        base.Dispose(disposing);
+    }
+
+    // Override to add cleanup of your own; DisposeStates is what keeps this to a single run
+    protected virtual void DisposeStatesCore()
+    {
+        foreach (var subview in Subviews)
+            subview.DisposeStates();
+        if (State is IDisposable state)
+            state.DisposeSilently();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -95,8 +122,11 @@ public abstract class StatefulView : UIView, IStatefulView, IEnumerable<UIView>
 
     protected abstract void NotifyStateHasChanged();
 
-    // TODO: find out why LocalCommand is not working here
     protected EventHandler Safe(Action action)
+        // Deliberately not UICommander + LocalCommand: ICommander.Run wraps every command into
+        // Task.Run, and these actions read UIKit properties of the control that raised the event,
+        // which is main-thread only. Nothing reads UIActionFailureTracker here either, so the
+        // error would land nowhere instead of in the log.
         => (_, _) => {
             try {
                 action();

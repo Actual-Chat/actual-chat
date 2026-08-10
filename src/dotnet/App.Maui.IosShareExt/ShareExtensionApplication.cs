@@ -1,5 +1,7 @@
+using ActualChat.App.Maui.IosShareExt.Components;
 using ActualChat.App.Maui.IosShareExt.Module;
 using ActualChat.App.Maui.IosShareExt.Services;
+using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Maui;
 using ActualChat.Maui.Module;
 using ActualChat.Module;
@@ -12,33 +14,72 @@ using Microsoft.Maui.Devices;
 
 namespace ActualChat.App.Maui.IosShareExt;
 
-public class ShareExtensionApplication(ServiceProvider services) : IHasServices
+/// <summary>
+/// A single share session: iOS reuses the extension's process across shares, so
+/// everything expensive lives in a process-wide container, and a session is just
+/// a scope of it plus the UI built from that scope.
+/// </summary>
+public sealed class ShareExtensionApplication : IHasServices, IAsyncDisposable
 {
     // Both block the main thread on the failure path, and an app extension that stops
     // responding for too long gets killed - so the worst case has to stay well under that.
     private static readonly TimeSpan SentryInitTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan SentryFlushTimeout = TimeSpan.FromSeconds(2);
+    private static readonly Lock InitLock = new();
+    private static ServiceProvider? _services;
+    private static Task? _whenSentryReady;
+    private static ShareExtensionApplication? _current;
 
-    public IServiceProvider Services => services;
+    private readonly AsyncServiceScope _scope;
+    private ShareView? _view;
+
+    public IServiceProvider Services => _scope.ServiceProvider;
+    public UIView View => _view ??= new ShareView(Services.IosHub());
 
     public static ShareExtensionApplication? Bootstrap(UIViewController controller)
     {
         var log = new OSLogLogger(nameof(ShareViewController));
-        Task? whenSentryReady = null;
-
         try {
             Platform.Init(() => controller);
-            MauiDiagnostics.Initialize();
-            ClientStartup.Initialize();
-            whenSentryReady = InitSentry(log);
-            var services = CreateServiceProvider();
-            _ = services.GetRequiredService<SessionInitializer>();
-            return new ShareExtensionApplication(services);
+            var app = new ShareExtensionApplication(GetOrCreateServices(log).CreateAsyncScope());
+            // Nothing tells us the previous share sheet is gone - UIKit just drops its
+            // controller - so a new session is the only point where the old one can be
+            // released. Leaking it piles up another RPC client, another set of workers,
+            // and another live state graph per share until scene-create blows its 10s
+            // watchdog budget and the extension gets killed with 0x8BADF00D.
+            _ = Interlocked.Exchange(ref _current, app)?.DisposeAsync();
+            return app;
         }
         catch (Exception e) {
             log.LogCritical(e, "Failed to bootstrap the app");
-            ReportBootstrapFailure(e, whenSentryReady, log);
+            ReportBootstrapFailure(e, _whenSentryReady, log);
             return null;
+        }
+    }
+
+    private ShareExtensionApplication(AsyncServiceScope scope)
+        => _scope = scope;
+
+    public async ValueTask DisposeAsync()
+    {
+        _view?.DisposeStates();
+        await _scope.DisposeAsync().ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private static ServiceProvider GetOrCreateServices(ILogger log)
+    {
+        lock (InitLock) {
+            if (_services is not null)
+                return _services;
+
+            MauiDiagnostics.Initialize();
+            ClientStartup.Initialize();
+            _whenSentryReady = InitSentry(log);
+            var services = CreateServiceProvider();
+            _ = services.GetRequiredService<SessionInitializer>();
+            return _services = services;
         }
     }
 
