@@ -10,6 +10,8 @@ export interface ScrollToOptions {
 
 const FixPrecisionPx = 0.1;
 const ProgrammaticScrollSuppressMs = 300;
+// Sub-pixel, so it changes the layer's transform matrix without moving anything you can see.
+const RepaintNudgeTransform = 'translate3d(0, 0.01px, 0)';
 
 // Touch rubber-band: resistance ramps 0 -> MaxResistance over ResistanceRampPx of pull (soft, spring-like).
 const MaxResistance = 0.667;
@@ -115,6 +117,7 @@ export class ScrollController {
             if (options.smooth === false) {
                 this.element.scrollTop = top;
                 void this.element.offsetHeight; // Triggers reflow
+                this.nudgeRepaint();
             }
             else
                 this.element.scrollTo({ top, behavior: 'smooth' });
@@ -317,6 +320,25 @@ export class ScrollController {
         this.setOverflowLocked(true);
         void this.element.offsetHeight;
         fastRaf({ write: () => { if (!this.isReturning) this.setOverflowLocked(false); } });
+    }
+
+    // WebKit can leave a paint-contained, composited scroller unrastered after a programmatic scrollTop
+    // write: on iOS the chat view lands on the new position showing nothing, and only the next touch
+    // brings it back. The offsetHeight read above forces layout, not paint, so it can't help - invalidating
+    // the layer can. The rubber-band owns this same property, so this stays out of its way in both
+    // directions: it doesn't start one while the band is active, and it only clears a value it still owns.
+    private nudgeRepaint(): void {
+        if (!DeviceInfo.isWebKit || this.isTouching || this.isReturning)
+            return;
+
+        const element = this.overscrollElement;
+        element.style.transform = RepaintNudgeTransform;
+        fastRaf({
+            write: () => {
+                if (element.style.transform === RepaintNudgeTransform)
+                    this.clearTransform();
+            },
+        });
     }
 
     private applyTranslate(y: number): void {
