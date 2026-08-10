@@ -148,7 +148,7 @@ public interface IChats : IComputeService
     Task OnPublishCopiedChat(Chat_PublishCopiedChat command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task OnSetPinnedEntries(Chats_SetPinnedEntries command, CancellationToken cancellationToken);
+    Task OnSetPinned(Chats_SetPinned command, CancellationToken cancellationToken);
 }
 
 [DataContract, MessagePackObject]
@@ -254,10 +254,10 @@ public sealed partial record Chat_CopyChatResult(
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Chats_SetPinnedEntries(
+public sealed partial record Chats_SetPinned(
     [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatId ChatId,
-    [property: DataMember, Key(2)] ApiArray<ChatEntryId> EntryIds
+    [property: DataMember, Key(1)] ChatEntryId EntryId,
+    [property: DataMember, Key(2)] bool MustPin
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MessagePackObject]

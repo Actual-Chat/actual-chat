@@ -12,7 +12,7 @@
     var text = markupHub.GetMarkup(entry, MarkupConsumer.QuoteView).ToReadableText(MarkupConsumer.QuoteView);
 }
 
-<div class="pinned-bar" @onclick="OnBarClick">
+<button type="button" class="pinned-bar" @onclick="OnBarClick">
     <div class="c-indicator">
         @for (var i = 0; i < count; i++) {
             <span class="c-seg @(i == index ? "active" : "")"></span>
@@ -27,7 +27,7 @@
         </div>
         <div class="c-text">@text</div>
     </div>
-</div>
+</button>
 
 @code {
     // Reactive cursor: ComputeState reads it via .Use(), so advancing it recomputes the model
