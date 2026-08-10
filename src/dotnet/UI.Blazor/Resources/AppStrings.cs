@@ -41,6 +41,7 @@ public static class AppStrings
         public string Settings_YourAccount => l["Settings_YourAccount"].Value;
         public string Settings_UserInterface => l["Settings_UserInterface"].Value;
         public string Settings_Transcription => l["Settings_Transcription"].Value;
+        public string Settings_PushToTalk => l["Settings_PushToTalk"].Value;
         public string Settings_Application => l["Settings_Application"].Value;
         public string Settings_Sessions => l["Settings_Sessions"].Value;
         public string Settings_ApiKeys => l["Settings_ApiKeys"].Value;
@@ -67,6 +68,8 @@ public static class AppStrings
         public string YourAccount_Phone => l["YourAccount_Phone"].Value;
         public string YourAccount_TimeZone => l["YourAccount_TimeZone"].Value;
         public string YourAccount_TimeZoneNotSet => l["YourAccount_TimeZoneNotSet"].Value;
+        public string YourAccount_EditOrDelete => l["YourAccount_EditOrDelete"].Value;
+        public string YourAccount_EditOrDeleteCaption => l["YourAccount_EditOrDeleteCaption"].Value;
         public string YourAccount_Share => l["YourAccount_Share"].Value;
         public string YourAccount_ShareYourContact => l["YourAccount_ShareYourContact"].Value;
         public string YourAccount_MyAvatars => l["YourAccount_MyAvatars"].Value;
@@ -90,8 +93,6 @@ public static class AppStrings
         public string Transcription_None => l["Transcription_None"].Value;
         public string Transcription_Engines => l["Transcription_Engines"].Value;
 
-        public string TranscriptionEngine_Deepgram => l["TranscriptionEngine_Deepgram"].Value;
-        public string TranscriptionEngine_GoogleCloud => l["TranscriptionEngine_GoogleCloud"].Value;
 
         public string Sessions_CurrentSession => l["Sessions_CurrentSession"].Value;
         public string Sessions_Current => l["Sessions_Current"].Value;
@@ -376,6 +377,7 @@ public static class AppStrings
         public string RightPanel_GroupTitle_Format(object arg0, object arg1)
             => l["RightPanel_GroupTitle_Format", arg0, arg1].Value;
         public string RightPanel_GroupOwners => l["RightPanel_GroupOwners"].Value;
+        public string RightPanel_GroupModerators => l["RightPanel_GroupModerators"].Value;
         public string RightPanel_GroupOnline => l["RightPanel_GroupOnline"].Value;
         public string RightPanel_GroupOffline => l["RightPanel_GroupOffline"].Value;
         public string RightPanel_GroupUnreported => l["RightPanel_GroupUnreported"].Value;
@@ -423,6 +425,7 @@ public static class AppStrings
         public string Call_Recording => l["Call_Recording"].Value;
         public string Call_Listening => l["Call_Listening"].Value;
         public string Call_CantMutePeer => l["Call_CantMutePeer"].Value;
+        public string Call_CantMuteOwner => l["Call_CantMuteOwner"].Value;
         public string Call_CantMuteOthers => l["Call_CantMuteOthers"].Value;
 
         public string NotificationMode_Title => l["NotificationMode_Title"].Value;

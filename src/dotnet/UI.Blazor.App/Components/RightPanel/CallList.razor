@@ -160,7 +160,7 @@
         var info = m.IsPeerChat
             ? L.Call_CantMutePeer
             : !m.CanMute(member.AuthorId)
-                ? "You can't turn off an Owner's microphone."
+                ? L.Call_CantMuteOwner
                 : L.Call_CantMuteOthers;
         ToastUI.Show(info, "icon-mic-off", ToastDismissDelay.Short);
         return Task.CompletedTask;

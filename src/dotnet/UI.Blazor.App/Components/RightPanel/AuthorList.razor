@@ -40,7 +40,7 @@
             if (m.OwnerAuthorIds.Count > 0)
                 groups.Add(("owners", L.RightPanel_GroupOwners, m.OwnerAuthorIds, false));
             if (m.ModeratorAuthorIds.Count > 0)
-                groups.Add(("moderators", "Moderators", m.ModeratorAuthorIds, false));
+                groups.Add(("moderators", L.RightPanel_GroupModerators, m.ModeratorAuthorIds, false));
             if (m.AllAreAnonymous) {
                 if (m.UnreportedAuthorIds.Count > 0)
                     groups.Add(("unreported", L.RightPanel_GroupUnreported, m.UnreportedAuthorIds, false));
