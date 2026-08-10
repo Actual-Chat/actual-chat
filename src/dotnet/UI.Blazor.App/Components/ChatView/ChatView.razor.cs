@@ -579,6 +579,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             }
         }
 
+        if (scrollToKey != null)
+            Log.LogWarning(
+                "NAVDIAG scrollToKey={ScrollToKey} mid={Mid} hasNav={HasNav} navLid={NavLid} "
+                + "mustScroll={MustScroll} visEmpty={VisEmpty} visCount={VisCount} isFirstRender={IsFirstRender} "
+                + "newLineIdx={NewLineIdx} renderedNavIsNull={RenderedNavIsNull} appliedNavIsNull={AppliedNavIsNull} "
+                + "queryNone={QueryNone} renderedIsNone={RenderedIsNone}",
+                scrollToKey, scrollToKeyInTheMiddle, nav != null, nav?.EntryLid ?? -1,
+                mustScrollToEntry, itemVisibility.IsEmpty, itemVisibility.VisibleMessageLids.Count, isFirstRender,
+                newMessagesLineIndex, renderedData.NavigationState == null, _appliedNavigation == null,
+                query.IsNone, renderedData.IsNone);
+
         var buildMs = (long)buildStartedAt.Elapsed.TotalMilliseconds;
         if (buildMs > 1000)
             Log.LogWarning(
