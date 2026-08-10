@@ -1336,14 +1336,6 @@ export class InfiniteList {
             return;
 
         const visibleItems = [...this.visibleItems].sort((a, b) => this.keySortCollator.compare(a, b));
-        // "Nothing is visible" is only true of a settled list. A fast fling routinely outruns rendering
-        // and empties the viewport for a few frames, and reporting that makes the app act on a position
-        // the user is not at: the chat view reads an empty viewport as a tab resume and scrolls to the
-        // first unread, which - right after "scroll to the newest" - is the newest, so the fling snaps
-        // back to the bottom. turnOffIsScrolling re-reports once the list settles, so nothing is lost.
-        if (visibleItems.length === 0 && this.state.isScrolling)
-            return;
-
         const isEndAnchorVisible = this.state.isEndAnchorVisible;
         // debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, isEndAnchorVisible);
         try {

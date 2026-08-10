@@ -26,6 +26,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private MutableState<long> _shownReadEntryLid = null!;
     private MutableState<ChatViewNavigation?> _nextNavigation = null!;
+    private ChatViewNavigation? _appliedNavigation;
     private CpuTimestamp _lastEndAnchorVisibleAt;
     private CpuTimestamp _newMessagesLineShownAt;
     private long _debouncedReadEntryLid;
@@ -425,7 +426,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var hasViewEntry = viewEntryLid > 0 && viewEntryLid != long.MaxValue;
         var nav = await _nextNavigation.Use(cancellationToken)
             ?? (isFirstRender && hasViewEntry ? new ChatViewNavigation(viewEntryLid, false, false, true) : null);
-        if (ReferenceEquals(nav, renderedData.NavigationState)) // Handles null case as well
+        // _nextNavigation keeps the request forever, so a navigation is one-shot only as long as something
+        // remembers it was served. renderedData.NavigationState alone doesn't: any render whose input data
+        // lost it (an early return, a discarded result) re-arms the request - and mustScrollToEntry below
+        // turns true exactly when the user scrolls off the target, so the re-arm fires precisely when it
+        // hurts. That is the "scroll to the newest, then scroll up, get yanked back" bug.
+        if (ReferenceEquals(nav, renderedData.NavigationState) // Handles null case as well
+            || ReferenceEquals(nav, _appliedNavigation))
             nav = null;
 
         var mustScrollToEntry = nav != null && ItemVisibility.Value.IsScrollRequired(nav.EntryLid);
@@ -577,6 +584,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             Log.LogWarning(
                 "GetData: #{ChatId} took {BuildMs}ms to build ({TotalMs}ms incl. init/pacing)",
                 chatId, buildMs, (long)startedAt.Elapsed.TotalMilliseconds);
+
+        // Latched only here, where the request actually becomes a scroll the client will perform: an
+        // earlier latch would let a run that never produces one swallow the navigation.
+        if (scrollToKey != null && nav != null)
+            _appliedNavigation = nav;
 
         var result = new VirtualListData<ChatMessage>(items) {
             Index = renderedData.Index + 1,
