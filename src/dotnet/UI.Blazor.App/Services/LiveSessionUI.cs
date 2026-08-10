@@ -44,6 +44,17 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
     }
 
+    [ComputeMethod(ConsolidationDelay = 0)]
+    public virtual async Task<LiveBlockAnchors?> GetBlockAnchors(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // The tile builder needs only these two lids, while GetState also churns on participants,
+        // rules, ring state and activity - consolidating here keeps that churn out of the chat view.
+        var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return state is { SessionStartedAt: not null }
+            ? new LiveBlockAnchors(state.EffectiveVisibleStartLid, state.ContextStartLid)
+            : null;
+    }
+
     [ComputeMethod]
     public virtual Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken)
         => LiveSessions.GetState(Session, chatId, cancellationToken);
@@ -348,3 +359,9 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
     }
 }
+
+/// <summary>
+/// The two lids the chat-view tile builder needs from a live session, projected so unrelated
+/// live-state churn can be consolidated away before it reaches the view.
+/// </summary>
+public sealed record LiveBlockAnchors(long VisibleStartLid, long ContextStartLid);

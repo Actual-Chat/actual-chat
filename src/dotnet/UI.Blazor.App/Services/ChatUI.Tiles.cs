@@ -147,7 +147,7 @@ public partial class ChatUI
         // per rebuild - a full second on a 200ms+ link, which is invisible on Blazor Server.
         var chatTask = Chats.Get(Session, chatId, cancellationToken);
         var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
-        var rawLiveTask = Hub.LiveSessionUI.GetState(chatId, cancellationToken);
+        var liveAnchorsTask = Hub.LiveSessionUI.GetBlockAnchors(chatId, cancellationToken);
         var blockStateTask = Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken);
         var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
@@ -171,7 +171,7 @@ public partial class ChatUI
         if (chat == null) {
             // Everything above is already in flight, so bailing out here would leave those tasks unobserved.
             _ = Task.WhenAll(
-                    liveConversationTask, rawLiveTask, blockStateTask,
+                    liveConversationTask, liveAnchorsTask, blockStateTask,
                     chatRangeMetaListTask, conversationTilesTask, chatLidRangeTask)
                 .SilentAwait(false);
             return ChatItems.Empty;
@@ -180,7 +180,7 @@ public partial class ChatUI
         var liveConversation = await liveConversationTask.ConfigureAwait(false);
         var amInLiveConversation = liveConversation != null
             && await Hub.LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
-        var rawLive = await rawLiveTask.ConfigureAwait(false);
+        var liveAnchors = await liveAnchorsTask.ConfigureAwait(false);
         var blockState = await blockStateTask.ConfigureAwait(false);
         var overlay = blockState.Overlay;
 
@@ -191,9 +191,9 @@ public partial class ChatUI
         // *effective* boundary below the monotonic one once the reader asks for more (§7), so
         // revealed rows stay visible even as the governor keeps advancing.
         var effectiveFoldBoundaryLid = Math.Min(blockState.FoldBoundaryLid, blockState.RevealedBoundaryLid);
-        var liveFoldRange = rawLive is { SessionStartedAt: not null }
-            && effectiveFoldBoundaryLid > rawLive.EffectiveVisibleStartLid
-                ? new Range<long>(rawLive.EffectiveVisibleStartLid, effectiveFoldBoundaryLid)
+        var liveFoldRange = liveAnchors is not null
+            && effectiveFoldBoundaryLid > liveAnchors.VisibleStartLid
+                ? new Range<long>(liveAnchors.VisibleStartLid, effectiveFoldBoundaryLid)
                 : default;
 
         ConversationId? liveBlockId;
@@ -368,8 +368,8 @@ public partial class ChatUI
         // The block is keyed by V while live and by ContextStartLid once materialized; pinning the
         // render key to the latter keeps one DOM identity across the close (see ChatMessage.RenderKey).
         var liveBlockRenderLid = materializedBlockId?.StartEntryLid
-            ?? (rawLive is { SessionStartedAt: not null, ContextStartLid: > 0 } liveWithContext
-                ? liveWithContext.ContextStartLid
+            ?? (liveAnchors is { ContextStartLid: > 0 } anchorsWithContext
+                ? anchorsWithContext.ContextStartLid
                 : null);
         var conversationView = new ConversationViewState(
             showConversations, expandedConversations, hiddenLiveTailRange,

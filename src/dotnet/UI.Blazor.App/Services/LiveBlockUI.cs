@@ -46,7 +46,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0)]
     public virtual async Task<LiveBlockState> GetBlockState(ChatId chatId, CancellationToken cancellationToken = default)
     {
         // The freeze overlay is derived here, reactively, from "am I still attending this block" -
