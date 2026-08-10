@@ -752,6 +752,21 @@ public override async Task Require(CancellationToken cancellationToken)
     serialization/RPC boundary (compute-method results, command results, API
     contracts); for client-only collections use `List<T>`, arrays, `Dictionary<,>`, etc.
 
+14. **Extend an existing UI service instead of adding a new one.** Every registered
+    service costs registration and resolution time on every launch, and that bill is
+    paid where it hurts most — WASM and MAUI startup. A new `*UI` service earns its
+    keep only when it owns genuinely distinct state or its own JS-interop surface.
+    When the new thing is a projection, aggregation, or variation of what a nearby
+    service already tracks, add a property or a compute method there.
+
+    "Is the user at the screen right now" is one example: it's `UserActivityUI`'s
+    last-interaction moment narrowed by document visibility, so it belongs on
+    `UserActivityUI` as an extra state — not in a new service beside it.
+
+    The same reasoning applies to splitting an existing service in two. Split when
+    the halves have separate lifetimes or dependencies, not merely to keep files
+    short — partial classes already solve that (see [File Organization](#file-organization)).
+
 ### Serialization Attributes
 
 Three serializers are live and every serializable type must work in **all three**:
