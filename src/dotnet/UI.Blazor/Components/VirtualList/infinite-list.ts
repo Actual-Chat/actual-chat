@@ -1212,7 +1212,13 @@ export class InfiniteList {
                         ? 'center'
                         : 'end'
                     reason = 'item';
-                    scrollFunc = () => this.scrollTo(scrollToItemRef, false, blockPosition);
+                    scrollFunc = () => {
+                        // A server nav to a non-end message must release the End sticky-edge; otherwise the
+                        // sticky-edge re-pin (here and in onResize) snaps the view straight back to the bottom.
+                        if (this.state.stickyEdge?.edge === VirtualListEdge.End)
+                            this.setStickyEdge(null);
+                        this.scrollTo(scrollToItemRef, false, blockPosition);
+                    };
                 }
             } else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                 shouldUseSmoothScroll = true;
