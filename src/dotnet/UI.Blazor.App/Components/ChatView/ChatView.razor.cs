@@ -29,6 +29,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private CpuTimestamp _lastEndAnchorVisibleAt;
     private CpuTimestamp _newMessagesLineShownAt;
     private long _debouncedReadEntryLid;
+    private long _lastKnownEntryLid = -1;
 
     private static readonly string HoverMenuJSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatHoverMenu.create";
     private readonly Dictionary<ChatEntryId, MessageHoverMenu> _hoverMenus = new();
@@ -289,7 +290,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 _ = UpdateReadPositionToTheLastId(Chat.Id);
         }
         else if (isUserPresent)
-            UpdateReadPosition(itemVisibility.MaxMessageLid);
+            UpdateReadPosition(itemVisibility.MaxEntryLid);
         if (_viewPositionLease is not null) {
             // Not gated on presence: this one restores the scroll position, so it tracks
             // the rendered viewport rather than what the user has actually read.
@@ -433,6 +434,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 () => Chats.GetIdRange(Session, chatId, cancellationToken),
                 cancellationToken);
         var chatIdRange = cChatIdRange.Value;
+        _lastKnownEntryLid = chatIdRange.End - 1;
         var dataQuery = GetChatDataQuery(query,
             renderedData,
             nav,
@@ -704,6 +706,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private long UpdateReadPosition(long readEntryLid)
     {
+        // Last line of defence against a synthetic lid becoming a read position: the server stores
+        // read positions forward-only, so one overshoot silently swallows the unread state of every
+        // real entry it covers.
+        if (_lastKnownEntryLid >= 0)
+            readEntryLid = Math.Min(readEntryLid, _lastKnownEntryLid);
         var readPosition = ReadPosition;
         readEntryLid = Math.Max(readPosition.Value.EntryLid, readEntryLid);
         if (readPosition.Value.EntryLid < readEntryLid)
@@ -746,8 +753,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return false; // Don't remove NewMessagesLine during debounce period
 
         // We see end anchor, when the new message appears so we can update shownReadEntryLid
-        var lastEntryLid = items[^1].Id;
-        var maxVisibleEntryLid = itemVisibility.MaxMessageLid;
+        var lastEntryLid = items.LastOrDefault(i => !i.Kind.IsPlaceholder())?.Id ?? -1;
+        var maxVisibleEntryLid = itemVisibility.MaxEntryLid;
         var newShownReadEntryLid = UpdateReadPosition(Math.Max(lastEntryLid, maxVisibleEntryLid));
         if (newShownReadEntryLid == shownReadEntryLid) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: read position is unchanged");
