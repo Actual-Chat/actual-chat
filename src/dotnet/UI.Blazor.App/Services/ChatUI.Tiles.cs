@@ -73,8 +73,8 @@ public sealed record ConversationViewState(
 public partial class ChatUI
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
-    // Exported to Google Cloud via the server's OTel metrics pipeline (AppUIInstruments.Meter is
-    // registered there); on MAUI the same numbers ride the enclosing GetVirtualListData span to Sentry.
+    // Server-side only: it reaches Google Managed Prometheus via the server's OTel pipeline, and MAUI
+    // registers no meter at all - a device reports these numbers through the slow-build log below.
     private static readonly Histogram<long> GetChatItemsDuration = AppUIInstruments.Meter
         .CreateHistogram<long>("actualchat.chat_ui.get_chat_items.duration", "ms",
             "GetChatItems wall-clock duration, split by phase");
@@ -88,6 +88,9 @@ public partial class ChatUI
     // ~82px. This sits deliberately below that: under-estimating row height over-fetches a little, while
     // over-estimating it would under-fill the load zone and cost the follow-up query we're avoiding.
     private const double AssumedItemSize = 64;
+    // Anything past this is a visible stall rather than a slow frame, and on a device the log it triggers
+    // is the only place the phase split shows up.
+    private const long SlowBuildMs = 500;
 
     private volatile ChatEntry? _audioRecordingEntry;
 
@@ -546,44 +549,46 @@ public partial class ChatUI
             var loadMs = (long)(loadAt - metaAt).TotalMilliseconds;
             var buildMs = totalMs - liveMs - metaMs - loadMs;
             // A build that spanned a background stretch measures wall-clock time nobody waited for, so it
-            // is tagged and kept out of the histogram - otherwise every percentile grows a tail of
-            // expected background waits that read as stalls.
+            // is reported nowhere - otherwise every percentile grows a tail of expected background waits
+            // that read as stalls.
             var wasBackgrounded = cIsVisible is null
                 || !cIsVisible.IsConsistent()
                 || !cIsVisible.Value
                 || !BrowserInfo.IsVisible.Value;
-            var activity = Activity.Current;
-            if (activity != null) {
-                activity.SetTag("AC.GetChatItems.TotalMs", totalMs);
-                activity.SetTag("AC.GetChatItems.LiveMs", liveMs);
-                activity.SetTag("AC.GetChatItems.ChatMs", (long)(chatAt - startedAt).TotalMilliseconds);
-                activity.SetTag("AC.GetChatItems.ConversationMs", (long)(conversationAt - chatAt).TotalMilliseconds);
-                activity.SetTag("AC.GetChatItems.AmInLiveMs", (long)(amInLiveAt - conversationAt).TotalMilliseconds);
-                activity.SetTag("AC.GetChatItems.SnapshotMs", (long)(snapshotAt - amInLiveAt).TotalMilliseconds);
-                activity.SetTag("AC.GetChatItems.BlockStateMs", (long)(liveAt - snapshotAt).TotalMilliseconds);
-                activity.SetTag("AC.GetChatItems.MetaMs", metaMs);
-                activity.SetTag("AC.GetChatItems.LoadMs", loadMs);
-                activity.SetTag("AC.GetChatItems.BuildMs", buildMs);
-                activity.SetTag("AC.GetChatItems.WasBackgrounded", wasBackgrounded);
-            }
+            var chatMs = (long)(chatAt - startedAt).TotalMilliseconds;
+            var conversationMs = (long)(conversationAt - chatAt).TotalMilliseconds;
+            var amInLiveMs = (long)(amInLiveAt - conversationAt).TotalMilliseconds;
+            var snapshotMs = (long)(snapshotAt - amInLiveAt).TotalMilliseconds;
+            var blockStateMs = (long)(liveAt - snapshotAt).TotalMilliseconds;
             if (!wasBackgrounded) {
                 RecordPhase(totalMs, "total");
                 RecordPhase(liveMs, "live");
-                RecordPhase((long)(chatAt - startedAt).TotalMilliseconds, "live.chat");
-                RecordPhase((long)(conversationAt - chatAt).TotalMilliseconds, "live.conversation");
-                RecordPhase((long)(amInLiveAt - conversationAt).TotalMilliseconds, "live.am-in-live");
-                RecordPhase((long)(snapshotAt - amInLiveAt).TotalMilliseconds, "live.snapshot");
-                RecordPhase((long)(liveAt - snapshotAt).TotalMilliseconds, "live.block-state");
+                RecordPhase(chatMs, "live.chat");
+                RecordPhase(conversationMs, "live.conversation");
+                RecordPhase(amInLiveMs, "live.am-in-live");
+                RecordPhase(snapshotMs, "live.snapshot");
+                RecordPhase(blockStateMs, "live.block-state");
                 RecordPhase(metaMs, "meta");
                 RecordPhase(loadMs, "load");
                 RecordPhase(buildMs, "build");
             }
-            DebugLog?.LogDebug(
-                "GetChatItems: {ChatId} took {TotalMs}ms "
-                + "(live {LiveMs}, meta {MetaMs}, load {LoadMs}, build {BuildMs}, backgrounded {WasBackgrounded}) "
-                + "for {DataQuery}",
-                chatId, totalMs, liveMs, metaMs, loadMs,
-                buildMs, wasBackgrounded, dataQuery.Format());
+            // The log carries the split because nothing else does on a device: the Meter has no exporter
+            // there, and Sentry drops Activity tags (it stores no AC.* span attribute at all).
+            if (totalMs > SlowBuildMs && !wasBackgrounded)
+                Log.LogWarning(
+                    "GetChatItems: {ChatId} took {TotalMs}ms (live {LiveMs} = chat {ChatMs} "
+                    + "+ conversation {ConversationMs} + amInLive {AmInLiveMs} + snapshot {SnapshotMs} "
+                    + "+ blockState {BlockStateMs}, meta {MetaMs}, load {LoadMs}, build {BuildMs}) "
+                    + "for {DataQuery}",
+                    chatId, totalMs, liveMs, chatMs, conversationMs, amInLiveMs,
+                    snapshotMs, blockStateMs, metaMs, loadMs, buildMs, dataQuery.Format());
+            else
+                DebugLog?.LogDebug(
+                    "GetChatItems: {ChatId} took {TotalMs}ms "
+                    + "(live {LiveMs}, meta {MetaMs}, load {LoadMs}, build {BuildMs}, backgrounded {WasBackgrounded}) "
+                    + "for {DataQuery}",
+                    chatId, totalMs, liveMs, metaMs, loadMs,
+                    buildMs, wasBackgrounded, dataQuery.Format());
         }
 
         if (expandedConversations.Count == 0 && liveBlockId == null)
