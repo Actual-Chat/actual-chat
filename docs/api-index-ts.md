@@ -354,7 +354,7 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `VoxtSkeletonLit` (class) - Voxt-branded skeleton.
 
 
-## UI Blazor — VirtualList (`src/dotnet/UI.Blazor/Components/VirtualList`)
+## UI Blazor — VirtualList: FiniteList + InfiniteList (`src/dotnet/UI.Blazor/Components/VirtualList`)
 
 - `InertialScroll` (class) - Inertial scrolling physics.
 - `Pivot` (interface) - Pivot point for virtual list.
@@ -366,7 +366,10 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `VirtualListRenderState` (interface) - Rendering state for virtual list.
 - `VirtualListStatistics` (class) - Performance statistics.
 - `VirtualListStickyEdgeState` (interface) - Sticky edge state tracking.
-- `VirtualList` (class) - Virtualized list implementation.
+- `FiniteList` (class, `finite-list.ts`) - Known length, uniform item height, real scrollbar.
+  Item position is `index * itemSize`, so loading a different window can't move what's on screen.
+- `InfiniteList` (class, `infinite-list.ts`) - Unbounded feed: no scrollbar, fixed huge virtual
+  space, items held in place by anchoring. The former `VirtualList` class.
 
 
 ## UI Blazor — VisualMedia & YouTube (`src/dotnet/UI.Blazor/Components`)

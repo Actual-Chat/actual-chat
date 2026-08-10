@@ -271,7 +271,9 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `ReconnectUI` — RPC connection state monitoring
 
 ### Components
-- `VirtualList<T>` — virtualized list with windowed rendering
+- `VirtualList<T>` — abstract base of the two virtualized lists (data source, JS bridge, visibility)
+- `FiniteList<T>` — known length, uniform items, real scrollbar (the chat list)
+- `InfiniteList<T>` — unbounded, no scrollbar, anchored (the chat view, content tabs, log view)
 - `Menu<T>` — menu component
 - `ModalRef` — modal dialog reference
 - `PermissionHandler` — permission request handling

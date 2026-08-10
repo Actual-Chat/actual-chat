@@ -1004,7 +1004,9 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `UIServiceBase<THub>` (abstract class) - Base for UI services.
 - `UIWorkerBase<THub>` (abstract class) - Base for UI background workers.
 - `UserActivityUI` - User activity tracking.
-- `VirtualList<T>` - Virtualized list with windowed rendering.
+- `VirtualList<T>` (abstract class) - Shared base for the two virtualized lists: data-source round trip, JS bridge, item visibility.
+- `FiniteList<T>` - Known length, uniform item height, real scrollbar; item position is a pure function of index.
+- `InfiniteList<T>` - Unbounded feed: no scrollbar, fixed huge virtual space, items held by anchoring.
 - `WebRemoteComputedCache` - IndexedDB-based remote computed cache.
 
 
