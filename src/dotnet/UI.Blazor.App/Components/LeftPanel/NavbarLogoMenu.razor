@@ -12,13 +12,11 @@
         Click="@OnNotesClick">
     </MenuEntry>
 }
-@if (m.Account.IsAdmin) {
-    <MenuEntry
-        Icon="icon-bell"
-        Text="Notifications"
-        Click="@OnNotificationsClick">
-    </MenuEntry>
-}
+<MenuEntry
+    Icon="icon-bell"
+    Text="Notifications"
+    Click="@OnNotificationsClick">
+</MenuEntry>
 <MenuEntry
     Icon="icon-settings"
     Text="Settings"
@@ -75,7 +73,8 @@
 
     private async Task OnNotificationsClick() {
         await WhenClosed;
-        _ = History.NavigateTo(Links.Notifications);
+        NavbarUI.SelectGroup(NavbarGroupIds.Unread, true);
+        _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
     }
 
     private async Task OnSettingsClick() {
