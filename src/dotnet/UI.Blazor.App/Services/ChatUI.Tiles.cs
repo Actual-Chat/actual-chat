@@ -759,8 +759,9 @@ public partial class ChatUI
                 && !liveFoldRange.IsEmpty && conversations.All(c => c.Id != liveBlockConversationId))
                 idRangesToSkip = [..idRangesToSkip, liveFoldRange];
         }
-        if (!hiddenLiveTailRange.IsEmpty)
-            idRangesToSkip = [..idRangesToSkip, hiddenLiveTailRange];
+        // hiddenLiveTailRange deliberately stays out of idRangesToSkip: it must not drop whole tiles,
+        // because what it hides is interleaved with typed messages that have to stay visible. It's
+        // applied per entry below instead.
         var entryIdTiles = IdTileStack.FirstLayer
             .GetCoveringTiles(requestedIdRange)
             .Where(t => !idRangesToSkip.Any(range => range.Contains(t.Range)))
@@ -776,6 +777,11 @@ public partial class ChatUI
         foreach (var tile in tiles.OrderBy(t => t.LidTileRange.Start)) {
             foreach (var e in tile.Entries) {
                 if (idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
+                    continue;
+                // A non-joined viewer never sees the call's live transcript, and the range covering it
+                // runs to long.MaxValue - so hiding by lid alone also swallowed everything typed during
+                // the call, including the viewer's own just-posted message. Only what was spoken hides.
+                if (e.HasAudio && !hiddenLiveTailRange.IsEmpty && hiddenLiveTailRange.Contains(e.Id.LocalId))
                     continue;
 
                 var e2 = await chatSendingMessages.GetSelfOrSending(e).ConfigureAwait(false);
