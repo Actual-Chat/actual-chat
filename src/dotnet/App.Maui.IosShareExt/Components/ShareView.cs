@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.App.Maui.IosShareExt.Services;
 
@@ -94,7 +95,7 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
                 _uploadProgressView.Alpha = 1;
             });
         animator.AddCompletion(_ => {
-            _contactSelectionView?.RemoveFromSuperview();
+            _contactSelectionView?.RemoveAndDisposeStates();
         });
         animator.StartAnimation();
     }
@@ -122,8 +123,8 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
                 _errorView.Alpha = 1;
             });
         animator.AddCompletion(_ => {
-            _contactSelectionView?.RemoveFromSuperview();
-            _uploadProgressView?.RemoveFromSuperview();
+            _contactSelectionView?.RemoveAndDisposeStates();
+            _uploadProgressView?.RemoveAndDisposeStates();
         });
         animator.StartAnimation();
     }
@@ -151,8 +152,8 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
                 _successView.Alpha = 1;
             });
         animator.AddCompletion(_ => {
-            _contactSelectionView?.RemoveFromSuperview();
-            _uploadProgressView?.RemoveFromSuperview();
+            _contactSelectionView?.RemoveAndDisposeStates();
+            _uploadProgressView?.RemoveAndDisposeStates();
         });
         animator.StartAnimation();
     }

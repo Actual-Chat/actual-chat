@@ -1,5 +1,4 @@
 ﻿using ActualChat.App.Maui.IosShareExt.Components;
-using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 
 namespace ActualChat.App.Maui.IosShareExt;
 
@@ -18,6 +17,6 @@ public class ShareViewController : UIViewController
         View = _app is null
             ? new ErrorContentView("Something went wrong. Please try again.",
                 (_, _) => _ = ExtensionContext?.CompleteRequestAsync([]))
-            : new ShareView(_app.Services.IosHub());
+            : _app.View;
     }
 }
