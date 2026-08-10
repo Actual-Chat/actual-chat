@@ -264,7 +264,7 @@ public partial class ChatUI
                             continue;
 
                         var lastReadEntryLid = chatInfo.ReadEntryLid;
-                        var prefetchNearTo = lastReadEntryLid != 0
+                        var prefetchNearTo = lastReadEntryLid > 0
                             ? lastReadEntryLid
                             : chatInfo.News?.TextEntryLidRange.End ?? 0;
                         var idTile = IdTileStack.LastLayer.GetTile(prefetchNearTo).Range;

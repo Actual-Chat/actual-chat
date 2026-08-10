@@ -137,7 +137,7 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         storedReadable.EntryLid.Should().Be(readablePosition.EntryLid);
-        storedUnreadable.EntryLid.Should().Be(0);
+        storedUnreadable.EntryLid.Should().Be(ChatPosition.None.EntryLid);
     }
 
     [Fact]

@@ -125,10 +125,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var unreadCount = ComputeUnreadCount(chatId, news, readEntryLid);
 
             var hasUnreadMentions = false;
-            if (chatUserSettings.NotificationMode is not ChatNotificationMode.Muted) {
-                var lastMentionEntryId = lastMention?.EntryId.LocalId ?? 0;
-                hasUnreadMentions = lastMentionEntryId > readEntryLid;
-            }
+            if (lastMention is { } mention && chatUserSettings.NotificationMode is not ChatNotificationMode.Muted)
+                hasUnreadMentions = mention.EntryId.LocalId > readEntryLid;
 
             var navbarSettings = await NavbarUI.Settings.Use(cancellationToken).ConfigureAwait(false);
 
@@ -645,11 +643,17 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // Not compute method!
     private static Trimmed<int> ComputeUnreadCount(ChatId chatId, ChatNews? chatNews, long readEntryLid)
     {
+        // A negative lid is ChatPosition.None - nothing was ever stored, so the chat was never
+        // opened and counting all of it as unread would flood the badge on first sight. A stored 0
+        // is a real position: joining a chat that was empty at the time seeds exactly that, and
+        // entry lids start at 1, so every message that arrives afterwards is genuinely unread.
+        // Peer chats are exempt from the "never opened" rule - they have no join step to seed a
+        // position, so a missing one just means this side of the conversation hasn't started.
         var unreadCount = 0;
-        if (chatNews is not null && (readEntryLid > 0 || (chatId.Kind == ChatKind.Peer && readEntryLid == 0))) {
-            // Otherwise the chat wasn't ever opened
+        var hasReadPosition = readEntryLid >= 0 || chatId.Kind == ChatKind.Peer;
+        if (chatNews is not null && hasReadPosition) {
             var lastId = chatNews.TextEntryLidRange.End - 1;
-            unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
+            unreadCount = (int)(lastId - Math.Max(0, readEntryLid)).Clamp(0, ChatInfo.MaxUnreadCount);
         }
         return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
     }
