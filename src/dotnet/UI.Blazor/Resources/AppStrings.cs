@@ -92,6 +92,11 @@ public static class AppStrings
         public string Transcription_ThirdLanguage => l["Transcription_ThirdLanguage"].Value;
         public string Transcription_None => l["Transcription_None"].Value;
         public string Transcription_Engines => l["Transcription_Engines"].Value;
+        public string Transcription_Automatic => l["Transcription_Automatic"].Value;
+        public string Transcription_NoRetranscription_Format(object arg0)
+            => l["Transcription_NoRetranscription_Format", arg0].Value;
+        public string Transcription_Retranscription_Format(object arg0, object arg1)
+            => l["Transcription_Retranscription_Format", arg0, arg1].Value;
 
 
         public string Sessions_CurrentSession => l["Sessions_CurrentSession"].Value;

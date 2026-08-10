@@ -80,6 +80,9 @@
   "Transcription_ThirdLanguage": "3번째 언어",
   "Transcription_None": "없음",
   "Transcription_Engines": "음성 인식 엔진",
+  "Transcription_Automatic": "자동",
+  "Transcription_NoRetranscription_Format": "{0}, 재인식 없음",
+  "Transcription_Retranscription_Format": "{0} + {1} 재인식",
 
   "Sessions_CurrentSession": "현재 세션",
   "Sessions_Current": "현재",

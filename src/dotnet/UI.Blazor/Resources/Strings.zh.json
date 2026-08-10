@@ -80,6 +80,9 @@
   "Transcription_ThirdLanguage": "第三语言",
   "Transcription_None": "无",
   "Transcription_Engines": "转写引擎",
+  "Transcription_Automatic": "自动",
+  "Transcription_NoRetranscription_Format": "{0},不重新转写",
+  "Transcription_Retranscription_Format": "{0} + 由 {1} 重新转写",
 
   "Sessions_CurrentSession": "当前会话",
   "Sessions_Current": "当前",

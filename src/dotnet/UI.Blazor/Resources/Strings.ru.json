@@ -80,6 +80,9 @@
   "Transcription_ThirdLanguage": "3-й язык",
   "Transcription_None": "Нет",
   "Transcription_Engines": "Движки транскрипции",
+  "Transcription_Automatic": "Автоматически",
+  "Transcription_NoRetranscription_Format": "{0}, без повторной транскрипции",
+  "Transcription_Retranscription_Format": "{0} + повторная транскрипция через {1}",
 
   "Sessions_CurrentSession": "Текущая сессия",
   "Sessions_Current": "Текущая",

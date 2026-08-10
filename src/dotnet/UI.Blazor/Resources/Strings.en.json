@@ -80,6 +80,9 @@
   "Transcription_ThirdLanguage": "3rd language",
   "Transcription_None": "None",
   "Transcription_Engines": "Transcription Engines",
+  "Transcription_Automatic": "Automatic",
+  "Transcription_NoRetranscription_Format": "{0}, no re-transcription",
+  "Transcription_Retranscription_Format": "{0} + {1} re-transcription",
 
   "Sessions_CurrentSession": "Current Session",
   "Sessions_Current": "Current",

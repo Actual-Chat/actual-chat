@@ -80,6 +80,9 @@
   "Transcription_ThirdLanguage": "3-я мова",
   "Transcription_None": "Немає",
   "Transcription_Engines": "Рушії транскрипції",
+  "Transcription_Automatic": "Автоматично",
+  "Transcription_NoRetranscription_Format": "{0}, без повторної транскрипції",
+  "Transcription_Retranscription_Format": "{0} + повторна транскрипція через {1}",
 
   "Sessions_CurrentSession": "Поточний сеанс",
   "Sessions_Current": "Поточний",

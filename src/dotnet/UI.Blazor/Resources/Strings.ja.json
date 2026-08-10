@@ -80,6 +80,9 @@
   "Transcription_ThirdLanguage": "第3言語",
   "Transcription_None": "なし",
   "Transcription_Engines": "文字起こしエンジン",
+  "Transcription_Automatic": "自動",
+  "Transcription_NoRetranscription_Format": "{0}(再文字起こしなし)",
+  "Transcription_Retranscription_Format": "{0} + {1} による再文字起こし",
 
   "Sessions_CurrentSession": "現在のセッション",
   "Sessions_Current": "現在",

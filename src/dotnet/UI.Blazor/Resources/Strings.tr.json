@@ -80,6 +80,9 @@
   "Transcription_ThirdLanguage": "3. dil",
   "Transcription_None": "Yok",
   "Transcription_Engines": "Transkripsiyon Motorları",
+  "Transcription_Automatic": "Otomatik",
+  "Transcription_NoRetranscription_Format": "{0}, yeniden transkripsiyon yok",
+  "Transcription_Retranscription_Format": "{0} + {1} ile yeniden transkripsiyon",
 
   "Sessions_CurrentSession": "Mevcut Oturum",
   "Sessions_Current": "Mevcut",

@@ -80,6 +80,9 @@
   "Transcription_ThirdLanguage": "Ngôn ngữ thứ 3",
   "Transcription_None": "Không có",
   "Transcription_Engines": "Công cụ phiên âm",
+  "Transcription_Automatic": "Tự động",
+  "Transcription_NoRetranscription_Format": "{0}, không phiên âm lại",
+  "Transcription_Retranscription_Format": "{0} + phiên âm lại bằng {1}",
 
   "Sessions_CurrentSession": "Phiên hiện tại",
   "Sessions_Current": "Hiện tại",

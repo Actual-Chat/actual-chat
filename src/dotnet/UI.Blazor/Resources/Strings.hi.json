@@ -80,6 +80,9 @@
   "Transcription_ThirdLanguage": "तीसरी भाषा",
   "Transcription_None": "कोई नहीं",
   "Transcription_Engines": "ट्रांसक्रिप्शन इंजन",
+  "Transcription_Automatic": "स्वचालित",
+  "Transcription_NoRetranscription_Format": "{0}, बिना पुनः ट्रांसक्रिप्शन",
+  "Transcription_Retranscription_Format": "{0} + {1} से पुनः ट्रांसक्रिप्शन",
 
   "Sessions_CurrentSession": "वर्तमान सत्र",
   "Sessions_Current": "वर्तमान",
