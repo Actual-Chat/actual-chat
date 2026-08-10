@@ -31,6 +31,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private IUserPresences UserPresences => Hub.UserPresences;
     private IAccounts Accounts => Hub.Accounts;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
     private IContacts Contacts => Hub.Contacts;
@@ -57,7 +58,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public IState<ChatEntryId?> HighlightedEntryId => _highlightedEntryId;
     public IState<IImmutableSet<ConversationId>> ConversationExpansionOverrides => _conversationExpansionOverrides;
     public Task WhenReady => _selectedChatId.WhenRead;
-    public MutableState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
+    public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
 
     public static event Action<(ChatId, long)> OnReadPositionUpdated = _ => { };
 
@@ -302,12 +303,29 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     [ComputeMethod]
     public virtual async Task<bool> IsReadingTail(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Must stay in sync with what actually advances the read position (ChatView) - suppressing
+        // the unread badge for a chat whose read position isn't moving would hide real unread messages.
         if (!await IsSelected(chatId).ConfigureAwait(false))
             return false;
 
         var itemVisibility = await ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
-        return itemVisibility.ChatId == chatId && itemVisibility.IsEndAnchorVisible;
+        if (itemVisibility.ChatId != chatId || !itemVisibility.IsEndAnchorVisible)
+            return false;
+
+        var lastPresentAt = await UserActivityUI.LastPresentAt.Use(cancellationToken).ConfigureAwait(false);
+        var readingUntil = lastPresentAt + Constants.Chat.ReadingGracePeriod;
+        var now = Clocks.CpuClock.Now;
+        if (readingUntil <= now)
+            return false;
+
+        Computed.GetCurrent().Invalidate(readingUntil - now);
+        return true;
     }
+
+    // The non-reactive half of IsReadingTail, for the JS-driven callbacks that can't await:
+    // the document is visible and the user interacted recently enough to still be at the screen.
+    public bool IsUserPresent()
+        => UserActivityUI.LastPresentAt.Value + Constants.Chat.ReadingGracePeriod > Clocks.CpuClock.Now;
 
     [ComputeMethod(ConsolidationDelay = 0.3)]
     public virtual async Task<bool> IsUnreadByOthers(
@@ -354,6 +372,20 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     // SetXxx & Add/RemoveXxx
+
+    public void SetItemVisibility(ChatViewItemVisibility itemVisibility)
+        => _itemVisibility.Value = itemVisibility;
+
+    public void ResetItemVisibility(ChatId chatId)
+    {
+        // Chat views overlap during navigation, so a disposing view must not clear its successor's
+        // visibility - only the view that published the current value may retract it.
+        lock (Lock) {
+            if (_itemVisibility.Value.ChatId == chatId)
+                _itemVisibility.Value = ChatViewItemVisibility.Empty;
+        }
+    }
+
     public void LeaveChat(Chat.Chat chat)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "chat",
             m => _ = DeleteOrLeaveChatInternal(chat, false, m)));

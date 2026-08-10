@@ -148,6 +148,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _disposeTokenSource.CancelAndDisposeSilently();
         _whenInitializedSource.TrySetCanceled();
         _readPositionLease.DisposeSilently();
+        ChatUI.ResetItemVisibility(Chat.Id);
         Nav.LocationChanged -= OnLocationChanged;
         _isHoverMenuDisposed = true;
         if (_hoverMenuJsRefTask is { IsCompletedSuccessfully: true } jsRefTask)
@@ -270,19 +271,31 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return;
 
         _itemVisibility.Value = itemVisibility;
-        if (itemVisibility.IsEmpty || !WhenInitialized.IsCompletedSuccessfully)
+        if (!WhenInitialized.IsCompletedSuccessfully)
             return;
 
+        if (itemVisibility.IsEmpty) {
+            // Retracting matters as much as publishing: consumers gate on "this chat is visible at
+            // its tail", and a retained last-known value keeps that true long after the view is gone.
+            ChatUI.ResetItemVisibility(Chat.Id);
+            return;
+        }
+
+        ChatUI.SetItemVisibility(itemVisibility);
+        var isUserPresent = ChatUI.IsUserPresent();
         if (itemVisibility.IsEndAnchorVisible) {
             _lastEndAnchorVisibleAt = CpuTimestamp.Now;
-            _ = UpdateReadPositionToTheLastId(Chat.Id);
-        } else
+            if (isUserPresent)
+                _ = UpdateReadPositionToTheLastId(Chat.Id);
+        }
+        else if (isUserPresent)
             UpdateReadPosition(itemVisibility.MaxMessageLid);
         if (_viewPositionLease is not null) {
+            // Not gated on presence: this one restores the scroll position, so it tracks
+            // the rendered viewport rather than what the user has actually read.
             var entryId = itemVisibility.MaxMessageLid;
             _viewPositionLease.Resource.Value = new ReadPosition(Chat.Id, entryId);
         }
-        ChatUI.ItemVisibility.Value = itemVisibility;
         return;
 
         async Task UpdateReadPositionToTheLastId(ChatId chatId)
@@ -375,6 +388,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var isChatViewVisible = RegionVisibility.IsVisible;
         if (!isChatViewVisible.Value) {
             // Chat is invisible now, let's suspend & await for it to become visible
+            ChatUI.ResetItemVisibility(chatId);
             using (Computed.BeginIsolation())
                 await isChatViewVisible.Computed.When(x => x, cancellationToken);
             _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
@@ -702,6 +716,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var itemVisibility = ItemVisibility.Value;
         if (items.Count == 0)
             return false; // Not loaded yet or wrong load range
+
+        if (!ChatUI.IsUserPresent()) {
+            DebugLog?.LogDebug("TryUpdateShownReadEntryLid: the user isn't at the screen");
+            return false;
+        }
 
         if (itemVisibility.IsEmpty || !itemVisibility.IsEndAnchorVisible) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: no item visibility or end anchor is not visible");
