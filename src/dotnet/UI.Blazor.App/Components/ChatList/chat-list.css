@@ -31,6 +31,12 @@
     @apply flex-1 flex-y;
     @apply overflow-y-hidden;
 }
+.navbar-chats .c-all-chats > .c-empty {
+    @apply flex-1 flex-y items-center justify-center gap-y-4 py-8 text-03;
+}
+.navbar-chats .c-all-chats > .c-empty i {
+    @apply text-5xl;
+}
 .navbar-chats .c-all-chats:has(.own-chat-list) .tab-panel-tabs {
     @apply hidden;
 }

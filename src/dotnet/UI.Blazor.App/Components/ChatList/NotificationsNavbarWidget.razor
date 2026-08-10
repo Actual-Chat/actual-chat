@@ -21,23 +21,30 @@
 
 <div class="c-container">
     <div class="c-all-chats">
-        <TabPanel
-            BottomHill="true"
-            TabsClass="left-panel-tabs"
-            SelectedTabIdChanged="@OnSelectedTabIdChanged">
-            <ChildContent>
-                @if (m.HasAll) {
-                    @RenderTab(0, ChatListFilter.Unread, "All")
-                }
-                @if (m.HasDMs) {
-                    @RenderTab(1, ChatListFilter.UnreadDMs, "DMs")
-                }
-                @if (m.HasMentions) {
-                    @RenderTab(2, ChatListFilter.UnreadMentions, "Mentions")
-                }
-            </ChildContent>
-        </TabPanel>
-        <ChatList @key="@_settings.FilterId.Value" PlaceId="@null" UsePlaceChatListSettings="@false" Settings="@_settings"/>
+        @if (!m.HasAll && !m.HasDMs && !m.HasMentions) {
+            <div class="c-empty">
+                <i class="icon-checkmark-circle"></i>
+                <span>You're all caught up</span>
+            </div>
+        } else {
+            <TabPanel
+                BottomHill="true"
+                TabsClass="left-panel-tabs"
+                SelectedTabIdChanged="@OnSelectedTabIdChanged">
+                <ChildContent>
+                    @if (m.HasAll) {
+                        @RenderTab(0, ChatListFilter.Unread, "All")
+                    }
+                    @if (m.HasDMs) {
+                        @RenderTab(1, ChatListFilter.UnreadDMs, "DMs")
+                    }
+                    @if (m.HasMentions) {
+                        @RenderTab(2, ChatListFilter.UnreadMentions, "Mentions")
+                    }
+                </ChildContent>
+            </TabPanel>
+            <ChatList @key="@_settings.FilterId.Value" PlaceId="@null" UsePlaceChatListSettings="@false" Settings="@_settings"/>
+        }
     </div>
 </div>
 

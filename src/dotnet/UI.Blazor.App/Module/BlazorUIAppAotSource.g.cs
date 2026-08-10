@@ -297,7 +297,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NewThreadModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NoChatSelected>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NoResults>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationFeedItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationEntry>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationStack>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget>();
@@ -501,7 +500,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModalCard>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.MeshTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.MicPermissionTestPage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.NotificationsPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.SettingsPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestNode>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestPage>();
@@ -1035,7 +1033,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NewThreadModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NoChatSelected), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NoResults), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationFeedItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationEntry), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationStack), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget), AotTypeKind.Component),
@@ -1239,7 +1236,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModalCard), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.MeshTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.MicPermissionTestPage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Pages.NotificationsPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.SettingsPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestNode), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestPage), AotTypeKind.Component),
