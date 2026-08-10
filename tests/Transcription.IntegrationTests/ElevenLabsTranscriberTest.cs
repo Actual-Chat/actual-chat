@@ -66,11 +66,12 @@ public sealed class ElevenLabsTranscriberTest(ITestOutputHelper @out, ILogger<El
         IConfiguration configuration = new ConfigurationManager {
             Sources = { new EnvironmentVariablesConfigurationSource() },
         };
-        return new ServiceCollection()
+        var services = new ServiceCollection()
             .AddSingleton<IConfiguration>(_ => configuration)
             .AddSingleton(MomentClockSet.Default)
             .AddSingleton(_ => configuration.Settings<CoreServerSettings>(nameof(CoreSettings)))
-            .AddTestLogging(Out)
-            .BuildServiceProvider();
+            .AddTestLogging(Out);
+        services.AddHttpClient(ElevenLabsOfflineTranscriber.HttpClientName);
+        return services.BuildServiceProvider();
     }
 }

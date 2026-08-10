@@ -1,7 +1,4 @@
-using System.Net.Http.Headers;
-using System.Text;
 using ActualChat.Audio;
-using ActualChat.Module;
 using Microsoft.IO;
 
 namespace ActualChat.Transcription;
@@ -12,14 +9,11 @@ namespace ActualChat.Transcription;
 /// </summary>
 public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
 {
-    private const string BaseUrl = "https://api.soniox.com/v1";
     private const string Model = "stt-async-v5";
     private static readonly TimeSpan PollPeriod = TimeSpan.FromSeconds(1);
-    private static readonly JsonSerializerOptions JsonOptions = new() {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
 
-    private CoreServerSettings CoreServerSettings { get; }
+    private SonioxClient Client { get; }
+    private SonioxCleaner Cleaner { get; }
     private MomentClockSet Clocks { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
     private ILogger Log { get; }
@@ -42,7 +36,8 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
     {
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
-        CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
+        Client = services.GetRequiredService<SonioxClient>();
+        Cleaner = services.GetRequiredService<SonioxCleaner>();
         OggOpusStreamConverter = new OggOpusStreamConverter(new OggOpusStreamConverter.Options {
             PageDuration = TimeSpan.FromMilliseconds(200),
         });
@@ -53,53 +48,36 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
         TranscriptionOptions options,
         CancellationToken cancellationToken = default)
     {
-        var apiKey = CoreServerSettings.SonioxKey;
-        if (apiKey.IsNullOrEmpty())
-            throw StandardError.Configuration("CoreSettings:SonioxKey is not set.");
-
+        string? fileId = null;
+        string? transcriptionId = null;
         try {
-            using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-            var fileId = await UploadAudio(httpClient, audioSource, cancellationToken).ConfigureAwait(false);
-            var transcriptionId = await CreateTranscription(httpClient, fileId, options, audioSource, cancellationToken)
+            fileId = await UploadAudio(audioSource, cancellationToken).ConfigureAwait(false);
+            transcriptionId = await CreateTranscription(fileId, options, audioSource, cancellationToken)
                 .ConfigureAwait(false);
-            await WaitForCompletion(httpClient, transcriptionId, cancellationToken).ConfigureAwait(false);
-            return await GetTranscript(httpClient, transcriptionId, cancellationToken).ConfigureAwait(false);
+            await WaitForCompletion(transcriptionId, cancellationToken).ConfigureAwait(false);
+            return await GetTranscript(transcriptionId, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "Soniox offline transcription failed");
             return null;
         }
+        finally {
+            // Soniox caps the stored file count per organization, so uploads must be dropped even
+            // when transcription fails. The cleaner keeps the two deletes off the latency path.
+            Cleaner.Enqueue(transcriptionId, fileId);
+        }
     }
 
     // Private methods
 
-    private async Task<string> UploadAudio(
-        HttpClient httpClient,
-        AudioSource audioSource,
-        CancellationToken cancellationToken)
+    private async Task<string> UploadAudio(AudioSource audioSource, CancellationToken cancellationToken)
     {
         var stream = await ToOggStream(audioSource, cancellationToken).ConfigureAwait(false);
-        await using (stream.ConfigureAwait(false)) {
-            using var content = new MultipartFormDataContent();
-            using var fileContent = new StreamContent(stream);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/ogg");
-            content.Add(fileContent, "file", "speech.ogg");
-
-            using var response = await httpClient
-                .PostAsync($"{BaseUrl}/files", content, cancellationToken)
-                .ConfigureAwait(false);
-            await EnsureSuccess(response, "upload", cancellationToken).ConfigureAwait(false);
-            var result = await response.Content
-                .ReadFromJsonAsync<SonioxIdResponse>(JsonOptions, cancellationToken)
-                .ConfigureAwait(false);
-            return result?.Id ?? throw StandardError.External("Soniox returned no file id.");
-        }
+        await using (stream.ConfigureAwait(false))
+            return await Client.UploadFile(stream, "speech.ogg", cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<string> CreateTranscription(
-        HttpClient httpClient,
+    private Task<string> CreateTranscription(
         string fileId,
         TranscriptionOptions options,
         AudioSource audioSource,
@@ -118,30 +96,14 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
             request["context"] = context;
         if (options.GetLanguageHints(SonioxLanguage.ToSoniox) is { Length: > 0 } languageHints)
             request["language_hints"] = languageHints;
-        var json = JsonSerializer.Serialize(request, JsonOptions);
-        using var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await httpClient
-            .PostAsync($"{BaseUrl}/transcriptions", content, cancellationToken)
-            .ConfigureAwait(false);
-        await EnsureSuccess(response, "create transcription", cancellationToken).ConfigureAwait(false);
-        var result = await response.Content
-            .ReadFromJsonAsync<SonioxIdResponse>(JsonOptions, cancellationToken)
-            .ConfigureAwait(false);
-        return result?.Id ?? throw StandardError.External("Soniox returned no transcription id.");
+
+        return Client.CreateTranscription(request, cancellationToken);
     }
 
-    private async Task WaitForCompletion(
-        HttpClient httpClient,
-        string transcriptionId,
-        CancellationToken cancellationToken)
+    private async Task WaitForCompletion(string transcriptionId, CancellationToken cancellationToken)
     {
         while (true) {
-            var status = await httpClient
-                .GetFromJsonAsync<SonioxStatusResponse>(
-                    $"{BaseUrl}/transcriptions/{transcriptionId}", JsonOptions, cancellationToken)
-                .ConfigureAwait(false);
-            if (status == null)
-                throw StandardError.External("Soniox returned no transcription status.");
+            var status = await Client.GetTranscriptionStatus(transcriptionId, cancellationToken).ConfigureAwait(false);
             if (status.Status == "completed")
                 return;
             if (status.Status == "error")
@@ -151,15 +113,9 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
         }
     }
 
-    private static async Task<Transcript?> GetTranscript(
-        HttpClient httpClient,
-        string transcriptionId,
-        CancellationToken cancellationToken)
+    private async Task<Transcript?> GetTranscript(string transcriptionId, CancellationToken cancellationToken)
     {
-        var response = await httpClient
-            .GetFromJsonAsync<SonioxResponse>(
-                $"{BaseUrl}/transcriptions/{transcriptionId}/transcript", JsonOptions, cancellationToken)
-            .ConfigureAwait(false);
+        var response = await Client.GetTranscript(transcriptionId, cancellationToken).ConfigureAwait(false);
         if (response?.Tokens is not { Length: > 0 } tokens)
             return null;
 
@@ -169,18 +125,6 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
             token.IsFinal = true;
         builder.Update(tokens);
         return builder.Complete();
-    }
-
-    private static async Task EnsureSuccess(
-        HttpResponseMessage response,
-        string step,
-        CancellationToken cancellationToken)
-    {
-        if (response.IsSuccessStatusCode)
-            return;
-
-        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        throw StandardError.External($"Soniox {step} failed: {(int)response.StatusCode} {body}");
     }
 
     private async Task<RecyclableMemoryStream> ToOggStream(AudioSource audioSource, CancellationToken cancellationToken)
