@@ -1,11 +1,12 @@
 .pinned-bar {
     @apply flex items-center gap-2;
-    @apply h-12 px-2;
+    @apply w-full h-12 px-2;
     @apply border border-separator rounded-md;
-    @apply bg-01;
+    @apply bg-01 text-left;
     @apply cursor-pointer select-none;
 }
-.pinned-bar:hover {
+body.hoverable .pinned-bar:hover,
+.touch-capable .pinned-bar:active {
     @apply bg-02;
 }
 .pinned-bar > .c-indicator {

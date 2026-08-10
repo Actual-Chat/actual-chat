@@ -26,6 +26,10 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         SerializationCodeGen.ValidateType<ReactionSummary>();
         SerializationCodeGen.ValidateType<Role>();
         SerializationCodeGen.ValidateType<Translation>();
+        SerializationCodeGen.ValidateType<ChatPinnedEntries>();
+
+        // Api - Chat commands
+        SerializationCodeGen.ValidateType<Chats_SetPinned>();
 
         // Api - User models
         SerializationCodeGen.ValidateType<Account>();

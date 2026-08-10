@@ -1044,35 +1044,47 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task OnSetPinnedEntries(Chats_SetPinnedEntries command, CancellationToken cancellationToken)
+    public virtual async Task OnSetPinned(Chats_SetPinned command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // The nested ServerKvasBackend_SetMany handles invalidation
 
-        var (session, chatId, entryIds) = command;
+        var (session, entryId, mustPin) = command;
+        var chatId = entryId.ChatId;
         ThrowIfPlaceRootChat(chatId);
+        if (entryId.LocalId <= 0)
+            throw StandardError.Constraint("Invalid message.");
 
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         if (!(chatId.Kind == ChatKind.Peer || chat.Rules.CanModerate()))
             throw StandardError.NotEnoughPermissions("Only chat Owners and Moderators can pin messages.");
 
-        // Keep valid, in-chat, distinct, still-present entries; cap at MaxCount.
-        var normalized = new List<ChatEntryId>(ChatPinnedEntries.MaxCount);
-        foreach (var entryId in entryIds) {
-            if (normalized.Count >= ChatPinnedEntries.MaxCount)
-                break;
-            if (entryId.LocalId <= 0 || entryId.ChatId != chatId || normalized.Contains(entryId))
-                continue;
-
-            var entry = await this.GetEntry(session, entryId, cancellationToken).ConfigureAwait(false);
-            if (entry is { IsRemoved: false })
-                normalized.Add(entryId);
-        }
-        // Order is always by message chronology (Telegram-style); pins can't be reordered manually.
-        normalized.Sort((a, b) => a.LocalId.CompareTo(b.LocalId));
-
         // isOutermost: this write lives in the Users DB, so it can't share Chat DB's operation scope.
         var chatKvas = ServerKvasBackend.ForChat(chatId, isOutermost: true);
+        var stored = await chatKvas.Get<ChatPinnedEntries>(cancellationToken).ConfigureAwait(false);
+
+        // Re-normalize the stored list on every change: keep distinct, in-chat, still-present entries.
+        // This drops ids of messages removed since the last write, so they never linger against the cap.
+        var normalized = new List<ChatEntryId>(ChatPinnedEntries.MaxCount);
+        foreach (var id in stored?.EntryIds ?? default) {
+            if (id.LocalId <= 0 || id.ChatId != chatId || id == entryId || normalized.Contains(id))
+                continue;
+            var e = await this.GetEntry(session, id, cancellationToken).ConfigureAwait(false);
+            if (e is { IsRemoved: false })
+                normalized.Add(id);
+        }
+
+        if (mustPin) {
+            var entry = await this.GetEntry(session, entryId, cancellationToken).ConfigureAwait(false);
+            if (entry is not { IsRemoved: false })
+                throw StandardError.Constraint("This message no longer exists.");
+            if (normalized.Count >= ChatPinnedEntries.MaxCount)
+                throw StandardError.Constraint($"You can pin up to {ChatPinnedEntries.MaxCount} messages.");
+            normalized.Add(entryId);
+        }
+
+        // Order is always by message chronology (Telegram-style); pins can't be reordered manually.
+        normalized.Sort((a, b) => a.LocalId.CompareTo(b.LocalId));
         await chatKvas
             .Set(new ChatPinnedEntries { EntryIds = new ApiArray<ChatEntryId>(normalized) }, cancellationToken)
             .ConfigureAwait(false);
