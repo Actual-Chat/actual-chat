@@ -188,12 +188,16 @@ public partial class ChatUI
         // These are all in flight already, so each timestamp marks when that await stopped blocking -
         // the first long delta is the straggler, the rest complete immediately behind it.
         var chatAt = CpuTimestamp.Now;
-        var liveConversation = await liveConversationTask.ConfigureAwait(false);
+        var liveConversation = await Hub.LiveSessionUI
+            .UseConversationOrLastKnown(chatId, liveConversationTask)
+            .ConfigureAwait(false);
         var conversationAt = CpuTimestamp.Now;
         var amInLiveConversation = liveConversation != null
             && await Hub.LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         var amInLiveAt = CpuTimestamp.Now;
-        var rawLive = await rawLiveTask.ConfigureAwait(false);
+        var rawLive = await Hub.LiveSessionUI
+            .UseSnapshotOrLastKnown(chatId, rawLiveTask)
+            .ConfigureAwait(false);
         var snapshotAt = CpuTimestamp.Now;
         var blockState = await blockStateTask.ConfigureAwait(false);
         var overlay = blockState.Overlay;

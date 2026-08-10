@@ -56,7 +56,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         // the frozen template fresh; it no longer owns whether the overlay exists.
         var chatState = await GetOrCreateChatState(chatId, cancellationToken).ConfigureAwait(false);
         var baseState = await chatState.State.Use(cancellationToken).ConfigureAwait(false);
-        var raw = await LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken).ConfigureAwait(false);
+        var snapshotTask = LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken);
+        var raw = await LiveSessionUI.UseSnapshotOrLastKnown(chatId, snapshotTask).ConfigureAwait(false);
         var amInLive = raw != null
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         lock (Lock) {

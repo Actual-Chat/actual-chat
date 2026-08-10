@@ -1642,6 +1642,32 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(15));
     }
 
+    [Fact]
+    public async Task ShouldRememberTheLastKnownBlockSnapshot()
+    {
+        // The stand-in a non-waiting caller falls back to: if it stays empty, the live block would
+        // collapse to "no session" on every rebuild that outruns the remote read.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "live-snapshot-memory-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_090);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
+
+        // act
+        var snapshot = await liveSessionUI.GetBlockSnapshot(chat.Id, CancellationToken.None);
+
+        // assert
+        snapshot.Should().NotBeNull();
+        snapshot!.IsLatched.Should().BeTrue("two registered streams latch the session");
+        liveSessionUI.GetLastKnownBlockSnapshot(chat.Id)
+            .Should().Be(snapshot, "the computed read must leave a stand-in behind");
+    }
+
     // Private methods
 
     private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)

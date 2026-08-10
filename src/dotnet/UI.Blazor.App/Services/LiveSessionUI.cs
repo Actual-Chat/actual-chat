@@ -22,6 +22,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private static readonly string JSStopRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.stop";
 
     private readonly ConcurrentDictionary<ChatId, CancellationTokenSource> _callWatches = new();
+    private readonly ConcurrentDictionary<ChatId, Conversation?> _lastConversations = new();
+    private readonly ConcurrentDictionary<ChatId, LiveBlockSnapshot?> _lastBlockSnapshots = new();
     private readonly Lock _ringbackLock = new();
     private object? _ringbackOwner;
 
@@ -41,7 +43,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         // GetState churns far more often than the card it projects, and ToConversation() rebuilds it
         // every time, so the comparer is what lets this absorb the churn.
         var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
+        return _lastConversations[chatId] = state is { SessionStartedAt: not null } ? state.ToConversation() : null;
     }
 
     [ComputeMethod(ConsolidationDelay = 0)]
@@ -50,7 +52,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         // Consolidated at the SOURCE deliberately: everything downstream of AmIInLiveConversation has to
         // stay immediately reactive, so the churn has to be absorbed here rather than on their outputs.
         var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return state is null
+        return _lastBlockSnapshots[chatId] = state is null
             ? null
             : new LiveBlockSnapshot(
                 state.SessionStartedAt is not null,
@@ -60,6 +62,12 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                 state.IsExpandedByDefault,
                 state.LastSummaryAt.EpochOffsetTicks > 0);
     }
+
+    public Task<Conversation?> UseConversationOrLastKnown(ChatId chatId, Task<Conversation?> conversationTask)
+        => UseOrLastKnown(_lastConversations, chatId, conversationTask);
+
+    public Task<LiveBlockSnapshot?> UseSnapshotOrLastKnown(ChatId chatId, Task<LiveBlockSnapshot?> snapshotTask)
+        => UseOrLastKnown(_lastBlockSnapshots, chatId, snapshotTask);
 
     [ComputeMethod]
     public virtual Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken)
@@ -205,6 +213,12 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
     }
 
+    // Protected/internal methods
+
+    // It's internal to be accessible from tests
+    internal LiveBlockSnapshot? GetLastKnownBlockSnapshot(ChatId chatId)
+        => _lastBlockSnapshots.GetValueOrDefault(chatId);
+
     [ComputeMethod]
     protected virtual async Task<ChatId?> GetMutedRecordingChat(CancellationToken cancellationToken)
     {
@@ -216,9 +230,11 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (live is null)
             return null;
+
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (ownAuthor is null)
             return null;
+
         var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
         return me is { MicMuted: true } ? chatId : null;
     }
@@ -274,7 +290,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private async Task WatchOutgoingCall(ChatId chatId, CancellationTokenSource cts)
     {
         var cancellationToken = cts.Token;
-        var ringbackOn = false;
+        var isRingbackOn = false;
         try {
             var watchStartedAt = Now;
             var isDialing = false;
@@ -288,8 +304,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                     // The caller hears the ringback for as long as the call is dialing; every exit
                     // below (answer, remote end, timeout, cancel) unwinds through the finally, which
                     // stops it.
-                    if (!ringbackOn) {
-                        ringbackOn = true;
+                    if (!isRingbackOn) {
+                        isRingbackOn = true;
                         StartRingback(cts);
                     }
                 }
@@ -310,7 +326,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             Log.LogWarning(e, "WatchOutgoingCall failed for chat #{ChatId}", chatId);
         }
         finally {
-            if (ringbackOn)
+            if (isRingbackOn)
                 StopRingback(cts);
             // Only our own registration: a restart has already replaced it by the time we unwind.
             _callWatches.TryRemove(new KeyValuePair<ChatId, CancellationTokenSource>(chatId, cts));
@@ -363,6 +379,20 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             .ConfigureAwait(false);
         if (hasMic)
             await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
+    }
+
+    private static Task<T?> UseOrLastKnown<T>(
+        ConcurrentDictionary<ChatId, T?> lastKnownValues,
+        ChatId chatId,
+        Task<T?> task)
+        where T : class
+    {
+        // The first read still awaits - standing in on nothing would flash a chat with no live block.
+        var computed = Computed.Current;
+        if (computed is null || !lastKnownValues.TryGetValue(chatId, out var lastKnown))
+            return task;
+
+        return Task.FromResult(task.UseIfReady(lastKnown, computed));
     }
 }
 
