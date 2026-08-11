@@ -38,7 +38,8 @@
             <Caption>@ownMessagesStatus</Caption>
             <Right>
                 <Toggle
-                    IsChecked="@m.TranslateOwnMessages" />
+                    IsChecked="@m.TranslateOwnMessages"
+                    IsCheckedChanged="@(_ => OnTranslateOwnMessagesClick())" />
             </Right>
         </TileItem>
     </FormBlock>

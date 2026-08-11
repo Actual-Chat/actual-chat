@@ -25,7 +25,9 @@
             <Content>Early access features</Content>
             <Caption>@experimentalFeatureStatus</Caption>
             <Right>
-                <Toggle IsChecked="@m.AreExperimentalFeaturesEnabled"/>
+                <Toggle
+                    IsChecked="@m.AreExperimentalFeaturesEnabled"
+                    IsCheckedChanged="@(_ => OnExperimentalFeatureEnabledClick())"/>
             </Right>
         </TileItem>
         <TileItem Click="@OnIncompleteUIEnabledClick">
@@ -33,7 +35,9 @@
             <Content>Early access UI features</Content>
             <Caption>@incompleteUIStatus</Caption>
             <Right>
-                <Toggle IsChecked="@m.IsIncompleteUIEnabled"/>
+                <Toggle
+                    IsChecked="@m.IsIncompleteUIEnabled"
+                    IsCheckedChanged="@(_ => OnIncompleteUIEnabledClick())"/>
             </Right>
         </TileItem>
     </Tile>
@@ -44,19 +48,23 @@
     <TileItem Click="@OnLogUIEnabledClick">
         <Content>Enable log viewer</Content>
         <Right>
-            <Toggle IsChecked="@m.IsLogUIEnabled"/>
+            <Toggle IsChecked="@m.IsLogUIEnabled" IsCheckedChanged="@(_ => OnLogUIEnabledClick())"/>
         </Right>
     </TileItem>
     <TileItem Click="@OnVideoDiagnosticsEnabledClick">
         <Content>Enable video diagnostics</Content>
         <Right>
-            <Toggle IsChecked="@m.IsVideoDiagnosticsEnabled"/>
+            <Toggle
+                IsChecked="@m.IsVideoDiagnosticsEnabled"
+                IsCheckedChanged="@(_ => OnVideoDiagnosticsEnabledClick())"/>
         </Right>
     </TileItem>
     <TileItem Click="@OnAudioDiagnosticsEnabledClick">
         <Content>Enable audio diagnostics</Content>
         <Right>
-            <Toggle IsChecked="@m.IsAudioDiagnosticsEnabled"/>
+            <Toggle
+                IsChecked="@m.IsAudioDiagnosticsEnabled"
+                IsCheckedChanged="@(_ => OnAudioDiagnosticsEnabledClick())"/>
         </Right>
     </TileItem>
     @if (MauiLogAccessor?.GetLogFile != null) {

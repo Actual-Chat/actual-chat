@@ -16,7 +16,7 @@
                 <span class="c-language" @onclick="@OnLanguageClick">@m?.TranslationLanguage.Title</span>
             </div>
             <div class="c-toggle" @onclick="@OnToggleClick">
-                <Toggle IsChecked="@(m?.IsOn ?? false)"/>
+                <Toggle IsChecked="@(m?.IsOn ?? false)" IsCheckedChanged="@(_ => OnToggleClick())"/>
             </div>
         </div>
 

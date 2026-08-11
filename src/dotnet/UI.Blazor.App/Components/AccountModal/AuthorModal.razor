@@ -129,7 +129,8 @@
                             <Right>
                                 <Toggle Class="mr-2"
                                         IsChecked="@toggleValue"
-                                        IsDisabled="@m.OnlyAnonymousChatAllowed"/>
+                                        IsDisabled="@m.OnlyAnonymousChatAllowed"
+                                        IsCheckedChanged="@(_ => OnChatTypeChanged())"/>
                             </Right>
                         </TileItem>
                     </div>

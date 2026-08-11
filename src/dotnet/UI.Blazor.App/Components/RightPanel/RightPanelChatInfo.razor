@@ -17,7 +17,7 @@
                     <Title>Summarize</Title>
                     <Caption>@(m.IsSummarized ? "On" : "Off")</Caption>
                     <Right>
-                        <Toggle IsChecked="@m.IsSummarized"/>
+                        <Toggle IsChecked="@m.IsSummarized" IsCheckedChanged="@OnSummarizeToggleChanged"/>
                     </Right>
                 </CardItem>
             }
