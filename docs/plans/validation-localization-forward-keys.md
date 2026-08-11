@@ -72,6 +72,8 @@ what `Directory.Build.props` actually protects) while `CurrentUICulture` varies 
 needs `PredefinedCulturesOnly=false`, already proven on `feat/localizatiion-via-resx`.
 
 Neither is needed today, and neither invalidates the keys, the catalog or the tests.
+`MessageIndex` and `Messages.en.json` carry `TODO(FC)` notes pointing here, so whoever bumps the
+SDK sees that preview.7 is the release to re-check.
 
 ## 2. The design
 
