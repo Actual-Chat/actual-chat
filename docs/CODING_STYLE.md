@@ -838,7 +838,7 @@ runtime by `AppStringLocalizer` (a custom `IStringLocalizer<Strings>` in
 
 1. Add it to `Strings.en.json` **and every other shipped `Strings.*.json`**
    (all languages must define exactly the English key set).
-2. Add the matching typed member to `AppStrings.cs` (one member per key,
+2. Add the matching typed member to `LocalizerExt.cs` (one member per key,
    names must match exactly).
 3. Use it from code (see below).
 
@@ -848,8 +848,8 @@ Format strings get a `_Format` suffix and use `{0}`-style placeholders — every
 translation must keep the placeholder. Plural variants use `_One` / `_Other`
 suffixes (`Sessions_DaysAgo_One`, `Sessions_DaysAgo_Other`).
 
-**Consuming strings** — always through the typed `AppStrings` extension
-members (`src/dotnet/UI.Blazor/Resources/AppStrings.cs`), never the raw
+**Consuming strings** — always through the typed `LocalizerExt` extension
+members (`src/dotnet/UI.Blazor/Resources/LocalizerExt.cs`), never the raw
 `L["..."]` indexer — the typed members are compile-time-safe against typos:
 
 - **Components** — use the `L` property that component base classes

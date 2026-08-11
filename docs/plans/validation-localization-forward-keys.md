@@ -134,8 +134,8 @@ English noun inside a Russian sentence.
 `Strings.*.json` as ordinary forward keys. `MessageIndex` rejects any key outside
 `Validation_` / `Error_` / `Field_`, and `CatalogsShouldNotShareKeys` keeps the two disjoint.
 
-`Validation_*` keys are excluded from `AppStringsMembersMatchEnglishKeysExactly`: they're resolved
-by key from Core, which can't reference `AppStrings`.
+`Validation_*` keys are excluded from `LocalizerExtMembersMatchEnglishKeysExactly`: they're resolved
+by key from Core, which can't reference `LocalizerExt`.
 
 ## 5. What landed
 

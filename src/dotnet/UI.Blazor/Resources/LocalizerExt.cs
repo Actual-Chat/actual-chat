@@ -2,8 +2,12 @@ using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.Resources;
 
-// TODO: think of better name
-public static class AppStrings
+/// <summary>
+/// One typed member per catalog key, as extension members on <see cref="IStringLocalizer"/>:
+/// <c>L.Common_Save</c> rather than <c>L["Common_Save"]</c>, so a typo is a compile error.
+/// <c>AppLocalizationTest</c> keeps the members and the English keys in exact correspondence.
+/// </summary>
+public static class LocalizerExt
 {
     extension(IStringLocalizer l)
     {

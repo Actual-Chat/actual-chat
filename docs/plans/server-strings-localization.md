@@ -133,7 +133,7 @@ displays are instant.
   creating a parallel service family.
 - **`IChatDigestSummarizer`** (`Chat.ML/ChatDigestSummarizer.cs`) — precedent for
   language-parameterized prompts; digest email body needs no new work.
-- **`AppStringLocalizer` + `Strings.<lang>.json` + `AppStrings` extension members +
+- **`AppStringLocalizer` + `Strings.<lang>.json` + `LocalizerExt` extension members +
   `AppLocalizationTest`** (`UI.Blazor.App/Resources/`,
   `tests/Chat.UI.Blazor.UnitTests/AppLocalizationTest.cs`) — the JSON-table format,
   loading code, typed-key convention, and key-coverage test to replicate for the new
