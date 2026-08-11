@@ -242,6 +242,12 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             return;
         }
 
+        // A place the user picked on the map isn't their position, so it needs no location permission.
+        if (model.PickedPoint is { } pickedPoint) {
+            await SendLocation(chatId, pickedPoint, true, Hub.StopToken).ConfigureAwait(true);
+            return;
+        }
+
         if (model.SelectedDuration is not { } duration)
             return;
 
@@ -265,7 +271,20 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         if (await Tracker.Get(false, cancellationToken).ConfigureAwait(false) is not { Point: var point })
             return;
 
-        var change = Change.Create(new SharedLocationDiff { Point = point, LiveDuration = TimeSpan.Zero });
+        await SendLocation(chatId, point, false, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SendLocation(
+        ChatId chatId,
+        GeoPoint point,
+        bool isPlace,
+        CancellationToken cancellationToken)
+    {
+        var change = Change.Create(new SharedLocationDiff {
+            Point = point,
+            LiveDuration = TimeSpan.Zero,
+            IsPlace = isPlace,
+        });
         var shared = await Commander.Call(
                 new SharedLocations_Change(Session, chatId, null, change),
                 cancellationToken)
@@ -332,7 +351,10 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     // Private methods
 
     private MapMarker ToMapMarker(SharedLocation location, Author author)
-        => ToMapMarker(location.Id.Value, location.Point, author);
+        // A place isn't where its author is, so it must not wear their avatar.
+        => location.IsPlace
+            ? new MapMarker(location.Id.Value, location.Point)
+            : ToMapMarker(location.Id.Value, location.Point, author);
 
     private MapMarker ToMapMarker(string id, GeoPoint point, Author author, bool isOwnLocation = false)
     {

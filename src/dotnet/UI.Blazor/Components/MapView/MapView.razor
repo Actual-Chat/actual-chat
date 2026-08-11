@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
+@using System.Diagnostics.CodeAnalysis
 @inherits ComputedStateComponent<UIHub, MapView.Model?>
 
 <div @ref="Ref" class="map-view @Class" data-no-side-nav-pull="@Interactive"></div>
@@ -9,6 +10,7 @@
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.MapView.create";
 
     private IJSObjectReference? _jsRef;
+    private DotNetObjectReference<MapView>? _blazorRef;
     private string? _appliedStyleUrl;
 
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
@@ -20,6 +22,10 @@
     [Parameter] public double Zoom { get; set; } = 12;
     [Parameter] public bool Interactive { get; set; } = true;
     [Parameter] public IReadOnlyList<MapMarker> Markers { get; set; } = [];
+    [Parameter] public EventCallback<GeoPoint> CenterChanged { get; set; }
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MapView))]
+    public MapView() { }
 
     protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -44,7 +50,12 @@
                 zoom = Zoom,
                 interactive = Interactive,
             };
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, options).ConfigureAwait(true);
+            // A chat renders dozens of maps; only the ones tracking their center pay for the interop ref.
+            if (CenterChanged.HasDelegate)
+                _blazorRef = DotNetObjectReference.Create(this);
+            _jsRef = await JS
+                .InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, options, _blazorRef)
+                .ConfigureAwait(true);
             await _jsRef.InvokeVoidAsync("setMarkers", Markers).ConfigureAwait(true);
             return;
         }
@@ -61,13 +72,27 @@
     public ValueTask FlyTo(GeoPoint point)
         => _jsRef?.InvokeVoidAsync("flyTo", point.Latitude, point.Longitude) ?? ValueTask.CompletedTask;
 
+    public async ValueTask<GeoPoint> GetCenter() {
+        if (_jsRef is not { } jsRef)
+            return Center;
+
+        var center = await jsRef.InvokeAsync<double[]>("getCenter").ConfigureAwait(true);
+        return new GeoPoint(center[0], center[1]);
+    }
+
     public override async ValueTask DisposeAsync() {
         if (_jsRef is { } jsRef) {
             _jsRef = null;
             await jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
         }
+        _blazorRef.DisposeSilently();
+        _blazorRef = null;
         await base.DisposeAsync().ConfigureAwait(false);
     }
+
+    [JSInvokable]
+    public Task OnCenterChanged(double latitude, double longitude)
+        => CenterChanged.InvokeAsync(new GeoPoint(latitude, longitude));
 
     // Private methods
 

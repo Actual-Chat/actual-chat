@@ -30,6 +30,7 @@ public class DbSharedLocation : IHasId<string>, IHasVersion<long>, IRequirementT
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
     public TimeSpan Duration { get; set; }
+    public bool IsPlace { get; set; }
     public DateTime? StoppedAt {
         get => field?.DefaultKind(DateTimeKind.Utc);
         set => field = value?.DefaultKind(DateTimeKind.Utc);
@@ -49,6 +50,7 @@ public class DbSharedLocation : IHasId<string>, IHasVersion<long>, IRequirementT
                 ? Constants.Location.UnlimitedDuration
                 : Duration,
             StoppedAt = StoppedAt?.ToMoment(),
+            IsPlace = IsPlace,
         };
 
     public void UpdateFrom(SharedLocation model)
@@ -66,6 +68,7 @@ public class DbSharedLocation : IHasId<string>, IHasVersion<long>, IRequirementT
         CreatedAt = model.CreatedAt;
         ModifiedAt = model.ModifiedAt;
         Duration = model.Duration;
+        IsPlace = model.IsPlace;
         StoppedAt = model.StoppedAt?.ToDateTime();
     }
 }

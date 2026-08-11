@@ -50,19 +50,25 @@ export class MapView {
     private readonly markers = new Map<string, MlMarker>();
     private readonly resizeObserver: ResizeObserver;
     private readonly visibilityObserver: IntersectionObserver;
+    // Null unless the map's center is actually being tracked — see MapView.CenterChanged.
+    private readonly blazorRef: DotNet.DotNetObject | null;
     private map: MlMap | null = null;
     private lastMarkers: MapMarker[] = [];
     private isVisible = false;
     private isDisposed = false;
     private recreateTimer: ReturnType<typeof setTimeout> | null = null;
 
-    public static create(element: HTMLElement, options: MapViewOptions): MapView {
-        return new MapView(element, options);
+    public static create(
+        element: HTMLElement,
+        options: MapViewOptions,
+        blazorRef: DotNet.DotNetObject | null): MapView {
+        return new MapView(element, options, blazorRef);
     }
 
-    constructor(element: HTMLElement, options: MapViewOptions) {
+    constructor(element: HTMLElement, options: MapViewOptions, blazorRef: DotNet.DotNetObject | null) {
         this.element = element;
         this.options = options;
+        this.blazorRef = blazorRef;
         // The map is often created while its container is still 0-sized (e.g. inside a
         // modal that's mid-open-animation); MapLibre then loads no tiles and stays blank.
         // Re-measure whenever the container resizes so tiles load once it has real size.
@@ -93,6 +99,14 @@ export class MapView {
         this.map?.flyTo({ center: [longitude, latitude] });
     }
 
+    // Returns [latitude, longitude]; options hold the last known center while the map is destroyed.
+    public getCenter(): number[] {
+        const center = this.map?.getCenter();
+        return center != null
+            ? [center.lat, center.lng]
+            : [this.options.centerLatitude, this.options.centerLongitude];
+    }
+
     public dispose(): void {
         this.isDisposed = true;
         if (this.recreateTimer != null)
@@ -112,6 +126,16 @@ export class MapView {
             this.destroyMap();
     }
 
+    private onMoveEnd(): void {
+        this.element.classList.remove('moving');
+        const map = this.map;
+        if (map == null || this.blazorRef == null)
+            return;
+
+        const center = map.getCenter();
+        void this.blazorRef.invokeMethodAsync('OnCenterChanged', center.lat, center.lng);
+    }
+
     private createMap(): void {
         if (this.map != null || this.isDisposed)
             return;
@@ -128,6 +152,8 @@ export class MapView {
         this.map.on('webglcontextlost', () => this.onContextLost());
         // An accuracy circle is a metric radius, so its pixel size changes with zoom.
         this.map.on('move', () => this.applyAccuracyCircles(this.lastMarkers));
+        this.map.on('movestart', () => this.element.classList.add('moving'));
+        this.map.on('moveend', () => this.onMoveEnd());
         this.applyMarkers(this.lastMarkers);
     }
 
@@ -137,6 +163,7 @@ export class MapView {
             return;
 
         this.map = null;
+        this.element.classList.remove('moving');
         // Keep the user's pan/zoom, so the map reappears where they left it.
         const center = map.getCenter();
         this.options.centerLatitude = center.lat;
