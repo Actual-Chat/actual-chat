@@ -78,8 +78,12 @@ public sealed class ChatListeningPlayer : ChatPlayer
                     return;
                 }
 
-                // Suppress the "new message after delay" cue while a video call is active in the chat
-                var hasVideo = await Hub.ChatVideoUI.IsAnyoneVideoStreaming(ChatId, cancellationToken).ConfigureAwait(false);
+                // The cue prepares the user for audio after real silence, so a chat with a live
+                // session already running (incoming or own outgoing, audio or video) never plays it.
+                var liveSessionState = await Hub.LiveSessionUI.GetState(ChatId, cancellationToken)
+                    .ConfigureAwait(false);
+                var isSessionActive = liveSessionState is { SessionStartedAt: not null }
+                    || await Hub.ChatVideoUI.IsAnyoneVideoStreaming(ChatId, cancellationToken).ConfigureAwait(false);
 
                 // Check for sleep drift
                 Moment startAt;
@@ -88,10 +92,12 @@ public sealed class ChatListeningPlayer : ChatPlayer
                     var sleepDuration = SleepDuration.Value;
                     if (sleepDuration != state.LastSleepDuration)
                         state.Reset(startAt = serverClock.Now, sleepDuration);
-                    if (!hasVideo && streamInfo.BeginsAt - state.LastNotifyTunePlayedAt > Hub.AudioSettings.IdleListeningNewMessageTrigger) {
+                    // The stamp tracks the last INCOMING stream, not the last cue - measuring
+                    // against the cue re-fired it mid-conversation every trigger interval.
+                    var idleFor = streamInfo.BeginsAt - state.LastIncomingAudioAt;
+                    if (!isSessionActive && idleFor > Hub.AudioSettings.IdleListeningNewMessageTrigger)
                         _ = Hub.TuneUI.Play(Tune.NotifyOnNewAudioMessageAfterDelay);
-                        state.LastNotifyTunePlayedAt = streamInfo.BeginsAt;
-                    }
+                    state.LastIncomingAudioAt = streamInfo.BeginsAt;
                 }
 
                 var playbackTargetBufferSize = await ChatAudioUI
@@ -200,11 +206,11 @@ public sealed class ChatListeningPlayer : ChatPlayer
         public Lock Lock { get; } = new();
         public Moment StartAt { get; private set; } = startAt;
         public TimeSpan LastSleepDuration { get; private set; } = lastSleepDuration;
-        public Moment LastNotifyTunePlayedAt { get; set; } = startAt;
+        public Moment LastIncomingAudioAt { get; set; } = startAt;
 
         public void Reset(Moment startAt, TimeSpan lastSleepDuration)
         {
-            StartAt = LastNotifyTunePlayedAt = startAt;
+            StartAt = LastIncomingAudioAt = startAt;
             LastSleepDuration = lastSleepDuration;
         }
     }
