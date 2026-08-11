@@ -16,6 +16,7 @@ public class LocalizationUI : UIServiceBase<AppUIHub>, IUITextLocalizer, IComput
 
     private ITranslations Translator => Hub.Translations;
     private LanguageUI LanguageUI => Hub.LanguageUI;
+    IServiceProvider IHasServices.Services => Hub.Services;
 
     public LocalizationUI(AppUIHub hub) : base(hub)
         => _localizations = new(ConcurrencyLevel, Localize, log: hub.LogFor<ConcurrentProcessor<Key, string>>());

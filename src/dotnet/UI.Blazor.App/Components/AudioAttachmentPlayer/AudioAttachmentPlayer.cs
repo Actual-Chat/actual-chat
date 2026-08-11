@@ -1,7 +1,6 @@
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Resources;
-using Microsoft.Extensions.Localization;
 
 // ReSharper disable once CheckNamespace
 namespace ActualChat.UI.Blazor.App.Components;
@@ -22,7 +21,6 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     private ImmutableHashSet<ChatId> _listeningChatsBeforeAudio = ImmutableHashSet<ChatId>.Empty;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private IStringLocalizer L => field ??= Services.GetRequiredService<IStringLocalizer>();
 
     public IState<PlaybackState?> State => _state;
 

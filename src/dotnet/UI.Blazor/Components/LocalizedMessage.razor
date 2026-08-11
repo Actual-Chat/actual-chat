@@ -33,14 +33,7 @@
             return localized;
 
         ReportFallback(Text);
-        // TODO: catching must be inside textLocalizer.Get
-        try {
-            return await Hub.UITextLocalizer.Get(Text, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Failed to localize: {Message}", Text);
-            return Text;
-        }
+        return await Hub.UITextLocalizer.GetSafe(Text, cancellationToken).ConfigureAwait(false);
     }
 
     // Tiers 1-2: both are plain catalog lookups, so this is the whole synchronous path.

@@ -5,7 +5,6 @@ using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
-using Microsoft.Extensions.Localization;
 using MathExt = ActualLab.Mathematics.MathExt;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -53,7 +52,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private NavbarUI NavbarUI { get; }
-    private IStringLocalizer L => field ??= Services.GetRequiredService<IStringLocalizer>();
 
     public IState<ChatId?> SelectedChatId => _selectedChatId;
     public IState<PlaceId?> SelectedPlaceId => _selectedPlaceId;

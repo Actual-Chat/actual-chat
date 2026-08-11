@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 /// the string catalog. Implemented by LocalizationUI in UI.Blazor.App, which is a layer this
 /// project cannot reference.
 /// </summary>
-public interface IUITextLocalizer
+public interface IUITextLocalizer : IHasServices
 {
     Task<string> Get(string message, CancellationToken cancellationToken = default);
 }
