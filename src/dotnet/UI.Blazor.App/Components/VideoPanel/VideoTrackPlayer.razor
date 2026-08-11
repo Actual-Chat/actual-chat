@@ -115,10 +115,12 @@
             // best tier the receiver may ever decode. The decoder reconfigures at keyframe
             // boundaries if the actual forwarded layer is lower.
             var format = StreamInfo.Format;
-            var sourceStartedAt = StreamInfo.SourceStartedAt != default
-                ? StreamInfo.SourceStartedAt
-                : StreamInfo.StartedAt;
-            var startedAtMs = sourceStartedAt.EpochOffset.TotalMilliseconds;
+            // StartedAt, not SourceStartedAt: they are equal unless the server's
+            // gross-skew guard rebased StartedAt onto server time — and then the raw
+            // claim is broken (a sender with a stale clock once anchored its stream
+            // 160s in the past, pinning the audio A/V-sync hold at its cap for the
+            // whole stream life).
+            var startedAtMs = StreamInfo.StartedAt.EpochOffset.TotalMilliseconds;
             Log.LogDebug(
                 "[VideoTrackPlayer #{StreamId}] Creating JS player: authorId={AuthorId}, startedAtMs={StartedAtMs}, format={Format}",
                 StreamInfo.StreamId, StreamInfo.AuthorId, startedAtMs, format);
@@ -272,7 +274,8 @@
         // lagMs = true on-screen lag (rVFC); tapLagMs = pre-present tap lag, kept
         // in DeviceLatencyMs as a diagnostic so the present→display gap is visible.
         // uplinkMs = capture→server (sender+upload); rxMs = arrival→decode (receiver-internal).
-        var anchor = StreamInfo.SourceStartedAt != default ? StreamInfo.SourceStartedAt : StreamInfo.StartedAt;
+        // StartedAt: same server-guarded anchor the JS player was created with.
+        var anchor = StreamInfo.StartedAt;
         var raw = new LagInputs(anchor.EpochOffset.TotalMilliseconds, bufferSpanMs, captureOffsetMs, presentSkipRatio, tapLagMs, uplinkMs, rxMs);
         LagTracker.UpdateVideo(StreamInfo.AuthorId, StreamInfo.StreamId.Value, TimeSpan.FromMilliseconds(lagMs), raw);
     }

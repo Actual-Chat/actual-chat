@@ -70,12 +70,9 @@ export class SharedSettings {
         SharedSettings.changed.trigger(SharedSettings.current);
     }
 
-    public static updateServerClockOffset(serverNowMs: number): void {
-        SharedSettings.update({ serverClockOffsetMs: serverNowMs - Date.now() });
-    }
-
-    // Server render mode pushes the already-compensated offset directly (the C#
-    // side NTP-measures it over the circuit), bypassing the stale serverNow recompute.
+    // C# always pushes a Date-relative offset, never an absolute server timestamp:
+    // an absolute would be converted against Date.now() at APPLY time, so a delayed
+    // interop execution (doze, frozen WebView) would skew the clock by that delay.
     public static setServerClockOffsetMs(offsetMs: number): void {
         SharedSettings.update({ serverClockOffsetMs: offsetMs });
     }

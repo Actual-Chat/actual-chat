@@ -133,6 +133,9 @@ const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
 
 const PLAYBACK_PRIORITY_SECONDARY = 0;
 const PLAYBACK_PRIORITY_PRIMARY = 1;
+// Lag samples beyond this mean a broken stream anchor or clock, not real
+// latency; they must never reach the A/V-sync audio hold.
+const MAX_PLAUSIBLE_LAG_MS = 30_000;
 
 export class VideoPlayer {
     private blazorRef: DotNet.DotNetObject;
@@ -411,7 +414,7 @@ export class VideoPlayer {
             // now − (anchor + mediaTime) is its age on screen — this INCLUDES the
             // MSTG→<video> playback buffer that the pre-present latency-tap misses.
             const lagMs = ServerClock.now() - (this.startedAtMs + metadata.mediaTime * 1000);
-            if (Number.isFinite(lagMs) && lagMs >= 0 && lagMs < 30_000) {
+            if (Number.isFinite(lagMs) && lagMs >= 0 && lagMs < MAX_PLAUSIBLE_LAG_MS) {
                 this.displayLatencyEma.appendSample(lagMs);
                 this.displayLatencyMs = this.displayLatencyEma.value;
                 this.hasDisplayLag = true;
@@ -1414,7 +1417,11 @@ export class VideoPlayer {
         // still forwarded as a diagnostic so the present→display gap is visible.
         const captureAtServerMs = this.startedAtMs + sample.capturedAtMs;
         const tapLagMs = Math.max(0, ServerClock.now() - captureAtServerMs);
-        this.videoLagEma.appendSample(tapLagMs);
+        // Same implausible-lag filter as the rVFC path above — without it, a
+        // broken anchor feeds the EMA the rVFC path silently rejected, and the
+        // fallback below reports it as the A/V-sync video lag.
+        if (tapLagMs < MAX_PLAUSIBLE_LAG_MS)
+            this.videoLagEma.appendSample(tapLagMs);
         const videoLagMs = this.hasDisplayLag ? this.displayLatencyMs : this.videoLagEma.value;
         // Uplink (capture→server) — both server domain, skew-free. Splits the
         // sender+upload share out of the total on-screen lag.

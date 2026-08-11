@@ -175,12 +175,11 @@ public sealed class ChatListeningPlayer : ChatPlayer
             return;
 
         // SourceRecordedAt routes through to JS as recordedAtMs and feeds the
-        // audio-side presentation-lag callback. Use SourceBeginsAt (raw client
-        // claim) so the audio side's lag is identical to video's lag; fall back
-        // to BeginsAt on legacy/replay streams that don't carry SourceBeginsAt.
-        var sourceRecordedAt = (streamInfo.SourceBeginsAt != default
-            ? streamInfo.SourceBeginsAt
-            : streamInfo.BeginsAt) + skipTo;
+        // audio-side presentation-lag callback. BeginsAt, not SourceBeginsAt:
+        // every producer sets them equal except the live backend's gross-skew
+        // guard, which rebases BeginsAt onto server time exactly when the raw
+        // claim is broken — mirrors the video side's StartedAt anchor.
+        var sourceRecordedAt = streamInfo.BeginsAt + skipTo;
         var targetBufferSize = await Hub.ChatAudioUI
             .GetPlaybackTargetBufferSize(ChatId, cancellationToken)
             .ConfigureAwait(false);

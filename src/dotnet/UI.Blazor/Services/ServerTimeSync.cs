@@ -8,10 +8,14 @@ public class ServerTimeSync : WorkerBase
     private const int MaxRejectStreak = 3;
     private static readonly TimeSpan StaleThreshold = TimeSpan.FromMinutes(11);
     private static readonly TimeSpan SteadyStateDelay = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan DriftCheckPeriod = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan SuspendDriftThreshold = TimeSpan.FromSeconds(1);
 
     private readonly RunningEma _rttEma = new(0f, 1, 0.3);
     private readonly SemaphoreSlim _syncLock = new(1, 1);
     private int _rejectStreak;
+    private Moment _lastUpdatedWallAt;
 
     private ILogger Log { get; }
     private MomentClockSet Clocks { get; }
@@ -38,12 +42,15 @@ public class ServerTimeSync : WorkerBase
         JS = services.JSRuntime();
         Stats = services.GetRequiredService<ServerClockSyncStats>();
         LastUpdatedAt = Clocks.CpuClock.Now - TimeSpan.FromDays(1);
+        _lastUpdatedWallAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
     }
 
     public async Task EnsureSynced(CancellationToken cancellationToken)
     {
-        // Forces a first sync on demand; call before using server timestamps (e.g. video startedAtMs).
-        if (SyncCount > 0)
+        // Forces a sync on demand; call before using server timestamps (e.g. video
+        // startedAtMs). Re-syncs after a device suspend too — the offset measured
+        // before the suspend is off by exactly the slept time.
+        if (SyncCount > 0 && GetSuspendDrift() < SuspendDriftThreshold)
             return;
 
         await Sync(cancellationToken).ConfigureAwait(false);
@@ -65,8 +72,9 @@ public class ServerTimeSync : WorkerBase
         if (SyncCount <= 2 && SyncAttemptCount <= 5)
             return TimeSpan.FromSeconds(0.5);
 
-        // Always re-sync at a steady cadence so the offset can't go stale and drift.
-        return SteadyStateDelay;
+        // Short cadence, but most ticks are cheap no-ops: SyncUnsafe runs a real
+        // burst only when SteadyStateDelay elapsed or a device suspend is detected.
+        return DriftCheckPeriod;
     }
 
     private async Task Sync(CancellationToken cancellationToken)
@@ -83,6 +91,11 @@ public class ServerTimeSync : WorkerBase
 
     private async Task SyncUnsafe(CancellationToken cancellationToken)
     {
+        var isSuspendSuspected = GetSuspendDrift() >= SuspendDriftThreshold;
+        var isDue = CpuClock.Now - LastUpdatedAt >= SteadyStateDelay;
+        if (SyncCount > 2 && !isDue && !isSuspendSuspected)
+            return; // Drift-check tick, nothing to do
+
         SyncAttemptCount++;
 
         // The remote being measured differs by host kind. Server mode: C# runs on
@@ -103,9 +116,16 @@ public class ServerTimeSync : WorkerBase
             var before = CpuClock.Now.EpochOffset.TotalMilliseconds;
             double remoteMs;
             try {
+                // ProbeTimeout keeps a probe hung on a half-dead connection from
+                // wedging this worker forever (it holds _syncLock while awaiting).
                 remoteMs = isServer
-                    ? await JS.InvokeAsync<double>("SharedSettings.getClientTimeMs", cancellationToken).ConfigureAwait(false)
-                    : await SystemProperties.GetTime(cancellationToken).ConfigureAwait(false) * 1000;
+                    ? await JS.InvokeAsync<double>("SharedSettings.getClientTimeMs", cancellationToken)
+                        .AsTask().WaitAsync(ProbeTimeout, cancellationToken).ConfigureAwait(false)
+                    : await SystemProperties.GetTime(cancellationToken)
+                        .WaitAsync(ProbeTimeout, cancellationToken).ConfigureAwait(false) * 1000;
+            }
+            catch (TimeoutException) {
+                continue; // Hung probe — skip the sample
             }
             catch (Exception e) when (isServer && e is JSDisconnectedException or ObjectDisposedException) {
                 return; // Blazor circuit is gone
@@ -132,6 +152,7 @@ public class ServerTimeSync : WorkerBase
         var isStale = CpuClock.Now - LastUpdatedAt > StaleThreshold;
         var accept = SyncCount == 0
             || isStale
+            || isSuspendSuspected
             || _rejectStreak >= MaxRejectStreak
             || avgRtt <= baseline * RttToleranceFactor;
         if (!accept) {
@@ -144,6 +165,7 @@ public class ServerTimeSync : WorkerBase
         LastOffset = offset;
         LastPrecision = precision;
         LastUpdatedAt = CpuClock.Now;
+        _lastUpdatedWallAt = Clocks.SystemClock.Now;
         Log.LogInformation("Offset = {Offset} ± {Precision} (rtt ema {RttEma})",
             offset.ToShortString(), precision.ToShortString(), RttEma.ToShortString());
 
@@ -161,18 +183,30 @@ public class ServerTimeSync : WorkerBase
             LastOffset, LastPrecision, RttEma, TimeSpan.FromSeconds(avgRtt), LastUpdatedAt, SyncCount));
 
         try {
-            if (isServer)
-                await JS.InvokeVoidAsync("SharedSettings.setServerClockOffsetMs", cancellationToken, offsetMs)
-                    .ConfigureAwait(false);
-            else {
-                var serverNowMs = Clocks.ServerClock.Now.EpochOffset.TotalMilliseconds;
-                await JS.InvokeVoidAsync("SharedSettings.updateServerClockOffset", cancellationToken, serverNowMs)
-                    .ConfigureAwait(false);
-            }
+            // Always a Date-relative offset, never an absolute server timestamp: an
+            // absolute value is converted against Date.now() at APPLY time, so any
+            // delay between this call and its JS-side execution (doze, frozen
+            // WebView) would skew the JS clock by exactly that delay.
+            var jsOffsetMs = isServer
+                ? offsetMs
+                : (Clocks.ServerClock.Now - Clocks.SystemClock.Now).TotalMilliseconds;
+            await JS.InvokeVoidAsync("SharedSettings.setServerClockOffsetMs", cancellationToken, jsOffsetMs)
+                .ConfigureAwait(false);
         }
         catch (Exception e) when (e is JSDisconnectedException or ObjectDisposedException) {
             // Blazor circuit is gone — safe to ignore
         }
+    }
+
+    private TimeSpan GetSuspendDrift()
+    {
+        // The wall clock keeps running through a device suspend while CpuClock
+        // (Stopwatch / CLOCK_MONOTONIC) does not, so the gap between the two
+        // elapsed spans since the last accepted sync equals the time slept since
+        // then — which is exactly the error ServerClock has accumulated.
+        var wallElapsed = Clocks.SystemClock.Now - _lastUpdatedWallAt;
+        var cpuElapsed = CpuClock.Now - LastUpdatedAt;
+        return wallElapsed - cpuElapsed;
     }
 
     private static double Median(List<double> values)

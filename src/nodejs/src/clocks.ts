@@ -114,7 +114,9 @@ export class ServerClock {
     /** Returns server-aligned epoch ms */
     static now(): number { return Date.now() + offsetMs; }
 
-    /** Called from C# ServerTimeSync with the current server time (epoch ms) */
+    /** Accepts the current server time (epoch ms); same-realm callers only —
+     *  converting an absolute timestamp across a realm/interop boundary skews
+     *  the offset by the delivery delay (see SharedSettings.setServerClockOffsetMs). */
     static updateOffset(serverNowMs: number): void {
         offsetMs = serverNowMs - Date.now();
         for (const fn of listeners) fn(offsetMs);
