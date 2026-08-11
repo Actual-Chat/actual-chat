@@ -14,6 +14,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         $"{BlazorUIAppModule.ImportName}.NotificationUI.registerRequestNotificationHandler";
     private static readonly string JSUnregisterRequestNotificationHandlerMethod =
         $"{BlazorUIAppModule.ImportName}.NotificationUI.unregisterRequestNotificationHandler";
+    private static readonly TimeSpan UnregisterDeviceTimeout = TimeSpan.FromSeconds(5);
 
     private readonly MutableState<bool?> _permissionState;
     private readonly AsyncTaskMethodBuilder _whenPermissionStateReady = AsyncTaskMethodBuilderExt.New();
@@ -138,20 +139,20 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         SetIsGranted(state);
     }
 
-    public async Task DeregisterDevice(CancellationToken cancellationToken = default)
+    public async Task UnregisterDevice(CancellationToken cancellationToken = default)
     {
-        Log.LogInformation("-> DeregisterDevice");
-        var deviceId = await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
-        if (deviceId == null)
-            return;
-
-        Log.LogInformation("DeregisterDevice. About to execute DeleteDeviceToken");
-        var deleteTokenTask = DeviceTokenRetriever.DeleteDeviceToken(cancellationToken);
-        Log.LogInformation("DeregisterDevice. About to execute DeregisterDevice command");
-        var command = new Notifications_DeregisterDevice(Session, deviceId);
-        var deregisterDeviceTask =  Hub.Commander.Call(command, cancellationToken);
-        await Task.WhenAll(deleteTokenTask, deregisterDeviceTask).ConfigureAwait(false);
-        Log.LogInformation("DeregisterDevice. DeleteDeviceToken and DeregisterDevice command are executed");
+        // Best-effort cleanup that sits on the sign-out path. Every step below is a JS interop call
+        // issued with CancellationToken.None, which disables Blazor's own interop timeout - so an
+        // undelivered call used to hang here forever, and SignOut never reached SignOutBackend.
+        Log.LogInformation("-> UnregisterDevice");
+        var timeout = new Timeout(Hub.Clocks.CpuClock, UnregisterDeviceTimeout);
+        try {
+            await timeout.ApplyTo(UnregisterDeviceUnsafe, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("UnregisterDevice: done");
+        }
+        catch (TimeoutException) {
+            Log.LogWarning("UnregisterDevice: timed out in {Timeout}, giving up", UnregisterDeviceTimeout.ToShortString());
+        }
     }
 
     public async Task EnsureDeviceRegistered(CancellationToken cancellationToken = default)
@@ -179,6 +180,18 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     }
 
     // Private methods
+
+    private async Task UnregisterDeviceUnsafe(CancellationToken cancellationToken)
+    {
+        var deviceId = await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
+        if (deviceId == null)
+            return;
+
+        var deleteTokenTask = DeviceTokenRetriever.DeleteDeviceToken(cancellationToken);
+        var command = new Notifications_DeregisterDevice(Session, deviceId);
+        var unregisterDeviceTask = Hub.Commander.Call(command, cancellationToken);
+        await Task.WhenAll(deleteTokenTask, unregisterDeviceTask).ConfigureAwait(false);
+    }
 
     private void RegisterDevice(string? deviceId = null, CancellationToken cancellationToken = default)
     {
