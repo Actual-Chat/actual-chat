@@ -127,7 +127,9 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
     }
 
     public Task PlayFailureCue()
-        => PlayCue(Tune.WalkieReplyNothingHeard);
+        // Ungated on purpose: the cue is vibration-only and it is the sole signal that a
+        // start trigger silently did nothing - symmetric with the ungated gesture ack.
+        => TuneUI.Play(Tune.WalkieReplyFailed);
 
     public static TimeSpan GetEffectiveHotWindow(TimeSpan hotWindow, bool isBackground)
         // A background activation has no visible mic indicator to prompt a manual stop,
