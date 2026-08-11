@@ -16,16 +16,16 @@
 
 @code {
     private VisualMediaGalleryLine<Attachment>[] _rows = [];
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public IAttachmentList Uploads { get; set; } = null!;
     [Parameter, EditorRequired] public Attachment[] MediaList { get; set; } = null!;
 
     protected override void OnParametersSet() {
-        _rows = GetRows(MediaList);
+        _rows = GetRows(MediaList, ScreenSize.IsNarrow());
     }
 
-    private static VisualMediaGalleryLine<Attachment>[] GetRows(Attachment[] mediaList) {
-        return VisualMediaGalleryArranger.Default.Arrange(mediaList, a => (a.Width, a.Height));
-    }
+    private static VisualMediaGalleryLine<Attachment>[] GetRows(Attachment[] mediaList, bool isNarrow)
+        => VisualMediaGalleryArranger.Pick(false, isNarrow).Arrange(mediaList, a => (a.Width, a.Height));
 
     private Task OnRemoveClick(Attachment attachment)
         => Uploads.Remove(attachment);

@@ -16,7 +16,7 @@ else if (Entry.Attachments.Length > 0) {
     }
     var (mediaList, fileList) = GetOrderedAttachmentList(Entry);
     <div class="message-attachments">
-        <VisualMediaAttachmentList MediaList="@mediaList" />
+        <VisualMediaAttachmentList MediaList="@mediaList" IsNarrow="@ScreenSize.IsNarrow()" />
         <div class="message-file-attachments">
             @foreach (var attachment in fileList) {
                 if (attachment.IsAudio()) {
@@ -37,6 +37,7 @@ else if (Entry.Attachments.Length > 0) {
 @code {
     private bool _hasShownUploads;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public AppUIHub Hub { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwnMessage { get; set; }

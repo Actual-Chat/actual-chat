@@ -12,6 +12,7 @@
     var isFailed = progress.IsFailed;
     var plugClass = progress.IsReady ? "" : "blurred-plug";
     var isFile = !(attachment.IsSupportedImage || m.HasCustomPreview || attachment.IsSupportedVideo);
+    var percent = (int)Math.Round(Math.Clamp(progress.Progress, 0, 100));
 }
 <li class="attachment-wrapper @(isFailed ? "attachment-failed" : "")">
     <div class="c-content">
@@ -25,25 +26,27 @@
                 <video preload="metadata" class="@plugClass">
                     <source src="@previewUrl#t=0.5"/>
                 </video>
-                @if (attachment.DurationMs > 0) {
+                @if (attachment.DurationMs > 0 && !isUploading) {
                     <div class="c-duration">@TimeSpan.FromMilliseconds(attachment.DurationMs).Format(TimeSpanFormat.Clock)</div>
                 }
             } else {
                 <FileAttachmentView FileName="@attachment.FileName" FileType="@attachment.FileType"/>
             }
             @if (!progress.IsReady) {
-                <span class="spinner-icon-wrapper">
-                    @if (isUploading) {
-                        <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                    } else if (progress.IsFailed && !m.NoAccess && RestartClick.HasDelegate) {
+                @if (isUploading) {
+                    <RoundProgress Class="attachment-upload-ring" Fraction="@(percent / 100d)" title="@progress.Details">
+                        <span class="c-percent">@percent%</span>
+                    </RoundProgress>
+                } else if (progress.IsFailed && !m.NoAccess && RestartClick.HasDelegate) {
+                    <span class="spinner-icon-wrapper">
                         <ButtonRound Click="@RestartClick">
                             <i class="icon-sync text-2xl"></i>
                         </ButtonRound>
-                    }
-                </span>
+                    </span>
+                }
             }
             @if (progress.IsInProgress && progress.UploadSize > 0) {
-                <div class="attachment-upload-size">@FileSizeFormatter.FormatProgress(progress.UploadProgress, progress.UploadSize)</div>
+                <div class="attachment-upload-size">@FileSizeFormatter.Format(progress.UploadSize)</div>
             }
             @if (isFailed) {
                 <span class="attachment-error">Error</span>
