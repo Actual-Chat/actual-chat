@@ -12,6 +12,7 @@ namespace ActualChat.UI.Blazor.Resources;
 // Then BCL attributes can be localized forwards through IStringLocalizer like our own ones,
 // Validation_*_Format and this reverse matching go away, and only Error_ server strings stay.
 // See docs/plans/validation-localization-forward-keys.md §1 and tmp/validation-l10n-repro/.
+
 /// <summary>
 /// Reverse index over <c>Messages.en.json</c>: maps an English message produced at runtime
 /// (a validator's output, a server error) back to its catalog key, either exactly or by
@@ -45,6 +46,7 @@ public sealed partial class MessageIndex
                 Add(_keyByFieldName, message, key);
                 continue;
             }
+
             if (!KnownPrefixes.Any(key.StartsWith))
                 throw StandardError.Constraint(
                     $"'{key}' must start with one of: {KnownPrefixes.ToDelimitedString()}.");
@@ -109,7 +111,6 @@ public sealed partial class MessageIndex
             var argNames = new List<string>();
             var literalLength = 0;
             var position = 0;
-            // TODO: why don't we just have a predefined regex for every key?
             foreach (Match placeholder in PlaceholderRe.Matches(template)) {
                 var literal = template[position..placeholder.Index];
                 if (literal.Length == 0 && argNames.Count != 0)
@@ -125,6 +126,7 @@ public sealed partial class MessageIndex
                 literalLength += literal.Length;
                 position = placeholder.Index + placeholder.Length;
             }
+
             var tail = template[position..];
             literalLength += tail.Length;
             if (literalLength == 0)
@@ -148,6 +150,7 @@ public sealed partial class MessageIndex
             var args = new Dictionary<string, string>(ArgNames.Count, StringComparer.Ordinal);
             for (var i = 0; i < ArgNames.Count; i++)
                 args[ArgNames[i]] = m.Groups[i + 1].Value;
+
             match = new MessageMatch(Key, args);
             return true;
         }
