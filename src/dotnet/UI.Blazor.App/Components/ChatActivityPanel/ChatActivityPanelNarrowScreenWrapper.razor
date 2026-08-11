@@ -32,7 +32,7 @@
         if (audioState.IsListening || audioState.IsRecording)
             return true;
 
-        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
+        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
         if (isAnyoneTalking)
             return true;
 

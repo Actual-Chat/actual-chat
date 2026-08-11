@@ -9,29 +9,29 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public class LiveStreamUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private ILiveAudioStreams LiveAudioStreams => Hub.LiveAudioStreams;
     private ILiveSessions LiveSessions => Hub.LiveSessions;
     private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
 
+    // Pass-through: the aggregation and its consolidation live on the server, so this returns the
+    // very instance the RPC layer produced and adds no churn of its own.
     [ComputeMethod]
-    public virtual async Task<AuthorId[]> GetStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var streams = await LiveAudioStreams.List(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return streams.Select(s => s.AuthorId).Distinct().ToArray();
-    }
+    public virtual Task<ApiArray<AuthorId>> GetAudioStreamingAuthorIds(
+        ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.GetAudioStreamingAuthorIds(Session, chatId, cancellationToken);
 
     [ComputeMethod(ConsolidationDelay = 0.2)]
-    public virtual async Task<bool> IsAuthorStreaming(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsAuthorStreamingAudio(
+        ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
     {
-        var authorIds = await GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        var authorIds = await GetAudioStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         return authorIds.Contains(authorId);
     }
 
     [ComputeMethod(ConsolidationDelay = 0.2)]
-    public virtual async Task<bool> IsAnyoneStreaming(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsAnyoneStreamingAudio(ChatId chatId, CancellationToken cancellationToken)
     {
-        var authorIds = await GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        return authorIds.Length > 0;
+        var authorIds = await GetAudioStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        return authorIds.Count > 0;
     }
 
     [ComputeMethod(ConsolidationDelay = 0.2)]

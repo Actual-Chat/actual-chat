@@ -74,8 +74,8 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
     [ComputeMethod]
     protected virtual async Task<bool> HasIncomingVoice(ChatId chatId, CancellationToken cancellationToken)
     {
-        var authorIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        if (authorIds.Length == 0)
+        var authorIds = await LiveStreamUI.GetAudioStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        if (authorIds.Count == 0)
             return false;
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);

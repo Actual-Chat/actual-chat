@@ -64,14 +64,14 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         if (participantCount > 0)
             return Remember(chatId, new CallActivity(true, IsLiveSession: true, participantCount, isDialing));
 
-        var talkingIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        var talkingIds = await LiveStreamUI.GetAudioStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         if (isDialing)
-            talkingIds = talkingIds.Where(id => id != dialingHost).ToArray();
+            talkingIds = talkingIds.Where(id => id != dialingHost).ToApiArray();
         // HasRecorder isn't attributable to an author, so while dialing it would only re-report the caller.
-        var isTalking = talkingIds.Length > 0
+        var isTalking = talkingIds.Count > 0
             || (!isDialing
             && await LiveSessions.HasRecorder(Session, chatId, cancellationToken).ConfigureAwait(false));
-        var talkingCount = talkingIds.Length;
+        var talkingCount = talkingIds.Count;
         // Own recorder may not be in the streaming author ids yet — count it as one talker.
         if (talkingCount == 0
             && await LiveSessions.HasRecorder(Session, chatId, cancellationToken).ConfigureAwait(false))

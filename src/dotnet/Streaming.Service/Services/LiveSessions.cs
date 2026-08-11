@@ -57,6 +57,20 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     }
 
     // [ComputeMethod]
+    public virtual async Task<ApiArray<AuthorId>> GetAudioStreamingAuthorIds(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        // ReadAudio, not just chat access: this says who is speaking, same as the ILiveAudioStreams.List
+        // it replaces for clients.
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        if (!chat.Rules.Has(ChatPermissions.ReadAudio))
+            return default;
+
+        return await GetAudioStreamingAuthorIdsByChat(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<CallStatus> GetCallStatus(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
@@ -213,6 +227,23 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
             await Backend.LeaveCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Protected methods
+
+    // Session-less on purpose: the author set spans every participant, so keying it by session
+    // would give each viewer its own subscription and miss the others' changes.
+    [ComputeMethod]
+    protected virtual async Task<ApiArray<AuthorId>> GetAudioStreamingAuthorIdsByChat(
+        ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Sorted so the consolidation comparer sees a stable sequence rather than Redis order
+        var streams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        return streams
+            .Select(x => x.AuthorId)
+            .Distinct()
+            .OrderBy(x => x.Value)
+            .ToApiArray();
     }
 
     // Private methods

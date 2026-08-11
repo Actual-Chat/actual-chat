@@ -73,7 +73,7 @@
         var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
         var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
         var isAnyoneTalking = isLive
-            && await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(true);
+            && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(true);
         return new LiveConversationHeaderState(
             translated.Title.Text, participantsText, hasFoldedEntries, isExpanded, isJoined,
             blockState.Overlay != null, blockState.Overlay?.IsDissolving ?? false, canExpand,
