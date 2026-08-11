@@ -21,7 +21,8 @@
         <Right>
             <Toggle
                 IsDisabled="@(!m.CanChangeMustStreamVoice)"
-                IsChecked="@m.MustStreamVoice" />
+                IsChecked="@m.MustStreamVoice"
+                IsCheckedChanged="@(_ => OnVoiceStreamingClick())" />
         </Right>
     </TileItem>
 

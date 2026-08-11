@@ -20,7 +20,7 @@
         <Content>Allow Telemetry Data Collection</Content>
         <Caption>@dataCollectionStatus</Caption>
         <Right>
-            <Toggle IsChecked="@m.IsDataCollectionEnabled"/>
+            <Toggle IsChecked="@m.IsDataCollectionEnabled" IsCheckedChanged="@(_ => OnEnableTelemetryClick())"/>
         </Right>
     </TileItem>
     <p class="c-description">

@@ -2,11 +2,15 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
+@* stopPropagation on the label, not just the input: the tap lands on the knob span, and while
+   the label's default behavior activates the checkbox (change fires), the original click still
+   bubbles to an enclosing clickable row - double-toggling the setting. *@
 <label class="@Class toggle"
        role="switch"
        aria-checked="@_isChecked.ToString().ToLower()"
        data-input-checked="@_isChecked"
-       data-input-disabled="@IsDisabled">
+       data-input-disabled="@IsDisabled"
+       @onclick:stopPropagation="true">
     <input type="checkbox"
            id="@Id"
            disabled="@IsDisabled"
