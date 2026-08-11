@@ -94,7 +94,8 @@
             <StreamingEntryBadge
                 ChatId="@ChatContext.Chat.Id"
                 IsVoiceActive="@true"
-                IsLanguageKnown="@m.IsChatLanguageSelected"/>
+                IsLanguageKnown="@m.IsChatLanguageSelected"
+                VoiceStartedAt="@entry.BeginsAt"/>
         }
         @if (!sm.RetainedText.IsNullOrEmpty()) {
             <span class="retained">@sm.RetainedText</span>
