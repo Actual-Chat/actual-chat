@@ -56,7 +56,7 @@ public class ValidationMessageLocalizationTest
         var l = new TestStringLocalizer(new() { [ValidationKeys.EmailInvalid] = "<email>" });
 
         // act
-        var message = l.TryLocalizeKey(ValidationKeys.EmailInvalid);
+        var message = l.ForValidationKey(ValidationKeys.EmailInvalid);
 
         // assert
         message.Should().Be("<email>");
@@ -68,7 +68,7 @@ public class ValidationMessageLocalizationTest
         // An English sentence must fall through to the reverse index, not be read as a key.
 
         // act
-        var message = Localizer().TryLocalizeKey("The Short name field is required.");
+        var message = Localizer().ForValidationKey("The Short name field is required.");
 
         // assert
         message.Should().BeNull();

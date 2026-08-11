@@ -6,10 +6,10 @@ public static class MessageLocalizer
 {
     extension(IStringLocalizer l)
     {
-        // Our own validation attributes report a catalog key rather than an English sentence,
-        // so there is nothing to reverse-match - the key resolves directly.
-        // TODO: maybe relate the name to validation? be clear
-        public string? TryLocalizeKey(string key, string fieldLabel = "")
+        // Our own validation attributes report a Validation_* key rather than an English
+        // sentence, so there is nothing to reverse-match - the key resolves directly.
+        // Returns null for anything that isn't such a key.
+        public string? ForValidationKey(string key, string fieldLabel = "")
         {
             if (!key.StartsWith(MessageIndex.ValidationPrefix, StringComparison.Ordinal))
                 return null;
