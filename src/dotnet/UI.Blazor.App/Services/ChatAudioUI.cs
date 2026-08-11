@@ -17,12 +17,14 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
+    private readonly RemoteSpeechWindow _remoteSpeech;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
     // Boxed because the CLR forbids volatile on Nullable<TimeSpan>; null means "no override".
     private volatile object? _recordingIdleDurationBox;
     private bool _isBeginTuneSuppressed;
 
     private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private IAudioInitializer AudioInitializer => Hub.AudioInitializer;
@@ -67,6 +69,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             ImmutableDictionary<ChatId, Moment>.Empty,
             StateCategories.Get(type, nameof(GetStopListeningAt)));
         _nextBeep = stateFactory.NewMutable((NextBeepState?)null, StateCategories.Get(type, nameof(NextBeep)));
+        _remoteSpeech = new RemoteSpeechWindow(
+            hub.AudioSettings.RemoteSpeechWindow,
+            hub.AudioSettings.RemoteSpeechThreshold);
         _replayState = stateFactory.NewMutable(
             (ReplayState?)null,
             StateCategories.Get(type, nameof(ReplayState)));
