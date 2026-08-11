@@ -186,6 +186,7 @@ export class InfiniteList {
     private whenRequestDataCompleted: PromiseSource<void> | null = null;
     private turnOffScrollingCallback?: () => void;
     private isPointerDown = false;
+    private lastObservedScrollTop: number | null = null;
     private skeletonWatchdogTimer: ReturnType<typeof setInterval> | null = null;
     private skeletonWatchdogLastVersion = -1;
     private userScrollDirection: 'up' | 'down' | 'none' = 'none';
@@ -831,8 +832,13 @@ export class InfiniteList {
                     this.debug?.noteItemMeasure(key, size, item.createdAt, itemRef);
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
+                    // >= 0, not > 0: a measured size of zero is a real one (an item that is laid out and
+                    // renders nothing), so the reciprocal 0 -> positive change has to invalidate the range
+                    // too. Under `oldSize > 0` it didn't, and only this item's own range was updated -
+                    // every following range and the aggregate itemRange stayed short by the difference.
+                    // -1 is the unmeasured sentinel and still doesn't count as a resize.
                     const oldSize = item.size;
-                    if (oldSize && oldSize > 0 && size != oldSize) {
+                    if (oldSize != null && oldSize >= 0 && size != oldSize) {
                         existingResizedCount++;
                         itemsWereMeasured = true;
                         totalExistingSizeDiff += size - oldSize;
@@ -1404,6 +1410,14 @@ export class InfiniteList {
     // Event handlers
 
     private onScroll = (ev: Event): void => {
+        // Sampled first and on EVERY scroll event, including the ones the guards below drop: the
+        // sticky-edge direction test needs the immediately preceding position. state.viewport looks like
+        // it would do, but it's a 64ms-throttled sample, so mid-fling it can sit on the far side of a
+        // re-pin and invert the comparison.
+        const scrollTop = this.ref.scrollTop;
+        const prevScrollTop = this.lastObservedScrollTop;
+        this.lastObservedScrollTop = scrollTop;
+
         this.updateState('onScroll', this.state, { isScrolling: true });
         this.turnOffIsScrollingDebounced();
 
@@ -1425,8 +1439,6 @@ export class InfiniteList {
         // and the list still follows new messages.
         const stickyEdge = this.state.stickyEdge;
         if (stickyEdge != null && !this.isAtStickyEdge()) {
-            const prevScrollTop = (this.state.viewport ?? this.state.lastViewport)?.start;
-            const scrollTop = this.ref.scrollTop;
             const isAwayFromEdge = prevScrollTop != null && scrollTop !== prevScrollTop
                 && (stickyEdge.edge === VirtualListEdge.End
                     ? scrollTop < prevScrollTop
