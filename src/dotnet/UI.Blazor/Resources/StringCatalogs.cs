@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.Resources;
 /// Loads the embedded string catalogs: <c>Strings.&lt;lang&gt;.json</c> (ordinary UI text)
 /// and <c>Messages.&lt;lang&gt;.json</c> (text reverse-indexed by <see cref="MessageIndex"/>).
 /// </summary>
-public static class StringCatalog
+public static class StringCatalogs
 {
     private const string Suffix = ".json";
 

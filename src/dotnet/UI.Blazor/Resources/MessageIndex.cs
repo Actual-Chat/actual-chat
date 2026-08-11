@@ -27,7 +27,7 @@ public sealed partial class MessageIndex
     public const string FieldArg = "field";
     public static readonly string[] KnownPrefixes = [ValidationPrefix, ErrorPrefix, FieldPrefix];
     public static readonly MessageIndex Default = new(
-        StringCatalog.LoadMessages(Languages.English) ?? []);
+        StringCatalogs.LoadMessages(Languages.English) ?? []);
 
     [GeneratedRegex(@"\{(\w+)\}")]
     private static partial Regex PlaceholderRe { get; }

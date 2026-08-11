@@ -42,7 +42,7 @@ public class ValidationMessageLocalizationTest
 
         // assert
         foreach (var language in LanguageUI.SupportedUILanguages) {
-            var catalog = StringCatalog.LoadStrings(language);
+            var catalog = StringCatalogs.LoadStrings(language);
             catalog.Should().NotBeNull($"'{language.IsoCode}' must ship a catalog");
             foreach (var key in ValidationKeys.All)
                 catalog!.Should().ContainKey(key, $"'{key}' must be translated into '{language.IsoCode}'");
@@ -277,8 +277,8 @@ public class ValidationMessageLocalizationTest
     // Mirrors AppStringLocalizer.LoadAll: one forward lookup over both catalogs.
     private static Dictionary<string, string> ShippedCatalog(Language language)
     {
-        var strings = StringCatalog.LoadStrings(language)!;
-        var messages = StringCatalog.LoadMessages(language);
+        var strings = StringCatalogs.LoadStrings(language)!;
+        var messages = StringCatalogs.LoadMessages(language);
         if (messages != null)
             foreach (var (key, value) in messages)
                 strings[key] = value;

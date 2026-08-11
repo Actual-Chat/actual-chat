@@ -7,8 +7,8 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public class AppLocalizationTest
 {
-    private const StringCatalog.Kind Strings = StringCatalog.Kind.Strings;
-    private const StringCatalog.Kind Messages = StringCatalog.Kind.Messages;
+    private const StringCatalogs.Kind Strings = StringCatalogs.Kind.Strings;
+    private const StringCatalogs.Kind Messages = StringCatalogs.Kind.Messages;
     private const string PrefixSuffix = "_Prefix";
     private const string SuffixSuffix = "_Suffix";
     private static readonly Regex PlaceholderRe = new(@"\{\d+\}");
@@ -16,7 +16,7 @@ public class AppLocalizationTest
     [Theory]
     [InlineData(Strings)]
     [InlineData(Messages)]
-    public void EnglishFallbackShouldBeComplete(StringCatalog.Kind kind)
+    public void EnglishFallbackShouldBeComplete(StringCatalogs.Kind kind)
     {
         // Any language without its own translation is resolved via the English fallback,
         // so every catalog language is "supported" as long as English defines the full key set.
@@ -32,7 +32,7 @@ public class AppLocalizationTest
     [Theory]
     [InlineData(Strings)]
     [InlineData(Messages)]
-    public void EveryShippedTranslationShouldMapToKnownLanguage(StringCatalog.Kind kind)
+    public void EveryShippedTranslationShouldMapToKnownLanguage(StringCatalogs.Kind kind)
     {
         // act
         var subtags = ShippedSubtags(kind).ToList();
@@ -41,13 +41,13 @@ public class AppLocalizationTest
         foreach (var subtag in subtags)
             Languages.All.Should().Contain(
                 l => l.IsoCode == subtag,
-                $"resource '{StringCatalog.ResourceName(kind, subtag)}' must map to a known language");
+                $"resource '{StringCatalogs.ResourceName(kind, subtag)}' must map to a known language");
     }
 
     [Theory]
     [InlineData(Strings)]
     [InlineData(Messages)]
-    public void EveryShippedTranslationShouldMatchEnglishKeys(StringCatalog.Kind kind)
+    public void EveryShippedTranslationShouldMatchEnglishKeys(StringCatalogs.Kind kind)
     {
         // arrange
         var en = Load(Languages.English.IsoCode, kind)!;
@@ -74,7 +74,7 @@ public class AppLocalizationTest
     [Theory]
     [InlineData(Strings)]
     [InlineData(Messages)]
-    public void EveryShippedTranslationShouldTranslateEveryEnglishKey(StringCatalog.Kind kind)
+    public void EveryShippedTranslationShouldTranslateEveryEnglishKey(StringCatalogs.Kind kind)
     {
         // Guards against forgetting to translate a newly added English key:
         // every shipped translation must define a value for every English key.
@@ -98,7 +98,7 @@ public class AppLocalizationTest
     [Theory]
     [InlineData(Strings)]
     [InlineData(Messages)]
-    public void EverySupportedUILanguageShouldShipTranslation(StringCatalog.Kind kind)
+    public void EverySupportedUILanguageShouldShipTranslation(StringCatalogs.Kind kind)
     {
         // arrange
         var shipped = ShippedSubtags(kind).ToHashSet();
@@ -112,7 +112,7 @@ public class AppLocalizationTest
         // assert
         missing.Should().BeEmpty(
             "every supported UI language must ship a '{0}' resource",
-            StringCatalog.ResourceName(kind, "<subtag>"));
+            StringCatalogs.ResourceName(kind, "<subtag>"));
     }
 
     [Fact]
@@ -273,11 +273,11 @@ public class AppLocalizationTest
             => new(name, typeof(AppStrings).GetMethod(implementationName, bf).Require(implementationName));
     }
 
-    private static IEnumerable<string> ShippedSubtags(StringCatalog.Kind kind = Strings)
-        => StringCatalog.ShippedSubtags(kind);
+    private static IEnumerable<string> ShippedSubtags(StringCatalogs.Kind kind = Strings)
+        => StringCatalogs.ShippedSubtags(kind);
 
-    private static Dictionary<string, string>? Load(string subtag, StringCatalog.Kind kind = Strings)
-        => StringCatalog.Load(kind, subtag);
+    private static Dictionary<string, string>? Load(string subtag, StringCatalogs.Kind kind = Strings)
+        => StringCatalogs.Load(kind, subtag);
 
     // Nested types
 
