@@ -107,6 +107,7 @@ public class SharedLocationsBackend(IServiceProvider services)
                 CreatedAt = now,
                 ModifiedAt = now,
                 Duration = duration,
+                IsPlace = createDiff.IsPlace,
             };
             dbContext.Add(new DbSharedLocation(sharedLocation));
         }

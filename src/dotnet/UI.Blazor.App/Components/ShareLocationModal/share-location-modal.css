@@ -12,6 +12,38 @@
 .share-location-modal .c-map {
     @apply w-full h-full;
 }
+/* Picker mode grows the map to the LocationMapModal sizing; device-ios/android force
+   .modal-frame to the full viewport height even when wide (tablets, landscape). */
+.share-location-modal.picking .c-map-area {
+    @apply h-128 max-h-[70vh];
+}
+body.narrow .share-location-modal.picking .c-map-area,
+body.device-ios .share-location-modal.picking .c-map-area,
+body.device-android .share-location-modal.picking .c-map-area {
+    @apply flex-1;
+    @apply h-auto max-h-none;
+}
+/* Not a MapLibre marker: it must stay at the map center while the map moves under it.
+   The pin's dot sits 8px above its bottom edge, so the bottom hangs 8px below center. */
+.share-location-modal .c-center-pin {
+    @apply absolute left-1/2 z-10;
+    @apply pointer-events-none;
+    bottom: calc(50% - 0.5rem);
+    margin-left: -1.125rem;
+    transition: transform 150ms ease-out;
+}
+.share-location-modal .c-center-pin::after {
+    @apply absolute left-1/2;
+    @apply w-3 h-1.5;
+    @apply rounded-full;
+    bottom: -0.75rem;
+    margin-left: -0.375rem;
+    background: var(--black-05);
+    content: '';
+}
+.share-location-modal .c-map-area .map-view.moving ~ .c-center-pin {
+    transform: translateY(-0.375rem);
+}
 .share-location-modal .c-permission-prompt {
     @apply flex-y items-center justify-center gap-y-2;
     @apply w-full h-full;

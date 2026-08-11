@@ -44,7 +44,7 @@
                 <i class="icon-marker-pin c-pin"></i>
             }
             <div class="c-info">
-                <div class="c-title">@(m.IsLive ? "Live location" : "Location")</div>
+                <div class="c-title">@m.Title</div>
                 <div class="c-caption">
                     @if (m.DistanceText.IsNullOrEmpty()) {
                         @m.Center.ToDisplayText()
@@ -105,7 +105,8 @@
             countdown,
             isOwnLive,
             distanceText,
-            trackingError);
+            trackingError,
+            location.IsPlace);
     }
 
     // Private methods
@@ -132,7 +133,13 @@
         LocationCountdown? Countdown,
         bool IsOwnLive,
         string DistanceText = "",
-        GeoTrackingError? TrackingError = null) {
+        GeoTrackingError? TrackingError = null,
+        bool IsPlace = false) {
         public bool IsLive => Countdown is not null;
+        public string Title => IsPlace
+            ? "Place"
+            : IsLive
+                ? "Live location"
+                : "Location";
     }
 }

@@ -8,10 +8,15 @@ public static class SharedLocationOperations
         GeoPoint point,
         TimeSpan liveDuration = default,
         SharedLocationId? id = null,
+        bool isPlace = false,
         CancellationToken cancellationToken = default)
     {
         var change = id is null
-            ? Change.Create(new SharedLocationDiff { Point = point, LiveDuration = liveDuration })
+            ? Change.Create(new SharedLocationDiff {
+                Point = point,
+                LiveDuration = liveDuration,
+                IsPlace = isPlace,
+            })
             : Change.Update(new SharedLocationDiff { Point = point });
         var cmd = new SharedLocations_Change(tester.Session, chatId, id, change);
         var result = await tester.Commander.Call(cmd, cancellationToken);

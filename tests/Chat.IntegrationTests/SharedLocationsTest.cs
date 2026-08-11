@@ -54,6 +54,32 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task PlaceIsPersistedAndDoesNotAffectOrdinaryShares()
+    {
+        // arrange
+        var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
+        var session = Alice.Session;
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Picked place" });
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var placePoint = new GeoPoint(51.5007, -0.1246);
+        var ownPoint = new GeoPoint(51.5074, -0.1278, 12f, 90f);
+
+        // act
+        var place = await Alice.ReportLocation(chatId, placePoint, isPlace: true, cancellationToken: ct);
+        var own = await Alice.ReportLocation(chatId, ownPoint, cancellationToken: ct);
+
+        // assert - IsPlace survives the DB round-trip, and only the picked point carries it
+        (await sharedLocations.Get(session, chatId, place.Id, ct))!.IsPlace.Should().BeTrue();
+        (await sharedLocations.Get(session, chatId, own.Id, ct))!.IsPlace.Should().BeFalse();
+
+        // assert - a place is still a frozen one-shot pin, so it never joins the live shares
+        place.Duration.Should().Be(TimeSpan.Zero);
+        place.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
+        (await sharedLocations.ListLive(session, chatId, ct)).Count.Should().Be(0);
+    }
+
+    [Fact]
     public async Task LiveLocationShareLifecycle()
     {
         // arrange
@@ -82,7 +108,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // act - update position
         var point2 = new GeoPoint(48.8566, 2.3522);
-        await Alice.ReportLocation(chatId, point2, TimeSpan.FromHours(1), locationId, ct);
+        await Alice.ReportLocation(chatId, point2, TimeSpan.FromHours(1), locationId, cancellationToken: ct);
 
         // assert - position reflects the update
         await cList.When(x => Math.Abs(x.Single().Point.Latitude - point2.Latitude) < 1e-9, ct)

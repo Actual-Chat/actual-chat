@@ -4,7 +4,9 @@
 @{
     var m = State.Value;
     var markers = m.Participants
-        .Where(p => !(m.OwnMarker is not null && p.IsOwn))
+        // OwnMarker stands in for my own live share and only for that one: a frozen pin — a place,
+        // or where I was earlier — keeps its marker, or the point just opened would show nothing.
+        .Where(p => !(m.OwnMarker is not null && p.Location.Id == m.OwnLiveId))
         .Select(p => p.MapMarker)
         .ToList();
     if (m.OwnMarker is { } ownMarker)
@@ -136,6 +138,7 @@
             ownPoint,
             ownMarker,
             center.Point,
+            ownLocation?.Id,
             mapType,
             isMapTypeMenuOpen,
             isLocating);
@@ -182,6 +185,7 @@
         GeoPoint? OwnPoint,
         MapMarker? OwnMarker,
         GeoPoint Center,
+        SharedLocationId? OwnLiveId = null,
         MapType MapType = MapType.Map,
         bool IsMapTypeMenuOpen = false,
         bool IsLocating = false
