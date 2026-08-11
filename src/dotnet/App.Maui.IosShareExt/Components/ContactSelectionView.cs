@@ -7,6 +7,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
 {
     private ShareUI ShareUI => field ??= Services.GetRequiredService<ShareUI>();
     private UIButton _sendButton = null!;
+    private CounterBadgeView _sendBadge = null!;
     private NSLayoutConstraint _commentBottomConstraint = null!;
     private NSObject? _keyboardShowObserver;
     private NSObject? _keyboardHideObserver;
@@ -39,9 +40,13 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         _sendButton.TranslatesAutoresizingMaskIntoConstraints = false;
         _sendButton.SetTitle("Send", UIControlState.Normal);
         _sendButton.TitleLabel.Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold)!;
-        _sendButton.Enabled = model?.CanSend ?? false;
         _sendButton.TouchUpInside += Safe(() => ShareUI.StartSending());
         AddSubview(_sendButton);
+
+        // Selected contact counter, sitting left of the send button
+        _sendBadge = new CounterBadgeView();
+        AddSubview(_sendBadge);
+        UpdateSendButton(model);
 
         // Search field
         var searchField = new UITextField
@@ -133,6 +138,9 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
             _sendButton.CenterYAnchor.ConstraintEqualTo(closeButton.CenterYAnchor),
             _sendButton.TrailingAnchor.ConstraintEqualTo(TrailingAnchor, -16),
 
+            _sendBadge.TrailingAnchor.ConstraintEqualTo(_sendButton.LeadingAnchor, -6),
+            _sendBadge.CenterYAnchor.ConstraintEqualTo(_sendButton.CenterYAnchor),
+
             searchField.TopAnchor.ConstraintEqualTo(closeButton.BottomAnchor, 8),
             searchField.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, 16),
             searchField.TrailingAnchor.ConstraintEqualTo(TrailingAnchor, -16),
@@ -177,9 +185,13 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
     }
 
     protected override void OnStateChanged(Model? model)
+        => UpdateSendButton(model);
+
+    private void UpdateSendButton(Model? model)
     {
-        var canSend = model?.CanSend ?? false;
-        _sendButton.Enabled = canSend;
+        var selectedCount = model?.SelectedCount ?? 0;
+        _sendButton.Enabled = selectedCount > 0;
+        _sendBadge.Count = selectedCount;
     }
 
     protected override ComputedState<Model?>.Options GetStateOptions()
@@ -192,11 +204,11 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
     {
-        var canSend = await ShareUI.CanSend.Use(cancellationToken).ConfigureAwait(false);
-        return new Model(canSend);
+        var selectedCount = await ShareUI.GetSelectedCount(cancellationToken).ConfigureAwait(false);
+        return new Model(selectedCount);
     }
 
     // Nested types
 
-    public sealed record Model(bool CanSend);
+    public sealed record Model(int SelectedCount);
 }

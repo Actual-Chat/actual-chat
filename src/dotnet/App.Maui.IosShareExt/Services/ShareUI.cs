@@ -13,7 +13,6 @@ namespace ActualChat.App.Maui.IosShareExt.Services;
 public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly HashSet<ContactId> _selectedIds = new();
-    private readonly MutableState<bool> _canSend;
     private readonly MutableState<double> _uploadPct;
     private readonly FuncWorker _sendWorker;
     private SearchQuery _searchQuery;
@@ -26,7 +25,6 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
     public MutableState<PlaceId?> SelectedPlaceId { get; }
     public IState<double> UploadPct => _uploadPct;
-    public IState<bool> CanSend => _canSend;
     public IState<string> FailureMessage => _failureMessage;
 
     private IosHub Hub { get; }
@@ -51,7 +49,6 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         _isSent = Hub.StateFactory.NewMutable<bool>();
         _failureMessage = Hub.StateFactory.NewMutable<string>("");
         _uploadPct = Hub.StateFactory.NewMutable<double>();
-        _canSend = Hub.StateFactory.NewMutable<bool>();
         _sendWorker = FuncWorker.New(ct
             => AsyncChain.From(SendInternal)
                 .LogError(Log)
@@ -78,7 +75,9 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
                 return;
 
             _selectedIds.Add(contactId);
-            _canSend.Value = true;
+            using (Invalidation.Begin())
+                _ = GetSelectedCount(default);
+
             if (chatId is PlaceChatId placeChatId)
                 SelectedPlaceId.Value = placeChatId.PlaceId;
         }
@@ -127,6 +126,10 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     }
 
     [ComputeMethod]
+    public virtual Task<int> GetSelectedCount(CancellationToken cancellationToken)
+        => Task.FromResult(_selectedIds.Count);
+
+    [ComputeMethod]
     public virtual Task<bool> IsContactSelected(ContactId contactId, CancellationToken cancellationToken)
         => Task.FromResult(_selectedIds.Contains(contactId));
 
@@ -158,10 +161,11 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     {
         if (!_selectedIds.Add(contactId))
             _selectedIds.Remove(contactId);
-        _canSend.Value = _selectedIds.Count > 0;
 
-        using (Invalidation.Begin())
+        using (Invalidation.Begin()) {
             _ = IsContactSelected(contactId, default);
+            _ = GetSelectedCount(default);
+        }
     }
 
     public void SetComment(string comment)
