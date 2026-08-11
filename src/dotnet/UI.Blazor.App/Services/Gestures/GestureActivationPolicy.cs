@@ -29,6 +29,7 @@ public static class GestureActivationPolicy
     public static bool ShouldSenseStartGestures(
         bool areGesturesAlwaysOn,
         bool isPracticeMode,
+        TimeSpan sinceForegrounded,
         IReadOnlyList<ChatId> pttChatIds,
         IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
         Moment now,
@@ -42,18 +43,25 @@ public static class GestureActivationPolicy
             return false;
         if (areGesturesAlwaysOn)
             return true;
+        // Opening the app arms the gestures for the same duration an incoming voice does, so
+        // "open and shake" works without waiting for the other side to speak first. Elapsed
+        // awake-time (CpuClock domain), not a ServerClock stamp: the post-resume time resync
+        // would jump a stamp-based check past the window in one tick.
+        if (sinceForegrounded <= recencyWindow)
+            return true;
 
         return HasAnswerWindow(pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
     }
 
-    public static bool ShouldSenseStopGesture(bool isFaceDownStopEnabled, bool isMicOpen, bool isPracticeMode)
+    public static bool ShouldSenseStopGesture(bool isFaceDownStopEnabled, bool isTransmitting, bool isPracticeMode)
     {
         // The playground must let the user rehearse the stop gesture even when the privacy
-        // toggle is off; outside practice the toggle governs and only an open mic needs it.
+        // toggle is off; outside practice the toggle governs, and anything outgoing needs it:
+        // an open mic, or a live camera/screencast stream.
         if (isPracticeMode)
             return true;
 
-        return isFaceDownStopEnabled && isMicOpen;
+        return isFaceDownStopEnabled && isTransmitting;
     }
 
     public static GestureRoute Route(GestureKind kind, bool isPracticeMode)
