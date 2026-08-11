@@ -118,11 +118,10 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     public async Task SignOut()
     {
         try {
-            // TODO(AY): Make it reliable
-            await NotificationUI.DeregisterDevice(CancellationToken.None).ConfigureAwait(false);
+            await NotificationUI.UnregisterDevice(CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogError(e, "SignOut: failed to deregister device");
+            Log.LogError(e, "SignOut: failed to unregister device");
         }
         await SignOutBackend().ConfigureAwait(false);
     }
@@ -144,8 +143,15 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     protected virtual Task SignInBackend(string schema)
         => JS.InvokeVoidAsync($"{AuthJsClassName}.signIn", schema).AsTask();
 
+    // No navigation here: MonitorAccountChange sees OwnAccount flip to guest and reloads (see
+    // ProcessLoginLogout), and the reload is what gets a fresh session cookie from AuthHelper.
+    // This used to go through WebAuth.signOut, whose popup could be blocked or left open - and
+    // then sign-out silently never happened.
+    // UICommander rather than Commander: NavbarLogoMenu and SettingsPanel call SignOut()
+    // fire-and-forget, so a throw would land as an unobserved task exception - this way a failed
+    // sign-out is shown to the user instead of vanishing.
     protected virtual Task SignOutBackend()
-        => JS.InvokeVoidAsync($"{AuthJsClassName}.signOut").AsTask();
+        => Hub.UICommander.Run(new Accounts_SignOut(Session));
 
     // Private methods
 

@@ -46,19 +46,19 @@ public class MauiAccountUI(UIHub hub) : AccountUI(hub)
 
     protected override async Task SignOutBackend()
     {
-        // Callers are fire-and-forget, so a throw here would be an unobserved task exception.
-        try {
 #if ANDROID
+        // Dropping the native Google session is the only platform-specific part of signing out.
+        try {
             var googleAuth = Hub.Services.GetRequiredService<NativeGoogleAuth>();
             if (googleAuth.IsSignedIn())
                 await googleAuth.SignOut().ConfigureAwait(true);
-#endif
-
-            await Hub.Services.Commander().Call(new NativeAuth_SignOut(Session)).ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogError(e, "SignOutBackend failed");
+            // Callers are fire-and-forget, so a throw here would be an unobserved task exception.
+            Log.LogError(e, "SignOutBackend: native Google sign-out failed");
         }
+#endif
+        await base.SignOutBackend().ConfigureAwait(false);
     }
 
     // Private methods

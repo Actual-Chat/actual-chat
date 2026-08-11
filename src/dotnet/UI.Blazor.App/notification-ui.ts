@@ -59,7 +59,6 @@ export class NotificationUI {
     }
 
     /** Called by Blazor */
-    // @ts-expect-error TODO: fix errors
     public static async getDeviceToken(): Promise<string | null>
     {
         let { firebaseApp, firebasePublicKey } = BrowserInit;
@@ -90,6 +89,7 @@ export class NotificationUI {
         }
         catch (error) {
             errorLog?.log(`getDeviceToken: failed to obtain device token for notifications, error:`, error);
+            return null;
         }
     }
 
