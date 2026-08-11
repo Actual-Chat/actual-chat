@@ -21,10 +21,10 @@ public static class MessageLocalizer
             return MessageIndex.Format(localized.Value, l.FieldArgs(fieldLabel));
         }
 
-        // Reverse-matches English produced at runtime (a BCL validator, a server error) back to
-        // its key, then resolves that key.
-        // TODO: name - very vague! is it about message? or what? be clear
-        public string? TryLocalizeEnglish(string message, string fieldLabel = "")
+        // Reverse-matches a message produced at runtime - a BCL validator's output, a server
+        // error - back to its key, then resolves that key. The message must be the English one
+        // MessageIndex was built from; anything else returns null.
+        public string? ForRuntimeMessage(string message, string fieldLabel = "")
         {
             var match = MessageIndex.Default.Match(message);
             if (match == null)

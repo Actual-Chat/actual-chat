@@ -26,7 +26,7 @@
         if (Text.IsNullOrEmpty())
             return "";
 
-        var localized = L.ForValidationKey(Text, FieldLabel) ?? L.TryLocalizeEnglish(Text, FieldLabel);
+        var localized = L.ForValidationKey(Text, FieldLabel) ?? L.ForRuntimeMessage(Text, FieldLabel);
         if (localized != null)
             return localized;
 

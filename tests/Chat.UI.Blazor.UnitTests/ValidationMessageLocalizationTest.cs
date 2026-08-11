@@ -107,7 +107,7 @@ public class ValidationMessageLocalizationTest
         var l = Localizer();
 
         // act
-        var message = l.TryLocalizeEnglish("The Short name field is required.", "User link");
+        var message = l.ForRuntimeMessage("The Short name field is required.", "User link");
 
         // assert
         message.Should().Be("<User link>!");
@@ -120,7 +120,7 @@ public class ValidationMessageLocalizationTest
         var l = Localizer();
 
         // act
-        var message = l.TryLocalizeEnglish("The Phone or email field is required.");
+        var message = l.ForRuntimeMessage("The Phone or email field is required.");
 
         // assert
         message.Should().Be("<[phone or email]>!");
@@ -133,7 +133,7 @@ public class ValidationMessageLocalizationTest
         var l = Localizer();
 
         // act
-        var message = l.TryLocalizeEnglish("The Short name field is required.");
+        var message = l.ForRuntimeMessage("The Short name field is required.");
 
         // assert
         message.Should().Be("<Short name>!");
@@ -148,7 +148,7 @@ public class ValidationMessageLocalizationTest
         var l = Localizer();
 
         // act
-        var message = l.TryLocalizeEnglish(
+        var message = l.ForRuntimeMessage(
             new MinLengthAttribute(1).FormatErrorMessage("Short name"), "User link");
 
         // assert
@@ -172,7 +172,7 @@ public class ValidationMessageLocalizationTest
     public void UnknownMessageShouldNotResolve()
     {
         // act
-        var message = Localizer().TryLocalizeEnglish("Something nobody has catalogued.");
+        var message = Localizer().ForRuntimeMessage("Something nobody has catalogued.");
 
         // assert
         message.Should().BeNull();
@@ -184,7 +184,7 @@ public class ValidationMessageLocalizationTest
         // A catalog miss must read as "no answer here", not render the key name.
 
         // act
-        var message = new TestStringLocalizer([]).TryLocalizeEnglish("The Short name field is required.");
+        var message = new TestStringLocalizer([]).ForRuntimeMessage("The Short name field is required.");
 
         // assert
         message.Should().BeNull();
