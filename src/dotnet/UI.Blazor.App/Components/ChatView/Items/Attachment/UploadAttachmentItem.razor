@@ -8,20 +8,11 @@
     var previewState = preview.State;
     var previewUrl = preview.PreviewUrl;
     var progress = m.Progress;
-    var progressValue = progress.Progress;
-    var stageDetails = progress.Details;
-    var uploadProgressClass = "attachment-upload-progress";
-    var plugClass = "blurred-plug";
-    if (progress.IsFailed) {
-        progressValue = Math.Max(progressValue, 30);
-        uploadProgressClass += " attachment-upload-failed";
-    } else if (progress.IsReady) {
-        uploadProgressClass += " attachment-upload-completed";
-        plugClass = "";
-    }
+    var plugClass = progress.IsReady ? "" : "blurred-plug";
     var isUploading = progress.IsInProgress;
+    var percent = (int)Math.Round(Math.Clamp(progress.Progress, 0, 100));
 }
-<li class="attachment-wrapper">
+<li class="attachment-wrapper @(progress.IsFailed ? "attachment-failed" : "")">
     <div class="c-content">
         <div class="attachment-item">
             <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
@@ -37,9 +28,9 @@
                 }
                 @if (!progress.IsReady) {
                     @if (isUploading) {
-                        <span class="spinner-icon-wrapper">
-                            <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                        </span>
+                        <RoundProgress Class="attachment-upload-ring" Fraction="@(percent / 100d)" title="@progress.Details">
+                            <span class="c-percent">@percent%</span>
+                        </RoundProgress>
                     } else if (progress.IsFailed && !m.NoAccess && RestartClick.HasDelegate) {
                         <span class="reload-icon-wrapper">
                             <ButtonRound Click="@RestartClick" Class="btn-sm">
@@ -57,19 +48,8 @@
                 </div>
             }
             @if (progress.IsInProgress && progress.UploadSize > 0) {
-                <div class="attachment-upload-size">@FileSizeFormatter.FormatProgress(progress.UploadProgress, progress.UploadSize)</div>
+                <div class="attachment-upload-size">@FileSizeFormatter.Format(progress.UploadSize)</div>
             }
-        </div>
-        <div class="attachment-filename" title="@attachment.FileName">
-            @if (attachment.FileName.Length > 0) {
-                <span>@attachment.FileName</span>
-            } else {
-                <span>&nbsp;</span>
-            }
-        </div>
-        <div class="@uploadProgressClass"
-             style="@($"width: {progressValue}%;")"
-             title="@stageDetails">
         </div>
     </div>
 </li>

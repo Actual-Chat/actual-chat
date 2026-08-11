@@ -37,12 +37,6 @@
         _rows = GetRows(_mediaList, IsConversation, IsNarrow);
     }
 
-    private static VisualMediaGalleryLine<ChatEntryAttachment>[] GetRows(ChatEntryAttachment[] mediaList, bool isConversation, bool isNarrow) {
-        var arranger = isNarrow
-            ? VisualMediaGalleryArranger.Narrow
-            : isConversation
-                ? VisualMediaGalleryArranger.ConversationWideScreen
-                : VisualMediaGalleryArranger.Default;
-        return arranger.Arrange(mediaList, a => (a.Media.Width, a.Media.Height));
-    }
+    private static VisualMediaGalleryLine<ChatEntryAttachment>[] GetRows(ChatEntryAttachment[] mediaList, bool isConversation, bool isNarrow)
+        => VisualMediaGalleryArranger.Pick(isConversation, isNarrow).Arrange(mediaList, a => (a.Media.Width, a.Media.Height));
 }

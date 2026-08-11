@@ -433,6 +433,7 @@ body.narrow .attachment-list-btn.btn {
 }
 body.narrow .attachment-wrapper {
     @apply p-0;
+    @apply border border-[var(--black-20)];
     @apply bg-post-panel;
 }
 .narrow-panel .attachment-wrapper {
@@ -469,7 +470,7 @@ body.narrow .attachment-wrapper.last-element {
     @apply h-24 w-fit;
     @apply min-w-18 max-w-36;
     @apply mt-auto;
-    @apply rounded-t-lg border border-separator;
+    @apply rounded-t-lg;
     transition: width 150ms ease, height 150ms ease;
 }
 .narrow-panel .attachment-item {
@@ -607,13 +608,12 @@ body.narrow .narrow-panel .attachment-filename {
     @apply bg-danger;
 }
 .attachment-upload-size {
-    @apply absolute top-1 left-1 z-20;
+    @apply absolute bottom-1 left-1 z-20;
     @apply px-1.5 py-0.5;
     @apply rounded-md;
-    @apply text-white;
-    @apply text-caption-8;
+    @apply bg-[var(--black-80)] text-white;
+    @apply text-caption-9 whitespace-nowrap;
     @apply pointer-events-none;
-    background-color: rgba(0, 0, 0, 0.55);
 }
 .narrow-panel .attachment-upload-size {
     @apply hidden;

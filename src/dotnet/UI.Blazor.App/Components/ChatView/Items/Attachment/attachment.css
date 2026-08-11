@@ -5,7 +5,7 @@
 }
 .image-line {
     @apply flex-x gap-x-px;
-    @apply w-full;
+    @apply w-full min-h-24;
     @apply overflow-hidden;
 }
 
@@ -13,6 +13,9 @@
     @apply /*flex-1*/ flex-x;
     @apply w-full;
     @apply overflow-hidden;
+    /* Floor the tile width so a thin tile stays tappable and its upload badges
+       (size, %) aren't clipped; wider siblings shrink to keep the row full. */
+    @apply min-w-18;
 }
 body.hoverable .image-line .image-item:hover {
     filter: brightness(1.1);
@@ -22,12 +25,6 @@ body.hoverable .image-line .image-item:hover {
 }
 .image-line .image-item video {
     @apply object-cover;
-}
-/* Keep video tiles wide enough for the duration badge (.c-duration) to fit,
-   even when a vertical video shares a row with wider tiles. Scoped to video
-   so plain images keep their justified proportions. */
-.image-line .image-item:has(.video-thumbnail) {
-    @apply min-w-12 md:min-w-14;
 }
 /* Single image: respect aspect ratio, no cropping.
    `w-full` (inherited from .image-line) + inline `max-width` give a definite
@@ -217,6 +214,31 @@ body.hoverable .message-image-attachments.media-attachment-uploads .image-item:h
 .message-image-attachments.media-attachment-uploads .attachment-item > img,
 .message-image-attachments.media-attachment-uploads .attachment-item > video {
     @apply h-full;
+}
+.attachment-upload-ring {
+    @apply absolute inset-0 z-20;
+    @apply m-auto;
+    @apply w-8 h-8;
+    @apply text-white;
+    @apply pointer-events-none;
+}
+.attachment-upload-ring::before {
+    @apply content-empty absolute inset-0;
+    @apply rounded-full;
+    @apply bg-[var(--black-80)];
+}
+.attachment-upload-ring .c-track {
+    stroke: rgba(255, 255, 255, 0.25);
+}
+.attachment-upload-ring .c-percent {
+    @apply relative z-10;
+    @apply text-caption-9;
+}
+.narrow-panel .attachment-upload-ring {
+    @apply w-8 h-8;
+}
+.narrow-panel .attachment-upload-ring .c-percent {
+    @apply hidden;
 }
 
 .attachment-item .c-plug {
