@@ -221,7 +221,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     private void OnProximityChanged(bool isCovered)
     {
         // Logged so gesture misbehavior can be traced back to a proximity transition on-device.
-        Log.LogWarning("Proximity changed: covered={IsCovered}", isCovered);
+        Log.LogInformation("Proximity changed: covered={IsCovered}", isCovered);
         _recognizer.SetProximityCovered(isCovered);
     }
 
@@ -236,7 +236,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         // Logged so gesture misbehavior can be traced back to a guard-state transition on-device.
         var guardStatus = _recognizer.GuardStatus;
         if (guardStatus != _lastGuardStatus) {
-            Log.LogWarning("Guard: {Old} -> {New} at {Sample}", _lastGuardStatus, guardStatus,
+            Log.LogInformation("Guard: {Old} -> {New} at {Sample}", _lastGuardStatus, guardStatus,
                 $"{sample.X:F2},{sample.Y:F2},{sample.Z:F2}");
             _lastGuardStatus = guardStatus;
         }
