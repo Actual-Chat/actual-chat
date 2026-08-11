@@ -967,7 +967,11 @@ export class InfiniteList {
             // Both edges are sticky; the preferred edge (defaultEdge) wins when both are visible.
             const lastVisible = rs.hasVeryLastItem && !!lastItemKey && this.visibleItems.has(lastItemKey);
             const firstVisible = rs.hasVeryFirstItem && !!firstItemKey && this.visibleItems.has(firstItemKey);
-            if (lastVisible && (this.defaultEdge === VirtualListEdge.End || !firstVisible))
+            // isAtEndEdge() gate: "the last item is visible" is far weaker than "we are at the end" when
+            // that item is taller than the viewport - a conversation block at the chat end is exactly
+            // that. Without it a fling away re-pinned here right after onScroll dropped the pin, and the
+            // next render re-scrolled to the newest.
+            if (lastVisible && (this.defaultEdge === VirtualListEdge.End || !firstVisible) && this.isAtEndEdge())
                 this.setStickyEdge({ itemKey: lastItemKey, edge: VirtualListEdge.End });
             else if (firstVisible)
                 this.setStickyEdge({ itemKey: firstItemKey, edge: VirtualListEdge.Start });
@@ -1414,10 +1418,22 @@ export class InfiniteList {
         if (Date.now() - this.state.lastProgrammaticScrollAt < ProgrammaticScrollGuardMs)
             return;
 
-        // Clear sticky edge when user is scrolling via touch/pointer drag
-        if (this.isPointerDown && this.state.stickyEdge != null && !this.isAtStickyEdge())
-            // Dragged away from the sticky edge — drop it so it stops auto-following.
-            this.setStickyEdge(null);
+        // Drop the sticky edge once the user moves off it, so it stops auto-following. Not gated on
+        // isPointerDown: iOS hands the gesture to the native scroller and cancels pointer events when a
+        // fling starts, so through the whole momentum phase the pin survived and the re-pins dragged the
+        // view back. Direction-gated instead, so a re-pin - which moves toward the edge - keeps its pin
+        // and the list still follows new messages.
+        const stickyEdge = this.state.stickyEdge;
+        if (stickyEdge != null && !this.isAtStickyEdge()) {
+            const prevScrollTop = (this.state.viewport ?? this.state.lastViewport)?.start;
+            const scrollTop = this.ref.scrollTop;
+            const isAwayFromEdge = prevScrollTop != null && scrollTop !== prevScrollTop
+                && (stickyEdge.edge === VirtualListEdge.End
+                    ? scrollTop < prevScrollTop
+                    : scrollTop > prevScrollTop);
+            if (isAwayFromEdge || this.isPointerDown)
+                this.setStickyEdge(null);
+        }
 
         // Detect user scroll direction on the first trusted scroll event
         if (this.userScrollDirection === 'none') {
@@ -1905,13 +1921,27 @@ export class InfiniteList {
         if (edge == null)
             return false;
         if (edge === VirtualListEdge.End)
-            return this.state.isEndAnchorVisible;
+            return this.isAtEndEdge();
 
         const first = this.getFirstItemRef();
         if (!first)
             return false;
 
         return first.getBoundingClientRect().top >= this.ref.getBoundingClientRect().top - VisibilityEpsilon;
+    }
+
+    // Measured, never read off isEndAnchorVisible. That flag is debounced on the way out AND scrollToEdge
+    // re-arms it on every re-pin, so it stays true while the user scrolls away - which let the End edge be
+    // both kept and re-established mid-fling, and each re-pin re-armed the flag again. Geometry can't be
+    // self-sustaining that way.
+    private isAtEndEdge(): boolean {
+        const bottom = this.ref.getBoundingClientRect().bottom;
+        const anchorRect = this.endAnchorRef.getBoundingClientRect();
+        if (anchorRect.height > 0)
+            return anchorRect.bottom <= bottom + VisibilityEpsilon;
+
+        const last = this.getLastItemRef();
+        return last != null && last.getBoundingClientRect().bottom <= bottom + VisibilityEpsilon;
     }
 
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
