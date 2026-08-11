@@ -20,9 +20,9 @@ export enum Tune {
     EndRecording,
     RemindOfRecording,
     StartListening,
-    StopListening,
     StartReplay,
     StopReplay,
+    StopListening,
     PinUnpinChat,
     NotifyOnNewMessageInApp,
     NotifyOnNewAudioMessageAfterDelay,
@@ -39,6 +39,7 @@ export enum Tune {
     WalkieReplyEnded,
     WalkieReplyNothingHeard,
     WalkieGestureDetected,
+    WalkieReplyFailed,
 }
 
 export type TuneName = keyof typeof Tune;

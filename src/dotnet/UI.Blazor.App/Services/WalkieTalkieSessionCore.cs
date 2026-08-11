@@ -162,8 +162,7 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
     }
 
     private void PlayFailureCue()
-        // Fire-and-forget: this reads a Kvas setting, and awaiting that on a timed-out boot would
-        // leak the headless scope by delaying the caller's teardown watcher.
+        // Fire-and-forget: tune playback must not block the caller or delay teardown watcher.
         => _ = BackgroundTask.Run(
             () => Hub.WalkieTalkieReplyUI.PlayFailureCue(),
             Log, "Couldn't play the walkie-talkie transmit failure cue", CancellationToken.None);
