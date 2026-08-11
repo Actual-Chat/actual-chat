@@ -1,9 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
+@implements IDisposable
 @{
     var text = !IsVoiceActive
         ? "Listening"
-        : IsLanguageKnown
+        : IsLanguageKnown || IsDetectingLanguageOver()
             ? "Transcribing"
             : "Detecting language";
 }
@@ -16,10 +17,51 @@
 </p>
 
 @code {
+    // Transcription is already running long before this: every other participant sees the text while
+    // the speaker alone still reads "Detecting language", so the claim expires on its own.
+    private static readonly TimeSpan DetectingLanguageDuration = TimeSpan.FromSeconds(3);
+
+    private CancellationTokenSource? _detectingLanguageCts;
+
     [Parameter] public ChatId ChatId { get; set; } = null!;
     [Parameter] public bool IsLanguageKnown { get; set; }
     [Parameter] public bool IsVoiceActive { get; set; }
+    [Parameter] public Moment VoiceStartedAt { get; set; }
+
+    public void Dispose()
+    {
+        _detectingLanguageCts.CancelAndDisposeSilently();
+        _detectingLanguageCts = null;
+    }
+
+    protected override void OnParametersSet()
+    {
+        _detectingLanguageCts.CancelAndDisposeSilently();
+        _detectingLanguageCts = null;
+        var remaining = VoiceStartedAt + DetectingLanguageDuration - Clocks.ServerClock.Now;
+        if (!IsVoiceActive || IsLanguageKnown || remaining <= TimeSpan.Zero)
+            return;
+
+        // While the transcript stays empty nothing else re-renders this badge, so the expiry above
+        // would never be observed without its own wake-up.
+        _detectingLanguageCts = new CancellationTokenSource();
+        _ = RerenderAfter(remaining, _detectingLanguageCts.Token);
+    }
+
+    // Private methods
 
     private void OnClick()
         => ModalUI.Show(new VoiceSettingsModal.Model(ChatId));
+
+    private bool IsDetectingLanguageOver()
+        => Clocks.ServerClock.Now - VoiceStartedAt >= DetectingLanguageDuration;
+
+    private async Task RerenderAfter(TimeSpan delay, CancellationToken cancellationToken)
+    {
+        await Clocks.CpuClock.Delay(delay, cancellationToken).SilentAwait(false);
+        if (cancellationToken.IsCancellationRequested)
+            return;
+
+        await InvokeAsync(StateHasChanged).SilentAwait(false);
+    }
 }
