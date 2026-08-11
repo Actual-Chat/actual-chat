@@ -58,6 +58,11 @@ public partial class ChatVideoUI
     public virtual async Task<string?> GetLastVideoRecorderError(VideoSourceKind kind, CancellationToken cancellationToken = default)
         => await GetErrorState(kind).Use(cancellationToken).ConfigureAwait(false);
 
+    [ComputeMethod]
+    public virtual async Task<bool> IsAnyOwnStreaming(CancellationToken cancellationToken = default)
+        => await _recordingChatId.Use(cancellationToken).ConfigureAwait(false) is not null
+            || await _screenCastChatId.Use(cancellationToken).ConfigureAwait(false) is not null;
+
     public void StartScreenCasting(ChatId chatId)
         => _ = StartScreenCastingInternal(chatId);
 

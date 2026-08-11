@@ -9,6 +9,7 @@ public class GestureActivationPolicyTest
     private static readonly ChatId ChatA = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
     private static readonly ChatId ChatB = ChatId.Parse("bbbbbbbbbbbbbbbbbbbb");
     private static readonly IReadOnlyDictionary<ChatId, Moment> NoVoice = new Dictionary<ChatId, Moment>();
+    private static readonly TimeSpan OldSinceForegrounded = TimeSpan.FromSeconds(400);
 
     [Fact]
     public void PracticeModeSensesTheStopGestureRegardlessOfTheToggle()
@@ -33,7 +34,9 @@ public class GestureActivationPolicyTest
     {
         var last = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromSeconds(20) };
         GestureActivationPolicy
-            .ShouldSenseStartGestures(false, false, [ChatA], last, T0, Window)
+            .ShouldSenseStartGestures(
+                false, false, OldSinceForegrounded,
+                [ChatA], last, T0, Window)
             .Should().BeTrue();
     }
 
@@ -42,7 +45,9 @@ public class GestureActivationPolicyTest
     {
         var last = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromSeconds(400) };
         GestureActivationPolicy
-            .ShouldSenseStartGestures(false, false, [ChatA], last, T0, Window)
+            .ShouldSenseStartGestures(
+                false, false, OldSinceForegrounded,
+                [ChatA], last, T0, Window)
             .Should().BeFalse();
     }
 
@@ -51,27 +56,71 @@ public class GestureActivationPolicyTest
     {
         var last = new Dictionary<ChatId, Moment> { [ChatB] = T0 - TimeSpan.FromSeconds(5) };
         GestureActivationPolicy
-            .ShouldSenseStartGestures(false, false, [ChatA], last, T0, Window)
+            .ShouldSenseStartGestures(
+                false, false, OldSinceForegrounded,
+                [ChatA], last, T0, Window)
             .Should().BeFalse();
     }
 
     [Fact]
     public void AlwaysOnSensesWithoutVoice()
         => GestureActivationPolicy
-            .ShouldSenseStartGestures(true, false, [ChatA], NoVoice, T0, Window)
+            .ShouldSenseStartGestures(
+                true, false, OldSinceForegrounded,
+                [ChatA], NoVoice, T0, Window)
             .Should().BeTrue();
 
     [Fact]
     public void AlwaysOnStillNeedsAtLeastOnePttChat()
+        // A fresh foreground stamp on purpose: no armed chats disarms every path, always-on
+        // and after-open alike.
         => GestureActivationPolicy
-            .ShouldSenseStartGestures(true, false, [], NoVoice, T0, Window)
+            .ShouldSenseStartGestures(true, false, TimeSpan.Zero, [], NoVoice, T0, Window)
             .Should().BeFalse();
 
     [Fact]
     public void PracticeModeSensesWithNoPttChatsAtAll()
         => GestureActivationPolicy
-            .ShouldSenseStartGestures(false, true, [], NoVoice, T0, Window)
+            .ShouldSenseStartGestures(
+                false, true, OldSinceForegrounded,
+                [], NoVoice, T0, Window)
             .Should().BeTrue();
+
+    [Fact]
+    public void SensesAfterAppOpen()
+    {
+        // The "open the app and shake" scenario: no incoming voice, not always-on - the
+        // foreground stamp alone arms the gestures for the recency window.
+        GestureActivationPolicy
+            .ShouldSenseStartGestures(
+                false, false, TimeSpan.FromSeconds(20),
+                [ChatA], NoVoice, T0, Window)
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void AfterOpenWindowExpires()
+        => GestureActivationPolicy
+            .ShouldSenseStartGestures(
+                false, false, TimeSpan.FromSeconds(151),
+                [ChatA], NoVoice, T0, Window)
+            .Should().BeFalse();
+
+    [Fact]
+    public void AfterOpenStillNeedsAtLeastOnePttChat()
+        => GestureActivationPolicy
+            .ShouldSenseStartGestures(
+                false, false, TimeSpan.Zero,
+                [], NoVoice, T0, Window)
+            .Should().BeFalse();
+
+    [Fact]
+    public void NeverForegroundedNeverArmsAfterOpen()
+        // TimeSpan.MaxValue is what GestureUI passes for a headless scope that never saw
+        // the foreground - walkie wake must not inherit the after-open window.
+        => GestureActivationPolicy
+            .ShouldSenseStartGestures(false, false, TimeSpan.MaxValue, [ChatA], NoVoice, T0, Window)
+            .Should().BeFalse();
 
     [Fact]
     public void AnswerWindowChatIsTheMostRecentOne()

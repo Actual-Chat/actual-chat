@@ -3,6 +3,7 @@
 @implements IDisposable
 @{
     var lastGesture = _lastGesture is { } g ? g.Kind.ToString() : "none yet";
+    var sample = GestureUI.LastSample;
 }
 
 <Tile Class="ptt-practice">
@@ -19,6 +20,12 @@
             <div>Samples: @GestureUI.SampleCount</div>
             <div>Shake peak: @GestureUI.ShakePeakDeviation.ToString("F2") g</div>
             <div>Last gesture: @lastGesture</div>
+            <div>Accel: @($"{sample.X:F2}, {sample.Y:F2}, {sample.Z:F2} |a|={sample.Magnitude:F3}")</div>
+            <div>FaceDown: @GestureUI.FaceDownStatus</div>
+            <div>Guard: @GestureUI.GuardStatus</div>
+            @if (GestureUI.FaceDownLastFireInfo is { } fireInfo) {
+                <div>Last fire: @fireInfo</div>
+            }
         </div>
     }
 </Tile>

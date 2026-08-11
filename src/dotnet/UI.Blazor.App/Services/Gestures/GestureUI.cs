@@ -1,3 +1,4 @@
+using System.Text;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 
@@ -12,21 +13,34 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     private static readonly GestureOptions DisarmedOptions = new(false, false, false, ShakeSensitivity.Medium);
 
     private readonly GestureRecognizer _recognizer = new(DisarmedOptions);
+    // Ring of the last ~5s of samples (at SensorSpeed.UI), logged on FaceDown fire - the only
+    // forensic record of what led to a gesture once it's fired on-device.
+    private readonly SensorSample[] _recentSamples = new SensorSample[80];
+    private int _recentSampleIndex;
+    private string _lastGuardStatus = "off";
     private volatile bool _isPracticeMode;
     private bool _isHeadsetButtonEnabled;
     private bool _hasAnswerWindow;
     private int _sampleCount;
+    private Moment? _lastForegroundedAt;
     private TaskCompletionSource _wakeSignal = TaskCompletionSourceExt.New();
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
     private WalkieTalkieReplyUI WalkieTalkieReplyUI => Hub.WalkieTalkieReplyUI;
+    private BackgroundStateTracker BackgroundStateTracker => field ??= Services.GetRequiredService<BackgroundStateTracker>();
 
     public SensorFeed Feed { get; }
     public SyncedState<UserAppSettings> AppSettings { get; }
     public GestureOptions RecognizerOptions => _recognizer.Options;
     public float ShakePeakDeviation => _recognizer.ShakePeakDeviation;
+    public string FaceDownStatus => _recognizer.FaceDownStatus;
+    public string? FaceDownLastFireInfo => _recognizer.FaceDownLastFireInfo;
+    public string GuardStatus => _recognizer.GuardStatus;
     public int SampleCount => Volatile.Read(ref _sampleCount);
+    public SensorSample LastSample
+        => _recentSamples[(_recentSampleIndex + _recentSamples.Length - 1) % _recentSamples.Length];
     public event Action<GestureEvent>? PracticeGestureDetected;
 
     public bool IsPracticeMode {
@@ -100,7 +114,14 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
             var cRecordingChatId = await Computed
                 .Capture(ChatAudioUI.GetRecordingChatId, cancellationToken)
                 .ConfigureAwait(false);
+            var cIsAnyOwnStreaming = await Computed
+                .Capture(() => ChatVideoUI.IsAnyOwnStreaming(cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
 
+            var wasBackground = BackgroundStateTracker.IsBackground.Value;
+            // Null while backgrounded/headless: a scope that starts without a visible app (walkie
+            // wake, FGS) must not get the after-open arming window.
+            _lastForegroundedAt = wasBackground ? null : Clocks.CpuClock.Now;
             var minPeriod = Constants.Audio.WalkieTalkieGestureCheckMinPeriod;
             var lastCheckAt = Clocks.CpuClock.Now - minPeriod;
             while (!cancellationToken.IsCancellationRequested) {
@@ -111,17 +132,25 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 lastCheckAt = Clocks.CpuClock.Now;
                 cPttChatIds = await cPttChatIds.Update(cancellationToken).ConfigureAwait(false);
                 cRecordingChatId = await cRecordingChatId.Update(cancellationToken).ConfigureAwait(false);
+                cIsAnyOwnStreaming = await cIsAnyOwnStreaming.Update(cancellationToken).ConfigureAwait(false);
 
                 // Every wake source is subscribed before the state it guards is read: a change
                 // landing in between must complete a signal this iteration still awaits.
                 using var waitCts = cancellationToken.CreateLinkedTokenSource();
                 var whenWoken = Volatile.Read(ref _wakeSignal).Task;
                 var cAppSettings = AppSettings.Computed;
+                var cIsBackground = BackgroundStateTracker.IsBackground.Computed;
                 var whenPttChatIdsChanged = cPttChatIds.WhenInvalidated(waitCts.Token);
                 var whenRecordingChanged = cRecordingChatId.WhenInvalidated(waitCts.Token);
+                var whenStreamingChanged = cIsAnyOwnStreaming.WhenInvalidated(waitCts.Token);
                 var whenAppSettingsChanged = cAppSettings.WhenInvalidated(waitCts.Token);
+                var whenBackgroundChanged = cIsBackground.WhenInvalidated(waitCts.Token);
 
                 var isPracticeMode = _isPracticeMode;
+                var isBackground = BackgroundStateTracker.IsBackground.Value;
+                if (wasBackground && !isBackground)
+                    _lastForegroundedAt = Clocks.CpuClock.Now;
+                wasBackground = isBackground;
                 var pttChatIds = cPttChatIds.Value;
                 var isMicOpen = cRecordingChatId.Value is not null;
                 var isFaceDownStopEnabled = !(cAppSettings.Value.IsFaceDownMicStopDisabled ?? false);
@@ -131,15 +160,15 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
                 var now = Clocks.ServerClock.Now;
                 var recencyWindow = Constants.Audio.WalkieTalkieReplyRecencyWindow;
+                var sinceForegrounded = _lastForegroundedAt is { } foregroundedAt
+                    ? Clocks.CpuClock.Now - foregroundedAt
+                    : TimeSpan.MaxValue;
                 var mustSenseStart = GestureActivationPolicy.ShouldSenseStartGestures(
-                    settings.AreGesturesAlwaysOn,
-                    isPracticeMode,
-                    pttChatIds,
-                    lastIncomingVoiceAt,
-                    now,
-                    recencyWindow);
+                    settings.AreGesturesAlwaysOn, isPracticeMode, sinceForegrounded,
+                    pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
+                var isTransmitting = isMicOpen || cIsAnyOwnStreaming.Value;
                 var mustSenseStop = GestureActivationPolicy.ShouldSenseStopGesture(
-                    isFaceDownStopEnabled, isMicOpen, isPracticeMode);
+                    isFaceDownStopEnabled, isTransmitting, isPracticeMode);
                 var buttonState = HeadsetButtonPolicy.GetState(
                     settings, pttChatIds, lastIncomingVoiceAt, now, recencyWindow, isMicOpen, isPracticeMode);
                 Volatile.Write(ref _isHeadsetButtonEnabled, buttonState.IsEnabled);
@@ -161,7 +190,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                     Feed.StopAccelerometer();
                     _recognizer.Reset();
                 }
-                if (mustSenseStop)
+                // Android only: iOS proximity monitoring blanks the screen while covered, which
+                // is unacceptable with always-on arming - iOS keeps the orientation guard only.
+                if (mustSenseStop || (mustSenseStart && OperatingSystem.IsAndroid()))
                     Feed.StartProximity();
                 else
                     Feed.StopProximity();
@@ -174,7 +205,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                         whenWoken,
                         whenPttChatIdsChanged,
                         whenRecordingChanged,
-                        whenAppSettingsChanged)
+                        whenStreamingChanged,
+                        whenAppSettingsChanged,
+                        whenBackgroundChanged)
                     .ConfigureAwait(false);
                 waitCts.CancelAndDisposeSilently();
             }
@@ -186,7 +219,11 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     }
 
     private void OnProximityChanged(bool isCovered)
-        => _recognizer.SetProximityCovered(isCovered);
+    {
+        // Logged so gesture misbehavior can be traced back to a proximity transition on-device.
+        Log.LogWarning("Proximity changed: covered={IsCovered}", isCovered);
+        _recognizer.SetProximityCovered(isCovered);
+    }
 
     private void OnIncomingVoiceStamped()
         => Wake();
@@ -194,10 +231,22 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     private void OnSample(SensorSample sample)
     {
         Interlocked.Increment(ref _sampleCount);
+        _recentSamples[_recentSampleIndex] = sample;
+        _recentSampleIndex = (_recentSampleIndex + 1) % _recentSamples.Length;
+        // Logged so gesture misbehavior can be traced back to a guard-state transition on-device.
+        var guardStatus = _recognizer.GuardStatus;
+        if (guardStatus != _lastGuardStatus) {
+            Log.LogWarning("Guard: {Old} -> {New} at {Sample}", _lastGuardStatus, guardStatus,
+                $"{sample.X:F2},{sample.Y:F2},{sample.Z:F2}");
+            _lastGuardStatus = guardStatus;
+        }
         var isPracticeMode = _isPracticeMode;
         if (_recognizer.Process(sample) is not { } gesture)
             return;
 
+        if (gesture.Kind == GestureKind.FaceDown)
+            Log.LogWarning("FaceDown fired: {Info}; samples: {Samples}",
+                _recognizer.FaceDownLastFireInfo, FormatRecentSamples());
         var route = GestureActivationPolicy.Route(gesture.Kind, isPracticeMode);
         if (route == GestureRoute.None)
             return;
@@ -213,10 +262,21 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         // The hold is taken synchronously here: on Android it re-types the running foreground
         // service as a microphone one, and a headless session has no other path that would. It is
         // released when the trigger ends, so a reply that never opened can't leave it raised.
+        // Unbounded, like the widget and iOS PTT: a gesture explicitly asks to record, so it
+        // resolves to the focused/last/single armed chat even with no recent incoming voice.
         var whenHandled = route == GestureRoute.StartReply
-            ? WalkieTalkieMicCapability.HoldWhile(() => WalkieTalkieReplyUI.RequestReply(CancellationToken.None))
-            : WalkieTalkieReplyUI.StopReply();
+            ? WalkieTalkieMicCapability.HoldWhile(() => WalkieTalkieReplyUI.RequestReply(
+                ReplyTargetResolver.UnboundedRecencyWindow, CancellationToken.None))
+            : StopTransmitting();
         _ = BackgroundTask.Run(() => whenHandled, Log, $"{gesture.Kind} handling failed", CancellationToken.None);
+    }
+
+    private Task StopTransmitting()
+    {
+        // FaceDown means "I'm done transmitting": the mic reply and any outgoing camera or
+        // screencast stream stop together.
+        ChatVideoUI.StopStreaming();
+        return WalkieTalkieReplyUI.StopReply();
     }
 
     private void Wake()
@@ -225,5 +285,24 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         signal.TrySetResult();
         // CompareExchange, so a racing Wake can't replace a signal the loop is already awaiting.
         Interlocked.CompareExchange(ref _wakeSignal, TaskCompletionSourceExt.New(), signal);
+    }
+
+    private string FormatRecentSamples()
+    {
+        var samples = new List<SensorSample>(_recentSamples.Length);
+        for (var i = 0; i < _recentSamples.Length; i++) {
+            var sample = _recentSamples[(_recentSampleIndex + i) % _recentSamples.Length];
+            if (sample.At != default)
+                samples.Add(sample);
+        }
+        if (samples.Count == 0)
+            return "";
+
+        var t0 = samples[0].At;
+        var sb = new StringBuilder(samples.Count * 24);
+        foreach (var s in samples)
+            sb.Append($"+{(s.At - t0).TotalMilliseconds:F0}:{s.X:F2},{s.Y:F2},{s.Z:F2};");
+
+        return sb.ToString();
     }
 }
