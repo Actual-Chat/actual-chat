@@ -97,6 +97,41 @@ public class ValidationMessageLocalizationTest
     }
 
     [Fact]
+    public void EveryBclAttributeOnAFormModelShouldBeCatalogued()
+    {
+        // The catalog only knows the BCL attributes we already use. Adding a [Range] or
+        // [StringLength] to a form model would render .NET's own English and fall through to AI
+        // translation - silently, and only in non-English. This turns that into a build failure,
+        // and the fix is to add the template to Messages.en.json plus its translations.
+        // Our own attributes are skipped: they report a key, which ValidationKeys.All covers.
+
+        // act
+        var models = FormModelTypes().ToList();
+        var scanned = 0;
+        var offenders = new List<string>();
+        foreach (var model in models)
+        foreach (var property in model.GetProperties())
+        foreach (var attribute in property.GetCustomAttributes<ValidationAttribute>(inherit: true)) {
+            if (attribute.GetType().Namespace?.StartsWith("System.", StringComparison.Ordinal) != true)
+                continue;
+
+            scanned++;
+            var message = Format(attribute);
+            if (message == null || MessageIndex.Default.Match(message) == null)
+                offenders.Add($"{model.FullName}.{property.Name}: [{attribute.GetType().Name}] -> {message ?? "<threw>"}");
+        }
+
+        // assert
+        // A guard that discovers nothing would pass silently, so pin that it still finds models
+        // and attributes - reflection breaks quietly when a base type or assembly moves.
+        models.Should().HaveCountGreaterThan(10, "form models must still be discoverable");
+        scanned.Should().BeGreaterThan(10, "BCL validation attributes must still be discoverable");
+        offenders.Should().BeEmpty(
+            "every BCL validation attribute in use must be in Messages.en.json:\n{0}",
+            string.Join("\n", offenders));
+    }
+
+    [Fact]
     public void RequiredMessageShouldMatchItsTemplate()
         => AssertTemplate(new RequiredAttribute(), "Validation_Required_Format");
 
@@ -213,6 +248,24 @@ public class ValidationMessageLocalizationTest
     }
 
     // Private methods
+
+    // Not every EditForm model derives from FormModel - most are plain nested classes - so the
+    // scan is "any type on a UI layer that carries validation attributes" instead.
+    private static IEnumerable<Type> FormModelTypes()
+        => new[] { typeof(FormModel).Assembly, typeof(DeleteAccountModal).Assembly }
+            .SelectMany(a => a.GetTypes())
+            .Where(t => t.GetProperties().Any(p => p.GetCustomAttributes<ValidationAttribute>(true).Any()));
+
+    private static string? Format(ValidationAttribute attribute)
+    {
+        try {
+            return attribute.FormatErrorMessage("TestField");
+        }
+        catch (Exception) {
+            // An attribute we can't even format is one we certainly can't localize.
+            return null;
+        }
+    }
 
     private static ValidationAttribute[] BclAttributes
         => [new RequiredAttribute(), new MinLengthAttribute(3), new EmailAddressAttribute()];
