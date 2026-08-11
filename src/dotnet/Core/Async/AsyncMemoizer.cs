@@ -47,6 +47,7 @@ public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
     public int Capacity => _capacity;
     public bool IsUnbounded => _capacity == int.MaxValue;
     public int BufferedCount => _tail.Index - _head.Index;
+    public int ProducedCount => _tail.Index;
     public Exception? Completion => _tail.Completion;
     public bool IsCompleted => Completion != null;
 
@@ -163,6 +164,30 @@ public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
             channel.TryComplete(e);
             throw;
         }
+    }
+
+    public (TState Value, int ProducedCount) FoldBuffered<TState>(TState seed, Func<TState, T, TState> folder)
+    {
+        while (true) {
+            var head = _head;
+            var current = head;
+            var state = seed;
+            while (current.Next is { } next) {
+                current = next;
+                state = folder(state, current.Value);
+            }
+            // Eviction severs Next at the old head, which truncates a walk that's still standing there
+            if (ReferenceEquals(_head, head))
+                return (state, current.Index);
+        }
+    }
+
+    public Task WhenChanged(int knownProducedCount)
+    {
+        // The producer trips the old tail's Task right after linking a new node, and Complete()
+        // trips the current one - so the tail's Task is "something happened past knownProducedCount"
+        var tail = _tail;
+        return tail.Index == knownProducedCount ? tail.Task : Task.CompletedTask;
     }
 
     // Protected and private methods

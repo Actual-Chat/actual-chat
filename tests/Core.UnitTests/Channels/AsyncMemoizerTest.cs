@@ -53,6 +53,122 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@
         await replayTask.WaitAsync(TimeSpan.FromSeconds(5));
         aliveCount.Should().Be(0, "a stalled consumer should not retain the evicted linked-list tail");
     }
+
+    [Fact]
+    public async Task FoldBufferedReturnsBufferedItemsAndProducedCount()
+    {
+        // arrange
+        var source = Channel.CreateUnbounded<int>();
+        source.Writer.TryWrite(1);
+        source.Writer.TryWrite(2);
+        source.Writer.TryWrite(3);
+        await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
+        await SpinWaitForBuffered(memoizer, 3);
+
+        // act - the source is still open, so only the buffered prefix must be folded
+        var (sum, producedCount) = memoizer.FoldBuffered(0, static (state, item) => state + item);
+
+        // assert
+        sum.Should().Be(6);
+        producedCount.Should().Be(3);
+        memoizer.ProducedCount.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task FoldBufferedFollowsTheProducer()
+    {
+        // arrange
+        var source = Channel.CreateUnbounded<int>();
+        source.Writer.TryWrite(1);
+        await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
+        await SpinWaitForBuffered(memoizer, 1);
+        var (sum, producedCount) = memoizer.FoldBuffered(0, static (state, item) => state + item);
+        sum.Should().Be(1);
+        producedCount.Should().Be(1);
+
+        // act
+        source.Writer.TryWrite(2);
+        await SpinWaitForBuffered(memoizer, 2);
+        (sum, producedCount) = memoizer.FoldBuffered(0, static (state, item) => state + item);
+
+        // assert
+        sum.Should().Be(3);
+        producedCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task FoldBufferedSkipsEvictedItems()
+    {
+        // arrange
+        var source = Channel.CreateUnbounded<int>();
+        await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync(), 2);
+        for (var i = 1; i <= 5; i++)
+            source.Writer.TryWrite(i);
+        source.Writer.Complete();
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // act
+        var (sum, producedCount) = memoizer.FoldBuffered(0, static (state, item) => state + item);
+
+        // assert
+        memoizer.BufferedCount.Should().Be(2);
+        sum.Should().Be(9); // 4 + 5, the window left by capacity 2
+        producedCount.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task WhenChangedCompletesOnNextItem()
+    {
+        // arrange
+        var source = Channel.CreateUnbounded<int>();
+        source.Writer.TryWrite(1);
+        await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
+        await SpinWaitForBuffered(memoizer, 1);
+
+        // act
+        var whenChanged = memoizer.WhenChanged(1);
+        whenChanged.IsCompleted.Should().BeFalse();
+        source.Writer.TryWrite(2);
+
+        // assert
+        await whenChanged.WaitAsync(TimeSpan.FromSeconds(5));
+        memoizer.ProducedCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task WhenChangedIsCompletedWhenProducerMovedAhead()
+    {
+        // arrange
+        var source = Channel.CreateUnbounded<int>();
+        source.Writer.TryWrite(1);
+        source.Writer.TryWrite(2);
+        await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
+        await SpinWaitForBuffered(memoizer, 2);
+
+        // act
+        var whenChanged = memoizer.WhenChanged(1);
+
+        // assert
+        whenChanged.IsCompleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task WhenChangedCompletesOnStreamCompletion()
+    {
+        // arrange
+        var source = Channel.CreateUnbounded<int>();
+        source.Writer.TryWrite(1);
+        await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
+        await SpinWaitForBuffered(memoizer, 1);
+        var whenChanged = memoizer.WhenChanged(1);
+
+        // act
+        source.Writer.Complete();
+
+        // assert
+        await whenChanged.WaitAsync(TimeSpan.FromSeconds(5));
+        memoizer.IsCompleted.Should().BeTrue();
+    }
 }
 
 /// <summary>Shared tests run against the legacy <see cref="OldAsyncMemoizer{T}"/>.</summary>
