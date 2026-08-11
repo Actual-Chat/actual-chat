@@ -24,8 +24,10 @@ public partial class ChatAudioUI
             AsyncChain.From(StopListeningWhenIdle),
             AsyncChain.From(StopListeningWhenIdleInBackground),
             AsyncChain.From(StopRecordingAndReplayOnDeviceAwake),
+            AsyncChain.From(TrackRemoteSpeech),
             AsyncChain.From(UpdateNextBeepAt),
             AsyncChain.From(PlayBeep),
+            AsyncChain.From(WarnBeforeRecordingStop),
             AsyncChain.From(RecordingTroubleshooter),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
@@ -679,6 +681,48 @@ public partial class ChatAudioUI
             AudioRecorder.MicrophonePermission.ForgetCached();
     }
 
+    private async Task TrackRemoteSpeech(CancellationToken cancellationToken)
+    {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        var cRecordingChatId = await Computed
+            .Capture(() => GetRecordingChatId(), cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var change in cRecordingChatId.Changes(cancellationToken).ConfigureAwait(false)) {
+            _remoteSpeech.Reset();
+            if (change.Value is not { } chatId)
+                continue;
+
+            using var recordingCts = cancellationToken.CreateLinkedTokenSource();
+            var recordingToken = recordingCts.Token;
+            var whenRecordingEnds = change.WhenInvalidated(recordingToken);
+            var trackTask = BackgroundTask.Run(
+                () => TrackRemoteSpeech(chatId, recordingToken),
+                Log,
+                $"{nameof(TrackRemoteSpeech)} failed for chat #{chatId}",
+                recordingToken);
+            await whenRecordingEnds.SilentAwait(false);
+            recordingCts.CancelAndDisposeSilently();
+            await trackTask.SilentAwait(false);
+        }
+    }
+
+    private async Task TrackRemoteSpeech(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthorId = ownAuthor?.Id ?? default;
+        var cAuthorIds = await Computed
+            .Capture(() => LiveStreamUI.GetAudioStreamingAuthorIds(chatId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var change in cAuthorIds.Changes(cancellationToken).ConfigureAwait(false)) {
+            // Own stream is excluded on purpose: talking to people in the room is exactly the case
+            // where the user has forgotten the mic is on.
+            var isRemoteSpeaking = change.Value.Any(x => x != ownAuthorId);
+            _remoteSpeech.Update(isRemoteSpeaking, CpuNow);
+        }
+    }
+
     private async Task UpdateNextBeepAt(CancellationToken cancellationToken)
     {
         // Don't start till the moment ChatAudioUI gets enabled
@@ -700,14 +744,11 @@ public partial class ChatAudioUI
         return;
 
         NextBeepState? GetNextBeep(RecordingBeepState state) {
-            var (isRecording, activeUntil, isCountingDown) = state;
+            var (isRecording, activeUntil) = state;
             if (!isRecording)
                 return null;
 
-            var beepIn = isCountingDown
-                ? AudioSettings.RecordingAggressiveBeepInterval
-                : AudioSettings.RecordingBeepInterval;
-
+            var beepIn = AudioSettings.RecordingBeepInterval;
             if (activeUntil > prevActiveUntil)
                 // UI interaction resets beep timer
                 return new (activeUntil + beepIn, true);
@@ -735,14 +776,50 @@ public partial class ChatAudioUI
             var nextBeepAt = cNextBeep.Value!.At;
             var nextBeepIn = nextBeepAt - CpuNow;
             await Task.Delay(TimeSpanExt.Max(nextBeepIn, TimeSpan.FromMilliseconds(50)), cancellationToken).ConfigureAwait(false);
-            if (await IsNotCancelled(nextBeepAt).ConfigureAwait(false))
-                await TuneUI.PlayAndWait(Tune.RemindOfRecording).ConfigureAwait(false);
+            if (!await IsNotCancelled(nextBeepAt).ConfigureAwait(false))
+                continue;
+
+            if (_remoteSpeech.IsConversation(CpuNow)) {
+                // Postponed rather than skipped, so the reminder returns as soon as the chat goes quiet
+                _nextBeep.Value = new NextBeepState(nextBeepAt + AudioSettings.RecordingBeepInterval, false);
+                continue;
+            }
+
+            await TuneUI.PlayAndWait(Tune.RemindOfRecording).ConfigureAwait(false);
         }
 
         async Task<bool> IsNotCancelled(Moment previous)
         {
             var nextBeep = await _nextBeep.Use(cancellationToken).ConfigureAwait(false);
             return nextBeep is { IsPreviousCancelled: false } || nextBeep?.At == previous;
+        }
+    }
+
+    private async Task WarnBeforeRecordingStop(CancellationToken cancellationToken)
+    {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        // No conversation check here: the countdown this rides on only runs while LiveStreamUI
+        // reports no activity at all, so by construction nobody is talking.
+        var lastWarnedFor = (Moment?)null;
+        await foreach (var change in _stopRecordingAt.Computed.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (change.Value is not { } stopAt) {
+                lastWarnedFor = null;
+                continue;
+            }
+            if (lastWarnedFor == stopAt)
+                continue;
+
+            var warnIn = stopAt - AudioSettings.RecordingStopWarningLeadTime - CpuNow;
+            if (warnIn > TimeSpan.Zero)
+                await Task.Delay(warnIn, cancellationToken).ConfigureAwait(false);
+            // The countdown may have been cancelled or moved while we waited
+            if (StopRecordingAt.Value != stopAt)
+                continue;
+
+            lastWarnedFor = stopAt;
+            await TuneUI.PlayAndWait(Tune.RecordingWillStop).ConfigureAwait(false);
         }
     }
 
@@ -840,8 +917,7 @@ public partial class ChatAudioUI
             return RecordingBeepState.Idle;
 
         var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false); // CPU time
-        var recordingStopsAt = await StopRecordingAt.Use(cancellationToken).ConfigureAwait(false); // CPU time
-        return new(true, activeUntil, recordingStopsAt != null);
+        return new(true, activeUntil);
     }
 
     // !!! This method returns a server time sequence!
@@ -930,10 +1006,9 @@ public partial class ChatAudioUI
 
     public sealed record RecordingBeepState(
         bool IsRecording,
-        Moment ActiveUntil, // CPU time
-        bool IsCountingDown)
+        Moment ActiveUntil) // CPU time
     {
-        public static readonly RecordingBeepState Idle = new (false, Moment.MinValue, false);
+        public static readonly RecordingBeepState Idle = new (false, Moment.MinValue);
     }
 
     public sealed record NextBeepState(
