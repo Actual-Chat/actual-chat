@@ -5,14 +5,16 @@ namespace ActualChat.Core.UnitTests.Validation;
 // Pins the DataAnnotations contract EditContextAsyncValidator relies on: the two
 // Validator.TryValidate*Async entry points must run our sync attributes and, once
 // those pass, any AsyncValidationAttribute on the same property.
+// The expected errors are ValidationKeys entries rather than sentences: no IStringLocalizer
+// is registered here, so each attribute falls back to the key it would have localized.
 public class AsyncValidationTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Theory]
     [InlineData("", null)]
     [InlineData("+1 (555) 555-5550", null)]
-    [InlineData("12345", "Phone number is too short.")]
-    [InlineData("+1 555 555 555 555 555", "Phone number is too long.")]
-    [InlineData("+1 555 555 55x0", "Phone number contains invalid characters.")]
+    [InlineData("12345", ValidationKeys.PhoneTooShort)]
+    [InlineData("+1 555 555 555 555 555", ValidationKeys.PhoneTooLong)]
+    [InlineData("+1 555 555 55x0", ValidationKeys.PhoneInvalidCharacters)]
     public async Task PhoneIsValidated(string phone, string? expectedError)
     {
         // arrange
@@ -27,9 +29,9 @@ public class AsyncValidationTest(ITestOutputHelper @out) : TestBase(@out)
 
     [Theory]
     [InlineData("someone@example.com", null)]
-    [InlineData("foo@", "Email address is invalid.")]
-    [InlineData("12345", "Phone number is too short.")]
-    [InlineData("abc", "Enter a phone number or email address.")]
+    [InlineData("foo@", ValidationKeys.EmailInvalid)]
+    [InlineData("12345", ValidationKeys.PhoneTooShort)]
+    [InlineData("abc", ValidationKeys.PhoneOrEmailRequired)]
     public async Task PhoneOrEmailIsValidated(string input, string? expectedError)
     {
         // arrange

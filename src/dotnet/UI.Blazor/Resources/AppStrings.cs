@@ -444,5 +444,31 @@ public static class AppStrings
         public string Alias_LinkAvailable => l["Alias_LinkAvailable"].Value;
         public string Alias_LinkInUse => l["Alias_LinkInUse"].Value;
         public string Alias_PlaceLinkRequired => l["Alias_PlaceLinkRequired"].Value;
+        public string Form_ChatTitle => l["Form_ChatTitle"].Value;
+        public string Form_ChatDescription => l["Form_ChatDescription"].Value;
+        public string Form_ThreadTitle => l["Form_ThreadTitle"].Value;
+        public string Form_Description => l["Form_Description"].Value;
+        public string Form_PlaceTitle => l["Form_PlaceTitle"].Value;
+        public string Form_Title => l["Form_Title"].Value;
+        public string Form_ChatId => l["Form_ChatId"].Value;
+        public string Form_Name => l["Form_Name"].Value;
+        public string Form_Bio => l["Form_Bio"].Value;
+        public string Form_ConfirmDelete => l["Form_ConfirmDelete"].Value;
+        public string Form_Email => l["Form_Email"].Value;
+        public string Form_TimeZone => l["Form_TimeZone"].Value;
+        public string Form_Phone => l["Form_Phone"].Value;
+        public string Form_CustomLink => l["Form_CustomLink"].Value;
+        public string DeleteAccount_Title => l["DeleteAccount_Title"].Value;
+        public string DeleteAccount_Question_Prefix => l["DeleteAccount_Question_Prefix"].Value;
+        public string DeleteAccount_QuestionTarget => l["DeleteAccount_QuestionTarget"].Value;
+        public string DeleteAccount_Question_Suffix => l["DeleteAccount_Question_Suffix"].Value;
+        public string DeleteAccount_Warning_Prefix => l["DeleteAccount_Warning_Prefix"].Value;
+        public string DeleteAccount_WarningTarget => l["DeleteAccount_WarningTarget"].Value;
+        public string DeleteAccount_Warning_Suffix => l["DeleteAccount_Warning_Suffix"].Value;
+        public string DeleteAccount_Scope_Prefix => l["DeleteAccount_Scope_Prefix"].Value;
+        public string DeleteAccount_ScopeTarget => l["DeleteAccount_ScopeTarget"].Value;
+        public string DeleteAccount_Scope_Suffix => l["DeleteAccount_Scope_Suffix"].Value;
+        public string DeleteAccount_Proposal_Prefix => l["DeleteAccount_Proposal_Prefix"].Value;
+        public string DeleteAccount_Proposal_Suffix => l["DeleteAccount_Proposal_Suffix"].Value;
     }
 }

@@ -8,21 +8,21 @@ public static partial class Validators
     {
         private const int MaxLength = 320; // RFC 5321
 
-        /// <summary>Returns error message or null if valid. Empty input = valid (use [Required] separately).</summary>
+        /// <summary>Returns a <see cref="ValidationKeys"/> entry, or null if valid. Empty input = valid (use [Required] separately).</summary>
         public static string? Validate(string? input)
         {
             if (input.IsNullOrEmpty() || input.Trim() is var trimmed && trimmed.IsNullOrEmpty())
                 return null;
 
             if (trimmed.Length > MaxLength)
-                return "Email address is invalid.";
+                return ValidationKeys.EmailInvalid;
 
             if (!MailAddress.TryCreate(trimmed, out var mailAddress))
-                return "Email address is invalid.";
+                return ValidationKeys.EmailInvalid;
 
             // Ensure parsed address matches the original input (catches display name injection)
             if (mailAddress.Address != trimmed)
-                return "Email address is invalid.";
+                return ValidationKeys.EmailInvalid;
 
             return null;
         }

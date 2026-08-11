@@ -1,19 +1,11 @@
 // Translations of Messages.en.json. The English file's values must byte-match what the
 // app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
 {
-  "Validation_Required_Format": "「{0}」は必須です。",
-  "Validation_MinLength_Format": "「{0}」は{1}文字以上で入力してください。",
-  "Validation_EmailAddress_Format": "「{0}」は有効なメールアドレスではありません。",
-
-  "Validation_EmailInvalid": "メールアドレスが正しくありません。",
-  "Validation_PhoneInvalidCharacters": "電話番号に使用できない文字が含まれています。",
-  "Validation_PhoneTooShort": "電話番号が短すぎます。",
-  "Validation_PhoneTooLong": "電話番号が長すぎます。",
-  "Validation_PhoneOrEmailRequired": "電話番号またはメールアドレスを入力してください。",
-  "Validation_AliasTooShort": "カスタムリンクが短すぎます。",
-  "Validation_AliasInvalidCharacters": "カスタムリンクに使用できるのは 0-9、a-Z、- と _ のみです。",
+  "Validation_Required_Format": "「{field}」は必須です。",
+  "Validation_MinLength_Format": "「{field}」は{min}文字以上で入力してください。",
+  "Validation_EmailAddress_Format": "「{field}」は有効なメールアドレスではありません。",
   "Validation_DeleteConfirmationRequired": "削除の確認が必要です",
   "Validation_DeleteConfirmationInvalid": "確認のため DELETE と入力してください",
-
   "Field_PhoneOrEmail": "電話番号またはメール"
 }

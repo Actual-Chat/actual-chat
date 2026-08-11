@@ -9,7 +9,7 @@
         <FormBlock>
             <DataAnnotationsValidator/>
 
-            <FormSection Label="Chat ID" Class="field-chat-id" For="() => _form.ChatId" InputId="@_form.ChatIdFormId" IsLabelInsideInput="true">
+            <FormSection Label="@L.Form_ChatId" Class="field-chat-id" For="() => _form.ChatId" InputId="@_form.ChatIdFormId" IsLabelInsideInput="true">
                 <TextBox
                     @bind-Value="@_form.ChatId"
                     Id="@_form.ChatIdFormId"

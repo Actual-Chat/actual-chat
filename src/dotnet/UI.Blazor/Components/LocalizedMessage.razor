@@ -33,18 +33,19 @@
         // is the only sensible output in a host that doesn't have that layer.
         // TODO: i made this class inherit FusionCOmponetBase, so use existing services
         // TODO: but better inherit ComputedStateComponent and make this computable
-        var localized = Services.GetService<IStringLocalizer>()?.TryMessage(Text, FieldLabel);
+        var localizer = Services.GetService<IStringLocalizer>();
+        var localized = localizer?.TryKey(Text, FieldLabel) ?? localizer?.TryMessage(Text, FieldLabel);
         if (localized != null) {
             _message = localized;
             return;
         }
 
-        var localizer = Services.GetService<IUITextLocalizer>();
-        if (localizer == null)
+        var textLocalizer = Services.GetService<IUITextLocalizer>();
+        if (textLocalizer == null)
             return;
 
         ReportFallback(Text);
-        _ = Translate(localizer, Text, version);
+        _ = Translate(textLocalizer, Text, version);
     }
 
     private async Task Translate(IUITextLocalizer localizer, string text, int version) {

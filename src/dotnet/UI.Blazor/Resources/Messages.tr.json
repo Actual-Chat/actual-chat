@@ -1,19 +1,11 @@
 // Translations of Messages.en.json. The English file's values must byte-match what the
 // app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
 {
-  "Validation_Required_Format": "“{0}” alanı zorunludur.",
-  "Validation_MinLength_Format": "“{0}” alanı en az {1} karakter olmalıdır.",
-  "Validation_EmailAddress_Format": "“{0}” geçerli bir e-posta adresi değil.",
-
-  "Validation_EmailInvalid": "E-posta adresi geçersiz.",
-  "Validation_PhoneInvalidCharacters": "Telefon numarası geçersiz karakterler içeriyor.",
-  "Validation_PhoneTooShort": "Telefon numarası çok kısa.",
-  "Validation_PhoneTooLong": "Telefon numarası çok uzun.",
-  "Validation_PhoneOrEmailRequired": "Bir telefon numarası veya e-posta adresi girin.",
-  "Validation_AliasTooShort": "Özel bağlantı çok kısa.",
-  "Validation_AliasInvalidCharacters": "Özel bağlantı yalnızca 0-9, a-Z, - ve _ içerebilir.",
+  "Validation_Required_Format": "“{field}” alanı zorunludur.",
+  "Validation_MinLength_Format": "“{field}” alanı en az {min} karakter olmalıdır.",
+  "Validation_EmailAddress_Format": "“{field}” geçerli bir e-posta adresi değil.",
   "Validation_DeleteConfirmationRequired": "Silme onayı gerekli",
   "Validation_DeleteConfirmationInvalid": "Onaylamak için DELETE yazın",
-
   "Field_PhoneOrEmail": "Telefon veya e-posta"
 }

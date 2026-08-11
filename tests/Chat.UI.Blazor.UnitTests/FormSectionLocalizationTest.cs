@@ -92,7 +92,7 @@ public class FormSectionLocalizationTest
             .AddScoped<UIHub>()
             .AddFusion(fusion => fusion.AddBlazor());
         context.Services.AddSingleton<IStringLocalizer>(new TestStringLocalizer(new() {
-            ["Validation_Required_Format"] = "<{0}>!",
+            ["Validation_Required_Format"] = "<{field}>!",
         }));
         return context;
     }

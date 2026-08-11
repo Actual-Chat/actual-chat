@@ -11,19 +11,19 @@ public sealed class PhoneOrEmailAttribute : ValidationAttribute
             return ValidationResult.Success; // Empty = ok, use [Required] separately
 
         if (Validators.IsEmailLike(input)) {
-            var error = Validators.Email.Validate(input);
-            return error is null
+            var errorKey = Validators.Email.Validate(input);
+            return errorKey is null
                 ? ValidationResult.Success
-                : validationContext.Error(ErrorMessage ?? error);
+                : validationContext.Error(ErrorMessage ?? errorKey);
         }
 
         if (Validators.IsPhoneLike(input)) {
-            var error = Validators.Phone.Validate(input);
-            return error is null
+            var errorKey = Validators.Phone.Validate(input);
+            return errorKey is null
                 ? ValidationResult.Success
-                : validationContext.Error(ErrorMessage ?? error);
+                : validationContext.Error(ErrorMessage ?? errorKey);
         }
 
-        return validationContext.Error(ErrorMessage ?? "Enter a phone number or email address.");
+        return validationContext.Error(ErrorMessage ?? ValidationKeys.PhoneOrEmailRequired);
     }
 }

@@ -23,11 +23,11 @@
         </FormBlock>
 
         <FormBlock>
-            <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
+            <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="@L.Form_Name" IsLabelInsideInput="true">
                 <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" ClearButton="true"/>
             </FormSection>
 
-            <FormSection For="() => _form.Bio" InputId="@_form.BioFieldId" Label="Bio" IsLabelInsideInput="true">
+            <FormSection For="() => _form.Bio" InputId="@_form.BioFieldId" Label="@L.Form_Bio" IsLabelInsideInput="true">
                 <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId" ClearButton="true" AdditionalAttributes="@bioFieldAttrs"/>
             </FormSection>
         </FormBlock>

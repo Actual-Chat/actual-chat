@@ -21,7 +21,7 @@ public class MessageIndexTest
     public void TemplateShouldExtractItsArgument()
     {
         // arrange
-        var index = New(("Validation_Required_Format", "The {0} field is required."));
+        var index = New(("Validation_Required_Format", "The {field} field is required."));
 
         // act
         var match = index.Match("The Email field is required.");
@@ -29,28 +29,30 @@ public class MessageIndexTest
         // assert
         match.Should().NotBeNull();
         match!.Key.Should().Be("Validation_Required_Format");
-        match.Args.Should().Equal("Email");
-        match.HasFieldArg.Should().BeTrue();
+        match.Args.Should().Equal(new Dictionary<string, string> { ["field"] = "Email" });
     }
 
     [Fact]
     public void TemplateShouldExtractSeparatedArguments()
     {
         // arrange
-        var index = New(("Validation_MinLength_Format", "The field {0} must be at least '{1}' long."));
+        var index = New(("Validation_MinLength_Format", "The field {field} must be at least '{min}' long."));
 
         // act
         var match = index.Match("The field Short name must be at least '5' long.");
 
         // assert
-        match!.Args.Should().Equal("Short name", "5");
+        match!.Args.Should().Equal(new Dictionary<string, string> {
+            ["field"] = "Short name",
+            ["min"] = "5",
+        });
     }
 
     [Fact]
     public void TemplateShouldNotMatchOtherText()
     {
         // arrange
-        var index = New(("Validation_Required_Format", "The {0} field is required."));
+        var index = New(("Validation_Required_Format", "The {field} field is required."));
 
         // act
         var match = index.Match("The Email field is optional.");
@@ -67,7 +69,7 @@ public class MessageIndexTest
 
         // arrange
         var index = New(
-            ("Validation_Required_Format", "The {0} field is required."),
+            ("Validation_Required_Format", "The {field} field is required."),
             ("Validation_PhoneRequired", "The Phone field is required."));
 
         // act
@@ -83,32 +85,32 @@ public class MessageIndexTest
     {
         // arrange
         var index = New(
-            ("Validation_Invalid_Format", "{0} is invalid."),
-            ("Validation_FieldInvalid_Format", "The {0} field is invalid."));
+            ("Validation_Invalid_Format", "{field} is invalid."),
+            ("Validation_FieldInvalid_Format", "The {field} field is invalid."));
 
         // act
         var match = index.Match("The Email field is invalid.");
 
         // assert
         match!.Key.Should().Be("Validation_FieldInvalid_Format");
-        match.Args.Should().Equal("Email");
+        match.Args.Should().Equal(new Dictionary<string, string> { ["field"] = "Email" });
     }
 
     [Fact]
     public void ErrorTemplateShouldNotCarryFieldArg()
     {
-        // Server messages are templated too, but their arg 0 is a value, not a field name -
-        // substituting a form label into it would be a bug.
+        // A server message names its placeholders too, but none of them is {field} -
+        // substituting a form label into a value would be a bug.
 
         // arrange
-        var index = New(("Error_MessageLimit_Format", "You can send up to {0} messages."));
+        var index = New(("Error_MessageLimit_Format", "You can send up to {count} messages."));
 
         // act
         var match = index.Match("You can send up to 5 messages.");
 
         // assert
-        match!.HasFieldArg.Should().BeFalse();
-        match.Args.Should().Equal("5");
+        match!.Args.Should().NotContainKey(MessageIndex.FieldArg);
+        match.Args.Should().Equal(new Dictionary<string, string> { ["count"] = "5" });
     }
 
     [Fact]
@@ -134,7 +136,7 @@ public class MessageIndexTest
     public void AdjacentPlaceholdersShouldBeRejected()
     {
         // act
-        var build = () => New(("Validation_Bad_Format", "Value {0}{1} is invalid."));
+        var build = () => New(("Validation_Bad_Format", "Value {a}{b} is invalid."));
 
         // assert
         build.Should().Throw<Exception>().WithMessage("*adjacent*");
@@ -155,8 +157,8 @@ public class MessageIndexTest
     {
         // act
         var build = () => New(
-            ("Validation_A_Format", "The {0} field is required."),
-            ("Validation_B_Format", "The {0} field is required."));
+            ("Validation_A_Format", "The {field} field is required."),
+            ("Validation_B_Format", "The {field} field is required."));
 
         // assert
         build.Should().Throw<Exception>().WithMessage("*share*");

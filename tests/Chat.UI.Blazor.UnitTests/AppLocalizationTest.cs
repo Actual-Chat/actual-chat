@@ -139,8 +139,13 @@ public class AppLocalizationTest
         // AppStrings exposes one typed member per English key and vice-versa:
         // an unknown member is a typo/stale entry; a missing member is an untyped key.
 
+        // Validation_* keys are excluded: they are resolved by key from ActualChat.Core,
+        // which can't reference AppStrings — ValidationLocalizationTest covers them instead.
+
         // arrange
-        var enKeys = Load(Languages.English.IsoCode)!.Keys.ToHashSet();
+        var enKeys = Load(Languages.English.IsoCode)!.Keys
+            .Where(k => !k.StartsWith(ValidationKeys.Prefix, StringComparison.Ordinal))
+            .ToHashSet();
 
         // act
         var members = AppStringsMembers().Select(m => m.Name).ToHashSet();

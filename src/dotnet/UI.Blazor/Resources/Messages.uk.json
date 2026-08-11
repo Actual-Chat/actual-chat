@@ -1,19 +1,11 @@
 // Translations of Messages.en.json. The English file's values must byte-match what the
 // app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
 {
-  "Validation_Required_Format": "Заповніть поле «{0}».",
-  "Validation_MinLength_Format": "Поле «{0}» має містити щонайменше {1} символів.",
-  "Validation_EmailAddress_Format": "«{0}» — некоректна адреса електронної пошти.",
-
-  "Validation_EmailInvalid": "Некоректна адреса електронної пошти.",
-  "Validation_PhoneInvalidCharacters": "Номер телефону містить неприпустимі символи.",
-  "Validation_PhoneTooShort": "Номер телефону закороткий.",
-  "Validation_PhoneTooLong": "Номер телефону задовгий.",
-  "Validation_PhoneOrEmailRequired": "Введіть номер телефону або адресу електронної пошти.",
-  "Validation_AliasTooShort": "Власне посилання закоротке.",
-  "Validation_AliasInvalidCharacters": "Власне посилання може містити лише 0-9, a-Z, - та _.",
+  "Validation_Required_Format": "Заповніть поле «{field}».",
+  "Validation_MinLength_Format": "Поле «{field}» має містити щонайменше {min} символів.",
+  "Validation_EmailAddress_Format": "«{field}» — некоректна адреса електронної пошти.",
   "Validation_DeleteConfirmationRequired": "Потрібне підтвердження видалення",
   "Validation_DeleteConfirmationInvalid": "Введіть DELETE для підтвердження",
-
   "Field_PhoneOrEmail": "Телефон або ел. пошта"
 }

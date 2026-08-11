@@ -5,33 +5,36 @@
 }
 
 <Form @ref="@_formRef" Class="h-full" Model="@_form" OnSubmit="@OnDelete">
-    <DialogFrame Title="Delete your account" Class="delete-account-modal modal-sm">
+    <DialogFrame Title="@L.DeleteAccount_Title" Class="delete-account-modal modal-sm">
         <Body>
         <FormBlock>
             <DataAnnotationsValidator/>
 
             <div class="c-question">
-                Are you sure you want to <span>delete your account</span>?
+                @L.DeleteAccount_Question_Prefix<span>@L.DeleteAccount_QuestionTarget</span>@L.DeleteAccount_Question_Suffix
             </div>
             <div class="c-description">
-                This <span>cannot be undone</span>. We will delete your peer chats, every group chat
-                and place you own, and all of your messages, recordings and attachments in other
-                chats — <span>every bit of content you authored</span>.
+                @L.DeleteAccount_Warning_Prefix<span>@L.DeleteAccount_WarningTarget</span>@L.DeleteAccount_Warning_Suffix
+                @L.DeleteAccount_Scope_Prefix<span>@L.DeleteAccount_ScopeTarget</span>@L.DeleteAccount_Scope_Suffix
             </div>
         </FormBlock>
         <FormBlock>
             <div class="c-proposal">
-                Type <code>DELETE</code> below to confirm you want to permanently delete your account
-                and everything associated with it.
+                @L.DeleteAccount_Proposal_Prefix<code>DELETE</code>@L.DeleteAccount_Proposal_Suffix
             </div>
-            <FormSection For="() => _form.Delete" IsRequired="true" InputId="@_form.DeleteFieldId" Label="Confirm delete" IsLabelInsideInput="true">
+            <FormSection
+                For="() => _form.Delete"
+                IsRequired="true"
+                InputId="@_form.DeleteFieldId"
+                Label="@L.Form_ConfirmDelete"
+                IsLabelInsideInput="true">
                 <TextBox @bind-Value="@_form.Delete" Id="@_form.DeleteFieldId" Autofocus="false"/>
             </FormSection>
         </FormBlock>
         </Body>
         <Buttons>
-            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel" IsAutofocused="true">Cancel</Button>
-            <Button Type="@ButtonType.Submit" Class="btn-modal danger" Click="OnDelete" IsDisabled="@(!_formRef.IsValid)">Delete</Button>
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel" IsAutofocused="true">@L.Common_Cancel</Button>
+            <Button Type="@ButtonType.Submit" Class="btn-modal danger" Click="OnDelete" IsDisabled="@(!_formRef.IsValid)">@L.Common_Delete</Button>
         </Buttons>
     </DialogFrame>
 </Form>
@@ -41,6 +44,7 @@
     private FormModel _form = null!;
 
     [Inject] private UIHub Hub { get; init; } = null!;
+    [Inject] private IStringLocalizer L { get; init; } = null!;
     private Session Session => Hub.Session;
     private AccountUI AccountUI => Hub.AccountUI;
     private UICommander UICommander => Hub.UICommander;
@@ -89,7 +93,6 @@
             : base("delete-account", componentIdGenerator)
         { }
     }
-
 
     public sealed record Model();
 }

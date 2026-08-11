@@ -6,20 +6,49 @@ public static class MessageLocalizer
 {
     extension(IStringLocalizer l)
     {
+        // Our own validation attributes report a catalog key rather than an English sentence,
+        // so there is nothing to reverse-match - the key resolves directly.
+        // TODO: better name?
+        public string? TryKey(string key, string fieldLabel = "")
+        {
+            if (!key.StartsWith(MessageIndex.ValidationPrefix, StringComparison.Ordinal))
+                return null;
+
+            var localized = l[key];
+            if (localized.ResourceNotFound)
+                return null;
+
+            return MessageIndex.Format(localized.Value, l.FieldArgs(fieldLabel));
+        }
+
+        // TODO: better name
         public string? TryMessage(string message, string fieldLabel = "")
         {
             var match = MessageIndex.Default.Match(message);
             if (match == null)
                 return null;
 
+            var localized = l[match.Key];
+            if (localized.ResourceNotFound)
+                return null;
+
             var args = match.Args;
-            if (match.HasFieldArg && args.Length != 0)
-                args[0] = l.FieldName(args[0], fieldLabel);
-            var localized = args.Length == 0 ? l[match.Key] : l[match.Key, args];
-            return localized.ResourceNotFound ? null : localized.Value;
+            if (args.TryGetValue(MessageIndex.FieldArg, out var displayName))
+                args = new Dictionary<string, string>(args, StringComparer.Ordinal) {
+                    [MessageIndex.FieldArg] = l.FieldName(displayName, fieldLabel),
+                };
+
+            return MessageIndex.Format(localized.Value, args);
         }
 
         // Private methods
+
+        private Dictionary<string, string> FieldArgs(string fieldLabel)
+            => fieldLabel.IsNullOrEmpty()
+                ? []
+                : new Dictionary<string, string>(StringComparer.Ordinal) {
+                    [MessageIndex.FieldArg] = fieldLabel,
+                };
 
         private string FieldName(string displayName, string fieldLabel)
         {

@@ -1,30 +1,78 @@
 using System.ComponentModel.DataAnnotations;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Resources;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-// The guard test of docs/plans/validation-messages-localization.md: it drives the real
-// attributes and validators and asserts every message they produce resolves through the
-// catalog. Without it, a reworded validator or a .NET upgrade silently degrades the app
-// to AI translation instead of failing the build.
+// The guard test of docs/plans/validation-localization-forward-keys.md. Validation messages take
+// two routes and both are pinned here: BCL attributes produce English that MessageIndex reverse-
+// matches back to a key, while our own attributes report the key directly.
 
 public class ValidationMessageLocalizationTest
 {
-    public static TheoryData<string, string?, string> ValidatorMessages
-        // The branch label is what keeps the rows distinct: three of the email branches
-        // produce the same sentence, and xUnit would otherwise collapse them into one case.
+    private const string LongEmail = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+    public static TheoryData<string, string?, string> AppAttributeKeys
+        // The branch label keeps the rows distinct: three email branches share one key,
+        // and xUnit would otherwise collapse them into a single case.
         => new() {
-            { "email: too long", Validators.Email.Validate(new string('a', 315) + "@x.com"), "Validation_EmailInvalid" },
-            { "email: unparsable", Validators.Email.Validate("not-an-email"), "Validation_EmailInvalid" },
-            { "email: display name", Validators.Email.Validate("Name <name@x.com>"), "Validation_EmailInvalid" },
-            { "phone: bad chars", Validators.Phone.Validate("+1abc2345678"), "Validation_PhoneInvalidCharacters" },
-            { "phone: too short", Validators.Phone.Validate("+1234567"), "Validation_PhoneTooShort" },
-            { "phone: too long", Validators.Phone.Validate("+1234567890123456"), "Validation_PhoneTooLong" },
-            { "phone or email", Error(new PhoneOrEmailAttribute(), "hello"), "Validation_PhoneOrEmailRequired" },
-            { "alias: too short", Error(new AliasIdAttribute(), "abc"), "Validation_AliasTooShort" },
-            { "alias: bad chars", Error(new AliasIdAttribute(), "abcde!"), "Validation_AliasInvalidCharacters" },
+            { "email: too long", Validators.Email.Validate(TooLongEmail()), ValidationKeys.EmailInvalid },
+            { "email: unparsable", Validators.Email.Validate("not-an-email"), ValidationKeys.EmailInvalid },
+            { "email: display name", Validators.Email.Validate("N <n@x.com>"), ValidationKeys.EmailInvalid },
+            { "phone: bad chars", Validators.Phone.Validate("+1abc2345678"), ValidationKeys.PhoneInvalidCharacters },
+            { "phone: too short", Validators.Phone.Validate("+1234567"), ValidationKeys.PhoneTooShort },
+            { "phone: too long", Validators.Phone.Validate("+1234567890123456"), ValidationKeys.PhoneTooLong },
+            { "phone or email", Error(new PhoneOrEmailAttribute(), "hello"), ValidationKeys.PhoneOrEmailRequired },
+            { "alias: too short", Error(new AliasIdAttribute(), "abc"), ValidationKeys.AliasTooShort },
+            { "alias: bad chars", Error(new AliasIdAttribute(), "abcde!"), ValidationKeys.AliasInvalidCharacters },
         };
+
+    [Theory, MemberData(nameof(AppAttributeKeys))]
+    public void AppAttributeShouldReportItsKey(string branch, string? message, string key)
+    {
+        // assert
+        message.Should().Be(key, $"'{branch}' must report a catalog key, not an English sentence");
+    }
+
+    [Fact]
+    public void AppAttributeKeysShouldResolveInEveryLanguage()
+    {
+        // These never reach MessageIndex, so nothing else would catch a missing translation.
+
+        // assert
+        foreach (var language in LanguageUI.SupportedUILanguages) {
+            var catalog = StringCatalog.Load(StringCatalog.StringsPrefix, language.IsoCode);
+            catalog.Should().NotBeNull($"'{language.IsoCode}' must ship a catalog");
+            foreach (var key in ValidationKeys.All)
+                catalog!.Should().ContainKey(key, $"'{key}' must be translated into '{language.IsoCode}'");
+        }
+    }
+
+    [Fact]
+    public void AppAttributeKeyShouldResolveThroughTryKey()
+    {
+        // arrange
+        var l = new TestStringLocalizer(new() { [ValidationKeys.EmailInvalid] = "<email>" });
+
+        // act
+        var message = l.TryKey(ValidationKeys.EmailInvalid);
+
+        // assert
+        message.Should().Be("<email>");
+    }
+
+    [Fact]
+    public void NonKeyTextShouldNotResolveThroughTryKey()
+    {
+        // An English sentence must fall through to the reverse index, not be read as a key.
+
+        // act
+        var message = Localizer().TryKey("The Short name field is required.");
+
+        // assert
+        message.Should().BeNull();
+    }
 
     [Fact]
     public void RequiredMessageShouldMatchItsTemplate()
@@ -38,26 +86,10 @@ public class ValidationMessageLocalizationTest
     public void EmailAddressMessageShouldMatchItsTemplate()
         => AssertTemplate(new EmailAddressAttribute(), "Validation_EmailAddress_Format");
 
-    [Theory, MemberData(nameof(ValidatorMessages))]
-    public void ValidatorMessageShouldResolveExactly(string branch, string? message, string key)
-    {
-        // arrange
-        message.Should().NotBeNull($"'{branch}' must actually fail validation");
-
-        // act
-        var match = MessageIndex.Default.Match(message!);
-
-        // assert
-        match.Should().NotBeNull($"'{branch}' produces \"{message}\", which must be in Messages.en.json");
-        match!.Key.Should().Be(key);
-        match.Args.Should().BeEmpty();
-    }
-
     [Fact]
     public void DeleteConfirmationMessagesShouldResolveExactly()
     {
-        // The two inline ErrorMessage literals - both carry the literal DELETE token,
-        // so they must never reach the AI fallback.
+        // Both literals carry the DELETE token, so they must never reach the AI fallback.
 
         // act
         var required = Validate(new DeleteAccountModal.FormModel(null), "");
@@ -110,7 +142,7 @@ public class ValidationMessageLocalizationTest
     [Fact]
     public void NonFieldArgsShouldPassThroughUntouched()
     {
-        // A translated '1' - or, worse, a translated regular expression - would be a bug.
+        // Only {field} is substituted; a translated '1' or regular expression would be a bug.
 
         // arrange
         var l = Localizer();
@@ -126,8 +158,7 @@ public class ValidationMessageLocalizationTest
     [Fact]
     public void RegularExpressionMessageShouldNotResolve()
     {
-        // It is deliberately not catalogued: the only usage overrides ErrorMessage, so its
-        // framework text never renders. This pins that decision instead of leaving it implicit.
+        // Deliberately not catalogued: its only usage overrides ErrorMessage.
 
         // act
         var match = MessageIndex.Default.Match(
@@ -150,16 +181,19 @@ public class ValidationMessageLocalizationTest
     [Fact]
     public void UntranslatedKeyShouldNotResolve()
     {
-        // A catalog miss must read as "no tier 1/2 answer", not render the key name.
+        // A catalog miss must read as "no answer here", not render the key name.
 
         // act
-        var message = new TestStringLocalizer([]).TryMessage("Email address is invalid.");
+        var message = new TestStringLocalizer([]).TryMessage("The Short name field is required.");
 
         // assert
         message.Should().BeNull();
     }
 
     // Private methods
+
+    private static string TooLongEmail()
+        => string.Concat(Enumerable.Repeat(LongEmail, 7)) + "@x.com";
 
     private static void AssertTemplate(ValidationAttribute attribute, string key)
     {
@@ -173,14 +207,15 @@ public class ValidationMessageLocalizationTest
         // assert
         match.Should().NotBeNull($"\"{message}\" must match a template in Messages.en.json");
         match!.Key.Should().Be(key);
-        match.HasFieldArg.Should().BeTrue();
-        match.Args[0].Should().Be(fieldName, "arg 0 of a Validation_ template is the field name");
+        match.Args.Should().ContainKey(MessageIndex.FieldArg,
+            "a Validation_ template names its field placeholder {field}");
+        match.Args[MessageIndex.FieldArg].Should().Be(fieldName);
     }
 
     private static TestStringLocalizer Localizer()
         => new(new() {
-            ["Validation_Required_Format"] = "<{0}>!",
-            ["Validation_MinLength_Format"] = "<{0}>/{1}",
+            ["Validation_Required_Format"] = "<{field}>!",
+            ["Validation_MinLength_Format"] = "<{field}>/{min}",
             ["Field_PhoneOrEmail"] = "[phone or email]",
         });
 

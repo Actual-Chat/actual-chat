@@ -68,13 +68,13 @@
     }
 
     <FormBlock>
-        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="Chat title">
+        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="@L.Form_ChatTitle">
             <TextBox
                 @bind-Value="@_form.Title"
                 Id="@_form.TitleId"
                 ClearButton="true"/>
         </FormSection>
-        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="Chat description">
+        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="@L.Form_ChatDescription">
             <TextBox
                 @bind-Value="@_form.Description"
                 Id="@_form.DescriptionId"
