@@ -75,7 +75,7 @@ public class FormSectionLocalizationTest
 
     private static BunitContext NewContext()
     {
-        // LocalizedMessage derives from FusionComponentBase<UIHub>, so rendering a FormSection
+        // LocalizedMessage is a ComputedStateComponent<UIHub, string>, so rendering a FormSection
         // needs a resolvable UIHub - the smallest set its constructor reads eagerly.
         var hostInfo = new HostInfo {
             HostKind = HostKind.Server,
@@ -91,6 +91,10 @@ public class FormSectionLocalizationTest
             .AddSingleton(_ => new UrlMapper(hostInfo))
             .AddScoped<UIHub>()
             .AddFusion(fusion => fusion.AddBlazor());
+        // LocalizedMessage is a ComputedStateComponent, which reaches its hub as
+        // (UIHub)CircuitHub - BlazorUICoreModule aliases the two for the same reason. This has to
+        // come after AddBlazor, whose own CircuitHub registration would otherwise win.
+        context.Services.AddScoped<CircuitHub>(c => c.GetRequiredService<UIHub>());
         context.Services.AddSingleton<IStringLocalizer>(new TestStringLocalizer(new() {
             ["Validation_Required_Format"] = "<{field}>!",
         }));

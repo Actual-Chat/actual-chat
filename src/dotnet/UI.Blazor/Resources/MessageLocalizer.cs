@@ -8,8 +8,8 @@ public static class MessageLocalizer
     {
         // Our own validation attributes report a catalog key rather than an English sentence,
         // so there is nothing to reverse-match - the key resolves directly.
-        // TODO: better name?
-        public string? TryKey(string key, string fieldLabel = "")
+        // TODO: maybe relate the name to validation? be clear
+        public string? TryLocalizeKey(string key, string fieldLabel = "")
         {
             if (!key.StartsWith(MessageIndex.ValidationPrefix, StringComparison.Ordinal))
                 return null;
@@ -21,8 +21,10 @@ public static class MessageLocalizer
             return MessageIndex.Format(localized.Value, l.FieldArgs(fieldLabel));
         }
 
-        // TODO: better name
-        public string? TryMessage(string message, string fieldLabel = "")
+        // Reverse-matches English produced at runtime (a BCL validator, a server error) back to
+        // its key, then resolves that key.
+        // TODO: name - very vague! is it about message? or what? be clear
+        public string? TryLocalizeEnglish(string message, string fieldLabel = "")
         {
             var match = MessageIndex.Default.Match(message);
             if (match == null)

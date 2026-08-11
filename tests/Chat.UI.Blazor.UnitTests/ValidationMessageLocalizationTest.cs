@@ -50,25 +50,25 @@ public class ValidationMessageLocalizationTest
     }
 
     [Fact]
-    public void AppAttributeKeyShouldResolveThroughTryKey()
+    public void AppAttributeKeyShouldResolveDirectly()
     {
         // arrange
         var l = new TestStringLocalizer(new() { [ValidationKeys.EmailInvalid] = "<email>" });
 
         // act
-        var message = l.TryKey(ValidationKeys.EmailInvalid);
+        var message = l.TryLocalizeKey(ValidationKeys.EmailInvalid);
 
         // assert
         message.Should().Be("<email>");
     }
 
     [Fact]
-    public void NonKeyTextShouldNotResolveThroughTryKey()
+    public void EnglishTextShouldNotResolveAsAKey()
     {
         // An English sentence must fall through to the reverse index, not be read as a key.
 
         // act
-        var message = Localizer().TryKey("The Short name field is required.");
+        var message = Localizer().TryLocalizeKey("The Short name field is required.");
 
         // assert
         message.Should().BeNull();
@@ -107,7 +107,7 @@ public class ValidationMessageLocalizationTest
         var l = Localizer();
 
         // act
-        var message = l.TryMessage("The Short name field is required.", "User link");
+        var message = l.TryLocalizeEnglish("The Short name field is required.", "User link");
 
         // assert
         message.Should().Be("<User link>!");
@@ -120,7 +120,7 @@ public class ValidationMessageLocalizationTest
         var l = Localizer();
 
         // act
-        var message = l.TryMessage("The Phone or email field is required.");
+        var message = l.TryLocalizeEnglish("The Phone or email field is required.");
 
         // assert
         message.Should().Be("<[phone or email]>!");
@@ -133,7 +133,7 @@ public class ValidationMessageLocalizationTest
         var l = Localizer();
 
         // act
-        var message = l.TryMessage("The Short name field is required.");
+        var message = l.TryLocalizeEnglish("The Short name field is required.");
 
         // assert
         message.Should().Be("<Short name>!");
@@ -148,7 +148,7 @@ public class ValidationMessageLocalizationTest
         var l = Localizer();
 
         // act
-        var message = l.TryMessage(
+        var message = l.TryLocalizeEnglish(
             new MinLengthAttribute(1).FormatErrorMessage("Short name"), "User link");
 
         // assert
@@ -172,7 +172,7 @@ public class ValidationMessageLocalizationTest
     public void UnknownMessageShouldNotResolve()
     {
         // act
-        var message = Localizer().TryMessage("Something nobody has catalogued.");
+        var message = Localizer().TryLocalizeEnglish("Something nobody has catalogued.");
 
         // assert
         message.Should().BeNull();
@@ -184,7 +184,7 @@ public class ValidationMessageLocalizationTest
         // A catalog miss must read as "no answer here", not render the key name.
 
         // act
-        var message = new TestStringLocalizer([]).TryMessage("The Short name field is required.");
+        var message = new TestStringLocalizer([]).TryLocalizeEnglish("The Short name field is required.");
 
         // assert
         message.Should().BeNull();

@@ -1,64 +1,50 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Diagnostics
 @using ActualChat.UI.Blazor.Services
-@using Microsoft.Extensions.Localization
-@inherits FusionComponentBase<UIHub>
-@_message
+@inherits ComputedStateComponent<UIHub, string>
+@State.Value
 
 @code {
     private static readonly ConcurrentDictionary<string, Unit> ReportedFallbacks = new();
-
-    private string _message = "";
-    private string _lastText = "";
-    private string _lastFieldLabel = "";
-    private int _version;
 
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string FieldLabel { get; set; } = "";
 
-    protected override void OnParametersSet() {
-        if (Text == _lastText && FieldLabel == _lastFieldLabel)
-            return;
+    protected override ComputedState<string>.Options GetStateOptions()
+        => new () {
+            // TODO: don't we have
+            // The original text is the only sensible thing to show until a tier answers.
+            InitialValue = Text,
+            Category = GetStateCategory(GetType()),
+        };
 
-        _lastText = Text;
-        _lastFieldLabel = FieldLabel;
-        _message = Text;
-        var version = ++_version;
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
+        // Tier 3 is a compute method, so an arriving translation invalidates this state on its
+        // own - no version counter, and no StateHasChanged from a detached continuation.
         if (Text.IsNullOrEmpty())
-            return;
+            return "";
 
-        // Services are resolved optionally: both of them live in UI.Blazor.App, and English
-        // is the only sensible output in a host that doesn't have that layer.
-        // TODO: i made this class inherit FusionCOmponetBase, so use existing services
-        // TODO: but better inherit ComputedStateComponent and make this computable
-        var localizer = Services.GetService<IStringLocalizer>();
-        var localized = localizer?.TryKey(Text, FieldLabel) ?? localizer?.TryMessage(Text, FieldLabel);
-        if (localized != null) {
-            _message = localized;
-            return;
-        }
+        var localized = L.TryLocalizeKey(Text, FieldLabel) ?? L.TryLocalizeEnglish(Text, FieldLabel);
+        if (localized != null)
+            return localized;
 
+        // Resolved optionally: IUITextLocalizer lives in UI.Blazor.App, and English is the only
+        // sensible output in a host without that layer.
+        // TODO: move IUITextLocalizer into the base class and use it from here. Also ensure that we don't have other such places
         var textLocalizer = Services.GetService<IUITextLocalizer>();
         if (textLocalizer == null)
-            return;
+            return Text;
 
         ReportFallback(Text);
-        _ = Translate(textLocalizer, Text, version);
-    }
-
-    private async Task Translate(IUITextLocalizer localizer, string text, int version) {
+        // TODO: catching must be inside textLocalizer.Get
         try {
-            var translated = await localizer.Get(text).ConfigureAwait(true);
-            if (version != _version || translated == _message)
-                return;
-
-            _message = translated;
-            StateHasChanged();
+            return await textLocalizer.Get(Text, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "Failed to localize: {Message}", text);
+            Log.LogError(e, "Failed to localize: {Message}", Text);
+            return Text;
         }
     }
 

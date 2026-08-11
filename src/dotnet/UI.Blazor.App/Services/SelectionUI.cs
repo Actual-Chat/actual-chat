@@ -1,7 +1,6 @@
 using System.Net;
 using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -19,8 +18,6 @@ public class SelectionUI : UIServiceBase<AppUIHub>
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
-    // TODO: Move to UIServiceBase
-    private IStringLocalizer L => field ??= Services.GetRequiredService<IStringLocalizer>();
 
     public IState<bool> HasSelection => _hasSelection;
     public IState<ImmutableHashSet<ChatEntryId>> Selection => _selection;
