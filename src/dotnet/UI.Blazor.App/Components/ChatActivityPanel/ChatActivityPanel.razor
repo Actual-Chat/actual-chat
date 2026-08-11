@@ -130,7 +130,7 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
-        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreamingAudio(chat.Id, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chat.Id, cancellationToken).ConfigureAwait(false);
         var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnVideoStreaming = ownSourceKind is not null;

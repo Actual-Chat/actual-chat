@@ -73,7 +73,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     {
         var chatId = ChatId;
         var audioStreamingAuthorIds = await Hub.LiveStreamUI
-            .GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+            .GetAudioStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var activeVideoStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken)
             .ConfigureAwait(false);
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);

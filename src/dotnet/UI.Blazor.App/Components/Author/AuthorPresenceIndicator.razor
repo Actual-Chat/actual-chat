@@ -28,7 +28,7 @@
 
         var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (ShowRecording) {
-            var isStreaming = await LiveStreamUI.IsAuthorStreaming(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            var isStreaming = await LiveStreamUI.IsAuthorStreamingAudio(chatId, authorId, cancellationToken).ConfigureAwait(false);
             if (isStreaming)
                 presence = Presence.Recording;
         }

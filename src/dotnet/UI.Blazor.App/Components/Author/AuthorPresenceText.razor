@@ -31,7 +31,7 @@
         // The code below doesn't use any component prop, so we can use .ConfigureAwait(false)
         var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (ShowRecording) {
-            var isStreaming = await LiveStreamUI.IsAuthorStreaming(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            var isStreaming = await LiveStreamUI.IsAuthorStreamingAudio(chatId, authorId, cancellationToken).ConfigureAwait(false);
             if (isStreaming)
                 presence = Presence.Recording;
         }

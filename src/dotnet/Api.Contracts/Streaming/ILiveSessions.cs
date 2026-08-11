@@ -1,3 +1,4 @@
+using ActualChat.Comparison;
 using ActualChat.Live;
 
 namespace ActualChat.Streaming;
@@ -22,6 +23,16 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod(ConsolidationDelay = 0.5)]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<bool> HasActivity(Session session, ChatId chatId, CancellationToken cancellationToken);
+    // Who is speaking right now (VAD-gated, audio only). Aggregated and consolidated server-side:
+    // ILiveAudioStreams.List rebuilds its array on every stream register/unregister, but the author
+    // set behind it moves far less often, and it's what every client actually subscribes to.
+    // ApiArray compares its backing array by reference, so the comparer isn't optional here.
+    [ComputeMethod(ConsolidationDelay = 0.5, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<ApiArray<AuthorId>> GetAudioStreamingAuthorIds(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken);
     // Consolidated server-side, so a GetCallState or chat-rules change that leaves the status alone
     // isn't pushed to the caller. Zero delay - this is a ring/accept path.
     [ComputeMethod(ConsolidationDelay = 0)]

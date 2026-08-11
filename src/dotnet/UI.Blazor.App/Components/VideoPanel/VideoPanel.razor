@@ -477,7 +477,7 @@
         // Authors currently streaming audio (VAD-gated) — includes the local user; used to
         // ring the active speaker(s) in the equal layout, where focus alone can't (it never
         // points at own).
-        var speakingAuthorIds = await Hub.LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken)
+        var speakingAuthorIds = await Hub.LiveStreamUI.GetAudioStreamingAuthorIds(chatId, cancellationToken)
             .ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthorId = ownAuthor?.Id;
@@ -508,7 +508,7 @@
             IsEqualLayout: isEqualLayout,
             IsChatVisible: isChatVisible,
             SelectedCameraDeviceId: selectedCameraDeviceId,
-            SpeakingAuthorIds: speakingAuthorIds,
+            SpeakingAuthorIds: speakingAuthorIds.ToArray(),
             OwnAuthorId: ownAuthorId,
             IsPinned: pinnedAuthorId is not null,
             FocusedAuthorId: focusedAuthorId);

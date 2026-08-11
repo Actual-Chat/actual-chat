@@ -29,8 +29,8 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             var liveStreamUI = clientServices.GetRequiredService<LiveStreamUI>();
             var author = await authors.EnsureJoined(session, TestChatId, ct);
 
-            var cStreamingAuthorIds = await Computed.Capture(() => liveStreamUI.GetStreamingAuthorIds(TestChatId, ct), ct);
-            cStreamingAuthorIds.Value.Length.Should().Be(0);
+            var cStreamingAuthorIds = await Computed.Capture(() => liveStreamUI.GetAudioStreamingAuthorIds(TestChatId, ct), ct);
+            cStreamingAuthorIds.Value.Count.Should().Be(0);
 
             // Register an active stream
             var streamInfo = new LiveAudioStreamInfo {
@@ -42,18 +42,18 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             await liveBackend.Register(TestChatId, streamInfo, ct);
 
             // Verify stream is visible
-            await cStreamingAuthorIds.When(x => x.Length == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+            await cStreamingAuthorIds.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
             var authorId = cStreamingAuthorIds.Value.Single();
             authorId.Should().Be(author.Id);
 
-            var cIsAuthorStreaming = await Computed.Capture(() => liveStreamUI.IsAuthorStreaming(TestChatId, authorId, ct), ct);
+            var cIsAuthorStreaming = await Computed.Capture(() => liveStreamUI.IsAuthorStreamingAudio(TestChatId, authorId, ct), ct);
             await cIsAuthorStreaming.When(x => x, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
 
             // Unregister the stream
             await liveBackend.Unregister(TestChatId, streamInfo.StreamId, ct);
 
             // Verify stream is gone
-            await cStreamingAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
+            await cStreamingAuthorIds.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
             await cIsAuthorStreaming.When(x => !x, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
         }
         finally {
