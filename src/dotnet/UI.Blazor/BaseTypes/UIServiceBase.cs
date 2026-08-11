@@ -39,7 +39,7 @@ public abstract class UIServiceBase<THub>(THub hub) : IHasDisposeStatus
     protected ShareUI ShareUI => Hub.ShareUI;
     protected Dispatcher Dispatcher => Hub.Dispatcher;
     protected Features Features => Hub.Features;
-    protected IStringLocalizer L => field ??= Hub.Services.GetRequiredService<IStringLocalizer>();
+    protected IStringLocalizer L => Hub.StringLocalizer;
 
     // Shortcuts
     public bool IsDisposed => Hub.IsDisposed;

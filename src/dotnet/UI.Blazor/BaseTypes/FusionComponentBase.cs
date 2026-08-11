@@ -37,7 +37,7 @@ public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircu
     protected ShareUI ShareUI => Hub.ShareUI;
     protected Dispatcher Dispatcher => Hub.Dispatcher;
     protected Features Features => Hub.Features;
-    protected IStringLocalizer L => field ??= Hub.Services.GetRequiredService<IStringLocalizer>();
+    protected IStringLocalizer L => Hub.StringLocalizer;
 
     // Shortcuts
     protected bool IsPrerendering => Hub.IsPrerendering;

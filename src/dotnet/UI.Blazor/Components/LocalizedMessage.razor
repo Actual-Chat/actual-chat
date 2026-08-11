@@ -32,17 +32,10 @@
         if (localized != null)
             return localized;
 
-        // Resolved optionally: IUITextLocalizer lives in UI.Blazor.App, and English is the only
-        // sensible output in a host without that layer.
-        // TODO: move IUITextLocalizer into the base class and use it from here. Also ensure that we don't have other such places
-        var textLocalizer = Services.GetService<IUITextLocalizer>();
-        if (textLocalizer == null)
-            return Text;
-
         ReportFallback(Text);
         // TODO: catching must be inside textLocalizer.Get
         try {
-            return await textLocalizer.Get(Text, cancellationToken).ConfigureAwait(false);
+            return await Hub.UITextLocalizer.Get(Text, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "Failed to localize: {Message}", Text);

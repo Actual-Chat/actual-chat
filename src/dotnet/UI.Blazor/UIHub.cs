@@ -3,6 +3,7 @@ using ActualChat.Search;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Internal;
 using ActualLab.Rpc;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor;
 
@@ -41,6 +42,8 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public IHttpClientFactory HttpClientFactory => field ??= Services.GetRequiredService<IHttpClientFactory>();
     public RpcHub RpcHub => field ??= Services.GetRequiredService<RpcHub>();
     public LocalStorage LocalStorage => field ??= Services.GetRequiredService<LocalStorage>();
+    public IStringLocalizer StringLocalizer => field ??= Services.GetRequiredService<IStringLocalizer>();
+    public IUITextLocalizer UITextLocalizer => field ??= Services.GetRequiredService<IUITextLocalizer>();
 
     // Account-related & chat-related services
     public ISystemProperties SystemProperties => field ??= Services.GetRequiredService<ISystemProperties>();
