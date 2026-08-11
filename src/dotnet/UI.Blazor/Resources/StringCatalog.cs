@@ -6,31 +6,56 @@ namespace ActualChat.UI.Blazor.Resources;
 /// </summary>
 public static class StringCatalog
 {
-    // TODO: instead of such public constants let's have 2 separate methods LoadStrings and LoadMessages maybe even better names
-    // TODO: all these 3 constants must be private or internal
-    public const string StringsPrefix = "Strings.";
-    public const string MessagesPrefix = "Messages.";
-    public const string Suffix = ".json";
+    private const string Suffix = ".json";
 
     private static readonly JsonSerializerOptions JsonOptions = new() {
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
     };
 
-    public static Assembly Assembly => typeof(Strings).Assembly;
+    private static Assembly Assembly => typeof(Strings).Assembly;
 
-    // TODO: if possible maybe return languages?
-    public static IEnumerable<string> Subtags(string prefix)
-        => Assembly.GetManifestResourceNames()
-            .Where(n => n.StartsWith(prefix) && n.EndsWith(Suffix))
-            .Select(n => n[prefix.Length..^Suffix.Length]);
+    public static Dictionary<string, string>? LoadStrings(Language language)
+        => Load(Kind.Strings, language.IsoCode);
 
-    // TODO: if possible accept lanuguage?
-    public static Dictionary<string, string>? Load(string prefix, string subtag)
+    public static Dictionary<string, string>? LoadMessages(Language language)
+        => Load(Kind.Messages, language.IsoCode);
+
+    // Subtag-based rather than Language-based: a resource whose subtag names no known language
+    // has to stay visible, and mapping it here would silently drop it instead.
+    internal static IEnumerable<string> ShippedSubtags(Kind kind)
     {
-        using var stream = Assembly.GetManifestResourceStream($"{prefix}{subtag}{Suffix}");
+        var prefix = Prefix(kind);
+        return Assembly.GetManifestResourceNames()
+            .Where(n => n.StartsWith(prefix, StringComparison.Ordinal) && n.EndsWith(Suffix, StringComparison.Ordinal))
+            .Select(n => n[prefix.Length..^Suffix.Length]);
+    }
+
+    internal static Dictionary<string, string>? Load(Kind kind, string subtag)
+    {
+        using var stream = Assembly.GetManifestResourceStream(ResourceName(kind, subtag));
         return stream == null
             ? null
             : JsonSerializer.Deserialize<Dictionary<string, string>>(stream, JsonOptions);
+    }
+
+    internal static string ResourceName(Kind kind, string subtag)
+        => $"{Prefix(kind)}{subtag}{Suffix}";
+
+    // Private methods
+
+    private static string Prefix(Kind kind)
+        => kind switch {
+            Kind.Strings => "Strings.",
+            Kind.Messages => "Messages.",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
+        };
+
+    // Nested types
+
+    public enum Kind
+    {
+        Strings = 0,
+        Messages = 1,
     }
 }

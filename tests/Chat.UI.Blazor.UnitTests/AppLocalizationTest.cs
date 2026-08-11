@@ -7,23 +7,22 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public class AppLocalizationTest
 {
-    private const string Prefix = StringCatalog.StringsPrefix;
-    private const string MessagePrefix = StringCatalog.MessagesPrefix;
-    private const string Suffix = StringCatalog.Suffix;
+    private const StringCatalog.Kind Strings = StringCatalog.Kind.Strings;
+    private const StringCatalog.Kind Messages = StringCatalog.Kind.Messages;
     private const string PrefixSuffix = "_Prefix";
     private const string SuffixSuffix = "_Suffix";
     private static readonly Regex PlaceholderRe = new(@"\{\d+\}");
 
     [Theory]
-    [InlineData(Prefix)]
-    [InlineData(MessagePrefix)]
-    public void EnglishFallbackShouldBeComplete(string prefix)
+    [InlineData(Strings)]
+    [InlineData(Messages)]
+    public void EnglishFallbackShouldBeComplete(StringCatalog.Kind kind)
     {
         // Any language without its own translation is resolved via the English fallback,
         // so every catalog language is "supported" as long as English defines the full key set.
 
         // act
-        var en = Load(Languages.English.IsoCode, prefix);
+        var en = Load(Languages.English.IsoCode, kind);
 
         // assert
         en.Should().NotBeNull();
@@ -31,27 +30,27 @@ public class AppLocalizationTest
     }
 
     [Theory]
-    [InlineData(Prefix)]
-    [InlineData(MessagePrefix)]
-    public void EveryShippedTranslationShouldMapToKnownLanguage(string prefix)
+    [InlineData(Strings)]
+    [InlineData(Messages)]
+    public void EveryShippedTranslationShouldMapToKnownLanguage(StringCatalog.Kind kind)
     {
         // act
-        var subtags = ShippedSubtags(prefix).ToList();
+        var subtags = ShippedSubtags(kind).ToList();
 
         // assert
         foreach (var subtag in subtags)
             Languages.All.Should().Contain(
                 l => l.IsoCode == subtag,
-                $"resource '{prefix}{subtag}{Suffix}' must map to a known language");
+                $"resource '{StringCatalog.ResourceName(kind, subtag)}' must map to a known language");
     }
 
     [Theory]
-    [InlineData(Prefix)]
-    [InlineData(MessagePrefix)]
-    public void EveryShippedTranslationShouldMatchEnglishKeys(string prefix)
+    [InlineData(Strings)]
+    [InlineData(Messages)]
+    public void EveryShippedTranslationShouldMatchEnglishKeys(StringCatalog.Kind kind)
     {
         // arrange
-        var en = Load(Languages.English.IsoCode, prefix)!;
+        var en = Load(Languages.English.IsoCode, kind)!;
         var enKeys = en.Keys.ToHashSet();
         var placeholdersByKey = en
             .Select(kv => (kv.Key, Placeholders: PlaceholderRe.Matches(kv.Value).Select(m => m.Value).Distinct()))
@@ -59,9 +58,9 @@ public class AppLocalizationTest
             .ToList();
 
         // act
-        var translations = ShippedSubtags(prefix)
+        var translations = ShippedSubtags(kind)
             .Where(s => s != Languages.English.IsoCode)
-            .ToDictionary(s => s, s => Load(s, prefix)!);
+            .ToDictionary(s => s, s => Load(s, kind)!);
 
         // assert
         foreach (var (subtag, dict) in translations) {
@@ -73,20 +72,20 @@ public class AppLocalizationTest
     }
 
     [Theory]
-    [InlineData(Prefix)]
-    [InlineData(MessagePrefix)]
-    public void EveryShippedTranslationShouldTranslateEveryEnglishKey(string prefix)
+    [InlineData(Strings)]
+    [InlineData(Messages)]
+    public void EveryShippedTranslationShouldTranslateEveryEnglishKey(StringCatalog.Kind kind)
     {
         // Guards against forgetting to translate a newly added English key:
         // every shipped translation must define a value for every English key.
 
         // arrange
-        var enKeys = Load(Languages.English.IsoCode, prefix)!.Keys.ToHashSet();
+        var enKeys = Load(Languages.English.IsoCode, kind)!.Keys.ToHashSet();
 
         // act
-        var missingBySubtag = ShippedSubtags(prefix)
+        var missingBySubtag = ShippedSubtags(kind)
             .Where(s => s != Languages.English.IsoCode)
-            .Select(s => (Subtag: s, Missing: enKeys.Except(Load(s, prefix)!.Keys).OrderBy(k => k).ToList()))
+            .Select(s => (Subtag: s, Missing: enKeys.Except(Load(s, kind)!.Keys).OrderBy(k => k).ToList()))
             .Where(x => x.Missing.Count > 0)
             .Select(x => $"'{x.Subtag}' is missing: {string.Join(", ", x.Missing)}")
             .ToList();
@@ -97,12 +96,12 @@ public class AppLocalizationTest
     }
 
     [Theory]
-    [InlineData(Prefix)]
-    [InlineData(MessagePrefix)]
-    public void EverySupportedUILanguageShouldShipTranslation(string prefix)
+    [InlineData(Strings)]
+    [InlineData(Messages)]
+    public void EverySupportedUILanguageShouldShipTranslation(StringCatalog.Kind kind)
     {
         // arrange
-        var shipped = ShippedSubtags(prefix).ToHashSet();
+        var shipped = ShippedSubtags(kind).ToHashSet();
 
         // act
         var missing = LanguageUI.SupportedUILanguages
@@ -111,7 +110,9 @@ public class AppLocalizationTest
             .ToList();
 
         // assert
-        missing.Should().BeEmpty("every supported UI language must ship a '{0}<subtag>{1}' resource", prefix, Suffix);
+        missing.Should().BeEmpty(
+            "every supported UI language must ship a '{0}' resource",
+            StringCatalog.ResourceName(kind, "<subtag>"));
     }
 
     [Fact]
@@ -124,7 +125,7 @@ public class AppLocalizationTest
         var strings = Load(Languages.English.IsoCode)!.Keys.ToHashSet();
 
         // act
-        var shared = Load(Languages.English.IsoCode, MessagePrefix)!.Keys
+        var shared = Load(Languages.English.IsoCode, Messages)!.Keys
             .Where(strings.Contains)
             .OrderBy(k => k)
             .ToList();
@@ -272,11 +273,11 @@ public class AppLocalizationTest
             => new(name, typeof(AppStrings).GetMethod(implementationName, bf).Require(implementationName));
     }
 
-    private static IEnumerable<string> ShippedSubtags(string prefix = Prefix)
-        => StringCatalog.Subtags(prefix);
+    private static IEnumerable<string> ShippedSubtags(StringCatalog.Kind kind = Strings)
+        => StringCatalog.ShippedSubtags(kind);
 
-    private static Dictionary<string, string>? Load(string subtag, string prefix = Prefix)
-        => StringCatalog.Load(prefix, subtag);
+    private static Dictionary<string, string>? Load(string subtag, StringCatalog.Kind kind = Strings)
+        => StringCatalog.Load(kind, subtag);
 
     // Nested types
 

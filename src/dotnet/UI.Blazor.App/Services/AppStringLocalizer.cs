@@ -61,12 +61,11 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
     {
         var result = new Dictionary<Language, Dictionary<string, string>>();
         foreach (var lang in LanguageUI.SupportedUILanguages) {
-            var subtag = lang.IsoCode;
-            var strings = StringCatalog.Load(StringCatalog.StringsPrefix, subtag);
+            var strings = StringCatalog.LoadStrings(lang);
             if (strings == null)
                 continue;
 
-            var messages = StringCatalog.Load(StringCatalog.MessagesPrefix, subtag);
+            var messages = StringCatalog.LoadMessages(lang);
             if (messages != null)
                 foreach (var (key, value) in messages)
                     strings[key] = value;
