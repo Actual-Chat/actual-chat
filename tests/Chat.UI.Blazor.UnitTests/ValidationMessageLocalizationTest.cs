@@ -75,6 +75,28 @@ public class ValidationMessageLocalizationTest
     }
 
     [Fact]
+    public void NoValidationMessageShouldNeedTheAiFallback()
+    {
+        // AI translation is a safety net for text nobody catalogued. No validation message may
+        // rely on it: each one must resolve from the shipped catalog, in every language, through
+        // whichever of the two routes produced it.
+
+        // assert
+        foreach (var language in LanguageUI.SupportedUILanguages) {
+            var l = new TestStringLocalizer(ShippedCatalog(language));
+            var iso = language.IsoCode;
+            foreach (var key in ValidationKeys.All)
+                l.ForValidationKey(key).Should().NotBeNull($"'{key}' must resolve in '{iso}'");
+            foreach (var attribute in BclAttributes) {
+                var message = attribute.FormatErrorMessage("Field");
+                l.ForRuntimeMessage(message).Should().NotBeNull($"\"{message}\" must resolve in '{iso}'");
+            }
+            foreach (var message in DeleteConfirmationMessages())
+                l.ForRuntimeMessage(message).Should().NotBeNull($"\"{message}\" must resolve in '{iso}'");
+        }
+    }
+
+    [Fact]
     public void RequiredMessageShouldMatchItsTemplate()
         => AssertTemplate(new RequiredAttribute(), "Validation_Required_Format");
 
@@ -191,6 +213,24 @@ public class ValidationMessageLocalizationTest
     }
 
     // Private methods
+
+    private static ValidationAttribute[] BclAttributes
+        => [new RequiredAttribute(), new MinLengthAttribute(3), new EmailAddressAttribute()];
+
+    private static IEnumerable<string> DeleteConfirmationMessages()
+        => Validate(new DeleteAccountModal.FormModel(null), "")
+            .Concat(Validate(new DeleteAccountModal.FormModel(null), "delete"));
+
+    // Mirrors AppStringLocalizer.LoadAll: one forward lookup over both catalogs.
+    private static Dictionary<string, string> ShippedCatalog(Language language)
+    {
+        var strings = StringCatalog.Load(StringCatalog.StringsPrefix, language.IsoCode)!;
+        var messages = StringCatalog.Load(StringCatalog.MessagesPrefix, language.IsoCode);
+        if (messages != null)
+            foreach (var (key, value) in messages)
+                strings[key] = value;
+        return strings;
+    }
 
     private static string TooLongEmail()
         => string.Concat(Enumerable.Repeat(LongEmail, 7)) + "@x.com";

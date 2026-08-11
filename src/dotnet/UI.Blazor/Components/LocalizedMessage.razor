@@ -14,9 +14,11 @@
 
     protected override ComputedState<string>.Options GetStateOptions()
         => new () {
-            // TODO: don't we have
-            // The original text is the only sensible thing to show until a tier answers.
-            InitialValue = Text,
+            // The catalog lookups are synchronous, so anything catalogued - which every
+            // validation message is, and the tests keep it that way - renders on the first pass.
+            // Without this the raw Text shows until ComputeState lands, and for our own
+            // attributes that Text is a bare key like "Validation_EmailInvalid".
+            InitialValue = Localize() ?? Text,
             Category = GetStateCategory(GetType()),
         };
 
@@ -26,7 +28,7 @@
         if (Text.IsNullOrEmpty())
             return "";
 
-        var localized = L.ForValidationKey(Text, FieldLabel) ?? L.ForRuntimeMessage(Text, FieldLabel);
+        var localized = Localize();
         if (localized != null)
             return localized;
 
@@ -47,6 +49,12 @@
             return Text;
         }
     }
+
+    // Tiers 1-2: both are plain catalog lookups, so this is the whole synchronous path.
+    private string? Localize()
+        => Text.IsNullOrEmpty()
+            ? ""
+            : L.ForValidationKey(Text, FieldLabel) ?? L.ForRuntimeMessage(Text, FieldLabel);
 
     // TODO: what does it give us??? what's the point of this?
     private void ReportFallback(string text) {
