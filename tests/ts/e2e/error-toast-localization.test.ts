@@ -16,8 +16,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, connectBrowser, dismissCookieConsent, ensureSignedIn,
-    screenshot, waitForAppReady, type BrowserConnection,
+    BASE_URL, connectBrowser, ensureSignedIn, screenshot, setUILanguage,
+    waitForAppReady, type BrowserConnection,
 } from './helpers';
 
 const ENGLISH = 'en-US';
@@ -25,45 +25,6 @@ const RUSSIAN = 'ru-RU';
 const ERROR_MESSAGE_FRAGMENT = "There's something wrong here";
 
 const shot = (name: string) => screenshot('e2e', `error-toast-l10n-${name}`);
-
-// Opens Settings → User interface (located by icon, not by its localized title)
-// and returns the language <select> once it's visible.
-async function openLanguageSelect(page: Page) {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-        await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' });
-        await waitForAppReady(page);
-        await dismissCookieConsent(page);
-        const visible = await page.locator('.settings-modal').waitFor({ state: 'visible', timeout: 15_000 })
-            .then(() => true, () => false);
-        if (visible)
-            break;
-
-        if (attempt === 3)
-            throw new Error('settings-modal did not become visible after 3 goto attempts');
-    }
-
-    const uiTab = page.locator('.settings-tab-item:has(i.icon-interface)').first();
-    await uiTab.waitFor({ state: 'visible', timeout: 15_000 });
-    await uiTab.click({ force: true });
-
-    const select = page.locator('.settings-tab-content select.c-language-select').first();
-    await select.waitFor({ state: 'visible', timeout: 10_000 });
-    return select;
-}
-
-// Sets the UI language; returns the previous language code.
-async function setUILanguage(page: Page, code: string): Promise<string> {
-    const select = await openLanguageSelect(page);
-    const previous = await select.inputValue();
-    if (previous === code)
-        return previous;
-
-    // OnLanguageChanged persists the value and calls History.ForceReload.
-    await select.selectOption(code);
-    await page.waitForLoadState('domcontentloaded');
-    await waitForAppReady(page);
-    return previous;
-}
 
 describe('Error toast localization', () => {
     let conn: BrowserConnection;
@@ -74,6 +35,12 @@ describe('Error toast localization', () => {
         conn = await connectBrowser();
         page = await conn.context.newPage();
         await ensureSignedIn(page);
+
+        // Server render mode: the language change ends in History.ForceReload, and under WASM
+        // that re-boots MONO against service-worker-cached assets, which double-faults after a
+        // server rebuild ("SystemInteropJS_BindAssemblyExports unexpected double fault").
+        await page.goto(`${BASE_URL}/fusion/renderMode/s`, { waitUntil: 'domcontentloaded' });
+        await waitForAppReady(page);
     }, 120_000);
 
     afterAll(async () => {
