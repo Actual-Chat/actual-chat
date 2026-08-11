@@ -88,9 +88,10 @@ public partial class ChatUI
     // ~82px. This sits deliberately below that: under-estimating row height over-fetches a little, while
     // over-estimating it would under-fill the load zone and cost the follow-up query we're avoiding.
     private const double AssumedItemSize = 64;
-    // Anything past this is a visible stall rather than a slow frame, and on a device the log it triggers
-    // is the only place the phase split shows up.
-    private const long SlowBuildMs = 500;
+    // Sits below the chronic 150-400ms RTT-bound rebuild band whose share grows through a live session:
+    // on a device the log this triggers is the only channel that carries the phase split, and at 500ms
+    // it never fired - a whole session of 150-450ms rebuilds produced zero samples.
+    private const long SlowBuildMs = 250;
 
     private volatile ChatEntry? _audioRecordingEntry;
 
