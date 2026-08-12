@@ -11,6 +11,10 @@ public sealed class AudioSettings
     // Not critical to stop it at the exact time
     public TimeSpan IdleListeningCheckPeriod { get; init; } = TimeSpan.FromSeconds(3);
     public TimeSpan IdleListeningNewMessageTrigger { get; init; } = TimeSpan.FromMinutes(5);
+    // A transcript grows a few times per second; this keeps GetMergedTranscript's readers off that rate.
+    public TimeSpan MergedTranscriptInvalidationDelay { get; init; } = TimeSpan.FromSeconds(0.1);
+    // Nothing invalidates "this stream isn't published yet", so that answer re-checks on its own
+    public TimeSpan MergedTranscriptRetryDelay { get; init; } = TimeSpan.FromSeconds(1);
     public TimeSpan RecordingBeepInterval { get; init; } = TimeSpan.FromMinutes(1);
     public TimeSpan RecordingStopWarningLeadTime { get; init; } = TimeSpan.FromSeconds(5);
     // The reminder is for a mic you forgot about, so remote speech in this window suppresses it.

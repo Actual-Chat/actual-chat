@@ -123,6 +123,37 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             : StandardRpcStream.NewTranscriptDelivery(stream);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<Transcript?> GetMergedTranscript(StreamId streamId, CancellationToken cancellationToken)
+    {
+        // waitForShare: false, so a stream that hasn't been published yet doesn't block the compute
+        // for ShareWaitDelay. Nothing invalidates that null - the entry doesn't exist to depend on -
+        // so it has to re-check itself, otherwise an observer that captured this a moment too early
+        // stays pinned to null for the whole stream.
+        var computed = Computed.GetCurrent();
+        var memoizer = await _transcriptStreams
+            .GetMemoizer(streamId, false, cancellationToken)
+            .ConfigureAwait(false);
+        if (memoizer == null) {
+            computed.Invalidate(AudioSettings.MergedTranscriptRetryDelay);
+            return null;
+        }
+
+        var (transcript, producedCount) = memoizer.FoldBuffered(
+            Transcript.Empty,
+            static (t, diff) => t + diff);
+        if (memoizer.IsCompleted)
+            return transcript;
+
+        _ = memoizer.WhenChanged(producedCount)
+            .ContinueWith(
+                _ => computed.Invalidate(AudioSettings.MergedTranscriptInvalidationDelay),
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        return transcript;
+    }
+
     public async Task PushTranscript(
         StreamId streamId,
         RpcStream<TranscriptDiff> diffStream,
