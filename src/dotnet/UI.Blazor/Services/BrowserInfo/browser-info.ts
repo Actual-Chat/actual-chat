@@ -63,6 +63,7 @@ export class BrowserInfo {
             isFirefox: DeviceInfo.isFirefox,
             isWebKit: DeviceInfo.isWebKit,
             isTouchCapable: DeviceInfo.isTouchCapable,
+            canVibrate: DeviceInfo.canVibrate,
             isWasmReady: isWasmReady,
             windowId: this.windowId,
         };
@@ -209,6 +210,7 @@ export interface InitResult {
     isFirefox: boolean;
     isWebKit: boolean;
     isTouchCapable: boolean;
+    canVibrate: boolean;
     isWasmReady: boolean | null;
     windowId: string;
 }
