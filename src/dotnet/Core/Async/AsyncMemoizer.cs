@@ -91,55 +91,10 @@ public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
     public IAsyncEnumerable<T> Replay(CancellationToken cancellationToken = default)
         => Replay(int.MaxValue, cancellationToken);
 
-    public virtual async IAsyncEnumerable<T> Replay(
+    public virtual IAsyncEnumerable<T> Replay(
         int tailSize,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        // Pick the starting position. We want to yield up to `tailSize` items already in the
-        // buffer plus all future items. With a linked list and no random access, "skip oldest"
-        // is an O(N) walk — acceptable because the common case is tailSize == int.MaxValue
-        // (no skip), and bounded buffers are small in practice.
-        // current is the "previous" node; we yield current.Next. We walk forward until
-        // current.Index >= fromIndex, where fromIndex is the index of the last item we want
-        // to skip.
-        var current = _head;
-        if (tailSize < int.MaxValue) {
-            var tail = _tail;
-            var fromIndex = Math.Max(current.Index, tail.Index - Math.Max(0, tailSize));
-            while (current.Index < fromIndex) {
-                var next = current.Next;
-                if (next == null)
-                    break; // reached tail; nothing to skip past
-
-                current = next;
-            }
-        }
-
-        while (true) {
-            cancellationToken.ThrowIfCancellationRequested();
-            var head = _head;
-            if (current.Index < head.Index) {
-                current = head;
-                continue;
-            }
-
-            var next = current.Next;
-            if (next != null) {
-                current = next;
-                yield return current.Value;
-                continue;
-            }
-            // No next yet — either the stream is alive and we should wait, or it's completed.
-            var completion = current.Completion;
-            if (completion != null) {
-                if (completion is ChannelClosedException)
-                    yield break;
-                ExceptionDispatchInfo.Capture(completion).Throw();
-            }
-            // Wait for producer to set Next (and call TrySetResult on this node).
-            await current.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
-        }
-    }
+        CancellationToken cancellationToken = default)
+        => ReplayFrom(GetReplayStart(tailSize), cancellationToken);
 
     // Convenience method: pipes the replay into a ChannelWriter rather than an IAsyncEnumerable.
     public Task AddReplayTarget(ChannelWriter<T> channel, CancellationToken cancellationToken = default)
@@ -170,15 +125,8 @@ public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
     {
         while (true) {
             var head = _head;
-            var current = head;
-            var state = seed;
-            while (current.Next is { } next) {
-                current = next;
-                state = folder(state, current.Value);
-            }
-            // Eviction severs Next at the old head, which truncates a walk that's still standing there
-            if (ReferenceEquals(_head, head))
-                return (state, current.Index);
+            if (TryFoldFrom(head, head, seed, folder) is { } result)
+                return (result.Value, result.Node.Index);
         }
     }
 
@@ -248,6 +196,76 @@ public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
             if (!TryAdvanceHead())
                 break;
         }
+    }
+
+    // Yields current.Next onward, waiting on the tail's Task when the producer hasn't caught up
+    protected async IAsyncEnumerable<T> ReplayFrom(
+        Node from,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var current = from;
+        while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
+            var head = _head;
+            if (current.Index < head.Index) {
+                current = head;
+                continue;
+            }
+
+            var next = current.Next;
+            if (next != null) {
+                current = next;
+                yield return current.Value;
+                continue;
+            }
+            // No next yet — either the stream is alive and we should wait, or it's completed.
+            var completion = current.Completion;
+            if (completion != null) {
+                if (completion is ChannelClosedException)
+                    yield break;
+                ExceptionDispatchInfo.Capture(completion).Throw();
+            }
+            // Wait for producer to set Next (and call TrySetResult on this node).
+            await current.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    protected Node GetReplayStart(int tailSize)
+    {
+        // We want to yield up to `tailSize` items already in the buffer plus all future items.
+        // With a linked list and no random access, "skip oldest" is an O(N) walk — acceptable
+        // because the common case is tailSize == int.MaxValue (no skip), and bounded buffers are
+        // small in practice. The result is the "previous" node; the caller yields its Next onward.
+        var current = _head;
+        if (tailSize >= int.MaxValue)
+            return current;
+
+        var tail = _tail;
+        var fromIndex = Math.Max(current.Index, tail.Index - Math.Max(0, tailSize));
+        while (current.Index < fromIndex) {
+            var next = current.Next;
+            if (next == null)
+                break; // reached tail; nothing to skip past
+
+            current = next;
+        }
+        return current;
+    }
+
+    // Walks forward from `from`, folding every node after it. Returns null when a concurrent
+    // eviction moved the head mid-walk, which would silently truncate the result.
+    protected (Node Node, TState Value)? TryFoldFrom<TState>(
+        Node head,
+        Node from,
+        TState state,
+        Func<TState, T, TState> folder)
+    {
+        var current = from;
+        while (current.Next is { } next) {
+            current = next;
+            state = folder(state, current.Value);
+        }
+        return ReferenceEquals(_head, head) ? (current, state) : null;
     }
 
     /// <summary>Current chain head (sentinel; oldest readable item is <c>CurrentHead.Next</c>).</summary>

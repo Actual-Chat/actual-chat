@@ -570,7 +570,7 @@ public partial class AudioStreamingBackend
                 transcriptDiffStream = transcripts
                     .Replay(cancellationToken)
                     .ToTranscriptDiffs()
-                    .Memoize(cancellationToken);
+                    .MemoizeFolding(Transcript.Empty, TranscriptFolder, TranscriptToDiff, cancellationToken);
 #pragma warning disable CA2025 // transcriptDiffStream must be disposed after publishTranscriptStreamTask completes
                 Task publishTranscriptStreamTask;
                 if (_transcriptStreams.Publish(transcriptStreamId, transcriptDiffStream))

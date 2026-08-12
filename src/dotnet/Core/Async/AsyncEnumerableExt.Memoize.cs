@@ -12,4 +12,12 @@ public static partial class AsyncEnumerableExt
         int capacity,
         CancellationToken cancellationToken = default)
         => new(source, capacity, cancellationToken);
+
+    public static FoldingAsyncMemoizer<T, TState> MemoizeFolding<T, TState>(
+        this IAsyncEnumerable<T> source,
+        TState seed,
+        Func<TState, T, TState> folder,
+        Func<TState, T>? toItem = null,
+        CancellationToken cancellationToken = default)
+        => new(source, seed, folder, toItem, int.MaxValue, cancellationToken);
 }
