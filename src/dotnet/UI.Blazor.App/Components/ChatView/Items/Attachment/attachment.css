@@ -212,7 +212,8 @@ body.hoverable .message-image-attachments.media-attachment-uploads .image-item:h
     @apply flex;
 }
 .message-image-attachments.media-attachment-uploads .attachment-item > img,
-.message-image-attachments.media-attachment-uploads .attachment-item > video {
+.message-image-attachments.media-attachment-uploads .attachment-item > video,
+.message-image-attachments.media-attachment-uploads .attachment-item > image-skeleton {
     @apply h-full;
 }
 .attachment-upload-ring {

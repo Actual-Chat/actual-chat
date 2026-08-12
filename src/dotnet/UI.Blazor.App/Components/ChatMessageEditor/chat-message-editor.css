@@ -476,11 +476,12 @@ body.narrow .attachment-wrapper.last-element {
 .narrow-panel .attachment-item {
     @apply rounded;
 }
-.attachment-item > img, .attachment-item > video {
+.attachment-item > img, .attachment-item > video, .attachment-item > image-skeleton {
     @apply object-cover;
 }
 .attachment-list-wrapper .attachment-item > img,
-.attachment-list-wrapper .attachment-item > video {
+.attachment-list-wrapper .attachment-item > video,
+.attachment-list-wrapper .attachment-item > image-skeleton {
     @apply h-24 w-auto;
     @apply min-w-18 max-w-36;
     @apply self-center;
@@ -491,7 +492,8 @@ body.narrow .narrow-panel .attachment-item {
     @apply min-w-10 max-w-10;
 }
 body.narrow .narrow-panel .attachment-item > img,
-.narrow-panel .attachment-item > video {
+.narrow-panel .attachment-item > video,
+.narrow-panel .attachment-item > image-skeleton {
     @apply w-10 h-10;
     @apply min-w-10 max-w-10;
     @apply min-h-10;

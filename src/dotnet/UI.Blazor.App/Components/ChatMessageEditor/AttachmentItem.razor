@@ -13,6 +13,12 @@
     var plugClass = progress.IsReady ? "" : "blurred-plug";
     var isFile = !(attachment.IsSupportedImage || m.HasCustomPreview || attachment.IsSupportedVideo);
     var percent = (int)Math.Round(Math.Clamp(progress.Progress, 0, 100));
+    var w = attachment.Size.Width;
+    var h = attachment.Size.Height;
+    var hasDims = w > 0 && h > 0;
+    var ratioStyle = hasDims
+        ? $"aspect-ratio: {((float)w / h).ToString(CultureInfo.InvariantCulture)}"
+        : null;
 }
 <li class="attachment-wrapper @(isFailed ? "attachment-failed" : "")">
     <div class="c-content">
@@ -20,17 +26,18 @@
             <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
                 <i class="icon-close text-lg"></i>
             </ButtonSquare>
-            @if (attachment.IsSupportedImage || m.HasCustomPreview) {
-                <img src="@previewUrl" alt="Attachment" class="@plugClass"/>
+            @if (attachment.IsSupportedImage || m.HasCustomPreview || m.HasImagePreview) {
+                <image-skeleton class="show-image-skeleton @plugClass" src="@previewUrl"
+                                width="@(hasDims ? w : 0)" height="@(hasDims ? h : 0)" style="@ratioStyle"/>
             } else if (attachment.IsSupportedVideo) {
                 <video preload="metadata" class="@plugClass">
                     <source src="@previewUrl#t=0.5"/>
                 </video>
-                @if (attachment.DurationMs > 0 && !isUploading) {
-                    <div class="c-duration">@TimeSpan.FromMilliseconds(attachment.DurationMs).Format(TimeSpanFormat.Clock)</div>
-                }
             } else {
                 <FileAttachmentView FileName="@attachment.FileName" FileType="@attachment.FileType"/>
+            }
+            @if (attachment.IsSupportedVideo && attachment.DurationMs > 0 && !isUploading) {
+                <div class="c-duration">@TimeSpan.FromMilliseconds(attachment.DurationMs).Format(TimeSpanFormat.Clock)</div>
             }
             @if (!progress.IsReady) {
                 @if (isUploading) {
