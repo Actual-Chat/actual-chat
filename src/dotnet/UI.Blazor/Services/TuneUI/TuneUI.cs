@@ -22,7 +22,8 @@ public abstract class TuneUI : ProcessorBase
         [Tune.BeginRecording] = new ([100, 50, 50], "begin-recording"),
         [Tune.ConfirmRecording] = new ([50, 50, 100] /*, "confirm-recording"*/),
         [Tune.EndRecording] = new ([100], "end-recording"),
-        [Tune.RemindOfRecording] = new ([20], "remind-of-recording"),
+        [Tune.RemindOfRecording] = new ([15], "remind-of-recording", TunePlayMode.VibrateOrSound),
+        [Tune.RecordingWillStop] = new ([40, 60, 40], "recording-will-stop", TunePlayMode.VibrateOrSound),
         // Playback
         [Tune.StartListening] = new ([100] /*, "start-listening"*/),
         [Tune.StopListening] = new ([20] /*, "stop-listening"*/),
@@ -56,6 +57,7 @@ public abstract class TuneUI : ProcessorBase
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.init";
     private DotNetObjectReference<TuneUI>? _backendRef;
     private CpuTimestamp _lastBeginRecordingAt;
+    private Dictionary<Tune, TuneInfo>? _resolvedTunes;
 
     protected TuneUI(UIHub hub)
     {
@@ -71,8 +73,11 @@ public abstract class TuneUI : ProcessorBase
     private async ValueTask Initialize()
     {
         try {
+            await WhenCanVibrateKnown().ConfigureAwait(false);
+            var resolvedTunes = Resolve(CanVibrate);
+            _resolvedTunes = resolvedTunes;
             _backendRef ??= DotNetObjectReference.Create(this);
-            await Hub.JS.InvokeVoidAsync(JSInitMethod, _backendRef, Tunes).ConfigureAwait(false);
+            await Hub.JS.InvokeVoidAsync(JSInitMethod, _backendRef, resolvedTunes).ConfigureAwait(false);
         }
         catch (JSDisconnectedException e) {
             // The headless walkie-talkie scope marks its runtime disconnected up front, so this
@@ -113,6 +118,29 @@ public abstract class TuneUI : ProcessorBase
     protected abstract Task PlayInternal(Tune tune);
 
     protected abstract Task PlayAndWaitInternal(Tune tune);
+
+    // False on anything without vibration hardware - desktop browsers, Windows, Mac Catalyst,
+    // iPads. Read once, after WhenCanVibrateKnown, to resolve the TunePlayMode.VibrateOrSound tunes.
+    protected abstract bool CanVibrate { get; }
+
+    // Web reads CanVibrate off BrowserInfo, which is only populated once JS calls back
+    protected virtual Task WhenCanVibrateKnown()
+        => Task.CompletedTask;
+
+    protected TuneInfo? GetTuneInfo(Tune tune)
+        // Falls back to the unresolved table for a tune played before Initialize completed
+        => (_resolvedTunes ?? Tunes).GetValueOrDefault(tune);
+
+    // Private methods
+
+    private static Dictionary<Tune, TuneInfo> Resolve(bool canVibrate)
+        => Tunes.ToDictionary(
+            kv => kv.Key,
+            kv => kv.Value switch {
+                { Mode: TunePlayMode.Both } info => info,
+                var info when canVibrate => info with { Sound = "" },
+                var info => info with { Vibration = [] },
+            });
 
     private bool IsSuppressed(Tune tune)
         => BeginRecordingFollowups.Contains(tune)
@@ -162,9 +190,24 @@ public enum Tune
     WalkieReplyNothingHeard,
     WalkieGestureDetected,
     WalkieReplyFailed,
+    RecordingWillStop,
 }
 
 /// <summary>
 /// Defines vibration pattern and optional sound for a <see cref="Tune"/>.
 /// </summary>
-public record TuneInfo(int[] Vibration, string Sound = "");
+// Mode never reaches JS: TuneUI resolves it away before handing the table over.
+public record TuneInfo(
+    int[] Vibration,
+    string Sound = "",
+    [property: JsonIgnore] TunePlayMode Mode = TunePlayMode.Both);
+
+/// <summary>
+/// Whether a <see cref="Tune"/> plays vibration and sound together, or prefers vibration
+/// and falls back to the sound only on devices that can't vibrate.
+/// </summary>
+public enum TunePlayMode
+{
+    Both = 0,
+    VibrateOrSound,
+}

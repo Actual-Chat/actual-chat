@@ -42,6 +42,10 @@ export const DeviceInfo = {
         && (('ontouchstart' in windowLike) || touchPointCount >= 1)
         && windowLike.matchMedia?.('(pointer: coarse)').matches),
 
+    // navigator.vibrate exists on desktop Chromium/Firefox and silently does nothing there,
+    // so the isMobile check is what makes this mean "there is hardware behind it"
+    canVibrate: Boolean(isMobile && navigatorLike && ('vibrate' in navigatorLike)),
+
     updateBodyClasses: function (): void {
         const body = browserGlobals.document?.body;
         if (!body)

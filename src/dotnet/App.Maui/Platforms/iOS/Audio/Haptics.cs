@@ -10,9 +10,28 @@ public class Haptics(AppUIHub hub) : IDisposable
     private const float Sharpness = 0.5f;
     private readonly Lock _lock = new ();
     private readonly Dictionary<Tune, ICHHapticPatternPlayer> _players = new ();
+    private bool? _isSupported;
 
     private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
     protected ILogger Log => field ??= hub.LogFor(GetType());
+
+    // Engine creation is what fails on hardware without a Taptic Engine, and it logs on the way
+    // out - so the answer is cached rather than re-derived per tune.
+    public bool IsSupported {
+        get {
+            if (_isSupported is { } isSupported)
+                return isSupported;
+
+            try {
+                _ = HapticEngine;
+                _isSupported = true;
+            }
+            catch (Exception) {
+                _isSupported = false;
+            }
+            return _isSupported.Value;
+        }
+    }
 
     public void Dispose()
     {
@@ -30,6 +49,10 @@ public class Haptics(AppUIHub hub) : IDisposable
 
     public async Task Vibrate(Tune tune, int[] vibration)
     {
+        // BuildPattern would produce a zero-duration event with no curve points
+        if (vibration.Length == 0)
+            return;
+
         if (HapticEngine.IsMutedForHaptics)
             return;
 

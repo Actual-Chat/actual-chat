@@ -42,13 +42,15 @@ public class MauiTuneUI : TuneUI
 
     protected override async Task PlayAndWaitInternal(Tune tune)
     {
-        if (!Tunes.TryGetValue(tune, out var info))
+        if (GetTuneInfo(tune) is not { } info)
             return;
 
-        var vibrateTask = Vibrate(tune);
+        var vibrateTask = Vibrate(tune, info);
         var playSoundTask = PlaySound(info.Sound);
         await Task.WhenAll(vibrateTask, playSoundTask).ConfigureAwait(false);
     }
+
+    protected override bool CanVibrate => Vibration.Default.IsSupported;
 
     // Protected methods
 
@@ -95,12 +97,12 @@ public class MauiTuneUI : TuneUI
         }
     }
 
-    protected virtual async Task Vibrate(Tune tune)
+    protected virtual async Task Vibrate(Tune tune, TuneInfo info)
     {
-        if (!Tunes.TryGetValue(tune, out var info))
+        var pattern = info.Vibration;
+        if (pattern.Length == 0)
             return;
 
-        var pattern = info.Vibration;
         var vibration = Vibration.Default;
         if (!vibration.IsSupported)
             return;

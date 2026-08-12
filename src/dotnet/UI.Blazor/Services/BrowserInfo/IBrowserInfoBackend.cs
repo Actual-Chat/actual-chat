@@ -28,6 +28,7 @@ public interface IBrowserInfoBackend
         bool IsEdge,
         bool IsWebKit,
         bool IsTouchCapable,
+        bool CanVibrate,
         bool? IsWasmReady,
         string WindowId);
 

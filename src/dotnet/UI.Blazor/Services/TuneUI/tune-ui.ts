@@ -40,6 +40,7 @@ export enum Tune {
     WalkieReplyNothingHeard,
     WalkieGestureDetected,
     WalkieReplyFailed,
+    RecordingWillStop,
 }
 
 export type TuneName = keyof typeof Tune;
@@ -56,6 +57,7 @@ const cooldownMap = new Map<Tune, number>([
     [Tune.ConfirmRecording, 1],
     [Tune.EndRecording, 1],
     [Tune.RemindOfRecording, 1],
+    [Tune.RecordingWillStop, 1],
     [Tune.StartListening, 1],
     [Tune.StopListening, 1],
     [Tune.StartReplay, 1],
