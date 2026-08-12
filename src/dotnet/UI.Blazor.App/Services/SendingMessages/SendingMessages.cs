@@ -197,8 +197,11 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
                     if (sourcePreview is null) {
                         var contentType = session.FileProvider.Metadata.FileType;
-                        if (MediaTypeExt.IsVisualMedia(contentType))
-                            sourcePreview = new FilePreview(UrlMapper.ContentUrl(session.MediaRef.BlobId));
+                        var mediaRef = session.MediaRef;
+                        if (MediaTypeExt.IsSupportedVideo(contentType) && !mediaRef.ThumbnailBlobId.IsNullOrEmpty())
+                            sourcePreview = new FilePreview(UrlMapper.ContentUrl(mediaRef.ThumbnailBlobId), IsImagePreview: true);
+                        else if (MediaTypeExt.IsVisualMedia(contentType))
+                            sourcePreview = new FilePreview(UrlMapper.ContentUrl(mediaRef.BlobId));
                     }
                     attachmentPreviewTask = Task.FromResult(AttachmentPreview.From(sourcePreview));
                 }
