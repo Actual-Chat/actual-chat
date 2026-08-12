@@ -167,7 +167,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     }
 
     private ValueTask<ActiveShare[]> DropExpired(ActiveShare[] shares, CancellationToken cancellationToken)
-        => new (shares.Where(x => x.ExpiresAt > ServerNow).ToArray());
+        => new (WithoutExpired(shares));
 
     private async Task ReportLoop(ActiveShare[] activeShares, CancellationToken cancellationToken)
     {
@@ -182,15 +182,24 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         await Tracker.Start(cancellationToken).ConfigureAwait(false);
         var timeout = activeShares.Max(x => x.ExpiresAt) - ServerNow;
         using var cts = cancellationToken.CreateLinkedTokenSource(timeout < MaxReportLoopTimeout ? timeout : null);
-        // Waits for the first live fix, so the cycle below doesn't re-post the cached one as fresh.
-        await Tracker.Get(true, cts.Token).ConfigureAwait(false);
-        await AsyncChain.From(ReportForChats)
-            .Log(LogLevel.Debug, Log)
-            .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
-            .AppendDelay(Constants.Location.UpdatePeriod)
-            .CycleForever()
-            .RunIsolated(cts.Token)
-            .ConfigureAwait(false);
+        try {
+            // Waits for the first live fix, so the cycle below doesn't re-post the cached one as fresh.
+            await Tracker.Get(true, cts.Token).ConfigureAwait(false);
+            await AsyncChain.From(ReportForChats)
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
+                .AppendDelay(Constants.Location.UpdatePeriod)
+                .CycleForever()
+                .RunIsolated(cts.Token)
+                .ConfigureAwait(false);
+        }
+        finally {
+            // cts fired on its own = the last share expired. Nothing re-reads _shares on a timer, so
+            // without this DispatchShares never sees the change - and the tracker (on Android a
+            // foreground service that outlives this loop) would run on until the next launch.
+            if (!cancellationToken.IsCancellationRequested)
+                DropExpiredShares();
+        }
         return;
 
         async Task ReportForChats(CancellationToken cancellationToken1) {
@@ -283,6 +292,17 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
                     : x)
                 .ToArray();
     }
+
+    private void DropExpiredShares()
+    {
+        // The server ends an expired share on its own - its LiveDuration is what ListLive filters by -
+        // so unlike StopSharing this needs no StopServerShares call.
+        lock (_lock)
+            _shares.Value = WithoutExpired(_shares.Value);
+    }
+
+    private ActiveShare[] WithoutExpired(ActiveShare[] shares)
+        => shares.Where(x => x.ExpiresAt > ServerNow).ToArray();
 
     // Nested types
 

@@ -7,9 +7,21 @@ namespace ActualChat.App.Maui.Services;
 /// Foreground-only (no background-service integration), so it's used on platforms that
 /// don't need background sharing (Windows); Android/iOS use native background-capable trackers.
 /// </summary>
-public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(hub)
+public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(hub), IDisposable
 {
     private readonly IGeolocation _geolocation = Geolocation.Default;
+
+    public void Dispose()
+    {
+        if (!IsTracking)
+            return;
+
+        // Geolocation.Default is process-wide, so both the session and these handlers outlive the
+        // scope this tracker belongs to - a recycled scope would leak them.
+        IsTracking = false;
+        DetachHandlers();
+        _geolocation.StopListeningForeground();
+    }
 
     public override async Task Start(CancellationToken cancellationToken)
     {
@@ -31,8 +43,7 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
             // Roll back so a later Start can retry from a clean state.
             IsTracking = false;
             SetError(ToTrackingError(e));
-            _geolocation.LocationChanged -= OnLocationChanged;
-            _geolocation.ListeningFailed -= OnListeningFailed;
+            DetachHandlers();
             throw;
         }
     }
@@ -44,11 +55,12 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
 
         IsTracking = false;
         SetCached(null);
-        _geolocation.LocationChanged -= OnLocationChanged;
-        _geolocation.ListeningFailed -= OnListeningFailed;
+        DetachHandlers();
         _geolocation.StopListeningForeground();
         return Task.CompletedTask;
     }
+
+    // Private methods
 
     private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
         => SetCached(e.Location.ToGeoFix());
@@ -58,12 +70,17 @@ public sealed class MauiLocationTracker(AppUIHub hub) : MauiLocationTrackerBase(
         // MAUI stops the underlying session before raising this, so there's no self-heal:
         // reset tracking state and detach so a later Start re-arms from scratch.
         IsTracking = false;
-        _geolocation.LocationChanged -= OnLocationChanged;
-        _geolocation.ListeningFailed -= OnListeningFailed;
+        DetachHandlers();
         SetError(e.Error switch {
             GeolocationError.Unauthorized => GeoTrackingError.PermissionDenied,
             GeolocationError.PositionUnavailable => GeoTrackingError.PositionUnavailable,
             _ => throw new ArgumentOutOfRangeException(nameof(e.Error), e.Error, null),
         });
+    }
+
+    private void DetachHandlers()
+    {
+        _geolocation.LocationChanged -= OnLocationChanged;
+        _geolocation.ListeningFailed -= OnListeningFailed;
     }
 }

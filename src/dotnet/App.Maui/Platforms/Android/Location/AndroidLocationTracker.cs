@@ -20,8 +20,7 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
             return;
 
         IsTracking = false;
-        var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
-        Context.StopService(intent);
+        StopService();
     }
 
     public override async Task Start(CancellationToken cancellationToken)
@@ -48,13 +47,13 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
 
     public override Task Stop(CancellationToken cancellationToken)
     {
-        if (!IsTracking)
-            return Task.CompletedTask;
-
-        IsTracking = false;
-        SetCached(null);
-        var intent = new Intent(Context, typeof(AndroidLocationForegroundService));
-        Context.StopService(intent);
+        if (IsTracking) {
+            IsTracking = false;
+            SetCached(null);
+        }
+        // Unconditional: the service outlives the process that started it, so this instance may have
+        // to stop one it never started - and this is the only path that runs when sharing ends.
+        StopService();
         return Task.CompletedTask;
     }
 
@@ -65,4 +64,9 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
 
     internal static void ReportError(GeoTrackingError error)
         => _instance?.SetError(error);
+
+    // Private methods
+
+    private static void StopService()
+        => Context.StopService(new Intent(Context, typeof(AndroidLocationForegroundService)));
 }

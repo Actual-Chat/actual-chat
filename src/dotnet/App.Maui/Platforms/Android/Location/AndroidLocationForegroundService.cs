@@ -36,14 +36,22 @@ public sealed class AndroidLocationForegroundService : Service, ILocationListene
 
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
     {
-        if ((intent?.Action ?? "") != ActionStart)
+        if ((intent?.Action ?? "") != ActionStart) {
+            // A restart delivers a null intent, so tracking can't resume - the accuracy lived in the extras.
+            // Lingering would pin the process behind a "Sharing your location" FGS that requests no fixes and
+            // nothing stops: LiveLocationReporter, which re-arms this service, only runs once the UI renders.
+            StopForeground(StopForegroundFlags.Remove);
+            StopSelf();
             return StartCommandResult.NotSticky;
+        }
 
         var accuracy = (GeoTrackingAccuracy)intent!.Extras!
             .GetInt(IntentExtras.Accuracy, (int)GeoTrackingAccuracy.Balanced);
         StartForeground1(BuildNotification());
         StartLocationUpdates(accuracy);
-        return StartCommandResult.Sticky;
+        // Not sticky: sharing is driven by LiveLocationReporter, which resumes its persisted
+        // shares on the next launch and starts this service again.
+        return StartCommandResult.NotSticky;
     }
 
     public void OnLocationChanged(Android.Locations.Location location)
