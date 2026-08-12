@@ -60,12 +60,13 @@
 
         var settingsUI = Hub.UserSettingsUI;
         var addedCount = 0;
+        var joinedAt = Hub.Clocks.ServerClock.Now;
         await settingsUI.UserWalkieTalkieSettings().Update(x => {
             foreach (var chatId in chatIds) {
-                if (x.PttChatIds.Length >= UserWalkieTalkieSettings.MaxChatCount)
+                if (x.AllPttChats.Length >= UserWalkieTalkieSettings.MaxChatCount)
                     break;
 
-                x = x.WithPttChat(chatId);
+                x = x.WithPttChat(chatId, joinedAt);
                 addedCount++;
             }
             return x;

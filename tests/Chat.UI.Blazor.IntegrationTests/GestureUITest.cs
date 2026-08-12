@@ -83,8 +83,12 @@ public class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         await SensorTester.SignInAsUniqueBob();
         var (chatId, _) = await SensorTester.CreateChat(true);
+        // Armed = chat-level PTT on + consent within its epoch; the backend stamps the epoch.
+        var chat = await SensorTester.AppServices.Commander().Call(new ChatsBackend_Change(
+            chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart })));
         var walkieTalkieSettings = Hub.UserSettingsUI.UserWalkieTalkieSettings();
         await walkieTalkieSettings.Update(x => x with {
+            PttChats = [new PttChat(chatId, chat.PttEnabledAt!.Value)],
             PttChatIds = [chatId],
             AreGesturesAlwaysOn = true,
             IsFlipToTalkEnabled = true,

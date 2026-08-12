@@ -129,6 +129,8 @@ public class UserSettings(IServiceProvider services) : IUserSettings
                 return typeof(ChatUserSettings);
             if (key.StartsWith(AddChatMembersBannerUserSettings.KeyPrefix))
                 return typeof(AddChatMembersBannerUserSettings);
+            if (key.StartsWith(PttJoinBannerUserSettings.KeyPrefix))
+                return typeof(PttJoinBannerUserSettings);
 
             return typeof(StoredSettings);
         }

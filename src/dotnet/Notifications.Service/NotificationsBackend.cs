@@ -1115,8 +1115,13 @@ public class NotificationsBackend(IServiceProvider services)
         }
     }
 
-    private Task<bool> IsArmedForWalkieTalkie(UserId userId, ChatId chatId, CancellationToken cancellationToken)
-        => ServerKvasBackend.IsWalkieTalkieArmed(userId, chatId, cancellationToken);
+    private async Task<bool> IsArmedForWalkieTalkie(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        return await ServerKvasBackend
+            .IsWalkieTalkieArmed(userId, chatId, chat?.PttEnabledAt, cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     private static (ChatId? ChatId, long EntryLid) GetReadAnchor(Notification notification)
         => notification switch {

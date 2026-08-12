@@ -19,6 +19,7 @@ public static class ChatExt
             || diff.SystemTag.HasValue
             || diff.IsArchived.HasValue
             || diff.IsSummarized.HasValue
+            || diff.PttEnabledAt.HasValue
             || diff.PlaceId is not null
             || diff.AliasId is not null;
 

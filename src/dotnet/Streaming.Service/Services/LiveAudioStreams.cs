@@ -128,7 +128,9 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
             return;
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (!await ServerKvasBackend.IsWalkieTalkieArmed(account.Id, chatId, cancellationToken).ConfigureAwait(false))
+        if (!await ServerKvasBackend
+                .IsWalkieTalkieArmed(account.Id, chatId, chat.PttEnabledAt, cancellationToken)
+                .ConfigureAwait(false))
             return;
 
         // Client-supplied entryId is trusted: caller passed ReadAudio + armed gates, and the write is forward-only.

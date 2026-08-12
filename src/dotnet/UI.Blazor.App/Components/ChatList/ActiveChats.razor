@@ -8,7 +8,7 @@
 
 <div class="c-delimiter"></div>
 <div class="active-chats">
-    <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
+    <div class="c-title" data-tooltip="Chats where you are listening, recording, or in Push to Talk mode">Active Chats</div>
 
     <div class="chat-list chat-list-active">
         @foreach(var chat in chats) {
@@ -20,6 +20,7 @@
 @code {
     private IChats Chats => Hub.Chats;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 
@@ -32,8 +33,12 @@
     protected override async Task<List<Chat>> ComputeState(CancellationToken cancellationToken) {
         DebugLog?.LogDebug("-> ComputeState: {List}", ChatListKind.Active);
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
-        var chats = (await activeChats
-                .Select(ac => Chats.Get(Session, ac.ChatId, cancellationToken))
+        var chatIds = activeChats.Select(ac => ac.ChatId).ToList();
+        // PTT-armed chats always belong here, even before their listening player starts.
+        var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        chatIds.AddRange(pttChatIds.Where(id => !chatIds.Contains(id)));
+        var chats = (await chatIds
+                .Select(chatId => Chats.Get(Session, chatId, cancellationToken))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false))
             .SkipNullItems()

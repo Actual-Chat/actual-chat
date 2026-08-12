@@ -12,6 +12,12 @@
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
-    private void OnClick()
-        => _ = ActiveChatsUI.RemoveActiveChat(ChatState.Id);
+    private void OnClick() {
+        var chatId = ChatState.Id;
+        _ = ActiveChatsUI.RemoveActiveChat(chatId);
+        // An armed chat would immediately re-enter the list, so removal also leaves PTT.
+        _ = Hub.UserSettingsUI.UserWalkieTalkieSettings().Update(
+            x => x.AllPttChats.Any(c => c.ChatId == chatId) ? x.WithoutPttChat(chatId) : x,
+            CancellationToken.None);
+    }
 }

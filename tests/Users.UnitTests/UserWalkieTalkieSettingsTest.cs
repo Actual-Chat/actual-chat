@@ -38,6 +38,8 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
 
         // assert
         settings.PttChatIds.Should().Equal(e2Era.PttChatIds);
+        settings.PttChats.Should().BeEmpty("the member is absent from the blob");
+        settings.AllPttChats.Should().Equal(new PttChat(TestChatId, default));
         settings.AreAudibleCuesEnabled.Should().BeFalse();
         settings.IsHeadsetButtonEnabled.Should().BeNull("the member is absent from the blob");
         (settings.IsHeadsetButtonEnabled ?? true).Should().BeTrue("read sites must default it to on");
@@ -66,10 +68,60 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     [Fact]
     public void WithPttChatIsIdempotent()
     {
-        var settings = new UserWalkieTalkieSettings().WithPttChat(TestChatId).WithPttChat(TestChatId);
+        var joinedAt = Moment.EpochStart + TimeSpan.FromDays(1);
+        var settings = new UserWalkieTalkieSettings()
+            .WithPttChat(TestChatId, joinedAt)
+            .WithPttChat(TestChatId, joinedAt);
         // act + assert
+        settings.PttChats.Should().Equal(new PttChat(TestChatId, joinedAt));
         settings.PttChatIds.Should().Equal(TestChatId);
+        settings.WithoutPttChat(TestChatId).PttChats.Should().BeEmpty();
         settings.WithoutPttChat(TestChatId).PttChatIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WithPttChatEvictsTheOldestBeyondTheCap()
+    {
+        // arrange
+        var t0 = Moment.EpochStart + TimeSpan.FromDays(1);
+        var chatIds = Enumerable.Range(0, UserWalkieTalkieSettings.MaxChatCount + 1)
+            .Select(i => ChatId.Parse($"evictionchat{i}"))
+            .ToArray();
+        var settings = new UserWalkieTalkieSettings();
+
+        // act
+        for (var i = 0; i < chatIds.Length; i++)
+            settings = settings.WithPttChat(chatIds[i], t0 + TimeSpan.FromMinutes(i));
+
+        // assert: the least-recently-joined entry (index 0) is gone, the rest survive in order
+        settings.PttChats.Length.Should().Be(UserWalkieTalkieSettings.MaxChatCount);
+        settings.PttChats.Select(c => c.ChatId).Should().Equal(chatIds.Skip(1));
+        settings.PttChatIds.Should().Equal(chatIds.Skip(1));
+    }
+
+    [Fact]
+    public void LegacyPttChatIdsSurfaceUnarmed()
+    {
+        // arrange: a blob written before PttChats existed
+        var settings = new UserWalkieTalkieSettings { PttChatIds = [TestChatId] };
+        var enabledAt = Moment.EpochStart + TimeSpan.FromDays(1);
+
+        // act + assert: visible for listing/removal, but never armed under any live epoch
+        settings.AllPttChats.Should().Equal(new PttChat(TestChatId, default));
+        settings.IsArmedIn(TestChatId, enabledAt).Should().BeFalse();
+        settings.WithoutPttChat(TestChatId).AllPttChats.Should().BeEmpty();
+        settings.WithoutPttChat(TestChatId).PttChatIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void IsArmedRequiresConsentWithinTheEnableEpoch()
+    {
+        var enabledAt = Moment.EpochStart + TimeSpan.FromDays(1);
+        // act + assert
+        UserWalkieTalkieSettings.IsArmed(null, enabledAt + TimeSpan.FromHours(1)).Should().BeFalse();
+        UserWalkieTalkieSettings.IsArmed(enabledAt, enabledAt - TimeSpan.FromSeconds(1)).Should().BeFalse();
+        UserWalkieTalkieSettings.IsArmed(enabledAt, enabledAt).Should().BeTrue();
+        UserWalkieTalkieSettings.IsArmed(enabledAt, enabledAt + TimeSpan.FromHours(1)).Should().BeTrue();
     }
 
     [Fact]
@@ -77,6 +129,7 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     {
         var settings = new UserWalkieTalkieSettings {
             PttChatIds = [TestChatId],
+            PttChats = [new PttChat(TestChatId, Moment.EpochStart + TimeSpan.FromDays(1))],
             IsFlipToTalkEnabled = false,
             ShakeSensitivity = ShakeSensitivity.High,
             AreGesturesAlwaysOn = true,
@@ -91,6 +144,7 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
                 var d = (UserWalkieTalkieSettings)deserialized;
                 var o = (UserWalkieTalkieSettings)original;
                 d.PttChatIds.Should().Equal(o.PttChatIds);
+                d.PttChats.Should().Equal(o.PttChats);
                 d.IsFlipToTalkEnabled.Should().Be(o.IsFlipToTalkEnabled);
                 d.IsDoubleShakeEnabled.Should().Be(o.IsDoubleShakeEnabled);
                 d.ShakeSensitivity.Should().Be(o.ShakeSensitivity);
@@ -110,6 +164,8 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
         AssertPassesThroughUnionSerializers(settings,
             (deserialized, _) => ((UserAppSettings)deserialized).IsFaceDownMicStopDisabled.Should().BeTrue());
     }
+
+    // Private methods
 
     private void AssertPassesThroughUnionSerializers<T>(T settings, Action<StoredSettings, StoredSettings> assertion)
         where T : StoredSettings

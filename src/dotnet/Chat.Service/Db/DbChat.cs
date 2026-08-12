@@ -37,6 +37,11 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsPlaceRootChat { get; set; }
     public bool? IsSummarized { get; set; }
 
+    public DateTime? PttEnabledAt {
+        get => field?.DefaultKind(DateTimeKind.Utc);
+        set => field = value?.DefaultKind(DateTimeKind.Utc);
+    }
+
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
         set => field = value.DefaultKind(DateTimeKind.Utc);
@@ -64,6 +69,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             MediaId = ActualChat.MediaId.ParseNullable(MediaId),
             AliasId = ActualChat.AliasId.ParseNullable(AliasId),
             IsSummarized = IsSummarized,
+            PttEnabledAt = PttEnabledAt is { } pttEnabledAt ? new Moment(pttEnabledAt) : null,
         };
 
     public void UpdateFrom(Chat model)
@@ -92,5 +98,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsPlaceRootChat = model.Id is PlaceChatId { IsRoot: true };
         AliasId = model.AliasId?.NormalizedValue ?? "";
         IsSummarized = model.IsSummarized;
+        PttEnabledAt = model.PttEnabledAt?.ToDateTime();
     }
 }

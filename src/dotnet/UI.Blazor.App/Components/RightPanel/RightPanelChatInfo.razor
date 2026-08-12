@@ -5,19 +5,46 @@
         return;
 }
 
+@{
+    var summarizeClick = m.IsOwner
+        ? EventCallback.Factory.Create(this, () => OnSummarizeToggleChanged(!m.IsSummarized))
+        : default;
+    var pttClick = m.IsOwner
+        ? EventCallback.Factory.Create(this, () => OnPttToggleChanged(!m.IsPttEnabled))
+        : default;
+}
 <div class="c-chat-info">
-    @if (m.ShowSummarizationToggle) {
+    @if (m.ShowSummarizationToggle || m.ShowPttToggle) {
         <Card>
             @if (m.ShowSummarizationToggle) {
                 var iconCls = m.IsSummarized ? "text-primary" : "text-03";
-                <CardItem Click="@(_ => OnSummarizeToggleChanged(!m.IsSummarized))">
+                <CardItem Click="@summarizeClick">
                     <Left>
                         <i class="text-2xl icon-ai-stars @iconCls"></i>
                     </Left>
                     <Title>Summarize</Title>
-                    <Caption>@(m.IsSummarized ? "On" : "Off")</Caption>
+                    <Caption>@GetStateCaption(m.IsSummarized, m.IsOwner)</Caption>
                     <Right>
-                        <Toggle IsChecked="@m.IsSummarized" IsCheckedChanged="@OnSummarizeToggleChanged"/>
+                        <Toggle
+                            IsDisabled="@(!m.IsOwner)"
+                            IsChecked="@m.IsSummarized"
+                            IsCheckedChanged="@OnSummarizeToggleChanged"/>
+                    </Right>
+                </CardItem>
+            }
+            @if (m.ShowPttToggle) {
+                var pttIconCls = m.IsPttEnabled ? "text-primary" : "text-03";
+                <CardItem Click="@pttClick">
+                    <Left>
+                        <i class="text-2xl icon-talking @pttIconCls"></i>
+                    </Left>
+                    <Title>Push to Talk</Title>
+                    <Caption>@GetStateCaption(m.IsPttEnabled, m.IsOwner)</Caption>
+                    <Right>
+                        <Toggle
+                            IsDisabled="@(!m.IsOwner)"
+                            IsChecked="@m.IsPttEnabled"
+                            IsCheckedChanged="@OnPttToggleChanged"/>
                     </Right>
                 </CardItem>
             }
@@ -37,24 +64,60 @@
             return new();
 
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
+        var isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var isSummarized = chat.IsSummarized ?? false;
+        var isPttEnabled = chat.PttEnabledAt != null;
+        // Non-owners see turned-on settings as read-only facts; turned-off ones are hidden entirely.
         return new() {
-            ShowSummarizationToggle = isOwner,
-            IsSummarized = Chat.IsSummarized ?? false,
+            IsOwner = isOwner,
+            ShowSummarizationToggle = isOwner || isSummarized,
+            IsSummarized = isSummarized,
+            ShowPttToggle = isIncompleteUIEnabled && !chat.Id.IsThread() && (isOwner || isPttEnabled),
+            IsPttEnabled = isPttEnabled,
         };
     }
 
     private Task OnSummarizeToggleChanged(bool isSummarized) {
-        if (State.Value.IsSummarized == isSummarized)
+        if (!State.Value.IsOwner || State.Value.IsSummarized == isSummarized)
             return Task.CompletedTask;
 
         var update = Change.Update<ChatDiff>(new() { IsSummarized = isSummarized });
         return UICommander.Run(new Chats_Change(Session, Chat.Id, null, update));
     }
 
+    private async Task OnPttToggleChanged(bool isPttEnabled) {
+        var chat = Chat;
+        if (chat is null || !State.Value.IsOwner || State.Value.IsPttEnabled == isPttEnabled)
+            return;
+
+        // A non-null value is just a "turn it on" sentinel - the server stamps the real epoch.
+        var pttEnabledAt = isPttEnabled ? (Moment?)Clocks.SystemClock.Now : null;
+        var update = Change.Update<ChatDiff>(new() { PttEnabledAt = pttEnabledAt });
+        var (newChat, error) = await UICommander.Run(new Chats_Change(Session, chat.Id, null, update));
+        if (error != null)
+            return;
+
+        // Flipping the toggle is itself consent: auto-arm the owner with the server-stamped epoch.
+        if (isPttEnabled && newChat?.PttEnabledAt is { } enabledAt)
+            await UserSettingsUI.UserWalkieTalkieSettings()
+                .Update(x => x.WithPttChat(chat.Id, enabledAt), CancellationToken.None);
+        else if (!isPttEnabled)
+            await UserSettingsUI.UserWalkieTalkieSettings()
+                .Update(x => x.WithoutPttChat(chat.Id), CancellationToken.None);
+    }
+
+    private static string GetStateCaption(bool isOn, bool isOwner) {
+        var state = isOn ? "On" : "Off";
+        return isOwner ? state : $"{state} - by chat owner";
+    }
+
     // Nested types
 
     public sealed record Model {
+        public bool IsOwner { get; init; }
         public bool IsSummarized { get; init; }
         public bool ShowSummarizationToggle { get; init; }
+        public bool IsPttEnabled { get; init; }
+        public bool ShowPttToggle { get; init; }
     }
 }

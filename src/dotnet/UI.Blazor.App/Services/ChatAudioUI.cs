@@ -121,10 +121,19 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetPttChatIds(CancellationToken cancellationToken)
     {
+        // Armed = consent within the chat's current enable-epoch; the Chats.Get dependency
+        // re-arms/disarms everything downstream when an owner flips the chat's PTT toggle.
         await Hub.ChatUI.WhenReady.ConfigureAwait(false);
-        return await UserSettingsUI.UserWalkieTalkieSettings()
-            .Get(x => x.PttChatIds.ToList(), cancellationToken)
+        var pttChats = await UserSettingsUI.UserWalkieTalkieSettings()
+            .Get(x => x.PttChats, cancellationToken)
             .ConfigureAwait(false);
+        var result = new List<ChatId>(pttChats.Length);
+        foreach (var pttChat in pttChats) {
+            var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
+            if (chat != null && UserWalkieTalkieSettings.IsArmed(chat.PttEnabledAt, pttChat.JoinedAt))
+                result.Add(pttChat.ChatId);
+        }
+        return result;
     }
 
     [ComputeMethod] // Synced

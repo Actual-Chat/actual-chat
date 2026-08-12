@@ -121,10 +121,17 @@ public class ReportPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         heard.EntryLid.Should().Be(entry2.Id.LocalId);
     }
 
-    private Task Arm(UserId userId, ChatId chatId)
-        => AppHost.Services.GetRequiredService<IServerKvasBackend>()
+    private async Task Arm(UserId userId, ChatId chatId)
+    {
+        // Chat-level PTT is a precondition for arming; the value below is just a "turn it on"
+        // sentinel - the backend stamps the real epoch, and consent must land within it.
+        var services = AppHost.Services;
+        var chat = await services.Commander().Call(new ChatsBackend_Change(
+            chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart })));
+        await services.GetRequiredService<IServerKvasBackend>()
             .ForUser(userId).UserWalkieTalkieSettings()
-            .Update(x => x.WithPttChat(chatId));
+            .Update(x => x.WithPttChat(chatId, chat.PttEnabledAt!.Value));
+    }
 
     private async Task<(Chat.Chat Chat, ChatEntry Entry, string StreamId)> CreateChatWithStreamingAudioEntry(
         Session session, string title)

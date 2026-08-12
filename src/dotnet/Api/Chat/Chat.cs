@@ -40,6 +40,8 @@ public sealed partial record Chat(
     [DataMember, Key(15)] public string Description { get; init; } = "";
     [DataMember, Key(16)] public AliasId? AliasId { get; init; }
     [DataMember, Key(17)] public bool? IsSummarized { get; init; }
+    // Non-null = PTT is on; the value is the consent epoch: only PttChat.JoinedAt >= PttEnabledAt counts as armed.
+    [DataMember, Key(18)] public Moment? PttEnabledAt { get; init; }
 
     // Populated only on front-end
     [DataMember, Key(11)] public AuthorRules Rules { get; init; } = null!;
@@ -86,4 +88,5 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember] public string? Description { get; init; }
     [DataMember] public AliasId? AliasId { get; init; }
     [DataMember] public Option<bool?> IsSummarized { get; init; }
+    [DataMember] public Option<Moment?> PttEnabledAt { get; init; }
 }
