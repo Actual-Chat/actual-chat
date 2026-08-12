@@ -17,8 +17,7 @@
 </p>
 
 @code {
-    // Transcription is already running long before this: every other participant sees the text while
-    // the speaker alone still reads "Detecting language", so the claim expires on its own.
+    // Everyone else already sees the transcript by then, so the claim expires on its own.
     private static readonly TimeSpan DetectingLanguageDuration = TimeSpan.FromSeconds(3);
 
     private CancellationTokenSource? _detectingLanguageCts;
@@ -42,8 +41,7 @@
         if (!IsVoiceActive || IsLanguageKnown || remaining <= TimeSpan.Zero)
             return;
 
-        // While the transcript stays empty nothing else re-renders this badge, so the expiry above
-        // would never be observed without its own wake-up.
+        // An empty transcript triggers no further render, so the expiry needs its own wake-up.
         _detectingLanguageCts = new CancellationTokenSource();
         _ = RerenderAfter(remaining, _detectingLanguageCts.Token);
     }

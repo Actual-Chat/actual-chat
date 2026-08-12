@@ -141,9 +141,8 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
 
     public async Task UnregisterDevice(CancellationToken cancellationToken = default)
     {
-        // Best-effort cleanup that sits on the sign-out path. Every step below is a JS interop call
-        // issued with CancellationToken.None, which disables Blazor's own interop timeout - so an
-        // undelivered call used to hang here forever, and SignOut never reached SignOutBackend.
+        // Best-effort, and on the sign-out path: the JS interop below passes CancellationToken.None,
+        // which disables Blazor's own interop timeout, so an undelivered call used to hang forever.
         Log.LogInformation("-> UnregisterDevice");
         var timeout = new Timeout(Hub.Clocks.CpuClock, UnregisterDeviceTimeout);
         try {

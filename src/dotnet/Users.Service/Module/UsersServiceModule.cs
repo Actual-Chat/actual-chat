@@ -47,12 +47,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 options.LogoutPath = "/signOut";
                 if (HostInfo.IsDevelopmentInstance)
                     options.Cookie.SecurePolicy = CookieSecurePolicy.None;
-                // This principal has exactly one consumer - AuthHelper.UpdateAuthState on the close
-                // flow, which converts it into Session-based auth. It's a handshake token, not a
-                // login: the durable identity is the Session. So it only has to outlive the hop
-                // from the provider callback to /fusion/close, and AuthHelper drops it as soon as
-                // the session isn't signed in. No browser-level expiration either - a session
-                // cookie means closing the browser forgets it too.
+                // A handshake token, not a login: its only consumer is AuthHelper.UpdateAuthState on
+                // the close flow, so it just has to outlive the callback -> /fusion/close hop.
                 options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
                 options.SlidingExpiration = false;
             });

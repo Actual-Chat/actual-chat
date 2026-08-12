@@ -143,17 +143,10 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     protected virtual Task SignInBackend(string schema)
         => JS.InvokeVoidAsync($"{AuthJsClassName}.signIn", schema).AsTask();
 
-    // No navigation here: MonitorAccountChange sees OwnAccount flip to guest and reloads (see
-    // ProcessLoginLogout), and the reload is what gets a fresh session cookie from AuthHelper.
-    // This used to go through WebAuth.signOut, whose popup could be blocked or left open - and
-    // then sign-out silently never happened.
-    // UICommander rather than Commander: NavbarLogoMenu and SettingsPanel call SignOut()
-    // fire-and-forget, so a throw would land as an unobserved task exception - this way a failed
-    // sign-out is shown to the user instead of vanishing.
-    // Deactivate, because signing in doesn't rotate the session id: without it the id outlives the
-    // sign-out, and the next sign-in on a shared machine lands on the one the previous user's
-    // browser already knows. Expiring it makes AuthHelper mint a fresh session on the reload.
     protected virtual Task SignOutBackend()
+        // No navigation here: ProcessLoginLogout reloads once OwnAccount flips to guest.
+        // UICommander, not Commander: SignOut() callers are fire-and-forget, so a throw would vanish.
+        // Deactivate, because sign-in doesn't rotate the session id - it would outlive the sign-out.
         => Hub.UICommander.Run(new Accounts_SignOut(Session, true));
 
     // Private methods

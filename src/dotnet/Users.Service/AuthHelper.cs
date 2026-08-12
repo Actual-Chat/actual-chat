@@ -165,20 +165,15 @@ public sealed class AuthHelper
             existingAccount = null;
 
         if (!IsCloseFlow(httpContext)) {
-            // Actual SignIn/SignOut actions are performed on close flow only.
-            // The cookie principal exists only to be converted into Session-based auth on that
-            // flow, so once the session isn't signed in it's a stale credential - drop it. This
-            // covers both sign-out and a freshly minted session (always a guest), and it closes
-            // the replay: otherwise a later close flow that gets no new principal would sign the
-            // previous identity back in.
+            // SignIn/SignOut happen on the close flow only. A principal the session no longer
+            // matches is a stale credential a later close flow could replay - drop it.
             if (httpIsSignedIn && !isSignedIn)
                 await httpContext.SignOutAsync().ConfigureAwait(false);
             return;
         }
 
-        // NOTE: the principal is deliberately NOT discarded here even though it has served its
-        // purpose - the branch below reads "close flow without a principal" as a sign-out, so
-        // clearing it would turn a re-visited close flow (back button, retry) into one.
+        // The principal isn't discarded below despite having served its purpose: the else branch
+        // reads "close flow without a principal" as a sign-out, so a re-visit would become one.
         if (httpIsSignedIn) {
             if (isSignedIn && IsSameAccount(existingAccount, httpUser, authSchema))
                 return; // Nothing to change
