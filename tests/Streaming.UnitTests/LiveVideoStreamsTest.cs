@@ -169,7 +169,8 @@ public class LiveVideoStreamsTest
         ClientStats.LayerCount(1000).Should().Be(ClientStats.MaxLayerCount);
         ClientStats.ByteRate(-1).Should().Be(0);
         ClientStats.ByteRate(long.MaxValue).Should().Be(ClientStats.MaxByteRate);
-        ClientStats.AudioLatency(TimeSpan.FromSeconds(-10)).Should().Be(TimeSpan.Zero);
+        ClientStats.AudioLatency(TimeSpan.FromSeconds(-10)).Should().Be(TimeSpan.FromSeconds(-10));
+        ClientStats.AudioLatency(TimeSpan.MinValue).Should().Be(-ClientStats.MaxAudioLatency);
         ClientStats.AudioLatency(TimeSpan.MaxValue).Should().Be(ClientStats.MaxAudioLatency);
         ClientStats.Quality(new ReceiveQuality(9999, isThumbnail: true))
             .Should().Be(new ReceiveQuality(ClientStats.MaxLayerId, isThumbnail: true));

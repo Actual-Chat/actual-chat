@@ -398,6 +398,10 @@
                 <span class="diag-label">source (C#)</span>
                 <span class="diag-value diag-dim">@FormatSignedMs(clock.Offset)</span>
             </div>
+            <div class="diag-row diag-sub">
+                <span class="diag-label">drift since sync</span>
+                <span class="diag-value diag-dim">@FormatClockDrift(clock)</span>
+            </div>
             <div class="diag-row">
                 <span class="diag-label">Precision</span>
                 <span class="diag-value">±@FormatMs(clock.Precision)</span>
@@ -1264,9 +1268,22 @@
             : Math.Abs(ms.Value) < 1 ? $"{ms.Value * 1000:+0;-0;0} µs" : $"{ms.Value:+0.##;-0.##;0} ms";
 
     private string FormatSyncAge(ActualChat.UI.Blazor.Services.ServerClockSyncStats.Snapshot clock)
+        // Wall-clock age: a CpuClock-based age under-reports by exactly the slept time
         => clock.SyncCount == 0
             ? "never"
-            : $"{(Hub.Clocks.CpuClock.Now - clock.LastSyncAt).TotalSeconds:0}s ago";
+            : $"{(Hub.Clocks.SystemClock.Now - clock.LastSyncWallAt).TotalSeconds:0}s ago";
+
+    private string FormatClockDrift(ActualChat.UI.Blazor.Services.ServerClockSyncStats.Snapshot clock)
+    {
+        // Wall-vs-CpuClock divergence since the last sync: non-zero means the device
+        // slept or the wall clock stepped, i.e. a re-sync is due within one drift check.
+        if (clock.SyncCount == 0)
+            return "—";
+
+        var drift = (Hub.Clocks.SystemClock.Now - clock.LastSyncWallAt)
+            - (Hub.Clocks.CpuClock.Now - clock.LastSyncAt);
+        return FormatSignedMs(drift);
+    }
 
     private static string FormatInboundDemand(VideoQualityUI.InboundDemand demand)
     {

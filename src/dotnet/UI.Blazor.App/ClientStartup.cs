@@ -25,6 +25,19 @@ public static class ClientStartup
         ApiContractsModuleInitializer.Load();
         CoreModuleInitializer.Initialize();
 
+        // C# runs on the client device here, and the default ServerClock rides CpuClock
+        // (performance.now / mach_absolute_time), which freezes during a system sleep —
+        // so server time went stale by exactly the slept span until the next re-sync.
+        // The wall clock keeps running through sleep, so a wall-based ServerClock stays
+        // correct across suspends — the same reason the JS-side clock (Date-relative
+        // serverClockOffsetMs) never drifted. ServerTimeSync measures its offset against
+        // ServerClock.BaseClock, so it follows this swap automatically.
+        MomentClockSet.Default = new MomentClockSet(
+            SystemClock.Instance,
+            CpuClock.Instance,
+            new ServerClock(SystemClock.Instance),
+            CoarseSystemClock.Instance);
+
 #if !DEBUG
         RpcDiagnosticsOptions.Default = RpcDiagnosticsOptions.Default with {
             CallTracerFactory = _ => null // No call tracing in release builds

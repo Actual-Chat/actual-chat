@@ -2,7 +2,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class ServerClockSyncStats
 {
-    private volatile Snapshot _snapshot = new(TimeSpan.Zero, TimeSpan.FromHours(1), TimeSpan.Zero, TimeSpan.Zero, default, 0);
+    private volatile Snapshot _snapshot =
+        new(TimeSpan.Zero, TimeSpan.FromHours(1), TimeSpan.Zero, TimeSpan.Zero, default, default, 0);
 
     public Snapshot Current => _snapshot;
 
@@ -15,5 +16,6 @@ public sealed class ServerClockSyncStats
         TimeSpan RttEma,
         TimeSpan LastRtt,
         Moment LastSyncAt,
+        Moment LastSyncWallAt,
         int SyncCount);
 }
