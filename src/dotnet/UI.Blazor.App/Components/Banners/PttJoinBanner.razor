@@ -1,0 +1,88 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Kvas
+@inherits ComputedStateComponent<AppUIHub, bool>
+
+<Banner
+    IsVisible="@State.Value"
+    Severity="BannerSeverity.Info"
+    ShowDismissButton="true"
+    Dismiss="@OnDismiss">
+    <Icon>
+        <i class="icon-talking text-2xl"></i>
+    </Icon>
+    <Body>
+        This chat is in Push to Talk mode - join to let it wake your device when someone speaks.
+    </Body>
+    <Buttons>
+        <Button
+            Class="btn-transparent unhovered"
+            Click="@OnJoinClick">Join</Button>
+    </Buttons>
+</Banner>
+
+@code {
+    private SyncedState<PttJoinBannerUserSettings> _settings = null!;
+
+    private Chat Chat => ChatContext.Chat;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        var key = PttJoinBannerUserSettings.GetKey(Chat.Id);
+        _settings = StateFactory.NewUserSettingsSynced(UserSettingsUI, key, new PttJoinBannerUserSettings());
+    }
+
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
+        _settings.Dispose();
+    }
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                InitialValue = false,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
+        if (chat.HasSingleAuthor || !chat.IsMember() || chat.Id.IsThread())
+            return false;
+        if (chat.PttEnabledAt is not { } enabledAt)
+            return false;
+
+        var isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isIncompleteUIEnabled)
+            return false;
+
+        if (!_settings.WhenFirstTimeRead.IsCompleted)
+            await _settings.WhenFirstTimeRead.ConfigureAwait(false);
+
+        // Both the dismissal and the consent expire with the enable-epoch: an off-on cycle re-shows the banner.
+        var settings = await _settings.Use(cancellationToken).ConfigureAwait(false);
+        if (settings.DismissedAt >= enabledAt)
+            return false;
+
+        var walkieTalkieSettings = await UserSettingsUI.UserWalkieTalkieSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        return !walkieTalkieSettings.IsArmedIn(chat.Id, enabledAt);
+    }
+
+    // Event handlers
+
+    private Task OnJoinClick() {
+        var chat = Chat;
+        if (chat.PttEnabledAt is not { } enabledAt)
+            return Task.CompletedTask;
+
+        // Never a raw client clock: JoinedAt must land within the current epoch (>= enabledAt).
+        var joinedAt = Moment.Max(Clocks.ServerClock.Now, enabledAt);
+        return UserSettingsUI.UserWalkieTalkieSettings()
+            .Update(x => x.WithPttChat(chat.Id, joinedAt), CancellationToken.None);
+    }
+
+    private void OnDismiss()
+        => _settings.Value = new PttJoinBannerUserSettings { DismissedAt = Clocks.ServerClock.Now };
+}

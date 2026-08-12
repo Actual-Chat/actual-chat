@@ -24,13 +24,18 @@ public static class ServerKvasBackendExt
         this IServerKvasBackend serverKvasBackend,
         UserId userId,
         ChatId chatId,
+        Moment? pttEnabledAt,
         CancellationToken cancellationToken)
     {
         // PTT is a separate opt-in from "Keep listening": waking a killed device is a
-        // materially different commitment, so it gets its own chat set and its own consent.
-        var pttChatIds = await serverKvasBackend.ForUser(userId).UserWalkieTalkieSettings()
-            .Get(x => x.PttChatIds, cancellationToken)
+        // materially different commitment, so it gets its own chat set and its own consent -
+        // valid only within the chat's current enable-epoch (pttEnabledAt).
+        if (pttEnabledAt is null)
+            return false;
+
+        var settings = await serverKvasBackend.ForUser(userId).UserWalkieTalkieSettings()
+            .Get(cancellationToken)
             .ConfigureAwait(false);
-        return pttChatIds.Contains(chatId);
+        return settings.IsArmedIn(chatId, pttEnabledAt);
     }
 }

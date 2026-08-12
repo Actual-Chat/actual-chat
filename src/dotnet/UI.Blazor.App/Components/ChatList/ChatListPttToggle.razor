@@ -1,0 +1,22 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+
+<HeaderButton
+    Class="@Class"
+    Click="@OnClick"
+    Tooltip="Leave Push to Talk"
+    TooltipPosition="FloatingPosition.Top">
+    <i class="c-ptt-badge icon-talking text-2xl"></i>
+</HeaderButton>
+
+@code {
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+
+    private void OnClick() {
+        var chatId = ChatId;
+        _ = Hub.UserSettingsUI.UserWalkieTalkieSettings().Update(
+            x => x.WithoutPttChat(chatId),
+            CancellationToken.None);
+    }
+}

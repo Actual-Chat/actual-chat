@@ -16,16 +16,30 @@ A chat is in exactly one of three walkie states per user:
 
 | State | Meaning | Source of truth |
 |---|---|---|
-| **off** | Ordinary chat. No wakes, no gestures, no reply button. | `UserWalkieTalkieSettings.PttChatIds` doesn't contain the chat |
-| **armed** | The chat may wake this device and may be answered hands-free. | `PttChatIds` contains the chat |
+| **off** | Ordinary chat. No wakes, no gestures, no reply button. | `Chat.PttEnabledAt` is null, or the user's consent is missing/stale |
+| **armed** | The chat may wake this device and may be answered hands-free. | `Chat.PttEnabledAt != null` **and** `UserWalkieTalkieSettings.PttChats` holds an entry with `JoinedAt >= PttEnabledAt` |
 | **hot** | The microphone is open for a walkie reply into this chat. | `WalkieTalkieReplyUI` holds a `WalkieTalkieReply` for it |
 
-Arming is a **separate opt-in** from "keep listening" — `ServerKvasBackendExt.IsWalkieTalkieArmed`
-reads `PttChatIds` and nothing else, because waking a killed device is a
-materially stronger commitment than keeping a player alive. Arming a chat does
-imply listening, though: `ChatAudioUI.GetChatsYouNeedToKeepListeningTo`
-concatenates `UserListeningSettings.AlwaysListenedChatIds` with
-`GetPttChatIds`, since arming alone starts no player.
+Armed is thus a **two-key state**: the chat owner turns PTT on for the chat
+(`Chat.PttEnabledAt`, a right-panel toggle; for peer chats either author may),
+and each author consents for themselves (`PttChats`, via the join banner or the
+per-chat Voice settings). `PttEnabledAt` doubles as a **consent epoch** —
+`UserWalkieTalkieSettings.IsArmed(pttEnabledAt, joinedAt)` requires
+`JoinedAt >= PttEnabledAt`, so turning the chat's toggle off and on again
+invalidates every prior consent (and every prior banner dismissal) without any
+fan-out: stale consent is self-invalidating on both client and server.
+
+Arming is a **separate opt-in** from "keep listening" — waking a killed device
+is a materially stronger commitment than keeping a player alive, so consent has
+its own chat set. Arming a chat does imply listening, though:
+`ChatAudioUI.GetChatsYouNeedToKeepListeningTo` concatenates
+`UserListeningSettings.AlwaysListenedChatIds` with `GetPttChatIds`, since
+arming alone starts no player. `ChatAudioUI.GetPttChatIds` is the client's
+single armed-set choke point: it joins `PttChats` with `Chats.Get` and applies
+the epoch predicate, so an owner's toggle flip propagates to every consumer
+(gestures, reply resolver, iOS PTT channel, audio widget, Active Chats) through
+ordinary invalidation. Armed chats also always appear in the **Active Chats**
+list with a PTT badge, and removing one there also revokes consent.
 
 Between armed and hot sits the **answer window** — the period after incoming
 voice during which a gesture, a headset press or the Apple PTT Talk button may
@@ -40,8 +54,8 @@ utterance that is already over. `GestureActivationPolicy.HasAnswerWindow` /
 ```mermaid
 stateDiagram-v2
     [*] --> Off
-    Off --> Armed: chat added to PttChatIds
-    Armed --> Off: chat removed
+    Off --> Armed: owner enables chat PTT + author joins
+    Armed --> Off: author leaves, or owner disables (epoch reset)
     Armed --> Armed: wake push → headless playback
     Armed --> Hot: RequestReply — gesture, headset, PTT Talk, on-screen toggle
     Hot --> Armed: StopReply, cold-start dead-man, RecordChat idle (HotWindow)
@@ -71,7 +85,7 @@ sequenceDiagram
     NB->>NB: ListUserIds ≤ WalkieTalkieMaxChatMembers
     NB->>NB: exclude speaker + active participants
     loop per remaining user
-        NB->>NB: IsWalkieTalkieArmed (PttChatIds)
+        NB->>NB: IsWalkieTalkieArmed (PttEnabledAt epoch + PttChats)
         NB->>NB: ChatNotificationMode ≠ Muted
         NB->>NB: ListDevices (AndroidApp / iOSPttApp)
         NB->>NB: _wakePending.TryAdd((userId, chatId))
@@ -106,7 +120,9 @@ sequenceDiagram
    `try/catch` so one user's failure can't abort the fan-out.
 
 `SendWalkieTalkieWake` applies the per-user gates in order:
-`IsWalkieTalkieArmed(userId, chatId)`; `ChatNotificationMode.Muted` (a muted
+`IsWalkieTalkieArmed(userId, chatId, chat.PttEnabledAt)` — the chat is fetched
+via `ChatsBackend.Get`, and consent stamped before the current epoch doesn't
+count; `ChatNotificationMode.Muted` (a muted
 chat never wakes you, even armed); `ListDevices` filtered to
 `DeviceType.AndroidApp` (FCM) and `DeviceType.iOSPttApp` (APNs), both bounded by
 `Constants.Notification.ActiveDevicePeriod`; and finally the dedup —
@@ -532,7 +548,8 @@ devices:
 
 | Member | Default | Meaning |
 |---|---|---|
-| `PttChatIds` | `[]` | The armed chats. `MaxChatCount = 3`, matching `ActiveChatsUI.MaxActiveChatCount`, which also bounds server wake fan-out per speaker |
+| `PttChats` | `[]` | Per-chat consent entries `(ChatId, JoinedAt)`; armed iff `JoinedAt >= Chat.PttEnabledAt`. `MaxChatCount = 3`, matching `ActiveChatsUI.MaxActiveChatCount`, which also bounds server wake fan-out per speaker; adding beyond the cap evicts the least-recently-joined entry |
+| `PttChatIds` | `[]` | Legacy mirror of `PttChats` (ids only), kept in sync for pre-epoch readers; ids present here but not in `PttChats` surface via `AllPttChats` with `JoinedAt = default`, i.e. never armed |
 | `IsFlipToTalkEnabled` | `true` | Flip-to-talk start gesture |
 | `IsDoubleShakeEnabled` | `true` | Double-shake start gesture |
 | `ShakeSensitivity` | `Medium` | Ordered so `Medium` is the zero default; firing sets nest `Low ⊆ Medium ⊆ High` |
@@ -542,21 +559,39 @@ devices:
 | `IsHeadsetButtonEnabled` | `null` → `true` | Headset hook / play-pause opens a reply |
 | `IsPttTransmitEnabled` | `null` → `true` | Apple PTT transmission mode (`FullDuplex` vs `ListenOnly`) |
 
-`WithPttChat` / `WithoutPttChat` are the arm/disarm helpers. The two nullable
+`WithPttChat(chatId, joinedAt)` / `WithoutPttChat(chatId)` are the
+consent/leave helpers. Writers never stamp `JoinedAt` from a raw client clock —
+the owner's auto-arm uses the `PttEnabledAt` returned by `Chats_Change`, and
+join paths use `Moment.Max(ServerClock.Now, enabledAt)` — otherwise clock skew
+could land consent just before the epoch and read as stale. The two nullable
 flags are read as `?? true` on purpose: a blob written before the member existed
-deserializes to `default`, not to the initializer's `true`.
+deserializes to `default`, not to the initializer's `true` (`PttChats` gets the
+same treatment via a null-normalizing getter).
+
+**Chat-level state.** `Chat.PttEnabledAt` rides the `IsSummarized` pattern:
+`ChatDiff.PttEnabledAt` is in `ChatDiff.RequiresOwner()` (owner-only in group
+chats), absent from `ValidatePeerChatChangeConstraints`' rejection list (either
+peer author may flip it), and rejected for threads. The epoch is
+**server-stamped** in `ChatsBackend`'s `ApplyDiff`: any non-null incoming value
+is a "turn it on" sentinel replaced with `SystemClock.Now`, and enabling while
+already on keeps the current stamp, so only an off→on cycle starts a new epoch.
+The owner's toggle lives in the right panel (`RightPanelChatInfo`) and
+auto-arms the owner; other authors get `PttJoinBanner` (dismissal stored per
+chat in `PttJoinBannerUserSettings`, expiring with the epoch) or the Voice
+settings row, which is disabled while the chat's PTT is off.
 
 **Gating.** The walkie UI is admin-only preview surface, hidden behind
 `Features_EnableIncompleteUI` (which returns `false` for any non-admin account
 and otherwise reads `UserAppSettings.IsIncompleteUIEnabled`). `SettingsModal`
-shows the Push-to-Talk page only when `HostInfo.HostKind.IsMauiApp() && EnableIncompleteUI`.
-There is no on-screen reply button — replies are triggered only through the
-native paths below.
+shows the Push-to-Talk page only when `HostInfo.HostKind.IsMauiApp() && EnableIncompleteUI`;
+the right-panel toggle and the join banner check the same flag. There is no
+on-screen reply button — replies are triggered only through the native paths
+below.
 
 The **runtime paths are deliberately ungated**: the server wake fan-out, the
 wake handlers, the gesture and headset triggers, and the heard-receipt path all
-key off `PttChatIds` alone. A chat armed while the flag was on keeps working if
-the flag is later turned off; only the UI for changing it goes away.
+key off the armed predicate alone. A chat armed while the flag was on keeps
+working if the flag is later turned off; only the UI for changing it goes away.
 
 ## Constants
 

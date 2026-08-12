@@ -1125,6 +1125,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return chat;
 
         Chat ApplyDiff(Chat originalChat, ChatDiff? diff) {
+            // PttEnabledAt is a server-stamped consent epoch: a non-null client value is only a
+            // "turn it on" sentinel, and enabling while already on keeps the current epoch.
+            if (diff is { PttEnabledAt: { IsNone: false, Value: not null } })
+                diff = diff with { PttEnabledAt = originalChat.PttEnabledAt ?? Clocks.SystemClock.Now };
+
             // Update
             var newChat = DiffEngine.Patch(originalChat, diff) with {
                 Version = VersionGenerator.NextVersion(originalChat.Version),

@@ -104,6 +104,10 @@ body.narrow .right-panel:has(.c-header.expanded-header) > .c-panel-content {
 .right-panel .tab-panel > .divider {
     @apply mx-6;
 }
+.right-panel > .c-top-region > .c-chat-info .card-item > .c-left {
+    /* Icon glyphs have different advance widths; a fixed column keeps the titles aligned. */
+    @apply w-8;
+}
 .right-panel > .c-top-region > .c-chat-info {
     @apply flex-none flex-y gap-y-1;
     /* Natural height — always fully rendered. The collapse is done by the top region clipping it

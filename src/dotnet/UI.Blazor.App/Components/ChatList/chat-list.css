@@ -112,6 +112,9 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
 .active-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
 }
+.active-chats .c-ptt-badge {
+    @apply text-primary;
+}
 
 /* Tabs */
 .navbar-chats .tab-panel-tabs .chats-tab {

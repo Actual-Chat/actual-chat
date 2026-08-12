@@ -13,7 +13,7 @@
 <Tile>
     @foreach (var chat in m.Chats) {
         var isUnavailable = chat.Title is null;
-        <TileItem IsHoverable="false">
+        <TileItem IsHoverable="false" Caption="@GetCaption(chat)">
             <Icon><i class="@(isUnavailable ? "icon-alert-circle" : "icon-talking") text-2xl"></i></Icon>
             <Content>@(chat.Title ?? "Unavailable chat")</Content>
             <Right>
@@ -149,13 +149,20 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await UserSettingsUI.UserWalkieTalkieSettings().Get(cancellationToken).ConfigureAwait(false);
-        var chats = new List<ChatItem>(settings.PttChatIds.Length);
-        foreach (var chatId in settings.PttChatIds) {
-            var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-            chats.Add(new ChatItem(chatId, chat?.Title));
+        var pttChats = settings.AllPttChats;
+        var chats = new List<ChatItem>(pttChats.Length);
+        foreach (var pttChat in pttChats) {
+            var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
+            var isArmed = chat != null && UserWalkieTalkieSettings.IsArmed(chat.PttEnabledAt, pttChat.JoinedAt);
+            chats.Add(new ChatItem(pttChat.ChatId, chat?.Title, isArmed));
         }
         return new Model(settings, chats);
     }
+
+    private static RenderFragment? GetCaption(ChatItem chat)
+        => chat.Title is null || chat.IsArmed
+            ? null
+            : b => b.AddContent(0, "Not active - the chat owner hasn't enabled Push to Talk");
 
     private Task OnRemove(ChatId chatId)
         => UserSettingsUI.UserWalkieTalkieSettings().Update(x => x.WithoutPttChat(chatId), CancellationToken.None);
@@ -207,5 +214,5 @@
         public static readonly Model None = new(new UserWalkieTalkieSettings(), []);
     }
 
-    public sealed record ChatItem(ChatId Id, string? Title);
+    public sealed record ChatItem(ChatId Id, string? Title, bool IsArmed);
 }

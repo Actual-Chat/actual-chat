@@ -205,10 +205,9 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         var tester = host.NewWebClientTester(Out);
         var sink = host.Services.GetRequiredService<FirebaseMessagingTestSink>();
         var liveSessionsBackend = host.Services.GetRequiredService<ILiveSessionsBackend>();
-        var serverKvasBackend = host.Services.GetRequiredService<IServerKvasBackend>();
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob(tester, "WT flag-off");
         var deviceId = await RegisterDevice(host.Services.Commander(), alice.Id, DeviceType.AndroidApp);
-        await ArmByPtt(serverKvasBackend, alice.Id, chatId);
+        await ArmByPtt(host.Services, alice.Id, chatId);
 
         // act
         await Speak(liveSessionsBackend, chatId, bobAuthor.Id);
@@ -229,10 +228,9 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         var tester = host.NewWebClientTester(Out);
         var sink = host.Services.GetRequiredService<FirebaseMessagingTestSink>();
         var liveSessionsBackend = host.Services.GetRequiredService<ILiveSessionsBackend>();
-        var serverKvasBackend = host.Services.GetRequiredService<IServerKvasBackend>();
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob(tester, "WT member-cap");
         var deviceId = await RegisterDevice(host.Services.Commander(), alice.Id, DeviceType.AndroidApp);
-        await ArmByPtt(serverKvasBackend, alice.Id, chatId);
+        await ArmByPtt(host.Services, alice.Id, chatId);
 
         // act
         await Speak(liveSessionsBackend, chatId, bobAuthor.Id);
@@ -351,11 +349,19 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         => liveSessionsBackend.OnStreamRegistered(chatId, authorId, null, false, true, CancellationToken.None);
 
     private Task ArmByPtt(UserId userId, ChatId chatId)
-        => ArmByPtt(ServerKvasBackend, userId, chatId);
+        => ArmByPtt(AppHost.Services, userId, chatId);
 
-    private static Task ArmByPtt(IServerKvasBackend serverKvasBackend, UserId userId, ChatId chatId)
-        => serverKvasBackend.ForUser(userId).UserWalkieTalkieSettings()
-            .Update(x => x.WithPttChat(chatId));
+    private static async Task ArmByPtt(IServiceProvider services, UserId userId, ChatId chatId)
+    {
+        // Chat-level PTT is a precondition for arming; the value below is just a "turn it on"
+        // sentinel - the backend stamps the real epoch, and consent must land within it.
+        var chat = await services.Commander().Call(new ChatsBackend_Change(
+            chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart })));
+        var enabledAt = chat.PttEnabledAt!.Value;
+        await services.GetRequiredService<IServerKvasBackend>()
+            .ForUser(userId).UserWalkieTalkieSettings()
+            .Update(x => x.WithPttChat(chatId, enabledAt));
+    }
 
     private Task SetForeverListeningMode(UserId userId, ChatId chatId)
         => ServerKvasBackend.ForUser(userId).ChatUserSettings(chatId)

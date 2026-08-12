@@ -89,9 +89,14 @@
                 @if (audioState?.IsRecording == true) {
                     <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
                 }
-                <div class="listen-wrapper ending-btn">
-                    <ChatListListenToggle AudioState="@audioState"/>
-                </div>
+                @if (m.IsPttArmed) {
+                    // PTT implies listening, so the badge replaces the listen toggle; click = leave PTT.
+                    <ChatListPttToggle ChatId="@chat.Id" Class="ending-btn"/>
+                } else {
+                    <div class="listen-wrapper ending-btn">
+                        <ChatListListenToggle AudioState="@audioState"/>
+                    </div>
+                }
             </div>
         } else {
             // Not active ChatList
@@ -196,8 +201,7 @@
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
-    {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
         var listKind = ListKind;
@@ -240,6 +244,12 @@
             .GetCallActivity(chatId, cancellationToken)
             .UseIfReady(chatActivityUI.GetLastKnownCallActivity(chatId), Computed.GetCurrent());
 
+        var isPttArmed = false;
+        if (listKind == ChatListKind.Active) {
+            var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+            isPttArmed = pttChatIds.Contains(chatId);
+        }
+
         return new() {
             ListKind = listKind,
             Chat = chatState.Chat,
@@ -255,6 +265,7 @@
             IsLastItemInBlock = isLastItemInBlock,
             IsFirstItem = isFirstItem,
             IsUnreadByOthers = isUnreadByOthers,
+            IsPttArmed = isPttArmed,
             LastThread = preview.Thread,
             LastThreadCreator = preview.ThreadCreator,
         };
@@ -353,6 +364,7 @@
         public bool IsLastItemInBlock { get; init; }
         public bool IsFirstItem { get; init; }
         public bool IsUnreadByOthers { get; init; }
+        public bool IsPttArmed { get; init; }
         public Chat? LastThread { get; init; }
         public Author? LastThreadCreator { get; init; }
         public Moment LastBeginsAt => LastThread?.CreatedAt ?? LastTextEntry?.BeginsAt ?? Moment.EpochStart;
