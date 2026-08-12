@@ -210,10 +210,12 @@ public class ServerTimeSync : WorkerBase
         // The wall clock keeps running through a device suspend while CpuClock
         // (Stopwatch / CLOCK_MONOTONIC) does not, so a gap between the two elapsed
         // spans since the last accepted sync means a suspend or a wall-clock step
-        // happened — either way the offset deserves a fresh measurement.
+        // happened — either way the offset deserves a fresh measurement. Magnitude,
+        // not the signed value: a backward NTP step yields a negative gap, and the
+        // callers' >= threshold comparisons would never see it.
         var wallElapsed = Clocks.SystemClock.Now - _lastUpdatedWallAt;
         var cpuElapsed = CpuClock.Now - LastUpdatedAt;
-        return wallElapsed - cpuElapsed;
+        return (wallElapsed - cpuElapsed).Duration();
     }
 
     private static double Median(List<double> values)
