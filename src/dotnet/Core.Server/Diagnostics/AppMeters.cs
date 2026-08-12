@@ -9,6 +9,7 @@ public static class AppMeters
     public static readonly UpDownCounter<int> AudioStreamCount;
     public static readonly UpDownCounter<int> VideoStreamCount;
     public static readonly Counter<long> MessageCount;
+    public static readonly Counter<long> UITextCatalogMissCount;
 
     // Send side — sourced from RecorderStats pushed via
     // ILiveVideoStreams.ChangeRecordingQuality (1 Hz from each active recorder).
@@ -44,6 +45,10 @@ public static class AppMeters
         AudioStreamCount = m.CreateUpDownCounter<int>("app.audio.stream.count", null, "Audio stream count");
         VideoStreamCount = m.CreateUpDownCounter<int>("app.video.stream.count", null, "Video stream count");
         MessageCount = m.CreateCounter<long>("app.message.count", null, "Chat message count");
+        UITextCatalogMissCount = m.CreateCounter<long>(
+            "app.localization.catalog_miss.count",
+            null,
+            "UI strings with no catalog entry, which fall back to AI translation; tags: language, kind");
 
         VideoSendDropRatio = m.CreateHistogram<double>(
             "app.video.send.drop_ratio", "ratio", "Sender RpcStream dropped-frame ratio over the last 1 s window");

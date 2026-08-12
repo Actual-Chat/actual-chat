@@ -1,14 +1,9 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.Diagnostics
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<UIHub, string>
 @State.Value
 
 @code {
-    private static readonly ConcurrentDictionary<string, Unit> ReportedFallbacks = new();
-
-    private ILogger Log => field ??= Services.LogFor(GetType());
-
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string FieldLabel { get; set; } = "";
 
@@ -32,7 +27,6 @@
         if (localized != null)
             return localized;
 
-        ReportFallback(Text);
         return await Hub.UITextLocalizer.GetSafe(Text, cancellationToken).ConfigureAwait(false);
     }
 
@@ -41,11 +35,4 @@
         => Text.IsNullOrEmpty()
             ? ""
             : L.ForValidationKey(Text, FieldLabel) ?? L.ForRuntimeMessage(Text, FieldLabel);
-
-    // TODO: what does it give us??? what's the point of this?
-    private void ReportFallback(string text) {
-        AppUIMeters.MessageLocalizationFallbackCount.Add(1);
-        if (ReportedFallbacks.TryAdd(text, default))
-            Log.LogWarning("No catalog entry for message: {Message}", text);
-    }
 }

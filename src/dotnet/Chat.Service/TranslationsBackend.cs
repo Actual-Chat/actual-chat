@@ -68,10 +68,18 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         // The translation runs inline; the Fusion compute cache (this method is sharded by text, so each
         // distinct string is owned by a single node) dedups it globally at runtime. No persistence: a
         // restart re-translates, which is cheap for this small set of short strings.
-        if (!Settings.IsTranslationEnabled || text.IsNullOrWhiteSpace() || language.IsAnyEnglish)
+        if (text.IsNullOrWhiteSpace() || language.IsAnyEnglish)
+            return null;
+
+        if (!Settings.IsTranslationEnabled)
             return null;
         if (text.Length > Constants.Translation.MaxTextTranslationLength)
             return null;
+
+        AppMeters.UITextCatalogMissCount.Add(1,
+            new KeyValuePair<string, object?>("language", language.IsoCode),
+            new KeyValuePair<string, object?>("kind", kind.ToString()));
+        Log.LogWarning("No catalog entry for {Kind} in '{Language}': {Text}", kind, language.IsoCode, text);
 
         var contextHint = GetUITextTranslationHint(kind);
         var translated = await UITextTranslator
