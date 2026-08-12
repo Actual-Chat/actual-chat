@@ -32,7 +32,6 @@ public class StreamStore<TItem> : ProcessorBase
         return memoizer?.Replay(ReplayTailSize, cancellationToken);
     }
 
-    // Exposes the memoizer itself, so a caller can fold the buffered prefix instead of replaying it
     public async Task<AsyncMemoizer<TItem>?> GetMemoizer(
         StreamId streamId,
         bool waitForShare,

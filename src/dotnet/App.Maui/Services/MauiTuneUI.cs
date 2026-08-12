@@ -13,6 +13,8 @@ public class MauiTuneUI : TuneUI
 
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
 
+    protected override bool CanVibrate => Vibration.Default.IsSupported;
+
     public MauiTuneUI(UIHub hub) : base(hub)
         => _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Tune, OnLostAudioFocus);
 
@@ -49,8 +51,6 @@ public class MauiTuneUI : TuneUI
         var playSoundTask = PlaySound(info.Sound);
         await Task.WhenAll(vibrateTask, playSoundTask).ConfigureAwait(false);
     }
-
-    protected override bool CanVibrate => Vibration.Default.IsSupported;
 
     // Protected methods
 

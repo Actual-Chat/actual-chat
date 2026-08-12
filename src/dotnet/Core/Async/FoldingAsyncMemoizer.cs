@@ -28,6 +28,12 @@ public sealed class FoldingAsyncMemoizer<T, TState> : AsyncMemoizer<T>
         this.Start();
     }
 
+    protected override async Task DisposeAsyncCore()
+    {
+        await base.DisposeAsyncCore().ConfigureAwait(false);
+        Volatile.Write(ref _checkpoint, null);
+    }
+
     public (TState Value, int ProducedCount) Fold()
     {
         var (node, value) = FoldPrefix();
@@ -54,12 +60,6 @@ public sealed class FoldingAsyncMemoizer<T, TState> : AsyncMemoizer<T>
         var checkpoint = Volatile.Read(ref _checkpoint);
         if (checkpoint != null && checkpoint.Node.Index < CurrentHead.Index)
             Interlocked.CompareExchange(ref _checkpoint, null, checkpoint);
-    }
-
-    protected override async Task DisposeAsyncCore()
-    {
-        await base.DisposeAsyncCore().ConfigureAwait(false);
-        Volatile.Write(ref _checkpoint, null);
     }
 
     // Private methods

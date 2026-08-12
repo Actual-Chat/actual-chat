@@ -15,10 +15,10 @@ public class Haptics(AppUIHub hub) : IDisposable
     private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
     protected ILogger Log => field ??= hub.LogFor(GetType());
 
-    // Engine creation is what fails on hardware without a Taptic Engine, and it logs on the way
-    // out - so the answer is cached rather than re-derived per tune.
     public bool IsSupported {
         get {
+            // Engine creation is what fails without a Taptic Engine, and it logs on the way out,
+            // so the answer is cached rather than re-derived per tune
             if (_isSupported is { } isSupported)
                 return isSupported;
 

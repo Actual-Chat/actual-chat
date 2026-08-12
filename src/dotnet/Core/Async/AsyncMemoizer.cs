@@ -198,11 +198,11 @@ public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
         }
     }
 
-    // Yields current.Next onward, waiting on the tail's Task when the producer hasn't caught up
     protected async IAsyncEnumerable<T> ReplayFrom(
         Node from,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // `from` is the previous node - what gets yielded is its Next onward
         var current = from;
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -252,8 +252,7 @@ public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
         return current;
     }
 
-    // Walks forward from `from`, folding every node after it. Returns null when a concurrent
-    // eviction moved the head mid-walk, which would silently truncate the result.
+    // Null when a concurrent eviction moved the head mid-walk, which would silently truncate the fold
     protected (Node Node, TState Value)? TryFoldFrom<TState>(
         Node head,
         Node from,

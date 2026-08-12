@@ -23,19 +23,17 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod(ConsolidationDelay = 0.5)]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<bool> HasActivity(Session session, ChatId chatId, CancellationToken cancellationToken);
-    // Who is speaking right now (VAD-gated, audio only). Aggregated and consolidated server-side:
-    // ILiveAudioStreams.List rebuilds its array on every stream register/unregister, but the author
-    // set behind it moves far less often, and it's what every client actually subscribes to.
-    // ApiArray compares its backing array by reference, so the comparer isn't optional here.
+    // Who is speaking right now (VAD-gated, audio only). Consolidated because ILiveAudioStreams.List
+    // rebuilds its array per register/unregister while the author set behind it rarely moves;
+    // ApiArray compares that array by reference, so the comparer isn't optional.
     [ComputeMethod(ConsolidationDelay = 0.5, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<ApiArray<AuthorId>> GetAudioStreamingAuthorIds(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);
-    // How much text each author had transcribed over the recent window - the "is this a real
-    // conversation" signal for chats where transcription is on, where stream activity alone can't
-    // tell speech from noise that trips VAD. Same reference-equality caveat as ApiArray above.
+    // The "is this a real conversation" signal where transcription is on: stream activity alone
+    // can't tell speech from noise that trips VAD. Same reference-equality caveat as ApiArray above.
     [ComputeMethod(ConsolidationDelay = 1, ConsolidationComparer = typeof(ApiMapComparer<AuthorId, int>))]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<ApiMap<AuthorId, int>> GetTranscribedTextLengths(

@@ -12,14 +12,13 @@ public class LiveStreamUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
     private ILiveSessions LiveSessions => Hub.LiveSessions;
     private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
 
-    // Pass-through: the aggregation and its consolidation live on the server, so this returns the
-    // very instance the RPC layer produced and adds no churn of its own.
     [ComputeMethod]
     public virtual Task<ApiArray<AuthorId>> GetAudioStreamingAuthorIds(
         ChatId chatId, CancellationToken cancellationToken)
+        // Pass-through: the aggregation and its consolidation live on the server, so this hands
+        // back the very instance the RPC layer produced and adds no churn of its own.
         => LiveSessions.GetAudioStreamingAuthorIds(Session, chatId, cancellationToken);
 
-    // Pass-through, as GetAudioStreamingAuthorIds above
     [ComputeMethod]
     public virtual Task<ApiMap<AuthorId, int>> GetTranscribedTextLengths(
         ChatId chatId, CancellationToken cancellationToken)
