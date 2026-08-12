@@ -133,10 +133,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     // [ComputeMethod]
     public virtual async Task<Transcript?> GetMergedTranscript(StreamId streamId, CancellationToken cancellationToken)
     {
-        // waitForShare: false, so a stream that hasn't been published yet doesn't block the compute
-        // for ShareWaitDelay. Nothing invalidates that null - the entry doesn't exist to depend on -
-        // so it has to re-check itself, otherwise an observer that captured this a moment too early
-        // stays pinned to null for the whole stream.
+        // waitForShare: false keeps an unpublished stream from blocking the compute for
+        // ShareWaitDelay - but nothing invalidates that null, since there's no entry to depend on,
+        // so it re-checks itself. Without that, an observer that captured a moment too early stays
+        // pinned to null for the whole stream.
         var computed = Computed.GetCurrent();
         var memoizer = await _transcriptStreams
             .GetMemoizer(streamId, false, cancellationToken)

@@ -16,10 +16,9 @@ public interface IAudioStreamingBackend : IComputeService, IBackendService
     // Language-suffixed transcript stream ids resolve to their base stream's chat.
     Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken);
 
-    // The transcript so far, folded from the same memoized diff stream GetTranscript replays,
-    // and invalidated when the next diff lands. Node-local by construction: the memoizer lives
-    // on the node named by streamId.NodeRef, so a client must never serve this from its own cache -
-    // the value is live and belongs to that node's memory.
+    // Folded from the same memoized diff stream GetTranscript replays, and invalidated when the
+    // next diff lands. NoCache because the value lives in the memory of one node - the one named
+    // by streamId.NodeRef - so a client must never serve it from its own cache.
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<Transcript?> GetMergedTranscript(StreamId streamId, CancellationToken cancellationToken);

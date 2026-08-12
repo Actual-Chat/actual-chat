@@ -51,9 +51,10 @@ public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
     }
 
 #if IOS
-    // Mac Catalyst keeps MauiTuneUI's Vibration.Default check; iOS needs the CoreHaptics one,
-    // which is also false on iPads - they have no Taptic Engine.
-    protected override bool CanVibrate => Haptics.IsSupported;
+    protected override bool CanVibrate
+        // Mac Catalyst keeps MauiTuneUI's Vibration.Default check; iOS needs the CoreHaptics one,
+        // which is also false on iPads - they have no Taptic Engine.
+        => Haptics.IsSupported;
 
     protected override Task Vibrate(Tune tune, TuneInfo info)
         => info.Vibration.Length == 0

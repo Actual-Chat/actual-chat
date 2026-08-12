@@ -69,6 +69,8 @@ public abstract class TuneUI : ProcessorBase
 
     protected ILogger Log => field ??= Hub.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.Tunes);
+    // False without vibration hardware: desktop browsers, Windows, Mac Catalyst, iPads
+    protected abstract bool CanVibrate { get; }
 
     private async ValueTask Initialize()
     {
@@ -119,12 +121,8 @@ public abstract class TuneUI : ProcessorBase
 
     protected abstract Task PlayAndWaitInternal(Tune tune);
 
-    // False on anything without vibration hardware - desktop browsers, Windows, Mac Catalyst,
-    // iPads. Read once, after WhenCanVibrateKnown, to resolve the TunePlayMode.VibrateOrSound tunes.
-    protected abstract bool CanVibrate { get; }
-
-    // Web reads CanVibrate off BrowserInfo, which is only populated once JS calls back
     protected virtual Task WhenCanVibrateKnown()
+        // Web can't answer CanVibrate until BrowserInfo's JS callback lands
         => Task.CompletedTask;
 
     protected TuneInfo? GetTuneInfo(Tune tune)
@@ -193,10 +191,11 @@ public enum Tune
     RecordingWillStop,
 }
 
+// Mode never reaches JS: TuneUI resolves it away before handing the table over.
+
 /// <summary>
 /// Defines vibration pattern and optional sound for a <see cref="Tune"/>.
 /// </summary>
-// Mode never reaches JS: TuneUI resolves it away before handing the table over.
 public record TuneInfo(
     int[] Vibration,
     string Sound = "",
