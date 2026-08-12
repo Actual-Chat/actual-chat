@@ -79,8 +79,13 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // WASM has a single, always-ready IJSRuntime, so a hosted service is fine there.
         if (isServer || isMauiApp)
             services.AddScoped(c => new ServerTimeSync(c));
-        else
-            services.AddHostedService(c => new ServerTimeSync(c));
+        else {
+            // Singleton + hosted alias, not AddHostedService alone: that registers only
+            // IHostedService, so GetService<ServerTimeSync>() returned null in WASM and
+            // every EnsureSynced call site silently skipped the sync.
+            services.AddSingleton(c => new ServerTimeSync(c));
+            services.AddHostedService(c => c.GetRequiredService<ServerTimeSync>());
+        }
         services.AddScoped(c => new FontSizeUI(c.UIHub()));
 
         // UI events

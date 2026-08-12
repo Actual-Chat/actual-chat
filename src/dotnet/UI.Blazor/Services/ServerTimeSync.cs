@@ -48,8 +48,8 @@ public class ServerTimeSync : WorkerBase
     public async Task EnsureSynced(CancellationToken cancellationToken)
     {
         // Forces a sync on demand; call before using server timestamps (e.g. video
-        // startedAtMs). Re-syncs after a device suspend too — the offset measured
-        // before the suspend is off by exactly the slept time.
+        // startedAtMs). Re-syncs after a detected suspend or wall-clock step too —
+        // whichever of the two clocks the offset rides, one of those broke it.
         if (SyncCount > 0 && GetSuspendDrift() < SuspendDriftThreshold)
             return;
 
@@ -103,8 +103,12 @@ public class ServerTimeSync : WorkerBase
         // the browser's Date.now() over the interop channel — this compensates the
         // circuit latency (gap the old serverNow one-way push left uncorrected).
         // WASM/MAUI: C# runs in the browser, so we NTP-probe the remote server via
-        // RPC. Either way `before`/`after` are the LOCAL clock around the round trip.
+        // RPC. Either way `before`/`after` are the LOCAL clock around the round trip —
+        // specifically ServerClock's own base clock, so the measured offset is valid
+        // for whatever base the host configured (clients use a wall-clock base, which
+        // keeps ServerClock correct across suspends; see ClientStartup.Initialize).
         var isServer = HostInfo.HostKind.IsServer();
+        var offsetBaseClock = isServer ? CpuClock : Clocks.ServerClock.BaseClock;
 
         // RTT is the wall-clock (CpuClock) span of the whole burst, not a per-call
         // Stopwatch delta: in the browser the Stopwatch/performance.now granularity
@@ -113,7 +117,7 @@ public class ServerTimeSync : WorkerBase
         var burstStart = CpuClock.Now;
         var offsets = new List<double>(BurstSize); // server − client, in ms
         for (var i = 0; i < BurstSize; i++) {
-            var before = CpuClock.Now.EpochOffset.TotalMilliseconds;
+            var before = offsetBaseClock.Now.EpochOffset.TotalMilliseconds;
             double remoteMs;
             try {
                 // ProbeTimeout keeps a probe hung on a half-dead connection from
@@ -130,7 +134,9 @@ public class ServerTimeSync : WorkerBase
             catch (Exception e) when (isServer && e is JSDisconnectedException or ObjectDisposedException) {
                 return; // Blazor circuit is gone
             }
-            var after = CpuClock.Now.EpochOffset.TotalMilliseconds;
+            var after = offsetBaseClock.Now.EpochOffset.TotalMilliseconds;
+            if (after < before) // A wall-clock base stepped back mid-probe
+                continue;
             if (after - before > 2000) // This call took too long
                 continue;
             var localMid = 0.5 * (before + after);
@@ -180,7 +186,8 @@ public class ServerTimeSync : WorkerBase
         }
 
         Stats.Set(new ServerClockSyncStats.Snapshot(
-            LastOffset, LastPrecision, RttEma, TimeSpan.FromSeconds(avgRtt), LastUpdatedAt, SyncCount));
+            LastOffset, LastPrecision, RttEma, TimeSpan.FromSeconds(avgRtt),
+            LastUpdatedAt, _lastUpdatedWallAt, SyncCount));
 
         try {
             // Always a Date-relative offset, never an absolute server timestamp: an
@@ -201,9 +208,9 @@ public class ServerTimeSync : WorkerBase
     private TimeSpan GetSuspendDrift()
     {
         // The wall clock keeps running through a device suspend while CpuClock
-        // (Stopwatch / CLOCK_MONOTONIC) does not, so the gap between the two
-        // elapsed spans since the last accepted sync equals the time slept since
-        // then — which is exactly the error ServerClock has accumulated.
+        // (Stopwatch / CLOCK_MONOTONIC) does not, so a gap between the two elapsed
+        // spans since the last accepted sync means a suspend or a wall-clock step
+        // happened — either way the offset deserves a fresh measurement.
         var wallElapsed = Clocks.SystemClock.Now - _lastUpdatedWallAt;
         var cpuElapsed = CpuClock.Now - LastUpdatedAt;
         return wallElapsed - cpuElapsed;

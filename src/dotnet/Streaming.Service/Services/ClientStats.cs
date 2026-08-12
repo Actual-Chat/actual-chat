@@ -31,7 +31,8 @@ public static class ClientStats
         => value.Clamp(0, MaxByteRate);
 
     public static TimeSpan AudioLatency(TimeSpan value)
-        => value.Clamp(TimeSpan.Zero, MaxAudioLatency);
+        // Signed: a stale-behind client clock reports negative latency — the desync signal this meter surfaces
+        => value.Clamp(-MaxAudioLatency, MaxAudioLatency);
 
     public static ReceiveQuality Quality(ReceiveQuality quality)
         => quality.LayerId <= MaxLayerId

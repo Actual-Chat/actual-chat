@@ -75,5 +75,23 @@ public class DeviceAwakeUI : UIServiceBase<UIHub>, ISleepDurationProvider, IDevi
         var totalSleepDuration = TimeSpan.FromMilliseconds(totalSleepDurationMs);
         _totalSleepDuration.Value = totalSleepDuration;
         Hub.ReconnectUI.TryReconnectOnDeviceAwake(totalSleepDuration);
+        _ = ResyncServerTime();
+    }
+
+    // Private methods
+
+    private async Task ResyncServerTime()
+    {
+        // Right on wake the server-clock offset deserves a fresh measurement (the wall
+        // clock may have stepped, and the JS push could've been missed while frozen) —
+        // don't leave it to ServerTimeSync's next drift-check tick, which background-tab
+        // timer throttling can delay far past its nominal cadence.
+        try {
+            if (Services.GetService<ServerTimeSync>() is { } serverTimeSync)
+                await serverTimeSync.EnsureSynced(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Post-wake server time re-sync failed");
+        }
     }
 }
