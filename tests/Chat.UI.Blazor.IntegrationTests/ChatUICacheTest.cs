@@ -1,6 +1,7 @@
 using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
@@ -66,8 +67,11 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
         var streamingEntry = await Tester.CreateStreamingEntry(chat.Id, Languages.English);
         var entryLid = streamingEntry.ChatEntrySlim.Id.LocalId;
         var tileStart = ChatUI.ServerIdTileStack.LastLayer.GetTile(entryLid).Start;
+        // The backend computed, not the front GetChatRangeMeta: the latter also composes the
+        // conversation range meta, which the summarizer may legitimately invalidate mid-test.
+        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
         var cRangeMeta = await Computed.Capture(
-            () => Tester.Chats.GetChatRangeMeta(Tester.Session, chat.Id, tileStart, CancellationToken.None));
+            () => chatsBackend.GetEntryRangeMeta(chat.Id, tileStart, CancellationToken.None));
         cRangeMeta.IsConsistent().Should().BeTrue();
 
         // act - a content-only update; entry lids don't change, so the range meta can't either
@@ -80,5 +84,43 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
         // positive control - a new entry does change lid structure and must invalidate it
         await Tester.CreateTextEntry(chat.Id, "next entry");
         await cRangeMeta.WhenInvalidated(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task NewEntryRendersWhileRangeMetaRefetchIsInFlight()
+    {
+        // arrange - a warm build inside a computed populates ChatUI's last-known meta caches
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "chat-ui-cache-test-stale-meta");
+        await Tester.CreateTextEntries(chat.Id, "warmup", 3);
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var items = await BuildChatItems(chatUI, chat.Id);
+        items.Items.Should().NotBeEmpty();
+
+        // act - the new entry invalidates the range meta, so the next build finds its refetch in flight
+        // and must render from the last-known list extended to the fresh id range
+        var newEntry = await Tester.CreateTextEntry(chat.Id, "the new entry");
+
+        // assert - whichever path the rebuild takes (stand-in meta or a fresh fetch that won the race),
+        // the new entry must be in the built items right away
+        items = await BuildChatItems(chatUI, chat.Id);
+        items.Items
+            .SelectMany(m => m is ChatEntryAuthorGroup group ? group.Items : [m as ChatEntryMessage])
+            .Where(m => m?.Entry.LocalId == newEntry.Id.LocalId)
+            .Should().NotBeEmpty("a new entry must render on the very first rebuild after it lands");
+    }
+
+    // Private methods
+
+    private async Task<ChatItems> BuildChatItems(ChatUI chatUI, ChatId chatId)
+    {
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        var computed = await Computed.New(
+                Tester.ScopedAppServices,
+                ct => chatUI.GetChatItems(chatId, query, 0, ct))
+            .Update();
+        computed.HasError.Should().BeFalse();
+        return computed.Value;
     }
 }
