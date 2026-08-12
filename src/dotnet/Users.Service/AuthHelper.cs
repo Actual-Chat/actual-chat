@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ActualChat.AspNetCore;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 
 namespace ActualChat.Users;
@@ -163,9 +164,21 @@ public sealed class AuthHelper
         if (!isSignedIn)
             existingAccount = null;
 
-        if (!IsCloseFlow(httpContext))
-            return; // Actual SignIn/SignOut actions are performed on close flow only
+        if (!IsCloseFlow(httpContext)) {
+            // Actual SignIn/SignOut actions are performed on close flow only.
+            // The cookie principal exists only to be converted into Session-based auth on that
+            // flow, so once the session isn't signed in it's a stale credential - drop it. This
+            // covers both sign-out and a freshly minted session (always a guest), and it closes
+            // the replay: otherwise a later close flow that gets no new principal would sign the
+            // previous identity back in.
+            if (httpIsSignedIn && !isSignedIn)
+                await httpContext.SignOutAsync().ConfigureAwait(false);
+            return;
+        }
 
+        // NOTE: the principal is deliberately NOT discarded here even though it has served its
+        // purpose - the branch below reads "close flow without a principal" as a sign-out, so
+        // clearing it would turn a re-visited close flow (back button, retry) into one.
         if (httpIsSignedIn) {
             if (isSignedIn && IsSameAccount(existingAccount, httpUser, authSchema))
                 return; // Nothing to change

@@ -47,14 +47,14 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 options.LogoutPath = "/signOut";
                 if (HostInfo.IsDevelopmentInstance)
                     options.Cookie.SecurePolicy = CookieSecurePolicy.None;
-                // This controls the expiration time stored in the cookie itself
-                options.ExpireTimeSpan = TimeSpan.FromDays(14);
-                options.SlidingExpiration = true;
-                // And this controls when the browser forgets the cookie
-                options.Events.OnSigningIn = ctx => {
-                    ctx.CookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(28);
-                    return Task.CompletedTask;
-                };
+                // This principal has exactly one consumer - AuthHelper.UpdateAuthState on the close
+                // flow, which converts it into Session-based auth. It's a handshake token, not a
+                // login: the durable identity is the Session. So it only has to outlive the hop
+                // from the provider callback to /fusion/close, and AuthHelper drops it as soon as
+                // the session isn't signed in. No browser-level expiration either - a session
+                // cookie means closing the browser forgets it too.
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+                options.SlidingExpiration = false;
             });
             authentication.AddGoogle(options => {
                 options.ClientId = Settings.GoogleClientId;
