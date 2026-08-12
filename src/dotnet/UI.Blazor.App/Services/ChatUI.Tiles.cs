@@ -106,6 +106,15 @@ public partial class ChatUI
     // would let a stale snapshot clobber accumulated entries.
     private readonly ConcurrentDictionary<ConversationId, bool> _knownConversationDefaultExpanded = new();
 
+    // Serve-stale caches for the meta phase of GetChatItemsInternal: per chat, the last fresh range-meta
+    // list, conversation tiles, and load zone. A rebuild whose meta is being refetched (typically because
+    // a new entry invalidated it) renders from these instead of waiting a round-trip; UseIfReady
+    // guarantees a follow-up rebuild from the fresh values.
+    private readonly ConcurrentDictionary<ChatId, List<ChatRangeMeta>> _lastChatRangeMetas = new();
+    private readonly ConcurrentDictionary<ChatId, Conversation[][]> _lastConversationTiles = new();
+    private readonly ConcurrentDictionary<ChatId, (List<Range<long>> IdTiles, bool ShowConversations)>
+        _lastLoadZones = new();
+
     public int HalfLoadLimit => BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2; // 20 for mobile
     public int LoadLimit => BrowserInfo.IsMobile ? SecondTileSize * 2 : SecondTileSize * 4; // 40 for mobile
 
@@ -179,6 +188,20 @@ public partial class ChatUI
         using (Computed.BeginIsolation())
             chatLidRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
 
+        // A rebuild whose range meta was invalidated (typically by a new entry) almost always finds its
+        // load-zone tiles invalidated too, and would otherwise pay those round-trips back to back. Warm
+        // the tiles from the previous build's zone while the meta fetch is in flight - isolated, so a
+        // stale zone can't register dependencies; the dependency-registering pass below joins the same
+        // in-flight computations.
+        if (!isPrefetch && !chatRangeMetaListTask.IsCompleted
+            && _lastLoadZones.TryGetValue(chatId, out var lastLoadZone)) {
+            var (lastIdTiles, lastShowConversations) = lastLoadZone;
+            using (Computed.BeginIsolation())
+                _ = BackgroundTask.Run(
+                    () => PrefetchLoadZone(chatId, lastIdTiles, lastShowConversations, cancellationToken),
+                    Log, "Speculative load-zone prefetch failed.", CancellationToken.None);
+        }
+
         var chat = await chatTask.ConfigureAwait(false);
         if (chat == null) {
             // Everything above is already in flight, so bailing out here would leave those tasks unobserved.
@@ -251,11 +274,21 @@ public partial class ChatUI
                 : default;
         var liveAt = CpuTimestamp.Now;
 
-        var chatRangeMetaList = (await chatRangeMetaListTask.ConfigureAwait(false))
-            .OrderBy(m => m.LidRange.Start)
-            .ThenByDescending(m => m.LidRange.Size()) // ChatRangeMeta can be overlapping, so we need to keep the largest
-            .EnsureMonotonic(Comparer<ChatRangeMeta>.Create((a, b) => a.LidRange.Start.CompareTo(b.LidRange.Start)))
-            .ToList();
+        // Fresh by construction: the view awaited GetIdRange right before calling in, so this is a cache
+        // hit even on the rebuild a new entry just triggered - which is what makes the tail synthesis in
+        // UseRangeMetaOrLastKnown sound.
+        var chatLidRange = await chatLidRangeTask.ConfigureAwait(false);
+        var metaIdTilesRange = metaIdTiles.Count > 0
+            ? new Range<long>(metaIdTiles[0].Range.Start, metaIdTiles[^1].Range.End)
+            : default;
+        var lastKnownRangeMetaList = UseRangeMetaOrLastKnown(
+            chatId, chatRangeMetaListTask, metaIdTilesRange, chatLidRange, isPrefetch);
+        var chatRangeMetaList = lastKnownRangeMetaList
+            ?? (await chatRangeMetaListTask.ConfigureAwait(false))
+                .OrderBy(m => m.LidRange.Start)
+                .ThenByDescending(m => m.LidRange.Size()) // ChatRangeMeta can be overlapping, so we need to keep the largest
+                .EnsureMonotonic(Comparer<ChatRangeMeta>.Create((a, b) => a.LidRange.Start.CompareTo(b.LidRange.Start)))
+                .ToList();
 
         var showConversations = (chat.IsSummarized ?? false) || liveConversation != null;
 
@@ -263,7 +296,12 @@ public partial class ChatUI
         // expandedConversations below is the resolved "render expanded" set, not the raw override set.
         IImmutableSet<ConversationId> defaultExpanded = ImmutableHashSet<ConversationId>.Empty;
         IImmutableSet<ConversationId> expandedConversations = ImmutableHashSet<ConversationId>.Empty;
-        var conversationTiles = await conversationTilesTask.ConfigureAwait(false);
+        // A one-build-stale value is harmless here: conversation tiles only fold into the persistent
+        // expansion cache below, while the conversation ranges the layout uses come from the range meta.
+        var conversationTiles = UseOrLastKnown(_lastConversationTiles, chatId, conversationTilesTask, isPrefetch)
+            ?? await conversationTilesTask.ConfigureAwait(false);
+        if (conversationTilesTask.IsCompletedSuccessfully)
+            _lastConversationTiles[chatId] = conversationTilesTask.Result;
         if (showConversations) {
             // Fold the loaded tiles' IsExpandedByDefault into the persistent cache (loaded tiles are
             // authoritative), then resolve defaultExpanded from the cache - so a conversation whose tile
@@ -332,7 +370,6 @@ public partial class ChatUI
                 hiddenLiveTailRange = default;
         }
 
-        var chatLidRange = await chatLidRangeTask.ConfigureAwait(false);
         if (chatRangeMetaList.Count == 0)
             return ChatItems.Empty;
 
@@ -360,31 +397,14 @@ public partial class ChatUI
                 chatRangeMetaList.Add(nextChatRangeMeta);
         }
 
-        // Prefetch tiles for the loaded id ranges
-        {
-            await Task.Run(async () => {
-                // GetTile widens its request by one tile for the first tile (prevMessage == null, so it
-                // needs the preceding entry to render the block start). Prefetching only idTiles left
-                // that one always uncached, costing a serial round-trip on every rebuild.
-                var prefetchEntriesTask = idTiles
-                    .SelectMany((r, i) => IdTileStack.FirstLayer.GetCoveringTiles(
-                        i == 0 ? r.MoveStart(-IdTileStack.FirstLayer.TileSize) : r))
-                    .Select(t => t.Range)
-                    .Where(r => r.Start >= 0)
-                    .EnsureMonotonic()
-                    .Select(r => Chats.GetTile(Session, chatId, r, cancellationToken))
-                    .Collect(ApiConstants.Concurrency.High, cancellationToken);
-                var prefetchConversationsTask = showConversations
-                    ? idTiles
-                        .Select(r => ServerIdTileStack.LastLayer.GetTile(r.Start).Range)
-                        .EnsureMonotonic()
-                        .Select(r => Conversations.GetTile(Session, chatId, r, cancellationToken))
-                        .Collect(ApiConstants.Concurrency.High, cancellationToken)
-                    : Task.CompletedTask;
-                var prefetchChatInfoTask = PrefetchChatInfo(chatId, cancellationToken);
-                await Task.WhenAll(prefetchEntriesTask, prefetchConversationsTask, prefetchChatInfoTask).ConfigureAwait(false);
-            }, cancellationToken).ConfigureAwait(false);
-        }
+        // A stand-in list is not cached: caching it would compound the synthesis on the next rebuild,
+        // and the fresh result this build is shadowing lands in the follow-up rebuild anyway.
+        if (lastKnownRangeMetaList == null && !isPrefetch)
+            _lastChatRangeMetas[chatId] = chatRangeMetaList;
+
+        if (!isPrefetch)
+            _lastLoadZones[chatId] = (idTiles, showConversations);
+        await PrefetchLoadZone(chatId, idTiles, showConversations, cancellationToken).ConfigureAwait(false);
         var loadAt = CpuTimestamp.Now;
 
         var conversationView = new ConversationViewState(
@@ -1289,6 +1309,106 @@ public partial class ChatUI
 
     private static void RecordPhase(long elapsedMs, string phase)
         => GetChatItemsDuration.Record(elapsedMs, new KeyValuePair<string, object?>("phase", phase));
+
+    private Task PrefetchLoadZone(
+        ChatId chatId,
+        List<Range<long>> idTiles,
+        bool showConversations,
+        CancellationToken cancellationToken)
+        => Task.Run(async () => {
+            // GetTile widens its request by one tile for the first tile (prevMessage == null, so it
+            // needs the preceding entry to render the block start). Prefetching only idTiles left
+            // that one always uncached, costing a serial round-trip on every rebuild.
+            var prefetchEntriesTask = idTiles
+                .SelectMany((r, i) => IdTileStack.FirstLayer.GetCoveringTiles(
+                    i == 0 ? r.MoveStart(-IdTileStack.FirstLayer.TileSize) : r))
+                .Select(t => t.Range)
+                .Where(r => r.Start >= 0)
+                .EnsureMonotonic()
+                .Select(r => Chats.GetTile(Session, chatId, r, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken);
+            var prefetchConversationsTask = showConversations
+                ? idTiles
+                    .Select(r => ServerIdTileStack.LastLayer.GetTile(r.Start).Range)
+                    .EnsureMonotonic()
+                    .Select(r => Conversations.GetTile(Session, chatId, r, cancellationToken))
+                    .Collect(ApiConstants.Concurrency.High, cancellationToken)
+                : Task.CompletedTask;
+            var prefetchChatInfoTask = PrefetchChatInfo(chatId, cancellationToken);
+            await Task.WhenAll(prefetchEntriesTask, prefetchConversationsTask, prefetchChatInfoTask).ConfigureAwait(false);
+        }, cancellationToken);
+
+    // Serves the last fresh range-meta list while a refetch is in flight, so a rebuild triggered by a
+    // new entry renders before the round-trip instead of after it. The tail is synthesized from
+    // chatLidRange: GetIdRange is the subscribed new-entry signal and the view just read it, so lids past
+    // the cached tail's entry ranges are known to exist before any meta describes them. A lid removed
+    // meanwhile is harmless - the synthesized ranges over-claim, and GetTile (the content source) simply
+    // doesn't return it. UseIfReady invalidates the enclosing computed when the fresh result lands, so a
+    // build made from a stand-in is always followed by one made from fresh meta.
+    private List<ChatRangeMeta>? UseRangeMetaOrLastKnown(
+        ChatId chatId,
+        Task<ChatRangeMeta[]> freshMetaTask,
+        Range<long> metaIdTilesRange,
+        Range<long> chatLidRange,
+        bool isPrefetch)
+    {
+        // The first read still awaits - standing in on nothing would render an empty chat. A failed fetch
+        // also awaits: UseIfReady doesn't invalidate on failure, so standing in for one would pin the
+        // stale value with no retry trigger, while awaiting propagates the error exactly as it did before.
+        var computed = Computed.Current;
+        if (isPrefetch || computed == null || metaIdTilesRange.IsEmpty
+            || freshMetaTask.IsFaulted || freshMetaTask.IsCanceled
+            || !_lastChatRangeMetas.TryGetValue(chatId, out var lastKnown)
+            || lastKnown.Count == 0)
+            return null;
+
+        // UseIfReady before anything else: checking IsCompleted separately would race - a task completing
+        // between the check and the hookup would serve a stand-in that nothing ever invalidates.
+        if (freshMetaTask.UseIfReady(null!, computed) != null)
+            return null;
+
+        var first = lastKnown[0];
+        var last = lastKnown[^1];
+        if (first.LidRange.Start > metaIdTilesRange.Start && first.PreviousLidTileStart != null)
+            return null; // The query reaches above the cached span; only the fresh fetch knows that part
+
+        // Copied so the meta walk in GetChatItemsInternal can't mutate the cached list
+        var result = new List<ChatRangeMeta>(lastKnown);
+        var targetEnd = Math.Min(metaIdTilesRange.End, chatLidRange.End);
+        if (last.NextLidTileStart == null) {
+            // The cached list ended at the chat's tail, so every lid past its entry ranges is a new entry
+            var entryRanges = last.EntryLidRanges;
+            if (entryRanges.Length == 0)
+                return null; // A tail with no entries can't anchor the extension
+
+            if (targetEnd > entryRanges[^1].End)
+                result[^1] = last with {
+                    LidRange = new Range<long>(last.LidRange.Start, Math.Max(last.LidRange.End, targetEnd)),
+                    EntryLidRanges = [..entryRanges[..^1], new Range<long>(entryRanges[^1].Start, targetEnd)],
+                };
+        }
+        else if (last.LidRange.End < targetEnd)
+            return null; // The query reaches below the cached span; only the fresh fetch knows that part
+
+        return result;
+    }
+
+    private static T? UseOrLastKnown<T>(
+        ConcurrentDictionary<ChatId, T> lastKnownValues,
+        ChatId chatId,
+        Task<T> task,
+        bool isPrefetch)
+        where T : class
+    {
+        // The first read still awaits (same contract as LiveSessionUI.UseOrLastKnown), and so does a
+        // failed fetch - standing in for one would pin the stale value with no retry trigger.
+        var computed = Computed.Current;
+        if (isPrefetch || computed == null || task.IsFaulted || task.IsCanceled
+            || !lastKnownValues.TryGetValue(chatId, out var lastKnown))
+            return null;
+
+        return task.UseIfReady(null!, computed) ?? lastKnown;
+    }
 
     private Task PrefetchChatInfo(ChatId chatId, CancellationToken cancellationToken)
         // DebugLog?.LogDebug("PrefetchTiles: {ChatId} {IdRange}", chatId, idRange);
