@@ -13,6 +13,13 @@ namespace ActualChat.Streaming;
 /// </summary>
 public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
 {
+    // A late subscriber wants the transcript, not the keystroke-by-keystroke history that built it,
+    // so the memoized diff stream folds its buffered prefix into one diff off Transcript.Empty.
+    internal static readonly Func<Transcript, TranscriptDiff, Transcript> TranscriptFolder
+        = static (transcript, diff) => transcript + diff;
+    internal static readonly Func<Transcript, TranscriptDiff> TranscriptToDiff
+        = static transcript => transcript - Transcript.Empty;
+
     private readonly StreamStore<AudioFrame> _audioStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
@@ -139,9 +146,11 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             return null;
         }
 
-        var (transcript, producedCount) = memoizer.FoldBuffered(
-            Transcript.Empty,
-            static (t, diff) => t + diff);
+        // Folding memoizer resumes from its checkpoint; the fallback only runs if some future
+        // publisher forgets to use MemoizeFolding, and costs a full refold per read.
+        var (transcript, producedCount) = memoizer is FoldingAsyncMemoizer<TranscriptDiff, Transcript> folding
+            ? folding.Fold()
+            : memoizer.FoldBuffered(Transcript.Empty, TranscriptFolder);
         if (memoizer.IsCompleted)
             return transcript;
 
@@ -161,7 +170,8 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     {
         try {
             ValidateStreamId(streamId);
-            var memoizer = ((IAsyncEnumerable<TranscriptDiff>)diffStream).Memoize(cancellationToken);
+            var memoizer = ((IAsyncEnumerable<TranscriptDiff>)diffStream)
+                .MemoizeFolding(Transcript.Empty, TranscriptFolder, TranscriptToDiff, cancellationToken);
             if (_transcriptStreams.Publish(streamId, memoizer))
                 await (memoizer.WhenRunning ?? Task.CompletedTask).ConfigureAwait(false);
             else
