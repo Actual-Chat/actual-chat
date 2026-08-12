@@ -28,6 +28,16 @@ public class StreamStore<TItem> : ProcessorBase
         => Get(streamId, true, cancellationToken);
     public async Task<IAsyncEnumerable<TItem>?> Get(StreamId streamId, bool waitForShare, CancellationToken cancellationToken)
     {
+        var memoizer = await GetMemoizer(streamId, waitForShare, cancellationToken).ConfigureAwait(false);
+        return memoizer?.Replay(ReplayTailSize, cancellationToken);
+    }
+
+    // Exposes the memoizer itself, so a caller can fold the buffered prefix instead of replaying it
+    public async Task<AsyncMemoizer<TItem>?> GetMemoizer(
+        StreamId streamId,
+        bool waitForShare,
+        CancellationToken cancellationToken)
+    {
         StreamIdValidator.Invoke(streamId);
         if (StopToken.IsCancellationRequested)
             return null;
@@ -36,8 +46,7 @@ public class StreamStore<TItem> : ProcessorBase
             if (!entry.Value.Task.IsCompleted)
                 return null;
 
-            var memoizer = await entry.Value.Task.ConfigureAwait(false);
-            return memoizer?.Replay(ReplayTailSize, cancellationToken);
+            return await entry.Value.Task.ConfigureAwait(false);
         }
 
         if (!waitForShare)
@@ -45,10 +54,9 @@ public class StreamStore<TItem> : ProcessorBase
 
         entry = GetOrAddStream(streamId);
         try {
-            var memoizer = await entry.Value.Task
+            return await entry.Value.Task
                 .WaitAsync(ShareWaitDelay, cancellationToken)
                 .ConfigureAwait(false);
-            return memoizer?.Replay(ReplayTailSize, cancellationToken);
         }
         catch (TimeoutException) {
             Log?.LogWarning("Get(#{StreamId}): TIMEOUT waiting for stream after {Timeout}s", streamId, ShareWaitDelay.TotalSeconds);

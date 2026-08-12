@@ -11,10 +11,18 @@ namespace ActualChat.Streaming;
 /// </summary>
 [BackendService(nameof(HostRole.StreamingBackend), ServiceMode.Distributed)]
 [BackendShardScheme(nameof(ShardScheme.StreamingBackend))]
-public interface IAudioStreamingBackend : IRpcService, IBackendService
+public interface IAudioStreamingBackend : IComputeService, IBackendService
 {
     // Language-suffixed transcript stream ids resolve to their base stream's chat.
     Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken);
+
+    // The transcript so far, folded from the same memoized diff stream GetTranscript replays,
+    // and invalidated when the next diff lands. Node-local by construction: the memoizer lives
+    // on the node named by streamId.NodeRef, so a client must never serve this from its own cache -
+    // the value is live and belongs to that node's memory.
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<Transcript?> GetMergedTranscript(StreamId streamId, CancellationToken cancellationToken);
 
     Task<RpcStream<AudioFrame>?> GetAudio(
         StreamId streamId,
