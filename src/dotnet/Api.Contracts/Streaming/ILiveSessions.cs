@@ -33,6 +33,15 @@ public interface ILiveSessions : IComputeService
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);
+    // How much text each author had transcribed over the recent window - the "is this a real
+    // conversation" signal for chats where transcription is on, where stream activity alone can't
+    // tell speech from noise that trips VAD. Same reference-equality caveat as ApiArray above.
+    [ComputeMethod(ConsolidationDelay = 1, ConsolidationComparer = typeof(ApiMapComparer<AuthorId, int>))]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<ApiMap<AuthorId, int>> GetTranscribedTextLengths(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken);
     // Consolidated server-side, so a GetCallState or chat-rules change that leaves the status alone
     // isn't pushed to the caller. Zero delay - this is a ring/accept path.
     [ComputeMethod(ConsolidationDelay = 0)]

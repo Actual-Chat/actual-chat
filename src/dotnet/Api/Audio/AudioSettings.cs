@@ -21,6 +21,10 @@ public sealed class AudioSettings
     // The threshold is what keeps a stray VAD trigger from passing as a conversation.
     public TimeSpan RemoteSpeechWindow { get; init; } = TimeSpan.FromMinutes(3);
     public TimeSpan RemoteSpeechThreshold { get; init; } = TimeSpan.FromSeconds(10);
+    // Where transcription is on, transcribed characters replace speech duration as the signal -
+    // it can tell words from noise that merely trips VAD. Roughly a sentence or two from others.
+    public TimeSpan TranscribedTextWindow { get; init; } = TimeSpan.FromMinutes(3);
+    public int TranscribedTextThreshold { get; init; } = 80;
     // Must outlive entry finalization, which runs after the stream ends:
     // blob save + refine retranscription (RetranscriptionTimeout) + invalidation propagation
     public TimeSpan StreamExpirationDelay { get; init; } = TimeSpan.FromSeconds(60);

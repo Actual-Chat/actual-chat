@@ -779,7 +779,7 @@ public partial class ChatAudioUI
             if (!await IsNotCancelled(nextBeepAt).ConfigureAwait(false))
                 continue;
 
-            if (_remoteSpeech.IsConversation(CpuNow)) {
+            if (await IsInConversation(cancellationToken).ConfigureAwait(false)) {
                 // Postponed rather than skipped, so the reminder returns as soon as the chat goes quiet
                 _nextBeep.Value = new NextBeepState(nextBeepAt + AudioSettings.RecordingBeepInterval, false);
                 continue;
@@ -793,6 +793,30 @@ public partial class ChatAudioUI
             var nextBeep = await _nextBeep.Use(cancellationToken).ConfigureAwait(false);
             return nextBeep is { IsPreviousCancelled: false } || nextBeep?.At == previous;
         }
+    }
+
+    private async Task<bool> IsInConversation(CancellationToken cancellationToken)
+    {
+        // Audible right now settles it either way, and it's the one case the transcript can't
+        // cover - nothing is finalized until the utterance ends.
+        if (_remoteSpeech.IsSpeaking)
+            return true;
+        if (await GetRecordingChatId().ConfigureAwait(false) is not { } chatId)
+            return false;
+
+        // Where transcription is on it's the better signal: speech duration can't tell words from
+        // the noise that tripped VAD, and transcribed characters can.
+        var isTranscriptionOn = await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(false);
+        if (!isTranscriptionOn)
+            return _remoteSpeech.IsConversation(CpuNow);
+
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthorId = ownAuthor?.Id ?? default;
+        var textLengths = await LiveStreamUI.GetTranscribedTextLengths(chatId, cancellationToken).ConfigureAwait(false);
+        var remoteTextLength = textLengths
+            .Where(kv => kv.Key != ownAuthorId)
+            .Sum(kv => kv.Value);
+        return remoteTextLength >= AudioSettings.TranscribedTextThreshold;
     }
 
     private async Task WarnBeforeRecordingStop(CancellationToken cancellationToken)

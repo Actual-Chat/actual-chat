@@ -19,6 +19,12 @@ public class LiveStreamUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
         ChatId chatId, CancellationToken cancellationToken)
         => LiveSessions.GetAudioStreamingAuthorIds(Session, chatId, cancellationToken);
 
+    // Pass-through, as GetAudioStreamingAuthorIds above
+    [ComputeMethod]
+    public virtual Task<ApiMap<AuthorId, int>> GetTranscribedTextLengths(
+        ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.GetTranscribedTextLengths(Session, chatId, cancellationToken);
+
     [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<bool> IsAuthorStreamingAudio(
         ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)

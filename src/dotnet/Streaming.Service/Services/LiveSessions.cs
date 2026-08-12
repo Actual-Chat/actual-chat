@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Live;
 
 namespace ActualChat.Streaming.Services;
@@ -7,8 +8,15 @@ namespace ActualChat.Streaming.Services;
 /// </summary>
 public class LiveSessions(IServiceProvider services) : ILiveSessions
 {
+    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
+    // Bounds the tail walk: a window this dense is a conversation many times over, so stopping
+    // early can only under-report a chat that already passed every threshold.
+    private const int MaxTranscribedTextEntries = 200;
+
     private IServiceProvider Services { get; } = services;
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
+    private MomentClockSet Clocks => field ??= Services.Clocks();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
@@ -68,6 +76,15 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             return default;
 
         return await GetAudioStreamingAuthorIdsByChat(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiMap<AuthorId, int>> GetTranscribedTextLengths(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        return await GetTranscribedTextLengthsByChat(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -230,6 +247,47 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     }
 
     // Protected methods
+
+    // Session-less for the same reason as GetAudioStreamingAuthorIdsByChat. The delay throttles
+    // the recompute itself: this depends on the chat's tail tile, which every entry invalidates,
+    // and a signal measured in minutes has nothing to gain from following that rate.
+    [ComputeMethod(InvalidationDelay = 1)]
+    protected virtual async Task<ApiMap<AuthorId, int>> GetTranscribedTextLengthsByChat(
+        ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Finalized entries only. A still-streaming entry's text is reachable via
+        // IAudioStreamingBackend.GetMergedTranscript, but that re-arms a few times a second while
+        // someone speaks, and it would buy 1-3s of text on a window measured in minutes.
+        var lidRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
+        var from = Clocks.ServerClock.Now - AudioSettings.TranscribedTextWindow;
+        var lengths = new Dictionary<AuthorId, int>();
+        var tile = IdTileStack.FirstLayer.GetTile(lidRange.End - 1);
+        for (var seen = 0; seen < MaxTranscribedTextEntries;) {
+            var chatTile = await ChatsBackend
+                .GetTile(chatId, tile.Range, false, cancellationToken)
+                .ConfigureAwait(false);
+            var isWindowPassed = false;
+            for (var i = chatTile.Entries.Length - 1; i >= 0; i--) {
+                var entry = chatTile.Entries[i];
+                seen++;
+                if (entry.BeginsAt < from) {
+                    isWindowPassed = true;
+                    break;
+                }
+                // HasAudio, not any text entry: a typed message says nothing about whether the
+                // user can hear a conversation happening.
+                if (!entry.HasAudio || entry.Content.Length == 0)
+                    continue;
+
+                lengths[entry.AuthorId] = lengths.GetValueOrDefault(entry.AuthorId) + entry.Content.Length;
+            }
+            if (isWindowPassed || tile.Range.Start <= lidRange.Start)
+                break;
+
+            tile = IdTileStack.FirstLayer.GetTile(tile.Range.Start - 1);
+        }
+        return new ApiMap<AuthorId, int>(lengths);
+    }
 
     // Session-less on purpose: the author set spans every participant, so keying it by session
     // would give each viewer its own subscription and miss the others' changes.
