@@ -150,8 +150,11 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     // UICommander rather than Commander: NavbarLogoMenu and SettingsPanel call SignOut()
     // fire-and-forget, so a throw would land as an unobserved task exception - this way a failed
     // sign-out is shown to the user instead of vanishing.
+    // Deactivate, because signing in doesn't rotate the session id: without it the id outlives the
+    // sign-out, and the next sign-in on a shared machine lands on the one the previous user's
+    // browser already knows. Expiring it makes AuthHelper mint a fresh session on the reload.
     protected virtual Task SignOutBackend()
-        => Hub.UICommander.Run(new Accounts_SignOut(Session));
+        => Hub.UICommander.Run(new Accounts_SignOut(Session, true));
 
     // Private methods
 
