@@ -199,7 +199,7 @@ public partial class ChatUI
             using (Computed.BeginIsolation())
                 _ = BackgroundTask.Run(
                     () => PrefetchLoadZone(chatId, lastIdTiles, lastShowConversations, cancellationToken),
-                    Log, "Speculative load-zone prefetch failed.", CancellationToken.None);
+                    Log, "Speculative load-zone prefetch failed.", cancellationToken);
         }
 
         var chat = await chatTask.ConfigureAwait(false);
