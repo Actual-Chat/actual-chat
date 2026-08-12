@@ -1263,16 +1263,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (invChatEntry != null) {
                 InvalidateTiles(chatId, invChatEntry.LocalId, changeKind, invBoundToThreadHasChanged);
 
-                var entryTile = IdTileStack.LastLayer.GetTile(invChatEntry.LocalId);
-                _ = GetEntryRangeMeta(chatId, entryTile.Range.Start, default);
-
-                if (previousEntryId != 0 && !entryTile.Range.Contains(previousEntryId)) {
-                    var previousEntryIdTile = IdTileStack.LastLayer.GetTile(previousEntryId);
-                    _ = GetEntryRangeMeta(chatId, previousEntryIdTile.Range.Start, default);
-                }
-                if (nextEntryId != 0 && !entryTile.Range.Contains(nextEntryId)) {
-                    var nextIdTile = IdTileStack.LastLayer.GetTile(nextEntryId);
-                    _ = GetEntryRangeMeta(chatId, nextIdTile.Range.Start, default);
+                // Range meta is pure lid structure, so only changes that add or drop a lid can touch it.
+                // A content-only Update used to invalidate it anyway, which forced every tail-following
+                // client into a ~RTT range-meta refetch per utterance finalization and per message edit.
+                if (changeKind is ChangeKind.Create or ChangeKind.Remove || invBoundToThreadHasChanged) {
+                    var entryTile = IdTileStack.LastLayer.GetTile(invChatEntry.LocalId);
+                    if (previousEntryId != 0 && !entryTile.Range.Contains(previousEntryId)) {
+                        var previousEntryIdTile = IdTileStack.LastLayer.GetTile(previousEntryId);
+                        _ = GetEntryRangeMeta(chatId, previousEntryIdTile.Range.Start, default);
+                    }
+                    if (nextEntryId != 0 && !entryTile.Range.Contains(nextEntryId)) {
+                        var nextIdTile = IdTileStack.LastLayer.GetTile(nextEntryId);
+                        _ = GetEntryRangeMeta(chatId, nextIdTile.Range.Start, default);
+                    }
                 }
             }
 
