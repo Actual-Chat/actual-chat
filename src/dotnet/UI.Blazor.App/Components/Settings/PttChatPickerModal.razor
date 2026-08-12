@@ -59,27 +59,14 @@
             return;
 
         var settingsUI = Hub.UserSettingsUI;
-        var addedCount = 0;
         var joinedAt = Hub.Clocks.ServerClock.Now;
+        // CanAdd bounds the selection to the capacity seen at open time; if another device
+        // fills it concurrently, WithPttChat evicts the least-recently-joined entry instead.
         await settingsUI.UserWalkieTalkieSettings().Update(x => {
-            foreach (var chatId in chatIds) {
-                if (x.AllPttChats.Length >= UserWalkieTalkieSettings.MaxChatCount)
-                    break;
-
+            foreach (var chatId in chatIds)
                 x = x.WithPttChat(chatId, joinedAt);
-                addedCount++;
-            }
             return x;
         }, CancellationToken.None);
-        // CanAdd bounds the common case client-side; this covers the race where another
-        // device fills the remaining capacity between opening the picker and clicking Add.
-        if (addedCount < chatIds.Count) {
-            Hub.ToastUI.Show(
-                $"Only added {addedCount} of {chatIds.Count} chats - the Push to Talk limit is "
-                + $"{UserWalkieTalkieSettings.MaxChatCount}",
-                "icon-alert-circle",
-                ToastDismissDelay.Short);
-        }
         Modal.Close();
     }
 
