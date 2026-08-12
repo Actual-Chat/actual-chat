@@ -53,7 +53,7 @@ public sealed partial record UserWalkieTalkieSettings
         => pttEnabledAt is { } enabledAt && joinedAt >= enabledAt;
 
     public bool IsArmedIn(ChatId chatId, Moment? pttEnabledAt)
-        => AllPttChats.Any(c => c.ChatId == chatId && IsArmed(pttEnabledAt, c.JoinedAt));
+        => PttChats.Any(c => c.ChatId == chatId && IsArmed(pttEnabledAt, c.JoinedAt));
 
     public UserWalkieTalkieSettings WithPttChat(ChatId chatId, Moment joinedAt)
     {
