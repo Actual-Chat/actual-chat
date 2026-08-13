@@ -133,8 +133,8 @@ body.narrow {
     touch-action: none;
 }
 /* Let fullscreen video panel reach the viewport edges under device cutouts */
-body:has(.video-panel.expanded) .safe-area-left::after,
-body:has(.video-panel.expanded) .safe-area-right::after {
+body.has-video-panel:has(.video-panel.expanded) .safe-area-left::after,
+body.has-video-panel:has(.video-panel.expanded) .safe-area-right::after {
     display: none;
 }
 .safe-area-bottom-overlay {

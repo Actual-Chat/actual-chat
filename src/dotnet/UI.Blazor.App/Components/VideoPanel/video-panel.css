@@ -968,23 +968,23 @@ body.narrow .video-panel.expanded.layout-equal .c-grid {
    with the chat visible below it, and pausing there freezes one-shot entrance
    animations (`smoothShow`, `showSubHeader`) on their opacity:0 first frame —
    the text keeps its box but never appears. */
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .layout-body *,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .layout-body *::before,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .layout-body *::after,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .side-nav *,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .side-nav *::before,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .side-nav *::after,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .layout-subfooter,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .layout-subfooter::before,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .layout-subfooter::after {
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .layout-body *,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .layout-body *::before,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .layout-body *::after,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .side-nav *,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .side-nav *::before,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .side-nav *::after,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .layout-subfooter,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .layout-subfooter::before,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .layout-subfooter::after {
     /* !important: `animation` shorthands re-declare play-state `running`;
        deep multi-class ones can out-rank this gate's specificity. */
     animation-play-state: paused !important;
 }
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .video-panel,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .video-panel *,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .video-panel *::before,
-body.narrow:has(.video-panel.expanded:not(.panel-hidden)) .video-panel *::after {
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .video-panel,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .video-panel *,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .video-panel *::before,
+body.narrow.has-video-panel:has(.video-panel.expanded:not(.panel-hidden)) .video-panel *::after {
     /* Both gates are !important and tie on specificity — this one wins by
        source order, so it MUST stay below the paused block. */
     animation-play-state: running !important;
