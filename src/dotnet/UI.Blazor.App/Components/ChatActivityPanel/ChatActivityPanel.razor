@@ -10,7 +10,6 @@
 
     var iconSize = ScreenSize.IsNarrow() ? 6 : 8;
     var isListening = m.IsListening;
-    var isRecordingHere = m.IsRecordingHere;
     var isWatchingHere = m.IsWatchingHere;
     var isOwnVideoStreaming = m.IsOwnVideoStreaming;
     var isActive = m.IsAnyoneTalking;
@@ -78,18 +77,12 @@
                     TooltipPosition="FloatingPosition.Bottom">
                     @joinButtonText
                 </Button>
-            } else if (isRecordingHere || isOwnVideoStreaming || isWatchingHere) {
-                <HeaderButton
-                    Class="talking"
-                    StopPropagation="true"
-                    PreventDefault="true"
-                    Click="@OnHangUpClick"
-                    Tooltip="@tooltip"
-                    TooltipPosition="FloatingPosition.Bottom">
-                    <i class="icon-phone-off"></i>
-                </HeaderButton>
             } else {
-                <StopListeningCountdownButton ChatId="@Chat.Id" Click="@OnStopListeningClick"/>
+                <ChatAudioControls
+                    Chat="@Chat"
+                    AudioState="@m.AudioState"
+                    MustShowHangUp="@(isOwnVideoStreaming || isWatchingHere)"
+                    OnHangUpRequested="@OnHangUpClick"/>
             }
         }
     </div>
@@ -168,9 +161,6 @@
         ChatVideoUI.CloseVideoPanel();
         _ = ChatAudioUI.SetListeningState(Chat.Id, false);
     }
-
-    private void OnStopListeningClick()
-        => _ = ChatAudioUI.SetListeningState(Chat.Id, false);
 
     private void StopRecording(ChatId chatId) {
         if (!IsValidAction())

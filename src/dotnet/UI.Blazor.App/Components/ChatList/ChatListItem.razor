@@ -9,7 +9,6 @@
     var isActiveChatList = listKind == ChatListKind.Active;
     var audioState = m.AudioState;
     var isListeningOrRecording = audioState is not null && (audioState.IsListening || audioState.IsRecording);
-    var hasButtons = isActiveChatList || isListeningOrRecording;
     var lastTextEntry = m.LastTextEntry;
     var attributes = listKind == ChatListKind.All && m.IsFirstItem
         ? FirstItemAttributes
@@ -54,7 +53,7 @@
                             var activity = m.CallActivity;
                             <span class="c-live-talking">
                                 <chat-activity-svg size="4" isActive="true"/>
-                                @(activity.IsLiveSession ? $"{activity.ParticipantCount} · live" : "talking")
+                                <span class="c-live-text">@(activity.IsLiveSession ? $"{activity.ParticipantCount} · live" : "talking")</span>
                             </span>
                         }
                         else if (lastTextEntry.IsContentStreaming) {
@@ -86,62 +85,48 @@
         @if (isActiveChatList) {
             // Active ChatList
             <div class="slot c-active">
-                @if (audioState?.IsRecording == true) {
-                    <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
-                }
                 @if (m.IsPttArmed) {
                     // PTT implies listening, so the badge replaces the listen toggle; click = leave PTT.
                     <ChatListPttToggle ChatId="@chat.Id" Class="ending-btn"/>
                 } else {
-                    <div class="listen-wrapper ending-btn">
-                        <ChatListListenToggle AudioState="@audioState"/>
-                    </div>
+                    <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
                 }
             </div>
-        } else {
-            // Not active ChatList
-            @if (!isHoverable) {
-                // Touch capable and not hoverable
-                <div class="slot c-touch">
-                    @if (showEnding) {
-                        <UnreadCount
-                            Value="@m.UnreadCount"
-                            NotificationMode="@m.NotificationMode"
-                            HasMentions="@m.HasUnreadOwnMention"/>
-                    }
-                    @if (hasButtons) {
-                        @if (audioState?.IsRecording == true) {
-                            <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
-                        }
-                        <div class="listen-wrapper ending-btn">
-                            <ChatListListenToggle AudioState="@audioState"/>
-                        </div>
-                    }
-                </div>
-            } else {
-                // Hoverable
-                <div class="slot c-hoverable">
+        } else if (!isHoverable) {
+            // Touch capable and not hoverable
+            <div class="slot c-touch">
+                @if (showEnding) {
                     <UnreadCount
                         Value="@m.UnreadCount"
                         NotificationMode="@m.NotificationMode"
                         HasMentions="@m.HasUnreadOwnMention"/>
-                    @if (audioState?.IsRecording == true) {
-                        <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
-                    }
-                    <div class="listen-wrapper ending-btn">
-                        <ChatListListenToggle AudioState="@audioState"/>
-                    </div>
-                    <div
-                        class="menu ending-btn"
-                        data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value, listKind.Format()).ToString())"
-                        data-menu-trigger="@MenuTrigger.Primary"
-                        data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
-                        <HeaderButton>
-                            <i class="icon-more-vertical text-2xl"></i>
-                        </HeaderButton>
-                    </div>
+                }
+                @if (isListeningOrRecording) {
+                    <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
+                }
+            </div>
+        } else {
+            // Hoverable
+            <div class="slot c-hoverable">
+                <UnreadCount
+                    Value="@m.UnreadCount"
+                    NotificationMode="@m.NotificationMode"
+                    HasMentions="@m.HasUnreadOwnMention"/>
+                @if (isListeningOrRecording) {
+                    <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
+                } else {
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="false" Class="ending-btn"/>
+                }
+                <div
+                    class="menu ending-btn"
+                    data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value, listKind.Format()).ToString())"
+                    data-menu-trigger="@MenuTrigger.Primary"
+                    data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+                    <HeaderButton>
+                        <i class="icon-more-vertical text-2xl"></i>
+                    </HeaderButton>
                 </div>
-            }
+            </div>
         }
     </Ending>
 </NavbarItem>

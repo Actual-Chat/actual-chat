@@ -1,0 +1,94 @@
+.chat-audio-controls {
+    @apply flex-x items-center gap-x-1;
+}
+body.narrow .chat-activity-panel .chat-audio-controls {
+    @apply gap-x-2;
+}
+.chat-audio-controls .btn-h i {
+    @apply text-2xl;
+}
+/* phone-off glyph is a fuller square than the slim mic at the same font-size;
+   size it down so the two read as one (0.88 × text-2xl). */
+.chat-audio-controls .c-hangup i {
+    font-size: 1.32rem;
+}
+/* Red controls rest at danger-light and deepen to danger on hover/press;
+   without these the base .btn-h:hover rule would repaint them gray. */
+.chat-audio-controls .c-mic,
+.chat-audio-controls .c-hangup {
+    @apply text-[var(--danger-light)];
+}
+body.hoverable .chat-audio-controls .c-mic:hover,
+body.hoverable .chat-audio-controls .c-hangup:hover,
+.touch-capable .chat-audio-controls .c-mic:active,
+.touch-capable .chat-audio-controls .c-hangup:active {
+    @apply text-danger;
+}
+.chat-audio-controls .c-listen,
+body.hoverable .chat-audio-controls .c-listen:hover {
+    @apply text-primary;
+}
+
+/* Listening timer ring */
+.chat-audio-controls .c-listening-timer {
+    @apply relative;
+    @apply flex items-center justify-center;
+}
+.chat-audio-controls .c-listening-timer .c-timer-ring {
+    @apply absolute -inset-2;
+    @apply pointer-events-none;
+    width: calc(100% + 1rem);
+    height: calc(100% + 1rem);
+    transform: rotate(-90deg);
+}
+.chat-audio-controls .c-timer-ring-bg {
+    @apply opacity-30;
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 0.75;
+    stroke-linecap: round;
+}
+.chat-audio-controls .c-timer-ring-circle {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 1.25;
+    stroke-linecap: round;
+    stroke-dasharray: 100.531;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1s linear;
+}
+
+/* Alternating icon/countdown inside the listening button */
+.chat-audio-controls .c-timer-swap {
+    @apply relative flex items-center justify-center;
+}
+.chat-audio-controls .c-timer-swap .swap-a,
+.chat-audio-controls .c-timer-swap .swap-b {
+    /* steps(80) keeps every tick on AnimationSync's 100ms grid (8s / 80). */
+    animation: timer-swap 8s steps(80) infinite;
+}
+.chat-audio-controls .c-timer-swap .swap-a {
+    @apply block;
+}
+.chat-audio-controls .c-timer-swap .swap-b {
+    @apply absolute inset-0;
+    @apply flex items-center justify-center;
+    animation-delay: -4s;
+}
+.chat-audio-controls .c-timer-text {
+    @apply text-primary text-[0.7rem] font-semibold leading-none tabular-nums;
+}
+@keyframes timer-swap {
+    0%, 40% {
+        opacity: 1;
+    }
+    46%, 50% {
+        opacity: 0;
+    }
+    50.01%, 90% {
+        opacity: 0;
+    }
+    96%, 100% {
+        opacity: 1;
+    }
+}
