@@ -130,7 +130,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             var modeAfter = _activeScopes.GetMode();
             Log.LogInformation("Release {Mode}: state {Before} -> {After}", requester.Kind, modeBefore, modeAfter);
             if (requester.Kind is AudioFocusMode.Recording && modeAfter < AudioFocusMode.Recording)
-                AudioEngines.Recording.StopRecording();
+                AudioEngines.Recording.Release();
             if (modeAfter != modeBefore)
                 await SetModeUnsafe(modeAfter).ConfigureAwait(false);
         }
@@ -147,6 +147,15 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             // iOS rejects SetActive(true) while an interruption is in progress; RecoverInternal
             // reactivates in the latest mode once the interruption ends.
             Log.LogInformation("SetMode: {Mode} deferred - interruption in progress", mode);
+            return;
+        }
+
+        // GetMode() reports Tune both for a live tune scope and for no scopes at all, so the
+        // idle case has to be told apart here rather than from the mode.
+        if (_activeScopes.IsEmpty) {
+            AudioEngines.Pause();
+            await AudioSession.Deactivate().ConfigureAwait(false);
+            (_isSessionConfigured, _isSessionActivated) = (false, false);
             return;
         }
 
@@ -168,6 +177,13 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     private async Task RecoverInternal(CancellationToken cancellationToken)
     {
         using var _1 = await _lock.Lock(cancellationToken).ConfigureAwait(false);
+        if (_activeScopes.IsEmpty) {
+            // Nothing wants the session, so recovering it would just re-acquire the cost
+            // SetModeUnsafe released - the next acquire reactivates anyway.
+            Log.LogInformation("Recover: no active scopes, leaving the session deactivated");
+            return;
+        }
+
         var mode = _activeScopes.GetMode();
         Log.LogInformation("Recover: reactivating session in {Mode}", mode);
         var setup = await AudioSession.Reactivate(mode).ConfigureAwait(false);

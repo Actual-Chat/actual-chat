@@ -55,6 +55,9 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     public Task<AudioSessionSetup> Reconfigure(AudioFocusMode mode)
         => DispatchToMainThread(() => ReconfigureUnsafe(mode));
 
+    public Task Deactivate()
+        => DispatchToMainThread(DeactivateUnsafe);
+
     public Task<AudioSessionSetup> Reactivate(AudioFocusMode mode)
         => DispatchToMainThread(() => ReactivateUnsafe(mode));
 
@@ -67,7 +70,15 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
             var session = AVAudioSession.SharedInstance();
             var outputs = session.CurrentRoute.Outputs;
             var routes = outputs.Select(output => $"{output.PortName} ({output.PortType})").ToList();
-            return new AppleAudioSessionDiagnostics(session.Category, session.Mode, session.OtherAudioPlaying, routes);
+            // SampleRate/IOBufferDuration are what the OS actually granted, not what we asked for -
+            // VoiceProcessingIO commonly overrides both, and the granted rate drives AEC cost.
+            return new AppleAudioSessionDiagnostics(session.Category,
+                session.Mode,
+                session.OtherAudioPlaying,
+                routes,
+                session.SampleRate,
+                session.IOBufferDuration,
+                (int)session.InputNumberOfChannels);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to get audio session diagnostics");
@@ -227,6 +238,20 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         ConfigureUnsafe(session, minMode);
         session.SetActive(true).Assert("Failed to activate session");
         return new AudioSessionSetup(true, true);
+    }
+
+    private void DeactivateUnsafe()
+    {
+        // An active session keeps mediaserverd's voice path - and corespeechd behind it -
+        // running for as long as it's held, whether or not anything is attached to it. Measured
+        // on an iPhone 13 Pro: audiomxd sits at 0.27 cores after a call with every engine
+        // verifiably stopped, and is absent both before the first call and once the app exits.
+        if (!AudioSessionOwnership.MayActivate(Owner))
+            return;
+
+        var session = AVAudioSession.SharedInstance();
+        if (!session.SetActive(false, AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation, out var error))
+            Log.LogWarning("Failed to deactivate audio session: {Error}", error.LocalizedDescription);
     }
 
     private void EnsureCorrectOutputRouteUnsafe()

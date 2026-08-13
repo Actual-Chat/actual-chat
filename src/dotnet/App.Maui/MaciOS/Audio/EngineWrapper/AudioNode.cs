@@ -7,6 +7,7 @@ public abstract class AudioNode(AVAudioNode node, Action<AVAudioNode> disposer, 
 {
     public const int Bus = 0;
     protected readonly Lock Lock = new();
+    private bool _isDisposed;
     protected internal AVAudioNode Node => node;
     protected AppUIHub Hub => hub;
 
@@ -15,6 +16,12 @@ public abstract class AudioNode(AVAudioNode node, Action<AVAudioNode> disposer, 
     public void Dispose()
     {
         lock (Lock) {
+            // The disposer is what decrements the owning engine's player count, so a second
+            // Dispose here would take the engine below zero and it would never stop again.
+            if (_isDisposed)
+                return;
+
+            _isDisposed = true;
             DisposeCore();
             disposer(node);
         }

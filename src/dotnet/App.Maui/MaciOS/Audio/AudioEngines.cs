@@ -7,6 +7,12 @@ namespace ActualChat.App.Maui.Audio;
 
 public class AudioEngines : ProcessorBase
 {
+    // A tune is a one-off sound, so its engine only has to outlive a burst of them.
+    private static readonly TimeSpan TuneIdleReleaseDelay = TimeSpan.FromSeconds(1);
+    // Gaps between utterances are normal mid-call, and rebuilding across one would put the
+    // engine's construction and start latency at the head of the next.
+    private static readonly TimeSpan PlaybackIdleReleaseDelay = TimeSpan.FromSeconds(5);
+
     private readonly Disposable<NSObject> _configurationChangeSubscription;
 
     public AudioEngine Tunes { get; }
@@ -19,8 +25,9 @@ public class AudioEngines : ProcessorBase
     public AudioEngines(AppUIHub hub)
     {
         Hub = hub;
-        Tunes = new AudioEngine(AudioFocusMode.Tune, hub);
-        Playback = new AudioEngine(AudioFocusMode.Playback, hub);
+        Tunes = new AudioEngine(AudioFocusMode.Tune, hub, TuneIdleReleaseDelay);
+        Playback = new AudioEngine(AudioFocusMode.Playback, hub, PlaybackIdleReleaseDelay);
+        // Recording has no player nodes - it's released explicitly, when the capture ends.
         Recording = new AudioEngine(AudioFocusMode.Recording, hub);
         _configurationChangeSubscription =
             Disposable.New(AVAudioEngine.Notifications.ObserveConfigurationChange(OnConfigurationChange),
@@ -45,6 +52,8 @@ public class AudioEngines : ProcessorBase
 
     public void Resume(AudioFocusMode mode)
     {
+        // Resume() is a no-op on an engine that was stopped rather than paused, so this only
+        // revives the ones that still have a live consumer.
         if (mode >= AudioFocusMode.Tune)
             Tunes.Resume();
         if (mode >= AudioFocusMode.Playback)
