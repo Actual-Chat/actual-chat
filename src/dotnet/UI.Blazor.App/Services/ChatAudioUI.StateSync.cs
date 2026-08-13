@@ -486,15 +486,12 @@ public partial class ChatAudioUI
 
             var keepListeningChatIds = await GetChatsYouNeedToKeepListeningTo(cancellationToken)
                 .ConfigureAwait(false);
-            var lingerTimeout = (await UserSettingsUI.UserListeningSettings()
-                .Get(x => x.ContinuedListening, cancellationToken)
-                .ConfigureAwait(false)).ToTimeSpan();
             foreach (var chatId in toStart) {
                 if (keepListeningChatIds.Contains(chatId))
                     continue; // armed PTT chats keep listening — no idle watcher
 
                 var watcher = FuncWorker.Start(
-                    ct => StopListeningWhenIdle(chatId, graceTimeout, lingerTimeout, ct),
+                    ct => StopListeningWhenIdle(chatId, graceTimeout, ct),
                     cancellationToken);
                 monitors.Add(chatId, watcher);
             }
@@ -504,7 +501,6 @@ public partial class ChatAudioUI
     private async Task StopListeningWhenIdle(
         ChatId chatId,
         TimeSpan graceTimeout,
-        TimeSpan lingerTimeout,
         CancellationToken cancellationToken)
     {
         var serverClock = Clocks.ServerClock;
@@ -568,6 +564,9 @@ public partial class ChatAudioUI
             var cIsWatching = await Computed
                 .Capture(() => ChatVideoUI.IsWatching(chatId, ct), ct)
                 .ConfigureAwait(false);
+            var cLinger = await Computed
+                .Capture(() => UserSettingsUI.UserListeningSettings().Get(x => x.ContinuedListening, ct), ct)
+                .ConfigureAwait(false);
 
             while (!ct.IsCancellationRequested) {
                 var hasActivity = cHasActivity.Value;
@@ -588,6 +587,7 @@ public partial class ChatAudioUI
                 }
 
                 // Idle — compute stop time
+                var lingerTimeout = cLinger.Value.ToTimeSpan();
                 var stopAt = ComputeStopListeningAt(lastActivityAt, hasSeenActivity, graceTimeout, lingerTimeout);
                 var remaining = (stopAt - serverClock.Now).Positive();
                 if (remaining <= Epsilon)
@@ -595,20 +595,24 @@ public partial class ChatAudioUI
 
                 SetStopListeningAt(chatId, stopAt.Convert(serverClock, cpuClock));
 
-                // Wait for either: activity resumes, watching toggles, or idle timeout expires
+                // Wait for either: activity resumes, watching toggles, the linger setting
+                // changes, or the idle timeout expires
                 using var delayCts = ct.CreateLinkedTokenSource();
                 var whenActivityChanges = cHasActivity.WhenInvalidated(ct);
                 var whenWatchingChanges = cIsWatching.WhenInvalidated(ct);
+                var whenLingerChanges = cLinger.WhenInvalidated(ct);
                 var whenTimeout = Task.Delay(remaining, delayCts.Token);
-                await Task.WhenAny(whenActivityChanges, whenWatchingChanges, whenTimeout).ConfigureAwait(false);
+                await Task.WhenAny(whenActivityChanges, whenWatchingChanges, whenLingerChanges, whenTimeout)
+                    .ConfigureAwait(false);
                 delayCts.CancelAndDisposeSilently();
 
                 if (whenTimeout.IsCompletedSuccessfully)
                     return; // Idle timeout expired — stop listening
 
-                // Activity / watching state changed — refresh and loop
+                // Activity / watching / linger state changed — refresh and loop
                 cHasActivity = await cHasActivity.Update(ct).ConfigureAwait(false);
                 cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
+                cLinger = await cLinger.Update(ct).ConfigureAwait(false);
             }
         }
     }
