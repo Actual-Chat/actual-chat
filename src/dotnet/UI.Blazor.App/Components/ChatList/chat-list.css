@@ -228,10 +228,10 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 .chat-list .navbar-item-content .c-last-message .c-name .avatar-name {
     @apply text-caption-4;
 }
-.chat-list .navbar-item-content .c-last-message .c-name:has(.non-shrinkable) {
+.chat-list .navbar-item-content .c-last-message .c-name.has-non-shrinkable {
     @apply flex-none;
 }
-.chat-list .navbar-item-content .c-last-message .c-name:has(.shrinkable) {
+.chat-list .navbar-item-content .c-last-message .c-name.has-shrinkable {
     @apply min-w-16;
 }
 .chat-list .navbar-item-content .c-last-message .c-colon {
@@ -243,7 +243,7 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply truncate;
     @apply pointer-events-none;
 }
-.chat-list .navbar-item-content .c-last-message:has(.c-text.two-line) {
+.chat-list .navbar-item-content .c-last-message.has-two-line-text {
     @apply h-auto;
 }
 .chat-list .navbar-item-content .c-last-message .c-text.two-line {
@@ -275,8 +275,8 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
 }
 /* Timer ring around the listen button would be clipped by the ending's
    overflow-hidden — open it up only for rows that actually show the controls. */
-.chat-list .navbar-item .navbar-item-ending:has(.chat-audio-controls),
-.chat-list .navbar-item .navbar-item-ending:has(.chat-audio-controls) .slot,
+.chat-list .navbar-item .navbar-item-ending.has-audio-controls,
+.chat-list .navbar-item .navbar-item-ending.has-audio-controls .slot,
 .chat-list .navbar-item .chat-audio-controls,
 .chat-list .navbar-item .chat-audio-controls .c-listening-timer {
     @apply overflow-visible;

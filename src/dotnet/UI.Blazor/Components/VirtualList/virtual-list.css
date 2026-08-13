@@ -137,7 +137,7 @@ body.narrow .list-view-layout.has-audio-panel-header .virtual-list > .c-wrapper 
 .virtual-list > .c-wrapper > ul.c-virtual-container .item:empty {
     @apply min-h-0;
 }
-.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.show-author) {
+.virtual-list > .c-wrapper > ul.c-virtual-container .item.has-show-author {
     @apply min-h-14;
 }
 
@@ -146,7 +146,7 @@ body.narrow .list-view-layout.has-audio-panel-header .virtual-list > .c-wrapper 
     overflow-anchor: none;
 }
 
-.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-header) {
+.virtual-list > .c-wrapper > ul.c-virtual-container .item.has-conversation-header {
     @apply sticky -top-px z-20;
 }
 
