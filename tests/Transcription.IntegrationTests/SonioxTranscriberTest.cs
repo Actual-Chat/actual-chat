@@ -48,6 +48,9 @@ public class SonioxTranscriberTest(ITestOutputHelper @out, ILogger<SonioxTranscr
 
         var transcriber = new SonioxOfflineTranscriber(services);
         var cleaner = services.GetRequiredService<SonioxCleaner>();
+        if (await IsSonioxAtCapacity(services.GetRequiredService<SonioxClient>(), "0004-AK-recoded.opus"))
+            return;
+
         var options = new TranscriptionOptions { Language = Language.Parse(languageId) };
         var audio = await GetAudio(fileName);
 
@@ -75,8 +78,14 @@ public class SonioxTranscriberTest(ITestOutputHelper @out, ILogger<SonioxTranscr
         var cleaner = services.GetRequiredService<SonioxCleaner>();
         var stream = File.OpenRead(GetAudioFilePath("0004-AK-recoded.opus"));
         string fileId;
-        await using (stream.ConfigureAwait(false))
-            fileId = await client.UploadFile(stream, "speech.opus", CancellationToken.None);
+        await using (stream.ConfigureAwait(false)) {
+            try {
+                fileId = await client.UploadFile(stream, "speech.opus", CancellationToken.None);
+            }
+            catch (Exception e) when (IsExternalQuotaExceeded(e)) {
+                return;
+            }
+        }
         WriteLine($"Uploaded file {fileId}");
 
         // act
