@@ -298,9 +298,6 @@ export class AnimationSync {
 // 5Hz costs ~0.006% of a core (11.5us per empty sweep, measured on an iPhone 13
 // Pro), which is far cheaper than the JS interop the alternative would need.
 export class AnimationSweeper {
-    private static readonly periodMs = 200;
-    private static timer: ReturnType<typeof setInterval> | null = null;
-    private static readonly visibilityListener = (): void => AnimationSweeper.onVisibilityChange();
     private static readonly animationStartListener = (e: AnimationEvent): void => {
         // Not e.target: that is retargeted to the shadow host for an animation
         // inside a shadow root, and the host is not the element that animates.
@@ -310,45 +307,16 @@ export class AnimationSweeper {
     };
 
     public static start(): void {
-        document.removeEventListener('visibilitychange', AnimationSweeper.visibilityListener);
-        document.addEventListener('visibilitychange', AnimationSweeper.visibilityListener);
-        // The sweep can only see elements that already exist; a class change can
-        // give one an animation at any point after it was resolved. Re-phasing does
-        // not restart an animation - it moves its start time - so this cannot loop.
+        // Elements are phase-aligned as they arrive - see MutationProcessor - so there is
+        // no periodic sweep. This listener covers the case no mutation can be matched to:
+        // an element resolved without an animation that a later class change gives one.
+        // Re-phasing does not restart an animation - it moves its start time - so this
+        // cannot loop.
         document.removeEventListener('animationstart', AnimationSweeper.animationStartListener);
         document.addEventListener('animationstart', AnimationSweeper.animationStartListener);
-        AnimationSweeper.resume();
     }
 
     public static stop(): void {
-        document.removeEventListener('visibilitychange', AnimationSweeper.visibilityListener);
         document.removeEventListener('animationstart', AnimationSweeper.animationStartListener);
-        AnimationSweeper.pause();
-    }
-
-    // Private methods
-
-    private static resume(): void {
-        if (AnimationSweeper.timer !== null || document.hidden)
-            return;
-
-        AnimationSweeper.timer = setInterval(() => AnimationSync.syncAll(document), AnimationSweeper.periodMs);
-    }
-
-    // A backgrounded WebView cannot paint, so a sweep there is pure wake-up cost.
-    // Only the timer is paused - the listener stays, or it could never resume.
-    private static pause(): void {
-        if (AnimationSweeper.timer === null)
-            return;
-
-        clearInterval(AnimationSweeper.timer);
-        AnimationSweeper.timer = null;
-    }
-
-    private static onVisibilityChange(): void {
-        if (document.hidden)
-            AnimationSweeper.pause();
-        else
-            AnimationSweeper.resume();
     }
 }

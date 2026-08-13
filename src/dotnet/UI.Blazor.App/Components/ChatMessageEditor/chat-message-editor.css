@@ -6,7 +6,7 @@
 .chat-message-editor.narrow-panel {
     padding-bottom: 0;
 }
-.list-view-layout:has(.chat-activity-panel.listening) .chat-message-editor {
+.list-view-layout.has-listening-activity .chat-message-editor {
     @apply bg-transparent;
 }
 
@@ -101,7 +101,7 @@ body.narrow .c-editor-top {
     @apply flex-auto flex-x justify-between items-center md:gap-x-2;
     @apply py-0 px-2;
 }
-body.wide .list-view-layout:has(.chat-activity-panel.listening) .post-panel {
+body.wide .list-view-layout.has-listening-activity .post-panel {
     @apply bg-01;
 }
 .post-panel.sharp-corners {
@@ -777,22 +777,22 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 /* With a reply/edit panel floating above the input, shrink the sub-footer's corner fillers to a
    small 0.5rem radius so they hug the bottom corners of the related panel instead of the full 2rem
    curve (which assumes the post-panel is the topmost element). */
-.chat-message-editor:has(.related-chat-entry-panel) .rounded-sub-footer::before,
-.chat-message-editor:has(.related-chat-entry-panel) .rounded-sub-footer::after {
+.chat-message-editor.has-related-entry .rounded-sub-footer::before,
+.chat-message-editor.has-related-entry .rounded-sub-footer::after {
     @apply w-2 h-2;
 }
-body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-footer,
-body.narrow .list-view-layout:has(.audio-panel-header) .rounded-sub-footer {
+body.narrow .list-view-layout.has-listening-activity .rounded-sub-footer,
+body.narrow .list-view-layout.has-audio-panel-header .rounded-sub-footer {
     @apply h-20 inset-x-0;
     top: calc(-5rem + 1px);
 }
-body.narrow .list-view-layout:has(.chat-activity-panel.listening) .narrow-panel .rounded-sub-footer,
-body.narrow .list-view-layout:has(.audio-panel-header) .narrow-panel .rounded-sub-footer {
+body.narrow .list-view-layout.has-listening-activity .narrow-panel .rounded-sub-footer,
+body.narrow .list-view-layout.has-audio-panel-header .narrow-panel .rounded-sub-footer {
     @apply h-12 inset-x-0;
     top: calc(-3rem + 1px);
 }
-body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-footer > .bg-layer,
-body.narrow .list-view-layout:has(.audio-panel-header) .rounded-sub-footer > .bg-layer {
+body.narrow .list-view-layout.has-listening-activity .rounded-sub-footer > .bg-layer,
+body.narrow .list-view-layout.has-audio-panel-header .rounded-sub-footer > .bg-layer {
     background:
         radial-gradient(100.91% 105.88% at 50% 100%, var(--background-01) 30%, var(--transparent) 75%),
         radial-gradient(100.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 30%, var(--footer-fog-color-2) 75%);

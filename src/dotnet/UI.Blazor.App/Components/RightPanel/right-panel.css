@@ -59,20 +59,20 @@ body.narrow .right-panel > .c-panel-content {
    edit/share overlapping its bottom edge by 50%, then the title + public/private badge, then the
    chat-info toggles. ONLY the tabs/list (.c-panel-content) are hidden. Because nothing switches to flow,
    the list viewport never resizes — the root of the members-scroll-behind-tabs and stuck-avatar bugs. */
-body.narrow .right-panel:has(.c-header.expanded-header) > .c-top-region {
+body.narrow .right-panel.has-expanded-header > .c-top-region {
     @apply overflow-visible;
     max-height: none;
 }
 /* Header keeps its natural (content) height on narrow — it grows via the tall .c-top below (which
    reserves the avatar's flow space), not via the fixed square the general .expanded-header rule uses
    on wide. */
-body.narrow .right-panel:has(.c-header.expanded-header) > .c-top-region > .c-header.expanded-header {
+body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header.expanded-header {
     height: auto;
     min-height: var(--rp-header-base);
 }
 /* Reserve the avatar's flow height in .c-top (a wallpaper strip above it + the square) so the title and
    badge below flow UNDER the avatar instead of behind it. */
-body.narrow .right-panel:has(.c-header.expanded-header) > .c-top-region > .c-header.expanded-header > .c-top {
+body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header.expanded-header > .c-top {
     height: calc(4.5rem + var(--safe-area-top) + var(--expanded-header-height));
 }
 /* Full-screen avatar: keep the top edge where it is (a strip of the blurred .c-top wallpaper stays
@@ -82,22 +82,22 @@ body.narrow .right-panel > .c-top-region > .c-header.expanded-header > .c-center
     height: var(--expanded-header-height);
 }
 /* edit/share/invite: shown, dropped to the avatar's bottom edge and overlapping it by 50%. */
-body.narrow .right-panel:has(.c-header.expanded-header) > .c-top-region > .c-header > .c-center > .c-buttons {
+body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header > .c-center > .c-buttons {
     @apply absolute right-4 bottom-0;
     @apply max-w-none opacity-100;
     transform: translateY(50%);
 }
 /* title + public/private badge + description: shown, flowing below the avatar (cleared of the buttons). */
-body.narrow .right-panel:has(.c-header.expanded-header) > .c-top-region > .c-header > .c-bottom {
+body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header > .c-bottom {
     @apply opacity-100;
     padding-top: 2rem;
 }
 /* Keep the panel-close button visible over the full-screen avatar (it otherwise fades with the header). */
-body.narrow .right-panel:has(.c-header.expanded-header) > .c-top-region > .c-header > .c-buttons {
+body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header > .c-buttons {
     @apply opacity-100;
 }
 /* Only the tabs/list are hidden while the avatar is full-screen. */
-body.narrow .right-panel:has(.c-header.expanded-header) > .c-panel-content {
+body.narrow .right-panel.has-expanded-header > .c-panel-content {
     @apply opacity-0 pointer-events-none;
     transition: opacity .25s ease-in;
 }
