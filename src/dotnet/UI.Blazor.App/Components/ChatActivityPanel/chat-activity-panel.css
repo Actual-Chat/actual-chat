@@ -253,84 +253,9 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
     @apply text-[var(--violet-60)] text-caption-3;
     @apply bg-[var(--leave-btn)];
 }
-.chat-activity-panel .btn-h.listening {
-    @apply md:-mr-0.5;
-    @apply text-primary text-caption-3;
-}
-body.hoverable .chat-activity-panel .btn-h.listening:hover,
-.touch-capable .chat-activity-panel .btn-h.listening:active {
-    @apply text-primary;
-}
-
-/* Listening timer ring */
-.chat-activity-panel .listening-timer {
-    @apply relative;
-    @apply flex items-center justify-center;
-}
-.chat-activity-panel .listening-timer .timer-ring {
-    @apply absolute -inset-2;
-    @apply pointer-events-none;
-    width: calc(100% + 1rem);
-    height: calc(100% + 1rem);
-    transform: rotate(-90deg);
-}
-.chat-activity-panel .listening-timer .timer-ring-bg {
-    @apply opacity-30;
-    fill: none;
-    stroke: var(--primary);
-    stroke-width: 0.75;
-    stroke-linecap: round;
-}
-.chat-activity-panel .listening-timer .timer-ring-circle {
-    fill: none;
-    stroke: var(--primary);
-    stroke-width: 0.75;
-    stroke-linecap: round;
-    stroke-dasharray: 100.531;
-    stroke-dashoffset: 0;
-    transition: stroke-dashoffset 1s linear;
-}
-.chat-activity-panel .btn-h i.icon-listen {
-    @apply md:pr-0.5;
-}
-/* Alternating icon/countdown inside listening button */
-.timer-icon-swap {
-    @apply relative flex items-center justify-center;
-}
-.timer-icon-swap .swap-a,
-.timer-icon-swap .swap-b {
-    @apply md:pr-0.5;
-    animation: timer-swap 8s steps(80) infinite;
-}
-.timer-icon-swap .swap-a {
-    @apply block;
-}
-.timer-icon-swap .swap-b {
-    @apply absolute inset-0;
-    @apply flex items-center justify-center;
-    animation-delay: -4s;
-}
-.timer-countdown-text {
-    @apply pt-0.5;
-    @apply text-primary text-[0.7rem] font-semibold leading-none tabular-nums;
-}
-@keyframes timer-swap {
-    0%, 40% {
-        opacity: 1;
-    }
-    46%, 50% {
-        opacity: 0;
-    }
-    50.01%, 90% {
-        opacity: 0;
-    }
-    96%, 100% {
-        opacity: 1;
-    }
-}
-.chat-activity-panel .btn-h.talking {
-    @apply md:-mr-0.5;
-    @apply text-[var(--danger-light)] text-caption-3;
+/* Audio controls (mic / hang up / listen+timer) — see chat-audio-controls.css */
+body.wide .chat-activity-panel .chat-audio-controls .btn-h i {
+    @apply text-2xl;
 }
 
 .chat-activity-subheader:empty {

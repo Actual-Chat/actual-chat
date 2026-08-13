@@ -1,0 +1,124 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, Moment?>
+@{
+    var audioState = AudioState ?? ChatAudioState.None;
+    var isRecording = audioState.IsRecording;
+    var isListening = audioState.IsListening;
+    var stopListeningAt = State.Value;
+    const double countdownSeconds = 30;
+    const double circumference = 100.531;
+    var remainingSeconds = isListening && !isRecording && stopListeningAt.HasValue
+        ? Math.Max(0, (stopListeningAt.Value - Now).TotalSeconds)
+        : 0;
+    // Headphone + ring shows only while the auto-stop countdown is actually running;
+    // before that we're still in the conversation, so we show hang up (the phone).
+    var isCountingDown = remainingSeconds > 0 && remainingSeconds <= countdownSeconds;
+    var showHangUp = !isRecording && ((isListening && !isCountingDown) || MustShowHangUp);
+    if (!isRecording && !isCountingDown && !showHangUp)
+        return;
+
+    var dashOffset = (circumference * (1 - remainingSeconds / countdownSeconds)).ToString("F2", null);
+    var remaining = (int)Math.Ceiling(remainingSeconds);
+    var mm = remaining / 60;
+    var ss = remaining % 60;
+}
+
+<div class="chat-audio-controls @Class">
+    @if (isRecording) {
+        <HeaderButton
+            Class="c-mic"
+            StopPropagation="true"
+            PreventDefault="true"
+            Click="@OnStopRecording"
+            Tooltip="Stop"
+            TooltipPosition="FloatingPosition.Top">
+            <i class="icon-mic-2"></i>
+        </HeaderButton>
+        <HeaderButton
+            Class="c-hangup"
+            StopPropagation="true"
+            PreventDefault="true"
+            Click="@OnHangUp"
+            Tooltip="Hang up"
+            TooltipPosition="FloatingPosition.Top">
+            <i class="icon-phone-off"></i>
+        </HeaderButton>
+    } else if (isCountingDown) {
+        <div class="c-listening-timer">
+            <svg class="c-timer-ring" viewBox="0 0 36 36"
+                 data-bubble="@(BubbleRef.New<ListeningTimerBubble>())"
+                 data-bubble-priority="115"
+                 data-bubble-placement="@(FloatingPosition.Bottom.ToPositionString())">
+                <circle class="c-timer-ring-bg" cx="18" cy="18" r="16"/>
+                <circle class="c-timer-ring-circle" cx="18" cy="18" r="16"
+                        style="stroke-dashoffset: @(dashOffset)"/>
+            </svg>
+            <HeaderButton
+                Class="c-listen"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnStopListening"
+                Tooltip="Listening..."
+                TooltipPosition="FloatingPosition.Top">
+                <span class="c-timer-swap">
+                    <i class="icon-listen swap-a"></i>
+                    <span class="swap-b c-timer-text">@($"{mm:D2}:{ss:D2}")</span>
+                </span>
+            </HeaderButton>
+        </div>
+    } else {
+        <HeaderButton
+            Class="c-hangup"
+            StopPropagation="true"
+            PreventDefault="true"
+            Click="@OnHangUp"
+            Tooltip="Hang up"
+            TooltipPosition="FloatingPosition.Top">
+            <i class="icon-phone-off"></i>
+        </HeaderButton>
+    }
+</div>
+
+@code {
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private Moment Now => Hub.Clocks.CpuClock.Now;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatAudioState? AudioState { get; set; }
+    [Parameter] public bool MustShowHangUp { get; set; }
+    [Parameter] public EventCallback OnHangUpRequested { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+
+    protected override async Task<Moment?> ComputeState(CancellationToken cancellationToken) {
+        var stopListeningAt = await ChatAudioUI.GetStopListeningAt(Chat.Id, cancellationToken).ConfigureAwait(false);
+        if (!stopListeningAt.HasValue)
+            return null;
+
+        var remaining = (stopListeningAt.Value - Now).TotalSeconds;
+        if (remaining > 30)
+            Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(remaining - 30));
+        else if (remaining > 0) {
+            var fractional = remaining - Math.Floor(remaining);
+            var delay = fractional > 0.05 ? fractional : fractional + 1.0;
+            Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(delay));
+        }
+        return stopListeningAt;
+    }
+
+    private void OnStopRecording()
+        => _ = ChatAudioUI.SetRecordingChatId(default);
+
+    private void OnStopListening()
+        => _ = ChatAudioUI.SetListeningState(Chat.Id, false);
+
+    private async Task OnHangUp() {
+        if (OnHangUpRequested.HasDelegate) {
+            await OnHangUpRequested.InvokeAsync().ConfigureAwait(true);
+            return;
+        }
+        var audioState = await ChatAudioUI.GetState(Chat.Id).ConfigureAwait(true);
+        if (audioState.IsRecording)
+            await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(true);
+        _ = ChatAudioUI.SetListeningState(Chat.Id, false);
+    }
+}
