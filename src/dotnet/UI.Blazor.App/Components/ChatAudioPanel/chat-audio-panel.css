@@ -708,29 +708,6 @@ body.narrow .selected-language {
     @apply flex-1 flex-y;
 }
 
-/* Inactivity */
-.inactivity-tile {
-    @apply h-auto p-2;
-}
-.inactivity-tile .tile-item-body-content {
-    @apply font-medium;
-}
-.inactivity-icon {
-    @apply flex items-center justify-center;
-    @apply h-9 w-9;
-    @apply rounded-full;
-    @apply bg-transparent text-03;
-}
-.inactivity-tile.selected {
-    @apply bg-[var(--hover-after-primary)];
-}
-.inactivity-tile.selected .inactivity-icon {
-    @apply text-primary;
-}
-.inactivity-tile.selected .tile-item-body-content {
-    @apply text-primary;
-}
-
 /* === 8. Tooltips === */
 
 /* Desktop tooltip */

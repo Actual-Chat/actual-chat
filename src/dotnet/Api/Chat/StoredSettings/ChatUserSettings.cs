@@ -26,7 +26,11 @@ public sealed partial record ChatUserSettings : StoredSettings
     public Language? Language { get; init; }
     [DataMember, MemoryPackOrder(1), Key(1)] public ChatNotificationMode NotificationMode { get; init; }
     [DataMember, MemoryPackOrder(3), Key(2)] public VoiceMode VoiceMode { get; init; }
-    [DataMember, MemoryPackOrder(4), Key(3)] public ListeningMode ListeningMode { get; init; }
+    // Write-only wire stub: old clients throw reading a nil in this slot and then drop the
+    // whole blob. Remove once no installed app version reads it, then reserve — do not reuse.
+    [Obsolete("2026.08: Kept only so old clients keep reading 0 instead of nil")]
+    [DataMember, MemoryPackOrder(4), Key(3)]
+    public int ListeningMode { get; init; }
     [DataMember, MemoryPackOrder(5), Key(4)] public bool? MustTranslate { get; init; }
     [DataMember, MemoryPackOrder(8), Key(7)] public bool? MustTranslateOwnMessages { get; init; }
     [DataMember, MemoryPackOrder(6), Key(5), LegacyLanguageFormatter(true)]

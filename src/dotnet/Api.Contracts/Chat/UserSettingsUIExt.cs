@@ -43,17 +43,4 @@ public static class UserSettingsUIExt
             .ChatUserSettings(chatId).Update(x => x with { VoiceMode = voiceMode }, cancellationToken)
             .ConfigureAwait(false);
     }
-
-    public static Task<ListeningMode> GetListeningMode(
-        this UserSettingsUI userSettingsUI,
-        ChatId chatId,
-        CancellationToken cancellationToken = default)
-        => userSettingsUI.ChatUserSettings(chatId).Get(x => x.ListeningMode, cancellationToken);
-
-    public static Task SetListeningMode(
-        this UserSettingsUI userSettingsUI,
-        ChatId chatId,
-        ListeningMode listeningMode,
-        CancellationToken cancellationToken = default)
-        => userSettingsUI.ChatUserSettings(chatId).Update(x => x with { ListeningMode = listeningMode }, cancellationToken);
 }

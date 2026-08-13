@@ -8,9 +8,10 @@ public partial class StoredSettingsSerializationTest
     // KvasSerializer wraps this with a 1-byte format marker for KVAS storage.
     private static readonly IByteSerializer MessagePackSerializer = Serializers.MessagePack;
 
-    // Cross-version compat (Legacy ↔ New) only works through MemoryPack here: the new types
-    // carry [Key(N)] for MessagePack-CSharp's array-keyed wire, while the Legacy copies
-    // don't, so a MessagePack round-trip across the type boundary is shape-mismatched.
+    // Cross-version compat (Legacy ↔ New) works through MemoryPack for the older Legacy
+    // copies below: they carry MemoryPackOrder only, so a MessagePack round-trip across
+    // the type boundary is shape-mismatched. Legacy copies that also carry [Key(N)]
+    // (e.g. LegacyUserListeningSettings) cover the MessagePack wire direction too.
     // MemoryPack uses MemoryPackOrder positionally on both sides — same indices match.
     private static readonly KvasSerializer MemoryPackKvasSerializer = new() { PreferMemoryPack = true };
 
@@ -35,11 +36,27 @@ public partial class StoredSettingsSerializationTest
         [DataMember, MemoryPackOrder(2)] public bool IsDigestEnabled { get; init; } = true;
     }
 
+    [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+    public sealed partial record LegacyUserListeningSettings
+    {
+        [DataMember, MemoryPackOrder(0), Key(0)] public ChatId[] AlwaysListenedChatIds { get; init; } = [];
+        [DataMember, MemoryPackOrder(1), Key(1)] public string Origin { get; init; } = "";
+    }
+
+    // Declares only the old ListeningMode slot; MessagePack's array format skips the
+    // undeclared indexes on read, so this checks just what old clients see in slot 3.
+    [MessagePackObject]
+    public sealed partial record LegacyChatUserSettingsListeningModeSlot
+    {
+        [Key(3)] public int ListeningMode { get; init; }
+    }
+
     // --- Legacy → New compatibility ---
 
     [Fact]
-    public void LegacyUserAppSettings_DeserializesAs_UserAppSettings()
+    public void LegacyUserAppSettingsDeserializesAsUserAppSettings()
     {
+        // arrange
         // Legacy still carries slot 4 (IsVideoStreamingEnabled). New type reserves
         // but does not expose slot 4; version-tolerant deserialization must ignore it.
         var legacy = new LegacyUserAppSettings {
@@ -50,10 +67,12 @@ public partial class StoredSettingsSerializationTest
             IsVideoStreamingEnabled = false,
         };
 
+        // act
         using var buffer = MemoryPackKvasSerializer.Write(legacy);
         var bytes = buffer.WrittenMemory;
         var result = MemoryPackKvasSerializer.Read<UserAppSettings>(ref bytes);
 
+        // assert
         result.Origin.Should().Be(legacy.Origin);
         result.IsDataCollectionEnabled.Should().Be(legacy.IsDataCollectionEnabled);
         result.AreExperimentalFeaturesEnabled.Should().Be(legacy.AreExperimentalFeaturesEnabled);
@@ -61,28 +80,52 @@ public partial class StoredSettingsSerializationTest
     }
 
     [Fact]
-    public void LegacyUserEmailsSettings_DeserializesAs_UserEmailsSettings()
+    public void LegacyUserEmailsSettingsDeserializesAsUserEmailsSettings()
     {
+        // arrange
         var legacy = new LegacyUserEmailsSettings {
             Origin = "email-test",
             DigestTime = new TimeSpan(12, 30, 0),
             IsDigestEnabled = false,
         };
 
+        // act
         using var buffer = MemoryPackKvasSerializer.Write(legacy);
         var bytes = buffer.WrittenMemory;
         var result = MemoryPackKvasSerializer.Read<UserEmailsSettings>(ref bytes);
 
+        // assert
         result.Origin.Should().Be(legacy.Origin);
         result.DigestTime.Should().Be(legacy.DigestTime);
         result.IsDigestEnabled.Should().Be(legacy.IsDigestEnabled);
     }
 
+    [Fact]
+    public void LegacyUserListeningSettingsDeserializesAsUserListeningSettings()
+    {
+        // arrange
+        // Legacy has no slot 2 (ContinuedListening) — it must read as the default.
+        var legacy = new LegacyUserListeningSettings {
+            AlwaysListenedChatIds = [ChatId.Parse("the-actual-one")],
+            Origin = "listening-test",
+        };
+
+        // act
+        using var buffer = MemoryPackKvasSerializer.Write(legacy);
+        var bytes = buffer.WrittenMemory;
+        var result = MemoryPackKvasSerializer.Read<UserListeningSettings>(ref bytes);
+
+        // assert
+        result.Origin.Should().Be(legacy.Origin);
+        result.ContinuedListening.Should().Be(ContinuedListening.None);
+    }
+
     // --- New → Legacy compatibility ---
 
     [Fact]
-    public void UserAppSettings_DeserializesAs_LegacyUserAppSettings()
+    public void UserAppSettingsDeserializesAsLegacyUserAppSettings()
     {
+        // arrange
         var settings = new UserAppSettings {
             Origin = "new-test",
             IsDataCollectionEnabled = false,
@@ -90,10 +133,12 @@ public partial class StoredSettingsSerializationTest
             IsIncompleteUIEnabled = false,
         };
 
+        // act
         using var buffer = MemoryPackKvasSerializer.Write(settings);
         var bytes = buffer.WrittenMemory;
         var result = MemoryPackKvasSerializer.Read<LegacyUserAppSettings>(ref bytes);
 
+        // assert
         result.Origin.Should().Be(settings.Origin);
         result.IsDataCollectionEnabled.Should().Be(settings.IsDataCollectionEnabled);
         result.AreExperimentalFeaturesEnabled.Should().Be(settings.AreExperimentalFeaturesEnabled);
@@ -103,28 +148,101 @@ public partial class StoredSettingsSerializationTest
     }
 
     [Fact]
-    public void UserEmailsSettings_DeserializesAs_LegacyUserEmailsSettings()
+    public void UserEmailsSettingsDeserializesAsLegacyUserEmailsSettings()
     {
+        // arrange
         var settings = new UserEmailsSettings {
             Origin = "new-email-test",
             DigestTime = new TimeSpan(18, 0, 0),
             IsDigestEnabled = true,
         };
 
+        // act
         using var buffer = MemoryPackKvasSerializer.Write(settings);
         var bytes = buffer.WrittenMemory;
         var result = MemoryPackKvasSerializer.Read<LegacyUserEmailsSettings>(ref bytes);
 
+        // assert
         result.Origin.Should().Be(settings.Origin);
         result.DigestTime.Should().Be(settings.DigestTime);
         result.IsDigestEnabled.Should().Be(settings.IsDigestEnabled);
     }
 
+    [Fact]
+    public void UserListeningSettingsDeserializesAsLegacyUserListeningSettings()
+    {
+        // arrange
+        var settings = new UserListeningSettings {
+            Origin = "new-listening-test",
+            ContinuedListening = ContinuedListening.For30Seconds,
+        };
+
+        // act
+        using var buffer = MemoryPackKvasSerializer.Write(settings);
+        var bytes = buffer.WrittenMemory;
+        var result = MemoryPackKvasSerializer.Read<LegacyUserListeningSettings>(ref bytes);
+
+        // assert
+        result.Origin.Should().Be(settings.Origin);
+        // The write-only [Obsolete] stub still fills slot 0, so old clients read [], never nil.
+        // If the stub is ever removed and the slot reserved, this assertion must flip.
+        result.AlwaysListenedChatIds.Should().NotBeNull();
+        result.AlwaysListenedChatIds.Should().BeEmpty();
+    }
+
+    // --- New → Legacy compatibility, MessagePack (the production wire format) ---
+    //
+    // The write-only [Obsolete] stubs exist for the MessagePack nil problem, so the
+    // pairs whose Legacy copies carry [Key(N)] verify that direction on the real wire.
+
+    [Fact]
+    public void UserListeningSettingsDeserializesAsLegacyViaMessagePack()
+    {
+        // arrange
+        var settings = new UserListeningSettings {
+            Origin = "mp-listening-test",
+            ContinuedListening = ContinuedListening.For30Seconds,
+        };
+
+        // act
+        using var buffer = MessagePackSerializer.Write(settings);
+        var bytes = buffer.WrittenMemory.ToArray();
+        var result = (LegacyUserListeningSettings?)MessagePackSerializer
+            .Read(bytes, typeof(LegacyUserListeningSettings), out _);
+
+        // assert
+        result!.Origin.Should().Be(settings.Origin);
+        // The stub fills slot 0 on the wire — old clients read [], never nil/null.
+        result.AlwaysListenedChatIds.Should().NotBeNull();
+        result.AlwaysListenedChatIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ChatUserSettingsKeepsListeningModeSlotViaMessagePack()
+    {
+        // arrange
+        var settings = new Chat.ChatUserSettings {
+            NotificationMode = ChatNotificationMode.ImportantOnly,
+            VoiceMode = VoiceMode.JustVoice,
+        };
+
+        // act
+        using var buffer = MessagePackSerializer.Write(settings);
+        var bytes = buffer.WrittenMemory.ToArray();
+        var result = (LegacyChatUserSettingsListeningModeSlot?)MessagePackSerializer
+            .Read(bytes, typeof(LegacyChatUserSettingsListeningModeSlot), out _);
+
+        // assert
+        // Old clients ReadInt32() this slot; without the write-only stub it's nil and this throws.
+        result!.ListeningMode.Should().Be(0);
+    }
+
     // --- Concrete type round-trip ---
 
     [Fact]
-    public void UserAppSettings_RoundTrip()
+    public void UserAppSettingsRoundTrip()
     {
+        // arrange
         var settings = new UserAppSettings {
             Origin = "round-trip",
             IsDataCollectionEnabled = true,
@@ -132,34 +250,40 @@ public partial class StoredSettingsSerializationTest
             IsIncompleteUIEnabled = false,
         };
 
+        // act
         using var buffer = KvasSerializer.Default.Write(settings);
         var bytes = buffer.WrittenMemory;
         var result = KvasSerializer.Default.Read<UserAppSettings>(ref bytes);
 
+        // assert
         result.Should().Be(settings);
     }
 
     [Fact]
-    public void UserEmailsSettings_RoundTrip()
+    public void UserEmailsSettingsRoundTrip()
     {
+        // arrange
         var settings = new UserEmailsSettings {
             Origin = "round-trip",
             DigestTime = new TimeSpan(7, 15, 0),
             IsDigestEnabled = false,
         };
 
+        // act
         using var buffer = KvasSerializer.Default.Write(settings);
         var bytes = buffer.WrittenMemory;
         var result = KvasSerializer.Default.Read<UserEmailsSettings>(ref bytes);
 
+        // assert
         result.Should().Be(settings);
     }
 
     // --- Union (polymorphic) round-trip ---
 
     [Fact]
-    public void UserAppSettings_UnionRoundTrip()
+    public void UserAppSettingsUnionRoundTrip()
     {
+        // arrange
         var settings = new UserAppSettings {
             Origin = "union-test",
             IsDataCollectionEnabled = true,
@@ -167,10 +291,12 @@ public partial class StoredSettingsSerializationTest
             IsIncompleteUIEnabled = true,
         };
 
+        // act
         using var buffer = KvasSerializer.Default.Write<StoredSettings>(settings);
         var bytes = buffer.WrittenMemory;
         var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
 
+        // assert
         result.Should().BeOfType<UserAppSettings>();
         var typed = (UserAppSettings)result!;
         typed.Origin.Should().Be(settings.Origin);
@@ -180,18 +306,21 @@ public partial class StoredSettingsSerializationTest
     }
 
     [Fact]
-    public void UserEmailsSettings_UnionRoundTrip()
+    public void UserEmailsSettingsUnionRoundTrip()
     {
+        // arrange
         var settings = new UserEmailsSettings {
             Origin = "union-email-test",
             DigestTime = new TimeSpan(10, 0, 0),
             IsDigestEnabled = true,
         };
 
+        // act
         using var buffer = KvasSerializer.Default.Write<StoredSettings>(settings);
         var bytes = buffer.WrittenMemory;
         var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
 
+        // assert
         result.Should().BeOfType<UserEmailsSettings>();
         var typed = (UserEmailsSettings)result!;
         typed.Origin.Should().Be(settings.Origin);
@@ -207,7 +336,7 @@ public partial class StoredSettingsSerializationTest
     // KVAS, MemoryPack, or RPC framing.
 
     [Fact]
-    public void UserAppSettings_AsBase_MessagePackRoundTrip()
+    public void UserAppSettingsAsBaseMessagePackRoundTrip()
         => AssertBaseTypeRoundTrip(new UserAppSettings {
             Origin = "mp-test",
             IsDataCollectionEnabled = true,
@@ -216,7 +345,7 @@ public partial class StoredSettingsSerializationTest
         });
 
     [Fact]
-    public void UserChatRecordingDetectedLanguage_AsBase_MessagePackRoundTrip()
+    public void UserChatRecordingDetectedLanguageAsBaseMessagePackRoundTrip()
         => AssertBaseTypeRoundTrip(new UserChatRecordingDetectedLanguage {
             Timestamp = new Moment(new DateTime(2026, 04, 23, 12, 34, 56, DateTimeKind.Utc)),
             ChatId = default,
@@ -224,7 +353,7 @@ public partial class StoredSettingsSerializationTest
         });
 
     [Fact]
-    public void UserNavbarSettings_AsBase_MessagePackRoundTrip()
+    public void UserNavbarSettingsAsBaseMessagePackRoundTrip()
         => AssertBaseTypeRoundTrip(new UserNavbarSettings {
             Origin = "nav-test",
             PinnedChats = [],
@@ -234,7 +363,7 @@ public partial class StoredSettingsSerializationTest
     // New MessagePack-only settings types (no MemoryPack) — verify the [Union] dispatch works.
 
     [Fact]
-    public void RecentMentions_AsBase_MessagePackRoundTrip()
+    public void RecentMentionsAsBaseMessagePackRoundTrip()
         => AssertBaseTypeRoundTrip(new RecentMentions {
             Origin = "recents",
             Items = [
@@ -246,7 +375,7 @@ public partial class StoredSettingsSerializationTest
         });
 
     [Fact]
-    public void RecentGifs_AsBase_MessagePackRoundTrip()
+    public void RecentGifsAsBaseMessagePackRoundTrip()
         => AssertBaseTypeRoundTrip(new RecentGifs {
             Origin = "gifs",
             Items = [
@@ -263,9 +392,12 @@ public partial class StoredSettingsSerializationTest
     private static void AssertBaseTypeRoundTrip<T>(T value)
         where T : StoredSettings
     {
+        // act
         using var buffer = MessagePackSerializer.Write<StoredSettings>(value);
         var bytes = buffer.WrittenMemory.ToArray();
         var read = (StoredSettings?)MessagePackSerializer.Read(bytes, typeof(StoredSettings), out _);
+
+        // assert
         read.Should().BeOfType<T>();
         // Structural equivalence — records with array members default to reference equality
         // on the arrays, so two structurally identical instances aren't `Equals`.

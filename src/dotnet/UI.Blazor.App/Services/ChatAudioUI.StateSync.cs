@@ -45,6 +45,9 @@ public partial class ChatAudioUI
 
     private async Task InitializeListening(CancellationToken cancellationToken)
     {
+        // A SetListeningState landing before the stored active chats are read would make
+        // StoredState discard them.
+        await ActiveChatsUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chatIdsToListenTo = await GetChatsYouNeedToKeepListeningTo(cancellationToken).ConfigureAwait(false);
         foreach (var chatId in chatIdsToListenTo)
             await SetListeningState(chatId, true).ConfigureAwait(false);
@@ -462,12 +465,7 @@ public partial class ChatAudioUI
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var listeningDuration = Constants.Audio.ListeningDuration;
-        var options = new RecordingIdleOptions(
-            listeningDuration,
-            // Must be > (listeningDuration - AudioSettings.IdleListeningCheckPeriod) and < listeningDuration
-            listeningDuration - AudioSettings.IdleListeningCheckPeriod + TimeSpan.FromSeconds(1),
-            AudioSettings.IdleListeningCheckPeriod);
+        var graceTimeout = Constants.Audio.ListeningDuration;
         var cListeningChatIds = await Computed
             .Capture(GetListeningChatIds, cancellationToken)
             .ConfigureAwait(false);
@@ -483,17 +481,21 @@ public partial class ChatAudioUI
                     stopTasks.Add(monitor.Stop());
             await stopTasks.Collect(ApiConstants.Concurrency.Unlimited, cancellationToken).ConfigureAwait(false);
 
-            foreach (var chatId in toStart) {
-                var chatUserSettings = await UserSettingsUI.ChatUserSettings(chatId)
-                    .Get(cancellationToken)
-                    .ConfigureAwait(false);
-                if (chatUserSettings.ListeningMode == ListeningMode.Forever)
-                    continue; // do not start listening idle watcher
+            if (toStart.Count == 0)
+                continue;
 
-                var chatOptions = options with {
-                    IdleTimeout = chatUserSettings.ListeningMode.GetInfo().Duration,
-                };
-                var watcher = FuncWorker.Start(ct => StopListeningWhenIdle(chatId, chatOptions, ct), cancellationToken);
+            var keepListeningChatIds = await GetChatsYouNeedToKeepListeningTo(cancellationToken)
+                .ConfigureAwait(false);
+            var lingerTimeout = (await UserSettingsUI.UserListeningSettings()
+                .Get(x => x.ContinuedListening, cancellationToken)
+                .ConfigureAwait(false)).ToTimeSpan();
+            foreach (var chatId in toStart) {
+                if (keepListeningChatIds.Contains(chatId))
+                    continue; // armed PTT chats keep listening — no idle watcher
+
+                var watcher = FuncWorker.Start(
+                    ct => StopListeningWhenIdle(chatId, graceTimeout, lingerTimeout, ct),
+                    cancellationToken);
                 monitors.Add(chatId, watcher);
             }
         }
@@ -501,15 +503,22 @@ public partial class ChatAudioUI
 
     private async Task StopListeningWhenIdle(
         ChatId chatId,
-        RecordingIdleOptions options,
+        TimeSpan graceTimeout,
+        TimeSpan lingerTimeout,
         CancellationToken cancellationToken)
     {
         var serverClock = Clocks.ServerClock;
         var cpuClock = Clocks.CpuClock;
         var mustStop = true;
+        // Latched on observed activity edges rather than read from the server, so it can
+        // never carry a timestamp from a prior listening session. Recordings that begin
+        // mid-session latch it; a record-initiated session's first episode doesn't (grace stays).
+        var hasSeenActivity = false;
+        var lastActivityAt = serverClock.Now;
         try {
             while (!cancellationToken.IsCancellationRequested) {
                 await WhenRecordingChatIdBecomes(x => x != chatId, cancellationToken).ConfigureAwait(false);
+                lastActivityAt = serverClock.Now;
                 var cts = cancellationToken.CreateLinkedTokenSource();
                 try {
                     var whenRecording = WhenRecordingChatIdBecomes(x => x == chatId, cts.Token);
@@ -517,6 +526,8 @@ public partial class ChatAudioUI
                     await Task.WhenAny(whenRecording, whenIdle).ConfigureAwait(false);
                     if (whenIdle.IsCompletedSuccessfully)
                         break;
+
+                    hasSeenActivity = true;
                 }
                 finally {
                     SetStopListeningAt(chatId, null);
@@ -534,11 +545,9 @@ public partial class ChatAudioUI
         finally {
             SetStopListeningAt(chatId, null);
             if (mustStop) {
-                var listeningMode = await UserSettingsUI.ChatUserSettings(chatId)
-                    .Get(x => x.ListeningMode, cancellationToken)
+                var keepListeningChatIds = await GetChatsYouNeedToKeepListeningTo(cancellationToken)
                     .ConfigureAwait(false);
-                if (listeningMode != ListeningMode.Forever)
-                    // do not turn off listening when KeepListening is configured
+                if (!keepListeningChatIds.Contains(chatId))
                     await SetListeningState(chatId, false).ConfigureAwait(false);
             }
         }
@@ -559,15 +568,13 @@ public partial class ChatAudioUI
             var cIsWatching = await Computed
                 .Capture(() => ChatVideoUI.IsWatching(chatId, ct), ct)
                 .ConfigureAwait(false);
-            // Latched on the observed activity edge rather than read from the server, so it can
-            // never carry a timestamp from a prior listening session.
-            var lastActivityAt = serverClock.Now;
 
             while (!ct.IsCancellationRequested) {
                 var hasActivity = cHasActivity.Value;
                 var isWatching = cIsWatching.Value;
                 if (hasActivity || isWatching) {
                     // Activity ongoing or video being watched — no timer
+                    hasSeenActivity = true;
                     lastActivityAt = serverClock.Now;
                     SetStopListeningAt(chatId, null);
                     using var waitCts = ct.CreateLinkedTokenSource();
@@ -581,7 +588,7 @@ public partial class ChatAudioUI
                 }
 
                 // Idle — compute stop time
-                var stopAt = lastActivityAt + options.IdleTimeout;
+                var stopAt = ComputeStopListeningAt(lastActivityAt, hasSeenActivity, graceTimeout, lingerTimeout);
                 var remaining = (stopAt - serverClock.Now).Positive();
                 if (remaining <= Epsilon)
                     return; // Must stop listening
@@ -614,11 +621,12 @@ public partial class ChatAudioUI
             _stopListeningAtMap.Value = _stopListeningAtMap.Value.Remove(chatId);
     }
 
-    // Walkie-talkie hot->armed drop: in background (or a headless wake session), stop ALL
-    // listening - including ListeningMode.Forever chats, which the watcher above deliberately
-    // never stops - after WalkieTalkieIdleTimeout of silence. The FCM wake push re-arms us.
     private async Task StopListeningWhenIdleInBackground(CancellationToken cancellationToken)
     {
+        // Walkie-talkie hot->armed drop: in background (or a headless wake session), stop ALL
+        // listening - including keep-listening (armed PTT) chats, which the watcher above
+        // deliberately never stops - after WalkieTalkieIdleTimeout of silence. The FCM wake
+        // push re-arms us.
         // Only platforms with a wake path that re-arms dropped listening:
         // FCM data pushes on Android, Apple Push to Talk on iOS.
         if (HostInfo.AppKind is not (AppKind.Android or AppKind.Ios))
@@ -944,12 +952,12 @@ public partial class ChatAudioUI
         return new(true, activeUntil);
     }
 
-    // !!! This method returns a server time sequence!
     private async IAsyncEnumerable<Moment?> ObserveStreamingIdleBoundaries(
         ChatId chatId,
         RecordingIdleOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        // !!! This method returns a server time sequence!
         await Task.Yield();
         yield return null;
 

@@ -98,7 +98,6 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Language = Languages.English,
             NotificationMode = ChatNotificationMode.ImportantOnly,
             VoiceMode = VoiceMode.TextAndVoice,
-            ListeningMode = ListeningMode.Default,
         };
         settings.AssertPassesThroughSerializers();
     }
@@ -141,14 +140,12 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void UserListeningSettings_Basic()
     {
-        var chatId = ChatId.Parse("the-actual-one");
         var settings = new UserListeningSettings {
-            AlwaysListenedChatIds = [chatId],
+            ContinuedListening = ContinuedListening.For30Seconds,
             Origin = "https://actual.chat",
         };
         var s = settings.PassThroughSerializers(Out);
-        s.AlwaysListenedChatIds.Length.Should().Be(1);
-        s.AlwaysListenedChatIds[0].Should().Be(chatId);
+        s.ContinuedListening.Should().Be(ContinuedListening.For30Seconds);
         s.Origin.Should().Be(settings.Origin);
     }
 

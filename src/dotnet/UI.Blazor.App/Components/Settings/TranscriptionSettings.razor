@@ -71,13 +71,17 @@
     </Form>
 </Tile>
 
+<TileTopic Topic="Continued Listening"/>
+<Tile Class="theme-tile">
+    <ContinuedListeningSettings/>
+</Tile>
+
 @if (shouldDisplayTranscriberEngineSettings) {
     <TileTopic Topic="Transcription Engines"/>
     <Tile Class="theme-tile">
         <TranscriptionEngineSettings/>
     </Tile>
 }
-
 
 @code {
     private FormModel _formModel = null!;

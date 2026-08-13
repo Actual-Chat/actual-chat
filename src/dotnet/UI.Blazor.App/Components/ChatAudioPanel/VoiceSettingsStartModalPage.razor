@@ -7,8 +7,6 @@
         : m.MustStreamVoice
             ? "On"
             : "Off";
-
-    var listeningModeInfo = m.ListeningMode.GetInfo();
 }
 
 <FormBlock Class="first last">
@@ -23,15 +21,6 @@
                 IsDisabled="@(!m.CanChangeMustStreamVoice)"
                 IsChecked="@m.MustStreamVoice"
                 IsCheckedChanged="@(_ => OnVoiceStreamingClick())" />
-        </Right>
-    </TileItem>
-
-    <TileItem Click="@OnListeningModeClick">
-        <Icon><i class="icon-listen text-2xl"></i></Icon>
-        <Content>Extended listening</Content>
-        <Caption>@(listeningModeInfo.IsDefault ? "Off" : "On")</Caption>
-        <Right>
-            <span class="text-primary text-sm">@listeningModeInfo.Text</span>
         </Right>
     </TileItem>
 
@@ -69,7 +58,7 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = new(false, false, ListeningMode.Default, false, null, false),
+                InitialValue = new(false, false, false, null, false),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -77,7 +66,6 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
         var settings = await UserSettingsUI.GetChatVoiceMode(chatId, cancellationToken).ConfigureAwait(false);
-        var listeningMode = await UserSettingsUI.GetListeningMode(chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var pttEnabledAt = chat?.PttEnabledAt;
         var walkieTalkieSettings = await UserSettingsUI.UserWalkieTalkieSettings()
@@ -88,7 +76,6 @@
         return new (
             mustStreamVoice,
             settings.CanChange,
-            listeningMode,
             walkieTalkieSettings.IsArmedIn(chatId, pttEnabledAt),
             pttEnabledAt,
             isIncompleteUIEnabled);
@@ -103,9 +90,6 @@
 
     private Task OnVoiceStreamingClick()
         => OnMustStreamVoiceChanged(!State.Value.MustStreamVoice);
-
-    private void OnListeningModeClick()
-        => Context.StepIn(DiveInDialogPage.New<VoiceSettingsListeningModalPage>(ChatId));
 
     private async Task OnPushToTalkClick() {
         var m = State.Value;
@@ -125,7 +109,6 @@
     public sealed record ComputedModel(
         bool MustStreamVoice,
         bool CanChangeMustStreamVoice,
-        ListeningMode ListeningMode,
         bool IsPushToTalk,
         Moment? PttEnabledAt,
         bool EnableIncompleteUI);

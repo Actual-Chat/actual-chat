@@ -1,0 +1,108 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ContinuedListeningSettings.Model>
+@{
+#pragma warning disable IL2091
+    if (State.IsInitial(out var m))
+        return;
+
+    _formModel.FromModel(m);
+}
+
+<Form Model="@_formModel">
+    <DataAnnotationsValidator/>
+
+    <FormBlock>
+        <InputRadioGroup
+            Name="continued-listening"
+            DisplayName="Continued Listening"
+            @bind-Value="_formModel.SelectedId">
+
+            @foreach (var option in Options) {
+                var formId = _formModel.GetFormId(option.Id);
+                <TileItem
+                    Class="@GetTileItemClass(option.Id)"
+                    Click="@(_ => OnTileClick(option.Id))">
+                    <Icon>
+                        <FormRadio
+                            Id="@formId"
+                            Value="@option.Id"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@formId" Text="@option.Title"></Label>
+                    </Content>
+                </TileItem>
+            }
+
+        </InputRadioGroup>
+    </FormBlock>
+</Form>
+
+@code {
+    private static readonly Option[] Options = [
+        new(nameof(ContinuedListening.None), "Off — stop when voice activity ends"),
+        new(nameof(ContinuedListening.For10Seconds), "10 seconds"),
+        new(nameof(ContinuedListening.For30Seconds), "30 seconds"),
+        new(nameof(ContinuedListening.For1Minute), "1 minute"),
+    ];
+
+    private FormModel _formModel = null!;
+
+    protected override void OnInitialized() {
+        _formModel = new (ComponentIdGenerator);
+        _formModel.SelectedIdChanged += OnSelectedIdChanged;
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.UserListeningSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        return new(settings.ContinuedListening);
+    }
+
+    private async Task OnSelectedIdChanged(string id) {
+        var value = Enum.Parse<ContinuedListening>(id);
+        await UserSettingsUI.UserListeningSettings()
+            .Update(x => x with { ContinuedListening = value }, CancellationToken.None);
+        await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
+    }
+
+    private void OnTileClick(string id)
+        => _formModel.SelectedId = id;
+
+    private string GetTileItemClass(string id)
+        => _formModel.SelectedId == id ? "selected transparent" : "transparent";
+
+    // Nested types
+
+    public sealed record Option(string Id, string Title);
+
+    public sealed class FormModel {
+        private string _selectedId = nameof(ContinuedListening.None);
+
+        private string FormId { get; }
+
+        public string SelectedId {
+            get => _selectedId;
+            set {
+                if (_selectedId == value)
+                    return;
+
+                _selectedId = value;
+                _ = SelectedIdChanged?.Invoke(value);
+            }
+        }
+
+        public event Func<string, Task>? SelectedIdChanged;
+
+        public FormModel(ComponentIdGenerator componentIdGenerator)
+            => FormId = componentIdGenerator.Next("continued-listening-form");
+
+        public string GetFormId(string id)
+            => $"{FormId}-{id}";
+
+        public void FromModel(Model model)
+            => _selectedId = model.Value.ToString();
+    }
+
+    public sealed record Model(ContinuedListening Value);
+}

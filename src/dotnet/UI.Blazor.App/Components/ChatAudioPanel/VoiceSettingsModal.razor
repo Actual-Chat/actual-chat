@@ -10,11 +10,9 @@
 @code {
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private DiveInDialogPage StartPage => ModalModel.StartAtListening
-        ? DiveInDialogPage.New<VoiceSettingsListeningModalPage>(ModalModel.ChatId)
-        : DiveInDialogPage.New<VoiceSettingsStartModalPage>(ModalModel.ChatId);
+    private DiveInDialogPage StartPage => DiveInDialogPage.New<VoiceSettingsStartModalPage>(ModalModel.ChatId);
 
     // Nested types
 
-    public sealed record Model(ChatId ChatId, bool StartAtListening = false);
+    public sealed record Model(ChatId ChatId);
 }

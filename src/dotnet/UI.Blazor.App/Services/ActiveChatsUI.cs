@@ -50,27 +50,18 @@ public class ActiveChatsUI : UIServiceBase<AppUIHub>
         CancellationToken cancellationToken = default)
     {
         // Turn off stored recording on restoring state during app start
-        activeChats = (await activeChats
-            .Select(async chat => {
+        activeChats = activeChats
+            .Select(chat => {
                 if (chat.IsRecording)
                     chat = chat with { IsRecording = false };
 
-                var chatUserSettings = await UserSettingsUI
-                    .ChatUserSettings(chat.ChatId).Get(cancellationToken)
-                    .ConfigureAwait(false);
-                var listeningMode = chatUserSettings.ListeningMode;
-                var listeningDuration = listeningMode.GetInfo().Duration;
                 var listeningRecency = Moment.Max(chat.Recency, chat.ListeningRecency);
-                if (chat.IsListening && CpuNow - listeningRecency > listeningDuration)
+                if (chat.IsListening && CpuNow - listeningRecency > Constants.Audio.ListeningDuration)
                     chat = chat with { IsListening = false };
-                else if (listeningMode == ListeningMode.Forever)
-                    chat = chat with { IsListening = true };
 
                 return chat;
             })
-            .Collect(ApiConstants.Concurrency.High, cancellationToken)
-            .ConfigureAwait(false)
-            ).ToArray();
+            .ToArray();
         return await FixActiveChats(activeChats, cancellationToken).ConfigureAwait(false);
     }
 
