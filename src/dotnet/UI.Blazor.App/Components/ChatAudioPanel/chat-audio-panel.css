@@ -55,6 +55,7 @@ body.hoverable .chat-audio-panel .listen-only-btn.btn:hover {
        partial damage), so smooth 60Hz interpolation costs real battery.
        steps() caps ticks at ~10/s; counts are per keyframe segment. */
     animation: gradientShake 3s steps(30) infinite alternate;
+    animation-delay: var(--anim-phase, 0s);
 }
 .chat-audio-panel .record-off-btn.btn,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover {
@@ -247,6 +248,7 @@ body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-pane
     mask: radial-gradient(circle closest-side at center, transparent calc(100% - 3px), black calc(100% - 1px));
     will-change: transform;
     animation: rotate-ring 2.5s 1s steps(25) infinite;
+    animation-delay: var(--anim-phase, 1s);
 }
 
 /* Mic disabled */
@@ -353,7 +355,8 @@ body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-con
     box-shadow: 0 0 1rem 0 var(--magenta-60);
 }
 .chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn::after {
-    animation: record-btn-glow 1s ease-in-out forwards;
+    animation: record-btn-glow 1s steps(10) forwards;
+    animation-delay: var(--anim-phase, 0s);
 }
 
 /* To "off" state */
@@ -472,6 +475,35 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .rec-icon.text-m
     @apply opacity-0;
 }
 
+/* Opacity alone does not stop a hidden .rec-icon from costing anything: these
+   hosts are <active-recording-svg>/<narrow-recording-svg>, whose `wave`
+   keyframes live in a shadow root, so neither this file nor
+   `document.getAnimations()` can see or pause them. Measured on an iPhone 13 Pro,
+   four such animations on two opacity:0 icons cost ~0.55 CPU cores - 83% of the
+   app's idle CPU - because every tick repaints the whole WebView surface.
+   `visibility: hidden` alone only stops the painting - measured 0.821 -> 0.504
+   cores - because the keyframes keep ticking and recalculating style. `display`
+   stops them outright (0.821 -> 0.268), and `allow-discrete` keeps the 200ms
+   cross-fade: `display` flips at the END of the fade-out and at the START of the
+   fade-in, so neither direction snaps. */
+.record-off .rec-icon.on,
+.record-on .rec-icon.off,
+.narrow-panel .record-on .rec-icon.on.text-mode-off,
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.text-mode-off,
+body.narrow .text-mode .rec-icon.text-mode-off,
+body.narrow .to-thin .rec-icon.text-mode-off,
+body.narrow .to-thick:not(.text-mode) .rec-icon.text-mode-on,
+body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .rec-icon.text-mode-on {
+    display: none;
+    transition:
+        width 200ms ease-in-out,
+        height 200ms ease-in-out,
+        font-size 200ms ease-in-out,
+        opacity 200ms ease-in-out,
+        display 200ms;
+    transition-behavior: allow-discrete;
+}
+
 /* Text-mode rec-icon sizes */
 body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon,
 body.narrow .text-mode .rec-icon,
@@ -578,7 +610,8 @@ body.narrow .to-thin .rec-icon.text-mode-on {
     box-shadow: 0 0 0.5rem 0 var(--primary);
 }
 .playback-wrapper.listen-off-to-on .btn::after {
-    animation: playback-btn-glow 1000ms ease-in-out forwards;
+    animation: playback-btn-glow 1000ms steps(10) forwards;
+    animation-delay: var(--anim-phase, 0s);
 }
 
 /* === 7. Language === */
@@ -965,7 +998,7 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
     @apply rounded-full;
     @apply overflow-hidden;
     @apply bg-03;
-    animation: pulse 2s infinite;
+    animation: pulse 2s steps(10) infinite;
 }
 
 /* Video call open: pause the decorative recorder animations — see the

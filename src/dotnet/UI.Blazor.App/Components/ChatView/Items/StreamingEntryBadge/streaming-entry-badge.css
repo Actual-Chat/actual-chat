@@ -28,6 +28,7 @@ body.hoverable .streaming-entry-badge:hover::after,
     transform: translateX(-100%);
     /* steps(): each tick forces a full-screen WebView redraw on mobile. */
     animation: badge-shimmer 2.5s steps(25) infinite;
+    animation-delay: var(--anim-phase, 0s);
 }
 @keyframes badge-shimmer {
     to { transform: translateX(100%); }
