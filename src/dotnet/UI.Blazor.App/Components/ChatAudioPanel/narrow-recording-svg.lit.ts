@@ -2,6 +2,8 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
 import { scan, Subscription } from 'rxjs';
 import { clamp, RunningMax, translate } from 'math';
+import { AnimationSync } from 'animation-sync';
+import { fastWriteRaf10Async } from 'fast-raf';
 import { RecordingActivity } from '../AudioRecorder/recording-activity';
 
 const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 100 * 96ms ~ 10s
@@ -33,7 +35,7 @@ export class NarrowRecordingSvg extends LitElement {
             filter: drop-shadow(-2px -2px 4px rgba(179,77,174, 0.75)) drop-shadow(2px 2px 4px rgba(255,0,92, 0.75));
         }
         path.idle-overlay {
-            animation: wave 1.3s steps(10, start) infinite;
+            animation: wave 1.3s steps(13, start) infinite;
             will-change: opacity;
         }
         @keyframes wave {
@@ -112,6 +114,19 @@ export class NarrowRecordingSvg extends LitElement {
         this.signalPowerSubscription.unsubscribe();
     }
 
+    // Same ~10Hz audio-power stream as active-recording-svg, same reason to land
+    // its writes on the animation grid rather than on instants of its own.
+    protected async scheduleUpdate(): Promise<void> {
+        await fastWriteRaf10Async();
+        await super.scheduleUpdate();
+    }
+
+    // The idle overlay animates inside the shadow root, out of reach of a document
+    // sweep, and is a new node on every re-render.
+    protected updated(): void {
+        AnimationSync.syncAll(this.renderRoot);
+    }
+
     protected render(): unknown {
         if (!this._isRecording)
             return this.renderIcon(0.75, 'idle-overlay', '');
@@ -135,7 +150,7 @@ export class NarrowRecordingSvg extends LitElement {
                 <path class='weak'
                       fill='#FF3880' fill-opacity='${fillOpacity}' fill-rule='evenodd' clip-rule='evenodd'
                       d='${d}' />
-                <path class='strong ${overlayExtraClass}'
+                <path class='strong ${overlayExtraClass}' data-anim-sync
                       fill='#FF3880' fill-opacity='${fillOpacity}' fill-rule='evenodd' clip-rule='evenodd'
                       style='${overlayStyle}'
                       d='${d}' />

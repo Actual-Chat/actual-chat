@@ -10,7 +10,7 @@ import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { getLogs } from 'logging';
 import { unselect } from 'keyboard';
 import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
-import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
+import { fastRaf, fastReadRafAsync, fastWriteRafAsync } from 'fast-raf';
 
 const { debugLog } = getLogs('SideNav');
 
@@ -96,7 +96,7 @@ export class SideNav extends DisposableBag {
 
         void delayAsync(250).then(async () => {
             // No transitions immediately after the first render
-            await fastWriteRaf();
+            await fastWriteRafAsync();
             this.element.classList.add('animated');
         });
     }
@@ -169,7 +169,7 @@ class SideNavPullDetectGesture extends Gesture {
             if (ScreenSize.isWide())
                 return;
 
-            await fastReadRaf();
+            await fastReadRafAsync();
 
             if (document.querySelector('.modal')) // Modal is shown
                 return;
@@ -365,7 +365,7 @@ class SideNavPullGesture extends Gesture {
             debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove: ending w/ mustBeOpen:`, mustBeOpen);
             this.state = null; // Ended
             try {
-                await fastWriteRaf();
+                await fastWriteRafAsync();
                 sideNav.isPulling = false;
                 if (sideNav.isOpen == mustBeOpen)
                     return; // Note that we call sideNav.resetTransform() in finally { ... }
@@ -386,10 +386,10 @@ class SideNavPullGesture extends Gesture {
                 const endTime = Date.now() + MaxSetVisibilityWaitDurationMs;
                 while (sideNav.isOpen != mustBeOpen && Date.now() < endTime) {
                     await delayAsync(50);
-                    await fastReadRaf();
+                    await fastReadRafAsync();
                 }
             } finally {
-                await fastWriteRaf();
+                await fastWriteRafAsync();
                 sideNav.setTransform(mustBeOpen ? 1 : 0);
                 this.dispose();
             }

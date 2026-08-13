@@ -13,7 +13,7 @@ import { ScrollController } from 'scroll-controller';
 import { DotNet } from '@microsoft/dotnet-js-interop';
 
 import { getLogs } from 'logging';
-import { fastRaf, fastReadRaf } from 'fast-raf';
+import { fastRaf, fastReadRafAsync } from 'fast-raf';
 import { DeviceInfo } from 'device-info';
 import { clamp } from 'math';
 import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
@@ -1113,11 +1113,13 @@ export class InfiniteList {
 
     private async turnOnIsEndAnchorVisible(): Promise<void> {
         // double-check visibility to prevent issues with scroll-to-the-last-item button
-        await fastReadRaf();
+        await fastReadRafAsync();
 
-        const isEndAnchorRefVisible = this.isItemPartiallyVisible(this.endAnchorRef);
-        const isEndSpacerRefVisible = this.isItemPartiallyVisible(this.endSpacerRef)
-            && this.endSpacerRef.getBoundingClientRect().height > VisibilityEpsilon;
+        const viewRect = this.ref.getBoundingClientRect();
+        const endSpacerRect = this.endSpacerRef.getBoundingClientRect();
+        const isEndAnchorRefVisible = this.isItemPartiallyVisible(this.endAnchorRef, viewRect);
+        const isEndSpacerRefVisible = this.isRectPartiallyVisible(endSpacerRect, viewRect)
+            && endSpacerRect.height > VisibilityEpsilon;
         const isEndAnchorVisible = isEndAnchorRefVisible && !isEndSpacerRefVisible;
         if (!isEndAnchorVisible) {
             this.updateState('endAnchor: not visible', this.state, { isEndAnchorVisible: false });
@@ -1130,7 +1132,7 @@ export class InfiniteList {
             // Without this a Start-edge list (media/files/links) gets pinned to End the moment its end anchor
             // scrolls in, dropping a single item or the empty placeholder to the bottom instead of the top.
             const firstRef = this.getFirstItemRef();
-            const firstVisible = firstRef != null && this.isItemPartiallyVisible(firstRef);
+            const firstVisible = firstRef != null && this.isItemPartiallyVisible(firstRef, viewRect);
             if (this.defaultEdge === VirtualListEdge.End || !firstVisible) {
                 const edgeKey = this.getLastItemKey()!;
                 this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
@@ -1315,7 +1317,7 @@ export class InfiniteList {
         if (rs.renderIndex === -1)
             return;
 
-        const hasScheduled = await fastReadRaf(`updateViewport_${this.identity}`);
+        const hasScheduled = await fastReadRafAsync(`updateViewport_${this.identity}`);
         if (!hasScheduled)
             return; // unable to schedule requestAnimationFrame, same key has already been scheduled
 
@@ -1818,17 +1820,15 @@ export class InfiniteList {
         return this.visibleItems.has(itemKey);
     }
 
-    private isItemFullyVisible(itemRef: HTMLElement): boolean {
-        const itemRect = itemRef.getBoundingClientRect();
-        const viewRect = this.ref.getBoundingClientRect();
-        return itemRect.top >= viewRect.top && itemRect.top <= viewRect.bottom
-            && itemRect.bottom >= viewRect.top && itemRect.bottom <= viewRect.bottom
-            && itemRect.height > 0;
+    // Pass viewRect when checking several items at once - otherwise the viewport is
+    // re-measured per call, which is the bulk of the geometry reads on this path.
+    private isItemPartiallyVisible(itemRef: HTMLElement, viewRect?: DOMRect): boolean {
+        return this.isRectPartiallyVisible(
+            itemRef.getBoundingClientRect(),
+            viewRect ?? this.ref.getBoundingClientRect());
     }
 
-    private isItemPartiallyVisible(itemRef: HTMLElement): boolean {
-        const itemRect = itemRef.getBoundingClientRect();
-        const viewRect = this.ref.getBoundingClientRect();
+    private isRectPartiallyVisible(itemRect: DOMRect, viewRect: DOMRect): boolean {
         return itemRect.bottom > viewRect.top && itemRect.top < viewRect.bottom;
     }
 

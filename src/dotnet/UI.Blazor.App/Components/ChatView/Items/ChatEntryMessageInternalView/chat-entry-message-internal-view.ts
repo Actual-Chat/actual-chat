@@ -1,37 +1,52 @@
 // TODO: remove eslint-disables and fix errors
-/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await */
-import { Subject } from 'rxjs';
-import { debounce, ResettableFunc } from 'actuallab-core';
-import { fastRaf } from 'fast-raf';
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+import { fastRaf10 } from 'fast-raf';
 
-const importantClasses = new Set([
-    'change-item',
-    'changed-item',
-    'changes',
-    'retained',
-]);
+// A shrink has to hold for this long before it's applied - re-recognition routinely makes the
+// transcript briefly shorter, and following that down and back up reads as jitter.
+const ShrinkDelayMs = 1500;
+
+const streamingViews = new Set<ChatEntryMessageInternalView>();
+// selectNodeContents resets it, so one Range serves every entry - this runs 10x/s.
+const measureRange = document.createRange();
+let isHeightLoopRunning = false;
+
+// One pass for every streaming entry, rather than an observer and a rAF per entry, split across
+// the scheduler's read and write phases. That keeps the measurements clear of every write due in
+// that frame rather than just of this loop's own, so a pass costs one forced layout no matter how
+// many entries are streaming; and landing on the 100ms grid puts the writes in frames the synced
+// animations were changing anyway, which is what the rendering cost is actually per.
+function runHeightPass(): void {
+    if (streamingViews.size === 0) {
+        isHeightLoopRunning = false;
+        return;
+    }
+
+    const pending = new Array<[ChatEntryMessageInternalView, number]>();
+    fastRaf10({
+        read: time => {
+            for (const view of streamingViews) {
+                const height = view.getPendingHeight(time);
+                if (height !== null)
+                    pending.push([view, height]);
+            }
+        },
+        write: () => {
+            for (const [view, height] of pending)
+                view.setHeight(height);
+            runHeightPass();
+        },
+    });
+}
 
 export class ChatEntryMessageInternalView {
     private readonly messageMarkup: HTMLElement;
     private playableText: HTMLElement | null;
-    private markupHeight = 0;
-    private lastWidth: number | null = null;
-    private isHeightAuto = true;
-    private setHeightAutoAfterTransition = false;
+    private height = -1;
+    private shrinkPendingSince = 0;
+    private isDisposed = false;
     private classObserver: MutationObserver;
-    private messageHeightObserver: MutationObserver;
-    private messageWidthObserver: ResizeObserver;
     private createPlayableTextObserver: MutationObserver;
-    private observerOptions = {
-        childList: true,
-        subtree: true,
-        characterData: true,
-        characterDataOldValue: true,
-    };
-    private isResizing = false;
-    private skipNext = false;
-    private slowDebouncedChangeSize: ResettableFunc<[height: number]>;
-    private disposed$: Subject<void> = new Subject<void>();
 
     static create(messageMarkup: HTMLElement): ChatEntryMessageInternalView {
         return new ChatEntryMessageInternalView(messageMarkup);
@@ -48,30 +63,11 @@ export class ChatEntryMessageInternalView {
         this.classObserver.observe(this.messageMarkup, {
             attributes: true,
             attributeFilter: ['class'],
-            attributeOldValue: true,
         });
 
         this.playableText = this.messageMarkup.querySelector('.playable-text-markup');
-        this.slowDebouncedChangeSize = debounce(async (height: number) => {
-            const actualHeight = this.getActualHeight();
-            if (actualHeight > height)
-                return;
-
-            this.changeSize(height);
-        }, 1500);
-
-        if (isStreaming) {
-            fastRaf({
-                read: () => {
-                    this.markupHeight = this.messageMarkup.offsetHeight;
-                },
-                write: () => {
-                    this.messageMarkup.style.height = `${this.markupHeight}px`;
-                    this.isHeightAuto = false;
-                    this.observerHandler(true);
-                },
-            });
-        }
+        if (isStreaming)
+            this.startStreaming();
         if (!this.playableText && isStreaming) {
             this.createPlayableTextObserver = new MutationObserver(this.smoothShowPlayableText);
             this.createPlayableTextObserver.observe(this.messageMarkup, {
@@ -82,225 +78,90 @@ export class ChatEntryMessageInternalView {
     }
 
     public dispose() {
-        if (this.disposed$.closed)
+        if (this.isDisposed)
             return;
 
-        this.disposed$.next();
-        this.disposed$.complete();
-
-        this.messageHeightObserver?.disconnect();
-        this.messageWidthObserver?.disconnect();
+        this.isDisposed = true;
+        this.stopStreaming();
         this.classObserver?.disconnect();
         this.createPlayableTextObserver?.disconnect();
     }
 
-    private getRemInPixels(): number {
-        return parseFloat(getComputedStyle(document.documentElement).fontSize);
+    // The height loop reaches these two, in that order, across all streaming entries - the read
+    // phase must stay free of writes for the batching to be worth anything.
+    public getPendingHeight(time: number): number | null {
+        const height = this.measureHeight();
+        if (height > this.height) {
+            this.shrinkPendingSince = 0;
+            return height;
+        }
+        if (height === this.height) {
+            this.shrinkPendingSince = 0;
+            return null;
+        }
+
+        if (this.shrinkPendingSince === 0) {
+            this.shrinkPendingSince = time;
+            return null;
+        }
+        return time - this.shrinkPendingSince >= ShrinkDelayMs ? height : null;
     }
 
-    private observerHandler(observe = true) {
-        if (observe) {
-            this.messageHeightObserver = new MutationObserver(this.updateMarkupSize);
-            this.messageHeightObserver.observe(this.messageMarkup, this.observerOptions);
-            this.messageWidthObserver = new ResizeObserver(this.updateHeightOnWidthChange);
-            this.messageWidthObserver.observe(this.messageMarkup);
+    public setHeight(height: number) {
+        this.height = height;
+        this.shrinkPendingSince = 0;
+        this.messageMarkup.style.height = `${height}px`;
+    }
+
+    // Private methods
+
+    // An explicit height for the whole streaming lifetime: `height: auto` doesn't interpolate,
+    // so any transition starting from it fires instantly instead of animating.
+    private startStreaming() {
+        if (streamingViews.has(this))
             return;
-        }
-        this.messageHeightObserver?.disconnect();
-        this.messageWidthObserver?.disconnect();
-    }
 
-    private updateHeightOnWidthChange: ResizeObserverCallback = (entries) => {
-        if (this.skipNext || this.isHeightAuto) {
-            this.skipNext = false;
+        streamingViews.add(this);
+        if (isHeightLoopRunning)
             return;
-        }
-        for (const entry of entries) {
-            const width = entry.contentRect.width;
-            if (this.lastWidth === width)
-                return;
 
-            this.lastWidth = width;
-            this.changeSizeForText();
-        }
-    };
-
-    private stateHandler: MutationCallback = (mutations) => {
-        for (const mutation of mutations) {
-            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                const target = mutation.target as HTMLElement;
-                const oldClassList = (mutation.oldValue ?? '').split(/\s+/);
-                const newClassList = target.className.split(/\s+/);
-                const added = newClassList.filter(c => !oldClassList.includes(c));
-                if (added.includes('not-streaming')) {
-                    this.onTranscriptionFinalizedResize();
-                    this.messageMarkup.style.height = 'auto';
-                    this.isHeightAuto = true;
-                    return;
-                } else if (added.includes('from-streaming')) {
-                    this.onTranscriptionFinalizedResize();
-                    this.messageMarkup.style.height = 'auto';
-                    this.isHeightAuto = true;
-                    return;
-                } else if (added.includes('streaming')) {
-                    this.observerHandler(true);
-                }
-            }
-        }
-    };
-
-    private updateMarkupSize: MutationCallback = (mutations) => {
-        mutations.forEach(mutation => {
-            const targetEl = mutation.target instanceof HTMLElement
-                ? mutation.target
-                : mutation.target.parentElement;
-
-            if (!targetEl)
-                return;
-
-            if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach((node) => {
-                    if (!(node instanceof HTMLElement))
-                        return;
-
-                    if ([...node.classList].some(cls => importantClasses.has(cls))) {
-                        this.changeSizeForText();
-                    }
-                });
-                mutation.removedNodes.forEach((node) => {
-                    if (!(node instanceof HTMLElement))
-                        return;
-
-                    if ([...node.classList].some(cls => importantClasses.has(cls))) {
-                        this.changeSizeForText(true);
-                    }
-                });
-            }
-
-            if (mutation.type === 'characterData' &&
-                mutation.target.nodeType === Node.TEXT_NODE) {
-                const element = (mutation.target.parentElement?.closest(
-                    '.change-item, .changed-item, .changes, .retained'
-                )) as HTMLElement | null;
-
-                if (element) {
-                    this.changeSizeForText(true);
-                } else {
-                    this.changeSizeForText();
-                }
-            }
-        });
+        isHeightLoopRunning = true;
+        runHeightPass();
     }
+
+    private stopStreaming() {
+        if (!streamingViews.delete(this))
+            return;
+
+        this.height = -1;
+        this.shrinkPendingSince = 0;
+        this.messageMarkup.style.height = '';
+    }
+
+    private measureHeight(): number {
+        measureRange.selectNodeContents(this.messageMarkup);
+        return Math.ceil(measureRange.getBoundingClientRect().height);
+    }
+
+    // Reads the current state rather than diffing added classes: the streaming class is also
+    // dropped for no class at all, which a diff of additions never sees - and both calls below
+    // are idempotent, so there's nothing a diff would buy.
+    private stateHandler: MutationCallback = () => {
+        if (this.messageMarkup.classList.contains('streaming'))
+            this.startStreaming();
+        else
+            this.stopStreaming();
+    };
 
     private smoothShowPlayableText: MutationCallback = (mutations) => {
         mutations.forEach(mutation => {
-            const targetEl = mutation.target instanceof HTMLElement
-                ? mutation.target
-                : mutation.target.parentElement;
-
-            if (!targetEl)
+            if (mutation.type !== 'childList')
                 return;
 
-            if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach((node) => {
-                    if (!(node instanceof HTMLElement))
-                        return;
-
-                    if (node.classList.contains('playable-text-markup')) {
-                        node.classList.add('smooth-show');
-                    }
-                });
-            }
-
-            if (mutation.type === 'characterData' &&
-                mutation.target.nodeType === Node.TEXT_NODE) {
-                const element = (mutation.target.parentElement?.closest(
-                    '.change-item, .changed-item, .changes, .retained'
-                )) as HTMLElement | null;
-
-                if (element) {
-                    this.changeSizeForText(true);
-                } else {
-                    this.changeSizeForText();
-                }
-            }
+            mutation.addedNodes.forEach((node) => {
+                if (node instanceof HTMLElement && node.classList.contains('playable-text-markup'))
+                    node.classList.add('smooth-show');
+            });
         });
-    }
-
-    private onTranscriptionFinalizedResize() {
-        this.observerHandler(false);
-        this.fastDebouncedChangeSize.reset();
-        this.slowDebouncedChangeSize.reset();
-
-        this.isResizing = false;
-        this.messageMarkup.style.height = 'auto';
-        this.isHeightAuto = true;
-        this.skipNext = true;
-    }
-
-    private fastDebouncedChangeSize = debounce((height: number) => {
-        this.slowDebouncedChangeSize.reset();
-        this.changeSize(height)
-    }, 50);
-
-    private changeSize(height: number, setHeightAuto = false) {
-        if (this.isResizing && height <= this.markupHeight)
-            return;
-
-        if (this.markupHeight === height)
-            return;
-
-        const actualHeight = this.getActualHeight();
-        height = Math.max(height, actualHeight);
-        this.isResizing = true;
-
-        this.messageMarkup.removeEventListener('transitionend', this.onTransitionEndBound);
-        this.setHeightAutoAfterTransition = setHeightAuto;
-        this.messageMarkup.addEventListener('transitionend', this.onTransitionEndBound, { once: true });
-        this.messageMarkup.style.height = `${height}px`;
-        this.markupHeight = height;
-    }
-
-    private changeSizeForText(slow = false) {
-        fastRaf({
-            read: () => requestAnimationFrame(() => {
-                const actualHeight = this.getActualHeight();
-                const markupHeight = this.markupHeight;
-                const remInPx = this.getRemInPixels();
-
-                const needToResize = Math.abs(actualHeight - markupHeight) > remInPx;
-                if (!needToResize)
-                    return;
-
-                const debounceFunc =
-                    actualHeight > markupHeight || !slow
-                        ? this.fastDebouncedChangeSize
-                        : this.slowDebouncedChangeSize;
-
-                debounceFunc(actualHeight);
-            })
-        });
-    }
-
-    private getActualHeight(): number {
-        const range = document.createRange();
-        range.selectNodeContents(this.messageMarkup);
-        return Math.ceil(range.getBoundingClientRect().height);
-    }
-
-    private onTransitionEndBound = (e: TransitionEvent) => this.onTransitionEnd(e);
-    private onTransitionEnd(e: TransitionEvent) {
-        if (e.propertyName !== 'height')
-            return;
-
-        this.messageMarkup.removeEventListener('transitionend', this.onTransitionEndBound);
-
-        if (this.setHeightAutoAfterTransition) {
-            this.messageMarkup.style.height = '';
-            this.setHeightAutoAfterTransition = false;
-        }
-
-        this.markupHeight = this.messageMarkup.offsetHeight;
-        this.isResizing = false;
     }
 }
