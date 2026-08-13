@@ -3,6 +3,7 @@ export * from './Services/BrowserInit/browser-init';
 
 // Please sort the imports alphabetically!
 export * from './Services/AccountUI/web-auth';
+export * from 'animation-sync';
 export * from './Services/BrowserInfo/browser-info';
 export * from './Services/Caching/remote-computed-cache';
 export * from './Services/CaptchaUI/captcha-ui';

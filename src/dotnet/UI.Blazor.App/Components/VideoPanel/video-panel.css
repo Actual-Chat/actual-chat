@@ -427,7 +427,8 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     box-shadow: 0 0 1rem 0 var(--magenta-60);
 }
 .video-panel .video-panel-footer > button.rec-btn.recording::after {
-    animation: record-btn-glow 1s ease-in-out forwards;
+    animation: record-btn-glow 1s steps(10) forwards;
+    animation-delay: var(--anim-phase, 0s);
 }
 .video-panel .video-panel-footer > button.rec-btn i {
     @apply text-xl leading-5;
@@ -663,6 +664,7 @@ body.wide .video-panel-content .video-track-player.item-x {
     @apply border-danger;
     will-change: opacity;
     animation: vpSpeakingPulse 1.2s steps(6) infinite;
+    animation-delay: var(--anim-phase, 0s);
 }
 @keyframes vpSpeakingPulse {
     0%, 100% { opacity: 0.5; }

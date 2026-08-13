@@ -80,6 +80,7 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
        partial damage), so smooth 60Hz interpolation costs real battery.
        steps() caps ticks at ~10/s; counts are per keyframe segment. */
     animation: rotate-border-gradient 2s steps(20) infinite;
+    animation-delay: var(--anim-phase, 0s);
 }
 
 /* Activity placeholder when no one is talking */
@@ -100,16 +101,18 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     animation-delay: 0s;
     --placeholder-opacity: 0.35;
 }
+/* A stagger shifts every tick with it, so it has to be a whole number of 100ms grid
+   steps - the 0.15s/0.45s these used to carry put two of the four circles 50ms off. */
 .placeholder-circle:nth-child(2) {
-    animation-delay: 0.15s;
+    animation-delay: 0.2s;
     --placeholder-opacity: 0.25;
 }
 .placeholder-circle:nth-child(3) {
-    animation-delay: 0.3s;
+    animation-delay: 0.4s;
     --placeholder-opacity: 0.15;
 }
 .placeholder-circle:nth-child(4) {
-    animation-delay: 0.45s;
+    animation-delay: 0.6s;
     --placeholder-opacity: 0.05;
 }
 
@@ -149,6 +152,7 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     -webkit-mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
     mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
     animation: film-scroll 30s steps(300) infinite;
+    animation-delay: var(--anim-phase, 0s);
     will-change: transform;
 }
 body.wide .c-film-strip::after {
@@ -296,7 +300,7 @@ body.hoverable .chat-activity-panel .btn-h.listening:hover,
 .timer-icon-swap .swap-a,
 .timer-icon-swap .swap-b {
     @apply md:pr-0.5;
-    animation: timer-swap 8s ease-in-out infinite;
+    animation: timer-swap 8s steps(80) infinite;
 }
 .timer-icon-swap .swap-a {
     @apply block;
@@ -367,8 +371,12 @@ body.narrow .chat-activity-panel.listening:after {
     @apply bg-[var(--indigo-70)];
     transition: height 0.3s ease, background-color 0.3s ease;
 }
+/* Every duration/steps pair below has to come out a multiple of 100ms - that is
+   AnimationSync's grid, and a tick off it lands in frames nothing else changes
+   in. So the bars stay at three different speeds by varying the step count with
+   the duration rather than the duration alone. */
 .equalizer:not(.active) .bar {
-    animation: equalize-inactive 1.5s infinite steps(4);
+    animation: equalize-inactive 1.5s infinite steps(15);
 }
 .equalizer:not(.active) .bar.bar-1 {
     animation-delay: 0s;
@@ -383,23 +391,26 @@ body.narrow .chat-activity-panel.listening:after {
 .equalizer.active .bar.bar-3 {
     @apply h-3.5;
     background: linear-gradient(to bottom, var(--violet-70), var(--indigo-70));
-    animation: equalize-active-1 0.6s infinite steps(3);
+    animation: equalize-active-1 0.6s infinite steps(6);
 }
 .equalizer.active .bar.bar-2 {
     @apply h-5;
     background: linear-gradient(to bottom, var(--violet-70), var(--indigo-70));
-    animation: equalize-active-2 0.6s infinite steps(3);
+    animation: equalize-active-2 0.6s infinite steps(6);
 }
 .equalizer.active .bar.bar-1 {
-    animation-duration: 0.55s;
+    animation-duration: 0.5s;
+    animation-timing-function: steps(5);
     animation-delay: 0s;
 }
 .equalizer.active .bar.bar-2 {
-    animation-duration: 0.65s;
+    animation-duration: 0.6s;
+    animation-timing-function: steps(6);
     animation-delay: 0.1s;
 }
 .equalizer.active .bar.bar-3 {
-    animation-duration: 0.6s;
+    animation-duration: 0.7s;
+    animation-timing-function: steps(7);
     animation-delay: 0.2s;
 }
 

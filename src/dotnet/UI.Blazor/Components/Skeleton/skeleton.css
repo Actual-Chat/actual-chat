@@ -24,7 +24,7 @@ splash-page-skeleton {
 }
 
 .animated-skeleton {
-    animation: pulse 2s infinite;
+    animation: pulse 2s steps(10) infinite;
 }
 
 /* Thin Left Panel Skeleton */
@@ -52,7 +52,7 @@ thin-left-panel-skeleton .button {
     @apply mb-2;
     @apply rounded-xl md:rounded-lg;
     @apply bg-03;
-    animation: pulse 2s infinite;
+    animation: pulse 2s steps(10) infinite;
     margin-left: var(--button-margin-left);
     margin-right: var(--button-margin-right);
 }
@@ -244,7 +244,7 @@ chat-list-skeleton {
     @apply lg:pt-0.5 pb-1 px-1;
 }
 chat-list-skeleton.animated-skeleton {
-    animation: pulse 2s infinite;
+    animation: pulse 2s steps(10) infinite;
 }
 chat-list-skeleton .message-skeleton.thread-skeleton {
     @apply items-start gap-x-4;
@@ -344,7 +344,7 @@ chat-list-skeleton .message-skeleton.thread-skeleton .c-container {
 .string-skeleton {
     @apply rounded-lg;
     @apply bg-skeleton;
-    animation: pulse 2s infinite;
+    animation: pulse 2s steps(10) infinite;
 }
 .string-skeleton.rounded {
     @apply rounded-full;
@@ -444,7 +444,7 @@ chat-view-skeleton {
     @apply w-full lg:max-w-192;
 }
 chat-view-skeleton.animated-skeleton {
-    animation: pulse 2s infinite;
+    animation: pulse 2s steps(10) infinite;
 }
 
 /* Chat View Footer Skeleton */
@@ -474,7 +474,7 @@ chat-view-footer-skeleton .footer-button {
     @apply h-12;
     @apply rounded-full;
     @apply bg-03;
-    animation: pulse 2s infinite;
+    animation: pulse 2s steps(10) infinite;
 }
 chat-view-footer-skeleton .footer-button {
     @apply flex-none;
@@ -497,7 +497,7 @@ image-skeleton {
 }
 image-skeleton.show-image-skeleton {
     @apply bg-05;
-    animation: pulse 2s infinite;
+    animation: pulse 2s steps(10) infinite;
 }
 image-skeleton.show-image-skeleton .image,
 image-skeleton.show-image-thumbnail .image,
@@ -544,7 +544,7 @@ tab-skeleton .c-line {
     @apply h-3;
     @apply rounded-full;
     @apply bg-skeleton;
-    animation: pulse 2s infinite;
+    animation: pulse 2s steps(10) infinite;
 }
 
 /* Voxt Skeleton */
@@ -552,7 +552,7 @@ voxt-skeleton {
     @apply flex-x items-center justify-center;
     @apply w-12 h-12;
     @apply my-1 md:mb-2;
-    animation: pulse 2s infinite;
+    animation: pulse 2s steps(10) infinite;
 }
 
 @keyframes pulse {

@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { customElement, property } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
+import { AnimationSync } from 'animation-sync';
 
 @customElement('chat-activity-svg')
 class ChatActivitySvg extends LitElement {
@@ -11,10 +12,10 @@ class ChatActivitySvg extends LitElement {
         }
 
         #stream-svg-1 {
-            animation: pulse-wave-1 1.5s ease-in-out infinite;
+            animation: pulse-wave-1 1.5s steps(15) infinite;
         }
         #stream-svg-2 {
-            animation: pulse-wave-2 1.5s ease-in-out infinite;
+            animation: pulse-wave-2 1.5s steps(15) infinite;
         }
         @keyframes pulse-wave-1 {
             0%, 100% {
@@ -44,15 +45,21 @@ class ChatActivitySvg extends LitElement {
     @property() activeColor = 'text-02'
     @property() inactiveColor = 'text-02'
 
+    // Re-run on every update, not just the first: the animated paths only exist
+    // in the isActive branch, so they are new elements each time it flips.
+    protected updated(): void {
+        AnimationSync.syncAll(this.renderRoot);
+    }
+
     protected render(): unknown {
         if (this.isActive) {
             return html`
                 <svg xmlns="http://www.w3.org/2000/svg" width="${this.size * 4}" height="${this.size * 4}" viewBox="0 0 24 24" fill="none" stroke="var(--${this.activeColor})" stroke-width="2" stroke-linecap="butt" stroke-linejoin="bevel">
                     <polygon id="stream-svg-polygon" points="11 5 6 9 2 9 2 15 6 15 11 19 11 5">
                     </polygon>
-                    <path id="stream-svg-1" d="M14.54 7.46a5 6 0 0 1 0 9.07" stroke-linecap="round">
+                    <path id="stream-svg-1" data-anim-sync d="M14.54 7.46a5 6 0 0 1 0 9.07" stroke-linecap="round">
                     </path>
-                    <path id="stream-svg-2" d="M17.54 5.46a5 7 0 0 1 0 13.07" stroke-linecap="round">
+                    <path id="stream-svg-2" data-anim-sync d="M17.54 5.46a5 7 0 0 1 0 13.07" stroke-linecap="round">
                     </path>
                 </svg>
             `;
