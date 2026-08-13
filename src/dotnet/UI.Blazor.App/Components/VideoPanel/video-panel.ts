@@ -12,6 +12,7 @@ const DOUBLE_TAP_INTERVAL = 300;
 const ZOOM_TRANSITION_MS = 250;
 
 export class VideoPanel {
+    private static readonly bodyClass = 'has-video-panel';
     private blazorRef: DotNet.DotNetObject;
     private readonly videoPanel: HTMLElement;
     private parentElement: HTMLElement | null = null;
@@ -71,6 +72,11 @@ export class VideoPanel {
     constructor(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
         this.videoPanel = videoPanel;
+        // Guards the body:has(.video-panel...) rules. WebKit evaluates a compound left to right,
+        // so an absent class here short-circuits before :has() runs - and :has() otherwise rescans
+        // the whole body subtree on every DOM mutation just to re-prove the panel isn't there,
+        // which measured 16-18% of WebContent's main thread during a call on an iPhone 13 Pro.
+        document.body.classList.add(VideoPanel.bodyClass);
 
         this.parentElement = this.videoPanel.parentElement;
         this.parentNextSibling = this.videoPanel.nextSibling;
@@ -891,6 +897,8 @@ export class VideoPanel {
     public dispose() {
         if (this.disposed$.closed)
             return;
+
+        document.body.classList.remove(VideoPanel.bodyClass);
 
         // Hide before any DOM reshuffling (collapse/reparent) so callers that
         // dispose without playing a close animation don't see the panel briefly
