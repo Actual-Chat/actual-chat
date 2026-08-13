@@ -615,6 +615,18 @@ jobs:
         with:
           base64: ${{ secrets.PROVISIONING_PROFILE_SHARE_PROD_BASE64 }}
 
+      - name: Install Provisioning Profile (Widget extension) for DEV
+        uses: ./.github/actions/install-provisioning-profile
+        if: ${{env.IS_DEV_MAUI == 'true'}}
+        with:
+          base64: ${{ secrets.PROVISIONING_PROFILE_WIDGET_DEV_BASE64 }}
+
+      - name: Install Provisioning Profile (Widget extension) for PROD
+        uses: ./.github/actions/install-provisioning-profile
+        if: ${{env.IS_DEV_MAUI == 'false'}}
+        with:
+          base64: ${{ secrets.PROVISIONING_PROFILE_WIDGET_PROD_BASE64 }}
+
       - name: Install the Apple distribution certificate
         env:
           BUILD_CERTIFICATE_BASE64: ${{secrets.APPLE_DISTRIBUTION_CERT_BASE64}}
