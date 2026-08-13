@@ -17,7 +17,7 @@
     @apply px-4;
     @apply truncate;
 }
-/* TODO: why did it appear here? */
+/* Prefix/Suffix carry their own edge space - flex would collapse a plain trailing one */
 .empty-chat-content > .c-text > .c-truncated-text > .c-part {
     @apply whitespace-pre;
 }

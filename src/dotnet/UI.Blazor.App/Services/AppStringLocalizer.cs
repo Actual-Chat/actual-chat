@@ -69,7 +69,6 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
             if (messages != null)
                 foreach (var (key, value) in messages)
                     strings[key] = value;
-            // TODO(FC): check again if we need to merge 2 different translation sets into a single one?
             result[lang] = strings;
         }
         return result;

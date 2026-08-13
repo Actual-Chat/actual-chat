@@ -439,14 +439,12 @@ body.narrow .message-file-attachments {
     @apply flex-y gap-x-1;
     @apply text-02 text-text-1;
 }
-.chat-welcome-block .c-content > .c-incut {
-    @apply flex-none;
-}
-/*TODO: why did it appear here? */
+/* Prefix/Suffix carry their own edge space, hence no gap: "'s contact" hugs the name, " さんの" doesn't */
 .chat-welcome-block .c-content.c-contact-share {
     @apply gap-x-0;
 }
 .chat-welcome-block .c-content.c-contact-share > .c-incut {
+    @apply flex-none;
     @apply whitespace-pre;
 }
 .chat-welcome-block .c-content > .c-contact {
