@@ -1,4 +1,5 @@
-﻿using ActualChat.Streaming;
+﻿using ActualChat.Live;
+using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -20,9 +21,17 @@ public class LiveStreamUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
         => LiveSessions.GetAudioStreamingAuthorIds(Session, chatId, cancellationToken);
 
     [ComputeMethod]
-    public virtual Task<ApiMap<AuthorId, int>> GetTranscribedTextLengths(
+    public virtual async Task<ConversationStats?> GetConversationStats(
         ChatId chatId, CancellationToken cancellationToken)
-        => LiveSessions.GetTranscribedTextLengths(Session, chatId, cancellationToken);
+    {
+        // While the RPC peer is down we stop receiving invalidations, so the last known server
+        // value is unreliable - report "no live conversation", same as HasActivity reports idle.
+        var isConnected = await ConnectivityUI.IsConnected.Use(cancellationToken).ConfigureAwait(false);
+        if (!isConnected)
+            return null;
+
+        return await LiveSessions.GetConversationStats(Session, chatId, cancellationToken).ConfigureAwait(false);
+    }
 
     [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<bool> IsAuthorStreamingAudio(

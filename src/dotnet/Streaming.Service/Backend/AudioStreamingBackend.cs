@@ -131,7 +131,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     }
 
     // [ComputeMethod]
-    public virtual async Task<Transcript?> GetMergedTranscript(StreamId streamId, CancellationToken cancellationToken)
+    public virtual async Task<Transcript?> GetTranscriptSnapshot(StreamId streamId, CancellationToken cancellationToken)
     {
         // waitForShare: false keeps an unpublished stream from blocking the compute for
         // ShareWaitDelay - but nothing invalidates that null, since there's no entry to depend on,
@@ -142,7 +142,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             .GetMemoizer(streamId, false, cancellationToken)
             .ConfigureAwait(false);
         if (memoizer == null) {
-            computed.Invalidate(AudioSettings.MergedTranscriptRetryDelay);
+            computed.Invalidate(AudioSettings.TranscriptSnapshotRetryDelay);
             return null;
         }
 
@@ -156,7 +156,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
 
         _ = memoizer.WhenChanged(producedCount)
             .ContinueWith(
-                _ => computed.Invalidate(AudioSettings.MergedTranscriptInvalidationDelay),
+                _ => computed.Invalidate(AudioSettings.TranscriptSnapshotInvalidationDelay),
                 CancellationToken.None,
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);

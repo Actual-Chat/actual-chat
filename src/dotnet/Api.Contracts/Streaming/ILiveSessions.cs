@@ -32,14 +32,13 @@ public interface ILiveSessions : IComputeService
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);
-    // The "is this a real conversation" signal where transcription is on: stream activity alone
-    // can't tell speech from noise that trips VAD. Same reference-equality caveat as ApiArray above.
-    [ComputeMethod(ConsolidationDelay = 1, ConsolidationComparer = typeof(ApiMapComparer<AuthorId, int>))]
+    // The "is anyone actually talking" signal: stream activity alone can't tell speech from noise
+    // that trips VAD. Null means there is no live conversation at all - no session, or one that
+    // never latched to 2+ authors. Re-measured on a fixed period rather than on chat traffic, so
+    // it also paces its consumers; see LiveSessions.GetConversationStats.
+    [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    Task<ApiMap<AuthorId, int>> GetTranscribedTextLengths(
-        Session session,
-        ChatId chatId,
-        CancellationToken cancellationToken);
+    Task<ConversationStats?> GetConversationStats(Session session, ChatId chatId, CancellationToken cancellationToken);
     // Consolidated server-side, so a GetCallState or chat-rules change that leaves the status alone
     // isn't pushed to the caller. Zero delay - this is a ring/accept path.
     [ComputeMethod(ConsolidationDelay = 0)]

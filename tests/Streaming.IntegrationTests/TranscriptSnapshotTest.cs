@@ -6,11 +6,11 @@ using ActualLab.Rpc;
 namespace ActualChat.Streaming.IntegrationTests;
 
 [Collection(nameof(StreamingCollection))]
-public class MergedTranscriptTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class TranscriptSnapshotTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact(Timeout = 60_000)]
-    public async Task MergedTranscriptFollowsThePushedDiffs()
+    public async Task TranscriptSnapshotFollowsThePushedDiffs()
     {
         // arrange
         var services = AppHost.Services;
@@ -24,7 +24,7 @@ public class MergedTranscriptTest(AppHostFixture fixture, ITestOutputHelper @out
             () => backend.PushTranscript(streamId, new RpcStream<TranscriptDiff>(diffs.Reader.ReadAllAsync(ct)), ct),
             ct);
 
-        var cMerged = await Computed.Capture(() => backend.GetMergedTranscript(streamId, ct), ct);
+        var cMerged = await Computed.Capture(() => backend.GetTranscriptSnapshot(streamId, ct), ct);
 
         // act
         var hello = Text("Hello");
@@ -45,7 +45,7 @@ public class MergedTranscriptTest(AppHostFixture fixture, ITestOutputHelper @out
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task MergedTranscriptIsNullForAnUnknownStream()
+    public async Task TranscriptSnapshotIsNullForAnUnknownStream()
     {
         // arrange
         var services = AppHost.Services;
@@ -54,7 +54,7 @@ public class MergedTranscriptTest(AppHostFixture fixture, ITestOutputHelper @out
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
         // act
-        var merged = await backend.GetMergedTranscript(streamId, cts.Token);
+        var merged = await backend.GetTranscriptSnapshot(streamId, cts.Token);
 
         // assert
         merged.Should().BeNull();
