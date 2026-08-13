@@ -13,6 +13,8 @@ namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ChatAppHostFixture>(fixture, @out)
 {
+    private static readonly TimeSpan SettleDelay = TimeSpan.FromSeconds(2);
+
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
     protected override async Task DisposeAsync()
@@ -44,17 +46,20 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
         var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
         items.Items.Should().NotBeEmpty();
 
+        // The summary flow writes the live session's conversation card shortly after the latch, and that
+        // write invalidates the range meta as well - so wait it out before probing what SetRules does.
         var tileStart = ChatUI.ServerIdTileStack.LastLayer.GetTile(live.EffectiveVisibleStartLid).Start;
-        var cRangeMeta = await Computed.Capture(
+        var cRangeMeta = await SettledComputed.Capture(
             () => Tester.Chats.GetChatRangeMeta(Tester.Session, chat.Id, tileStart, CancellationToken.None));
-        cRangeMeta.IsConsistent().Should().BeTrue();
+        var whenInvalidated = cRangeMeta.WhenInvalidated(CancellationToken.None);
 
         // act - rewrites the live session state, but cannot change a single rendered row
         await liveBackend.SetRules(chat.Id, new SessionRules { VideoAllowed = false }, CancellationToken.None);
 
-        // assert
-        cRangeMeta.IsConsistent().Should()
-            .BeTrue("live-session churn must not force the chat view to reload its range metadata");
+        // assert - consolidation runs on a background task, so the invalidation needs a window to arrive
+        await Task.WhenAny(whenInvalidated, Task.Delay(SettleDelay));
+        whenInvalidated.IsCompleted.Should()
+            .BeFalse("live-session churn must not force the chat view to reload its range metadata");
     }
 
     [Fact]
