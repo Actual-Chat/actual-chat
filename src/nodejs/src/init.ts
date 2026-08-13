@@ -1,3 +1,5 @@
+import { AnimationSweeper } from 'animation-sync';
+import { RenderSync } from 'render-sync';
 import { DeviceInfo } from 'device-info';
 import { Interactive } from 'interactive';
 import { Gestures } from 'gestures';
@@ -8,6 +10,14 @@ import { ServiceWorker } from 'service-worker';
 import { ScreenOrientation, DeviceOrientation } from 'orientation';
 import { CompactLayout } from 'compact-layout';
 import { BrowserInit } from '../../dotnet/UI.Blazor/Services/BrowserInit/browser-init';
+
+// Before anything awaits: batches arriving until this runs are applied the old way.
+// The hook name is published because "it silently did nothing" is the failure mode here -
+// the host global it needs is platform-specific, and a miss is otherwise invisible.
+// RenderSync itself is published so deferral can be switched on mid-call over the debugger,
+// which is the only way to A/B it against the same call rather than a different one.
+globalThis.renderSyncHook = RenderSync.init();
+globalThis.RenderSync = RenderSync;
 
 globalThis.ServerClock = ServerClock;
 globalThis.SharedSettings = SharedSettings;
@@ -57,6 +67,8 @@ void (async () => {
         e.preventDefault();
         window.scrollTo(0, 0);
     });
+
+    AnimationSweeper.start();
 
     const app = window.App;
     if (app) {
