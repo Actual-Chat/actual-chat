@@ -1,5 +1,7 @@
 import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
+import { AnimationSync } from 'animation-sync';
+import { fastWriteRaf10Async } from 'fast-raf';
 import { scan, Subscription } from 'rxjs';
 import { clamp, RunningMax, translate, RunningEMA } from 'math';
 import { RecordingActivity } from '../AudioRecorder/recording-activity';
@@ -60,13 +62,13 @@ export class ActiveRecordingSvg extends LitElement {
             }
         }
         rect#record-rect-2.in-rest {
-            animation: wave 1.3s steps(10, start) infinite;
+            animation: wave 1.3s steps(13, start) infinite;
         }
         rect#record-rect-3.in-rest {
-            animation: wave 1.3s steps(10, start) infinite -1.1s;
+            animation: wave 1.3s steps(13, start) infinite -1.1s;
         }
         rect#record-rect-4.in-rest {
-            animation: wave 1.3s steps(10, start) infinite -0.9s;
+            animation: wave 1.3s steps(13, start) infinite -0.9s;
         }
 
         @keyframes wave {
@@ -173,6 +175,20 @@ export class ActiveRecordingSvg extends LitElement {
         this.signalPowerChangedSubscription.unsubscribe();
     }
 
+    // Audio power arrives at ~10Hz, and each update rewrites rect geometry - so
+    // without this the bars alone put a change in ~1 frame in 6, on instants
+    // unrelated to the animation grid. Lit coalesces the states meanwhile.
+    protected async scheduleUpdate(): Promise<void> {
+        await fastWriteRaf10Async();
+        await super.scheduleUpdate();
+    }
+
+    // The rest-state bars animate inside the shadow root, where a document
+    // sweep cannot reach them, and they are new nodes on every re-render.
+    protected updated(): void {
+        AnimationSync.syncAll(this.renderRoot);
+    }
+
     protected render(): unknown {
         const { size, audioPowerState, isVoiceActive, isVisible } = this;
         const width = 10;
@@ -183,21 +199,21 @@ export class ActiveRecordingSvg extends LitElement {
                      preserveAspectRatio='none'
                      viewBox='0 0 24 24' fill='none' stroke='var(--white)'
                      stroke-width='${width}%' stroke-linecap='round' stroke-linejoin='bevel'>
-                    <rect id='record-rect-2' class='in-rest'
+                    <rect id='record-rect-2' class='in-rest' data-anim-sync
                           x='${width * 2.5}%'
                           y='${offset}%'
                           width='${width}%'
                           height='${MIN_HEIGHT}%'
                           fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
                     </rect>
-                    <rect id='record-rect-3' class='in-rest'
+                    <rect id='record-rect-3' class='in-rest' data-anim-sync
                           x='${width * 4.5}%'
                           y='${offset}%'
                           width='${width}%'
                           height='${MIN_HEIGHT}%'
                           fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
                     </rect>
-                    <rect id='record-rect-4' class='in-rest'
+                    <rect id='record-rect-4' class='in-rest' data-anim-sync
                           x='${width * 6.5}%'
                           y='${offset}%'
                           width='${width}%'

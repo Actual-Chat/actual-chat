@@ -22,6 +22,7 @@ export default defineConfig({
             'buffers': src('buffers'),
             'app-constants': src('app-constants'),
             'device-info': src('device-info'),
+            'fast-raf': src('fast-raf'),
             'async-video-encoder': src('async-video-encoder'),
             'clocks': src('clocks'),
             'ix-ext': src('ix-ext'),
