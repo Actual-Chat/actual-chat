@@ -17,19 +17,9 @@ body {
     width: 100%;
 }
 
-@keyframes blink_input_opacity_to_prevent_scrolling_when_focus {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
-}
-
 /* iOS-specific styles */
 body.device-ios {
     @apply has-viewport-height;
-}
-
-body.device-ios :has(input:focus),
-body.device-ios :has([contenteditable]:focus) {
-    animation: blink_input_opacity_to_prevent_scrolling_when_focus 0.01s;
 }
 
 body.device-ios * {
@@ -431,7 +421,8 @@ body.narrow .list-view-layout .layout-header.collapsed .chat-header-title {
     @apply h-40;
     @apply opacity-90;
     background: radial-gradient(100.91% 85.88% at 50% 100%, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 100%);
-    animation: smoothOpacity 1s ease forwards, bottomWave 4s steps(30) 1s infinite;
+    animation: smoothOpacity 1s ease forwards, bottomWave 4s steps(40) 1s infinite;
+    animation-delay: 0s, var(--anim-phase, 1s);
 }
 body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfooter:before {
     background: radial-gradient(80.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 100%);
@@ -702,4 +693,13 @@ body.narrow .page-with-header-and-footer:has(.side-nav-left[data-side-nav="open"
 /* Activity panel pinned state */
 .list-view-layout:has(.layout-header.pinned) .header-activity-panel-wrapper .chat-activity-panel {
     @apply cursor-pointer;
+}
+
+/* Tailwind's animate-pulse ships a cubic-bezier, i.e. it re-interpolates every
+   frame. On mobile WebView each animation tick repaints the whole surface, and
+   these appear once per chat row - 21 were running at once during a call. Step
+   it to a 200ms tick so AnimationSync can collapse them onto shared instants;
+   the keyframes are untouched, only the sampling rate changes. */
+.animate-pulse {
+    animation-timing-function: steps(10);
 }

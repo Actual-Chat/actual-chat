@@ -170,7 +170,7 @@ export class MarkupEditor {
         }
 
         debugLog?.log('focus: setting focus on contentDiv');
-        this.contentDiv.focus();
+        this.contentDiv.focus({ preventScroll: true });
 
         // TODO: remove if everything works fine on all platforms
         // if (!DeviceInfo.isIos) {

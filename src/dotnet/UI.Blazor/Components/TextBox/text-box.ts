@@ -44,6 +44,6 @@ export class TextBox implements Disposable {
     }
 
     public focus() {
-        this.input.focus();
+        this.input.focus({ preventScroll: true });
     }
 }

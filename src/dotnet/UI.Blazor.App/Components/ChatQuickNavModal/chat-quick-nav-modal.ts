@@ -19,7 +19,7 @@ export class ChatQuickNavModal {
         this.input = root.querySelector<HTMLInputElement>('.c-input');
         this.onKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e);
         this.input?.addEventListener('keydown', this.onKeyDown);
-        requestAnimationFrame(() => this.input?.focus());
+        requestAnimationFrame(() => this.input?.focus({ preventScroll: true }));
     }
 
     public scrollSelectedIntoView(): void {
