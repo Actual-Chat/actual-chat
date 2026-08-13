@@ -31,6 +31,7 @@ public static class StringCatalogs
             .Select(n => n[prefix.Length..^Suffix.Length]);
     }
 
+    // TODO: why not Language but subtag?
     internal static Dictionary<string, string>? Load(Kind kind, string subtag)
     {
         using var stream = Assembly.GetManifestResourceStream(ResourceName(kind, subtag));

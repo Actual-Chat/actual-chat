@@ -4,14 +4,14 @@ using System.Text.RegularExpressions;
 namespace ActualChat.UI.Blazor.Resources;
 
 // TODO(FC): review once more manually without claude
-// TODO(FC): drop the validation half of this index once the .NET 11 validation pipeline
-// resolves IStringLocalizerFactory per call. On 11.0.0-preview.6 it captures the factory once
-// into the singleton ValidationOptions, so our scoped AppStringLocalizer never reaches it;
-// dotnet/aspnetcore main already resolves it from ValidateContext.ServiceProvider
-// (Validation/gen/Templates/ValidatableInfo.cs), so preview.7 is the release to re-check.
-// Then BCL attributes can be localized forwards through IStringLocalizer like our own ones,
-// Validation_*_Format and this reverse matching go away, and only Error_ server strings stay.
-// See docs/plans/validation-localization-forward-keys.md §1 and tmp/validation-l10n-repro/.
+// TODO(FC): drop the validation half of this index - 11.0.0-preview.7 shipped the fix this was
+// waiting for, and we are still on preview.6. The generated validator now resolves
+// IStringLocalizerFactory per call from context.ServiceProvider (Validation/gen/Templates/
+// ValidatableInfo.cs:83) instead of capturing it into the singleton ValidationOptions, so our
+// scoped AppStringLocalizer reaches it; ValidationOptions.MessageKeyProvider then maps
+// (attribute, member, type) to a forward key, leaving the BCL attributes unwrapped.
+// Once the SDK is bumped, Validation_*_Format and this reverse matching go away and only
+// Error_ server strings stay. See docs/plans/validation-localization-forward-keys.md §1.
 
 /// <summary>
 /// Reverse index over <c>Messages.en.json</c>: maps an English message produced at runtime

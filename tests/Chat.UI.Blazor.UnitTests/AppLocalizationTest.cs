@@ -11,7 +11,9 @@ public class AppLocalizationTest
     private const StringCatalogs.Kind Messages = StringCatalogs.Kind.Messages;
     private const string PrefixSuffix = "_Prefix";
     private const string SuffixSuffix = "_Suffix";
-    private static readonly Regex PlaceholderRe = new(@"\{\d+\}");
+    // Strings.*.json is formatted by string.Format ({0}), Messages.*.json by
+    // MessageIndex.Format ({field}) - both forms must survive translation.
+    private static readonly Regex PlaceholderRe = new(@"\{(?:\d+|[A-Za-z_]\w*)\}");
 
     [Theory]
     [InlineData(Strings)]
@@ -276,6 +278,7 @@ public class AppLocalizationTest
     private static IEnumerable<string> ShippedSubtags(StringCatalogs.Kind kind = Strings)
         => StringCatalogs.ShippedSubtags(kind);
 
+    // TODO: accept Language instead of subtag
     private static Dictionary<string, string>? Load(string subtag, StringCatalogs.Kind kind = Strings)
         => StringCatalogs.Load(kind, subtag);
 

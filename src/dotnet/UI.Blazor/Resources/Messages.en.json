@@ -3,9 +3,9 @@
 // Placeholders are named: {field} is replaced by the form label, the rest pass through.
 // Only messages produced by BCL attributes belong here - our own attributes report a
 // Validation_* key directly and live in Strings.*.json.
-// TODO(FC): the Validation_* entries here are temporary - see MessageIndex. Once the .NET 11
-// pipeline resolves IStringLocalizerFactory per call (preview.7?), BCL attributes localize
-// forwards too and only Error_ server strings remain in this file.
+// TODO(FC): the Validation_* entries here are temporary - see MessageIndex. The .NET 11 pipeline
+// resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
+// preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.
 {
   "Validation_Required_Format": "The {field} field is required.",
   "Validation_MinLength_Format": "The field {field} must be a string or array type with a minimum length of '{min}'.",
