@@ -77,6 +77,12 @@ account.
 
 ### Audio and video
 
+- [Audio pipeline redesign](./audio-pipeline-redesign.md) — replace the four
+  per-platform audio-lifetime implementations with one platform-independent
+  session model: refcounted leases as the single source of truth for "audio
+  focus", and lazy per-resource release so short activities stop re-allocating
+  expensive native resources. Includes the full iOS `audiomxd` investigation
+  (idle 0.267 cores → 0).
 - [Unified live-activity signal](./live-activity-signal.md) — base the
   stop-listening / stop-recording idle timers on a single `ILiveSessions`
   activity bool derived from audio and video presence (not from the
