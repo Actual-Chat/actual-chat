@@ -125,7 +125,10 @@ body.hoverable .emoji-modal .c-gif-recent-item:hover {
     @apply opacity-0 transition-opacity;
     @apply -translate-y-1/2;
 }
-body.hoverable .emoji-modal .c-gif-recent:hover .c-gif-recent-arrow:not(.hidden) {
+/* No :not(.hidden) here: .hidden is display:none, so it already wins over any opacity, and
+   the build expands a .hidden inside :not() into the full selector text of all 453 rules that
+   apply it - 223 copies of this one rule, several dragging an unrelated :has() along. */
+body.hoverable .emoji-modal .c-gif-recent:hover .c-gif-recent-arrow {
     @apply opacity-100;
 }
 .emoji-modal .c-gif-recent-arrow.left {
