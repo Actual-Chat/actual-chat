@@ -42,10 +42,10 @@ body.hoverable .found-result.navbar-item:hover {
 .found-result.navbar-item .c-container .c-description .c-second-line.bio {
     @apply text-01;
 }
-.found-result.navbar-item .c-container .c-description:has(.c-third-line) .c-second-line {
+.found-result.navbar-item .c-container .c-description.has-third-line .c-second-line {
     @apply line-clamp-1;
 }
-.found-result.navbar-item .c-container .c-description:has(.c-second-line) .c-third-line {
+.found-result.navbar-item .c-container .c-description.has-second-line .c-third-line {
     @apply line-clamp-1;
 }
 .found-result.navbar-item .c-container .c-description .c-second-line .c-place-title {
@@ -71,14 +71,14 @@ body.hoverable .found-result.navbar-item:hover {
 .found-result.navbar-item .c-last-message .avatar-name {
     @apply text-01;
 }
-.found-result.navbar-item .c-description .c-name:has(.non-shrinkable) {
+.found-result.navbar-item .c-description .c-name.has-non-shrinkable {
     @apply flex-none inline whitespace-normal;
 }
-.found-result.navbar-item .c-description:has(.c-name .non-shrinkable) .c-entry {
+.found-result.navbar-item .c-description.has-non-shrinkable-name .c-entry {
     @apply inline whitespace-normal;
     @apply ml-0.5;
 }
-.found-result.navbar-item .c-description .c-name:has(.shrinkable) {
+.found-result.navbar-item .c-description .c-name.has-shrinkable {
     @apply min-w-16;
 }
 .found-result.navbar-item .c-description .c-text {
@@ -95,10 +95,10 @@ body.hoverable .found-result.navbar-item:hover {
 .found-result.navbar-item.message .c-container .c-description .c-third-line.place-chat {
     @apply line-clamp-2;
 }
-.found-result.navbar-item.message .c-container .c-description:has(.c-second-line) .c-third-line.place-chat {
+.found-result.navbar-item.message .c-container .c-description.has-second-line .c-third-line.place-chat {
     @apply flex-x gap-x-0.5;
     -webkit-line-clamp: none;
 }
-.found-result.navbar-item.message .c-container .c-description:has(.c-second-line) .c-third-line.place-chat .c-entry {
+.found-result.navbar-item.message .c-container .c-description.has-second-line .c-third-line.place-chat .c-entry {
     @apply truncate;
 }

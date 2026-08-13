@@ -190,10 +190,10 @@ body.narrow .layout-header:has(.video-streaming) {
 .chat-activity-panel.watching .c-film-strip {
     @apply hidden;
 }
-.layout-header.collapsed:not(:has(.video-panel:not(.collapsed):not(.panel-hidden))) .c-film-strip {
+.layout-header.collapsed:not(.has-visible-video-panel) .c-film-strip {
     @apply opacity-0;
 }
-.layout-header.collapsed:not(:has(.video-panel:not(.collapsed):not(.panel-hidden))) .c-film-strip::after {
+.layout-header.collapsed:not(.has-visible-video-panel) .c-film-strip::after {
     animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {

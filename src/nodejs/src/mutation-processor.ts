@@ -54,11 +54,20 @@ export const MutationProcessor = {
     // window with the class missing.
     registerPresenceClasses(...newRules: PresenceClassRule[]): void {
         rules.push(...newRules);
-        matchSelector = rules.map(r => r.match).join(',');
+        // The pre-filter tests added/removed nodes directly, where a leading `:scope >` would
+        // scope the selector to the node itself and so never match. Dropping it widens the
+        // check, which is the safe direction for a filter that only decides whether to work.
+        matchSelector = rules.map(r => r.match.replace(/^:scope\s*>\s*/, '')).join(',');
         matchTokens.clear();
-        for (const rule of rules)
+        for (const rule of rules) {
             for (const token of rule.match.match(/\.[\w-]+/g) ?? [])
                 matchTokens.add(token.slice(1));
+            // A Blazor re-render that rewrites `class` drops whatever we wrote there, and
+            // nothing else would tell us: the tokens the rule matches on didn't move. Watching
+            // our own class makes that a change we see. Our writes land after this callback
+            // and takeRecords() discards them, so this cannot feed back on itself.
+            matchTokens.add(rule.className);
+        }
         if (observer)
             updatePresenceClasses();
     },
@@ -93,18 +102,55 @@ function onMutated(records: MutationRecord[]): void {
     if (!isEnabled)
         return;
 
-    let hasPresenceChange = false;
+    const dirty = new Set<Element>();
     for (const record of records) {
         if (record.type === 'childList')
             syncAddedAnimations(record.addedNodes);
-        hasPresenceChange ||= affectsPresence(record);
+        if (affectsPresence(record))
+            collectContainers(record, dirty);
     }
-    if (hasPresenceChange) {
-        updatePresenceClasses();
+    if (dirty.size !== 0) {
+        updateContainers(dirty);
         // Our own class writes are mutations too; they land after this callback, so dropping
         // the records here discards exactly them and nothing else.
         observer?.takeRecords();
     }
+}
+
+// Only containers on the mutated node's ancestor chain can have flipped, so a mutation
+// costs O(rules) rather than O(rules x containers) - the difference between a handful of
+// container subjects and every `.item` in the chat view.
+function collectContainers(record: MutationRecord, dirty: Set<Element>): void {
+    const target = record.target instanceof Element ? record.target : record.target.parentElement;
+    if (target !== null)
+        for (const rule of rules) {
+            const container = target.closest(rule.container);
+            if (container !== null)
+                dirty.add(container);
+        }
+    if (record.type !== 'childList')
+        return;
+
+    // An added subtree can bring its own containers with it, and those are not on the
+    // ancestor chain of anything.
+    for (const node of record.addedNodes) {
+        if (!(node instanceof Element))
+            continue;
+
+        for (const rule of rules) {
+            if (node.matches(rule.container))
+                dirty.add(node);
+            for (const container of node.querySelectorAll(rule.container))
+                dirty.add(container);
+        }
+    }
+}
+
+function updateContainers(containers: Set<Element>): void {
+    for (const container of containers)
+        for (const rule of rules)
+            if (container.matches(rule.container))
+                container.classList.toggle(rule.className, container.querySelector(rule.match) !== null);
 }
 
 // Phase-aligns whatever arrived, replacing the sweep that used to run every 200ms.
