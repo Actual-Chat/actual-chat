@@ -46,6 +46,7 @@
     ];
 
     private FormModel _formModel = null!;
+    private Task _whenUpdatedTask = Task.CompletedTask;
 
     protected override void OnInitialized() {
         _formModel = new (ComponentIdGenerator);
@@ -59,11 +60,19 @@
         return new(settings.ContinuedListening);
     }
 
-    private async Task OnSelectedIdChanged(string id) {
-        var value = Enum.Parse<ContinuedListening>(id);
-        await UserSettingsUI.UserListeningSettings()
-            .Update(x => x with { ContinuedListening = value }, CancellationToken.None);
-        await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
+    private Task OnSelectedIdChanged(string id) {
+        // Chained so rapid clicks apply in click order (last click wins)
+        var prevUpdateTask = _whenUpdatedTask;
+        _whenUpdatedTask = UpdateSettings();
+        return _whenUpdatedTask;
+
+        async Task UpdateSettings() {
+            await prevUpdateTask.SilentAwait();
+            var value = Enum.Parse<ContinuedListening>(id);
+            await UserSettingsUI.UserListeningSettings()
+                .Update(x => x with { ContinuedListening = value }, CancellationToken.None);
+            await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
+        }
     }
 
     private void OnTileClick(string id)
