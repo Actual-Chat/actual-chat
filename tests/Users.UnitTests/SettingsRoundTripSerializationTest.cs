@@ -79,21 +79,28 @@ public class SettingsRoundTripSerializationTest
         yield return ("OnlyLanguageRussian", new () {
             Language = Languages.Russian,
         });
+        // The stored blob has the old ListeningMode = For5Minutes (5); the write-only
+        // [Obsolete] stub keeps the raw value on read.
+#pragma warning disable CS0618
         yield return ("ListeningMode5Minutes", new () {
-            ListeningMode = ListeningMode.For5Minutes,
+            ListeningMode = 5,
         });
+#pragma warning restore CS0618
         yield return ("NotificationModeImportantOnly", new () {
             NotificationMode = ChatNotificationMode.ImportantOnly,
         });
         yield return ("VoiceModeJustVoice", new () {
             VoiceMode = VoiceMode.JustVoice,
         });
+        // The stored blob also has the old ListeningMode = For1Hour (60).
+#pragma warning disable CS0618
         yield return ("AllProperties", new () {
             Language = Languages.EnglishUK,
-            ListeningMode = ListeningMode.For1Hour,
+            ListeningMode = 60,
             NotificationMode = ChatNotificationMode.Muted,
             VoiceMode = VoiceMode.JustText,
         });
+#pragma warning restore CS0618
     }
 
     private static IEnumerable<(string Name, UserLanguageSettings Data)> GetUserLanguageSettingsCases()

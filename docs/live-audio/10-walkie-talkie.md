@@ -29,12 +29,12 @@ per-chat Voice settings). `PttEnabledAt` doubles as a **consent epoch** —
 invalidates every prior consent (and every prior banner dismissal) without any
 fan-out: stale consent is self-invalidating on both client and server.
 
-Arming is a **separate opt-in** from "keep listening" — waking a killed device
-is a materially stronger commitment than keeping a player alive, so consent has
-its own chat set. Arming a chat does imply listening, though:
-`ChatAudioUI.GetChatsYouNeedToKeepListeningTo` concatenates
-`UserListeningSettings.AlwaysListenedChatIds` with `GetPttChatIds`, since
-arming alone starts no player. `ChatAudioUI.GetPttChatIds` is the client's
+Arming is a **separate opt-in** — waking a killed device is a materially
+stronger commitment than keeping a player alive, so consent has its own chat
+set. Arming a chat does imply listening, though:
+`ChatAudioUI.GetChatsYouNeedToKeepListeningTo` delegates to `GetPttChatIds` —
+armed chats are the only always-listened chats — since arming alone starts no
+player. `ChatAudioUI.GetPttChatIds` is the client's
 single armed-set choke point: it joins `PttChats` with `Chats.Get` and applies
 the epoch predicate, so an owner's toggle flip propagates to every consumer
 (gestures, reply resolver, iOS PTT channel, audio widget, Active Chats) through
@@ -358,8 +358,8 @@ across the listening set and feeds
 `HasActivity` is a **level**, not an edge, so the caller stamps `lastActiveAt`
 on the observed active→idle transition and `idleSince` clamps a stamp leaked
 from a prior session. Once `now` reaches the returned drop moment (5 minutes of
-silence), `ClearListeningChats()` stops **all** listening — including
-`ListeningMode.Forever` chats, which the ordinary watcher never stops. The next
+silence), `ClearListeningChats()` stops **all** listening — including armed PTT chats,
+which the ordinary idle watcher skips and thus never stops. The next
 wake push re-arms it, which is exactly why the drop is safe.
 
 ## Reply (transmit) pipeline

@@ -1031,9 +1031,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.GuestIdOption>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.GuestIdOption>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.GuestIdOption>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ListeningMode>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ListeningMode>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ListeningMode>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ContinuedListening>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ContinuedListening>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ContinuedListening>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SessionInfo>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SessionInfo>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SessionInfo>>>>();
@@ -1725,7 +1725,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+DigestPreviewChatFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+DigestPreviewFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+GuestIdOptionFormatter, ActualChat.Api");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+ListeningModeFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+ContinuedListeningFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+SessionInfoFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+SessionInfoFullFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+ShakeSensitivityFormatter, ActualChat.Api");

@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits BubbleBase
-@inject ModalUI ModalUI
-@inject ChatUI ChatUI
+@using ActualChat.UI.Blazor.Events
+@inject UIEventHub UIEventHub
 
 <div class="bubble-content">
     <div class="c-body">
@@ -12,16 +12,14 @@
         </div>
     </div>
     <div class="bubble-buttons flex justify-end">
-        <Button Class="btn-bubble" Click="@OnSetListeningTime">Set listening time</Button>
+        <Button Class="btn-bubble" Click="@OnSetListeningTime">Listening settings</Button>
         <Button Class="btn-bubble btn-next" Click="@OnOk">Ok</Button>
     </div>
 </div>
 
 @code {
     private void OnSetListeningTime() {
-        var chatId = ChatUI.SelectedChatId.Value;
-        if (chatId is { } cid)
-            ModalUI.Show(new VoiceSettingsModal.Model(cid, StartAtListening: true));
+        _ = UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Transcription));
         _ = Host.ReadBubble(this);
     }
 

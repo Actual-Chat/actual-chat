@@ -438,7 +438,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualUploadMediaList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsButtonBubble>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsListeningModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsStartModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebChromeGuideContent>();
@@ -1174,7 +1173,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.VisualUploadMediaList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsButtonBubble), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsListeningModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsStartModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebChromeGuideContent), AotTypeKind.Component),

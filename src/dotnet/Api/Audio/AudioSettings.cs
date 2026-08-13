@@ -1,15 +1,10 @@
 ﻿namespace ActualChat.Audio;
 
-/// <summary>
-/// Configuration settings for audio recording and listening behaviors.
-/// </summary>
 public sealed class AudioSettings
 {
     public TimeSpan IdleRecordingCheckPeriod { get; init; } = TimeSpan.FromSeconds(1);
     public TimeSpan IdleRecordingPreCountdownTimeout { get; init; }
         = Constants.Audio.RecordingDuration - TimeSpan.FromSeconds(10); // 10s to count
-    // Not critical to stop it at the exact time
-    public TimeSpan IdleListeningCheckPeriod { get; init; } = TimeSpan.FromSeconds(3);
     public TimeSpan IdleListeningNewMessageTrigger { get; init; } = TimeSpan.FromMinutes(5);
     // A transcript grows a few times per second; this keeps GetMergedTranscript's readers off that rate.
     public TimeSpan MergedTranscriptInvalidationDelay { get; init; } = TimeSpan.FromSeconds(0.1);

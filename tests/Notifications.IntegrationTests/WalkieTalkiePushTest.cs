@@ -39,23 +39,6 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
     }
 
     [Fact]
-    public async Task ForeverListeningWithoutPttGetsNoWake()
-    {
-        // arrange
-        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT listen-only");
-        var deviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
-        await SetForeverListeningMode(alice.Id, chatId);
-        Sink.Clear();
-
-        // act
-        await Speak(chatId, bobAuthor.Id);
-
-        // assert
-        await Task.Delay(NoWakeDelay);
-        Sink.Wakes.Should().NotContain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
-    }
-
-    [Fact]
     public async Task PttWithoutAnyListeningSettingsGetsWake()
     {
         // arrange
@@ -362,10 +345,6 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
             .ForUser(userId).UserWalkieTalkieSettings()
             .Update(x => x.WithPttChat(chatId, enabledAt));
     }
-
-    private Task SetForeverListeningMode(UserId userId, ChatId chatId)
-        => ServerKvasBackend.ForUser(userId).ChatUserSettings(chatId)
-            .Update(x => x with { ListeningMode = ListeningMode.Forever });
 
     private Task SetNotificationMode(UserId userId, ChatId chatId, ChatNotificationMode mode)
         => ServerKvasBackend.ForUser(userId).ChatUserSettings(chatId)

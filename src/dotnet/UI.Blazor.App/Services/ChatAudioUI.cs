@@ -112,17 +112,10 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod(MinCacheDuration = 300)] // Synced
-    public virtual async Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
-    {
-        await Hub.ChatUI.WhenReady.ConfigureAwait(false);
-        var alwaysListened = await UserSettingsUI.UserListeningSettings()
-            .Get(x => x.AlwaysListenedChatIds, cancellationToken)
-            .ConfigureAwait(false);
+    public virtual Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
         // A PTT chat wakes you to hear someone, so it must also be listened to -
         // arming alone starts no player.
-        var pttChatIds = await GetPttChatIds(cancellationToken).ConfigureAwait(false);
-        return alwaysListened.Concat(pttChatIds).Distinct().ToList();
-    }
+        => GetPttChatIds(cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetPttChatIds(CancellationToken cancellationToken)
@@ -209,6 +202,12 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             (duration - preCountdown).Positive(),
             audioSettings.IdleRecordingCheckPeriod);
     }
+
+    public static Moment ComputeStopListeningAt(
+        Moment lastActivityAt, bool hasSeenActivity, TimeSpan graceTimeout, TimeSpan lingerTimeout)
+        // Fresh listen in a quiet chat holds for the grace period; once an activity
+        // episode was observed, the configured linger applies from the idle edge.
+        => lastActivityAt + (hasSeenActivity ? lingerTimeout : graceTimeout);
 
     public ValueTask SetRecordingChatId(
         ChatId? chatId,
