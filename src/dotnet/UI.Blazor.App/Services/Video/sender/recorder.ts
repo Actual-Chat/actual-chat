@@ -165,7 +165,20 @@ export class Recorder {
             traceDrops<CapturedFrame>(FrameDropStage.SenderFpsPacing),
             normalizeDownscale({
                 controller: ladderController,
-                getNormalizeSize: () => normalizeSize,
+                // Cap the ceiling at the active top. At full ladder height the two are equal and
+                // the ceiling IS the top tier, so nothing changes. Once QC or the thermal cap
+                // shrinks the ladder, an uncapped ceiling becomes an orphan full-res frame
+                // produced every frame for nothing but the self-preview - exactly when the device
+                // is least able to afford it. The preview then rides the top tier, still well
+                // above the ~240x240 device px it is displayed in.
+                getNormalizeSize: () => {
+                    const { configs } = ladderController.current;
+                    const activeTop = configs[configs.length - 1];
+                    // Compare by area: an orientation flip swaps W/H on either side.
+                    const isActiveTopSmaller =
+                        activeTop.width * activeTop.height < normalizeSize.width * normalizeSize.height;
+                    return isActiveTopSmaller ? activeTop : normalizeSize;
+                },
                 isCamera: config.sourceKind === 0,
                 isFrontCamera: config.isFrontCamera,
                 isIos: config.isIos,
