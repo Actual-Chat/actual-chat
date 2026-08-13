@@ -11,8 +11,10 @@ public class Haptics(AppUIHub hub) : IDisposable
     private readonly Lock _lock = new ();
     private readonly Dictionary<Tune, ICHHapticPatternPlayer> _players = new ();
     private bool? _isSupported;
+    private CHHapticEngine? _hapticEngine;
+    private int _activeVibrationCount;
 
-    private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
+    private CHHapticEngine HapticEngine => _hapticEngine ??= CreateHapticEngine();
     protected ILogger Log => field ??= hub.LogFor(GetType());
 
     public bool IsSupported {
@@ -45,6 +47,8 @@ public class Haptics(AppUIHub hub) : IDisposable
         }
         foreach (var player in toDispose)
             player.DisposeSilently();
+        _hapticEngine?.DisposeSilently();
+        _hapticEngine = null;
     }
 
     public async Task Vibrate(Tune tune, int[] vibration)
@@ -56,13 +60,25 @@ public class Haptics(AppUIHub hub) : IDisposable
         if (HapticEngine.IsMutedForHaptics)
             return;
 
-        await HapticEngine.StartAsync().ConfigureAwait(false);
-        var player = GetPlayer(tune, vibration);
-        player.Start(0, out var error);
-        error.Assert();
-        await Task.Delay(vibration.Sum(), hub.StopToken).ConfigureAwait(false);
-        player.Cancel(out error);
-        error.Assert();
+        Interlocked.Increment(ref _activeVibrationCount);
+        try {
+            await HapticEngine.StartAsync().ConfigureAwait(false);
+            var player = GetPlayer(tune, vibration);
+            player.Start(0, out var error);
+            error.Assert();
+            await Task.Delay(vibration.Sum(), hub.StopToken).ConfigureAwait(false);
+            player.Cancel(out error);
+            error.Assert();
+        }
+        finally {
+            // Created without an audio session the engine makes its own, and while it runs it
+            // holds CoreAudio's global I/O running state - so the speaker and microphone virtual
+            // devices stay live too, not just the Taptic Engine's. Auto-shutdown is off by
+            // default and nothing else ever stops it, which cost 0.33 cores of audiomxd for as
+            // long as the process lived after a call.
+            if (Interlocked.Decrement(ref _activeVibrationCount) == 0)
+                await HapticEngine.StopAsync().ConfigureAwait(false);
+        }
     }
 
     private CHHapticEngine CreateHapticEngine()
