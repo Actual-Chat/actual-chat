@@ -683,3 +683,146 @@ rather than flat CDP.
 
 Reach for the syslog first: a failure that renders as an error barrier is almost
 always .NET-side, and the JS console will show nothing useful.
+
+## Profiling CPU on a device
+
+`xctrace` with the Time Profiler template, system-wide. Three details are load-bearing
+and every one of them has cost a wasted capture:
+
+```bash
+# 1. Warm the tunnel FIRST, or the recording silently produces a 0-byte bundle
+xcrun devicectl device info details --device $UDID >/dev/null
+# 2. Address the device by NAME (note the curly apostrophe), not by UDID
+xcrun xctrace record --device "Alexander’s iPhone" --template "Time Profiler" \
+  --all-processes --time-limit 30s --no-prompt --output /tmp/cap.trace
+# 3. Export needs the xpath quoted - zsh globs the brackets otherwise
+XP="/trace-toc/run[@number=\"1\"]/data/table[@schema=\"time-profile\"]"
+xcrun xctrace export --input /tmp/cap.trace --xpath "$XP" > /tmp/cap.tp.xml
+```
+
+**Always assert the export size.** Without the tunnel warm-up `xctrace record` fails, still
+exits 0, and leaves an empty `.trace`; a wrapper that swallows stderr will report six
+successful captures that contain nothing. Fail the run if the XML is under ~100 KB.
+
+Symbolication is `atos` against `~/Library/Developer/Xcode/iOS DeviceSupport/<ver>/Symbols`.
+Our own frames and WebKit's resolve; **`audiomxd`'s system dylibs do not**, so stack-level
+analysis inside the audio daemon is not available without more setup. Thread names and
+per-binary attribution still are, and were enough.
+
+`sample-time` is the schema *tag*; the column mnemonic is `time`, in nanoseconds. Bucketing
+by the wrong one yields all-zero bins.
+
+### Measurement hygiene
+
+- **Assert exactly one `ActualChat.app/ActualChat` process before trusting any number.** iOS
+  keeps older bundle containers around and relaunches them; a stale one silently doubled
+  WebContent several times in one day. Check `devicectl device info processes` and kill
+  anything whose container UUID isn't the one you just installed.
+- **A live call is not a repeatable workload.** Two captures of an *identical* build differed
+  by 10% (1.235 vs 1.365 cores) - larger than most effects worth chasing.
+- **Prefer a same-call A/B** over comparing builds. For anything CSS- or JS-level, inject the
+  variant over the WebView debugger instead of rebuilding: `wvexec` connects, evaluates and
+  exits, and an injected `<style>` persists, so nothing is attached while the profiler runs.
+  Do **not** leave Web Inspector attached during a capture.
+- **Interleave arms and sample the same config more than once.** In one run the same
+  configuration produced 591 ms and 1422 ms on the metric under test - a 2.4x spread that
+  dwarfed the effect. Three same-config samples measure the noise floor directly.
+- `callers.py`-style weight sums and sample-count sums disagree (weight vs 1 ms per sample).
+  Use one tool consistently and compare **percentages of the same denominator**, not absolute
+  ms across tools.
+
+## Reading `audiomxd`
+
+On iOS 18+ `mediaserverd` was split up and **`audiomxd` is the audio capture and DSP server**.
+Hot `libvDSP` / `libAudioDSP` / `AudioToolboxCore` inside it means a live audio graph, not
+something exotic.
+
+Its threads are named `audio IO: VAD [xxxx] AggDev N` - VAD is **Virtual Audio Device**, not
+voice-activity detection. The four-CCs are undocumented by Apple but decode from CoreAudio's
+own `VirtualAudio_PlugIn` device dumps:
+
+| code | direction | physical device |
+|---|---|---|
+| `vdef` | output | **Speaker** |
+| `vspd` | input | **built-in microphone** |
+| `vzzz` | output | **Actuator** (Taptic Engine) |
+| `vcal` | duplex | Baseband Voice |
+| `vhaw` | input | "Hawking" |
+| `vlqd` | duplex | unknown |
+
+**`AggDev N` is a creation counter, not an identity.** Low, stable numbers (2, 4, 7) are
+boot-time devices - `vzzz` is AggDev 2 on unrelated hardware too. `vdef` is rebuilt on every
+route-configuration change, so its number climbs every call. **A climbing AggDev number is
+not evidence of a leak**; several hours were spent believing it was. A real leak would show
+several `vdef` aggregates alive at once.
+
+Two log lines tell you whether audio actually stopped, and both come through
+`idevicesyslog` at Notice level:
+
+```
+HALB_PowerAssertion::Release ... 'com.apple.audio.VAD [vspd] AggDev 7.context...'
+VirtualAudio_IONotificationManager: new I/O running state = 0, previous = 1
+```
+
+If you never see `IORunning` go to 0, something in the process is still holding the graph.
+Deeper detail (`StartIOProcID` / `StopIOProcID`, which would name the exact leaking IO proc)
+is debug-level and needs Apple's Audio debug profile installed on the device.
+
+### What holds an audio device open
+
+- **`AVAudioEngine` holds a virtual audio device with a live IO thread until it is
+  deallocated.** `Pause()`, `Stop()` and deactivating the session do not give it back. Build
+  on first use, tear down when the last consumer goes.
+- **The input node is not released with the engine.** Unlike mixer and player nodes, nothing
+  disposes it, so the managed peer outlives the engine as the native node's last owner.
+  Voice processing must be switched off *before* release - it can only be toggled while the
+  node still belongs to a live engine.
+- **`CHHapticEngine` keeps the entire audio graph running.** Created without an audio session
+  it makes its own, and while it runs it holds CoreAudio's global I/O running state - the
+  speaker and microphone devices stay live too, not just the actuator. `autoShutdownEnabled`
+  is off by default and `Dispose()` on your wrapper won't stop it. This cost 0.33 cores of
+  `audiomxd` whenever the app sat idle after a call, and was the single largest CPU consumer
+  on the device. Stop the engine when nothing is vibrating.
+- **The orange microphone dot only indicates privacy-visible capture.** A prepared-but-muted
+  graph runs without lighting it, so "no dot" does not mean "no audio IO".
+
+To prove where a cost lives: kill the app (does it vanish?), fresh-launch without exercising
+the feature (is it absent?), then exercise it. That three-point chain localises an owner far
+faster than reasoning about the code.
+
+## WebKit rendering cost during a call
+
+WebContent is **~94% main thread** - there is no large hidden worker bucket. Inclusive
+breakdown from a symbolicated 30s device profile, buckets nest so they overlap:
+
+| bucket | % of main thread |
+|---|---|
+| `Document::updateLayout` | 61.5 |
+| `RenderLayerCompositor` | 36.0 |
+| `Style::TreeResolver` | 17.1 |
+| `collectTouchEventRects` | 8.8 |
+| **`performLayout` (real layout)** | **7.2** |
+
+**Real layout is 7.2%; the compositing update after it is 36% - 5x the layout itself**,
+because it walks ~800 RenderLayers (53% of elements, ~6 per chat message). Layer *count* is
+the lever, not layout.
+
+Things that did **not** work, so they aren't retried:
+
+- **Deferring Blazor render batches onto a fixed step.** Measured three ways; none beat not
+  deferring. Coalescing does cut layout+style work, but holding writes back puts them nearer
+  the reads that follow and converts scheduled layout into *forced* layout by at least as
+  much. See `render-sync.ts`, which keeps the mechanism disabled with the numbers.
+- **`steps()` does not reduce style invalidation.** Proven in isolation: stepped and
+  continuous animations both invalidate style at vsync (119.8/s). It does reduce layout and
+  paint to the value-change rate.
+- **Every SVG transform variant invalidates layout in Blink** - CSS `transform` with
+  `transform-box: fill-box` or `view-box`, the presentation attribute, and
+  `will-change: transform` all measured the same. Only an HTML element avoids it.
+- **Removing the two `body.device-ios :has(...)` rules** changed nothing on device. They were
+  obsolete and went anyway, but they were not the `:has()` cost.
+
+The one ordering rule worth internalising: **a write scheduled among other code's reads makes
+each of those reads force a synchronous layout.** One such inversion measured 1461 ms of
+forced layout per 30 s call. `fast-raf.ts` exists to make that impossible - every read
+registered for a frame runs before every write, across all frequencies due together.
