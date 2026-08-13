@@ -338,8 +338,8 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply items-center;
     min-height: calc(3.5rem + var(--safe-area-top));
 }
-.list-view-layout .layout-header:has(.header-activity-panel-wrapper),
-.list-view-layout:has(.chat-activity-panel.listening) .layout-header {
+.list-view-layout .layout-header.has-activity-panel,
+.list-view-layout.has-listening-activity .layout-header {
     @apply relative;
     @apply bg-transparent;
     @apply border-transparent;
@@ -366,7 +366,7 @@ body.narrow .list-view-layout:has(.chat-activity-panel:not(.not-participating)) 
     @apply z-40;
 }
 /* Hideable elements (control panel buttons) */
-.list-view-layout .layout-header:has(.header-activity-panel-wrapper) .hideable {
+.list-view-layout .layout-header.has-activity-panel .hideable {
     transition-property: opacity, transform, max-width;
     transition-duration: 0.5s;
     transition-timing-function: ease;
@@ -411,11 +411,11 @@ body.narrow .list-view-layout .layout-header.collapsed .chat-header-title {
     border-top: 1px solid var(--violet-80-20);
 }
 /* Colorized header */
-.list-view-layout:has(.chat-activity-panel.listening) .layout-subheader {
+.list-view-layout.has-listening-activity .layout-subheader {
     @apply bg-transparent;
 }
 /* Colorized footer */
-.list-view-layout:has(.chat-activity-panel.listening) .layout-subfooter:before {
+.list-view-layout.has-listening-activity .layout-subfooter:before {
     @apply content-empty;
     @apply absolute z-minus inset-x-0 bottom-0;
     @apply h-40;
@@ -424,7 +424,7 @@ body.narrow .list-view-layout .layout-header.collapsed .chat-header-title {
     animation: smoothOpacity 1s ease forwards, bottomWave 4s steps(40) 1s infinite;
     animation-delay: 0s, var(--anim-phase, 1s);
 }
-body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfooter:before {
+body.narrow .list-view-layout.has-listening-activity .layout-subfooter:before {
     background: radial-gradient(80.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 100%);
 }
 @keyframes smoothOpacity {
