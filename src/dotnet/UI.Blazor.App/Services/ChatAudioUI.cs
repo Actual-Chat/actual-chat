@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Kvas;
+using ActualChat.Live;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.App.Components.AudioPanel;
 using ActualChat.UI.Blazor.Services;
@@ -17,7 +18,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
-    private readonly RemoteSpeechWindow _remoteSpeech;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
     // Boxed because the CLR forbids volatile on Nullable<TimeSpan>; null means "no override".
     private volatile object? _recordingIdleDurationBox;
@@ -70,9 +70,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             ImmutableDictionary<ChatId, Moment>.Empty,
             StateCategories.Get(type, nameof(GetStopListeningAt)));
         _nextBeep = stateFactory.NewMutable((NextBeepState?)null, StateCategories.Get(type, nameof(NextBeep)));
-        _remoteSpeech = new RemoteSpeechWindow(
-            hub.AudioSettings.RemoteSpeechWindow,
-            hub.AudioSettings.RemoteSpeechThreshold);
         _replayState = stateFactory.NewMutable(
             (ReplayState?)null,
             StateCategories.Get(type, nameof(ReplayState)));
@@ -208,6 +205,27 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         // Fresh listen in a quiet chat holds for the grace period; once an activity
         // episode was observed, the configured linger applies from the idle edge.
         => lastActivityAt + (hasSeenActivity ? lingerTimeout : graceTimeout);
+
+    // Static so tests can exercise the thresholds without a host
+    public static bool IsActuallyConversing(
+        ConversationStats? stats,
+        AuthorId? ownAuthorId,
+        bool isTranscriptionOn,
+        AudioSettings audioSettings)
+    {
+        // Own speech deliberately doesn't count: talking to people in the room is exactly the case
+        // where the user has forgotten the mic is on.
+        if (stats is null)
+            return false;
+        if (stats.Duration < audioSettings.ConversationMinAge)
+            return true;
+
+        // Where transcription is on it's the better signal: speech duration can't tell words from
+        // the noise that tripped VAD, and transcribed characters can.
+        return isTranscriptionOn
+            ? stats.GetTranscriptSize(ownAuthorId) >= audioSettings.TranscriptSizeThreshold
+            : stats.GetSpeechDuration(ownAuthorId) >= audioSettings.SpeechDurationThreshold;
+    }
 
     public ValueTask SetRecordingChatId(
         ChatId? chatId,

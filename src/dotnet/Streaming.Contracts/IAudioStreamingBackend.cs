@@ -21,7 +21,7 @@ public interface IAudioStreamingBackend : IComputeService, IBackendService
     // by streamId.NodeRef - so a client must never serve it from its own cache.
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    Task<Transcript?> GetMergedTranscript(StreamId streamId, CancellationToken cancellationToken);
+    Task<Transcript?> GetTranscriptSnapshot(StreamId streamId, CancellationToken cancellationToken);
 
     Task<RpcStream<AudioFrame>?> GetAudio(
         StreamId streamId,
