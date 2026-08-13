@@ -57,7 +57,7 @@ export class TotpInput implements Disposable {
     public focus() {
         const text = this.getText();
         const i = text.length >= this.length ? this.length - 1 : text.length;
-        this.inputs[i].focus();
+        this.inputs[i].focus({ preventScroll: true });
     }
 
     /** Called by blazor */
