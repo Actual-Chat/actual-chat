@@ -7,6 +7,23 @@ public class InputNode(AVAudioNode node, AppUIHub hub) : AudioNode(node, _ => {}
 {
     private int _isTapped;
     public new AVAudioInputNode Node => (AVAudioInputNode)base.Node;
+    // AVAudioInputNode binds the setter but not the getter, so the state is tracked here.
+    public bool IsVoiceProcessingEnabled { get; private set; }
+
+    // Unlike mixer and player nodes, nothing else releases the input node: AudioEngine drops its
+    // reference without disposing it, so this managed peer outlives the engine as the native
+    // node's last owner. Voice processing goes off first, since it can only be toggled while the
+    // node still belongs to a live engine. Runs under Lock, from Dispose().
+    protected override void DisposeCore()
+    {
+        if (IsVoiceProcessingEnabled) {
+            Node.SetVoiceProcessingEnabled(false, out var error);
+            if (error is not null)
+                Log.LogWarning("Failed to disable voice processing: {Error}", error.LocalizedDescription);
+            IsVoiceProcessingEnabled = false;
+        }
+        Node.DisposeSilently();
+    }
 
     public IDisposable Tap(AVAudioNodeTapBlock handleSamples)
     {
@@ -26,6 +43,7 @@ public class InputNode(AVAudioNode node, AppUIHub hub) : AudioNode(node, _ => {}
         lock (Lock) {
             Node.SetVoiceProcessingEnabled(value, out var error);
             error.Assert();
+            IsVoiceProcessingEnabled = value;
         }
     }
 

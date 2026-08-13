@@ -52,14 +52,31 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         var heldAt = CpuTimestamp.Now.Value;
         Volatile.Write(ref _inputNodeHeartbeatAt, heldAt);
         Volatile.Write(ref _inputNodeHeldAt, heldAt);
+        // Resolved out here so the finally can stop it without reaching into DI, which may
+        // already be gone if this enumerator is disposed during shutdown.
+        var engine = AudioEngines.Recording;
         try {
-            // TryTake() stops its own AVAudioEngine, and that must happen before
-            // AudioEngines.Recording is touched below - two AVAudioEngine instances must never
-            // hold the hardware input node at once.
+            // TryTake() stops its own AVAudioEngine, and that must happen before the engine
+            // above is used below - two AVAudioEngine instances must never hold the hardware
+            // input node at once.
             var preRoll = PttPreRoll.TryTake();
             Log.LogInformation("CaptureInternal: starting");
-            var engine = AudioEngines.Recording;
             using var outBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
+            // TODO(FC): restore AEC/NS/AGC on Mac Catalyst.
+            // Voice processing breaks on Mac Catalyst: the engine's recording graph has no
+            // active output side, so the VoiceProcessor's downlink DSP can't get valid sample
+            // timestamps and either errors out continuously or delivers a single initial
+            // buffer then goes silent. Wiring a silent AVAudioPlayerNode to MainMixerNode
+            // suppressed the error spam but didn't restore steady-state frame delivery.
+            // Until we find a stable workaround, ship without VP on Mac Catalyst (desktops
+            // are typically used with headphones, so echo is a minor regression vs iOS).
+            //
+            // This must precede GetOutputFormat(): enabling VP can change the input node's
+            // output format, and both the resampler and the tap below are built from it. Reading
+            // it first would leave Transform() throwing on every buffer - silent dead recording.
+            if (!OperatingSystem.IsMacCatalyst())
+                engine.Input.SetVoiceProcessingEnabled(true);
+
             var hwFormat = engine.Input.GetOutputFormat();
             using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
             if (preRoll is { } take) {
@@ -93,16 +110,6 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
                 else
                     Log.LogWarning("Dropped the pre-roll: format changed since it was captured");
             }
-            // TODO(FC): restore AEC/NS/AGC on Mac Catalyst.
-            // Voice processing breaks on Mac Catalyst: the engine's recording graph has no
-            // active output side, so the VoiceProcessor's downlink DSP can't get valid sample
-            // timestamps and either errors out continuously or delivers a single initial
-            // buffer then goes silent. Wiring a silent AVAudioPlayerNode to MainMixerNode
-            // suppressed the error spam but didn't restore steady-state frame delivery.
-            // Until we find a stable workaround, ship without VP on Mac Catalyst (desktops
-            // are typically used with headphones, so echo is a minor regression vs iOS).
-            if (!OperatingSystem.IsMacCatalyst())
-                engine.Input.SetVoiceProcessingEnabled(true);
             using var _2 = engine.Input.Tap(HandleSamples);
             engine.EnsureRunning();
             // Voice processing activation can route audio to the earpiece — fix it
@@ -140,6 +147,11 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
             }
         }
         finally {
+            // Ends the engine and its VPIO with the capture rather than with the focus scope,
+            // which in walkie-talkie mode is released minutes later. It also has to happen
+            // before the latch reports the input node free, or a PTT press landing in between
+            // would start a second AVAudioEngine on a node this one still holds.
+            engine.Release();
             Volatile.Write(ref _inputNodeHeldAt, 0);
             Log.LogInformation("CaptureInternal: stopped");
         }
