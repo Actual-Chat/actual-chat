@@ -712,6 +712,39 @@ per-binary attribution still are, and were enough.
 `sample-time` is the schema *tag*; the column mnemonic is `time`, in nanoseconds. Bucketing
 by the wrong one yields all-zero bins.
 
+### `xctrace` symbolication fails silently — symbolicate the export yourself
+
+`xctrace` sometimes records a trace whose frames are bare addresses (`0x12021f695`) with the
+binary resolving to `?`. It exits 0, the export is full size, and every symbol-matching
+analysis then reports **0 ms for everything** — a broken capture that reads exactly like a
+free lunch. On one afternoon this hit two of four arms in a run, then every capture after
+it; it is not tied to the workload, the app, the screen state, or the arm. `xctrace
+symbolicate` cannot repair it after the fact ("No dSYMs were found or relevant to this
+trace"), and neither can re-exporting.
+
+It does not matter, because **the export still carries everything needed to resolve the
+addresses**: each `<binary>` element keeps its `name`, `UUID`, `path` and — crucially —
+`load-addr`, and each `<frame>` keeps `addr`. So batch the addresses per binary through
+`atos` against the DeviceSupport symbol cache:
+
+```bash
+atos -o "$SYMROOT/System/Library/PrivateFrameworks/WebCore.framework/WebCore" \
+     -arch arm64e -l 0x1b6b24000   # load-addr from the <binary> element
+```
+
+`tmp/ios-profiling/symtime2.py` on the Mac does this: it resolves only the binaries you ask
+about (WebCore/WebKit/JavaScriptCore by default), so one `atos` call per binary covers a
+whole trace. It took a capture from 96% unresolved to 5%, and on a trace that `xctrace` had
+symbolicated correctly it reproduced that tool's numbers **to the digit** (801 ms / 8.39%),
+which is what makes it trustworthy.
+
+Two guards worth keeping in any analysis script, because both failure modes are silent:
+
+- **Report the unresolved fraction and refuse to print numbers above ~20%.** A capture that
+  cannot be symbolicated must fail loudly, not score 0.00% on every pattern.
+- **Pin the analysis to one pid.** Matching the process by substring silently sums two
+  `WebContent` instances when a stale container is alive - see hygiene below.
+
 ### Measurement hygiene
 
 - **Assert exactly one `ActualChat.app/ActualChat` process before trusting any number.** iOS
@@ -720,6 +753,11 @@ by the wrong one yields all-zero bins.
   anything whose container UUID isn't the one you just installed.
 - **A live call is not a repeatable workload.** Two captures of an *identical* build differed
   by 10% (1.235 vs 1.365 cores) - larger than most effects worth chasing.
+- **Most rendering work needs DOM churn, not a call.** Style-invalidation costs are paid per
+  mutation, so a call is only a convenient mutation firehose. A driver injected over the
+  WebView debugger - append/remove one off-screen node at 20 Hz via `setInterval`, so it keeps
+  running after the debugger detaches - reproduces the same code path, holds the rate identical
+  across arms, and needs nobody holding a phone. `tmp/ios-profiling/arm.sh` does this.
 - **Prefer a same-call A/B** over comparing builds. For anything CSS- or JS-level, inject the
   variant over the WebView debugger instead of rebuilding: `wvexec` connects, evaluates and
   exits, and an injected `<style>` persists, so nothing is attached while the profiler runs.
@@ -821,6 +859,48 @@ Things that did **not** work, so they aren't retried:
   `will-change: transform` all measured the same. Only an HTML element avoids it.
 - **Removing the two `body.device-ios :has(...)` rules** changed nothing on device. They were
   obsolete and went anyway, but they were not the `:has()` cost.
+
+### `:has()` — the cost is proving absence, and a presence class removes all of it
+
+`matchHasPseudoClass` was **8.4% of WebContent's main thread** in a live call (801 ms of
+9549 ms). It is carried by rules whose subject is `body` and whose argument is a *descendant*
+(`body:has(.video-panel:not(.panel-hidden))`). WebKit's `Element` has only sibling-direction
+`:has()` bits, no descendant equivalent, so `StyleInvalidator` walks the ancestor chain and
+runs a real match on **every** mutation. Blink has breadcrumb bits, which is why Chrome shows
+nothing here and why this had to be measured on device.
+
+The expensive case is the rule that *fails*: `.video-panel` is absent in an audio-only
+session, so each invalidation walks the whole subtree to prove a negative. WebKit evaluates a
+compound left-to-right, so **one class on `body` short-circuits the match before `:has()`
+runs** — `video-panel.ts` adds `has-video-panel` while a panel exists, and the three rule
+sites are now `body.has-video-panel:has(...)`.
+
+ABAB in a live call, one build, one page, arms toggled by adding/removing the class over the
+WebView debugger (30 s arms, main-thread totals within 9.1-10.3 s of each other):
+
+| arm | `matchHasPseudoClass` | `HasSelectorFilter` |
+|---|---|---|
+| guard bypassed | 801 ms / 8.39% | 241 ms |
+| **guard active** | **273 ms / 3.17%** | 144 ms |
+| guard bypassed | 662 ms / 6.40% | 152 ms |
+| **guard active** | **279 ms / 3.06%** | 153 ms |
+
+So the guard **halves** it - ~730 ms → ~276 ms per 30 s - it does not remove it. The residual
+~3.1% is the other ~91 container-subject descendant rules (`.list-view-layout`,
+`.layout-header`, …), which still walk on mutations elsewhere in the tree.
+
+**Beware the synthetic driver here.** Under a 20 Hz driver appending one node inside
+`.chat-view`, the guarded arms measured *exactly* 0 ms, twice. That is real but misleading:
+invalidation only walks the mutated node's **ancestors**, so a single mutation site exercises
+only the subjects above it - `body`, i.e. exactly the rules being guarded. It proves the
+guard works and is perfectly repeatable, but it cannot see the rules a real call hits, and
+reading it as "eliminated" overstates the fix by 2x. Use the driver for a clean yes/no on one
+rule set; quote the in-call numbers for what is actually saved.
+
+A related build-level trap: `:not(.hidden)` inside a Tailwind-built selector made the build
+expand `.hidden` into the full selector text of all 453 rules applying it - 223 copies of one
+rule, several dragging an unrelated `:has()` along. `.hidden` is `display:none` and already
+wins, so the `:not()` was pure cost.
 
 The one ordering rule worth internalising: **a write scheduled among other code's reads makes
 each of those reads force a synchronous layout.** One such inversion measured 1461 ms of
