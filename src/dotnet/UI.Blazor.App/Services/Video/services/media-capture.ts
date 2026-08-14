@@ -172,6 +172,21 @@ export class MediaCapture {
         // temporalPace enforces the actual target fps downstream instead.
         if (options.frameRate)
             videoConstraints.frameRate = { ideal: options.frameRate };
+        // Capture and the IPC and compositing it drives are ~0.33 of the 0.41 cores a video
+        // call adds over an audio one, so the sensor/ISP format sits upstream of all of them
+        // and is worth asking about.
+        //
+        // Speculative, and known NOT to work on an iPhone 13 Pro / iOS 26.5: there the track
+        // reports `powerEfficient: false` with capabilities `[false, true]`, but the property
+        // is read-only telemetry - `{ exact: true }` is rejected with `TypeError: A required
+        // constraint`, and `{ ideal: true }` leaves the setting at `false`. Kept because an
+        // ideal costs nothing where it is ignored and other devices may honour it. Do not
+        // treat this as a landed optimisation; re-check `getSettings().powerEfficient`
+        // before claiming it does anything.
+        if (DeviceInfo.isMobile) {
+            (videoConstraints as MediaTrackConstraints & { powerEfficient?: ConstrainBoolean })
+                .powerEfficient = { ideal: true };
+        }
         if (size) {
             videoConstraints.width = size.width;
             videoConstraints.height = size.height;

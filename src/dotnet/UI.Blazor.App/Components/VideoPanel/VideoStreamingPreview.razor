@@ -20,10 +20,13 @@
 
 <div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls @screenCastCls">
     <canvas class="remote-video-bg" aria-hidden="true"></canvas>
+    @* Both surfaces carry the settings tap: CSS hides whichever one the active
+       render backend isn't using, so only the visible one can be hit. *@
     <video class="call-video-native live-stream-video @mirrorCls"
            autoplay playsinline muted aria-hidden="true"
            disablepictureinpicture disableremoteplayback
-           controlslist="nodownload nofullscreen noremoteplayback"></video>
+           controlslist="nodownload nofullscreen noremoteplayback"
+           @onclick="@(isActiveRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></video>
     <canvas
         class="call-video @mirrorCls"
         @onclick="@(isActiveRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>

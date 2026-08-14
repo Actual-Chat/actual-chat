@@ -41,7 +41,16 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video-native {
 .video-streaming-preview .call-video {
     background: transparent;
 }
+/* Exactly one of the two surfaces renders; the other must not stay a composited
+   layer. Both carry `will-change: transform` + `translateZ(0)` above, so without
+   these the idle one is alpha-composited over the live one on every frame — and on
+   iOS (mstg) the idle one is the canvas, which is never drawn at all: the preview
+   sink writes to the VideoTrackGenerator and skips the frame listeners that paint
+   it. The receiver has always done this, in JS (video-player.ts applyBackendVisibility). */
 .video-streaming-preview.preview-backend-canvas .call-video-native {
+    display: none;
+}
+.video-streaming-preview.preview-backend-mstg .call-video {
     display: none;
 }
 .video-streaming-preview .btn-h.btn-settings {
