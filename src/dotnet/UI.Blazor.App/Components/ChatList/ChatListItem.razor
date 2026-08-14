@@ -9,12 +9,17 @@
     var isActiveChatList = listKind == ChatListKind.Active;
     var audioState = m.AudioState;
     var isListeningOrRecording = audioState is not null && (audioState.IsListening || audioState.IsRecording);
+    // Armed PTT keeps the chat listening at all times, but that's ambient state - the badge
+    // for it lives in the Active Chats list; a main-list row only surfaces audio controls
+    // when a live session is actually going on there.
+    var isPttIdle = m.IsPttArmed && !m.HasOngoingCall;
+    var showAudioControls = isListeningOrRecording && !isPttIdle;
     var lastTextEntry = m.LastTextEntry;
     var attributes = listKind == ChatListKind.All && m.IsFirstItem
         ? FirstItemAttributes
         : NoneAttributes;
     _renderedModel = m;
-    var showEnding = isListeningOrRecording || isActiveChatList;
+    var showEnding = showAudioControls || isActiveChatList;
     var navbarItemCls = showEnding ? "visible-ending" : "";
 }
 
@@ -85,8 +90,9 @@
         @if (isActiveChatList) {
             // Active ChatList
             <div class="slot c-active">
-                @if (m.IsPttArmed) {
+                @if (m.IsPttArmed && audioState is not { IsRecording: true }) {
                     // PTT implies listening, so the badge replaces the listen toggle; click = leave PTT.
+                    // An ongoing recording takes over: the mic control is what stops it.
                     <ChatListPttToggle ChatId="@chat.Id" Class="ending-btn"/>
                 } else {
                     <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
@@ -101,7 +107,7 @@
                         NotificationMode="@m.NotificationMode"
                         HasMentions="@m.HasUnreadOwnMention"/>
                 }
-                @if (isListeningOrRecording) {
+                @if (showAudioControls) {
                     <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
                 }
             </div>
@@ -112,7 +118,7 @@
                     Value="@m.UnreadCount"
                     NotificationMode="@m.NotificationMode"
                     HasMentions="@m.HasUnreadOwnMention"/>
-                @if (isListeningOrRecording) {
+                @if (showAudioControls) {
                     <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
                 } else {
                     <ChatListRecordingToggle Chat="@chat" IsRecording="false" Class="ending-btn"/>
@@ -229,11 +235,10 @@
             .GetCallActivity(chatId, cancellationToken)
             .UseIfReady(chatActivityUI.GetLastKnownCallActivity(chatId), Computed.GetCurrent());
 
-        var isPttArmed = false;
-        if (listKind == ChatListKind.Active) {
-            var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
-            isPttArmed = pttChatIds.Contains(chatId);
-        }
+        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        var isPttArmed = pttChatIds.Contains(chatId);
+        var hasOngoingCall = isPttArmed
+            && await chatActivityUI.HasOngoingCall(chatId, cancellationToken).ConfigureAwait(false);
 
         return new() {
             ListKind = listKind,
@@ -251,6 +256,7 @@
             IsFirstItem = isFirstItem,
             IsUnreadByOthers = isUnreadByOthers,
             IsPttArmed = isPttArmed,
+            HasOngoingCall = hasOngoingCall,
             LastThread = preview.Thread,
             LastThreadCreator = preview.ThreadCreator,
         };
@@ -350,6 +356,7 @@
         public bool IsFirstItem { get; init; }
         public bool IsUnreadByOthers { get; init; }
         public bool IsPttArmed { get; init; }
+        public bool HasOngoingCall { get; init; }
         public Chat? LastThread { get; init; }
         public Author? LastThreadCreator { get; init; }
         public Moment LastBeginsAt => LastThread?.CreatedAt ?? LastTextEntry?.BeginsAt ?? Moment.EpochStart;

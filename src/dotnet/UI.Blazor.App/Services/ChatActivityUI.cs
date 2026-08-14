@@ -82,6 +82,23 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
     }
 
     [ComputeMethod]
+    public virtual async Task<bool> HasOngoingCall(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Real call substance, unlike GetCallActivity's participant count, which includes the
+        // user's own passive listening: anyone's speech or open mic, and video/screencast from
+        // either side. All inputs degrade to false while offline, so this is safe to await
+        // from list items.
+        if (await LiveStreamUI.HasActivity(chatId, cancellationToken).ConfigureAwait(false))
+            return true;
+        if (await LiveStreamUI.HasRecorder(chatId, cancellationToken).ConfigureAwait(false))
+            return true;
+        if (await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false))
+            return true;
+
+        return await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false) is not null;
+    }
+
+    [ComputeMethod]
     public virtual Task<VisualActivityPanelMode> GetPanelMode(
         ChatId chatId, CancellationToken cancellationToken = default)
         => Task.FromResult(_panelModes.GetValueOrDefault(chatId));

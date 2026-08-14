@@ -124,6 +124,10 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
+        var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        var isPttArmed = pttChatIds.Contains(chat.Id);
+        var hasOngoingCall = isPttArmed
+            && await Hub.ChatActivityUI.HasOngoingCall(chat.Id, cancellationToken).ConfigureAwait(false);
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreamingAudio(chat.Id, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chat.Id, cancellationToken).ConfigureAwait(false);
         var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chat.Id, cancellationToken).ConfigureAwait(false);
@@ -134,6 +138,8 @@
         var isSharingOwnLocation = await LocationUI.IsOwnLive(chat.Id, cancellationToken).ConfigureAwait(false);
         return new() {
             AudioState = audioState,
+            IsPttArmed = isPttArmed,
+            HasOngoingCall = hasOngoingCall,
             IsAnyoneTalking = isAnyoneTalking,
             HasRemoteStreams = hasRemoteStreams,
             IsOwnVideoStreaming = isOwnVideoStreaming,
@@ -187,6 +193,8 @@
 
     public sealed record Model {
         public required ChatAudioState AudioState { get; init; }
+        public required bool IsPttArmed { get; init; }
+        public required bool HasOngoingCall { get; init; }
         public required bool IsAnyoneTalking { get; init; }
         public required bool HasRemoteStreams { get; init; }
         public required bool IsOwnVideoStreaming { get; init; }
@@ -197,8 +205,11 @@
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
         public bool IsParticipating => IsListening || IsRecordingHere || IsOwnVideoStreaming;
-        public bool HasCallActivity => IsAnyoneTalking || HasRemoteStreams || IsListening || IsRecordingHere
-            || IsWatchingHere;
+        public bool HasCallActivity
+            // Armed PTT keeps IsListening on at all times, so for armed chats the panel needs real
+            // call substance - a bare listen there is ambient state, not an activity to present.
+            => IsAnyoneTalking || HasRemoteStreams || IsRecordingHere
+                || IsWatchingHere || (IsPttArmed ? HasOngoingCall : IsListening);
         public bool CanJoinCall => HasCallActivity && !IsParticipating;
         public bool IsVisible => HasCallActivity || IsSharingOwnLocation;
         public bool CanShowAudioDiagnostics => IsAudioDiagnosticsEnabled && HasCallActivity;
