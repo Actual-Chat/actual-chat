@@ -22,6 +22,9 @@
     var showTime = !showAuthor && ShowAuthorBadge;
     var showForwardHeader = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardStart);
     var showForwardAuthor = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardAuthorStart);
+    // A pure state badge (e.g. the "Listening" placeholder) sits in the message list but isn't a message:
+    // no hover, no menus, no selection, no reactions — only the badge's own gear stays interactive.
+    var isStateBadge = message.Kind is ChatMessageKind.AudioRecordingMessage;
 
 
     // Classes
@@ -38,7 +41,8 @@
     var selectionEndClass = m.IsSelectionEnd ? "selection-end" : "";
     var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
     var showAuthorClass = showAuthorBadge ? "show-author" : "";
-    var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {paddingClass} {unreadBlockClass} {highlightClass} {repliedClass} {selectedClass} {selectionStartClass} {selectionEndClass} {showAuthorClass} message-wrapper";
+    var audioRecordingClass = isStateBadge ? "audio-recording-message" : "";
+    var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {paddingClass} {unreadBlockClass} {highlightClass} {repliedClass} {selectedClass} {selectionStartClass} {selectionEndClass} {showAuthorClass} {audioRecordingClass} message-wrapper";
 }
 
 @switch (message.Kind) {
@@ -86,11 +90,11 @@
     return;
 }
 @{
-    var showMenu = message.Kind is not ChatMessageKind.AudioRecordingMessage;
+    var showMenu = !isStateBadge;
     var menuRef = showMenu ? MenuRef.New<MessageMenu>(entry.GetClientId(m.IsOwnMessage), bool.FalseString, "", "").ToString() : "";
 }
 <div class="@cls"
-     data-chat-entry-id="@(entry.Id.Value)"
+     data-chat-entry-id="@(isStateBadge ? null : entry.Id.Value)"
      data-menu="@menuRef">
     <div class="chat-message group">
         <div class="c-author-badge">
@@ -198,7 +202,7 @@
                     }
                 </div>
             }
-            @if (entry.HasReactions || OptimisticReactions.HasPendingAdd(entry.Id)) {
+            @if (!isStateBadge && (entry.HasReactions || OptimisticReactions.HasPendingAdd(entry.Id))) {
                 <MessageReactions Entry="@entry"/>
             }
             @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Count != 0) {
@@ -211,7 +215,9 @@
             }
         </div>
     </div>
-    <MessageHoverMenu @ref="@_messageHoverMenu" Entry="@entry" IsSystem="@false" MessageWithAuthor="@showAuthor"/>
+    @if (!isStateBadge) {
+        <MessageHoverMenu @ref="@_messageHoverMenu" Entry="@entry" IsSystem="@false" MessageWithAuthor="@showAuthor"/>
+    }
 </div>
 
 @code {
@@ -261,6 +267,15 @@
             return;
 
         var entryId = Entry.Id;
+        // A state badge (e.g. "Listening") renders no hover menu; drop any registration a recycled
+        // instance carried over and never register one for it.
+        var isStateBadge = Message.Kind is ChatMessageKind.AudioRecordingMessage;
+        if (isStateBadge) {
+            if (_registeredHoverEntryId is { } staleId && _messageHoverMenu != null)
+                ChatView?.UnregisterHoverMenu(staleId, _messageHoverMenu);
+            _registeredHoverEntryId = null;
+            return;
+        }
         if (_registeredHoverEntryId == entryId)
             return;
 
