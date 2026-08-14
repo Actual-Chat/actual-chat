@@ -518,8 +518,13 @@ public partial class ChatAudioUI
                 try {
                     var whenRecording = WhenRecordingChatIdBecomes(x => x == chatId, cts.Token);
                     var whenIdle = WhenIdle(cts.Token);
-                    await Task.WhenAny(whenRecording, whenIdle).ConfigureAwait(false);
-                    if (whenIdle.IsCompletedSuccessfully)
+                    var whenWinner = await Task.WhenAny(whenRecording, whenIdle).ConfigureAwait(false);
+                    // Task.WhenAny itself never throws, and the next iteration's first await returns
+                    // instantly whenever we aren't recording - so an unobserved fault here spins this
+                    // loop at full speed and silently starves the app (single-threaded clients hang
+                    // outright). Awaiting the winner turns it back into a normal, logged error.
+                    await whenWinner.ConfigureAwait(false);
+                    if (ReferenceEquals(whenWinner, whenIdle))
                         break;
 
                     hasSeenActivity = true;
@@ -563,8 +568,8 @@ public partial class ChatAudioUI
             var cIsWatching = await Computed
                 .Capture(() => ChatVideoUI.IsWatching(chatId, ct), ct)
                 .ConfigureAwait(false);
-            var cLinger = await Computed
-                .Capture(() => UserSettingsUI.UserListeningSettings().Get(x => x.ContinuedListening, ct), ct)
+            var cUserListeningSettings = await Computed
+                .Capture(() => UserSettingsUI.UserListeningSettings().Get(ct), ct)
                 .ConfigureAwait(false);
 
             while (!ct.IsCancellationRequested) {
@@ -586,7 +591,7 @@ public partial class ChatAudioUI
                 }
 
                 // Idle — compute stop time
-                var lingerTimeout = cLinger.Value.ToTimeSpan();
+                var lingerTimeout = cUserListeningSettings.Value.ContinuedListening.ToTimeSpan();
                 var stopAt = ComputeStopListeningAt(lastActivityAt, hasSeenActivity, graceTimeout, lingerTimeout);
                 var remaining = (stopAt - serverClock.Now).Positive();
                 if (remaining <= Epsilon)
@@ -599,7 +604,7 @@ public partial class ChatAudioUI
                 using var delayCts = ct.CreateLinkedTokenSource();
                 var whenActivityChanges = cHasActivity.WhenInvalidated(ct);
                 var whenWatchingChanges = cIsWatching.WhenInvalidated(ct);
-                var whenLingerChanges = cLinger.WhenInvalidated(ct);
+                var whenLingerChanges = cUserListeningSettings.WhenInvalidated(ct);
                 var whenTimeout = Task.Delay(remaining, delayCts.Token);
                 await Task.WhenAny(whenActivityChanges, whenWatchingChanges, whenLingerChanges, whenTimeout)
                     .ConfigureAwait(false);
@@ -611,7 +616,7 @@ public partial class ChatAudioUI
                 // Activity / watching / linger state changed — refresh and loop
                 cHasActivity = await cHasActivity.Update(ct).ConfigureAwait(false);
                 cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
-                cLinger = await cLinger.Update(ct).ConfigureAwait(false);
+                cUserListeningSettings = await cUserListeningSettings.Update(ct).ConfigureAwait(false);
             }
         }
     }
