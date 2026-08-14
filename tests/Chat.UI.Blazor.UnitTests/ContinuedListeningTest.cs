@@ -5,31 +5,31 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 public class ContinuedListeningTest
 {
     private static readonly Moment T0 = Moment.EpochStart + TimeSpan.FromDays(20_000);
-    private static readonly TimeSpan Grace = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan ListenerTimeout = TimeSpan.FromSeconds(60);
 
     [Fact]
-    public void FreshListenUsesGrace()
+    public void ListenerSessionUsesConstantTimeout()
     {
         // act + assert
-        ChatAudioUI.ComputeStopListeningAt(T0, false, Grace, TimeSpan.Zero)
-            .Should().Be(T0 + Grace);
-        ChatAudioUI.ComputeStopListeningAt(T0, false, Grace, TimeSpan.FromSeconds(10))
-            .Should().Be(T0 + Grace);
+        ChatAudioUI.ComputeStopListeningAt(T0, false, ListenerTimeout, TimeSpan.Zero)
+            .Should().Be(T0 + ListenerTimeout);
+        ChatAudioUI.ComputeStopListeningAt(T0, false, ListenerTimeout, TimeSpan.FromSeconds(10))
+            .Should().Be(T0 + ListenerTimeout);
     }
 
     [Fact]
-    public void AfterActivityUsesLinger()
+    public void SpeakerSessionUsesSetting()
     {
         // act + assert
-        ChatAudioUI.ComputeStopListeningAt(T0, true, Grace, TimeSpan.FromSeconds(10))
+        ChatAudioUI.ComputeStopListeningAt(T0, true, ListenerTimeout, TimeSpan.FromSeconds(10))
             .Should().Be(T0 + TimeSpan.FromSeconds(10));
     }
 
     [Fact]
-    public void ZeroLingerStopsAtActivityEdge()
+    public void SpeakerSessionWithOffStopsAtActivityEdge()
     {
         // act + assert
-        ChatAudioUI.ComputeStopListeningAt(T0, true, Grace, TimeSpan.Zero)
+        ChatAudioUI.ComputeStopListeningAt(T0, true, ListenerTimeout, TimeSpan.Zero)
             .Should().Be(T0);
     }
 }

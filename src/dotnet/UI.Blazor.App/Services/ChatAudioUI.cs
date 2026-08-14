@@ -201,10 +201,11 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     public static Moment ComputeStopListeningAt(
-        Moment lastActivityAt, bool hasSeenActivity, TimeSpan graceTimeout, TimeSpan lingerTimeout)
-        // Fresh listen in a quiet chat holds for the grace period; once an activity
-        // episode was observed, the configured linger applies from the idle edge.
-        => lastActivityAt + (hasSeenActivity ? lingerTimeout : graceTimeout);
+        Moment lastActivityAt, bool hasRecorded, TimeSpan listenerTimeout, TimeSpan speakerTimeout)
+        // A speaker session (the user recorded during it) ends per their continued-listening
+        // setting; a pure listener session always holds for the fixed listener timeout, so
+        // joining muted stays usable even with the setting off.
+        => lastActivityAt + (hasRecorded ? speakerTimeout : listenerTimeout);
 
     // Static so tests can exercise the thresholds without a host
     public static bool IsActuallyConversing(

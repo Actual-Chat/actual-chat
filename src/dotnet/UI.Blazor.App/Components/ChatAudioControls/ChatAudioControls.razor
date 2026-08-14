@@ -10,14 +10,16 @@
     var remainingSeconds = isListening && !isRecording && stopListeningAt.HasValue
         ? Math.Max(0, (stopListeningAt.Value - Now).TotalSeconds)
         : 0;
-    // Headphone + ring shows only while the auto-stop countdown is actually running;
-    // before that we're still in the conversation, so we show hang up (the phone).
-    var isCountingDown = remainingSeconds > 0 && remainingSeconds <= countdownSeconds;
+    // Headphone + countdown shows the moment an auto-stop is scheduled; hang up (the phone)
+    // shows only while the conversation itself holds the timer off.
+    var isCountingDown = remainingSeconds > 0;
     var showHangUp = !isRecording && ((isListening && !isCountingDown) || MustShowHangUp);
     if (!isRecording && !isCountingDown && !showHangUp)
         return;
 
-    var dashOffset = (circumference * (1 - remainingSeconds / countdownSeconds)).ToString("F2", null);
+    // The ring stays full until the last countdownSeconds, then drains.
+    var dashOffset = (circumference * (1 - Math.Min(remainingSeconds, countdownSeconds) / countdownSeconds))
+        .ToString("F2", null);
     var remaining = (int)Math.Ceiling(remainingSeconds);
     var mm = remaining / 60;
     var ss = remaining % 60;
@@ -98,9 +100,7 @@
             return null;
 
         var remaining = (stopListeningAt.Value - Now).TotalSeconds;
-        if (remaining > 30)
-            Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(remaining - 30));
-        else if (remaining > 0) {
+        if (remaining > 0) {
             var fractional = remaining - Math.Floor(remaining);
             var delay = fractional > 0.05 ? fractional : fractional + 1.0;
             Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(delay));

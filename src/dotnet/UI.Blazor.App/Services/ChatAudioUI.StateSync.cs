@@ -464,7 +464,7 @@ public partial class ChatAudioUI
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var graceTimeout = Constants.Audio.ListeningDuration;
+        var listenerTimeout = Constants.Audio.ListeningDuration;
         var cListeningChatIds = await Computed
             .Capture(GetListeningChatIds, cancellationToken)
             .ConfigureAwait(false);
@@ -490,7 +490,7 @@ public partial class ChatAudioUI
                     continue; // armed PTT chats keep listening — no idle watcher
 
                 var watcher = FuncWorker.Start(
-                    ct => StopListeningWhenIdle(chatId, graceTimeout, ct),
+                    ct => StopListeningWhenIdle(chatId, listenerTimeout, ct),
                     cancellationToken);
                 monitors.Add(chatId, watcher);
             }
@@ -499,17 +499,16 @@ public partial class ChatAudioUI
 
     private async Task StopListeningWhenIdle(
         ChatId chatId,
-        TimeSpan graceTimeout,
+        TimeSpan listenerTimeout,
         CancellationToken cancellationToken)
     {
         var serverClock = Clocks.ServerClock;
         var cpuClock = Clocks.CpuClock;
         var mustStop = false;
-        // Latched on real activity episodes: others' speech, watched video, and recordings that
-        // begin mid-session - the linger applies from each episode's idle edge. Own streams
-        // deliberately don't latch: the tail of a just-stopped own recording would otherwise
-        // demote the record-stop grace to the linger.
-        var hasSeenActivity = false;
+        // Speaker session = the user recorded during this listening session, so their
+        // continued-listening setting applies once the chat goes quiet; a pure listener
+        // session always holds for listenerTimeout - see ComputeStopListeningAt.
+        var hasRecorded = await GetRecordingChatId().ConfigureAwait(false) == chatId;
         var lastActivityAt = serverClock.Now;
         var retryDelays = RetryDelaySeq.Exp(0.5, 8);
         var retryAttempt = 0;
@@ -531,7 +530,7 @@ public partial class ChatAudioUI
                             break;
                         }
 
-                        hasSeenActivity = true;
+                        hasRecorded = true;
                         retryAttempt = 0;
                     }
                     finally {
@@ -575,64 +574,87 @@ public partial class ChatAudioUI
             var cHasActivity = await Computed
                 .Capture(() => LiveStreamUI.HasActivity(chatId, ct), ct)
                 .ConfigureAwait(false);
+            var cHasRecorder = await Computed
+                .Capture(() => LiveStreamUI.HasRecorder(chatId, ct), ct)
+                .ConfigureAwait(false);
             var cIsWatching = await Computed
                 .Capture(() => ChatVideoUI.IsWatching(chatId, ct), ct)
                 .ConfigureAwait(false);
-            var cLinger = await Computed
+            var cHasRemoteStreams = await Computed
+                .Capture(() => ChatVideoUI.HasRemoteStreams(chatId, ct), ct)
+                .ConfigureAwait(false);
+            var cOwnSourceKind = await Computed
+                .Capture(() => ChatVideoUI.GetOwnSourceKind(chatId, ct), ct)
+                .ConfigureAwait(false);
+            var cSetting = await Computed
                 .Capture(() => GetContinuedListening(ct), ct)
                 .ConfigureAwait(false);
 
             while (!ct.IsCancellationRequested) {
-                var hasActivity = cHasActivity.Value;
-                var isWatching = cIsWatching.Value;
-                if (hasActivity || isWatching) {
-                    // Activity ongoing or video being watched — no timer
+                // The conversation holds: anyone's speech, anyone's open mic (a hot mic is a
+                // conversation even mid-pause), peers' video/screencast, own video/screencast,
+                // or watching the chat's video. The timer runs only when all of them clear.
+                var isHeld = cHasActivity.Value
+                    || cHasRecorder.Value
+                    || cIsWatching.Value
+                    || cHasRemoteStreams.Value
+                    || cOwnSourceKind.Value is not null;
+                if (isHeld) {
                     lastActivityAt = serverClock.Now;
-                    if (isWatching || await HasOthersStreamingAudio(chatId, ct).ConfigureAwait(false))
-                        hasSeenActivity = true;
                     SetStopListeningAt(chatId, null);
                     using var waitCts = ct.CreateLinkedTokenSource();
-                    var whenActivityChange = cHasActivity.WhenInvalidated(waitCts.Token);
-                    var whenWatchingChange = cIsWatching.WhenInvalidated(waitCts.Token);
-                    await Task.WhenAny(whenActivityChange, whenWatchingChange).ConfigureAwait(false);
+                    await Task.WhenAny(
+                        cHasActivity.WhenInvalidated(waitCts.Token),
+                        cHasRecorder.WhenInvalidated(waitCts.Token),
+                        cIsWatching.WhenInvalidated(waitCts.Token),
+                        cHasRemoteStreams.WhenInvalidated(waitCts.Token),
+                        cOwnSourceKind.WhenInvalidated(waitCts.Token)
+                        ).ConfigureAwait(false);
                     waitCts.CancelAndDisposeSilently();
-                    // The activity spanned this whole wait, so the linger counts from its end -
-                    // keeping the pre-wait timestamp would backdate stopAt by the length of the
-                    // last utterance and silently skip the countdown whenever it ran longer than
-                    // the linger.
+                    // The hold spanned this whole wait, so the timer counts from its end -
+                    // keeping the pre-wait timestamp would backdate stopAt by the length of
+                    // the last activity and silently skip the countdown.
                     lastActivityAt = serverClock.Now;
                     cHasActivity = await cHasActivity.Update(ct).ConfigureAwait(false);
+                    cHasRecorder = await cHasRecorder.Update(ct).ConfigureAwait(false);
                     cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
+                    cHasRemoteStreams = await cHasRemoteStreams.Update(ct).ConfigureAwait(false);
+                    cOwnSourceKind = await cOwnSourceKind.Update(ct).ConfigureAwait(false);
                     continue;
                 }
 
                 // Idle — compute stop time
-                var lingerTimeout = cLinger.Value.ToTimeSpan();
-                var stopAt = ComputeStopListeningAt(lastActivityAt, hasSeenActivity, graceTimeout, lingerTimeout);
+                var speakerTimeout = cSetting.Value.ToTimeSpan();
+                var stopAt = ComputeStopListeningAt(lastActivityAt, hasRecorded, listenerTimeout, speakerTimeout);
                 var remaining = (stopAt - serverClock.Now).Positive();
                 if (remaining <= Epsilon)
                     return; // Must stop listening
 
                 SetStopListeningAt(chatId, stopAt.Convert(serverClock, cpuClock));
 
-                // Wait for either: activity resumes, watching toggles, the linger setting
-                // changes, or the idle timeout expires
+                // Wait for either: a hold returns, the setting changes, or the timeout expires
                 using var delayCts = ct.CreateLinkedTokenSource();
-                var whenActivityChanges = cHasActivity.WhenInvalidated(ct);
-                var whenWatchingChanges = cIsWatching.WhenInvalidated(ct);
-                var whenLingerChanges = cLinger.WhenInvalidated(ct);
                 var whenTimeout = Task.Delay(remaining, delayCts.Token);
-                await Task.WhenAny(whenActivityChanges, whenWatchingChanges, whenLingerChanges, whenTimeout)
-                    .ConfigureAwait(false);
+                await Task.WhenAny(
+                    cHasActivity.WhenInvalidated(ct),
+                    cHasRecorder.WhenInvalidated(ct),
+                    cIsWatching.WhenInvalidated(ct),
+                    cHasRemoteStreams.WhenInvalidated(ct),
+                    cOwnSourceKind.WhenInvalidated(ct),
+                    cSetting.WhenInvalidated(ct),
+                    whenTimeout
+                    ).ConfigureAwait(false);
                 delayCts.CancelAndDisposeSilently();
 
                 if (whenTimeout.IsCompletedSuccessfully)
                     return; // Idle timeout expired — stop listening
 
-                // Activity / watching / linger state changed — refresh and loop
                 cHasActivity = await cHasActivity.Update(ct).ConfigureAwait(false);
+                cHasRecorder = await cHasRecorder.Update(ct).ConfigureAwait(false);
                 cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
-                cLinger = await cLinger.Update(ct).ConfigureAwait(false);
+                cHasRemoteStreams = await cHasRemoteStreams.Update(ct).ConfigureAwait(false);
+                cOwnSourceKind = await cOwnSourceKind.Update(ct).ConfigureAwait(false);
+                cSetting = await cSetting.Update(ct).ConfigureAwait(false);
             }
         }
     }
@@ -933,17 +955,6 @@ public partial class ChatAudioUI
     [ComputeMethod]
     protected virtual Task<ContinuedListening> GetContinuedListening(CancellationToken cancellationToken)
         => UserSettingsUI.UserListeningSettings().Get(x => x.ContinuedListening, cancellationToken);
-
-    [ComputeMethod]
-    protected virtual async Task<bool> HasOthersStreamingAudio(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var authorIds = await LiveStreamUI.GetAudioStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        if (authorIds.Count == 0)
-            return false;
-
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return ownAuthor is null || authorIds.Any(id => id != ownAuthor.Id);
-    }
 
     [ComputeMethod]
     protected virtual async Task<RecordingBeepState> GetRecordingBeepState(CancellationToken cancellationToken)

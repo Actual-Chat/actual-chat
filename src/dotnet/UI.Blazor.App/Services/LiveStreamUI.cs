@@ -59,4 +59,15 @@ public class LiveStreamUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
 
         return await LiveSessions.HasActivity(Session, chatId, cancellationToken).ConfigureAwait(false);
     }
+
+    [ComputeMethod(ConsolidationDelay = 0.2)]
+    public virtual async Task<bool> HasRecorder(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Same connectivity gate as HasActivity, for the same reason.
+        var isConnected = await ConnectivityUI.IsConnected.Use(cancellationToken).ConfigureAwait(false);
+        if (!isConnected)
+            return false;
+
+        return await LiveSessions.HasRecorder(Session, chatId, cancellationToken).ConfigureAwait(false);
+    }
 }
