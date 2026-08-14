@@ -120,6 +120,7 @@ public sealed class AppScopedServiceStarter
             Hub.Services.GetRequiredService<ReconnectUI>().Start();
             StartScopedServices(Hub.Services);
             _ = Hub.ActivitiesBackend; // Touch. Auto-starts on construction; WebView-only - see StartScopedServices
+            _ = Hub.NotificationsPanelUI; // Touch. Auto-starts read-retention tracking on construction.
             _ = Hub.VideoQualityUI; // Touch. Constructor calls Start(); chains gate on first video activity.
             Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
             if (!HostInfo.IsProductionInstance)

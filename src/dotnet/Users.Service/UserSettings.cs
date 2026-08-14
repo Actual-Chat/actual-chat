@@ -25,6 +25,7 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         [nameof(FakeDeviceContactOptions)] = typeof(FakeDeviceContactOptions),
         [nameof(UserReplaySettings)] = typeof(UserReplaySettings),
         [nameof(UserWalkieTalkieSettings)] = typeof(UserWalkieTalkieSettings),
+        [nameof(UserNotificationsPanelSettings)] = typeof(UserNotificationsPanelSettings),
         [nameof(RecentMentions)] = typeof(RecentMentions),
         [nameof(RecentGifs)] = typeof(RecentGifs),
     };

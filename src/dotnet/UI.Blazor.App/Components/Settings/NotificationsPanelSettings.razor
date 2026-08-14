@@ -1,0 +1,66 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, NotificationsPanelSettings.Model>
+@{
+    var m = State.Value;
+}
+
+<Tile>
+    <p class="c-description">
+        A chat you've read stays in the notifications panel for a while, then drops out on its own.
+    </p>
+    @foreach (var option in Options) {
+        var isSelected = m.Retention == option;
+        <TileItem Click="@(() => OnSelect(option))">
+            <Icon><i class="icon-clock-2 text-2xl"></i></Icon>
+            <Content>@GetLabel(option)</Content>
+            <Right>
+                @if (isSelected) {
+                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
+                }
+            </Right>
+        </TileItem>
+    }
+</Tile>
+
+@code {
+    private static readonly NotificationsPanelRetention[] Options = [
+        NotificationsPanelRetention.Immediately,
+        NotificationsPanelRetention.UntilPanelClosed,
+        NotificationsPanelRetention.Minutes10,
+        NotificationsPanelRetention.Hour1,
+        NotificationsPanelRetention.Hours3,
+        NotificationsPanelRetention.Hours8,
+        NotificationsPanelRetention.Hours24,
+    ];
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.UserNotificationsPanelSettings().Get(cancellationToken).ConfigureAwait(false);
+        return new(settings.Retention);
+    }
+
+    private Task OnSelect(NotificationsPanelRetention retention)
+        => UserSettingsUI.UserNotificationsPanelSettings()
+            .Update(x => x with { Retention = retention }, CancellationToken.None);
+
+    private static string GetLabel(NotificationsPanelRetention retention)
+        => retention switch {
+            NotificationsPanelRetention.Immediately => "Immediately",
+            NotificationsPanelRetention.UntilPanelClosed => "After closing the panel",
+            NotificationsPanelRetention.Minutes10 => "After 10 minutes",
+            NotificationsPanelRetention.Hour1 => "After 1 hour",
+            NotificationsPanelRetention.Hours3 => "After 3 hours",
+            NotificationsPanelRetention.Hours8 => "After 8 hours",
+            NotificationsPanelRetention.Hours24 => "After 24 hours",
+            _ => retention.ToString(),
+        };
+
+    // Nested types
+
+    public sealed record Model(NotificationsPanelRetention Retention = NotificationsPanelRetention.Hour1) {
+        public static readonly Model None = new();
+    }
+}

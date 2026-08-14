@@ -203,9 +203,8 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
             .ToDictionary(c => c.Id, c => c);
     }
 
-    // Same as ListUnordered(placeId, filter), but while the notifications panel session is open it
-    // also keeps the chats that were unread when the panel opened (or became unread while it was open),
-    // even after they're read — so read chats don't vanish from the panel until it's closed.
+    // Same as ListUnordered(placeId, filter), but also keeps chats that were read recently: a read chat
+    // lingers in the notifications panel for the user-configured retention window, then drops out on its own.
     [ComputeMethod]
     protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnorderedForDisplay(
         PlaceId? placeId,
@@ -217,13 +216,13 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         if (!filter.AcrossPlace)
             return chatById;
 
-        var stickyIds = await NotificationsPanelUI.GetSessionSet(filter.Id, cancellationToken).ConfigureAwait(false);
-        if (stickyIds.IsEmpty)
+        var retainedIds = await NotificationsPanelUI.GetRetainedSet(filter.Id, cancellationToken).ConfigureAwait(false);
+        if (retainedIds.IsEmpty)
             return chatById;
 
         var allById = await ListAllUnordered(cancellationToken).ConfigureAwait(false);
         var result = new Dictionary<ChatId, ChatInfo>(chatById);
-        foreach (var chatId in stickyIds)
+        foreach (var chatId in retainedIds)
             if (!result.ContainsKey(chatId) && allById.TryGetValue(chatId, out var chatInfo))
                 result.Add(chatId, chatInfo);
         return result;
