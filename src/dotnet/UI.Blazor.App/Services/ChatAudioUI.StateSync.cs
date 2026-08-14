@@ -504,44 +504,53 @@ public partial class ChatAudioUI
     {
         var serverClock = Clocks.ServerClock;
         var cpuClock = Clocks.CpuClock;
-        var mustStop = true;
-        // Latched on observed activity edges rather than read from the server, so it can
-        // never carry a timestamp from a prior listening session. Recordings that begin
-        // mid-session latch it; a record-initiated session's first episode doesn't (grace stays).
+        var mustStop = false;
+        // Latched only when a recording begins mid-session: a fresh listen - including the one
+        // a record tap itself starts, and whatever the listener passively hears - keeps the
+        // grace period; the linger applies once the user talks into an ongoing session.
         var hasSeenActivity = false;
         var lastActivityAt = serverClock.Now;
+        var retryDelays = RetryDelaySeq.Exp(0.5, 8);
+        var retryAttempt = 0;
         try {
             while (!cancellationToken.IsCancellationRequested) {
-                await WhenRecordingChatIdBecomes(x => x != chatId, cancellationToken).ConfigureAwait(false);
-                lastActivityAt = serverClock.Now;
-                var cts = cancellationToken.CreateLinkedTokenSource();
                 try {
-                    var whenRecording = WhenRecordingChatIdBecomes(x => x == chatId, cts.Token);
-                    var whenIdle = WhenIdle(cts.Token);
-                    var whenWinner = await Task.WhenAny(whenRecording, whenIdle).ConfigureAwait(false);
-                    // Task.WhenAny itself never throws, and the next iteration's first await returns
-                    // instantly whenever we aren't recording - so an unobserved fault here spins this
-                    // loop at full speed and silently starves the app (single-threaded clients hang
-                    // outright). Awaiting the winner turns it back into a normal, logged error.
-                    await whenWinner.ConfigureAwait(false);
-                    if (ReferenceEquals(whenWinner, whenIdle))
-                        break;
+                    await WhenRecordingChatIdBecomes(x => x != chatId, cancellationToken).ConfigureAwait(false);
+                    lastActivityAt = serverClock.Now;
+                    var cts = cancellationToken.CreateLinkedTokenSource();
+                    try {
+                        var whenRecording = WhenRecordingChatIdBecomes(x => x == chatId, cts.Token);
+                        var whenIdle = WhenIdle(cts.Token);
+                        var whenWinner = await Task.WhenAny(whenRecording, whenIdle).ConfigureAwait(false);
+                        // Task.WhenAny itself never throws, so the winner must be awaited -
+                        // an unobserved fault here would otherwise spin this loop at full speed.
+                        await whenWinner.ConfigureAwait(false);
+                        if (ReferenceEquals(whenWinner, whenIdle)) {
+                            mustStop = true;
+                            break;
+                        }
 
-                    hasSeenActivity = true;
+                        hasSeenActivity = true;
+                        retryAttempt = 0;
+                    }
+                    finally {
+                        SetStopListeningAt(chatId, null);
+                        cts.CancelAndDisposeSilently();
+                    }
                 }
-                finally {
-                    SetStopListeningAt(chatId, null);
-                    cts.CancelAndDisposeSilently();
+                catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                    // A fault pauses and re-enters the watch; ending the watcher here used to
+                    // read as "idle" downstream and instantly stopped perfectly live sessions.
+                    retryAttempt++;
+                    var delay = retryDelays[retryAttempt];
+                    Log.LogError(e,
+                        nameof(StopListeningWhenIdle) + " failed for chat #{ChatId}; retrying in {Delay}",
+                        chatId, delay);
+                    await cpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
-        catch (OperationCanceledException) {
-            mustStop = false;
-        }
-        catch (Exception e) {
-            Log.LogError(e, "StopListeningWhenIdle failed");
-            throw;
-        }
+        catch (OperationCanceledException) { }
         finally {
             SetStopListeningAt(chatId, null);
             if (mustStop) {
@@ -568,8 +577,8 @@ public partial class ChatAudioUI
             var cIsWatching = await Computed
                 .Capture(() => ChatVideoUI.IsWatching(chatId, ct), ct)
                 .ConfigureAwait(false);
-            var cUserListeningSettings = await Computed
-                .Capture(() => UserSettingsUI.UserListeningSettings().Get(ct), ct)
+            var cLinger = await Computed
+                .Capture(() => GetContinuedListening(ct), ct)
                 .ConfigureAwait(false);
 
             while (!ct.IsCancellationRequested) {
@@ -577,7 +586,6 @@ public partial class ChatAudioUI
                 var isWatching = cIsWatching.Value;
                 if (hasActivity || isWatching) {
                     // Activity ongoing or video being watched — no timer
-                    hasSeenActivity = true;
                     lastActivityAt = serverClock.Now;
                     SetStopListeningAt(chatId, null);
                     using var waitCts = ct.CreateLinkedTokenSource();
@@ -591,7 +599,7 @@ public partial class ChatAudioUI
                 }
 
                 // Idle — compute stop time
-                var lingerTimeout = cUserListeningSettings.Value.ContinuedListening.ToTimeSpan();
+                var lingerTimeout = cLinger.Value.ToTimeSpan();
                 var stopAt = ComputeStopListeningAt(lastActivityAt, hasSeenActivity, graceTimeout, lingerTimeout);
                 var remaining = (stopAt - serverClock.Now).Positive();
                 if (remaining <= Epsilon)
@@ -604,7 +612,7 @@ public partial class ChatAudioUI
                 using var delayCts = ct.CreateLinkedTokenSource();
                 var whenActivityChanges = cHasActivity.WhenInvalidated(ct);
                 var whenWatchingChanges = cIsWatching.WhenInvalidated(ct);
-                var whenLingerChanges = cUserListeningSettings.WhenInvalidated(ct);
+                var whenLingerChanges = cLinger.WhenInvalidated(ct);
                 var whenTimeout = Task.Delay(remaining, delayCts.Token);
                 await Task.WhenAny(whenActivityChanges, whenWatchingChanges, whenLingerChanges, whenTimeout)
                     .ConfigureAwait(false);
@@ -616,7 +624,7 @@ public partial class ChatAudioUI
                 // Activity / watching / linger state changed — refresh and loop
                 cHasActivity = await cHasActivity.Update(ct).ConfigureAwait(false);
                 cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
-                cUserListeningSettings = await cUserListeningSettings.Update(ct).ConfigureAwait(false);
+                cLinger = await cLinger.Update(ct).ConfigureAwait(false);
             }
         }
     }
@@ -910,6 +918,13 @@ public partial class ChatAudioUI
         var stats = await LiveStreamUI.GetConversationStats(chatId, cancellationToken).ConfigureAwait(false);
         return IsActuallyConversing(stats, ownAuthor?.Id, isTranscriptionOn, AudioSettings);
     }
+
+    // Exists so Computed.Capture in WhenIdle gets a Computed<ContinuedListening>: capture binds
+    // to the innermost compute-method call, which otherwise is IUserSettings.Get producing an
+    // invariant Computed<StoredSettings?> - the cast to any settings type throws.
+    [ComputeMethod]
+    protected virtual Task<ContinuedListening> GetContinuedListening(CancellationToken cancellationToken)
+        => UserSettingsUI.UserListeningSettings().Get(x => x.ContinuedListening, cancellationToken);
 
     [ComputeMethod]
     protected virtual async Task<RecordingBeepState> GetRecordingBeepState(CancellationToken cancellationToken)
