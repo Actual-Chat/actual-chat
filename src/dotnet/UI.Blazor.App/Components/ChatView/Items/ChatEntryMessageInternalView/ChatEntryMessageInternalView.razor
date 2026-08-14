@@ -15,7 +15,6 @@
     // Plain-text zoom only for an actual unicode emoji glyph — not a slug id like "ginger-clown".
     var isEmojiOnly = Emojis.BySymbol.GetValueOrDefault(trimmedContent) != null || isSoleEmojiMention;
     var isGifOnly = UrlMapper.IsTrustedGifUrl(trimmedContent);
-    var isCodeBlockOnly = markup is CodeBlockMarkup;
     var oldTranslation = _rendered?.Translation ?? m.Translation;
     var oldStreaming = _rendered?.Streaming;
     var oldIsStreaming = _rendered?.IsStreaming ?? m.IsStreaming;
@@ -74,20 +73,16 @@
         }
     };
 
-    // No visible content (no text, status icon, translation mark or entry-kind sign) → mark the markup
-    // empty so it renders hidden from the first frame. The JS used to add this one frame late, which made
-    // attachment-only messages render ~1 text line taller, then collapse — re-anchoring the list (a jump).
+    // No visible content (no text, status icon or translation mark) → mark the markup empty so it renders
+    // hidden from the first frame. The JS used to add this one frame late, which made attachment-only
+    // messages render ~1 text line taller, then collapse — re-anchoring the list (a jump).
     var isEmptyMarkup = !m.IsStreaming
         && trimmedContent.IsNullOrEmpty()
         && !entry.HasLocation
         && m.Translation == TranslationState.None
-        && status == ChatMessageSendingStatus.MessageStatus.Default
-        && !message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign);
+        && status == ChatMessageSendingStatus.MessageStatus.Default;
 }
 <div @ref="Ref" class="chat-message-markup @translationCls @streamingCls @(isEmptyMarkup ? "empty" : "")">
-    @if (!isEmojiOnly && !isGifOnly && !isCodeBlockOnly && message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-        <ChatEntryKindView IsTranscribed="@entry.HasAudio"/>
-    }
     @if (m.IsStreaming) {
         @if (IsOwnMessage
              && sm.RetainedText.IsNullOrEmpty()
@@ -127,9 +122,6 @@
     } else {
         @if (!_temporaryText.IsNullOrEmpty()) {
             <div class="temporary-container hide">
-                @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-                    <ChatEntryKindView IsTranscribed="@entry.HasAudio"/>
-                }
                 <span>@_temporaryText</span>
             </div>
         }

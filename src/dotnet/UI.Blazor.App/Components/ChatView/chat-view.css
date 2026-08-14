@@ -54,9 +54,16 @@ body.hoverable .system-entry.message-wrapper:hover {
 }
 
 .chat-message > .c-content > .c-author-header {
-    @apply flex-none flex-x items-end gap-x-2;
+    @apply flex-none flex-x items-end gap-x-3;
     @apply min-w-0;
     @apply mt-1;
+}
+.c-author-header > .c-author-meta {
+    @apply flex-none flex-x items-end gap-x-1.5;
+}
+.c-author-meta > .chat-message-kind-icon {
+    @apply -mb-0.5;
+    @apply text-04 text-text-1;
 }
 
 .chat-message .avatar-name.skeleton {

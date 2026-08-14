@@ -952,6 +952,11 @@ public partial class ChatUI
                 if (liveBlockId is { } jlId && entry.LocalId >= jlId.StartEntryLid
                     && (prevEntry == null || prevEntry.LocalId < jlId.StartEntryLid))
                     isBlockStart = true;
+                // A same-author message that switches kind (transcribed vs not) starts a new block,
+                // so its author header signals the kind change.
+                if (!isBlockStart && prevEntry != null && prevEntry.AuthorId == entry.AuthorId
+                    && isPrevAudio != entry.HasAudio)
+                    isBlockStart = true;
                 var isForward = entry.Forwarded is not null;
                 var isPrevForward = prevEntry is not null && prevEntry.Forwarded is not null;
                 var isForwardFromOtherChat = prevEntry?.Forwarded?.AuthorId.ChatId != entry.Forwarded?.AuthorId.ChatId;
@@ -964,8 +969,6 @@ public partial class ChatUI
                 var flags = default(ChatMessageFlags);
                 if (isBlockStart)
                     flags |= ChatMessageFlags.BlockStart;
-                if (!entry.HasLocation && ((isBlockStart && isAudio) || isPrevAudio ^ isAudio))
-                    flags |= ChatMessageFlags.HasEntryKindSign;
                 if (isForwardBlockStart)
                     flags |= ChatMessageFlags.ForwardStart;
                 if (isForwardAuthorBlockStart)

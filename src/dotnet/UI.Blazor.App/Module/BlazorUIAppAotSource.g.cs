@@ -75,7 +75,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsViewContainer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentsView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAuthorGroupView>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryKindView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryMessageInternalView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryMessageView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatFooter>();
@@ -813,7 +812,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsViewContainer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentsView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAuthorGroupView), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryKindView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryMessageInternalView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryMessageView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatFooter), AotTypeKind.Component),

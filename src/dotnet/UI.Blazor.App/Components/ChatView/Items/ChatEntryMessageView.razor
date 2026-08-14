@@ -109,7 +109,12 @@
             @if (showAuthor) {
                 <div class="c-author-header">
                     <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name" Colorize="@m.Colorize"/>
-                    <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
+                    <div class="c-author-meta">
+                        @if (entry.HasAudio) {
+                            <i class="chat-message-kind-icon icon-voice-to-text-message"></i>
+                        }
+                        <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
+                    </div>
                     @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
                 </div>
             }
