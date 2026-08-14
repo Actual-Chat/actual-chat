@@ -254,6 +254,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         if (!await LocationPermission.CheckOrRequest(Hub.StopToken).ConfigureAwait(true))
             return;
 
+        await RequestNotificationsPermission().ConfigureAwait(true);
         StartSharing(chatId, duration);
     }
 
@@ -349,6 +350,21 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     // Private methods
+
+    private async Task RequestNotificationsPermission()
+    {
+        // Android drops the sharing notification when this permission is missing, leaving the share
+        // with nothing to see, tap or stop - and granting it later doesn't re-post that notification,
+        // so it has to be asked for before the share raises it.
+        if (HostInfo.AppKind != AppKind.Android)
+            return;
+
+        var notificationsPermission = Services.GetRequiredService<INotificationsPermission>();
+        if (await notificationsPermission.IsGranted(Hub.StopToken).ConfigureAwait(true) == true)
+            return;
+
+        await notificationsPermission.Request(Hub.StopToken).ConfigureAwait(true);
+    }
 
     private MapMarker ToMapMarker(SharedLocation location, Author author)
         // A place isn't where its author is, so it must not wear their avatar.
