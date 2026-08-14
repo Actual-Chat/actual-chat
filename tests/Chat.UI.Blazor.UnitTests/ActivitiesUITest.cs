@@ -9,6 +9,7 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 public class ActivitiesUITest: TestBase
 {
     private static readonly ChatId TestChatId = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
+    private static readonly ActivityChatInfo TestChat = new (TestChatId, "Chat", "", 0);
     private IServiceProvider Services { get; }
     private IServiceProvider ScopedServices { get; }
 
@@ -75,7 +76,7 @@ public class ActivitiesUITest: TestBase
             .WaitAsync(TimeSpan.FromSeconds(2));
 
         // Any activity in the set triggers BackgroundActive - here a location share
-        source.Set(new LocationActivity(TestChatId, 1));
+        source.Set(new LocationActivity(TestChat));
         await activities.State.Computed
             .When(x => x == AppActivityState.BackgroundActive)
             .WaitAsync(TimeSpan.FromSeconds(2));
@@ -105,7 +106,7 @@ public class ActivitiesUITest: TestBase
 
         (await activities.GetActivitySet(CancellationToken.None)).IsEmpty.Should().BeTrue();
 
-        var location = new LocationActivity(TestChatId, 2);
+        var location = new LocationActivity(TestChat with { ExtraChatCount = 1 });
         source.Set(location);
         var cSet = await Computed.Capture(() => activities.GetActivitySet(CancellationToken.None));
         cSet = await cSet.When(x => !x.IsEmpty).WaitAsync(TimeSpan.FromSeconds(2));

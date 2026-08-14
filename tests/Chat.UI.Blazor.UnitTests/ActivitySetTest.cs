@@ -4,7 +4,7 @@ using ActivityKind = ActualChat.UI.Blazor.Services.ActivityKind;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public class ActivitySetTest
+public sealed class ActivitySetTest
 {
     private static readonly ChatId TestChatId = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
     private static readonly ActivityChatInfo Chat = new (TestChatId, "Chat", "", 0);
@@ -14,7 +14,7 @@ public class ActivitySetTest
     {
         // arrange
         var upload = new UploadActivity(1, 0, 100, ImmutableList<UploadActivityItem>.Empty);
-        var location = new LocationActivity(TestChatId, 1);
+        var location = new LocationActivity(Chat);
         var audio = new AudioActivity(ActivityKind.Listening, Chat, false);
 
         // act
@@ -41,9 +41,9 @@ public class ActivitySetTest
     public void EqualityIsBySequence()
     {
         // arrange
-        var a = new ActivitySet([new LocationActivity(TestChatId, 2)]);
-        var b = new ActivitySet([new LocationActivity(TestChatId, 2)]);
-        var c = new ActivitySet([new LocationActivity(TestChatId, 3)]);
+        var a = new ActivitySet([new LocationActivity(Chat with { ExtraChatCount = 1 })]);
+        var b = new ActivitySet([new LocationActivity(Chat with { ExtraChatCount = 1 })]);
+        var c = new ActivitySet([new LocationActivity(Chat with { ExtraChatCount = 2 })]);
 
         // act & assert
         a.Should().Be(b);
@@ -58,7 +58,7 @@ public class ActivitySetTest
         var listening = new AudioActivity(ActivityKind.Listening, Chat, false);
         var recording = new AudioActivity(ActivityKind.Recording, Chat, false);
         var armed = new AudioActivity(ActivityKind.Armed, Chat, false, false);
-        var location = new LocationActivity(TestChatId, 1);
+        var location = new LocationActivity(Chat);
         var upload = new UploadActivity(1, 0, 100, ImmutableList<UploadActivityItem>.Empty);
 
         // act & assert
