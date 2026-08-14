@@ -26,6 +26,7 @@ function makeCaptured(
     return {
         frame: new MockVideoFrame(idx) as unknown as VideoFrame,
         capturedAt: { timeMs: 1_000 + idx, epoch: 0 },
+        durationUs: 1_000_000 / 30,
         index: idx,
         dropTrace: [],
         sourceWidth: 1920,

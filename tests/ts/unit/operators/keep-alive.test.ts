@@ -116,6 +116,7 @@ function envelope(stats: RecorderStats, frame: MockVideoFrame, index: number): C
     return {
         frame: frame as unknown as VideoFrame,
         capturedAt: { timeMs: 100 + index, epoch: 0 },
+        durationUs: 1_000_000 / 30,
         index,
         dropTrace: [],
         sourceWidth: 0,

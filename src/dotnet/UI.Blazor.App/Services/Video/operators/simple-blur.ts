@@ -38,6 +38,7 @@ export function simpleBlur(opts: SimpleBlurOptions = {}): PipeOperator<Normalize
                     }
                     output = new VideoFrame(canvas, {
                         timestamp: input.timestamp,
+                        duration: input.duration ?? undefined,
                         alpha: 'discard',
                     });
                     mustCloseOutput = true;

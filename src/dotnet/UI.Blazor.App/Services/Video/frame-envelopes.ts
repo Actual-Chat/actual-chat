@@ -311,6 +311,13 @@ export interface CapturedFrame {
     sourceWidth: number;
     sourceHeight: number;
 
+    // Nominal presentation duration of one source frame, in microseconds.
+    // Resolved once at the source: the frame's own duration if the platform
+    // supplies one, else the track's frameRate, else a default. VideoFrame
+    // duration is optional and WebKit leaves it unset, so without this the
+    // receiver's buffer, decode and pacing all fall back to a hard-coded 30fps.
+    durationUs: number;
+
     // Set by stampCaptureTime (epoch bump), forceKeyframeOnDimChange,
     // applyKeyframePolicy, and recorder.requestKeyframe (PLI).
     forceKeyframe: boolean;
@@ -355,6 +362,10 @@ export function disposeCapturedBundle(bundle: CapturedBundle): void {
 export interface EncodedFrame {
     chunk: EncodedVideoChunk;
     metadata: EncodedVideoChunkMetadata;
+
+    // Fallback for the wire DTO when the encoder emits no chunk duration -
+    // see CapturedFrame.durationUs.
+    durationUs: number;
 
     capturedAt: MonotonicTime;
     index: number;

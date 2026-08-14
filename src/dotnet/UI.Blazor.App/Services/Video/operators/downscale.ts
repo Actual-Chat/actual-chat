@@ -310,6 +310,7 @@ function produceCeiling(
             displayWidth: target.width,
             displayHeight: target.height,
             timestamp: input.timestamp,
+            duration: input.duration ?? undefined,
         });
         try { input.close(); } catch { /* already closed */ }
         return recropped;
@@ -319,6 +320,7 @@ function produceCeiling(
     drawFrameCover(slot.ctx, input, target.width, target.height, cropboxRotation);
     const out = new VideoFrame(slot.canvas, {
         timestamp: input.timestamp,
+        duration: input.duration ?? undefined,
         alpha: 'discard',
     });
     try { input.close(); } catch { /* already closed */ }
@@ -471,6 +473,7 @@ function makeLayerEnvelope(source: NormalizedFrame, frame: VideoFrame): Captured
     return {
         frame,
         capturedAt: source.capturedAt,
+        durationUs: source.durationUs,
         index: source.index,
         dropTrace: source.dropTrace,
         sourceWidth: source.sourceWidth,

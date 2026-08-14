@@ -57,6 +57,7 @@ export interface EncodeInput {
     frame: VideoFrame;
     index: number;
     capturedAt: MonotonicTime;
+    durationUs: number;
 }
 
 // Factory's buildOutput fills chunk/metadata/capturedAt/index/encodedWidth/Height;
@@ -187,6 +188,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         frame: cf.frame,
                         index: cf.index,
                         capturedAt: cf.capturedAt,
+                        durationUs: cf.durationUs,
                     };
                     const id = layerId;
                     const startedAtMs = performance.now();
@@ -334,6 +336,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         const completed: EncodedFrame = {
                             chunk: partial.chunk,
                             metadata: partial.metadata,
+                            durationUs: top.durationUs,
                             capturedAt: top.capturedAt,
                             index: top.index,
                             // Shared by reference with the bundle; per-layer
