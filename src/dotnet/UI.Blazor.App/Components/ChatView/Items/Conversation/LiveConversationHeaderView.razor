@@ -61,7 +61,7 @@
             && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(true);
         var participantsText = isLive
             ? await ConversationParticipantsFormatter
-                .GetText(Authors, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
+                .GetText(Authors, L, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
                 .ConfigureAwait(true)
             : "";
         var rawLive = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(true);

@@ -35,7 +35,9 @@
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
     @if (state.IsLive) {
-        var secondLine = state.IsVoiceOnly ? "Voice only" : messageCount + " message".Pluralize(messageCount);
+        var secondLine = state.IsVoiceOnly
+            ? L.Conversation_VoiceOnly
+            : messageCount == 1 ? L.Chat_Messages_One(messageCount) : L.Chat_Messages_Other(messageCount);
         var startedAt = $"Started at {startsAt:HH:mm}";
         var hasFoldedEntries = state.HasFoldedEntries;
         <div class="@(state.IsAnyoneTalking ? "c-live-card" : "c-live-card quiet")">
@@ -215,7 +217,7 @@
             && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(true);
         var participantsText = isLive
             ? await ConversationParticipantsFormatter
-                .GetText(Authors, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
+                .GetText(Authors, L, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
                 .ConfigureAwait(true)
             : "";
         var rawLive = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(true);

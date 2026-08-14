@@ -116,9 +116,12 @@
         </span>
         @if (chat is not null && chat.Kind is not ChatKind.Peer && entry is null && m.MemberCount > 0) {
             var typeLabel = chat.Kind == ChatKind.Place
-                ? "Place"
-                : chat.IsPublic ? "Public" : "Private";
-            <span class="c-chat-meta">@typeLabel · @m.MemberCount @("member".Pluralize(m.MemberCount))</span>
+                ? L.Chat_TypePlace
+                : chat.IsPublic ? L.Place_Public : L.Place_Private;
+            var memberCount = m.MemberCount == 1
+                ? L.Chat_Members_One(m.MemberCount)
+                : L.Chat_Members_Other(m.MemberCount);
+            <span class="c-chat-meta">@typeLabel · @memberCount</span>
         }
     </div>
     <div class="incut"></div>

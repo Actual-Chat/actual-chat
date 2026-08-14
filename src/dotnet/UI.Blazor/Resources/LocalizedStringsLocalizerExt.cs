@@ -801,6 +801,14 @@ public static class LocalizedStringsLocalizerExt
         public string Place_Members_Other(object arg0) => l["Place_Members_Other", arg0].Value;
         public string Place_MembersLabel_One(object arg0) => l["Place_MembersLabel_One", arg0].Value;
         public string Place_MembersLabel_Other(object arg0) => l["Place_MembersLabel_Other", arg0].Value;
+        public string Chat_Members_One(object arg0) => l["Chat_Members_One", arg0].Value;
+        public string Chat_Members_Other(object arg0) => l["Chat_Members_Other", arg0].Value;
+        public string Chat_Messages_One(object arg0) => l["Chat_Messages_One", arg0].Value;
+        public string Chat_Messages_Other(object arg0) => l["Chat_Messages_Other", arg0].Value;
+        public string Chat_AddMembers_One(object arg0) => l["Chat_AddMembers_One", arg0].Value;
+        public string Chat_AddMembers_Other(object arg0) => l["Chat_AddMembers_Other", arg0].Value;
+        public string Chat_TypePlace => l["Chat_TypePlace"].Value;
+        public string Chat_Online_Format(object arg0) => l["Chat_Online_Format", arg0].Value;
         public string Place_TabChats => l["Place_TabChats"].Value;
         public string Place_TabMembers => l["Place_TabMembers"].Value;
         public string Place_TabMedia => l["Place_TabMedia"].Value;
@@ -1168,7 +1176,15 @@ public static class LocalizedStringsLocalizerExt
         public string Date_MonthYearPattern => l["Date_MonthYearPattern"].Value;
         public string Date_Parts_Format(object arg0, object arg1) => l["Date_Parts_Format", arg0, arg1].Value;
         public string Date_At_Format(object arg0, object arg1) => l["Date_At_Format", arg0, arg1].Value;
-        public string Conversation_DurationAt_Format(object arg0, object arg1) => l["Conversation_DurationAt_Format", arg0, arg1].Value;
+        public string Conversation_DurationAt_Format(object arg0, object arg1)
+            => l["Conversation_DurationAt_Format", arg0, arg1].Value;
+        public string Conversation_VoiceOnly => l["Conversation_VoiceOnly"].Value;
+        public string Conversation_TwoNames_Format(object arg0, object arg1)
+            => l["Conversation_TwoNames_Format", arg0, arg1].Value;
+        public string Conversation_ThreeNames_Format(object arg0, object arg1, object arg2)
+            => l["Conversation_ThreeNames_Format", arg0, arg1, arg2].Value;
+        public string Conversation_NamesAndOthers_Format(object arg0, object arg1, object arg2)
+            => l["Conversation_NamesAndOthers_Format", arg0, arg1, arg2].Value;
         public string LiveTime_JustNow => l["LiveTime_JustNow"].Value;
         public string LiveTime_InFewSeconds => l["LiveTime_InFewSeconds"].Value;
         public string LiveTime_FewSecondsAgo => l["LiveTime_FewSecondsAgo"].Value;

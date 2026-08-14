@@ -47,11 +47,10 @@ public sealed class DateFormatter(IServiceProvider services) : IFormatProvider
         if (duration.TotalHours < 1)
             return L.Duration_Minutes_Format((int)duration.TotalMinutes + extraMinute);
 
-        // Hours are the elapsed total, not the remainder after whole days
         var parts = new List<string>(3);
         if (duration.TotalDays >= 1)
             parts.Add(L.Duration_Days_Format((int)duration.TotalDays));
-        parts.Add(L.Duration_Hours_Format((int)duration.TotalHours));
+        parts.Add(L.Duration_Hours_Format((int)duration.TotalHours % 24));
         parts.Add(L.Duration_Minutes_Format(duration.Minutes + extraMinute));
         return parts.ToDelimitedString(" ");
     }

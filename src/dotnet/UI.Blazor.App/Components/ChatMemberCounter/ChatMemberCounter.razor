@@ -9,10 +9,10 @@
         if (!ScreenSize.IsNarrow()) {
             return @<div class="c-text">
                        @if (m.OnlineCount > 0) {
-                           <span>@($"{GetCountString(m.OnlineCount)} online")</span>
+                           <span>@L.Chat_Online_Format(GetCountString(m.OnlineCount))</span>
                            <span class="member-separator"></span>
                        }
-                       @($"{GetCountString(m.MemberCount)} {"member".Pluralize(m.MemberCount)}")
+                       @MemberCountText(m.MemberCount)
 
                    </div>;
         }
@@ -23,7 +23,7 @@
                        <span class="member-separator"></span>
                    }
                    <span>
-                       @($"{GetCountString(m.MemberCount)} {"member".Pluralize(m.MemberCount)}")
+                       @MemberCountText(m.MemberCount)
                    </span>
                </div>;
     }
@@ -64,6 +64,11 @@
             OnlineCount = onlineCount,
         };
     }
+
+    private string MemberCountText(int memberCount)
+        => memberCount == 1
+            ? L.Chat_Members_One(GetCountString(memberCount))
+            : L.Chat_Members_Other(GetCountString(memberCount));
 
     private string GetCountString(int memberCount) {
         decimal count;

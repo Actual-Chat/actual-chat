@@ -18,7 +18,9 @@
                     @timeTotal
                 </div>
                 <div class="c-count c-tool">
-                    @(SecondLine ?? MessageCount + " message".Pluralize(MessageCount))
+                    @(SecondLine ?? (MessageCount == 1
+                        ? L.Chat_Messages_One(MessageCount)
+                        : L.Chat_Messages_Other(MessageCount)))
                 </div>
             </div>
         </div>

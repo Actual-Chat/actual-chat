@@ -92,7 +92,7 @@
                 }
             </div>
             <div class="c-count">
-                @(messageCount + " message".Pluralize((int)messageCount))
+                @(messageCount == 1 ? L.Chat_Messages_One(messageCount) : L.Chat_Messages_Other(messageCount))
             </div>
         </div>
         @if (!isLoading) {

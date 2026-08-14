@@ -16,7 +16,9 @@
         <Button
             Class="btn-modal btn-primary"
             Click="@OnAdd">
-            Add @(selectedUserIds.Count) @("member".Pluralize(selectedUserIds.Count))
+            @(selectedUserIds.Count == 1
+                ? L.Chat_AddMembers_One(selectedUserIds.Count)
+                : L.Chat_AddMembers_Other(selectedUserIds.Count))
         </Button>
     } else {
         <Button
