@@ -144,17 +144,31 @@ export class ChatMessageEditor {
 
     private addBottomPanelTapHandler(): void {
         const DismissingButtonSelector = 'button:not(.post-message), [data-menu]';
-        this.editorDiv.addEventListener('mousedown', (event: MouseEvent) => {
-            const target = event.target;
+        const RecorderSelector = '.recorder-wrapper';
+        const isTapOutsideFocusedEditor = (target: EventTarget | null): target is Element => {
             if (!(target instanceof Element))
-                return;
+                return false;
+
             const active = document.activeElement;
             if (!(active instanceof HTMLElement) || !active.isContentEditable)
+                return false;
+
+            return !active.contains(target);
+        };
+        this.editorDiv.addEventListener('mousedown', (event: MouseEvent) => {
+            const target = event.target;
+            if (!isTapOutsideFocusedEditor(target))
                 return;
-            if (active.contains(target))
-                return;
+
             event.preventDefault();
             if (target.closest(DismissingButtonSelector))
+                requestAnimationFrame(() => dismissSystemKeyboard());
+        }, { capture: true });
+        // The record button prevents pointerdown's default action to keep the editor focused,
+        // which suppresses mousedown too - so the handler above never sees it.
+        this.editorDiv.addEventListener('click', (event: MouseEvent) => {
+            const target = event.target;
+            if (isTapOutsideFocusedEditor(target) && target.closest(RecorderSelector))
                 requestAnimationFrame(() => dismissSystemKeyboard());
         }, { capture: true });
     }
