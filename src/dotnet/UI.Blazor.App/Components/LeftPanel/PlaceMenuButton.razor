@@ -16,10 +16,14 @@
     </div>
     <div class="c-bottom">
         @if (m.MemberCount.HasValue) {
-            <span>@m.MemberCount @("Member".Pluralize(m.MemberCount.Value))</span>
+            <span>
+                @(m.MemberCount.Value == 1
+                    ? L.Place_MembersLabel_One(m.MemberCount.Value)
+                    : L.Place_MembersLabel_Other(m.MemberCount.Value))
+            </span>
             <DotSeparator/>
         }
-        <span>@(m.Place.IsPublic ? "Public" : "Private")</span>
+        <span>@(m.Place.IsPublic ? L.Place_Public : L.Place_Private)</span>
     </div>
 </div>
 @if (m.ShowPlaceMenu) {
