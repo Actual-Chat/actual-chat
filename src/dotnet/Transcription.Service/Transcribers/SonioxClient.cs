@@ -83,6 +83,23 @@ public sealed class SonioxClient
             .ConfigureAwait(false);
     }
 
+    // Scoped to the key's project, while the stored-file cap Soniox enforces is organization-wide -
+    // so this lists what we can clean, not everything that counts against the cap.
+    public async Task<SonioxFileList> ListFiles(string? cursor, int maxCount, CancellationToken cancellationToken)
+    {
+        using var httpClient = CreateHttpClient();
+        var url = $"{BaseUrl}/files?num_items={maxCount}";
+        if (!cursor.IsNullOrEmpty())
+            url += $"&cursor={Uri.EscapeDataString(cursor)}";
+
+        using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        await EnsureSuccess(response, "list files", cancellationToken).ConfigureAwait(false);
+        var result = await response.Content
+            .ReadFromJsonAsync<SonioxFileList>(JsonOptions, cancellationToken)
+            .ConfigureAwait(false);
+        return result ?? throw StandardError.External("Soniox returned no file list.");
+    }
+
     public Task DeleteTranscription(string transcriptionId, CancellationToken cancellationToken)
         => Delete($"transcriptions/{transcriptionId}", cancellationToken);
 
