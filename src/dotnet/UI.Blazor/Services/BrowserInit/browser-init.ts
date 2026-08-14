@@ -15,6 +15,7 @@ import { initAppConstants, AppConstants } from 'app-constants';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('BrowserInit');
 const IsAnalyticsEnabledSetting = 'isAnalyticsEnabled';
+const AppReadyDelayMs = 350;
 
 const sessionStorage = globalThis?.sessionStorage;
 
@@ -32,6 +33,7 @@ export class BrowserInit {
     public static readonly reconnectedEvents = new EventHandlerSet<void>();
     public static connectionState = '';
     public static reconnectingPromise: Promise<void> = null!;
+    private static isAppReady = false;
 
     public static init(
         hostKind: HostKind,
@@ -214,19 +216,25 @@ export class BrowserInit {
     public static removeWebSplash(instantly = false) {
         document.body.style.backgroundColor = '';
         const splash = document.getElementById('web-splash');
-        if (!splash)
+        if (!splash) {
+            this.scheduleAppReady();
             return;
+        }
 
         if (instantly) {
             splash.remove();
             void BrowserInfo.onWebSplashRemoved();
+            this.scheduleAppReady();
         }
         else {
             splash.classList.add('removing');
             // Total transition duration: 350ms, see web-splash.css
-            setTimeout(function () {
+            setTimeout(() => {
                 void BrowserInfo.onWebSplashRemoved();
-                setTimeout(function () { splash.remove(); }, 150);
+                setTimeout(() => {
+                    splash.remove();
+                    this.scheduleAppReady();
+                }, 150);
             }, 200);
         }
     }
@@ -277,6 +285,18 @@ export class BrowserInit {
     }
 
     // Private methods
+
+    // body.app-ready gates the composition-layer hints, the blurred-cover filter and the skeleton
+    // pulse. Each layer costs the compositor a full-screen raster and each animation tick redraws
+    // the whole screen on Android WebView, so before this class lands all of that would pile onto
+    // the compositor exactly while it is the startup bottleneck.
+    private static scheduleAppReady(): void {
+        if (this.isAppReady)
+            return;
+
+        this.isAppReady = true;
+        setTimeout(() => document.body.classList.add('app-ready'), AppReadyDelayMs);
+    }
 
     private static initWindowId(): void {
         // Set App.windowId

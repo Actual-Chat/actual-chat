@@ -18,9 +18,13 @@
     @apply opacity-70;
     @apply absolute right-0 top-0 left-0 bottom-0;
     @apply overflow-hidden;
+}
+/* Deferred until app-ready: a 40px blur across a full-width cover is the most expensive thing
+   the compositor is asked for during the first paint, and the cover is usually off-screen then. */
+body.app-ready .pic-blurred {
     filter: blur(40px);
 }
-body.device-ios .pic-blurred {
+body.app-ready.device-ios .pic-blurred {
     /* Addresses blur performance issue on WebKit */
     will-change: transform;
     transform: translateZ(0);
