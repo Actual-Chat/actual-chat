@@ -20,6 +20,11 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply bg-transparent;
     @apply border-transparent;
 }
+body.hoverable .audio-recording-message.message-wrapper:hover,
+body.hoverable .audio-recording-message.message-wrapper:hover .avatar-badge {
+    @apply bg-transparent;
+    @apply border-transparent;
+}
 
 .chat-message {
     @apply relative;
