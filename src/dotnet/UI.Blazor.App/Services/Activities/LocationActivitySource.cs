@@ -15,6 +15,10 @@ public class LocationActivitySource(AppUIHub hub) : IActivitySource, IHasDispose
         if (chatIds.IsEmpty)
             return null;
 
-        return new LocationActivity(chatIds[0], chatIds.Length);
+        var chatId = chatIds[0];
+        var chat = await hub.Chats.Get(hub.Session, chatId, cancellationToken).ConfigureAwait(false);
+        // The picture stays empty: the location notification names its chat but shows no avatar.
+        var chatInfo = new ActivityChatInfo(chatId, chat?.Title ?? "", "", chatIds.Length - 1);
+        return new LocationActivity(chatInfo);
     }
 }

@@ -34,7 +34,6 @@ public class AndroidActivitiesForegroundService : Service
         public const string ExtraChatCount = nameof(ExtraChatCount);
         public const string IsPaused = nameof(IsPaused);
         public const string CanPause = nameof(CanPause);
-        public const string LocationShareCount = nameof(LocationShareCount);
         public const string UploadFileCount = nameof(UploadFileCount);
         public const string UploadBytesUploaded = nameof(UploadBytesUploaded);
         public const string UploadTotalBytes = nameof(UploadTotalBytes);
@@ -300,8 +299,10 @@ public class AndroidActivitiesForegroundService : Service
         // Location only ever becomes primary when no audio activity is - the media session has
         // nothing left to serve.
         ReleaseMediaSession();
-        var shareCount = intent.Extras!.GetInt(IntentExtras.LocationShareCount, 1);
-        var notification = BuildLocationNotification(shareCount);
+        var chatSid = intent.Extras!.GetString(IntentExtras.ChatId) ?? "";
+        var chatTitle = intent.Extras.GetString(IntentExtras.ChatTitle) ?? "";
+        var extraChatCount = intent.Extras.GetInt(IntentExtras.ExtraChatCount);
+        var notification = BuildLocationNotification(chatSid, chatTitle, extraChatCount);
         StartForeground1(notification, ActivityKind.SharingLocation, requested);
         return StartCommandResult.NotSticky;
     }
@@ -486,24 +487,30 @@ public class AndroidActivitiesForegroundService : Service
         return builder.Build()!;
     }
 
-    private Android.App.Notification BuildLocationNotification(int shareCount)
+    private Android.App.Notification BuildLocationNotification(string chatSid, string chatTitle, int extraChatCount)
     {
         var stopIntent = new Intent(this, typeof(AndroidActivitiesForegroundService));
         stopIntent.SetAction(ActionStop);
         var stopPending = PendingIntent.GetService(this, 4, stopIntent, PendingIntentFlags.Immutable);
 
-        var viewIntent = NotificationHelper.CreateViewIntent(this, Links.Home);
+        // Opening the shared chat beats opening the app, but an unparsable id must still open something.
+        var link = ChatId.TryParse(chatSid, out var chatId) ? Links.Chat(chatId) : Links.Home;
+        var viewIntent = NotificationHelper.CreateViewIntent(this, link);
         var viewPending = viewIntent is null
             ? null
             : PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable);
+
+        var text = chatTitle;
+        if (!text.IsNullOrEmpty() && extraChatCount > 0)
+            text += extraChatCount == 1 ? " (+ 1 chat)" : $" (+ {extraChatCount} chats)";
 
         var builder = new NotificationCompat.Builder(this, LocationChannelId)
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetContentTitle("Sharing live location")!
             .SetOngoing(true)!
             .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop", stopPending)!;
-        if (shareCount > 1)
-            _ = builder.SetContentText($"{shareCount} chats");
+        if (!text.IsNullOrEmpty())
+            _ = builder.SetContentText(text);
         if (viewPending is not null)
             _ = builder.SetContentIntent(viewPending);
         return builder.Build()!;

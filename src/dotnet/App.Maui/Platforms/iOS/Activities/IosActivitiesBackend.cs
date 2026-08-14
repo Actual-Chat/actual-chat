@@ -85,7 +85,7 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
             AudioActivity audio => (audio.Chat.Title, KindLabel(audio.Kind), -1.0),
             LocationActivity location => (
                 "Sharing live location",
-                location.ShareCount > 1 ? $"{location.ShareCount} chats" : "",
+                location.Chat.ExtraChatCount > 0 ? $"{location.Chat.ExtraChatCount + 1} chats" : location.Chat.Title,
                 -1.0),
             UploadActivity upload => (
                 upload.FileCount == 1 ? "Uploading 1 file" : $"Uploading {upload.FileCount} files",
