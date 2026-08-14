@@ -224,7 +224,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             const dto: VideoStreamFrame = {
                                 offset,
                                 offsetEpoch: capturedAt.epoch,
-                                duration: microsecondsToTicks(encoded.chunk.duration ?? 0),
+                                duration: microsecondsToTicks(Math.round(encoded.chunk.duration ?? encoded.durationUs)),
                                 keyFrameIndex,
                                 index: encoded.index,
                                 width: encoded.encodedWidth,

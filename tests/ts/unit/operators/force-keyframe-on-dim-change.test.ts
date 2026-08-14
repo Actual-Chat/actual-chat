@@ -29,6 +29,7 @@ function envelopeFor(
     return {
         frame: frame as unknown as VideoFrame,
         capturedAt: { timeMs: 100 + index, epoch: 0 },
+        durationUs: 1_000_000 / 30,
         index,
         dropTrace: [],
         sourceWidth: frame.codedWidth,

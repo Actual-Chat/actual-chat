@@ -18,6 +18,7 @@ function envelope(stats: RecorderStats, frame: MockVideoFrame, index: number): C
     return {
         frame: frame as unknown as VideoFrame,
         capturedAt: { timeMs: 100 + index, epoch: 0 },
+        durationUs: 1_000_000 / 30,
         index,
         dropTrace: [],
         sourceWidth: 0,
@@ -141,6 +142,7 @@ describe('temporalPace operator', () => {
         const env: CapturedFrame = {
             frame,
             capturedAt: { timeMs: 0, epoch: 0 },
+            durationUs: 1_000_000 / 30,
             index: 0,
             dropTrace: [],
             sourceWidth: 0,

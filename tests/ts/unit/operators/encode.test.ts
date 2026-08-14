@@ -134,6 +134,7 @@ function makeCaptured(
     return {
         frame: mkFrame(index, width, height),
         capturedAt: { timeMs: 1_700_000_000_000 + index, epoch: 0 },
+        durationUs: 1_000_000 / 30,
         index,
         dropTrace: [],
         sourceWidth: 1920,
@@ -182,6 +183,7 @@ function makeFactory(opts: { onResetRequested?: (reason: string) => void; timeou
                 chunk,
                 metadata,
                 capturedAt: input.capturedAt,
+                durationUs: 1_000_000 / 30,
                 index: input.index,
                 dropTrace: [],
                 layerId: layerId,
@@ -442,6 +444,7 @@ describe('encode operator', () => {
                     metadata: {},
                     dropTrace: [],
                     capturedAt: input.capturedAt,
+                    durationUs: 1_000_000 / 30,
                     index: input.index,
                     layerId: 0,
                     sourceWidth: 0,

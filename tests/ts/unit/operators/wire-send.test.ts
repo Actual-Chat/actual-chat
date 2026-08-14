@@ -131,6 +131,7 @@ function makeEncoded(stats: RecorderStats, opts: BuildOpts = {}): EncodedFrame {
         chunk,
         metadata,
         capturedAt: opts.capturedAt ?? { timeMs: 1_000, epoch: 0 },
+        durationUs: 1_000_000 / 30,
         index: opts.index ?? 0,
         dropTrace: [],
         layerId: opts.layerId ?? 0,

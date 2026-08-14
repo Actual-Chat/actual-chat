@@ -51,6 +51,7 @@ function mkCaptured(index: number, stats: RecorderStats): CapturedFrame {
     return {
         frame: new MockVideoFrame(index) as unknown as VideoFrame,
         capturedAt: { timeMs: index * 33, epoch: 0 },
+        durationUs: 1_000_000 / 30,
         index,
         dropTrace: [],
         sourceWidth: CEIL_W,

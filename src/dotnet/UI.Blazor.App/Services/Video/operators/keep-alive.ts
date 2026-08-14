@@ -26,6 +26,7 @@ export interface KeepAliveOptions {
 interface Retained {
     frame: VideoFrame;
     timestampUs: number;
+    durationUs: number;
     realFrameAtMs: number;
     stats: CapturedFrame['stats'];
 }
@@ -83,6 +84,7 @@ export function keepAlive(opts: KeepAliveOptions): PipeOperator<CapturedFrame, C
                         const injected: CapturedFrame = {
                             frame: cloneFrame(retained.frame, timestampUs),
                             capturedAt: { timeMs: 0, epoch: 0 },
+                            durationUs: retained.durationUs,
                             // Unique, strictly-increasing index: the wire derives
                             // isKeyFrame from keyFrameIndex === index, so a reused
                             // index would mis-classify a later real delta as a keyframe.
@@ -117,6 +119,7 @@ export function keepAlive(opts: KeepAliveOptions): PipeOperator<CapturedFrame, C
                         retained = {
                             frame: envelope.frame.clone(),
                             timestampUs: envelope.frame.timestamp,
+                            durationUs: envelope.durationUs,
                             realFrameAtMs: nowMs,
                             stats: envelope.stats,
                         };

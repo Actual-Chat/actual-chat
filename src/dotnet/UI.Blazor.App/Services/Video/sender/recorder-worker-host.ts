@@ -149,6 +149,7 @@ function createEncoder(
     ): EncodedFrame => ({
         chunk,
         metadata,
+        durationUs: input.durationUs,
         capturedAt: input.capturedAt,
         index: input.index,
         dropTrace: [],

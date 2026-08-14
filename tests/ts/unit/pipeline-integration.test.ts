@@ -249,6 +249,7 @@ function makeCaptured(
         frame: mkFrame(index, width, height),
         // capturedAt overwritten by stampCaptureTime; placeholder values:
         capturedAt: { timeMs: 0, epoch: 0 },
+        durationUs: 1_000_000 / 30,
         index,
         dropTrace: [],
         sourceWidth: width,
@@ -281,6 +282,7 @@ function makeEncoderFactory() {
                 chunk,
                 metadata,
                 capturedAt: input.capturedAt,
+                durationUs: 1_000_000 / 30,
                 index: input.index,
                 dropTrace: [],
                 layerId: layerId,
