@@ -1,0 +1,95 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Hosting
+@using ActualChat.Kvas
+@using ActualChat.UI.App.Services
+@inherits ComputedStateComponent<AppUIHub, LiveActivitiesDisabledBanner.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
+    var isVisible = m is { IsEnabled: false, IsDismissed: false };
+}
+
+@if (isVisible) {
+    <RenderIntoSlot Name="@PermissionBannerSwitch.SlotName">
+        <Banner
+            @key="@GetType()"
+            IsVisible="@isVisible"
+            Severity="BannerSeverity.Info"
+            ShowDismissButton="true"
+            Dismiss="@OnDismiss">
+            <Icon>
+                <i class="icon-bell"></i>
+            </Icon>
+            <Body>
+                Enable <strong>Live Activities</strong> so @CoreConstants.AppName can show upload and chat progress on the Lock Screen
+            </Body>
+            <Buttons>
+                <Button
+                    Class="btn-transparent unhovered"
+                    Click="@OnConfigureClick">Open Settings</Button>
+            </Buttons>
+        </Banner>
+    </RenderIntoSlot>
+}
+
+
+@code {
+    private StoredState<Box<Moment>> _dismissedAt = null!;
+
+    private ILiveActivitiesAvailability LiveActivitiesAvailability
+        => Hub.Services.GetRequiredService<ILiveActivitiesAvailability>();
+    private SystemSettingsUI SystemSettingsUI => Hub.Services.GetRequiredService<SystemSettingsUI>();
+    private BackgroundStateTracker BackgroundStateTracker
+        => Hub.Services.GetRequiredService<BackgroundStateTracker>();
+
+    protected override void OnInitialized()
+        => _dismissedAt = StateFactory.NewKvasStored<Box<Moment>>(
+            new(LocalSettings, "Permissions.LiveActivities.DismissedAt") {
+                InitialValue = Box.New(default(Moment)),
+            });
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (!(HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Ios))
+            return new(true, false);
+
+        // IsEnabled below is a plain uncached ActivityAuthorizationInfo read with nothing to
+        // invalidate it - Use()-ing IsBackground makes a foreground transition (e.g. returning
+        // from Settings after flipping the toggle) force a re-read.
+        await BackgroundStateTracker.IsBackground.Use(cancellationToken).ConfigureAwait(false);
+
+        if (!_dismissedAt.WhenRead.IsCompleted)
+            await _dismissedAt.WhenRead
+                .WaitAsync(TimeSpan.FromSeconds(3), cancellationToken)
+                .SilentAwait();
+
+        var isEnabled = await LiveActivitiesAvailability.IsEnabled(cancellationToken).ConfigureAwait(false);
+
+        var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
+        var dismissPeriod = Clocks.SystemClock.Now - dismissedAt.Value;
+        var isDismissed = dismissPeriod < Constants.Notification.PermissionRequestDismissPeriod;
+        return new(isEnabled, isDismissed);
+    }
+
+    private void OnDismiss()
+        => _dismissedAt.Value = Box.New(Clocks.SystemClock.Now);
+
+    private Task OnConfigureClick()
+        => SystemSettingsUI.Open();
+
+    public sealed record Model(
+        bool IsEnabled,
+        bool IsDismissed
+    ) {
+        public static readonly Model Loading = new(true, true);
+    }
+}

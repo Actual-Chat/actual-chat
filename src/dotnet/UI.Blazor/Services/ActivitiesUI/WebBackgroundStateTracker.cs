@@ -1,4 +1,3 @@
-
 namespace ActualChat.UI.Blazor.Services;
 
 // Must be scoped!

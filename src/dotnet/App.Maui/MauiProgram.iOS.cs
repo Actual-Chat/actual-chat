@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Activities;
 using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.App.Services;
@@ -34,6 +35,11 @@ public static partial class MauiProgram
         services.AddScoped<IFileSaver>(c => new AppleFileSaver(c.UIHub()));
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
         services.AddTransient<IAppIconBadge>(_ => new AppIconBadge());
+        services.AddSingleton(c => new IosUploadKeepAlive(c.LogFor<IosUploadKeepAlive>()));
+        services.AddScoped<ILiveActivitiesAvailability>(_ => new IosLiveActivitiesAvailability());
+        services.AddScoped<ActivitiesBackend>(c => new IosActivitiesBackend(
+            c.AppUIHub(),
+            c.GetRequiredService<IosUploadKeepAlive>()));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

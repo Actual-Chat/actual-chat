@@ -159,7 +159,7 @@ public class GestureActivationPolicyTest
     [Fact]
     public void ClearingTheStampClosesTheAnswerWindow()
     {
-        // What AudioWidget's Stop action does through IncomingVoiceActivityUI.ClearIncomingVoice:
+        // What ActivitiesBackend's Stop action does through IncomingVoiceActivityUI.ClearIncomingVoice:
         // without this the widget recomputes the identical state and the notification comes back.
 
         // arrange

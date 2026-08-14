@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Activities;
 using ActualChat.App.Maui.Audio;
 #if ANDROID || IOS || MACCATALYST
 using ActualChat.App.Maui.Location;
@@ -97,7 +98,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 #elif ANDROID
         services.AddScoped<AudioFocusUI>(c => new AndroidAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new MauiTuneUI(c.UIHub()));
-        services.AddScoped<AudioWidget>(c => new AndroidAudioWidget(c.AppUIHub()));
+        services.AddScoped<ActivitiesBackend>(c => new AndroidActivitiesBackend(c.AppUIHub()));
         services.AddSingleton<VoiceActivityDetector>(c => new TfLiteVoiceActivityDetector(c));
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<ILocationTracker>(c => new AndroidLocationTracker(c.AppUIHub()));

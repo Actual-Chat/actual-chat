@@ -833,6 +833,60 @@
     </ItemGroup>
   </Target>
 
+  <!-- iOS Live Activities. src/swift/VoxtActivities builds two Xcode products: a static lib
+       whose @_cdecl symbols IosActivitiesBackend P/Invokes, and the SwiftUI widget extension
+       that renders the activity. macOS-only - it takes xcodebuild.
+       This block sits below the RuntimeIdentifier PropertyGroup on purpose: MSBuild evaluates
+       properties in document order, and VoxtActivitiesSdk reads RuntimeIdentifier. -->
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('osx')) and $(TargetFramework.Contains('-ios'))">
+    <VoxtActivitiesDir>$(MSBuildThisFileDirectory)..\..\swift\VoxtActivities\</VoxtActivitiesDir>
+    <VoxtActivitiesSdk>iphoneos</VoxtActivitiesSdk>
+    <VoxtActivitiesSdk Condition="$(RuntimeIdentifier.StartsWith('iossimulator-'))">iphonesimulator</VoxtActivitiesSdk>
+    <!-- Relative: Xamarin.Shared.targets resolves the appex as %(Identity)/%(BuildOutput)/%(Name).appex -->
+    <VoxtActivitiesOutDir>build/$(Configuration)-$(VoxtActivitiesSdk)</VoxtActivitiesOutDir>
+    <!-- Bundle id follows the flavor and the repo's lowercase extension convention
+         (cf. chat.actual.dev.app.share); the Xcode product stays VoxtActivitiesWidget. -->
+    <VoxtActivitiesWidgetId>$(ApplicationId).widget</VoxtActivitiesWidgetId>
+    <!-- Opt-in, and empty by default so CI and simulator builds stay unsigned. Set it (the
+         team id, e.g. from the CodesignKey's trailing parenthesis) for a device or TestFlight
+         build: the .NET SDK re-signs the embedded .appex but never gives it an
+         embedded.mobileprovision, so only Xcode can put a profile in it. -->
+    <VoxtActivitiesTeamId Condition="'$(VoxtActivitiesTeamId)' == ''">$(CodesignTeamId)</VoxtActivitiesTeamId>
+    <!-- Empty means build.sh's own "Apple Development" default. TestFlight and App Store builds
+         want -p:VoxtActivitiesIdentity="Apple Distribution". -->
+    <VoxtActivitiesIdentity Condition="'$(VoxtActivitiesIdentity)' == ''"></VoxtActivitiesIdentity>
+    <!-- Naming a profile switches the widget to manual signing, which distribution identities
+         require - automatic signing only ever picks a development one. -->
+    <VoxtActivitiesProfile Condition="'$(VoxtActivitiesProfile)' == ''"></VoxtActivitiesProfile>
+    <!-- The documented macios hook for "run a target at the beginning of the build": it feeds
+         MaciOSPrepareForBuild's DependsOnTargets, which sits near the top of BuildDependsOn,
+         well before _CreateAppBundle collects the appex. The SDK never assigns this property,
+         so setting it here is safe. -->
+    <MaciOSPrepareForBuildDependsOn>BuildVoxtActivities;$(MaciOSPrepareForBuildDependsOn)</MaciOSPrepareForBuildDependsOn>
+  </PropertyGroup>
+
+  <!-- The macios SDK only copies and re-signs the .appex - building it is ours, and nothing
+       otherwise orders us before _ExtendAppExtensionReferences, which reads
+       AdditionalAppExtensions. MaciOSPrepareForBuildDependsOn above is the real anchor; this
+       BeforeTargets is the fallback if that private target ever gets renamed. Not anchored on
+       Build: BeforeTargets fires after the anchor's DependsOnTargets, so BeforeTargets="Build"
+       would land after the whole BuildDependsOn chain - past codesign, far too late. -->
+  <Target Name="BuildVoxtActivities" BeforeTargets="_ExtendAppExtensionReferences"
+          Condition="$([MSBuild]::IsOSPlatform('osx')) and $(TargetFramework.Contains('-ios'))">
+    <Exec Command="sh &quot;$(VoxtActivitiesDir)build.sh&quot; &quot;$(Configuration)&quot; &quot;$(VoxtActivitiesSdk)&quot; &quot;$(VoxtActivitiesWidgetId)&quot; &quot;$(ApplicationDisplayVersion)&quot; &quot;$(ApplicationVersion)&quot; &quot;$(VoxtActivitiesTeamId)&quot; &quot;$(VoxtActivitiesIdentity)&quot; &quot;$(VoxtActivitiesProfile)&quot;" />
+  </Target>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('osx')) and $(TargetFramework.Contains('-ios'))">
+    <NativeReference Include="$(VoxtActivitiesDir)$(VoxtActivitiesOutDir)/libVoxtActivityKitShim.a">
+      <Kind>Static</Kind>
+      <ForceLoad>True</ForceLoad>
+    </NativeReference>
+    <AdditionalAppExtensions Include="$(VoxtActivitiesDir)">
+      <Name>VoxtActivitiesWidget</Name>
+      <BuildOutput>$(VoxtActivitiesOutDir)</BuildOutput>
+    </AdditionalAppExtensions>
+  </ItemGroup>
+
   <!-- Native AOT — single source of truth, and the only runtime alternative to CoreCLR:
        the per-platform Release blocks above describe the default CoreCLR + ReadyToRun
        behavior and run regardless of UseNativeAot. This block then overrides what

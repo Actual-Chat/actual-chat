@@ -116,10 +116,10 @@ public sealed class AppScopedServiceStarter
             // Starting less important UI services
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
             Hub.Services.GetRequiredService<SessionTokens>().Start();
-            Hub.Services.GetRequiredService<BackgroundActivityUI>().Start();
+            Hub.Services.GetRequiredService<ActivitiesUI>().Start();
             Hub.Services.GetRequiredService<ReconnectUI>().Start();
             StartScopedServices(Hub.Services);
-            _ = Hub.AudioWidget; // Touch. Auto-starts on construction; WebView-only - see StartScopedServices
+            _ = Hub.ActivitiesBackend; // Touch. Auto-starts on construction; WebView-only - see StartScopedServices
             _ = Hub.VideoQualityUI; // Touch. Constructor calls Start(); chains gate on first video activity.
             Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
             if (!HostInfo.IsProductionInstance)
@@ -151,7 +151,7 @@ public sealed class AppScopedServiceStarter
     public static void StartScopedServices(IServiceProvider services)
     {
         // Runs for any scope, headless or WebView. Everything here must work with a disconnected
-        // SafeJSRuntime - see HeadlessBlazorScope. AudioWidget is deliberately absent: the wake
+        // SafeJSRuntime - see HeadlessBlazorScope. ActivitiesBackend is deliberately absent: the wake
         // handler owns the foreground service, and every widget output parks on DispatchToBlazor.
         var hub = services.GetRequiredService<AppUIHub>();
         // These three belong here rather than in AfterFirstRender because a headless scope never

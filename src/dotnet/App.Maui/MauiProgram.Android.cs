@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Activities;
 using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Maui.Services;
@@ -83,14 +84,14 @@ public static partial class MauiProgram
                     // This service is what holds the microphone grant, and Android only ever hands
                     // that to a service started while the app is in the foreground - so stopping it
                     // here costs every later wake its mic, with no way to earn it back.
-                    Log.LogInformation("Keeping AudioWidgetForegroundService: walkie-talkie is armed");
+                    Log.LogInformation("Keeping AndroidActivitiesForegroundService: walkie-talkie is armed");
                     return;
                 }
 
-                // NOTE(DF): Stop AudioWidgetForegroundService when MainActivity is destroyed,
+                // NOTE(DF): Stop AndroidActivitiesForegroundService when MainActivity is destroyed,
                 // because playback and/or recording do not work anyway in this case.
-                Log.LogInformation("Stopping AudioWidgetForegroundService due to MainActivity destroy");
-                AndroidAudioWidget.Hide();
+                Log.LogInformation("Stopping AndroidActivitiesForegroundService due to MainActivity destroy");
+                AndroidActivitiesBackend.Hide();
             });
             IntentHandler.Activate(android);
         });
@@ -114,6 +115,7 @@ public static partial class MauiProgram
     private static void OnPostCreate(Activity activity, Bundle? savedInstanceState)
     {
         NotificationHelper.EnsureDefaultNotificationChannelExist(activity, NotificationHelper.Constants.DefaultChannelId);
+        NotificationHelper.EnsureActivityChannelsExist(activity);
         ChatAttentionService.Instance.Init();
     }
 

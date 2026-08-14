@@ -1,0 +1,4 @@
+build/
+VoxtActivities.xcodeproj/
+*.xcuserdatad/
+xcuserdata/

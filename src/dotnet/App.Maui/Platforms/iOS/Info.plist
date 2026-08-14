@@ -49,6 +49,8 @@
 	<string>development</string>
 	<key>MinimumOSVersion</key>
 	<string>16.4</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
