@@ -79,11 +79,10 @@
         return new(hasAll, hasDMs, hasMentions);
     }
 
-    // A tab stays visible while the panel session keeps its (possibly already-read) chats,
-    // not only while there are actually-unread ones.
+    // A tab stays visible while it still retains recently-read chats, not only while there are unread ones.
     private async Task<bool> HasTab(ChatListFilter filter, CancellationToken cancellationToken) {
-        var stickyIds = await NotificationsPanelUI.GetSessionSet(filter.Id, cancellationToken).ConfigureAwait(false);
-        if (!stickyIds.IsEmpty)
+        var retainedIds = await NotificationsPanelUI.GetRetainedSet(filter.Id, cancellationToken).ConfigureAwait(false);
+        if (!retainedIds.IsEmpty)
             return true;
         var count = await ChatListUI.GetUnreadChatCount(null, filter, cancellationToken).ConfigureAwait(false);
         return count > 0;

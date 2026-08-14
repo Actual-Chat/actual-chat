@@ -50,6 +50,7 @@ namespace ActualChat;
 [Union(15, typeof(RecentMentions))]
 [Union(16, typeof(RecentGifs))]
 [Union(17, typeof(UserWalkieTalkieSettings))]
+[Union(18, typeof(UserNotificationsPanelSettings))]
 // Chat-User settings
 [Union(50, typeof(ChatUserSettings))]
 [Union(51, typeof(ChatInviteSettings))]

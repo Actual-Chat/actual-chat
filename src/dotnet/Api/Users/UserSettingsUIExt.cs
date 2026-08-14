@@ -54,4 +54,8 @@ public static class UserSettingsUIExt
     public static UserSettingsAccessor<UserWalkieTalkieSettings> UserWalkieTalkieSettings(
         this UserSettingsUI settingsUI)
         => new(settingsUI, nameof(UserWalkieTalkieSettings));
+
+    public static UserSettingsAccessor<UserNotificationsPanelSettings> UserNotificationsPanelSettings(
+        this UserSettingsUI settingsUI)
+        => new(settingsUI, nameof(UserNotificationsPanelSettings));
 }
