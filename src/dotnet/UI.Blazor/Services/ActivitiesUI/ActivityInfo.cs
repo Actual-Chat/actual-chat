@@ -27,8 +27,7 @@ public sealed record AudioActivity(
     bool CanPause = true
 ) : ActivityInfo(Kind);
 
-// FirstChatId is reserved for single-share title rendering by platform renderers; unused for now
-public sealed record LocationActivity(ChatId FirstChatId, int ShareCount)
+public sealed record LocationActivity(ActivityChatInfo Chat)
     : ActivityInfo(ActivityKind.SharingLocation);
 
 public sealed record UploadActivity(

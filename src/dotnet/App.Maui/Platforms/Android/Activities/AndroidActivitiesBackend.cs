@@ -136,7 +136,9 @@ public class AndroidActivitiesBackend : ActivitiesBackend
             intent.PutExtra(IntentExtras.ExtraChatCount, audio.Chat.ExtraChatCount);
             break;
         case LocationActivity location:
-            intent.PutExtra(IntentExtras.LocationShareCount, location.ShareCount);
+            intent.PutExtra(IntentExtras.ChatId, location.Chat.Id.Value);
+            intent.PutExtra(IntentExtras.ChatTitle, location.Chat.Title);
+            intent.PutExtra(IntentExtras.ExtraChatCount, location.Chat.ExtraChatCount);
             break;
         case UploadActivity upload:
             PutUploadExtras(intent, upload);
