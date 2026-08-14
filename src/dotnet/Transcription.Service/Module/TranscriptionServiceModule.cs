@@ -31,6 +31,10 @@ public sealed class TranscriptionServiceModule(IServiceProvider moduleServices)
             services.AddSoniox();
             services.AddSingleton<ITranscriber, SonioxTranscriber>();
             services.AddSingleton<IOfflineTranscriber, SonioxOfflineTranscriber>();
+            // Not in AddSoniox: the tests that hand-build a container from it must not start a sweeper.
+            services.AddSingleton(_ => new SonioxSweeper.Options());
+            services.AddSingleton<SonioxSweeper>()
+                .AddHostedService(c => c.GetRequiredService<SonioxSweeper>());
         }
         if (!coreSettings.ElevenLabsKey.IsNullOrEmpty()) {
             services.AddHttpClient(ElevenLabsOfflineTranscriber.HttpClientName);
