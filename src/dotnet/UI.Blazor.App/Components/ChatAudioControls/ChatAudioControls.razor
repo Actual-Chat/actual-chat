@@ -25,15 +25,17 @@
 
 <div class="chat-audio-controls @Class">
     @if (isRecording) {
-        <HeaderButton
-            Class="c-mic"
-            StopPropagation="true"
-            PreventDefault="true"
-            Click="@OnStopRecording"
-            Tooltip="Stop"
-            TooltipPosition="FloatingPosition.Top">
-            <i class="icon-mic-2"></i>
-        </HeaderButton>
+        @if (ShowRecordingToggle) {
+            <HeaderButton
+                Class="c-mic"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnStopRecording"
+                Tooltip="Stop"
+                TooltipPosition="FloatingPosition.Top">
+                <i class="icon-mic-2"></i>
+            </HeaderButton>
+        }
         <HeaderButton
             Class="c-hangup"
             StopPropagation="true"
@@ -86,6 +88,7 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter, EditorRequired] public ChatAudioState? AudioState { get; set; }
     [Parameter] public bool MustShowHangUp { get; set; }
+    [Parameter] public bool ShowRecordingToggle { get; set; } = true;
     [Parameter] public EventCallback OnHangUpRequested { get; set; }
     [Parameter] public string Class { get; set; } = "";
 
