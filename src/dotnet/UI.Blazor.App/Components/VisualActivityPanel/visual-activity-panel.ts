@@ -90,7 +90,12 @@ export class VisualActivityPanel {
             panel = null;
         };
 
-        fromEvent<TouchEvent>(this.root, 'touchstart', { passive: true } as AddEventListenerOptions)
+        // `document`, not `this.root`: on iOS an element with a touch listener costs a walk of
+        // its whole renderer subtree once per rendering update, and this panel is on screen for
+        // the entire call. `resolveDragTarget` already derives everything from `e.target` and
+        // returns null off-target, so it is its own containment test - the companion `touchmove`
+        // below has always listened on `document` for the same reason.
+        fromEvent<TouchEvent>(document, 'touchstart', { passive: true } as AddEventListenerOptions)
             .pipe(
                 takeUntil(this.disposed$),
                 filter(() => !ScreenSize.isWide()),

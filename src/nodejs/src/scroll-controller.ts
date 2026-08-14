@@ -68,10 +68,27 @@ export class ScrollController {
             this.lastScrollTime = Date.now();
             const opts = { passive: true, signal: this.abort.signal };
             element.addEventListener('scroll', () => this.onScroll(), opts);
-            element.addEventListener('touchstart', () => this.onTouchStart(), opts);
-            const onTouchEnd = (e: TouchEvent) => { if (e.touches.length === 0) this.onTouchEnd(); };
-            element.addEventListener('touchend', onTouchEnd, opts);
-            element.addEventListener('touchcancel', onTouchEnd, opts);
+            // Touch listeners go on `document`, not on `element`. On iOS, every element with a
+            // touch-related listener makes WebKit walk that element's entire renderer subtree
+            // once per rendering update to union its touch region; `document` is special-cased
+            // to one whole-view rect. For a scroller wrapping a long list that walk is the
+            // whole list, every frame. A touch is dispatched to where it STARTED, so a
+            // document-level listener plus this containment test sees exactly the same touches
+            // - including a finger that drifts off the scroller before it lifts.
+            document.addEventListener('touchstart', (e: TouchEvent) => {
+                if (e.target instanceof Node && element.contains(e.target))
+                    this.onTouchStart();
+            }, opts);
+            // The end is gated on `isTouching` rather than on containment: a finger that
+            // started here and lifted elsewhere must still end the gesture, but a touch that
+            // never involved this scroller must not - onTouchEnd reads scrollTop and can start
+            // an overscroll return, and every instance in the app now sees every touch end.
+            const onTouchEnd = (e: TouchEvent) => {
+                if (this.isTouching && e.touches.length === 0)
+                    this.onTouchEnd();
+            };
+            document.addEventListener('touchend', onTouchEnd, opts);
+            document.addEventListener('touchcancel', onTouchEnd, opts);
             // A resize (e.g. mobile keyboard hiding, or a sub-header opening/closing) changes limits without
             // firing a scroll event. It re-pins authoritatively, so any boundary it crosses isn't a user
             // gesture: suppress the rubber-band spring (and cancel one in flight) and snap to the new limits
