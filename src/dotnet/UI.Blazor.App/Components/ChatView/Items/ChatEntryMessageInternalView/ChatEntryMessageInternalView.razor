@@ -60,13 +60,16 @@
             status = ChatMessageSendingStatus.MessageStatus.Unread;
     }
     var showTextStatus = status == ChatMessageSendingStatus.MessageStatus.Unread && IsUnreadByOthersBlockStart;
+    // Message kinds that shouldn't carry an inline status in the chat view (the chat-list preview
+    // still shows its own status — it's a separate ChatListItem render).
+    var hideInlineStatus = entry.HasLocation || isGifOnly || isEmojiOnly;
 
     // Should be named __builder
     // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
     RenderFragment statusFragment = (__builder) => {
         @* <span>@entry.Id.LocalId : @entry.Version</span> *@
         @TranslationFragments.TranslationMark(m.Translation)
-        @if (status != ChatMessageSendingStatus.MessageStatus.Default) {
+        @if (status != ChatMessageSendingStatus.MessageStatus.Default && !hideInlineStatus) {
             <ChatMessageSendingStatus Status="@status" IsDotOnly="@(!showTextStatus)" />
         }
     };
