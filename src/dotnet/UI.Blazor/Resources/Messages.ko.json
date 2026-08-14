@@ -122,5 +122,6 @@
   // Live location
   "Error_JoinChatToShareLocation": "위치를 공유하려면 먼저 채팅에 참여하세요.",
   "Error_CanChangeOwnLocationsOnly": "이 채팅에서는 자신이 공유한 위치만 변경할 수 있습니다.",
-  "Error_LocationSharingLimit_Format": "이 채팅에서 실시간 위치를 공유할 수 있는 최대 인원 {limit}명에 이미 도달했습니다."
+  "Error_LocationSharingLimit_Format": "이 채팅에서 실시간 위치를 공유할 수 있는 최대 인원 {limit}명에 이미 도달했습니다.",
+  "Error_FailedToAddFileAttachment": "파일 첨부에 실패했습니다."
 }

@@ -1,4 +1,3 @@
-@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComponentBase<UIHub>
 
@@ -10,7 +9,7 @@
             <img draggable="false" src="/dist/images/landing/google-play.svg" alt="Google Play">
         </Brand>
         <QrCode>
-            <img draggable="false" src="/dist/images/landing/google-play-qr.svg" alt="QR Google Play">
+            <img draggable="false" src="/dist/images/landing/google-play-qr.svg" alt="@L.Download_QrCode_Format("Google Play")">
         </QrCode>
     </DownloadTile>
     <DownloadTile Link="@(Links.Apps.iOS)">
@@ -20,7 +19,7 @@
             <img draggable="false" src="/dist/images/landing/app-store.svg" alt="App Store">
         </Brand>
         <QrCode>
-            <img draggable="false" src="/dist/images/landing/app-store-qr.svg" alt="App Store QR">
+            <img draggable="false" src="/dist/images/landing/app-store-qr.svg" alt="@L.Download_QrCode_Format("App Store")">
         </QrCode>
     </DownloadTile>
     <DownloadTile Link="@(Links.Apps.Windows)">
@@ -30,7 +29,7 @@
             <img draggable="false" src="/dist/images/landing/microsoft-store.svg" alt="Microsoft Store">
         </Brand>
         <QrCode>
-            <img draggable="false" src="/dist/images/landing/microsoft-store-qr.svg" alt="Microsoft Store QR">
+            <img draggable="false" src="/dist/images/landing/microsoft-store-qr.svg" alt="@L.Download_QrCode_Format("Microsoft Store")">
         </QrCode>
     </DownloadTile>
     <DownloadTile OnClick="@SignIn">

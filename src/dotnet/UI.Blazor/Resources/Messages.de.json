@@ -122,5 +122,6 @@
   // Live location
   "Error_JoinChatToShareLocation": "Tritt dem Chat bei, bevor du deinen Standort teilst.",
   "Error_CanChangeOwnLocationsOnly": "In diesem Chat kannst du nur deinen eigenen geteilten Standort ändern.",
-  "Error_LocationSharingLimit_Format": "In diesem Chat teilen bereits {limit} Personen ihren Live-Standort — das ist das Maximum."
+  "Error_LocationSharingLimit_Format": "In diesem Chat teilen bereits {limit} Personen ihren Live-Standort — das ist das Maximum.",
+  "Error_FailedToAddFileAttachment": "Der Dateianhang konnte nicht hinzugefügt werden."
 }

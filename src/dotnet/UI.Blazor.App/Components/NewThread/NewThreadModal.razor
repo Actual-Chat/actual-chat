@@ -7,7 +7,7 @@
     <DataAnnotationsValidator/>
     <DialogFrame
         Class="new-thread-modal modal-sm"
-        Title="New thread"
+        Title="@L.Chat_NewThread"
         HasCloseButton="true"
         NarrowViewSettings="@DialogFrameNarrowViewSettings.Bottom">
         <Body>
@@ -46,8 +46,8 @@
             </FormSection>
             @if (_generatingSmartTitle) {
                 <div>
-                    <span>Busy generating smart title and description based on source messages...</span>
-                    <spam>Keep fields empty to get them filled in automatically.</spam>
+                    <span>@L.Chat_GeneratingSmartTitle</span>
+                    <spam>@L.Chat_GeneratingSmartTitleHint</spam>
                 </div>
             }
         </FormBlock>

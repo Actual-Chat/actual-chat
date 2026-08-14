@@ -1,9 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using System.ComponentModel.DataAnnotations
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<CopyChatToPlaceModal.Model>
 
-<DialogFrame Title="Copy chat to place" HasCloseButton="true">
+<DialogFrame Title="@L.Place_CopyChatToPlaceTitle" HasCloseButton="true">
     <Body>
     <Form @ref="@_formRef" Class="h-full" Model="@_form">
         <FormBlock>
@@ -13,15 +12,15 @@
                 <TextBox
                     @bind-Value="@_form.ChatId"
                     Id="@_form.ChatIdFormId"
-                    Placeholder="Id of a chat to copy to the place"
+                    Placeholder="@L.Place_CopyChatIdPlaceholder"
                     ClearButton="true"/>
             </FormSection>
         </FormBlock>
     </Form>
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="@(() => Modal.Close())">Cancel</Button>
-        <Button Class="btn-modal btn-primary" IsDisabled="@_isCopying" Click="OnCopyClick">Copy chat</Button>
+        <Button Class="btn-modal" Click="@(() => Modal.Close())">@L.Common_Cancel</Button>
+        <Button Class="btn-modal btn-primary" IsDisabled="@_isCopying" Click="OnCopyClick">@L.Place_CopyChat</Button>
     </Buttons>
 </DialogFrame>
 

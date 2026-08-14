@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Events;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -220,9 +221,9 @@ public partial class ChatUI
         await LanguageUI.ChangeChatLanguage(chatId, language, cancellationToken).ConfigureAwait(false);
         _ = Dispatcher.InvokeAsync(() => {
             ToastUI.Show(
-                $"Detected transcription language for chat '{chat.Title}' is {language.Title}.",
+                L.Transcription_LanguageDetected_Format(chat.Title, language.Title),
                 () => _ = ModalUI.Show(new VoiceSettingsModal.Model(chatId), CancellationToken.None),
-                "Change",
+                L.Common_Change,
                 ToastDismissDelay.Long);
         });
     }

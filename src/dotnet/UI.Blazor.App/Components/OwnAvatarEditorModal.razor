@@ -41,10 +41,10 @@
                         </Icon>
                         <Content>
                             <div class="c-text text-02">
-                                Make default
+                                @L.Avatar_MakeDefault
                             </div>
                             <div class="c-caption">
-                                This avatar will appear in P2P chats and any chats where you haven't selected a special avatar.
+                                @L.Avatar_MakeDefaultHint
                             </div>
                         </Content>
                     </ButtonTile>
@@ -55,7 +55,7 @@
                         </Icon>
                         <Content>
                             <div class="c-text text-danger">
-                                Delete avatar
+                                @L.Avatar_Delete
                             </div>
                         </Content>
                     </ButtonTile>
@@ -64,7 +64,7 @@
                 @if (ModalModel.ChatId is not null) {
                     <FormSection For="() => _form.IsActive" InputId="@_form.IsActiveFieldId">
                         <ToggleEdit @bind-Value="@_form.IsActive" Id="@_form.IsActiveFieldId"
-                                    Label="Used in this chat (otherwise the default one is used)"/>
+                                    Label="@L.Avatar_UsedInThisChat"/>
                     </FormSection>
                 }
             </FormBlock>

@@ -122,5 +122,6 @@
   // Live location
   "Error_JoinChatToShareLocation": "Чтобы делиться геопозицией, сначала присоединитесь к чату.",
   "Error_CanChangeOwnLocationsOnly": "В этом чате вы можете менять только свою геопозицию.",
-  "Error_LocationSharingLimit_Format": "В этом чате уже максимальное число людей, делящихся геопозицией: {limit}."
+  "Error_LocationSharingLimit_Format": "В этом чате уже максимальное число людей, делящихся геопозицией: {limit}.",
+  "Error_FailedToAddFileAttachment": "Не удалось добавить вложение."
 }

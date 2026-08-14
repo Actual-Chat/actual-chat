@@ -122,5 +122,6 @@
   // Live location
   "Error_JoinChatToShareLocation": "位置情報を共有する前にチャットに参加してください。",
   "Error_CanChangeOwnLocationsOnly": "このチャットで変更できるのは自分が共有した位置情報だけです。",
-  "Error_LocationSharingLimit_Format": "このチャットでは、位置情報をリアルタイム共有できる上限の{limit}人に達しています。"
+  "Error_LocationSharingLimit_Format": "このチャットでは、位置情報をリアルタイム共有できる上限の{limit}人に達しています。",
+  "Error_FailedToAddFileAttachment": "ファイルの添付に失敗しました。"
 }

@@ -23,7 +23,7 @@
         </Button>
     } else {
         var text = Request.HasLink() ? "Copy link" : "Copy to clipboard";
-        <CopyTrigger Class="w-full" Tooltip="Copy" CopyText="@Request.GetShareTextAndLink(UrlMapper)">
+        <CopyTrigger Class="w-full" Tooltip="@L.Common_Copy" CopyText="@Request.GetShareTextAndLink(UrlMapper)">
             <Button Class="btn-modal">
                 <Icon>
                     <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>

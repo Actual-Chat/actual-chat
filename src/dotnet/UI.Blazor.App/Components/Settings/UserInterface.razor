@@ -22,12 +22,12 @@
     <ThemeSettings/>
 </Tile>
 
-<TileTopic Topic="Chats"/>
+<TileTopic Topic="@L.UserInterface_Chats"/>
 <Tile>
     <TileItem Click="@OnToggleAuthorColors">
         <Icon><i class="icon-color-swatch text-2xl"></i></Icon>
-        <Content>Colorize author names</Content>
-        <Caption>@(m.IsAuthorColorsEnabled ? "On" : "Off")</Caption>
+        <Content>@L.UserInterface_ColorizeAuthorNames</Content>
+        <Caption>@(m.IsAuthorColorsEnabled ? L.RightPanel_On : L.RightPanel_Off)</Caption>
         <Right>
             <Toggle IsChecked="@m.IsAuthorColorsEnabled" IsCheckedChanged="@(_ => OnToggleAuthorColors())"/>
         </Right>

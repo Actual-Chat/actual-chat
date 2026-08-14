@@ -69,7 +69,7 @@
                     <div class="c-member-state">
                         @if (m.CanSetHost && member.AuthorId != live.Host
                             && member.Group != MemberGroup.Exited) {
-                            <button class="c-host-btn" title="Make host"
+                            <button class="c-host-btn" title="@L.Call_MakeHost"
                                     @onclick="@(() => OnMakeHostClick(live.ChatId, member))">
                                 <i class="icon-star"></i>
                             </button>

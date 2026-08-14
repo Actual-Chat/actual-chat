@@ -852,14 +852,42 @@ suffixes (`Sessions_DaysAgo_One`, `Sessions_DaysAgo_Other`).
 members (`src/dotnet/UI.Blazor/Resources/LocalizedStringsLocalizerExt.cs`), never the raw
 `L["..."]` indexer — the typed members are compile-time-safe against typos:
 
-- **Components** — use the `L` property that component base classes
-  (`ComponentBase<THub>`, `FusionComponentBase<THub>`,
-  `ComputedStateComponent<T>`, …) already expose: `@L.ChatMenu_Pin`,
-  `L.Settings_Quit_Format(appName)`. If the component doesn't derive from
-  a base exposing `L`, inject it:
-  `[Inject] private IStringLocalizer L { get; init; } = null!;`
-- **Services** — lazy-resolve:
+- **Components** — use the `L` property the `UIHub` base classes already expose:
+  `@L.ChatMenu_Pin`, `L.Settings_Quit_Format(appName)`. **If the component has no
+  such base, give it one — do NOT add `[Inject] private IStringLocalizer L`.**
+  Every base in `src/dotnet/UI.Blazor/BaseTypes/` exposes `L` (plus `Hub` and the
+  usual service shortcuts), so pick the one matching what the component already does:
+
+  | Component currently | Change `@inherits` to |
+  |---|---|
+  | plain `ComponentBase` / no `@inherits` | `ComponentBase<UIHub>` |
+  | `FusionComponentBase` | `FusionComponentBase<UIHub>` |
+  | `ComputedStateComponent<TState>` | `ComputedStateComponent<UIHub, TState>` |
+  | `ComputedRenderStateComponent<TState>` | `ComputedRenderStateComponent<UIHub, TState>` |
+
+  In `UI.Blazor.App` use `AppUIHub` instead of `UIHub`. Swapping the base is a
+  one-line change and costs nothing at runtime — `L` is just `Hub.StringLocalizer`.
+
+  **When no wrapper fits** (the component is stuck on a framework or Fusion base),
+  do *not* write a new `<THub, …>` wrapper for a single consumer — each wrapper
+  re-declares ~20 shortcut properties, so one is only worth it once several
+  components share the base. Instead:
+  - If the base derives from `CircuitHubComponentBase`, the hub is **already
+    injected** — just type it, the same way `ComputedStateComponent<THub, TState>`
+    does internally. Two lines, no new type:
+    ```csharp
+    private UIHub Hub => field ??= (UIHub)CircuitHub;
+    private IStringLocalizer L => Hub.StringLocalizer;
+    ```
+    (`ReconnectBanner` on Fusion's `StatefulComponentBase<TState>` is the only case.)
+  - Only if the base has no hub at all — a plain Blazor input base — fall back to
+    `[Inject] private IStringLocalizer L { get; init; } = null!;`. Today that is
+    `TextBox : InputText` and nothing else. Add a one-line comment saying why the
+    base is forced.
+- **Services** — derive from `UIServiceBase<THub>`, which exposes `L` the same way.
+  Only a service with no `UIServiceBase` base should lazy-resolve:
   `private IStringLocalizer L => field ??= Services.GetRequiredService<IStringLocalizer>();`
+  A `static` helper taking a hub reads it off the hub: `var l = hub.StringLocalizer;`
 
 **Dynamic text** (server-composed messages that cross RPC, e.g. exception
 messages) is not catalog material — it's localized at runtime via

@@ -64,6 +64,8 @@ public static class LocalizedStringsLocalizerExt
         public string UserInterface_RestartOnboarding => l["UserInterface_RestartOnboarding"].Value;
         public string UserInterface_WalkThroughRestarted => l["UserInterface_WalkThroughRestarted"].Value;
         public string UserInterface_OnboardingRestarted => l["UserInterface_OnboardingRestarted"].Value;
+        public string UserInterface_Chats => l["UserInterface_Chats"].Value;
+        public string UserInterface_ColorizeAuthorNames => l["UserInterface_ColorizeAuthorNames"].Value;
 
         public string YourAccount_Information => l["YourAccount_Information"].Value;
         public string YourAccount_Name => l["YourAccount_Name"].Value;
@@ -101,6 +103,9 @@ public static class LocalizedStringsLocalizerExt
             => l["Transcription_NoRetranscription_Format", arg0].Value;
         public string Transcription_Retranscription_Format(object arg0, object arg1)
             => l["Transcription_Retranscription_Format", arg0, arg1].Value;
+        public string Transcription_ContinuedListening => l["Transcription_ContinuedListening"].Value;
+        public string Transcription_LanguageDetected_Format(object arg0, object arg1)
+            => l["Transcription_LanguageDetected_Format", arg0, arg1].Value;
 
 
         public string Sessions_CurrentSession => l["Sessions_CurrentSession"].Value;
@@ -720,6 +725,15 @@ public static class LocalizedStringsLocalizerExt
         public string Onboarding_Tutorial3Description => l["Onboarding_Tutorial3Description"].Value;
         public string Onboarding_Tutorial4Title => l["Onboarding_Tutorial4Title"].Value;
         public string Onboarding_Tutorial4Description => l["Onboarding_Tutorial4Description"].Value;
+        public string Onboarding_PleaseVerifyPhone => l["Onboarding_PleaseVerifyPhone"].Value;
+        public string Onboarding_PhoneCollectionReason_Format(object arg0)
+            => l["Onboarding_PhoneCollectionReason_Format", arg0].Value;
+        public string Onboarding_PhoneSkipHint => l["Onboarding_PhoneSkipHint"].Value;
+        public string Onboarding_PleaseConfirmEmail => l["Onboarding_PleaseConfirmEmail"].Value;
+        public string Onboarding_EmailCollectionReason => l["Onboarding_EmailCollectionReason"].Value;
+        public string Onboarding_NameAndAvatar => l["Onboarding_NameAndAvatar"].Value;
+        public string Onboarding_GenerateAvatar => l["Onboarding_GenerateAvatar"].Value;
+        public string Onboarding_UploadPhoto => l["Onboarding_UploadPhoto"].Value;
         public string Permission_Microphone => l["Permission_Microphone"].Value;
         public string Permission_MicrophoneRationale_Format(object arg0)
             => l["Permission_MicrophoneRationale_Format", arg0].Value;
@@ -760,6 +774,10 @@ public static class LocalizedStringsLocalizerExt
         public string AvatarSelect_AnonymousHint => l["AvatarSelect_AnonymousHint"].Value;
         public string AvatarSelect_RegenerateAnonymous => l["AvatarSelect_RegenerateAnonymous"].Value;
         public string Avatar_AddAvatar => l["Avatar_AddAvatar"].Value;
+        public string Avatar_MakeDefault => l["Avatar_MakeDefault"].Value;
+        public string Avatar_MakeDefaultHint => l["Avatar_MakeDefaultHint"].Value;
+        public string Avatar_Delete => l["Avatar_Delete"].Value;
+        public string Avatar_UsedInThisChat => l["Avatar_UsedInThisChat"].Value;
         public string Bubble_CreateAvatarTitle => l["Bubble_CreateAvatarTitle"].Value;
         public string Bubble_CreateAvatarBody => l["Bubble_CreateAvatarBody"].Value;
         public string Bubble_CreateAvatarItem1 => l["Bubble_CreateAvatarItem1"].Value;
@@ -831,6 +849,22 @@ public static class LocalizedStringsLocalizerExt
         public string Place_WhomToAdd => l["Place_WhomToAdd"].Value;
         public string Place_AddCount_One(object arg0) => l["Place_AddCount_One", arg0].Value;
         public string Place_AddCount_Other(object arg0) => l["Place_AddCount_Other", arg0].Value;
+        public string Place_PublicPlace => l["Place_PublicPlace"].Value;
+        public string Place_PrivatePlace => l["Place_PrivatePlace"].Value;
+        public string Place_PublicHint => l["Place_PublicHint"].Value;
+        public string Place_PrivateHint => l["Place_PrivateHint"].Value;
+        public string Place_CopyInviteLink => l["Place_CopyInviteLink"].Value;
+        public string Place_CopyChat => l["Place_CopyChat"].Value;
+        public string Place_CopyChatIdPlaceholder => l["Place_CopyChatIdPlaceholder"].Value;
+        public string Place_CopyChatConfirm_Format(object arg0, object arg1)
+            => l["Place_CopyChatConfirm_Format", arg0, arg1].Value;
+        public string Place_CopyChatSuccess_Format(object arg0, object arg1)
+            => l["Place_CopyChatSuccess_Format", arg0, arg1].Value;
+        public string Place_CopyChatNoChanges_Format(object arg0, object arg1)
+            => l["Place_CopyChatNoChanges_Format", arg0, arg1].Value;
+        public string Place_PublishChatConfirm_Format(object arg0, object arg1)
+            => l["Place_PublishChatConfirm_Format", arg0, arg1].Value;
+        public string Place_PublishChatSuccess_Format(object arg0) => l["Place_PublishChatSuccess_Format", arg0].Value;
         public string Members_Owner => l["Members_Owner"].Value;
         public string Members_Moderator => l["Members_Moderator"].Value;
         public string Members_YourProfile => l["Members_YourProfile"].Value;
@@ -997,6 +1031,7 @@ public static class LocalizedStringsLocalizerExt
         public string SearchTabs_Date => l["SearchTabs_Date"].Value;
         public string Notifications_AllCaughtUp => l["Notifications_AllCaughtUp"].Value;
         public string Search_In => l["Search_In"].Value;
+        public string Search_CloseSearch => l["Search_CloseSearch"].Value;
         public string QuickNav_Placeholder => l["QuickNav_Placeholder"].Value;
         public string QuickNav_NoMatches => l["QuickNav_NoMatches"].Value;
         public string MentionList_NoMatches => l["MentionList_NoMatches"].Value;
@@ -1009,6 +1044,18 @@ public static class LocalizedStringsLocalizerExt
         public string ChatList_LeavePtt => l["ChatList_LeavePtt"].Value;
         public string ChatView_PinnedMessage => l["ChatView_PinnedMessage"].Value;
         public string IncomingShare_Title => l["IncomingShare_Title"].Value;
+        public string IncomingShare_Failed_One(object arg0) => l["IncomingShare_Failed_One", arg0].Value;
+        public string IncomingShare_Failed_Other(object arg0) => l["IncomingShare_Failed_Other", arg0].Value;
+        public string IncomingShare_CountOfTotal_Format(object arg0, object arg1)
+            => l["IncomingShare_CountOfTotal_Format", arg0, arg1].Value;
+        public string IncomingShare_ImagesShared_One(object arg0) => l["IncomingShare_ImagesShared_One", arg0].Value;
+        public string IncomingShare_ImagesShared_Other(object arg0)
+            => l["IncomingShare_ImagesShared_Other", arg0].Value;
+        public string IncomingShare_VideosShared_One(object arg0) => l["IncomingShare_VideosShared_One", arg0].Value;
+        public string IncomingShare_VideosShared_Other(object arg0)
+            => l["IncomingShare_VideosShared_Other", arg0].Value;
+        public string IncomingShare_FilesShared_One(object arg0) => l["IncomingShare_FilesShared_One", arg0].Value;
+        public string IncomingShare_FilesShared_Other(object arg0) => l["IncomingShare_FilesShared_Other", arg0].Value;
         public string ChatInvite_Title => l["ChatInvite_Title"].Value;
         public string ChatInvite_Processing => l["ChatInvite_Processing"].Value;
         public string ChatInvite_Failed_Format(object arg0) => l["ChatInvite_Failed_Format", arg0].Value;
@@ -1037,6 +1084,8 @@ public static class LocalizedStringsLocalizerExt
         public string Shortcuts_FirstLastItem => l["Shortcuts_FirstLastItem"].Value;
         public string Shortcuts_PressControl => l["Shortcuts_PressControl"].Value;
         public string Shortcuts_ToggleSelection => l["Shortcuts_ToggleSelection"].Value;
+        public string Shortcuts_ToggleTheme => l["Shortcuts_ToggleTheme"].Value;
+        public string Shortcuts_ToggleSafeAreas => l["Shortcuts_ToggleSafeAreas"].Value;
 
         public string LocationAccuracy_Topic => l["LocationAccuracy_Topic"].Value;
 
@@ -1057,6 +1106,8 @@ public static class LocalizedStringsLocalizerExt
         public string Common_Dismiss => l["Common_Dismiss"].Value;
         public string Common_Info => l["Common_Info"].Value;
         public string Common_NotImplemented => l["Common_NotImplemented"].Value;
+        public string Common_Clear => l["Common_Clear"].Value;
+        public string Common_Change => l["Common_Change"].Value;
         public string Download_AndroidApp => l["Download_AndroidApp"].Value;
         public string Download_MobileTablet => l["Download_MobileTablet"].Value;
         public string Download_IosApp => l["Download_IosApp"].Value;
@@ -1065,6 +1116,7 @@ public static class LocalizedStringsLocalizerExt
         public string Download_WebApp => l["Download_WebApp"].Value;
         public string Download_MobileDesktop => l["Download_MobileDesktop"].Value;
         public string Download_SignInToWebApp => l["Download_SignInToWebApp"].Value;
+        public string Download_QrCode_Format(object arg0) => l["Download_QrCode_Format", arg0].Value;
         public string Redirect_To => l["Redirect_To"].Value;
         public string Error_AwSnap => l["Error_AwSnap"].Value;
         public string Error_Title => l["Error_Title"].Value;
@@ -1076,6 +1128,10 @@ public static class LocalizedStringsLocalizerExt
         public string Error_AdminOnly => l["Error_AdminOnly"].Value;
         public string Error_NotFoundTitle => l["Error_NotFoundTitle"].Value;
         public string Error_NotFoundText => l["Error_NotFoundText"].Value;
+        public string Error_BarrierFullText => l["Error_BarrierFullText"].Value;
+        public string Error_BarrierText => l["Error_BarrierText"].Value;
+        public string Error_Reload => l["Error_Reload"].Value;
+        public string Error_ReloadIn_Format(object arg0) => l["Error_ReloadIn_Format", arg0].Value;
 
         public string Verify_PleaseVerifyEmail => l["Verify_PleaseVerifyEmail"].Value;
         public string Verify_EnterCodeSentTo_Prefix => l["Verify_EnterCodeSentTo_Prefix"].Value;
@@ -1090,6 +1146,12 @@ public static class LocalizedStringsLocalizerExt
         public string SignIn_VerificationCode => l["SignIn_VerificationCode"].Value;
         public string SignIn_CodeSent => l["SignIn_CodeSent"].Value;
         public string SignIn_Unavailable => l["SignIn_Unavailable"].Value;
+        public string SignIn_WelcomeNamed_Format(object arg0, object arg1)
+            => l["SignIn_WelcomeNamed_Format", arg0, arg1].Value;
+        public string SignIn_SignInWith_Format(object arg0) => l["SignIn_SignInWith_Format", arg0].Value;
+        public string SignIn_Or => l["SignIn_Or"].Value;
+        public string SignIn_VerifyPhoneText_Format(object arg0) => l["SignIn_VerifyPhoneText_Format", arg0].Value;
+        public string SignIn_VerifyEmailText_Format(object arg0) => l["SignIn_VerifyEmailText_Format", arg0].Value;
         public string JoinRequest_NotMember => l["JoinRequest_NotMember"].Value;
         public string JoinRequest_Text => l["JoinRequest_Text"].Value;
         public string JoinRequest_Send => l["JoinRequest_Send"].Value;
@@ -1131,6 +1193,21 @@ public static class LocalizedStringsLocalizerExt
         public string Chat_ArchiveTitle => l["Chat_ArchiveTitle"].Value;
         public string Chat_Archive => l["Chat_Archive"].Value;
         public string Chat_ArchiveWarning_Format(object arg0) => l["Chat_ArchiveWarning_Format", arg0].Value;
+        public string Chat_PublicChat => l["Chat_PublicChat"].Value;
+        public string Chat_PlaceChat => l["Chat_PlaceChat"].Value;
+        public string Chat_PublicChatHint => l["Chat_PublicChatHint"].Value;
+        public string Chat_PlaceChatHint => l["Chat_PlaceChatHint"].Value;
+        public string Chat_PrivateChat => l["Chat_PrivateChat"].Value;
+        public string Chat_PrivateChatHint => l["Chat_PrivateChatHint"].Value;
+        public string Chat_AllowGuests => l["Chat_AllowGuests"].Value;
+        public string Chat_AllowGuestsHint => l["Chat_AllowGuestsHint"].Value;
+        public string Chat_AllowAnonymous => l["Chat_AllowAnonymous"].Value;
+        public string Chat_AllowAnonymousHint => l["Chat_AllowAnonymousHint"].Value;
+        public string Chat_UseAsTemplate => l["Chat_UseAsTemplate"].Value;
+        public string Chat_UseAsTemplateHint => l["Chat_UseAsTemplateHint"].Value;
+        public string Chat_NewThread => l["Chat_NewThread"].Value;
+        public string Chat_GeneratingSmartTitle => l["Chat_GeneratingSmartTitle"].Value;
+        public string Chat_GeneratingSmartTitleHint => l["Chat_GeneratingSmartTitleHint"].Value;
 
         public string Video_IdleTitle => l["Video_IdleTitle"].Value;
         public string Video_ContinueSessionTitle => l["Video_ContinueSessionTitle"].Value;
@@ -1147,6 +1224,7 @@ public static class LocalizedStringsLocalizerExt
         public string Call_Ended => l["Call_Ended"].Value;
         public string Call_CouldntStart => l["Call_CouldntStart"].Value;
         public string Call_RecordingTurnedOffByHost => l["Call_RecordingTurnedOffByHost"].Value;
+        public string Call_MakeHost => l["Call_MakeHost"].Value;
         public string Share_FailedToShareFiles => l["Share_FailedToShareFiles"].Value;
         public string Share_PrivateChatJoinLink => l["Share_PrivateChatJoinLink"].Value;
         public string Share_PrivatePlaceJoinLink => l["Share_PrivatePlaceJoinLink"].Value;
@@ -1199,5 +1277,13 @@ public static class LocalizedStringsLocalizerExt
         public string Duration_Days_Format(object arg0) => l["Duration_Days_Format", arg0].Value;
         public string Duration_Hours_Format(object arg0) => l["Duration_Hours_Format", arg0].Value;
         public string Duration_Minutes_Format(object arg0) => l["Duration_Minutes_Format", arg0].Value;
+
+        public string Invite_ManageLinks => l["Invite_ManageLinks"].Value;
+        public string Invite_NewPrivateLink => l["Invite_NewPrivateLink"].Value;
+
+        public string ChatSettings_UsePlaceSettingsForMembers => l["ChatSettings_UsePlaceSettingsForMembers"].Value;
+        public string ChatSettings_LeaveChatAndDelete => l["ChatSettings_LeaveChatAndDelete"].Value;
+
+        public string PlaceSettings_LeavePlaceAndDelete => l["PlaceSettings_LeavePlaceAndDelete"].Value;
     }
 }

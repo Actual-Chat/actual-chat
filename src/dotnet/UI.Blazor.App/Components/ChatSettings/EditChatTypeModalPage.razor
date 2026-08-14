@@ -17,10 +17,8 @@
     var isPlaceChat = _placeId is not null;
     var canChangeChatType = _placeId is null
         || _place is not null && _place.Rules.CanApplyPublicChatType() && !_isPlaceWelcomeChat;
-    var publicChatLabel = !isPlaceChat ? "Public chat" : "Place chat";
-    var publicChatHint = !isPlaceChat ?
-        "Anyone can join this chat by navigating to its URL" :
-        "All members of this Place will see it in Place's chat list and will be able to talk there";
+    var publicChatLabel = !isPlaceChat ? L.Chat_PublicChat : L.Chat_PlaceChat;
+    var publicChatHint = !isPlaceChat ? L.Chat_PublicChatHint : L.Chat_PlaceChatHint;
     var onMakeChatPublicClick = canChangeChatType ? EventCallback.Factory.Create(this, () => OnPublicChatClick(true)) : new EventCallback(null, null);
     var onMakeChatPrivateClick = canChangeChatType ? EventCallback.Factory.Create(this, () => OnPublicChatClick(false)) : new EventCallback(null, null);
 }
@@ -31,7 +29,7 @@
     }
     <DataAnnotationsValidator />
     <FormBlock Class="with-input-radio first">
-        <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
+        <InputRadioGroup Name="chat_type" DisplayName="@L.Chat_TypeTitle" @bind-Value="_form.IsPublic">
             <TileItem
                 Class="@(_form.IsPublic ? "clickable selected" : "clickable")"
                 Click="@onMakeChatPublicClick">
@@ -52,10 +50,10 @@
                     <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat" IsRequired="true"></Label>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="@L.Chat_PrivateChat" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    Can be joined only if you are invited / have an invite link
+                    @L.Chat_PrivateChatHint
                 </Caption>
             </TileItem>
         </InputRadioGroup>
@@ -105,7 +103,7 @@
             </TileItem>
         </FormBlock>
     } else if (m.Chat.CanInvite()) {
-        <FormBlock Title="Manage links" Class="first last">
+        <FormBlock Title="@L.Invite_ManageLinks" Class="first last">
             @if (m.Invites.Count > 0) {
                 <InviteList
                     Invites="m.Invites"
@@ -115,7 +113,7 @@
             }
             <Button IsDisabled="@(m.Invites.Count >= MaxInviteCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
                 <Icon><i class="icon-plus text-xl"></i></Icon>
-                <Title>New private join link</Title>
+                <Title>@L.Invite_NewPrivateLink</Title>
             </Button>
         </FormBlock>
     }
@@ -128,10 +126,10 @@
                         <i class="icon-guest"></i>
                     </Icon>
                     <Content>
-                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
+                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="@L.Chat_AllowGuests"></Label>
                     </Content>
                     <Caption>
-                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
+                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="@L.Chat_AllowGuestsHint"></Label>
                     </Caption>
                     <Right>
                         <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
@@ -144,10 +142,10 @@
                         <i class="icon-anonym"></i>
                     </Icon>
                     <Content>
-                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
+                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="@L.Chat_AllowAnonymous"></Label>
                     </Content>
                     <Caption>
-                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
+                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="@L.Chat_AllowAnonymousHint"></Label>
                     </Caption>
                     <Right>
                         <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
@@ -162,10 +160,10 @@
                         <i class="icon-file-text"></i>
                     </Icon>
                     <Content>
-                        <Label InputId="@_form.IsTemplateFormId" Text="Use chat as a template"></Label>
+                        <Label InputId="@_form.IsTemplateFormId" Text="@L.Chat_UseAsTemplate"></Label>
                     </Content>
                     <Caption>
-                        <Label InputId="@_form.IsTemplateFormId" Text="Template for embedded chats"></Label>
+                        <Label InputId="@_form.IsTemplateFormId" Text="@L.Chat_UseAsTemplateHint"></Label>
                     </Caption>
                     <Right>
                         <ToggleEdit Id="@_form.IsTemplateFormId" @bind-Value="_form.IsTemplate"/>

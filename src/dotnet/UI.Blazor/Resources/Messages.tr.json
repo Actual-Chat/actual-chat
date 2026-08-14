@@ -122,5 +122,6 @@
   // Live location
   "Error_JoinChatToShareLocation": "Konumunuzu paylaşmadan önce sohbete katılın.",
   "Error_CanChangeOwnLocationsOnly": "Bu sohbette yalnızca kendi paylaştığınız konumu değiştirebilirsiniz.",
-  "Error_LocationSharingLimit_Format": "Bu sohbette canlı konum paylaşan kişi sayısı en fazla {limit} olabilir ve bu sınıra ulaşıldı."
+  "Error_LocationSharingLimit_Format": "Bu sohbette canlı konum paylaşan kişi sayısı en fazla {limit} olabilir ve bu sınıra ulaşıldı.",
+  "Error_FailedToAddFileAttachment": "Dosya eki eklenemedi."
 }

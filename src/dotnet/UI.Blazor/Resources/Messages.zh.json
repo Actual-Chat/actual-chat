@@ -122,5 +122,6 @@
   // Live location
   "Error_JoinChatToShareLocation": "共享位置前请先加入该聊天。",
   "Error_CanChangeOwnLocationsOnly": "在该聊天中您只能更改自己共享的位置。",
-  "Error_LocationSharingLimit_Format": "该聊天中共享实时位置的人数已达上限 {limit} 人。"
+  "Error_LocationSharingLimit_Format": "该聊天中共享实时位置的人数已达上限 {limit} 人。",
+  "Error_FailedToAddFileAttachment": "添加文件附件失败。"
 }

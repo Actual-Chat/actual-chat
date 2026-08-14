@@ -122,5 +122,6 @@
   // Live location
   "Error_JoinChatToShareLocation": "Hãy tham gia cuộc trò chuyện trước khi chia sẻ vị trí.",
   "Error_CanChangeOwnLocationsOnly": "Trong cuộc trò chuyện này, bạn chỉ có thể thay đổi vị trí bạn đã chia sẻ.",
-  "Error_LocationSharingLimit_Format": "Cuộc trò chuyện này đã đạt tối đa {limit} người chia sẻ vị trí trực tiếp."
+  "Error_LocationSharingLimit_Format": "Cuộc trò chuyện này đã đạt tối đa {limit} người chia sẻ vị trí trực tiếp.",
+  "Error_FailedToAddFileAttachment": "Không thể thêm tệp đính kèm."
 }

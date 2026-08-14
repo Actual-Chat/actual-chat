@@ -12,9 +12,9 @@
 }
 
 <div class="left-chat-search-input @cls @placeCls">
-    <Hotkey Keys="ctrl+f" AriaLabel="Search" OnTrigger="OnSearchHotkey"/>
+    <Hotkey Keys="ctrl+f" AriaLabel="@L.Common_Search" OnTrigger="OnSearchHotkey"/>
     @if (m.IsOpen) {
-        <Hotkey Keys="escape" AriaLabel="Close search" OnTrigger="@(() => OnClick(false))"/>
+        <Hotkey Keys="escape" AriaLabel="@L.Search_CloseSearch" OnTrigger="@(() => OnClick(false))"/>
     }
     <div class="c-search">
         <div class="search-input">

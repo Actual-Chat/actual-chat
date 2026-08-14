@@ -122,5 +122,6 @@
   // Live location
   "Error_JoinChatToShareLocation": "Rejoignez le chat avant de partager votre position.",
   "Error_CanChangeOwnLocationsOnly": "Dans ce chat, vous ne pouvez modifier que votre propre position partagée.",
-  "Error_LocationSharingLimit_Format": "Ce chat a déjà atteint le maximum de {limit} personnes partageant leur position en direct."
+  "Error_LocationSharingLimit_Format": "Ce chat a déjà atteint le maximum de {limit} personnes partageant leur position en direct.",
+  "Error_FailedToAddFileAttachment": "Impossible d'ajouter la pièce jointe."
 }

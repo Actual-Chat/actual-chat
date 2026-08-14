@@ -9,7 +9,7 @@
 }
 
 <div class="avatar-step">
-    <p class="step-subtitle">Your user name and avatar</p>
+    <p class="step-subtitle">@L.Onboarding_NameAndAvatar</p>
     <Form
         @ref="_formRef"
         Model="@_model">
@@ -23,7 +23,7 @@
             <div class="c-buttons">
                 <Button Class="btn-modal btn-sm btn-transparent" Click="OnGenerateAvatarClick">
                     <Icon><i class="icon-sync text-xl text-primary"></i></Icon>
-                    <Title>Generate avatar</Title>
+                    <Title>@L.Onboarding_GenerateAvatar</Title>
                 </Button>
                 <FileUpload
                     @key="@_model.AvatarId.Value"
@@ -38,7 +38,7 @@
                 <Button Class="btn-modal btn-sm btn-transparent">
                     <Icon><i class="icon-image text-xl text-primary"></i></Icon>
                     <Title>
-                        <label for="fileUpload" class="upload-label">Upload your photo</label>
+                        <label for="fileUpload" class="upload-label">@L.Onboarding_UploadPhoto</label>
                     </Title>
                 </Button>
             </div>

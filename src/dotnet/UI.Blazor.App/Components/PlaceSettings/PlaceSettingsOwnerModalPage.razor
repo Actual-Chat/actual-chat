@@ -104,10 +104,10 @@
                 <i class="icon-key text-xl"></i>
             </Icon>
             <Content>
-                Place type
+                @L.Place_TypeTitle
             </Content>
             <Right>
-                @(m.Place.IsPublic ? "Public" : "Private")
+                @(m.Place.IsPublic ? L.Place_Public : L.Place_Private)
             </Right>
         </TileItem>
     </div>
@@ -120,7 +120,7 @@
                         <i class="icon-people"></i>
                     </Icon>
                     <Content>
-                        @m.MemberCount Members
+                        @(m.MemberCount == 1 ? L.Place_MembersLabel_One(m.MemberCount) : L.Place_MembersLabel_Other(m.MemberCount))
                     </Content>
                     <Right>
                         <i class="icon-chevron-right text-3xl"></i>
@@ -133,12 +133,12 @@
                         <i class="icon-cloud-upload text-xl"></i>
                     </Icon>
                     <Content>
-                        Copy chat into this Place
+                        @L.Place_CopyChatInto
                     </Content>
                 </TileItem>
                 <TileItem Class="item-leave-group item-danger" Click="@(() => OnPlaceDeleteClick())">
                     <Icon><i class="icon-log-out"></i></Icon>
-                    <Content>Leave place & delete</Content>
+                    <Content>@L.PlaceSettings_LeavePlaceAndDelete</Content>
                 </TileItem>
             }
         </div>

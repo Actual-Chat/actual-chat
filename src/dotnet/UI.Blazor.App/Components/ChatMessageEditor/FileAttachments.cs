@@ -131,7 +131,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                 .WithErrorLog(Log, "Failed to cleanup file provider")
                 .SilentAwait();
             Log.LogError(ex, "Failed to add file attachment");
-            UICommander.ShowError("Failed to add file attachment.");
+            UICommander.ShowError(StandardError.Constraint("Failed to add file attachment."));
             return false;
         }
         // NOTE: Start upload immediately after adding attachments.

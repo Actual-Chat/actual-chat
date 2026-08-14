@@ -130,5 +130,6 @@
   // Live location
   "Error_JoinChatToShareLocation": "Please join the chat before sharing your location.",
   "Error_CanChangeOwnLocationsOnly": "You can change only your own shared locations in this chat.",
-  "Error_LocationSharingLimit_Format": "This chat already has the maximum of {limit} people sharing their live location."
+  "Error_LocationSharingLimit_Format": "This chat already has the maximum of {limit} people sharing their live location.",
+  "Error_FailedToAddFileAttachment": "Failed to add file attachment."
 }

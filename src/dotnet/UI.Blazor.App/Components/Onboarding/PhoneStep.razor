@@ -7,12 +7,12 @@
 }
 
 <div class="phone-verifier">
-    <p class="step-title">Welcome to @CoreConstants.AppName!</p>
+    <p class="step-title">@L.Onboarding_Welcome_Format(CoreConstants.AppName)</p>
     <p class="step-subtitle">
-        Please verify your phone number
+        @L.Onboarding_PleaseVerifyPhone
     </p>
     <p class="step-comment">
-        We collect this information to help you find friends in your contacts list who are already using @CoreConstants.AppName.
+        @L.Onboarding_PhoneCollectionReason_Format(CoreConstants.AppName)
     </p>
     <Form
         @ref="@_formRef"
@@ -48,10 +48,10 @@
                     Class="verify-btn btn-w-full"
                     IsDisabled="@(_validationState is ValidationState.Invalid || !_formRef.IsValid || _model.Phone.IsNullOrWhiteSpace())"
                     Click="@OnVerifyClick">
-                    @(_validationState is ValidationState.Invalid ? "Unavailable" : "Verify")
+                    @(_validationState is ValidationState.Invalid ? L.SignIn_Unavailable : L.Common_Verify)
                 </Button>
                 <div class="c-info">
-                    You can skip this step. The phone number can be filled in later.
+                    @L.Onboarding_PhoneSkipHint
                 </div>
             </div>
         }

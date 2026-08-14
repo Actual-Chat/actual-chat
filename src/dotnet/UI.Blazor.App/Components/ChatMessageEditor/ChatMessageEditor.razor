@@ -25,7 +25,7 @@
 <OnUIEvent TEvent="@EmojiButtonClickEvent" Handler="OnEmojiButtonClickEvent" />
 <OnUIEvent TEvent="@ShareLocationButtonClickEvent" Handler="OnShareLocationButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor has-safe-area-bottom">
-    <Hotkey Keys="ctrl+e" AriaLabel="Focus message editor" OnTrigger="OnFocusEditorRequested"/>
+    <Hotkey Keys="ctrl+e" AriaLabel="@L.Shortcuts_FocusEditor" OnTrigger="OnFocusEditorRequested"/>
     <input class="attachment-web-file-picker" type="file" multiple tabindex="-1"/>
     <MentionListManager @key="@MentionListManagerKey">
         <div class="c-content">

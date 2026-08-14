@@ -1,13 +1,12 @@
-@using ActualChat.UI.Blazor.Module
-@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <div class="@Class search-box">
     <label>
         <TextInput
             @ref="_inputRef"
             Class="w-full dialog-unstyled"
-            Placeholder="@Placeholder"
+            Placeholder="@(Placeholder ?? L.Common_Search)"
             MaxLength="@MaxLength"
             TextChanged="OnInput">
         </TextInput>
@@ -16,7 +15,7 @@
             <HeaderButton
                 Class="btn-sm text-box-btn"
                 Click="@OnClearClick"
-                data-tooltip="Clear"
+                data-tooltip="@L.Common_Clear"
                 data-tooltip-position="@(FloatingPosition.Top.ToPositionString())">
                 <i class="icon-close"></i>
             </HeaderButton>
@@ -35,7 +34,7 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public int? MaxLength { get; set; }
-    [Parameter] public string Placeholder { get; set; } = "Search...";
+    [Parameter] public string? Placeholder { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; }
     [Parameter] public bool ClearButton { get; set; }
     [Parameter] public EventCallback OnCloseClick { get; set; }

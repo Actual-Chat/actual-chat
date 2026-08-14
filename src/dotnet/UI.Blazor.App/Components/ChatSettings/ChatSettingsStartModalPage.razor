@@ -14,7 +14,7 @@
 
     Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var isPlaceChat = m.IsPlace;
-    var publicChatLabel = !isPlaceChat ? "Public" : "Place";
+    var publicChatLabel = !isPlaceChat ? L.Place_Public : L.Chat_TypePlace;
     var isThread = m.Chat.Id.IsThread();
     var canEditChatPic = !isThread;
     var canEditChatType = !isThread && m.IsOwner;
@@ -89,10 +89,10 @@
                     <i class="icon-key text-xl"></i>
                 </Icon>
                 <Content>
-                    Chat type
+                    @L.Chat_TypeTitle
                 </Content>
                 <Right>
-                    @(m.IsPublic ? $"{publicChatLabel}" : "Private")
+                    @(m.IsPublic ? publicChatLabel : L.Place_Private)
                 </Right>
             </TileItem>
         }
@@ -104,7 +104,7 @@
                         <i class="icon-people"></i>
                     </Icon>
                     <Content>
-                        @m.MemberCount Members
+                        @(m.MemberCount == 1 ? L.Place_MembersLabel_One(m.MemberCount) : L.Place_MembersLabel_Other(m.MemberCount))
                     </Content>
                     <Right>
                         <i class="icon-chevron-right text-3xl"></i>
@@ -116,10 +116,10 @@
                         <i class="icon-people"></i>
                     </Icon>
                     <Content>
-                        @m.MemberCount Members
+                        @(m.MemberCount == 1 ? L.Place_MembersLabel_One(m.MemberCount) : L.Place_MembersLabel_Other(m.MemberCount))
                     </Content>
                     <Caption>
-                        Use place settings to edit members
+                        @L.ChatSettings_UsePlaceSettingsForMembers
                     </Caption>
                 </TileItem>
             }
@@ -127,19 +127,19 @@
             @if (m is { IsOwner: true, Chat: not null } && !_isPlaceWelcomeChat) {
                 <TileItem Class="item-archive-chat item-danger" Click="@(() => OnArchiveChatClick(m.Chat))">
                     <Icon><i class="icon-history"></i></Icon>
-                    <Content>Archive chat</Content>
+                    <Content>@L.Chat_ArchiveTitle</Content>
                 </TileItem>
 
                 <TileItem Class="item-leave-group item-danger" Click="@(() => OnDeleteChatClick(m.Chat))">
                     <Icon><i class="icon-log-out"></i></Icon>
-                    <Content>Leave chat & delete</Content>
+                    <Content>@L.ChatSettings_LeaveChatAndDelete</Content>
                 </TileItem>
             }
         }
         else if (m.CanRemoveThread) {
             <TileItem Class="item-leave-group item-danger" Click="@(() => OnDeleteThreadClick(m.Chat))">
                 <Icon><i class="icon-trash02"></i></Icon>
-                <Content>Delete thread</Content>
+                <Content>@L.LeaveConfirm_DeleteThreadTitle</Content>
             </TileItem>
         }
     </div>

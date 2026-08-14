@@ -122,5 +122,6 @@
   // Live location
   "Error_JoinChatToShareLocation": "अपनी लोकेशन साझा करने से पहले चैट में शामिल हों।",
   "Error_CanChangeOwnLocationsOnly": "इस चैट में आप केवल अपनी साझा की गई लोकेशन बदल सकते हैं।",
-  "Error_LocationSharingLimit_Format": "इस चैट में लाइव लोकेशन साझा करने वालों की अधिकतम संख्या {limit} पहले ही पूरी हो चुकी है।"
+  "Error_LocationSharingLimit_Format": "इस चैट में लाइव लोकेशन साझा करने वालों की अधिकतम संख्या {limit} पहले ही पूरी हो चुकी है।",
+  "Error_FailedToAddFileAttachment": "फ़ाइल अटैचमेंट जोड़ा नहीं जा सका।"
 }
