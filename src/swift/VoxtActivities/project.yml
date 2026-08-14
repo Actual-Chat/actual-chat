@@ -1,0 +1,50 @@
+name: VoxtActivities
+
+options:
+  bundleIdPrefix: chat.actual
+  createIntermediateGroups: true
+  minimumXcodeGenVersion: "2.38.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    # Unsigned on purpose: the .NET iOS SDK signs the .appex when it embeds it,
+    # and the static lib is signed as part of the app executable.
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: ""
+    DEVELOPMENT_TEAM: ""
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+targets:
+  VoxtActivityKitShim:
+    type: library.static
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources: [Shared, Shim]
+    settings:
+      base:
+        PRODUCT_NAME: VoxtActivityKitShim
+        SKIP_INSTALL: YES
+
+  VoxtActivitiesWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "16.1"
+    sources:
+      - path: Shared
+      - path: Widget
+        excludes: [Info.plist]
+      - path: Widget/Info.plist
+        buildPhase: none
+    settings:
+      base:
+        # PRODUCT_NAME drives the .appex name and must stay in step with the
+        # AdditionalAppExtensions Name metadata; the bundle id is independent of it.
+        PRODUCT_NAME: VoxtActivitiesWidget
+        # Overridden per flavor from build.sh; the app's own id + ".widget".
+        PRODUCT_BUNDLE_IDENTIFIER: chat.actual.dev.app.widget
+        INFOPLIST_FILE: Widget/Info.plist
+        SKIP_INSTALL: YES
+        LD_RUNPATH_SEARCH_PATHS: [$(inherited), "@executable_path/Frameworks", "@executable_path/../../Frameworks"]

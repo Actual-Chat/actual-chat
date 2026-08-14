@@ -31,6 +31,14 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
                 Category = StateCategories.Get(GetType(), nameof(_shares)),
             });
 
+    [ComputeMethod]
+    public virtual async Task<ImmutableArray<ChatId>> GetActiveShareChatIds(CancellationToken cancellationToken)
+    {
+        // ReSharper disable once InconsistentlySynchronizedField
+        var shares = await _shares.Use(cancellationToken).ConfigureAwait(false);
+        return shares.Select(x => x.ChatId).Distinct().ToImmutableArray();
+    }
+
     public void StartSharing(ChatId chatId, TimeSpan duration)
     {
         // The replaced shares' server rows must be stopped too — dropping them from _shares
@@ -52,6 +60,16 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         lock (_lock) {
             stopped = _shares.Value.Where(x => x.ChatId == chatId).ToArray();
             _shares.Value = _shares.Value.Where(x => x.ChatId != chatId).ToArray();
+        }
+        await StopServerShares(stopped, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task StopAllSharing(CancellationToken cancellationToken)
+    {
+        ActiveShare[] stopped;
+        lock (_lock) {
+            stopped = _shares.Value;
+            _shares.Value = [];
         }
         await StopServerShares(stopped, cancellationToken).ConfigureAwait(false);
     }

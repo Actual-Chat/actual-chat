@@ -52,7 +52,7 @@ internal class MauiAppAotSource : IAotSource
         CodeKeeper.Keep<MainActivity>();
         CodeKeeper.Keep<MainApplication>();
         CodeKeeper.Keep<AlarmReceiver>();
-        CodeKeeper.Keep<ActualChat.App.Maui.Audio.AndroidAudioWidgetForegroundService>();
+        CodeKeeper.Keep<ActualChat.App.Maui.Activities.AndroidActivitiesForegroundService>();
         CodeKeeper.Keep<FirebaseMessagingService>();
 #endif
 

@@ -201,6 +201,6 @@ src/dotnet/
       ├ IAudioInfoBackend.cs
       ├ PlaybackLagTracker.cs
       ├ Playback/{ChatPlayer,ChatListener,ChatReplayer,ChatAudioTrackInfo,
-      │           AudioWidget,AudioFramesExt,IAudioCatchUpPolicy}.cs
+      │           AudioFramesExt,IAudioCatchUpPolicy}.cs
       └ {audio-context-source,audio-context-traits,audio-stream-fader}.ts
 ```

@@ -30,6 +30,20 @@ public static class NotificationHelper
     {
         public const string DefaultChannelId = "default_channel";
         public const string AttentionChannelId = "internal_attention_channel";
+        public const string ActivityUploadChannelId = "activity_upload";
+    }
+
+    public static void EnsureActivityChannelsExist(Context context)
+    {
+        var manager = (NotificationManager)context.GetSystemService(Context.NotificationService)!;
+        if (manager.GetNotificationChannel(Constants.ActivityUploadChannelId) != null)
+            return;
+        var channel = new NotificationChannel(
+            Constants.ActivityUploadChannelId,
+            "Uploads",
+            NotificationImportance.Low);
+        channel.SetShowBadge(false);
+        manager.CreateNotificationChannel(channel);
     }
 
     // Builds and shows a chat notification under the given tag. Shared by the FCM receive path

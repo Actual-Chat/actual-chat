@@ -63,7 +63,15 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<RecentGifsUI>();
         fusion.AddService<LinkPreviewUI>(ServiceLifetime.Scoped);
         fusion.AddService<PeerBlockUI>(ServiceLifetime.Scoped);
-        fusion.AddService<BackgroundActivityUI, PlaybackAndRecordingBackgroundActivityUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ActivitiesUI>(ServiceLifetime.Scoped);
+        services.AddScoped<IAppActivityState>(c => c.GetRequiredService<ActivitiesUI>());
+        services.TryAddScoped<ILiveActivitiesAvailability>(_ => new DefaultLiveActivitiesAvailability());
+        fusion.AddService<AudioActivitySource>(ServiceLifetime.Scoped);
+        services.AddScoped<IActivitySource>(c => c.GetRequiredService<AudioActivitySource>());
+        fusion.AddService<LocationActivitySource>(ServiceLifetime.Scoped);
+        services.AddScoped<IActivitySource>(c => c.GetRequiredService<LocationActivitySource>());
+        fusion.AddService<UploadActivitySource>(ServiceLifetime.Scoped);
+        services.AddScoped<IActivitySource>(c => c.GetRequiredService<UploadActivitySource>());
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));
         services.AddScoped(c => new ChatPinsUI(c.AppUIHub()));
         services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));
@@ -244,7 +252,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
         }
-        services.AddScoped(c => new AudioWidget(c.AppUIHub()));
+        services.AddScoped(c => new ActivitiesBackend(c.AppUIHub()));
         services.AddScoped(c => new AudioAttachmentPlayer(c.AppUIHub()));
 
         // IModalViews

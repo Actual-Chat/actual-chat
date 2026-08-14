@@ -18,7 +18,7 @@ public sealed partial class AudioInitializer(UIHub hub)
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private DotNetObjectReference<IAudioInfoBackend>? _backendRef;
 
-    private BackgroundActivityUI BackgroundActivityUI => field ??= Services.GetRequiredService<BackgroundActivityUI>();
+    private IAppActivityState ActivityState => field ??= Services.GetRequiredService<IAppActivityState>();
 
     public Task WhenInitialized => _whenInitializedSource.Task;
 
@@ -77,15 +77,15 @@ public sealed partial class AudioInitializer(UIHub hub)
 
     private async Task PushBackgroundActivityState(CancellationToken cancellationToken)
     {
-        var prevState = (BackgroundActivityState?)null; // Assuming "unknown"
-        var changes = BackgroundActivityUI.State.Computed.ChangesUntyped(cancellationToken);
+        var prevState = (AppActivityState?)null; // Assuming "unknown"
+        var changes = ActivityState.State.Computed.ChangesUntyped(cancellationToken);
         await foreach (var c in changes.ConfigureAwait(false)) {
-            var cState = (Computed<BackgroundActivityState>)c;
+            var cState = (Computed<AppActivityState>)c;
             var state = cState.Value;
             if (state == prevState)
                 continue;
 
-            Log.LogInformation("BackgroundActivityUI.State changed: {OldState} -> {State}", prevState, state);
+            Log.LogInformation("AppActivityState.State changed: {OldState} -> {State}", prevState, state);
             prevState = state;
             await JS
                 .InvokeVoidAsync(JSSetBackgroundActivityStateMethod, CancellationToken.None, state.ToString())

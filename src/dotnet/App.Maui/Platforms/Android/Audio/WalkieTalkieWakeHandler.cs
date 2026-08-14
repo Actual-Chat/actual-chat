@@ -1,7 +1,10 @@
+using ActualChat.App.Maui.Activities;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using Android.Content;
-using IntentExtras = ActualChat.App.Maui.Audio.AndroidAudioWidgetForegroundService.IntentExtras;
+using ActivityKind = ActualChat.UI.Blazor.Services.ActivityKind;
+using IntentExtras = ActualChat.App.Maui.Activities.AndroidActivitiesForegroundService.IntentExtras;
 
 namespace ActualChat.App.Maui.Audio;
 
@@ -68,9 +71,10 @@ public static class WalkieTalkieWakeHandler
         // foreground without waiting for the widget to work the armed set out. See MainActivity.
         MauiPreferences.IsWalkieArmed = true;
         var context = Platform.AppContext;
-        var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
-        intent.SetAction(AndroidAudioWidgetForegroundService.ActionShow);
-        intent.PutExtra(IntentExtras.Mode, (int)AudioWidgetMode.Listening);
+        var intent = new Intent(context, typeof(AndroidActivitiesForegroundService));
+        intent.SetAction(AndroidActivitiesForegroundService.ActionShow);
+        intent.PutExtra(IntentExtras.Kind, (int)ActivityKind.Listening);
+        intent.PutExtra(IntentExtras.ServiceTypes, (int)ActivityServiceTypes.Playback);
         intent.PutExtra(IntentExtras.ChatId, chatId.Value);
         intent.PutExtra(IntentExtras.ChatTitle, title);
         intent.PutExtra(IntentExtras.ChatPicUri, "");
@@ -80,10 +84,10 @@ public static class WalkieTalkieWakeHandler
         // TryStart, not StartForegroundService: the fast-fail wake below stops the service before
         // OnStartCommand can run, and only the registered start defers that stop instead of
         // letting Android kill us with ForegroundServiceDidNotStartInTimeException.
-        if (!AndroidAudioWidgetForegroundService.TryStart(context, intent))
+        if (!AndroidActivitiesForegroundService.TryStart(context, intent))
             return false;
 
-        AndroidAudioWidget.MarkForegroundServiceShown();
+        AndroidActivitiesBackend.MarkForegroundServiceShown();
         return true;
     }
 
@@ -91,11 +95,11 @@ public static class WalkieTalkieWakeHandler
     {
         // A wake failure must not take down a service the WebView widget has since taken over:
         // the widget's state doesn't change on our failure, so nothing would ever re-show it.
-        if (mustOwn && !AndroidAudioWidget.IsForegroundServiceWakeOwned())
+        if (mustOwn && !AndroidActivitiesBackend.IsForegroundServiceWakeOwned())
             return;
 
-        AndroidAudioWidgetForegroundService.Stop(Platform.AppContext);
-        AndroidAudioWidget.MarkForegroundServiceHidden();
+        AndroidActivitiesForegroundService.Stop(Platform.AppContext);
+        AndroidActivitiesBackend.MarkForegroundServiceHidden();
     }
 
     private static void ShowFallbackNotification(ChatId chatId)

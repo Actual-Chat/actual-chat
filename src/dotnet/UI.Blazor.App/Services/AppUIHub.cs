@@ -82,7 +82,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IAudioInitializer AudioInitializer => field ??= Services.GetRequiredService<IAudioInitializer>();
     public IPlaybackFactory PlaybackFactory => field ??= Services.GetRequiredService<IPlaybackFactory>();
     public ActivePlaybackInfo ActivePlaybackInfo => field ??= Services.GetRequiredService<ActivePlaybackInfo>();
-    public AudioWidget AudioWidget => field ??= Services.GetRequiredService<AudioWidget>();
+    public ActivitiesBackend ActivitiesBackend => field ??= Services.GetRequiredService<ActivitiesBackend>();
     public AudioAttachmentPlayer AudioAttachmentPlayer => field ??= Services.GetRequiredService<AudioAttachmentPlayer>();
     public OptimisticReactions OptimisticReactions => field ??= Services.GetRequiredService<OptimisticReactions>();
 

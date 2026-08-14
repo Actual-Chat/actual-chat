@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using ActualChat.App.Maui.Activities;
 using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
 using ActualLab.Diagnostics;
@@ -114,9 +115,9 @@ public partial class MainActivity : MauiAppCompatActivity
         // Here rather than anywhere in the app: Android only grants a foreground service the
         // microphone type if it starts while the app is in the foreground, and by the time the app
         // knows its own armed chats it has often been backgrounded already - which costs the walkie
-        // reply its mic for the whole life of the service. See AudioWidget.OnArmedChanged.
+        // reply its mic for the whole life of the service. See ActivitiesBackend.OnArmedChanged.
         if (MauiPreferences.IsWalkieArmed)
-            AndroidAudioWidgetForegroundService.TryStartArmed(this);
+            AndroidActivitiesForegroundService.TryStartArmed(this);
 
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061

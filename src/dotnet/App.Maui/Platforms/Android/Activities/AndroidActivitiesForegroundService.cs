@@ -2,6 +2,7 @@ using _Microsoft.Android.Resource.Designer;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Generators;
 using Android.App;
 using Android.Content;
@@ -12,46 +13,64 @@ using Android.Support.V4.Media;
 using Android.Support.V4.Media.Session;
 using Android.Views;
 using AndroidX.Core.App;
+using ActivityKind = ActualChat.UI.Blazor.Services.ActivityKind;
 
-namespace ActualChat.App.Maui.Audio;
+namespace ActualChat.App.Maui.Activities;
 
-[Service(ForegroundServiceType = ForegroundService.TypeMediaPlayback | ForegroundService.TypeMicrophone)]
-public class AndroidAudioWidgetForegroundService : Service
+[Service(ForegroundServiceType =
+    ForegroundService.TypeMediaPlayback |
+    ForegroundService.TypeMicrophone |
+    ForegroundService.TypeDataSync |
+    ForegroundService.TypeLocation)]
+public class AndroidActivitiesForegroundService : Service
 {
     public static class IntentExtras
     {
-        public const string Mode = nameof(AudioWidgetMode);
+        public const string Kind = nameof(ActivityKind);
+        public const string ServiceTypes = nameof(ServiceTypes);
         public const string ChatId = nameof(ChatId);
         public const string ChatTitle = nameof(ChatTitle);
         public const string ChatPicUri = nameof(ChatPicUri);
         public const string ExtraChatCount = nameof(ExtraChatCount);
         public const string IsPaused = nameof(IsPaused);
         public const string CanPause = nameof(CanPause);
+        public const string LocationShareCount = nameof(LocationShareCount);
+        public const string UploadFileCount = nameof(UploadFileCount);
+        public const string UploadBytesUploaded = nameof(UploadBytesUploaded);
+        public const string UploadTotalBytes = nameof(UploadTotalBytes);
+        public const string UploadItemNames = nameof(UploadItemNames);
+        public const string UploadItemSizes = nameof(UploadItemSizes);
+        public const string UploadItemProgresses = nameof(UploadItemProgresses);
     }
 
     public const string ActionShow = "ACTION_SHOW";
     public const string ActionStop = "ACTION_STOP";
     private const string ChannelId = "audio_widget";
+    private const string LocationChannelId = "location_sharing";
     private const int NotificationId = 3001;
+    private const int MaxUploadLines = 5;
+    private static ILogger Log { get; } = StaticLog.For<AndroidActivitiesForegroundService>();
     private static int _pendingStartCount;
     private static bool _isStopPending;
+    private static int _lastRequestedTypes;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
     private Android.App.Notification? _lastNotification;
-    private int _lastMode = -1;
+    private int _lastKind = -1;
     private bool _hasMicType;
     private Action<bool>? _micCapabilityHandler;
     private bool _isStopping;
-    private static ILogger Log { get; } = StaticLog.For<AndroidAudioWidgetForegroundService>();
 
     public static void TryStartArmed(Context context)
     {
         // Called from MainActivity while it's visible, which is the whole point: Android only grants
         // the microphone service type when the start happens with the app in the foreground, and the
-        // widget that would otherwise raise this service arrives seconds after Blazor renders.
-        var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
+        // backend that would otherwise raise this service arrives seconds after Blazor renders.
+        var intent = new Intent(context, typeof(AndroidActivitiesForegroundService));
         intent.SetAction(ActionShow);
-        intent.PutExtra(IntentExtras.Mode, (int)AudioWidgetMode.Armed);
+        intent.PutExtra(IntentExtras.Kind, (int)ActivityKind.Armed);
+        intent.PutExtra(
+            IntentExtras.ServiceTypes, (int)(ActivityServiceTypes.Playback | ActivityServiceTypes.Microphone));
         TryStart(context, intent);
     }
 
@@ -97,7 +116,7 @@ public class AndroidAudioWidgetForegroundService : Service
             return;
         }
 
-        var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
+        var intent = new Intent(context, typeof(AndroidActivitiesForegroundService));
         context.StopService(intent);
     }
 
@@ -106,6 +125,7 @@ public class AndroidAudioWidgetForegroundService : Service
         Log.LogDebug("OnCreate");
         base.OnCreate();
         CreateNotificationChannel();
+        NotificationHelper.EnsureActivityChannelsExist(this);
         _micCapabilityHandler = OnMicCapabilityRequested;
         WalkieTalkieMicCapability.SetHandler(_micCapabilityHandler);
     }
@@ -121,12 +141,7 @@ public class AndroidAudioWidgetForegroundService : Service
         _requestId = RandomStringGenerator.Default.Next();
         Interlocked.Exchange(ref _pendingStartCount, 0);
         Volatile.Write(ref _isStopPending, false);
-        if (_mediaSession is not null) {
-            _mediaSession.Active = false;
-            _mediaSession.Release();
-            _mediaSession.DisposeSilently();
-            _mediaSession = null;
-        }
+        ReleaseMediaSession();
         base.OnDestroy();
     }
 
@@ -138,24 +153,31 @@ public class AndroidAudioWidgetForegroundService : Service
         var action = intent?.Action ?? "";
         if (action == ActionStop) {
             // The notification's Stop button - the same door the media session's OnStop takes.
-            AndroidAudioWidget.Stop();
+            AndroidActivitiesBackend.Stop();
             return StartCommandResult.NotSticky;
         }
 
-        if (action != ActionShow)
-            return StartCommandResult.Sticky;
+        if (action != ActionShow) {
+            // An unknown/null action means AMS revived us without a real request (e.g. after the
+            // process was killed) - there's nothing to show, and re-raising is MainActivity's job
+            // (TryStartArmed), so take the notification down rather than sit in the foreground forever.
+            StopForeground(StopForegroundFlags.Remove);
+            StopSelf();
+            return StartCommandResult.NotSticky;
+        }
 
         // A Show revives an instance whose deferred stop never reached OnDestroy - otherwise the
         // microphone re-type would stay dead for the rest of its life.
         Volatile.Write(ref _isStopping, false);
-        var mode = (AudioWidgetMode)(intent!.Extras?.GetInt(IntentExtras.Mode) ?? 0);
-        if (!Enum.IsDefined(mode))
-            mode = AudioWidgetMode.Listening;
+        var kind = (ActivityKind)(intent!.Extras?.GetInt(IntentExtras.Kind) ?? 0);
+        if (!Enum.IsDefined(kind))
+            kind = ActivityKind.Listening;
+        var requested = (ActivityServiceTypes)(intent.Extras?.GetInt(IntentExtras.ServiceTypes) ?? 0);
 
         // Android requires StartForeground() within ~5s of StartForegroundService(). Call it up-front
-        // with a placeholder so a throw while building the rich notification (unexpected mode,
+        // with a placeholder so a throw while building the rich notification (unexpected kind,
         // ChatId.Parse) can't leave the service without one -> ForegroundServiceDidNotStartInTimeException.
-        StartForeground1(BuildStartingNotification(mode), mode);
+        StartForeground1(BuildStartingNotification(kind), kind, requested);
         if (Volatile.Read(ref _pendingStartCount) > 0)
             Interlocked.Decrement(ref _pendingStartCount);
 
@@ -168,12 +190,19 @@ public class AndroidAudioWidgetForegroundService : Service
             return StartCommandResult.NotSticky;
         }
 
+        if (kind is ActivityKind.Uploading)
+            return ShowUpload(intent, requested);
+        if (kind is ActivityKind.SharingLocation)
+            return ShowLocation(intent, requested);
+
         var chatTitle = intent.Extras!.GetString(IntentExtras.ChatTitle) ?? "Unknown chat";
         var chatSid = intent.Extras!.GetString(IntentExtras.ChatId);
         if (chatSid.IsNullOrEmpty()) {
             // The early armed start carries no chat yet - see TryStartArmed. StartForeground1 above
-            // already claimed the microphone type, and the widget swaps in the real notification.
-            return StartCommandResult.Sticky;
+            // already claimed the microphone type, and the backend swaps in the real notification.
+            // NotSticky: MainActivity re-raises via TryStartArmed on next launch, so an AMS revival
+            // of this bare intent has no value.
+            return StartCommandResult.NotSticky;
         }
 
         var chatPicUrl = intent.Extras!.GetString(IntentExtras.ChatPicUri) ?? "";
@@ -184,21 +213,19 @@ public class AndroidAudioWidgetForegroundService : Service
         if (_mediaSession is null) {
             _mediaSession = new MediaSessionCompat(this, "AudioWidgetSession") { Active = true };
 #pragma warning disable CS0618
-            // Type or member is obsolete
             _mediaSession.SetFlags(
                 MediaSessionCompat.FlagHandlesMediaButtons
                 | MediaSessionCompat.FlagHandlesTransportControls);
 #pragma warning restore CS0618
-            // Type or member is obsolete
             _mediaSession.SetCallback(new Callback());
         }
 
-        var text = mode switch {
-            AudioWidgetMode.Recording => "Recording",
-            AudioWidgetMode.Listening => "Listening",
-            AudioWidgetMode.Replaying => "Replaying",
-            AudioWidgetMode.Armed => "Walkie-talkie is on",
-            _ => throw new ArgumentOutOfRangeException(nameof(mode)),
+        var text = kind switch {
+            ActivityKind.Recording => "Recording",
+            ActivityKind.Listening => "Listening",
+            ActivityKind.Replaying => "Replaying",
+            ActivityKind.Armed => "Walkie-talkie is on",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
         var title = chatTitle;
         if (extraChatCount > 0)
@@ -207,7 +234,7 @@ public class AndroidAudioWidgetForegroundService : Service
         var link = Links.Chat(chatId);
 
         long capabilities = 0;
-        if (mode is AudioWidgetMode.Replaying or AudioWidgetMode.Listening) {
+        if (kind is ActivityKind.Replaying or ActivityKind.Listening) {
             if (canPause)
                 capabilities |= isPaused ? PlaybackStateCompat.ActionPlay : PlaybackStateCompat.ActionPause;
             capabilities |= PlaybackStateCompat.ActionStop;
@@ -215,8 +242,8 @@ public class AndroidAudioWidgetForegroundService : Service
         // Armed reports Paused, not Playing: nothing is playing, and the system media UI animates a
         // Playing session - a permanent "something is playing" pulse for an idle walkie. Paused
         // still keeps the session alive for the headset button, which Stopped would not.
-        var isIdle = mode is AudioWidgetMode.Armed
-            || (mode is (AudioWidgetMode.Replaying or AudioWidgetMode.Listening) && isPaused);
+        var isIdle = kind is ActivityKind.Armed
+            || (kind is (ActivityKind.Replaying or ActivityKind.Listening) && isPaused);
         var playbackStateCompat = new PlaybackStateCompat.Builder()
             .SetState(
                 isIdle ? PlaybackStateCompat.StatePaused : PlaybackStateCompat.StatePlaying,
@@ -243,9 +270,39 @@ public class AndroidAudioWidgetForegroundService : Service
                     .Build();
                 _mediaSession.SetMetadata(metadata);
                 var notification = BuildNotification(_mediaSession, link);
-                StartForeground1(notification, mode);
+                StartForeground1(notification, kind, requested);
             });
 
+        return StartCommandResult.NotSticky;
+    }
+
+    // Private methods
+
+    private StartCommandResult ShowUpload(Intent intent, ActivityServiceTypes requested)
+    {
+        // Uploading only ever becomes primary when no audio activity is - see ActivitiesBackend -
+        // so the media session has nothing left to serve.
+        ReleaseMediaSession();
+        var fileCount = intent.Extras!.GetInt(IntentExtras.UploadFileCount);
+        var bytesUploaded = intent.Extras.GetLong(IntentExtras.UploadBytesUploaded);
+        var totalBytes = intent.Extras.GetLong(IntentExtras.UploadTotalBytes);
+        var names = intent.Extras.GetStringArray(IntentExtras.UploadItemNames) ?? [];
+        var sizes = intent.Extras.GetLongArray(IntentExtras.UploadItemSizes) ?? [];
+        var progresses = intent.Extras.GetLongArray(IntentExtras.UploadItemProgresses) ?? [];
+
+        var notification = BuildUploadNotification(fileCount, bytesUploaded, totalBytes, names, sizes, progresses);
+        StartForeground1(notification, ActivityKind.Uploading, requested);
+        return StartCommandResult.NotSticky;
+    }
+
+    private StartCommandResult ShowLocation(Intent intent, ActivityServiceTypes requested)
+    {
+        // Location only ever becomes primary when no audio activity is - the media session has
+        // nothing left to serve.
+        ReleaseMediaSession();
+        var shareCount = intent.Extras!.GetInt(IntentExtras.LocationShareCount, 1);
+        var notification = BuildLocationNotification(shareCount);
+        StartForeground1(notification, ActivityKind.SharingLocation, requested);
         return StartCommandResult.NotSticky;
     }
 
@@ -256,7 +313,7 @@ public class AndroidAudioWidgetForegroundService : Service
         // mediaPlayback only, so a press must re-issue this before the mic is opened.
         // Inline on the main thread, because the media-button dispatch runs there and the raise
         // must stay inside it; BeginInvokeOnMainThread posts even from the main thread.
-        var mode = isMicrophoneNeeded ? AudioWidgetMode.Recording : AudioWidgetMode.Listening;
+        var kind = isMicrophoneNeeded ? ActivityKind.Recording : ActivityKind.Listening;
         if (MainThread.IsMainThread)
             Apply();
         else
@@ -264,39 +321,62 @@ public class AndroidAudioWidgetForegroundService : Service
         return;
 
         void Apply() {
-            if (Volatile.Read(ref _isStopping) || Volatile.Read(ref _lastMode) == (int)mode)
+            if (Volatile.Read(ref _isStopping) || Volatile.Read(ref _lastKind) == (int)kind)
                 return;
 
-            var notification = Volatile.Read(ref _lastNotification) ?? BuildStartingNotification(mode);
-            StartForeground1(notification, mode);
+            var notification = Volatile.Read(ref _lastNotification) ?? BuildStartingNotification(kind);
+            var requested = (ActivityServiceTypes)Volatile.Read(ref _lastRequestedTypes);
+            if (isMicrophoneNeeded)
+                requested |= ActivityServiceTypes.Microphone;
+            StartForeground1(notification, kind, requested);
         }
     }
 
-    private void StartForeground1(Android.App.Notification notification, AudioWidgetMode mode)
+    private void StartForeground1(
+        Android.App.Notification notification, ActivityKind kind, ActivityServiceTypes requested)
     {
         try {
             if (Build.VERSION.SdkInt >= BuildVersionCodes.Q) {
                 // The mic type latches: Android re-evaluates the while-in-use grant on every
                 // startForeground, and every call after the first one happens with the app in the
-                // background - so dropping the type once would cost the grant for good.
-                var mustHaveMic = mode is AudioWidgetMode.Recording or AudioWidgetMode.Armed
+                // background - so dropping the type once would cost the grant for good. The location
+                // type is driven by the set instead: it stays for the life of the share (new shares
+                // only start from the foreground UI, so re-raising it later is always legitimate).
+                var serviceType = ToForegroundServiceType(requested);
+                var mustHaveMic = (requested & ActivityServiceTypes.Microphone) != 0
                     || Volatile.Read(ref _hasMicType);
-                var serviceType = mustHaveMic
-                    ? ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback
-                    : ForegroundService.TypeMediaPlayback;
+                if (mustHaveMic)
+                    serviceType |= ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback;
+                if (serviceType == 0)
+                    serviceType = ForegroundService.TypeMediaPlayback;
                 StartForeground(NotificationId, notification, serviceType);
                 Volatile.Write(ref _hasMicType, mustHaveMic);
             }
             else
                 StartForeground(NotificationId, notification);
             Volatile.Write(ref _lastNotification, notification);
-            Volatile.Write(ref _lastMode, (int)mode);
+            Volatile.Write(ref _lastKind, (int)kind);
+            Volatile.Write(ref _lastRequestedTypes, (int)requested);
         }
         catch (Exception e) {
             // A mic FGS started over the keyguard can be rejected (SecurityException /
             // ForegroundServiceStartNotAllowedException) on some OEMs — log rather than crash.
-            Log.LogError(e, "StartForeground failed (mode={Mode})", mode);
+            Log.LogError(e, "StartForeground failed (kind={Kind})", kind);
         }
+    }
+
+    private static ForegroundService ToForegroundServiceType(ActivityServiceTypes types)
+    {
+        ForegroundService result = 0;
+        if ((types & ActivityServiceTypes.Playback) != 0)
+            result |= ForegroundService.TypeMediaPlayback;
+        if ((types & ActivityServiceTypes.Microphone) != 0)
+            result |= ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback;
+        if ((types & ActivityServiceTypes.Location) != 0)
+            result |= ForegroundService.TypeLocation;
+        if ((types & ActivityServiceTypes.DataSync) != 0)
+            result |= ForegroundService.TypeDataSync;
+        return result;
     }
 
     private static void ResolveBitmapAndRun(string uri, Action<Bitmap?> callback)
@@ -310,9 +390,8 @@ public class AndroidAudioWidgetForegroundService : Service
         if (bitmapTask.IsCompleted) {
             if (!bitmapTask.IsCompletedSuccessfully)
                 callback(null);
-            else {
+            else
                 callback(bitmapTask.GetAwaiter().GetResult());
-            }
             return;
         }
 
@@ -332,23 +411,27 @@ public class AndroidAudioWidgetForegroundService : Service
         }, TaskScheduler.Default);
     }
 
-    private Android.App.Notification BuildStartingNotification(AudioWidgetMode mode)
+    private Android.App.Notification BuildStartingNotification(ActivityKind kind)
         // Carries real text because the armed start (TryStartArmed) has no chat to name yet and
-        // this notification is all the user sees until the widget arrives, which takes as long as
+        // this notification is all the user sees until the backend arrives, which takes as long as
         // Blazor needs to render. A blank one reads as "walkie-talkie isn't running".
-        => new NotificationCompat.Builder(this, ChannelId)
+        => new NotificationCompat.Builder(this, GetChannelId(kind))
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
-            .SetContentTitle(mode is AudioWidgetMode.Armed ? "Walkie-talkie is on" : "Voxt")!
+            .SetContentTitle(kind switch {
+                ActivityKind.Armed => "Walkie-talkie is on",
+                ActivityKind.Uploading => "Uploading",
+                ActivityKind.SharingLocation => "Sharing live location",
+                _ => "Voxt",
+            })!
             .SetOngoing(true)!
             .Build()!;
 
     private Android.App.Notification BuildNotification(MediaSessionCompat mediaSession, string link)
     {
-        // PackageManager!.GetLaunchIntentForPackage(PackageName!)!;
         var viewIntent = NotificationHelper.CreateViewIntent(this, link);
         var viewPending = PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable);
 
-        var stopIntent = new Intent(this, typeof(AndroidAudioWidgetForegroundService));
+        var stopIntent = new Intent(this, typeof(AndroidActivitiesForegroundService));
         stopIntent.SetAction(ActionStop);
         var stopPending = PendingIntent.GetService(this, 4, stopIntent, PendingIntentFlags.Immutable);
 
@@ -366,11 +449,84 @@ public class AndroidAudioWidgetForegroundService : Service
         return builder.Build()!;
     }
 
+    private Android.App.Notification BuildUploadNotification(
+        int fileCount, long bytesUploaded, long totalBytes,
+        string[] names, long[] sizes, long[] progresses)
+    {
+        var percent = totalBytes == 0 ? 0 : (int)(100.0 * bytesUploaded / totalBytes);
+        var title = fileCount == 1 ? "Uploading 1 file" : $"Uploading {fileCount} files";
+        var summary = $"{FormatBytes(bytesUploaded)} / {FormatBytes(totalBytes)} ({percent}%)";
+
+        var style = new NotificationCompat.InboxStyle().SetSummaryText(summary)!;
+        var count = Math.Min(names.Length, MaxUploadLines);
+        for (var i = 0; i < count; i++) {
+            var done = i < progresses.Length ? progresses[i] : 0;
+            var size = i < sizes.Length ? sizes[i] : 0;
+            _ = style.AddLine($"{names[i]} — {FormatBytes(done)} / {FormatBytes(size)}");
+        }
+        if (names.Length > MaxUploadLines)
+            _ = style.AddLine($"…and {names.Length - MaxUploadLines} more");
+
+        var viewIntent = NotificationHelper.CreateViewIntent(this, Links.Home);
+        var viewPending = viewIntent is null
+            ? null
+            : PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable);
+
+        var builder = new NotificationCompat.Builder(this, NotificationHelper.Constants.ActivityUploadChannelId)
+            .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
+            .SetContentTitle(title)!
+            .SetContentText(summary)!
+            .SetStyle(style)!
+            .SetProgress(100, percent, indeterminate: false)!
+            .SetOngoing(true)!
+            .SetOnlyAlertOnce(true)!
+            .SetCategory(NotificationCompat.CategoryProgress)!;
+        if (viewPending is not null)
+            _ = builder.SetContentIntent(viewPending);
+        return builder.Build()!;
+    }
+
+    private Android.App.Notification BuildLocationNotification(int shareCount)
+    {
+        var stopIntent = new Intent(this, typeof(AndroidActivitiesForegroundService));
+        stopIntent.SetAction(ActionStop);
+        var stopPending = PendingIntent.GetService(this, 4, stopIntent, PendingIntentFlags.Immutable);
+
+        var viewIntent = NotificationHelper.CreateViewIntent(this, Links.Home);
+        var viewPending = viewIntent is null
+            ? null
+            : PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable);
+
+        var builder = new NotificationCompat.Builder(this, LocationChannelId)
+            .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
+            .SetContentTitle("Sharing live location")!
+            .SetOngoing(true)!
+            .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop", stopPending)!;
+        if (shareCount > 1)
+            _ = builder.SetContentText($"{shareCount} chats");
+        if (viewPending is not null)
+            _ = builder.SetContentIntent(viewPending);
+        return builder.Build()!;
+    }
+
+    private void ReleaseMediaSession()
+    {
+        if (_mediaSession is null)
+            return;
+
+        _mediaSession.Active = false;
+        _mediaSession.Release();
+        _mediaSession.DisposeSilently();
+        _mediaSession = null;
+    }
+
     private void CreateNotificationChannel()
     {
-        var channel = new NotificationChannel(ChannelId, "Audio Widget", NotificationImportance.Low);
         var manager = (NotificationManager)GetSystemService(NotificationService)!;
-        manager.CreateNotificationChannel(channel);
+        manager.CreateNotificationChannel(
+            new NotificationChannel(ChannelId, "Audio Widget", NotificationImportance.Low));
+        manager.CreateNotificationChannel(
+            new NotificationChannel(LocationChannelId, "Location sharing", NotificationImportance.Low));
     }
 
     private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, int repeatCount)
@@ -421,7 +577,30 @@ public class AndroidAudioWidgetForegroundService : Service
         return extra as KeyEvent;
     }
 
+    private static string GetChannelId(ActivityKind kind)
+        => kind switch {
+            ActivityKind.Uploading => NotificationHelper.Constants.ActivityUploadChannelId,
+            ActivityKind.SharingLocation => LocationChannelId,
+            _ => ChannelId,
+        };
+
+    private static string FormatBytes(long bytes)
+    {
+        const double kb = 1024.0;
+        const double mb = 1024.0 * 1024.0;
+        const double gb = 1024.0 * 1024.0 * 1024.0;
+        if (bytes < kb)
+            return $"{bytes} B";
+        if (bytes < mb)
+            return $"{bytes / kb:0.#} KB";
+        if (bytes < gb)
+            return $"{bytes / mb:0.#} MB";
+
+        return $"{bytes / gb:0.##} GB";
+    }
+
     // Nested types
+
     private class Callback : MediaSessionCompat.Callback
     {
         public override bool OnMediaButtonEvent(Intent? mediaButtonEvent)
@@ -446,12 +625,12 @@ public class AndroidAudioWidgetForegroundService : Service
         }
 
         public override void OnPlay()
-            => AndroidAudioWidget.Resume();
+            => AndroidActivitiesBackend.Resume();
 
         public override void OnPause()
-            => AndroidAudioWidget.Pause();
+            => AndroidActivitiesBackend.Pause();
 
         public override void OnStop()
-            => AndroidAudioWidget.Stop();
+            => AndroidActivitiesBackend.Stop();
     }
 }

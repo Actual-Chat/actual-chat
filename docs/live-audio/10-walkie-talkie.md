@@ -37,9 +37,10 @@ armed chats are the only always-listened chats — since arming alone starts no
 player. `ChatAudioUI.GetPttChatIds` is the client's
 single armed-set choke point: it joins `PttChats` with `Chats.Get` and applies
 the epoch predicate, so an owner's toggle flip propagates to every consumer
-(gestures, reply resolver, iOS PTT channel, audio widget, Active Chats) through
-ordinary invalidation. Armed chats also always appear in the **Active Chats**
-list with a PTT badge, and removing one there also revokes consent.
+(gestures, reply resolver, iOS PTT channel, `AudioActivitySource`, Active
+Chats) through ordinary invalidation. Armed chats also always appear in the
+**Active Chats** list with a PTT badge, and removing one there also revokes
+consent.
 
 Between armed and hot sits the **answer window** — the period after incoming
 voice during which a gesture, a headset press or the Apple PTT Talk button may
@@ -309,14 +310,14 @@ schedule.
 `FirebaseMessagingService` routes `NotificationKind.SpeechStarted` here.
 `Handle(data)` validates `ChatId`/`StartedAt`, and when the app is backgrounded
 starts the foreground service **first and synchronously**
-(`AndroidAudioWidgetForegroundService.TryStart` with `AudioWidgetMode.Listening`)
+(`AndroidActivitiesForegroundService.TryStart` with `ActivityKind.Listening`)
 so the start lands inside the FCM high-priority exemption window; the service
 self-guards the 5-second `startForeground` rule. Only then does it call
 `BlazorWebViewApp.EnsureStarted()` and hand off to
 `WalkieTalkieSession.HandleWake` on a background task. Its `AndroidPlatform`
 implementation of `WalkieTalkiePlatform` maps
 `OnWakeFailed` → fallback chat notification + hide the FGS *only if the wake
-still owns it* (`AndroidAudioWidget.IsForegroundServiceWakeOwned` — a wake
+still owns it* (`AndroidActivitiesBackend.IsForegroundServiceWakeOwned` — a wake
 failure must not take down a service the WebView widget has since taken over),
 `OnHeadlessTeardown` → hide the FGS, and `OnPlaybackStarted` → re-show it with
 the real chat title.
@@ -410,12 +411,13 @@ exemption a background mic start needs.
 Re-issuing is not enough on its own, though: Android evaluates the while-in-use
 grant on **every** `startForeground`, and denies it whenever the app is in the
 background at that moment — so a service first started by a wake can never
-record, however it is re-typed. That's what `AudioWidgetMode.Armed` is for. While
-any chat is armed, `AudioWidget.GetArmedChat` keeps the widget state non-null, so
-the foreground service runs continuously, started from the foreground (with the
-microphone type) at arming time. The service then latches the mic type: once
-granted, every later `startForeground` keeps it, because those all run in the
-background and dropping the type would forfeit the grant permanently.
+record, however it is re-typed. That's what `ActivityKind.Armed` is for. While
+any chat is armed, `AudioActivitySource.GetArmedChat` keeps `ActivitiesBackend`'s
+state non-null, so the foreground service runs continuously, started from the
+foreground (with the microphone type) at arming time. The service then latches
+the mic type: once granted, every later `startForeground` keeps it, because
+those all run in the background and dropping the type would forfeit the grant
+permanently.
 
 ### `ReplyTargetResolver`
 
@@ -440,7 +442,7 @@ and the resolver special-cases it to `Moment.EpochStart` rather than computing
 |---|---|
 | Flip-to-talk, double-shake | `GestureUI.OnSample` → `GestureRecognizer` → `GestureActivationPolicy.Route` → `WalkieTalkieMicCapability.HoldWhile(RequestReply)` |
 | Face-down | same, routed to `StopReply` |
-| Android headset button | `AndroidAudioWidgetForegroundService` media session → `HeadsetButtonPolicy.Decide` |
+| Android headset button | `AndroidActivitiesForegroundService` media session → `HeadsetButtonPolicy.Decide` |
 | Apple PTT Talk button | `IosPushToTalk.OnTransmitBegan` → `WalkieTalkieSession.HandleTransmit` |
 
 **Gestures.** `GestureUI` is a `UIWorkerBase` that owns the sensor subscription

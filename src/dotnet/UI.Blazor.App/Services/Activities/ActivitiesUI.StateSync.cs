@@ -1,6 +1,8 @@
-﻿namespace ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.Services;
 
-public partial class BackgroundActivityUI
+namespace ActualChat.UI.Blazor.App.Services;
+
+public partial class ActivitiesUI
 {
     protected override Task OnRun(CancellationToken cancellationToken)
     {
@@ -28,15 +30,18 @@ public partial class BackgroundActivityUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<BackgroundActivityState> ComputeState(CancellationToken cancellationToken)
+    protected virtual async Task<AppActivityState> ComputeState(CancellationToken cancellationToken)
     {
-        var isBackground = await IsRunningInBackground.Use(cancellationToken).ConfigureAwait(false);
+        var isBackground = await IsBackground.Use(cancellationToken).ConfigureAwait(false);
         if (!isBackground)
-            return BackgroundActivityState.Foreground;
+            return AppActivityState.Foreground;
 
-        var isActiveInBackground = await MustBeBackgroundActive(cancellationToken).ConfigureAwait(false);
-        return isActiveInBackground
-            ? BackgroundActivityState.BackgroundActive
-            : BackgroundActivityState.BackgroundIdle;
+        var set = await GetActivitySet(cancellationToken).ConfigureAwait(false);
+        var hasAudioActivity = await HasAudioActivity(cancellationToken).ConfigureAwait(false);
+        var mustBeActive = await MustBeBackgroundActive(cancellationToken).ConfigureAwait(false);
+
+        return !set.IsEmpty || hasAudioActivity || mustBeActive
+            ? AppActivityState.BackgroundActive
+            : AppActivityState.BackgroundIdle;
     }
 }
