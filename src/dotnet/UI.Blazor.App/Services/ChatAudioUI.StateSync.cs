@@ -505,9 +505,10 @@ public partial class ChatAudioUI
         var serverClock = Clocks.ServerClock;
         var cpuClock = Clocks.CpuClock;
         var mustStop = false;
-        // Latched only when a recording begins mid-session: a fresh listen - including the one
-        // a record tap itself starts, and whatever the listener passively hears - keeps the
-        // grace period; the linger applies once the user talks into an ongoing session.
+        // Latched on real activity episodes: others' speech, watched video, and recordings that
+        // begin mid-session - the linger applies from each episode's idle edge. Own streams
+        // deliberately don't latch: the tail of a just-stopped own recording would otherwise
+        // demote the record-stop grace to the linger.
         var hasSeenActivity = false;
         var lastActivityAt = serverClock.Now;
         var retryDelays = RetryDelaySeq.Exp(0.5, 8);
@@ -587,12 +588,19 @@ public partial class ChatAudioUI
                 if (hasActivity || isWatching) {
                     // Activity ongoing or video being watched — no timer
                     lastActivityAt = serverClock.Now;
+                    if (isWatching || await HasOthersStreamingAudio(chatId, ct).ConfigureAwait(false))
+                        hasSeenActivity = true;
                     SetStopListeningAt(chatId, null);
                     using var waitCts = ct.CreateLinkedTokenSource();
                     var whenActivityChange = cHasActivity.WhenInvalidated(waitCts.Token);
                     var whenWatchingChange = cIsWatching.WhenInvalidated(waitCts.Token);
                     await Task.WhenAny(whenActivityChange, whenWatchingChange).ConfigureAwait(false);
                     waitCts.CancelAndDisposeSilently();
+                    // The activity spanned this whole wait, so the linger counts from its end -
+                    // keeping the pre-wait timestamp would backdate stopAt by the length of the
+                    // last utterance and silently skip the countdown whenever it ran longer than
+                    // the linger.
+                    lastActivityAt = serverClock.Now;
                     cHasActivity = await cHasActivity.Update(ct).ConfigureAwait(false);
                     cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
                     continue;
@@ -925,6 +933,17 @@ public partial class ChatAudioUI
     [ComputeMethod]
     protected virtual Task<ContinuedListening> GetContinuedListening(CancellationToken cancellationToken)
         => UserSettingsUI.UserListeningSettings().Get(x => x.ContinuedListening, cancellationToken);
+
+    [ComputeMethod]
+    protected virtual async Task<bool> HasOthersStreamingAudio(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var authorIds = await LiveStreamUI.GetAudioStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        if (authorIds.Count == 0)
+            return false;
+
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return ownAuthor is null || authorIds.Any(id => id != ownAuthor.Id);
+    }
 
     [ComputeMethod]
     protected virtual async Task<RecordingBeepState> GetRecordingBeepState(CancellationToken cancellationToken)
