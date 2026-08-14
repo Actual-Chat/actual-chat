@@ -320,7 +320,10 @@ public partial class MainActivity : MauiAppCompatActivity
     [SupportedOSPlatform("android31.0")]
     private sealed class SplashExitAnimator : JObject, Android.Window.ISplashScreenOnExitAnimationListener
     {
-        private static readonly TimeSpan FadeDuration = TimeSpan.FromMilliseconds(300);
+        // Runs entirely after the first frame, so every ms of it is added latency. It is also a
+        // main-thread animation, so a long WebView raster frame starves it: at 300ms the splash
+        // routinely outlived the first frame by ~330ms rather than by its nominal duration.
+        private static readonly TimeSpan FadeDuration = TimeSpan.FromMilliseconds(150);
 
         public void OnSplashScreenExit(Android.Window.SplashScreenView splashScreenView)
         {

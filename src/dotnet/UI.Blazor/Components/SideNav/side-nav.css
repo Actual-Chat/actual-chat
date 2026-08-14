@@ -13,6 +13,10 @@
     @apply md:left-0 md:right-auto md:w-full; /* Must go 2nd */
     transform: none;
     touch-action: manipulation;
+}
+/* Deferred until app-ready: both side navs are promoted before the first paint, and each costs
+   the compositor a full-screen raster - including the right one, which sits fully off-screen. */
+body.app-ready .side-nav {
     will-change: transform; /* Ensures its own composition layer */
 }
 

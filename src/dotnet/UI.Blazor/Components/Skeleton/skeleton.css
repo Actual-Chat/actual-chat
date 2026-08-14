@@ -555,6 +555,21 @@ voxt-skeleton {
     animation: pulse 2s steps(10) infinite;
 }
 
+/* Skeletons still show before app-ready, they just hold still. The pulse ticks for the whole
+   loading window, and on mobile WebView every animation tick redraws the entire screen (see the
+   note in chat-audio-panel.css) - which lands on the compositor exactly while it is the startup
+   bottleneck. Suppressing the animation is one rule here; gating it on body.app-ready like the
+   layer hints would mean splitting all nine rules below. */
+body:not(.app-ready) .animated-skeleton,
+body:not(.app-ready) .string-skeleton,
+body:not(.app-ready) voxt-skeleton,
+body:not(.app-ready) image-skeleton.show-image-skeleton,
+body:not(.app-ready) thin-left-panel-skeleton .button,
+body:not(.app-ready) chat-view-footer-skeleton .footer-button,
+body:not(.app-ready) tab-skeleton .c-line {
+    animation: none;
+}
+
 @keyframes pulse {
     0%, 100% {
         opacity: 1;

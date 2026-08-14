@@ -5,10 +5,14 @@
     scrollbar-gutter: stable;
     -ms-overflow-style: none;
     overflow-anchor: none;
+    contain: strict;
+}
+/* Deferred until app-ready - see side-nav.css. The transform here is the identity, so gating it
+   changes layout in no way; it exists only to force a composition layer. */
+body.app-ready .virtual-list {
     will-change: transform;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
-    contain: strict;
 }
 
 /* Not a decoration the consumer opts into: the scroll space is a fixed 4,000,000px that the
@@ -55,11 +59,13 @@ body.narrow .list-view-layout.has-audio-panel-header .virtual-list > .c-wrapper 
 .virtual-list > .c-wrapper > ul.c-virtual-container {
     @apply absolute w-full;
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
+    list-style-type: none;
+    overflow-anchor: none;
+}
+body.app-ready .virtual-list > .c-wrapper > ul.c-virtual-container {
     will-change: transform;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
-    list-style-type: none;
-    overflow-anchor: none;
 }
 
 /* FiniteList keeps the container in flow: its spacers cover the unloaded ranges exactly, so the
