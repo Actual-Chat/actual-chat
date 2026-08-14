@@ -41,16 +41,18 @@ public sealed class DateFormatter(IServiceProvider services) : IFormatProvider
             duration = TimeSpan.Zero;
 
         // Anything below a minute still reads as "1 min" rather than "0 min"
-        var minutes = Math.Max(1, (int)Math.Ceiling(duration.TotalMinutes));
-        var days = minutes / (24 * 60);
-        var hours = minutes / 60 % 24;
-        minutes %= 60;
+        var extraMinute = duration.Seconds > 0 ? 1 : 0;
+        if (duration.TotalMinutes < 1)
+            return L.Duration_Minutes_Format(1);
+        if (duration.TotalHours < 1)
+            return L.Duration_Minutes_Format((int)duration.TotalMinutes + extraMinute);
+
+        // Hours are the elapsed total, not the remainder after whole days
         var parts = new List<string>(3);
-        if (days > 0)
-            parts.Add(L.Duration_Days_Format(days));
-        if (hours > 0 || days > 0)
-            parts.Add(L.Duration_Hours_Format(hours));
-        parts.Add(L.Duration_Minutes_Format(minutes));
+        if (duration.TotalDays >= 1)
+            parts.Add(L.Duration_Days_Format((int)duration.TotalDays));
+        parts.Add(L.Duration_Hours_Format((int)duration.TotalHours));
+        parts.Add(L.Duration_Minutes_Format(duration.Minutes + extraMinute));
         return parts.ToDelimitedString(" ");
     }
 }

@@ -775,6 +775,8 @@
   "Place_Private": "Privato",
   "Place_Members_One": "{0} membro",
   "Place_Members_Other": "{0} membri",
+  "Place_MembersLabel_One": "{0} membro",
+  "Place_MembersLabel_Other": "{0} membri",
   "Place_TabChats": "Chat",
   "Place_TabMembers": "Membri",
   "Place_TabMedia": "Media",

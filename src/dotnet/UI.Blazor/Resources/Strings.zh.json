@@ -775,6 +775,8 @@
   "Place_Private": "私密",
   "Place_Members_One": "{0} 名成员",
   "Place_Members_Other": "{0} 名成员",
+  "Place_MembersLabel_One": "{0} 名成员",
+  "Place_MembersLabel_Other": "{0} 名成员",
   "Place_TabChats": "聊天",
   "Place_TabMembers": "成员",
   "Place_TabMedia": "媒体",

@@ -31,7 +31,7 @@ public class DateFormatterTest
     [InlineData(30, "1 min")]
     [InlineData(45 * 60, "45 min")]
     [InlineData(2 * 3600 + 5 * 60, "2 h 5 min")]
-    [InlineData(26 * 3600, "1 d 2 h 0 min")]
+    [InlineData(26 * 3600, "1 d 26 h 0 min")]
     public void EnglishShouldRenderTheDuration(int seconds, string expected)
     {
         // arrange

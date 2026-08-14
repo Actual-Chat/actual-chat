@@ -63,8 +63,8 @@
         <div class="c-info">
             <span>
                 @(m.MemberCount == 1
-                    ? L.Place_Members_One(m.MemberCount)
-                    : L.Place_Members_Other(m.MemberCount))
+                    ? L.Place_MembersLabel_One(m.MemberCount)
+                    : L.Place_MembersLabel_Other(m.MemberCount))
             </span>
             <DotSeparator/>
             <span>@(isPublic ? L.Place_Public : L.Place_Private)</span>

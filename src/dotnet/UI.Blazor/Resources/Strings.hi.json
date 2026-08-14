@@ -775,6 +775,8 @@
   "Place_Private": "निजी",
   "Place_Members_One": "{0} सदस्य",
   "Place_Members_Other": "{0} सदस्य",
+  "Place_MembersLabel_One": "{0} सदस्य",
+  "Place_MembersLabel_Other": "{0} सदस्य",
   "Place_TabChats": "चैट",
   "Place_TabMembers": "सदस्य",
   "Place_TabMedia": "मीडिया",

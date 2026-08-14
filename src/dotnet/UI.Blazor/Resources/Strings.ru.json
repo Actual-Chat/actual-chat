@@ -775,6 +775,8 @@
   "Place_Private": "Приватное",
   "Place_Members_One": "{0} участник",
   "Place_Members_Other": "{0} участников",
+  "Place_MembersLabel_One": "{0} участник",
+  "Place_MembersLabel_Other": "{0} участников",
   "Place_TabChats": "Чаты",
   "Place_TabMembers": "Участники",
   "Place_TabMedia": "Медиа",

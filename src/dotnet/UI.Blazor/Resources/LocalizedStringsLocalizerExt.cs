@@ -799,6 +799,8 @@ public static class LocalizedStringsLocalizerExt
         public string Place_Private => l["Place_Private"].Value;
         public string Place_Members_One(object arg0) => l["Place_Members_One", arg0].Value;
         public string Place_Members_Other(object arg0) => l["Place_Members_Other", arg0].Value;
+        public string Place_MembersLabel_One(object arg0) => l["Place_MembersLabel_One", arg0].Value;
+        public string Place_MembersLabel_Other(object arg0) => l["Place_MembersLabel_Other", arg0].Value;
         public string Place_TabChats => l["Place_TabChats"].Value;
         public string Place_TabMembers => l["Place_TabMembers"].Value;
         public string Place_TabMedia => l["Place_TabMedia"].Value;

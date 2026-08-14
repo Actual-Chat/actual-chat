@@ -775,6 +775,8 @@
   "Place_Private": "비공개",
   "Place_Members_One": "멤버 {0}명",
   "Place_Members_Other": "멤버 {0}명",
+  "Place_MembersLabel_One": "멤버 {0}명",
+  "Place_MembersLabel_Other": "멤버 {0}명",
   "Place_TabChats": "채팅",
   "Place_TabMembers": "멤버",
   "Place_TabMedia": "미디어",

@@ -47,6 +47,6 @@ public sealed class DeltaText(IServiceProvider services)
         if (!isFuture && date == today.AddDays(-1))
             return (L.LiveTime_YesterdayAt_Format(time), untilTomorrow);
 
-        return (L.Date_At_Format(localTime.ToString("d", DateFormatter), time), TimeSpan.MaxValue);
+        return (L.Date_At_Format(localTime.ToString("MM/dd/yyyy", DateFormatter), time), TimeSpan.MaxValue);
     }
 }
