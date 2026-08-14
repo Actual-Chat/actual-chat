@@ -22,7 +22,7 @@ public class DeltaTextTest
     [InlineData(-3 * 3600, "18:05")]
     [InlineData(-24 * 3600, "yesterday at 21:05")]
     [InlineData(24 * 3600, "tomorrow at 21:05")]
-    [InlineData(-5 * 24 * 3600, "Aug 9, 2026 at 21:05")]
+    [InlineData(-5 * 24 * 3600, "Aug 09, 2026 at 21:05")]
     public void EnglishShouldRenderTheExpectedDelta(int offsetSeconds, string expected)
     {
         // arrange

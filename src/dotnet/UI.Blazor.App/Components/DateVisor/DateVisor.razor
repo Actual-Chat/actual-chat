@@ -64,6 +64,6 @@
 
         var beginsDateTime = chatEntry.BeginsAt.ToDateTime();
         var localDateTime = DateTimeConverter.ToLocalTime(beginsDateTime);
-        return localDateTime.ToString("D", DateFormatter);
+        return localDateTime.ToString("d MMMM yyyy", DateFormatter);
     }
 }

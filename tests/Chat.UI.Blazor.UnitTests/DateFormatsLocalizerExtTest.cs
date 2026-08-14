@@ -110,7 +110,7 @@ public class DateFormatsLocalizerExtTest
         // assert
         rendered.Should().Equal(
             "21:05", "Aug 14", "Aug 14, 2026", "August 14, 2026", "August 2026", "Friday", "Fri",
-            "Aug 14, 21:05", "Aug 14, 2026, 21:05");
+            "14 Aug, 21:05", "14 Aug 2026, 21:05");
     }
 
     [Fact]
