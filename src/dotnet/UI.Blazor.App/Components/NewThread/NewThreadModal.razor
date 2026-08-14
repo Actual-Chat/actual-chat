@@ -14,7 +14,7 @@
         <FormBlock>
             <FormSection
                 For="() => _form.Title"
-                Label="Thread title"
+                Label="@L.Form_ThreadTitle"
                 InputId="@_form.TitleId"
                 IsLabelInsideInput="true"
                 Class="thread-title"
@@ -34,7 +34,7 @@
             </FormSection>
             <FormSection
                 For="() => _form.Description"
-                Label="Description"
+                Label="@L.Form_Description"
                 InputId="@_form.DescriptionId"
                 IsLabelInsideInput="true"
                 Class="thread-description">
@@ -128,7 +128,7 @@
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel {
-        [Required, MinLength(1)]
+        [Required]
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
 

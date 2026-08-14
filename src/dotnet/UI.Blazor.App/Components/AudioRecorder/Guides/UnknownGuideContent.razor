@@ -1,20 +1,24 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 
 <div class="c-hero">
-    <img draggable="false" src="/dist/images/guide/mic-access.svg" alt="Microphone access is blocked">
+    <img draggable="false" src="/dist/images/guide/mic-access.svg" alt="@L.MicGuide_BlockedImageAlt">
 </div>
 <div class="c-title">
-    @CoreConstants.AppName is unable to start audio recording
+    @L.MicGuide_UnknownTitle_Format(CoreConstants.AppName)
 </div>
 <div class="c-intro">
-    The most likely cause is that the microphone access permission isn't granted,
-    although it could also be due to an issue on our end. To address this problem:
+    @L.MicGuide_UnknownIntro
 </div>
 
 <ul class="c-items">
-    <li><a class="c-reload" @onclick="@OnReloadClick">Click here</a> to perform a hot restart of the app.</li>
-    <li>If that doesn't help, try closing and reopening the app.</li>
-    <li>If the above steps are not effective, please verify whether the app has internet access.</li>
+    <li>
+        @L.MicGuide_UnknownReload_Prefix<a
+            class="c-reload"
+            @onclick="@OnReloadClick">@L.MicGuide_UnknownReloadLink</a>@L.MicGuide_UnknownReload_Suffix
+    </li>
+    <li>@L.MicGuide_UnknownReopen</li>
+    <li>@L.MicGuide_UnknownCheckInternet</li>
 </ul>
 
 @code {

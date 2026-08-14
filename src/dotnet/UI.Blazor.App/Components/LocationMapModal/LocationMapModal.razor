@@ -20,7 +20,7 @@
     <Body>
         <div class="c-map-host">
             @if (markers.Count == 0) {
-                <div class="c-empty">No one is sharing their location right now.</div>
+                <div class="c-empty">@L.Location_NoOneSharing</div>
             } else {
                 <MapView
                     @ref="_mapView"

@@ -33,6 +33,8 @@
 @code {
     [Inject] protected AppUIHub Hub { get; init; } = null!;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private DateFormatter DateFormatter => Hub.DateFormatter;
+    private IStringLocalizer L => Hub.StringLocalizer;
     private MomentClockSet Clocks => Hub.Clocks;
 
     [Parameter] public IReadOnlyList<AuthorId> Authors { get; set; } = null!;
@@ -46,47 +48,11 @@
 
     private string GetConversationTimeInfoString() {
         var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
-        var isToday = false;
-        var isYesterday = false;
-        var inWeek = false;
-        var timeRange = "";
-        var timestamp = "";
-
-        var totalDiff = EndsAt - StartsAt;
-        var minutesDiff = totalDiff.Seconds > 0 ? 1 : 0;
-        if (totalDiff.TotalDays >= 1) {
-            timeRange = $"{(int)totalDiff.TotalDays} d {(int)totalDiff.TotalHours} h {totalDiff.Minutes + minutesDiff} min";
-        } else if (totalDiff.TotalHours >= 1)
-            timeRange = $"{(int)totalDiff.TotalHours} h {totalDiff.Minutes + minutesDiff} min";
-        else if (totalDiff.TotalMinutes >= 1)
-            timeRange = $"{(int)totalDiff.TotalMinutes + minutesDiff} min";
-        else
-            timeRange = "1 min";
-
-        var delta = (now - StartsAt).Days;
-
-        switch (delta) {
-            case 0:
-                isToday = true;
-                break;
-            case 1:
-                isYesterday = true;
-                break;
-            case < 8:
-                inWeek = true;
-                break;
-        }
-
-        if (isToday)
-            timestamp = StartsAt.ToString("HH:mm", null);
-        else if (isYesterday)
-            timestamp = $"{StartsAt.ToString("HH:mm", null)}, Yesterday";
-        else if (inWeek)
-            timestamp = StartsAt.ToString("HH:mm, ddd", null);
-        else if (now.Year == StartsAt.Year)
-            timestamp = StartsAt.ToString("HH:mm, MMM dd", null);
-        else
-            timestamp = StartsAt.ToString("HH:mm, MMM dd, yyyy", null);
-        return $"{timeRange} at {timestamp}";
+        var timeRange = DateFormatter.FormatDuration(EndsAt - StartsAt);
+        var time = StartsAt.ToString("t", DateFormatter);
+        var timestamp = (now.Date - StartsAt.Date).Days == 0
+            ? time
+            : L.Date_Parts_Format(time, DateFormatter.FormatRelativeDate(StartsAt, now));
+        return L.Conversation_DurationAt_Format(timeRange, timestamp);
     }
 }

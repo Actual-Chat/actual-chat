@@ -1,0 +1,126 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
+{
+  "Validation_Required_Format": "“{field}”为必填项。",
+  "Validation_MinLength_Format": "“{field}”至少需要 {min} 个字符。",
+  "Validation_EmailAddress_Format": "“{field}”不是有效的电子邮件地址。",
+  "Validation_DeleteConfirmationRequired": "需要确认删除",
+  "Validation_DeleteConfirmationInvalid": "请输入 DELETE 以确认",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "您没有执行此操作的权限。",
+  "Error_NotEnoughPermissions_Format": "您没有执行此操作的权限。所需权限：{permission}",
+  "Error_TooManyRequests": "请求过于频繁。",
+  "Error_TooManyRequests_Format": "请求过于频繁。请在 {seconds} 秒后重试。",
+  "Error_VersionMismatch": "数据已更改，请重试。",
+  "Error_ChatNotFound": "未找到聊天。",
+  "Error_ChatEntryNotFound": "未找到消息。",
+  "Error_AccountNotFound": "未找到账户。",
+  "Error_AuthorNotFound": "未找到该成员。",
+  "Error_AvatarNotFound": "未找到资料。",
+  "Error_ContactNotFound": "未找到联系人。",
+  "Error_MediaNotFound": "未找到文件。",
+  "Error_UploadNotFound": "未找到上传内容。",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "此注册请求已过期，请重新登录。",
+  "Error_SessionExpired": "您的会话已过期或被停用，请重启应用。",
+  "Error_AlreadySignedIn": "您已登录。",
+  "Error_PhoneTaken": "该手机号已被其他账户使用。",
+  "Error_EmailTaken": "该电子邮箱已被其他账户使用。",
+  "Error_SmsNotDelivered": "无法将短信发送到指定的手机号。",
+  "Error_CannotDeactivateCurrentSession": "无法停用当前会话。",
+  "Error_PhoneFormatInvalid": "手机号格式不正确。",
+  "Error_CannotChangeOwnStatus": "您无法更改自己的状态。",
+  "Error_ApiKeyExpirationRange_Format": "API 密钥的有效期必须在 1 到 {days} 天之间。",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "您是该聊天的唯一拥有者，无法退出。请先添加另一位拥有者。",
+  "Error_CannotRemoveSelf": "您无法将自己移出聊天成员。",
+  "Error_CannotRemoveChatOwner": "您无法将该聊天的拥有者移出成员。",
+  "Error_CannotRemoveSearchBot": "您无法将 AI 搜索机器人移出聊天成员。",
+  "Error_OwnerCannotBeDemoted": "无法降低聊天拥有者的权限。",
+  "Error_AuthorAlreadyLeft": "所选成员已退出该聊天。",
+  "Error_AutomaticRoleMembership": "该系统角色的成员由系统自动确定。",
+  "Error_ManageMembershipInPlace": "请在空间设置中管理空间公开聊天的成员。",
+  "Error_AnonymousAvatarRequired": "匿名加入需要使用匿名资料。",
+  "Error_GuestJoinNotAllowed": "该聊天不允许使用访客账户加入。",
+  "Error_AnonymousJoinNotAllowed": "该聊天不允许匿名加入。",
+  "Error_OwnersRoleCannotBeEmpty": "“拥有者”角色中至少要保留一名用户。",
+  "Error_OnlyOwnersAllowed": "只有该聊天“拥有者”角色的成员才能执行此操作。",
+
+  // Messages
+  "Error_CannotSendMessages": "您无法在该聊天中发送消息。",
+  "Error_EmptyMessage": "无法发送空消息。",
+  "Error_CanEditOwnMessagesOnly": "您只能编辑自己的消息。",
+  "Error_OnlyTextCanBeEdited": "只有文字消息才能编辑。",
+  "Error_StreamingCannotBeEdited": "正在录制的消息无法编辑。",
+  "Error_ForwardedCannotBeEdited": "转发的消息无法编辑。",
+  "Error_MessageNoLongerExists": "该消息已不存在。",
+  "Error_CannotRemoveMessage": "您无权删除该消息。",
+  "Error_CannotRemoveOwnerMessage": "您无权删除拥有者的消息。",
+  "Error_CannotRestoreMessage": "您无权恢复该消息。",
+  "Error_CannotRestoreOwnerMessage": "您无权恢复拥有者的消息。",
+  "Error_RootChatCannotHoldMessages": "空间的根聊天不能发布消息 — 请发到空间中的某个聊天。",
+  "Error_CanAttachOwnLocationsOnly": "您只能附加自己在该聊天中共享的位置。",
+  "Error_NonContactMessageLimit_Format": "在对方将您加为联系人或回复之前，您最多可发送 {limit} 条消息。",
+  "Error_OnlyOwnersOrModeratorsCanPin": "只有聊天拥有者和版主才能置顶消息。",
+  "Error_PinLimit_Format": "您最多可以置顶 {limit} 条消息。",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "聊天名称不能为空。",
+  "Error_ThreadTitleEmpty": "话题名称不能为空。",
+  "Error_PlaceTitleEmpty": "空间名称不能为空。",
+  "Error_PlaceUnavailable": "请求的空间不可用。",
+  "Error_OnlyPlaceMembersCanAddChats": "只有空间成员才能添加聊天。",
+  "Error_CannotMakeChatPublic": "您没有将该聊天设为公开的权限。",
+  "Error_CustomLinkNotAllowed": "空间中的聊天不支持自定义链接。",
+  "Error_CustomLinkTaken_Format": "链接“{link}”已被同一空间中的另一个聊天使用。",
+  "Error_WelcomeChatCannotBePrivate": "“Welcome”聊天无法设为私密。",
+  "Error_WelcomeChatCannotBeRemoved": "“Welcome”聊天无法删除。",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "只有群聊或空间聊天才能复制到空间。",
+  "Error_CannotCopyToSamePlace": "无法将空间聊天复制到同一空间。",
+  "Error_MigrationRequiresChatOwner": "执行迁移需要您是该聊天的拥有者。",
+  "Error_MigrationRequiresPlaceOwner": "将聊天复制到空间需要您是该空间的拥有者。",
+  "Error_OperationRequiresChatOwner": "执行此操作需要您是该聊天的拥有者。",
+  "Error_OperationRequiresPlaceOwner": "执行此操作需要您是该聊天所属空间的拥有者。",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "只有在对方将您加为联系人或回复后，才能创建话题。",
+  "Error_SignInToFollowThread": "请登录后再关注话题。",
+  "Error_OnlyPeerContactCanBeBlocked": "只能屏蔽私聊联系人。",
+  "Error_SignInToChat": "请登录后再与其他用户聊天。",
+  "Error_CannotChatWithUnauthenticated": "无法与未登录的用户聊天。",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "只有通话参与者才能成为通话主持人。",
+  "Error_CannotMuteOwner": "您无法关闭拥有者的麦克风。",
+  "Error_OnlyHostOrOwnerCanChangeHost": "只有通话主持人或聊天拥有者才能更换主持人。",
+  "Error_CallRequiresContact": "只有在对方将您加为联系人或回复后，才能给对方打电话。",
+  "Error_CannotMuteInPeerChat": "在一对一聊天中无法关闭对方的麦克风。",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "只有通话主持人、聊天拥有者或版主才能管理通话。",
+  "Error_VoiceStreamingModeLocked": "该聊天中无法更改语音传输模式。",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "公开聊天中无法通知成员。",
+  "Error_AlertEveryoneUnavailable": "成员超过 10 人的聊天不能向所有人发送紧急通知。",
+  "Error_NobodyToNotify": "没有可通知的人。",
+  "Error_OnlyAuthorCanNotify": "只有消息作者才能通知被提及的人。",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "您没有访问该文件的权限。",
+  "Error_FileTooBig": "文件过大。",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "该邀请链接已被使用。",
+  "Error_InviteNotActive": "该邀请链接已失效。",
+  "Error_InviteCodeNotFound": "未找到该邀请码对应的邀请。",
+  "Error_OnlyPlaceMembersCanUseCode": "只有空间成员才能使用该邀请码。",
+  "Error_UserInvitesRemoved": "用户邀请功能已不再支持。",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "共享位置前请先加入该聊天。",
+  "Error_CanChangeOwnLocationsOnly": "在该聊天中您只能更改自己共享的位置。",
+  "Error_LocationSharingLimit_Format": "该聊天中共享实时位置的人数已达上限 {limit} 人。"
+}

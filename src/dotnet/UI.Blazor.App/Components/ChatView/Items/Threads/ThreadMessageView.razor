@@ -11,14 +11,14 @@
     var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now.ToDateTime());
     var daysDelta = (now.Date - createdAt.Date).Days;
     var creationDate = createdAt.Year != now.Year // prev year
-        ? createdAt.ToString("MMM dd, yyyy")
+        ? createdAt.ToString("d", DateFormatter)
         : daysDelta == 0 // today
-            ? "Today"
+            ? L.Common_Today
                 : daysDelta == 1 // yesterday
-                ? "Yesterday"
+                ? L.Common_Yesterday
                     : daysDelta < 8 // this week
-                    ? createdAt.ToString("dddd")
-                        : createdAt.ToString("MMM dd"); // this year
+                    ? createdAt.ToString("dddd", DateFormatter)
+                        : createdAt.ToString("m", DateFormatter); // this year
     var attachments = m is null ? [] : m.Attachments;
     var messageCount = m?.MessageCount ?? 0;
     var previewEntries = m?.Entries.Select(x => new PreviewEntry(x.Item1, x.Item2)).ToList() ?? [];
@@ -38,7 +38,7 @@
         </div>
         <HeaderButton
             Class="btn-go-to-thread"
-            Tooltip="Go to the thread"
+            Tooltip="@L.ChatView_GoToThread"
             Click="@OnGoToTheThread">
             <i class="icon-arrow-right"></i>
         </HeaderButton>
@@ -84,7 +84,7 @@
         </div>
         <div class="c-info">
             <div class="c-created">
-                <span>@creationDate,</span><span> created by </span>
+                <span>@creationDate,</span><span>&nbsp;@L.ChatView_CreatedBy&nbsp;</span>
                 @if (isLoading) {
                     <string-skeleton firstWidth="4" secondWidth="8" height="4"/>
                 } else {

@@ -1,12 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using StringBuilderExt = ActualLab.Text.StringBuilderExt
 @inherits ComputedMenuBase<AppUIHub, ConversationMenu.Model>
 @{
     var m = State.Value;
     if (State.Value == Model.None)
         return;
 
-    var expandCollapseButtonTitle = _isOpen ? "Collapse conversation" : "Expand conversation";
+    var expandCollapseButtonTitle = _isOpen ? L.ConversationMenu_Collapse : L.ConversationMenu_Expand;
     var expandCollapseButtonIcon = _isOpen ? "icon-collapse" : "icon-expand";
 }
 
@@ -15,48 +14,48 @@
         Icon="@expandCollapseButtonIcon"
         Text="@expandCollapseButtonTitle"
         Class="important-item"
-        Click="@(() => ToggleShowMessage())">
+        Click="@(ToggleShowMessage)">
     </MenuEntry>
     @if (m.IsOwner) {
         <MenuEntry
             Icon="icon-resummarize"
-            Text="Re-summarize"
-            Click="@(() => OnReSummarize())">
+            Text="@L.ConversationMenu_ReSummarize"
+            Click="@(OnReSummarize)">
         </MenuEntry>
     }
     <MenuEntry
         Icon="icon-copy"
-        Text="Copy summary"
+        Text="@L.ConversationMenu_CopySummary"
         Click="@OnCopyToClipboardRequested">
     </MenuEntry>
     @if (m.EnableIncompleteUI) {
         <MenuEntry
             Icon="icon-reply"
             FocusOnEditor="true"
-            Text="Reply"
+            Text="@L.MessageMenu_Reply"
             Click="@Reply">
         </MenuEntry>
         <CopyTrigger Tooltip="" CopyText="" Class="ac-menu-item !p-0">
             <MenuEntry
                 Icon="icon-copy"
-                Text="Copy summary link">
+                Text="@L.ConversationMenu_CopySummaryLink">
             </MenuEntry>
         </CopyTrigger>
         <MenuEntry
             Icon="icon-share"
-            Text="Forward"
+            Text="@L.MessageMenu_Forward"
             Click="@Forward">
         </MenuEntry>
         <MenuEntry
             Class="warning-item"
             Icon="icon-trash03"
-            Text="Delete"
+            Text="@L.Common_Delete"
             Click="@Delete">
         </MenuEntry>
         <MenuEntrySeparator/>
         <MenuEntry
             Icon="icon-select"
-            Text="Select"
+            Text="@L.MessageMenu_Select"
             Click="@Select">
         </MenuEntry>
     }
@@ -66,7 +65,6 @@
     private bool _isOpen;
     private ConversationId _conversationId = null!;
 
-    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private IConversations Conversations => Hub.Conversations;
     private ConversationUI ConversationUI => Hub.ConversationUI;
     private ChatUI ChatUI => Hub.ChatUI;

@@ -1,5 +1,5 @@
-using System.ComponentModel.DataAnnotations;
 using ActualChat.Invite;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
@@ -34,7 +34,7 @@ public partial class EditChatTypeModalPage
     protected override void OnInitialized()
     {
         ChatId = Context.GetModel<ChatId>();
-        Context.Title = "Chat settings";
+        Context.Title = L.Chat_SettingsTitle;
         Context.Class = "edit-chat-type";
         if (ChatId.Kind == ChatKind.Peer)
             throw StandardError.NotSupported("Peer chat is not supported.");
@@ -196,7 +196,7 @@ public partial class EditChatTypeModalPage
         public bool AllowAnonymousAuthors { get; set; }
 
         public string CurrentAliasId { get; set; } = "";
-        [AliasId, Display(Name = "Short name")]
+        [AliasId]
         public string ActualAliasId => IsPublic ? AliasId : "";
 
         public string FormId { get; }

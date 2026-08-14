@@ -12,7 +12,7 @@
 }
 
 <LayoutView Layout="@typeof(DefaultLayout)">
-    <MainHeader>Error!</MainHeader>
+    <MainHeader>@L.Error_Title</MainHeader>
     @foreach (var (requirement, error) in Failures.Items) {
         var title = HostInfo.IsDevelopmentInstance
             ? $"Error ({error.GetType().GetName()}):"

@@ -47,7 +47,7 @@
                 <HeaderButton Click="@(_ => stepper.MoveBack())">
                     <i class="icon-arrow-left text-2xl"></i>
                 </HeaderButton>
-                <div class="text-headline-7 text-02">Back</div>
+                <div class="text-headline-7 text-02">@L.Common_Back</div>
             }
             <div class="grow"></div>
             @if (ModalModel.CanBeClosed) {
@@ -90,7 +90,7 @@
                             @if (stepper.CurrentStep is PhoneStep or EmailStep or DataCollectionStep) {
                                 <span>@stepper.NextTitle</span>
                             } else if (stepper.IsLastStep) {
-                                <span>Start messaging</span>
+                                <span>@L.Onboarding_StartMessaging</span>
                             } else if (stepper.CanMoveForward) {
                                 <span>@stepper.NextTitle</span>
                             } else {

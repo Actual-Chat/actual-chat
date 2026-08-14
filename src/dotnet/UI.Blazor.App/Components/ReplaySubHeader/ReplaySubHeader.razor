@@ -20,15 +20,15 @@
     var speed = m?.Speed ?? ChatAudioUI.ReplaySettings.Value.Speed;
     var speedLabel = Math.Abs(speed - 1.0) < 0.01 ? "1x" : $"{speed:0.##}x";
 
-    var titleLabel = m?.ShowChatTitle == true ? m.ChatTitle : "Replaying";
+    var titleLabel = m?.ShowChatTitle == true ? m.ChatTitle : L.Replay_Replaying;
     var dateLabel = "";
     if (m?.PlayingAt is { } playingAt) {
         var now = DateTimeConverter.ToLocalTime(Hub.Clocks.SystemClock.Now);
         var localTime = DateTimeConverter.ToLocalTime(playingAt);
         var delta = (now.Date - localTime.Date).Days;
         dateLabel = delta switch {
-            0 => $"Today, {localTime:HH:mm}",
-            1 => $"Yesterday, {localTime:HH:mm}",
+            0 => $"{L.Common_Today}, {localTime:HH:mm}",
+            1 => $"{L.Common_Yesterday}, {localTime:HH:mm}",
             < 8 => $"{localTime:ddd}, {localTime:HH:mm}",
             _ => now.Year == localTime.Year
                 ? $"{localTime:MMM dd}, {localTime:HH:mm}"
@@ -72,24 +72,34 @@
                 <Spinner/>
             } else {
             @if (ScreenSize.IsWide()) {
-                <ButtonRound Tooltip="Backward" Click="@OnBackward" Class="btn-xs btn-transparent hover-primary-icon">
+                <ButtonRound
+                    Tooltip="@L.Replay_Backward"
+                    Click="@OnBackward"
+                    Class="btn-xs btn-transparent hover-primary-icon">
                     <i class="icon-rewind-left-fill text-2xl"></i>
                 </ButtonRound>
             }
             @if (m?.IsPaused ?? false) {
-                <ButtonRound Tooltip="Play" Click="@OnResume" Class="btn-xs btn-transparent btn-primary" MustKeepAwake="true">
+                <ButtonRound
+                    Tooltip="@L.MessageMenu_Play"
+                    Click="@OnResume"
+                    Class="btn-xs btn-transparent btn-primary"
+                    MustKeepAwake="true">
                     <i class="icon-play-fill text-2xl"></i>
                 </ButtonRound>
             } else {
-                <ButtonRound Tooltip="Pause" Click="@OnPause" Class="btn-xs btn-transparent btn-primary">
+                <ButtonRound Tooltip="@L.Common_Pause" Click="@OnPause" Class="btn-xs btn-transparent btn-primary">
                     <i class="icon-pause-fill text-2xl"></i>
                 </ButtonRound>
             }
             @if (ScreenSize.IsWide()) {
-                <ButtonRound Tooltip="Forward" Click="@OnForward" Class="btn-xs btn-transparent hover-primary-icon">
+                <ButtonRound
+                    Tooltip="@L.AudioPlayer_Forward"
+                    Click="@OnForward"
+                    Class="btn-xs btn-transparent hover-primary-icon">
                     <i class="icon-rewind-right-fill text-2xl"></i>
                 </ButtonRound>
-                <ButtonRound Tooltip="Stop" Click="@OnStop" Class="btn-xs btn-transparent hover-primary-icon">
+                <ButtonRound Tooltip="@L.Common_Stop" Click="@OnStop" Class="btn-xs btn-transparent hover-primary-icon">
                     <i class="icon-stop-fill text-2xl"></i>
                 </ButtonRound>
             }
@@ -98,7 +108,7 @@
         <div class="c-actions">
             <HeaderButton
                 Class="c-speed-btn btn-lg hover-primary-icon"
-                Tooltip="Speed"
+                Tooltip="@L.Replay_Speed"
                 data-menu="@(MenuRef.New<ReplaySpeedMenu>())"
                 data-menu-trigger="@MenuTrigger.Primary"
                 data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">

@@ -27,7 +27,7 @@
         <div class="c-buttons">
             <ButtonRound
                 Class="btn-sm"
-                Tooltip="Message"
+                Tooltip="@L.Call_Message"
                 TooltipPosition="FloatingPosition.Top">
                 <i class="icon-message-ellipse text-2xl"></i>
             </ButtonRound>
@@ -36,7 +36,7 @@
 
     <div class="c-bottom">
         <div class="c-title">
-            <span class="call-text">Incoming call from </span>
+            <span class="call-text">@L.Call_IncomingFrom</span>
             <AuthorName AuthorId="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
         </div>
         @if (!_peerOwnName.IsNullOrEmpty()) {

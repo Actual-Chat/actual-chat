@@ -170,7 +170,8 @@ sealed file class FakeTranslator(IServiceProvider services, string serviceKey = 
         string textToTranslate,
         Language targetLanguage,
         TranslationResult[] context,
-        CancellationToken cancellationToken)
+        string? contextHint = null,
+        CancellationToken cancellationToken = default)
         => MustFailRealtime && IsRealtime
             ? Task.FromException<string>(StandardError.External("Realtime translation failed."))
             : Task.FromResult(Prefix + textToTranslate);
@@ -179,7 +180,8 @@ sealed file class FakeTranslator(IServiceProvider services, string serviceKey = 
         string textToTranslate,
         Language targetLanguage,
         TranslationResult[] context,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        string? contextHint = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask.ConfigureAwait(false);
         yield return StringDiff.New(Prefix + textToTranslate, "");

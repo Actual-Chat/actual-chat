@@ -1,6 +1,7 @@
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor;
 
@@ -23,6 +24,7 @@ public abstract class UIServiceBase<THub>(THub hub) : IHasDisposeStatus
     protected UrlMapper UrlMapper => Hub.UrlMapper;
     protected MomentClockSet Clocks => field ??= Hub.Clocks;
     protected DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    protected DateFormatter DateFormatter => Hub.DateFormatter;
     protected Temporals Temporals => Hub.Temporals;
     protected LocalSettings LocalSettings => Hub.LocalSettings;
     protected UserSettingsUI UserSettingsUI => Hub.UserSettingsUI;
@@ -38,6 +40,7 @@ public abstract class UIServiceBase<THub>(THub hub) : IHasDisposeStatus
     protected ShareUI ShareUI => Hub.ShareUI;
     protected Dispatcher Dispatcher => Hub.Dispatcher;
     protected Features Features => Hub.Features;
+    protected IStringLocalizer L => Hub.StringLocalizer;
 
     // Shortcuts
     public bool IsDisposed => Hub.IsDisposed;

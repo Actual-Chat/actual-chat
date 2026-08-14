@@ -10,12 +10,12 @@
     <button type="button"
             class="c-option @(activity.Tab == VisualActivityTab.Call ? "on" : "")"
             @onclick="@(() => OnSelect(VisualActivityTab.Call))">
-        Call
+        @L.Call_TabCall
     </button>
     <button type="button"
             class="c-option @(activity.Tab == VisualActivityTab.Map ? "on" : "")"
             @onclick="@(() => OnSelect(VisualActivityTab.Map))">
-        Map
+        @L.Call_TabMap
     </button>
 </div>
 

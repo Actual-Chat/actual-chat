@@ -7,7 +7,7 @@
 }
 
 <div class="replay-speed-menu">
-    <div>Replay speed:</div>
+    <div>@L.Replay_SpeedMenuTitle</div>
     <Divider/>
     @foreach (var speed in Speeds) {
         var isSelected = Math.Abs(currentSpeed - speed) < 0.01;

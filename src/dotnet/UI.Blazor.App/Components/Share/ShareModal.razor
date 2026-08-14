@@ -28,7 +28,7 @@
                 ChatListPreOrder="@ChatListPreOrder.ChatList"
                 Changed="@StateHasChanged">
                 <SearchBox
-                    Placeholder="Who would you like to share with"
+                    Placeholder="@L.Share_WhoToShareWith"
                     MaxLength="@Constants.Chat.MaxSearchFilterLength"
                     TextChanged="@OnFilter"/>
                 <ContactSelectorPlacePicker/>
@@ -39,7 +39,7 @@
             <MemberSelector
                 @ref="_memberSelectorRef"
                 ListSource="@_memberListSource"
-                SearchBoxPlaceholder="Who would you like to share with"
+                SearchBoxPlaceholder="@L.Share_WhoToShareWith"
                 Changed="@(() => StateHasChanged())" />
         }
     </FormBlock>
@@ -48,7 +48,7 @@
         <EmbeddedMessageEditor
             Text="@_comment"
             IsTransparent="@true"
-            Placeholder="Add your comment (optional)"
+            Placeholder="@L.Share_AddComment"
             PlaceholderIcon="icon-message-ellipse"
             TextChanged="OnCommentChanged" />
         @if (ModalModel.Request.HasLink(out var link)) {
@@ -66,7 +66,7 @@
             />
         <Button Class="@shareButtonClass" IsDisabled="@(!canSend)" Click="OnSendClicked">
             <Icon><i class="icon-share text-2xl"></i></Icon>
-            <Title>Send to selected contacts</Title>
+            <Title>@L.Share_SendToSelected</Title>
         </Button>
     </Buttons>
 </DialogFrame>

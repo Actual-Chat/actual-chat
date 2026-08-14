@@ -68,13 +68,13 @@
     }
 
     <FormBlock>
-        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="Chat title">
+        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="@L.Form_ChatTitle">
             <TextBox
                 @bind-Value="@_form.Title"
                 Id="@_form.TitleId"
                 ClearButton="true"/>
         </FormSection>
-        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="Chat description">
+        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="@L.Form_ChatDescription">
             <TextBox
                 @bind-Value="@_form.Description"
                 Id="@_form.DescriptionId"
@@ -166,7 +166,7 @@
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();
-        Context.Title = "Chat settings";
+        Context.Title = L.Chat_SettingsTitle;
         if (ChatId is PeerChatId)
             throw StandardError.NotSupported("Peer chat is not supported.");
 
@@ -286,7 +286,7 @@
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel {
-        [Required, MinLength(1)]
+        [Required]
         public string Title { get; set; } = "";
 
         public string Description { get; set; } = "";

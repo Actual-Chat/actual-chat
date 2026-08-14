@@ -31,7 +31,7 @@
         <div class="mention-list-chip-divider"></div>
         <ButtonRound
             Class="mention-list-close-btn btn-xs btn-transparent"
-            Tooltip="Close"
+            Tooltip="@L.Common_Close"
             data-editor-focus="true"
             PointerDownPreventDefault="true"
             Click="@(_ => Manager.Dismiss())">
@@ -53,7 +53,7 @@
             }
         }
         @if (hasNoMatch) {
-            <div class="mention-list-item mention-list-no-match" data-editor-focus="true">No matches found</div>
+            <div class="mention-list-item mention-list-no-match" data-editor-focus="true">@L.MentionList_NoMatches</div>
         }
         @if (!_loading) {
             foreach (var mention in mentions) {

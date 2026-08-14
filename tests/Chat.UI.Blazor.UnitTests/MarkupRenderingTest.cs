@@ -72,7 +72,7 @@ public class MarkupRenderingTest
     public void AlertConfirmationInfoEncodesTarget()
     {
         // arrange
-        using var context = new BunitContext();
+        using var context = TestBunitContext.New();
 
         // act
         var cut = context.Render<AlertConfirmationInfo>(p => p
@@ -89,7 +89,7 @@ public class MarkupRenderingTest
     public void ConfirmModalRendersAdditionalContentAsMarkup()
     {
         // arrange
-        using var context = new BunitContext();
+        using var context = TestBunitContext.New();
         context.ComponentFactories.AddStub<DialogFrame>();
         var model = new ConfirmModal.Model(false, "Confirm?", () => { }) {
             AdditionalContent = builder => builder.AddContent(0, Payload),

@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Resources;
+
 namespace ActualChat.UI.Blazor.Components;
 
 public abstract class Step<THub, TModel>
@@ -7,8 +9,8 @@ public abstract class Step<THub, TModel>
 {
     public virtual bool CanSkip => false;
     public virtual bool IsCompleted => false;
-    public virtual string SkipTitle => "Skip";
-    public virtual string NextTitle => "Next";
+    public virtual string SkipTitle => L.Common_Skip;
+    public virtual string NextTitle => L.Common_Next;
     public IStep? CurrentStep => Stepper.CurrentStep;
 
     [CascadingParameter] public Stepper Stepper { get; set; } = null!;

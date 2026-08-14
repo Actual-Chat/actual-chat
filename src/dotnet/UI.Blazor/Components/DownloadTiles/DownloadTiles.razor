@@ -4,8 +4,8 @@
 
 <div class="download-tiles">
     <DownloadTile Link="@(Links.Apps.Android)">
-        <Title>Android App</Title>
-        <Text>Mobile, Tablet</Text>
+        <Title>@L.Download_AndroidApp</Title>
+        <Text>@L.Download_MobileTablet</Text>
         <Brand>
             <img draggable="false" src="/dist/images/landing/google-play.svg" alt="Google Play">
         </Brand>
@@ -14,8 +14,8 @@
         </QrCode>
     </DownloadTile>
     <DownloadTile Link="@(Links.Apps.iOS)">
-        <Title>iOS App</Title>
-        <Text>Mobile, Tablet</Text>
+        <Title>@L.Download_IosApp</Title>
+        <Text>@L.Download_MobileTablet</Text>
         <Brand>
             <img draggable="false" src="/dist/images/landing/app-store.svg" alt="App Store">
         </Brand>
@@ -24,8 +24,8 @@
         </QrCode>
     </DownloadTile>
     <DownloadTile Link="@(Links.Apps.Windows)">
-        <Title>Windows App</Title>
-        <Text>Desktop</Text>
+        <Title>@L.Download_WindowsApp</Title>
+        <Text>@L.Download_Desktop</Text>
         <Brand>
             <img draggable="false" src="/dist/images/landing/microsoft-store.svg" alt="Microsoft Store">
         </Brand>
@@ -34,11 +34,11 @@
         </QrCode>
     </DownloadTile>
     <DownloadTile OnClick="@SignIn">
-        <Title>Web App</Title>
-        <Text>Mobile, Desktop</Text>
+        <Title>@L.Download_WebApp</Title>
+        <Text>@L.Download_MobileDesktop</Text>
         <Brand>
             <div class="web-app">
-                <span>Sign in to web app</span>
+                <span>@L.Download_SignInToWebApp</span>
                 <i class="icon-monitor"></i>
             </div>
         </Brand>

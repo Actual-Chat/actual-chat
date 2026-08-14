@@ -1,17 +1,18 @@
-using ActualChat.Time;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public class LiveTime : SafeAsyncDisposableBase, IComputeService
 {
     private readonly TimeSpan _maxInvalidationDelay;
 
+    private IServiceProvider Services { get; }
     private HostInfo HostInfo { get; }
     private DateTimeConverter DateTimeConverter { get; }
     private MomentClockSet Clocks { get; }
+    private DeltaText DeltaText => field ??= Services.GetRequiredService<DeltaText>();
 
     public LiveTime(IServiceProvider services)
     {
+        Services = services;
         HostInfo = services.HostInfo();
         DateTimeConverter = services.GetRequiredService<DateTimeConverter>();
         Clocks = services.Clocks();

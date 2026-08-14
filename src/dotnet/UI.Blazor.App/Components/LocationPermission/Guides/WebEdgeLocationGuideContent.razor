@@ -1,19 +1,20 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 
 <div class="c-hero">
-    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="Location access is blocked">
+    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="@L.LocationGuide_BlockedImageAlt">
 </div>
 <div class="c-title">
-    Location access is blocked, but you can fix this!
+    @L.LocationGuide_Title
 </div>
 <div class="c-intro">
-    @CoreConstants.AppName needs access to your location to share it with others.
-    To enable it in Microsoft Edge:
+    @L.LocationGuide_Intro_Format(CoreConstants.AppName)
+    @L.Guide_EnableInWebEdge
 </div>
 <ol class="c-steps">
-    <li>Click "⋯" &gt; "Settings" on Windows, or "Microsoft Edge" &gt; "Preferences" on MacOS</li>
-    <li>Choose "Cookies and Site Permissions"</li>
-    <li>Select "Location"</li>
-    <li>Delete "@Constants.Hosts.Voxt" from "Block" list</li>
-    <li>Reopen @CoreConstants.AppName and allow it to use location</li>
+    <li>@L.LocationGuide_WebEdgeStep1</li>
+    <li>@L.LocationGuide_WebEdgeStep2</li>
+    <li>@L.LocationGuide_WebEdgeStep3</li>
+    <li>@L.LocationGuide_WebEdgeStep4_Format(Constants.Hosts.Voxt)</li>
+    <li>@L.LocationGuide_WebEdgeStep5_Format(CoreConstants.AppName)</li>
 </ol>

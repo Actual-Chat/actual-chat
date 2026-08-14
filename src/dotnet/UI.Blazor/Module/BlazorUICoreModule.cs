@@ -143,7 +143,9 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             services.AddScoped(_ => FakeTemporals.Instance);
         else
             fusion.AddService<Temporals, RealTemporals>(ServiceLifetime.Scoped);
+        services.AddScoped<DateFormatter>();
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
+        services.AddScoped<DeltaText>();
         fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
         fusion.AddService<TotpUI>(ServiceLifetime.Scoped);
         fusion.AddService<LogUI>(ServiceLifetime.Scoped);

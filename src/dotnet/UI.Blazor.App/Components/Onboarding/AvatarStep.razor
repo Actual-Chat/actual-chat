@@ -46,7 +46,7 @@
         <FormSection
             For="() => _model.Name"
             InputId="name"
-            Label="Name"
+            Label="@L.Form_Name"
             IsLabelInsideInput="true"
             IsRequired="true">
             <TextBox Id="name" @bind-Value="_model.Name" Autocomplete="name"/>
@@ -124,7 +124,7 @@
     }
 
     public class Model {
-        [Required, Display(Name = "Name")] public string Name { get; set; } = "";
+        [Required] public string Name { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
         public Picture Picture { get; set; } = null!;
         public AvatarFull OriginalAvatar { get; set; } = null!;

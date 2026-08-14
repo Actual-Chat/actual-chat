@@ -55,7 +55,7 @@
             _placeLink = _shareRequest.GetShareLink(UrlMapper);
         } else
             throw StandardError.NotSupported("Not supported model type");
-        Context.Title = "Add members";
+        Context.Title = L.AddMember_Title;
         Context.Class = "add-member-modal-content";
         Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
     }

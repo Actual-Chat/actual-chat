@@ -11,7 +11,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `AvatarKind` (enum) - Specifies the type of avatar (Default, Uploaded, Beam, etc.).
 - `Change<T>` (record struct) - Represents a change operation (create, update, remove).
 - `ChangeKind` (enum) - Specifies the type of change operation.
-- `DeltaText` - Represents a time delta as human-readable text.
 - `Email` (record struct) - Represents an email address.
 - `Emoji` (record struct) - Represents an emoji character or sequence.
 - `ExternalError` - Exception for external service errors.
@@ -984,6 +983,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ContactsPermissionHandler` - Contacts permission handling.
 - `DebugUI` - Debugging utilities.
 - `DeviceAwakeUI` - Device wake state tracking.
+- `DeltaText` - Renders a time delta as live "5 minutes ago" text plus its staleness delay.
 - `History` - Browser navigation history management.
 - `HistoryItem` (record) - Single entry in browser history.
 - `KeepAwakeUI` - Prevents screen sleep.

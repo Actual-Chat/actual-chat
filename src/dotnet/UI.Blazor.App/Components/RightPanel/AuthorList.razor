@@ -20,7 +20,7 @@
     <div class="c-content">
         @if (hideMembers) {
             <div class="note-hidden-members">
-                There are <b>@m.AllAuthorIds.Count</b> members now. Anonymous chat members are hidden unless there are at least 5 of them.
+                @L.RightPanel_HiddenMembers_Prefix<b>@m.AllAuthorIds.Count</b>@L.RightPanel_HiddenMembers_Suffix
             </div>
         }
         else if (useFlatList) {
@@ -36,24 +36,24 @@
                     Click="@_onClickCallback"/>
             }
         } else {
-            var groups = new List<(string, ICollection<AuthorId>, bool)>();
+            var groups = new List<(string, string, ICollection<AuthorId>, bool)>();
             if (m.OwnerAuthorIds.Count > 0)
-                groups.Add(("Owners", m.OwnerAuthorIds, false));
+                groups.Add(("owners", L.RightPanel_GroupOwners, m.OwnerAuthorIds, false));
             if (m.ModeratorAuthorIds.Count > 0)
-                groups.Add(("Moderators", m.ModeratorAuthorIds, false));
+                groups.Add(("moderators", L.RightPanel_GroupModerators, m.ModeratorAuthorIds, false));
             if (m.AllAreAnonymous) {
                 if (m.UnreportedAuthorIds.Count > 0)
-                    groups.Add(("Unreported", m.UnreportedAuthorIds, false));
+                    groups.Add(("unreported", L.RightPanel_GroupUnreported, m.UnreportedAuthorIds, false));
             } else {
-                groups.Add(("Online", m.OnlineAuthorIds, false));
+                groups.Add(("online", L.RightPanel_GroupOnline, m.OnlineAuthorIds, false));
                 if (m.UnreportedAuthorIds.Count > 0)
-                    groups.Add(("Unreported", m.UnreportedAuthorIds, false));
-                groups.Add(("Offline", m.OfflineAuthorIds, true));
+                    groups.Add(("unreported", L.RightPanel_GroupUnreported, m.UnreportedAuthorIds, false));
+                groups.Add(("offline", L.RightPanel_GroupOffline, m.OfflineAuthorIds, true));
             }
 
-            foreach (var (name, authorIds, isCollapsed) in groups) {
-                var title = $"{name} — {authorIds.Count}";
-                <Collapsed @key="@name" Title="@title" IsCollapsed="@isCollapsed">
+            foreach (var (key, name, authorIds, isCollapsed) in groups) {
+                var title = L.RightPanel_GroupTitle_Format(name, authorIds.Count);
+                <Collapsed @key="@key" Title="@title" IsCollapsed="@isCollapsed">
                     <Virtualize Items="@authorIds" Context="authorId" ItemSize="@m.ItemSize" OverscanCount="5">
                         <AuthorBadge
                             @key="@authorId"
@@ -116,8 +116,7 @@
 
             allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
             ownerIds = [..await Places.ListOwnerIds(Session, place.Id, cancellationToken).ConfigureAwait(false)];
-        }
-        else
+        } else
             return Model.None;
 
         HashSet<AuthorId> moderatorIds = !isPeerChat

@@ -13,7 +13,7 @@
     if (_form == null || _editContext == null)
         return;
 
-    Context.Title = "Chat Type";
+    Context.Title = L.Chat_TypeTitle;
     var isPlaceChat = _placeId is not null;
     var canChangeChatType = _placeId is null
         || _place is not null && _place.Rules.CanApplyPublicChatType() && !_isPlaceWelcomeChat;
@@ -70,15 +70,16 @@
                 <Content>
                     <FormSection For="() => _form.ActualAliasId"
                                  InputId="@_form.AliasIdFormId"
-                                 Label="Custom link"
+                                 Label="@L.Form_CustomLink"
                                  IsLabelInsideInput="true">
-                        <ValidationMessage>
+                        <ValidationMessage Context="fieldLabel">
                             @if (_isPlaceAliasRequired) {
                                 <PlaceAliasRequiredValidationMessage/>
                             } else {
                                 <AliasValidationMessage
                                     For="@(() => _form.ActualAliasId)"
                                     Scope="@AliasValidationMessage.AliasScope.Chat(_placeId)"
+                                    FieldLabel="@fieldLabel"
                                     CurrentAliasId="@_form.CurrentAliasId"
                                     AliasIdReader="@(() => _form.ActualAliasId)"/>
                             }

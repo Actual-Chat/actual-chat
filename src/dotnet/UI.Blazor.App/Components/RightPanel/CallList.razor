@@ -6,44 +6,44 @@
     var m = State.Value;
     var live = m.Session;
     if (live is null) {
-        <div class="call-list-tab"><div class="c-empty">No active call.</div></div>
+        <div class="call-list-tab"><div class="c-empty">@L.Call_NoActiveCall</div></div>
         return;
     }
-    var groups = new (string Title, MemberGroup Group)[] {
-        ("Host", MemberGroup.Host),
-        ("Others", MemberGroup.Other),
-        ("Exited", MemberGroup.Exited),
+    var groups = new (string Key, string Title, MemberGroup Group)[] {
+        ("host", L.Call_GroupHost, MemberGroup.Host),
+        ("others", L.Call_GroupOthers, MemberGroup.Other),
+        ("exited", L.Call_GroupExited, MemberGroup.Exited),
     };
 }
 <div class="call-list-tab">
     @if (live.Kind == LiveSessionKind.Dialing) {
-        <div class="c-dialing">Dialing…</div>
+        <div class="c-dialing">@L.Call_Dialing</div>
     }
     <div class="c-rules">
-        <span class="c-rules-title">Rules</span>
+        <span class="c-rules-title">@L.Call_Rules</span>
         <span class="c-rules-text">@RulesText(live.Rules)</span>
     </div>
     @if (m.IsController) {
         var anyMuted = live.Members.Any(x => x.AuthorId != m.OwnAuthorId && x.MicMuted);
         <div class="c-manage">
-            <span class="c-manage-title">Manage</span>
+            <span class="c-manage-title">@L.Call_Manage</span>
             <div class="c-manage-buttons">
                 <button class="c-manage-btn @(TranscriptOn(live.Rules) ? "on" : "off")"
-                        @onclick="@(() => ToggleTranscript(live))" title="Transcription">
+                        @onclick="@(() => ToggleTranscript(live))" title="@L.Call_Transcription">
                     <i class="icon-voice-to-text-message"></i>
                 </button>
                 <button class="c-manage-btn @(VoiceOn(live.Rules) ? "on" : "off")"
-                        @onclick="@(() => ToggleVoice(live))" title="Voice">
+                        @onclick="@(() => ToggleVoice(live))" title="@L.Call_Voice">
                     <i class="icon-voice-01"></i>
                 </button>
                 <button class="c-manage-btn @(live.Rules.VideoAllowed ? "on" : "off")"
-                        @onclick="@(() => ToggleVideo(live))" title="Video">
+                        @onclick="@(() => ToggleVideo(live))" title="@L.Call_Video">
                     <i class="icon-video"></i>
                 </button>
                 @if (m.CanMuteOthers) {
                     <button class="c-manage-btn @(anyMuted ? "on" : "off")"
                             @onclick="@(() => ToggleMuteAll(live, !anyMuted))"
-                            title="@(anyMuted ? "Unmute all" : "Mute all")">
+                            title="@(anyMuted ? L.Call_UnmuteAll : L.Call_MuteAll)">
                         <i class="@(anyMuted ? "icon-mic-off" : "icon-mic-2")"></i>
                     </button>
                 }
@@ -51,13 +51,13 @@
         </div>
     }
     <div class="c-content">
-        @foreach (var (title, group) in groups) {
+        @foreach (var (key, title, group) in groups) {
             var members = live.Members.Where(x => x.Group == group).ToList();
             if (members.Count == 0)
                 continue;
 
-            var groupTitle = $"{title} — {members.Count}";
-            <Collapsed @key="@title" Title="@groupTitle" IsCollapsed="false">
+            var groupTitle = L.RightPanel_GroupTitle_Format(title, members.Count);
+            <Collapsed @key="@key" Title="@groupTitle" IsCollapsed="false">
             @foreach (var member in members) {
                 <div class="c-member-row" @key="@member.AuthorId.Value">
                     <AuthorBadge
@@ -75,24 +75,24 @@
                             </button>
                         }
                         @if (member.HasScreenShare) {
-                            <i class="icon-screen-share" title="Sharing screen"></i>
+                            <i class="icon-screen-share" title="@L.Call_SharingScreen"></i>
                         }
                         @if (member.HasCamera) {
-                            <i class="icon-video" title="Camera on"></i>
+                            <i class="icon-video" title="@L.Call_CameraOn"></i>
                         }
                         @{
                             var isRecording = member.IsMicOpen && !member.MicMuted;
                             var isListening = member.MicMuted || member.IsListening;
                         }
                         @if (isRecording) {
-                            var micTitle = CanStopRecording(m, member) ? "Turn off recording" : "Recording";
+                            var micTitle = CanStopRecording(m, member) ? L.Call_TurnOffRecording : L.Call_Recording;
                             <button class="c-mic-btn" title="@micTitle"
                                     @onclick="@(() => OnMicClick(live.ChatId, m, member))">
                                 <i class="icon-mic-2 recording"></i>
                             </button>
                         }
                         else if (isListening) {
-                            <i class="icon-listen listening" title="Listening"></i>
+                            <i class="icon-listen listening" title="@L.Call_Listening"></i>
                         }
                     </div>
                 </div>
@@ -158,10 +158,10 @@
             return LiveSessionUI.MutePeer(chatId, member.AuthorId, true, CancellationToken.None);
 
         var info = m.IsPeerChat
-            ? "You can't turn off the other person's microphone in a one-on-one chat."
+            ? L.Call_CantMutePeer
             : !m.CanMute(member.AuthorId)
-                ? "You can't turn off an Owner's microphone."
-                : "Only the call host, a chat Owner or Moderator can turn off someone's microphone.";
+                ? L.Call_CantMuteOwner
+                : L.Call_CantMuteOthers;
         ToastUI.Show(info, "icon-mic-off", ToastDismissDelay.Short);
         return Task.CompletedTask;
     }
@@ -197,11 +197,11 @@
     private static bool TranscriptOn(SessionRules r) => r.VoiceModeOverride is not VoiceMode.JustVoice;
     private static bool VoiceOn(SessionRules r) => r.VoiceModeOverride is not VoiceMode.JustText;
 
-    private static string RulesText(SessionRules r) {
+    private string RulesText(SessionRules r) {
         var parts = new List<string> {
-            TranscriptOn(r) ? "Transcription" : "No transcription",
-            VoiceOn(r) ? "Voice" : "No voice",
-            r.VideoAllowed ? "Video" : "No video",
+            TranscriptOn(r) ? L.Call_Transcription : L.Call_NoTranscription,
+            VoiceOn(r) ? L.Call_Voice : L.Call_NoVoice,
+            r.VideoAllowed ? L.Call_Video : L.Call_NoVideo,
         };
         return string.Join(", ", parts);
     }

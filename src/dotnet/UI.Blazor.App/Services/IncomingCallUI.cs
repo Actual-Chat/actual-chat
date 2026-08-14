@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.Live;
 using ActualChat.Notifications;
 using ActualChat.UI.Blazor.App.Module;
@@ -146,7 +147,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         EndRing(chatId);
         if (call is null) {
             _ = Bridge?.OnCallHandled(false);
-            Hub.ToastUI.Show("Call ended", "icon-phone", ToastDismissDelay.Short);
+            Hub.ToastUI.Show(L.Call_Ended, "icon-phone", ToastDismissDelay.Short);
             return;
         }
 
@@ -161,7 +162,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             _isAccepting.Value = false;
             _ = Bridge?.OnCallHandled(false);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
-            Hub.ToastUI.Show("Call ended", "icon-phone", ToastDismissDelay.Short);
+            Hub.ToastUI.Show(L.Call_Ended, "icon-phone", ToastDismissDelay.Short);
             return;
         }
 

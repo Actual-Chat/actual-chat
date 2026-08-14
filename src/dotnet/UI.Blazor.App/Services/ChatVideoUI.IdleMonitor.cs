@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Resources;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class ChatVideoUI
@@ -187,26 +188,24 @@ public partial class ChatVideoUI
         if (reason == IdleReason.Inactivity) {
             var isRecording = await IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
             var isScreenCasting = await IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
-            var what = (isRecording, isScreenCasting) switch {
-                (true, true) => "video recording and screencasting",
-                (false, true) => "screencasting",
-                _ => "video recording",
+            var idleFor = FormatMinutes(Constants.Video.SessionInactivityTimeout);
+            title = L.Video_IdleTitle;
+            text = (isRecording, isScreenCasting) switch {
+                (true, true) => L.Video_IdleBothText_Format(idleFor),
+                (false, true) => L.Video_IdleScreencastText_Format(idleFor),
+                _ => L.Video_IdleRecordingText_Format(idleFor),
             };
-            title = "Still there?";
-            text = $"You've been inactive for {FormatMinutes(Constants.Video.SessionInactivityTimeout)}."
-                + $" Continue {what}?";
         }
         else {
-            title = "Continue video session?";
-            text = $"You've been on this video session for {FormatMinutes(Constants.Video.SessionConfirmInterval)}."
-                + " Continue?";
+            title = L.Video_ContinueSessionTitle;
+            text = L.Video_ContinueSessionText_Format(FormatMinutes(Constants.Video.SessionConfirmInterval));
         }
 
         var confirmed = false;
         var model = new ConfirmModal.Model(false, text, () => confirmed = true) {
             Title = title,
-            ConfirmButtonText = "Yes, continue",
-            CancelButtonText = "Stop now",
+            ConfirmButtonText = L.Video_YesContinue,
+            CancelButtonText = L.Video_StopNow,
         };
         Log.LogInformation("IdleMonitor: showing {Reason} modal for {ChatId}", reason, chatId);
         // ModalUI.Show needs the Blazor dispatcher; this runs on a worker chain.
@@ -235,10 +234,10 @@ public partial class ChatVideoUI
         ChatAudioUI.StopReplay();
     }
 
-    private static string FormatMinutes(TimeSpan timeout)
+    private string FormatMinutes(TimeSpan timeout)
     {
         var n = Math.Max(1, (int)Math.Round(timeout.TotalMinutes));
-        return $"{n} {"minute".Pluralize(n)}";
+        return n == 1 ? L.Video_Minutes_One(n) : L.Video_Minutes_Other(n);
     }
 
     // Nested types

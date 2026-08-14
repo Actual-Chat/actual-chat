@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Services.Gestures
+@inherits ComponentBase<AppUIHub>
 @implements IDisposable
 @{
     var lastGesture = _lastGesture is { } g ? g.Kind.ToString() : "none yet";
@@ -9,8 +10,8 @@
 <Tile Class="ptt-practice">
     <TileItem IsHoverable="false">
         <Icon><i class="icon-talking text-2xl"></i></Icon>
-        <Content>Practice</Content>
-        <Caption>@(_isOn ? "Try a gesture - it won't transmit" : "Off")</Caption>
+        <Content>@L.Ptt_PracticeTopic</Content>
+        <Caption>@(_isOn ? L.Ptt_PracticeOn : L.VoiceSettings_Off)</Caption>
         <Right>
             <Toggle IsChecked="@_isOn" IsCheckedChanged="@OnToggle"/>
         </Right>
@@ -34,8 +35,6 @@
     private bool _isOn;
     private GestureEvent? _lastGesture;
     private CancellationTokenSource? _refreshCts;
-
-    [Inject] private AppUIHub Hub { get; init; } = null!;
 
     private GestureUI GestureUI => Hub.GestureUI;
 

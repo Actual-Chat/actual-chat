@@ -20,16 +20,16 @@
         @if (m?.RecordingChat != null) {
             <div class="c-line-1">
                 <div class="c-text">
-                    Recording in
+                    @L.Recording_InChat_Prefix
                 </div>
                 <a class="c-text highlight" href="@m.RecordingChatUrl">@m.RecordingChat.Title</a>
-                <div class="c-text">chat!</div>
+                <div class="c-text">@L.Recording_InChat_Suffix</div>
             </div>
         }
 
         @if (m?.StopRecordingAt != null) {
             <div class="c-line-2 flex-none pr-4">
-                <div class="c-text">Recording will stop in </div>
+                <div class="c-text">@L.Recording_WillStopIn</div>
                 <Countdown EndsAt="@m.StopRecordingAt.Value" Clock="@Clocks.CpuClock" Class="c-text highlight"/>
             </div>
         }
@@ -38,9 +38,9 @@
     <Button
         Class="btn-transparent unhovered recording-in-chat on"
         Click="@(_ => ChatAudioUI.SetRecordingChatId(default))"
-        Tooltip="Stop recording"
+        Tooltip="@L.Recording_StopRecording"
         TooltipPosition="FloatingPosition.Top">
-        Stop
+        @L.Common_Stop
     </Button>
 </SubHeader>
 

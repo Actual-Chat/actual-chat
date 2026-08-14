@@ -28,7 +28,7 @@
             @if (OnEditClick.HasDelegate) {
                 <ButtonRound
                     Class="btn-sm"
-                    Tooltip="Edit"
+                    Tooltip="@L.Common_Edit"
                     TooltipPosition="FloatingPosition.Top"
                     Click="@OnEditClick">
                     <i class="icon-edit text-2xl"></i>
@@ -42,7 +42,7 @@
             @if (_shareModalModel is not null) {
                 <ButtonRound
                     Class="btn-sm"
-                    Tooltip="Share"
+                    Tooltip="@L.Common_Share"
                     TooltipPosition="FloatingPosition.Top"
                     Click="@OnShareClick">
                     <i class="icon-share text-2xl"></i>

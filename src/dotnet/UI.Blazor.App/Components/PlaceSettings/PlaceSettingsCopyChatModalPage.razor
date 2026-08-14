@@ -10,7 +10,7 @@
 
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();
-        Context.Title = "Copy chat into this Place";
+        Context.Title = L.Place_CopyChatInto;
     }
 
     private Task OnCopyChatClick(ChatId chatId) {

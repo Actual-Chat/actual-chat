@@ -48,7 +48,7 @@
         <ChatMessageDateLine Date="@message.Date"/>
         return;
     case ChatMessageKind.NewMessagesLine:
-        <Separator Title="New messages" TitleClass="new-separator-title"/>
+        <Separator Title="@L.ChatView_NewMessages" TitleClass="new-separator-title"/>
         return;
     case ChatMessageKind.WelcomeBlock:
         @if (m.Chat is { } chat1) {
@@ -99,7 +99,7 @@
                     AuthorId="@entry.AuthorId"
                     Click="@_onClickCallback"/>
             } else if (showTime) {
-                var timestamp = DateTimeConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
+                var timestamp = DateTimeConverter.ToLocalTime(entry.BeginsAt).ToString("t", DateFormatter);
                 <div class="c-empty">
                     <span class="chat-message-timestamp-on-hover">@timestamp</span>
                 </div>
@@ -121,7 +121,7 @@
             @if (showForwardHeader) {
                 <div class="forwarded-chat-header">
                     <i class="icon-corner-up-right forwarded-chat-header-icon"></i>
-                    <span class="forwarded-chat-header-title">Forwarded from </span>
+                    <span class="forwarded-chat-header-title">@L.ChatView_ForwardedFrom&nbsp;</span>
                     @if (m.ForwardedChat != null) {
                         <span class="forwarded-chat-header-name message-link"
                               @onclick="() => OnForwardedMessageHeaderClick(m.ForwardedChat.Id)">

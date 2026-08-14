@@ -6,21 +6,21 @@
 }
 
 <div class="set-chats-step">
-    <p class="text-title-1 text-center">Create some chats!</p>
+    <p class="text-title-1 text-center">@L.Onboarding_CreateChatsTitle</p>
     <div class="step-tiles">
         <div class="step-tile"
              @onclick="CreateFamilyChatClick">
             <img draggable="false"
                  class="step-tile-icon"
                  crossorigin="anonymous"
-                 alt="Family"
+                 alt="@L.Onboarding_ChatFamily"
                  src="/dist/images/onboarding/family.svg"/>
             <div class="step-tile-body">
                 <div class="step-tile-title">
-                    Family
+                    @L.Onboarding_ChatFamily
                 </div>
                 <div class="step-tile-subtitle">
-                    Chat with your family members
+                    @L.Onboarding_ChatFamilyDescription
                 </div>
             </div>
             <Checkbox
@@ -33,14 +33,14 @@
             <img draggable="false"
                  class="step-tile-icon"
                  crossorigin="anonymous"
-                 alt="Friends"
+                 alt="@L.Onboarding_ChatFriends"
                  src="/dist/images/onboarding/friends.svg"/>
             <div class="step-tile-body">
                 <div class="step-tile-title">
-                    Friends
+                    @L.Onboarding_ChatFriends
                 </div>
                 <div class="step-tile-subtitle">
-                    Chat with your close friends
+                    @L.Onboarding_ChatFriendsDescription
                 </div>
             </div>
             <Checkbox
@@ -53,14 +53,14 @@
             <img draggable="false"
                  class="step-tile-icon"
                  crossorigin="anonymous"
-                 alt="Classmates"
+                 alt="@L.Onboarding_ChatClassmates"
                  src="/dist/images/onboarding/alumni.svg"/>
             <div class="step-tile-body">
                 <div class="step-tile-title">
-                    Classmates / Alumni
+                    @L.Onboarding_ChatClassmates
                 </div>
                 <div class="step-tile-subtitle">
-                    Chat with your classmates / alumni community
+                    @L.Onboarding_ChatClassmatesDescription
                 </div>
             </div>
             <Checkbox
@@ -73,14 +73,14 @@
             <img draggable="false"
                  class="step-tile-icon"
                  crossorigin="anonymous"
-                 alt="Coworkers"
+                 alt="@L.Onboarding_ChatCoworkers"
                  src="/dist/images/onboarding/coworkers.svg"/>
             <div class="step-tile-body">
                 <div class="step-tile-title">
-                    Coworkers
+                    @L.Onboarding_ChatCoworkers
                 </div>
                 <div class="step-tile-subtitle">
-                    Chat with your coworkers
+                    @L.Onboarding_ChatCoworkersDescription
                 </div>
             </div>
             <Checkbox
@@ -107,13 +107,16 @@
 
     protected override async Task<bool> Save() {
         if (_model.CreateFamilyChat)
-            await CreateChat("Family", Constants.Chat.SystemTags.Family);
+            await CreateChat(L.Onboarding_ChatFamily, Constants.Chat.SystemTags.Family);
         if (_model.CreateFriendsChat)
-            await CreateChat("Friends", Constants.Chat.SystemTags.Friends);
+            await CreateChat(L.Onboarding_ChatFriends, Constants.Chat.SystemTags.Friends);
         if (_model.CreateClassmatesAlumniChat)
-            await CreateChat("Classmates / Alumni", Constants.Chat.SystemTags.ClassmatesAlumni, "system-icons:alumni");
+            await CreateChat(
+                L.Onboarding_ChatClassmates,
+                Constants.Chat.SystemTags.ClassmatesAlumni,
+                "system-icons:alumni");
         if (_model.CreateCoworkersChat)
-            await CreateChat("Coworkers", Constants.Chat.SystemTags.Coworkers);
+            await CreateChat(L.Onboarding_ChatCoworkers, Constants.Chat.SystemTags.Coworkers);
 
         return true;
     }

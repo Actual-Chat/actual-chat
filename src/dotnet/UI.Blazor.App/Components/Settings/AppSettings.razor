@@ -3,8 +3,8 @@
 @{
     var m = State.Value;
     var dataCollectionStatus = m.IsDataCollectionEnabled
-        ? "Telemetry data collection is allowed."
-        : "Disallowed";
+        ? L.AppSettings_TelemetryAllowed
+        : L.AppSettings_TelemetryDisallowed;
 }
 
 @if (NativeAppSettings != null) {
@@ -13,38 +13,36 @@
 @if (HostInfo.HostKind != HostKind.MauiApp) {
     <RenderModeSelector/>
 }
-<TileTopic Topic="Telemetry Data Collection"/>
+<TileTopic Topic="@L.AppSettings_TelemetryDataCollection"/>
 <Tile Class="data-collection-consent">
     <TileItem Click="@OnEnableTelemetryClick">
         <Icon><i class="icon-info text-2xl"></i></Icon>
-        <Content>Allow Telemetry Data Collection</Content>
+        <Content>@L.AppSettings_AllowTelemetry</Content>
         <Caption>@dataCollectionStatus</Caption>
         <Right>
             <Toggle IsChecked="@m.IsDataCollectionEnabled" IsCheckedChanged="@(_ => OnEnableTelemetryClick())"/>
         </Right>
     </TileItem>
     <p class="c-description">
-        Help us to identify user experience issues faster by allowing
-        @CoreConstants.AppName to collect and process data on certain in-app events,
-        such as critical user actions, errors, and crashes.
+        @L.AppSettings_TelemetryDescription_Format(CoreConstants.AppName)
     </p>
 </Tile>
 
-<TileTopic Topic="Walk-through"/>
+<TileTopic Topic="@L.UserInterface_WalkThrough"/>
 <Button
     Class="add-avatar-btn"
     Click="@(OnRestartWalkThrough)">
     <Icon><i class="icon-refresh text-xl"></i></Icon>
-    <Title>Restart walk-through</Title>
+    <Title>@L.UserInterface_RestartWalkThrough</Title>
 </Button>
 
 @if (m.IsAdmin) {
-    <TileTopic Topic="Onboarding"/>
+    <TileTopic Topic="@L.UserInterface_Onboarding"/>
     <Button
         Class="add-avatar-btn"
         Click="@(OnRestartOnboarding)">
         <Icon><i class="icon-refresh text-xl"></i></Icon>
-        <Title>Restart onboarding</Title>
+        <Title>@L.UserInterface_RestartOnboarding</Title>
     </Button>
 }
 
@@ -71,12 +69,12 @@
 
     private async Task OnRestartWalkThrough() {
         await BubbleUI.ResetSettings();
-        ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+        ToastUI.Show(L.UserInterface_WalkThroughRestarted, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     private void OnRestartOnboarding() {
         OnboardingUI.ResetSettings();
-        ToastUI.Show("Onboarding steps are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+        ToastUI.Show(L.UserInterface_OnboardingRestarted, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     private async Task OnEnableTelemetryClick() {

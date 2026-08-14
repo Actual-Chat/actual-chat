@@ -7,13 +7,13 @@
 }
 
 <div class="permissions-step">
-    <p class="step-subtitle">Required permissions</p>
+    <p class="step-subtitle">@L.Onboarding_RequiredPermissions</p>
     <div class="step-tiles">
         @if (m.SkipEverything) {
             <div class="step-tile">
                 <div class="step-tile-body">
                     <div class="step-tile-subtitle">
-                        All necessary permissions are already granted.
+                        @L.Onboarding_AllPermissionsGranted
                     </div>
                 </div>
             </div>
@@ -38,11 +38,11 @@
         <div class="step-tile">
             <div class="c-docs">
                 <div class="c-doc-wrapper">
-                    <a class="c-doc" href="@Links.Docs.ToAbsolute(UrlMapper)/privacy">Privacy Policy</a>
+                    <a class="c-doc" href="@Links.Docs.ToAbsolute(UrlMapper)/privacy">@L.Onboarding_PrivacyPolicy</a>
                     <i class="icon-chevron-right text-xl"></i>
                 </div>
                 <div class="c-doc-wrapper">
-                    <a class="c-doc" href="@Links.Docs.ToAbsolute(UrlMapper)/terms">Terms of Service</a>
+                    <a class="c-doc" href="@Links.Docs.ToAbsolute(UrlMapper)/terms">@L.Onboarding_TermsOfService</a>
                     <i class="icon-chevron-right text-xl"></i>
                 </div>
             </div>

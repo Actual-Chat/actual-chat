@@ -14,7 +14,7 @@
     <Item>
         @{ var item = context; }
         @if (item.IsEmptyPlaceholder) {
-            <div class="c-empty">No files yet</div>
+            <div class="c-empty">@L.Content_NoFiles</div>
         }
         else if (item.IsHeader) {
             <div class="c-group-header">@item.GroupTitle</div>
@@ -77,11 +77,6 @@
             VisorDate = visorDate,
         };
 
-    private string FormatDate(Moment at) {
-        var date = DateTimeConverter.ToLocalTime(at);
-        var today = DateTimeConverter.ToLocalTime(Hub.Clocks.SystemClock.Now);
-        return date.Year == today.Year
-            ? date.ToString("d MMM, HH:mm")
-            : date.ToString("d MMM yyyy, HH:mm");
-    }
+    private string FormatDate(Moment at)
+        => ContentListPlumbing.GetItemDate(at, Hub);
 }

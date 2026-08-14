@@ -4,17 +4,17 @@
 <div class="location-participant-menu">
     <MenuEntry
         Icon="icon-map"
-        Text="Open"
+        Text="@L.Common_Open"
         Click="@OnOpen"/>
     @if (_hasMapApps) {
         <MenuEntry
             Icon="icon-external-link"
-            Text="Open in..."
+            Text="@L.Location_OpenIn"
             Click="@OnOpenInMapApp"/>
     }
     <MenuEntry
         Icon="icon-copy"
-        Text="Copy link"
+        Text="@L.Share_CopyLink"
         Click="@OnCopyLink"/>
 </div>
 

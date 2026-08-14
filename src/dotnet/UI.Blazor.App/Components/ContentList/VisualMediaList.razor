@@ -18,7 +18,7 @@
     <Item>
         @{ var item = context; }
         @if (item.IsEmptyPlaceholder) {
-            <div class="c-empty">No media yet</div>
+            <div class="c-empty">@L.Content_NoMedia</div>
         }
         else if (item.IsHeader) {
             <div class="c-group-header">@item.GroupTitle</div>

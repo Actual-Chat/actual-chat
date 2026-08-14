@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Module;
@@ -108,7 +109,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         catch (Exception e) when (e is not OperationCanceledException) {
             // Only StandardError.Constraint (e.g. the peer-call gate) carries user-facing text.
             Log.LogWarning(e, "StartCall failed for chat #{ChatId}", chatId);
-            var message = e is InvalidOperationException ? e.Message : "Couldn't start the call";
+            var message = e is InvalidOperationException ? e.Message : L.Call_CouldntStart;
             Hub.ToastUI.Show(message, "icon-phone-hang-up", ToastDismissDelay.Short);
             return;
         }
@@ -205,7 +206,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         while (!cancellationToken.IsCancellationRequested) {
             if (cMuted.Value is { } chatId && !chatId.Value.IsNullOrEmpty()) {
                 await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
-                Hub.ToastUI.Show("Recording turned off by the host", "icon-mic-off", ToastDismissDelay.Short);
+                Hub.ToastUI.Show(L.Call_RecordingTurnedOffByHost, "icon-mic-off", ToastDismissDelay.Short);
             }
 
             await cMuted.WhenInvalidated(cancellationToken).ConfigureAwait(false);

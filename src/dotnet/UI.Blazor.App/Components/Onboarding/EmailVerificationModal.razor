@@ -1,10 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<EmailVerificationModal.Model>
+@inherits ComponentBase<AppUIHub>
 
 <DialogFrame
     Class="onboarding-modal fixed-height email-verification-modal"
     HasHeader="true"
-    Title="Email verification"
+    Title="@L.Onboarding_EmailVerificationTitle"
     HasCloseButton="true"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
     <Body>
@@ -13,7 +14,7 @@
             <phone-verification-cat-svg/>
         </div>
         <div class="c-code">
-            <div class="font-bold text-2xl text-02">Enter code</div>
+            <div class="font-bold text-2xl text-02">@L.Onboarding_EnterCode</div>
             <TotpVerifier
                 Purpose="TotpPurpose.VerifyEmail"
                 Email="@ModalModel.Email"

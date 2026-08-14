@@ -7,10 +7,10 @@
                 For="() => _formModel.Name"
                 InputId="@_formModel.NameFormId"
                 IsLabelInsideInput="true"
-                Label="Name">
+                Label="@L.ApiKeyCreate_Name">
                 <TextBox
                     Id="@_formModel.NameFormId"
-                    Placeholder="My API key"
+                    Placeholder="@L.ApiKeyCreate_Placeholder"
                     @bind-Value="@_formModel.Name"
                     ClearButton="true"/>
             </FormSection>
@@ -19,7 +19,7 @@
                 For="() => _formModel.ExpiresInDaysText"
                 InputId="@_formModel.ExpiresInDaysFormId"
                 IsLabelInsideInput="true"
-                Label="Expires in (days)">
+                Label="@L.ApiKeyCreate_ExpiresInDays">
                 <TextBox
                     Id="@_formModel.ExpiresInDaysFormId"
                     Type="number"
@@ -35,8 +35,8 @@
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
-        Context.Title = "Create API Key";
-        Context.Buttons = [DialogButtonInfo.CancelButton, DialogButtonInfo.CreateSubmitButton("Create", OnCreate)];
+        Context.Title = L.ApiKeyCreate_Title;
+        Context.Buttons = [DialogButtonInfo.CancelButton, DialogButtonInfo.CreateSubmitButton(L.ApiKeyCreate_Create, OnCreate)];
     }
 
     private async Task OnCreate() {

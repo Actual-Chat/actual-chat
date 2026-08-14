@@ -8,14 +8,14 @@
     <MenuEntry
         Class="@cls"
         Icon="icon-stop-fill"
-        Text="Stop recording"
+        Text="@L.ChatMenu_StopRecording"
         Click="@(async _ => await ChatAudioUI.SetRecordingChatId(default))">
     </MenuEntry>
 } else {
     <MenuEntry
         Class="@cls"
         Icon="icon-mic-2"
-        Text="Start recording"
+        Text="@L.ChatMenu_StartRecording"
         Click="@OnStartRecordingClick">
     </MenuEntry>
 }

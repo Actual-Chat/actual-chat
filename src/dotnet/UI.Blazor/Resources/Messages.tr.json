@@ -1,0 +1,126 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
+{
+  "Validation_Required_Format": "“{field}” alanı zorunludur.",
+  "Validation_MinLength_Format": "“{field}” alanı en az {min} karakter olmalıdır.",
+  "Validation_EmailAddress_Format": "“{field}” geçerli bir e-posta adresi değil.",
+  "Validation_DeleteConfirmationRequired": "Silme onayı gerekli",
+  "Validation_DeleteConfirmationInvalid": "Onaylamak için DELETE yazın",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Bu işlem için yeterli yetkiniz yok.",
+  "Error_NotEnoughPermissions_Format": "Bu işlem için yeterli yetkiniz yok. Gereken yetki: {permission}",
+  "Error_TooManyRequests": "Çok fazla istek.",
+  "Error_TooManyRequests_Format": "Çok fazla istek. {seconds} sn sonra tekrar deneyin.",
+  "Error_VersionMismatch": "Veriler değişti. Tekrar deneyin.",
+  "Error_ChatNotFound": "Sohbet bulunamadı.",
+  "Error_ChatEntryNotFound": "Mesaj bulunamadı.",
+  "Error_AccountNotFound": "Hesap bulunamadı.",
+  "Error_AuthorNotFound": "Katılımcı bulunamadı.",
+  "Error_AvatarNotFound": "Profil bulunamadı.",
+  "Error_ContactNotFound": "Kişi bulunamadı.",
+  "Error_MediaNotFound": "Dosya bulunamadı.",
+  "Error_UploadNotFound": "Yükleme bulunamadı.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "Bu kayıt isteğinin süresi doldu. Lütfen tekrar giriş yapmayı deneyin.",
+  "Error_SessionExpired": "Oturumunuzun süresi doldu veya oturum kapatıldı. Lütfen uygulamayı yeniden başlatın.",
+  "Error_AlreadySignedIn": "Zaten giriş yaptınız.",
+  "Error_PhoneTaken": "Bu telefon numarası başka bir hesap tarafından kullanılıyor.",
+  "Error_EmailTaken": "Bu e-posta adresi başka bir hesap tarafından kullanılıyor.",
+  "Error_SmsNotDelivered": "Mesajı belirtilen telefon numarasına iletemedik.",
+  "Error_CannotDeactivateCurrentSession": "Geçerli oturum kapatılamaz.",
+  "Error_PhoneFormatInvalid": "Telefon numarası biçimi geçersiz.",
+  "Error_CannotChangeOwnStatus": "Kendi durumunuzu değiştiremezsiniz.",
+  "Error_ApiKeyExpirationRange_Format": "API anahtarının geçerlilik süresi 1 ile {days} gün arasında olmalıdır.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Bu sohbetin tek sahibi olduğunuz için ayrılamazsınız. Önce başka bir sahip ekleyin.",
+  "Error_CannotRemoveSelf": "Kendinizi sohbet üyelerinden çıkaramazsınız.",
+  "Error_CannotRemoveChatOwner": "Bu sohbetin sahibini üyelerden çıkaramazsınız.",
+  "Error_CannotRemoveSearchBot": "Yapay zekâ arama botunu sohbet üyelerinden çıkaramazsınız.",
+  "Error_OwnerCannotBeDemoted": "Sohbet sahiplerinin yetkisi düşürülemez.",
+  "Error_AuthorAlreadyLeft": "Seçilen katılımcı sohbetten zaten ayrıldı.",
+  "Error_AutomaticRoleMembership": "Bu sistem rolünde üyelik otomatik olarak belirlenir.",
+  "Error_ManageMembershipInPlace": "Alanın herkese açık sohbetinin üyeliğini alan ayarlarından yönetin.",
+  "Error_AnonymousAvatarRequired": "Anonim katılmak için anonim bir profil gerekir.",
+  "Error_GuestJoinNotAllowed": "Bu sohbete misafir hesabıyla katılınamaz.",
+  "Error_AnonymousJoinNotAllowed": "Bu sohbete anonim olarak katılınamaz.",
+  "Error_OwnersRoleCannotBeEmpty": "«Sahipler» rolünde en az bir kullanıcı kalmalıdır.",
+  "Error_OnlyOwnersAllowed": "Bu işlemi yalnızca bu sohbetin «Sahipler» rolündeki üyeler yapabilir.",
+
+  // Messages
+  "Error_CannotSendMessages": "Bu sohbete mesaj gönderemezsiniz.",
+  "Error_EmptyMessage": "Boş mesaj gönderemezsiniz.",
+  "Error_CanEditOwnMessagesOnly": "Yalnızca kendi mesajlarınızı düzenleyebilirsiniz.",
+  "Error_OnlyTextCanBeEdited": "Yalnızca metin mesajları düzenlenebilir.",
+  "Error_StreamingCannotBeEdited": "Kaydı süren mesajlar düzenlenemez.",
+  "Error_ForwardedCannotBeEdited": "İletilen mesajlar düzenlenemez.",
+  "Error_MessageNoLongerExists": "Bu mesaj artık yok.",
+  "Error_CannotRemoveMessage": "Bu mesajı silme izniniz yok.",
+  "Error_CannotRemoveOwnerMessage": "Bir sahibin mesajını silme izniniz yok.",
+  "Error_CannotRestoreMessage": "Bu mesajı geri getirme izniniz yok.",
+  "Error_CannotRestoreOwnerMessage": "Bir sahibin mesajını geri getirme izniniz yok.",
+  "Error_RootChatCannotHoldMessages": "Bir alanın kök sohbetine mesaj yazılamaz — bunun yerine alanın sohbetlerinden birine yazın.",
+  "Error_CanAttachOwnLocationsOnly": "Bu sohbetten yalnızca kendi paylaştığınız konumu ekleyebilirsiniz.",
+  "Error_NonContactMessageLimit_Format": "Bu kişi sizi kişilerine ekleyene veya yanıt verene kadar en fazla {limit} mesaj gönderebilirsiniz.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Mesajları yalnızca sohbet sahipleri ve moderatörler sabitleyebilir.",
+  "Error_PinLimit_Format": "En fazla {limit} mesaj sabitleyebilirsiniz.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Sohbet başlığı boş olamaz.",
+  "Error_ThreadTitleEmpty": "Konu başlığı boş olamaz.",
+  "Error_PlaceTitleEmpty": "Alan başlığı boş olamaz.",
+  "Error_PlaceUnavailable": "İstenen alan kullanılamıyor.",
+  "Error_OnlyPlaceMembersCanAddChats": "Sohbet ekleyebilmek için alanın üyesi olmanız gerekir.",
+  "Error_CannotMakeChatPublic": "Sohbeti herkese açık yapmak için yeterli yetkiniz yok.",
+  "Error_CustomLinkNotAllowed": "Alan sohbetlerinde özel bağlantı kullanılamaz.",
+  "Error_CustomLinkTaken_Format": "«{link}» bağlantısı aynı alandaki başka bir sohbette kullanılıyor.",
+  "Error_WelcomeChatCannotBePrivate": "«Welcome» sohbeti özel yapılamaz.",
+  "Error_WelcomeChatCannotBeRemoved": "«Welcome» sohbeti silinemez.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Bir alana yalnızca grup veya alan sohbetleri kopyalanabilir.",
+  "Error_CannotCopyToSamePlace": "Alan sohbeti aynı alana kopyalanamaz.",
+  "Error_MigrationRequiresChatOwner": "Taşıma işlemi için bu sohbetin sahibi olmalısınız.",
+  "Error_MigrationRequiresPlaceOwner": "Bir sohbeti alana kopyalamak için alanın sahibi olmalısınız.",
+  "Error_OperationRequiresChatOwner": "Bu işlem için bu sohbetin sahibi olmalısınız.",
+  "Error_OperationRequiresPlaceOwner": "Bu işlem için sohbetin bağlı olduğu alanın sahibi olmalısınız.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Konu başlatabilmeniz için bu kişinin sizi kişilerine eklemesi veya yanıt vermesi gerekir.",
+  "Error_SignInToFollowThread": "Bir konuyu takip etmek için giriş yapın.",
+  "Error_OnlyPeerContactCanBeBlocked": "Yalnızca kişisel kişiler engellenebilir.",
+  "Error_SignInToChat": "Başka biriyle sohbet etmek için giriş yapın.",
+  "Error_CannotChatWithUnauthenticated": "Giriş yapmamış bir kullanıcıyla sohbet edilemez.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Yalnızca görüşmeye katılan biri görüşmenin sahibi olabilir.",
+  "Error_CannotMuteOwner": "Bir sahibin mikrofonunu kapatamazsınız.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Görüşme sahibini yalnızca mevcut sahip veya sohbet sahibi değiştirebilir.",
+  "Error_CallRequiresContact": "Bu kişiyi arayabilmeniz için sizi kişilerine eklemesi veya yanıt vermesi gerekir.",
+  "Error_CannotMuteInPeerChat": "Birebir sohbette karşı tarafın mikrofonunu kapatamazsınız.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Görüşmeyi yalnızca görüşmenin sahibi, sohbet sahibi veya moderatör yönetebilir.",
+  "Error_VoiceStreamingModeLocked": "Bu sohbette ses aktarım modu değiştirilemez.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "Herkese açık sohbetlerde üyelere bildirim gönderilemez.",
+  "Error_AlertEveryoneUnavailable": "Herkese acil bildirim, 10 kişiden fazla olan sohbetlerde kullanılamaz.",
+  "Error_NobodyToNotify": "Bildirim gönderilecek kimse yok.",
+  "Error_OnlyAuthorCanNotify": "Bahsedilen kişilere yalnızca mesajın yazarı bildirim gönderebilir.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "Bu dosyaya erişim izniniz yok.",
+  "Error_FileTooBig": "Dosya çok büyük.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Bu davet bağlantısı zaten kullanılmış.",
+  "Error_InviteNotActive": "Bu davet bağlantısı artık geçerli değil.",
+  "Error_InviteCodeNotFound": "Bu koda ait davet bulunamadı.",
+  "Error_OnlyPlaceMembersCanUseCode": "Bu kodu yalnızca alanın üyeleri kullanabilir.",
+  "Error_UserInvitesRemoved": "Kullanıcı davetleri artık desteklenmiyor.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Konumunuzu paylaşmadan önce sohbete katılın.",
+  "Error_CanChangeOwnLocationsOnly": "Bu sohbette yalnızca kendi paylaştığınız konumu değiştirebilirsiniz.",
+  "Error_LocationSharingLimit_Format": "Bu sohbette canlı konum paylaşan kişi sayısı en fazla {limit} olabilir ve bu sınıra ulaşıldı."
+}

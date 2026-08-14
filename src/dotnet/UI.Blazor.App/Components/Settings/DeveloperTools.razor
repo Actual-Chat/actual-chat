@@ -3,26 +3,26 @@
 @{
     var m = State.Value;
     var experimentalFeatureStatus = m.AreExperimentalFeaturesEnabled
-        ? "Early access features are enabled."
-        : "Disabled";
+        ? L.DevTools_EarlyAccessEnabled
+        : L.Common_Disabled;
     var incompleteUIStatus = m.IsIncompleteUIEnabled
-        ? "Early access UI is enabled."
-        : "Disabled";
+        ? L.DevTools_EarlyAccessUIEnabled
+        : L.Common_Disabled;
 }
 
 @if (m.IsAdmin) {
     if (ServerInstanceSelector != null) {
-        <TileTopic Topic="Host"/>
+        <TileTopic Topic="@L.DevTools_Host"/>
         <Tile Class="host-switcher-tile">
             <ServerInstanceSelector Selector="@ServerInstanceSelector" />
         </Tile>
     }
 
-    <TileTopic Topic="Early Access"/>
+    <TileTopic Topic="@L.DevTools_EarlyAccess"/>
     <Tile Class="early-access-features">
         <TileItem Click="@OnExperimentalFeatureEnabledClick">
             <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>Early access features</Content>
+            <Content>@L.DevTools_EarlyAccessFeatures</Content>
             <Caption>@experimentalFeatureStatus</Caption>
             <Right>
                 <Toggle
@@ -32,7 +32,7 @@
         </TileItem>
         <TileItem Click="@OnIncompleteUIEnabledClick">
             <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>Early access UI features</Content>
+            <Content>@L.DevTools_EarlyAccessUI</Content>
             <Caption>@incompleteUIStatus</Caption>
             <Right>
                 <Toggle
@@ -43,10 +43,10 @@
     </Tile>
 }
 
-<TileTopic Topic="Troubleshooting"/>
+<TileTopic Topic="@L.DevTools_Troubleshooting"/>
 <Tile>
     <TileItem Click="@OnLogUIEnabledClick">
-        <Content>Enable log viewer</Content>
+        <Content>@L.DevTools_EnableLogViewer</Content>
         <Right>
             <Toggle IsChecked="@m.IsLogUIEnabled" IsCheckedChanged="@(_ => OnLogUIEnabledClick())"/>
         </Right>

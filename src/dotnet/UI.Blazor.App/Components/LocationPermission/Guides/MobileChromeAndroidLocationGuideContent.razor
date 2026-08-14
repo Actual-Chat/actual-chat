@@ -1,19 +1,20 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 
 <div class="c-hero">
-    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="Location access is blocked">
+    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="@L.LocationGuide_BlockedImageAlt">
 </div>
 <div class="c-title">
-    Location access is blocked, but you can fix this!
+    @L.LocationGuide_Title
 </div>
 <div class="c-intro">
-    @CoreConstants.AppName needs access to your location to share it with others.
-    To enable it in Google Chrome (mobile):
+    @L.LocationGuide_Intro_Format(CoreConstants.AppName)
+    @L.Guide_EnableInMobileChrome
 </div>
 <ol class="c-steps">
-    <li>Tap on "⋮"</li>
-    <li>Click "Settings"</li>
-    <li>Open "Site settings"</li>
-    <li>Tap on "Location"</li>
-    <li>Enable "Ask first before allowing sites to use your location" option</li>
+    <li>@L.LocationGuide_MobileChromeStep1</li>
+    <li>@L.LocationGuide_MobileChromeStep2</li>
+    <li>@L.LocationGuide_MobileChromeStep3</li>
+    <li>@L.LocationGuide_MobileChromeStep4</li>
+    <li>@L.LocationGuide_MobileChromeStep5</li>
 </ol>

@@ -11,11 +11,17 @@
 
 <Banner Severity="@severity">
     <Body>
-        This chat has been copied to the place.
+        @L.Banner_ChatCopiedToPlace
     </Body>
     <Buttons>
-        <Button IsDisabled="@_isCopying" Class="btn-transparent on" Click="@(() => OnUpdateClick(copiedChat))">Update</Button>
-        <Button IsDisabled="@(!copiedChat.IsCopiedSuccessfully)" Class="btn-transparent on" Click="@(() => OnPublishClick(copiedChat))">Publish</Button>
+        <Button
+            IsDisabled="@_isCopying"
+            Class="btn-transparent on"
+            Click="@(() => OnUpdateClick(copiedChat))">@L.Common_Update</Button>
+        <Button
+            IsDisabled="@(!copiedChat.IsCopiedSuccessfully)"
+            Class="btn-transparent on"
+            Click="@(() => OnPublishClick(copiedChat))">@L.Common_Publish</Button>
     </Buttons>
 </Banner>
 

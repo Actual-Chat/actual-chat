@@ -2,7 +2,7 @@
 @using ActualChat.Invite
 @inherits ComponentBase<AppUIHub>
 
-<MainHeader>Joining via invite link</MainHeader>
+<MainHeader>@L.ChatInvite_Title</MainHeader>
 
 @if (_signInFromHomeRequested) {
     return;
@@ -10,9 +10,9 @@
 
 @if (_useResult is { } useResult) {
     if (useResult.Error is { } error) {
-        <p>Failed to join chat: @error.Message</p>
+        <p>@L.ChatInvite_Failed_Format(error.Message)</p>
     } else {
-        <p>Processing invite, please wait..</p>
+        <p>@L.ChatInvite_Processing</p>
     }
 }
 

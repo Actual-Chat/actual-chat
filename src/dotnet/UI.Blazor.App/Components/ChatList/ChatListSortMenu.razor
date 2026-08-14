@@ -3,27 +3,27 @@
 
 <div class="sort-menu">
     <div class="c-title">
-        Sort by:
+        @L.ChatList_SortBy
     </div>
     <Divider/>
     <MenuEntry
         Icon="icon-sort-by-recent"
-        Text="Recency of anyone's activity"
+        Text="@L.ChatList_SortByAnyonesActivity"
         Click="@(() => OnClick(ChatListOrder.ByLastEventTime))">
     </MenuEntry>
     <MenuEntry
         Icon="icon-sort-by-me"
-        Text="Recency of your own activity"
+        Text="@L.ChatList_SortByOwnActivity"
         Click="@(() => OnClick(ChatListOrder.ByOwnUpdateTime))">
     </MenuEntry>
     <MenuEntry
         Icon="icon-sort-by-message"
-        Text="Count of unread messages"
+        Text="@L.ChatList_SortByUnreadCount"
         Click="@(() => OnClick(ChatListOrder.ByUnreadCount))">
     </MenuEntry>
     <MenuEntry
         Icon="icon-sort-by-alphabet"
-        Text="Alphabet"
+        Text="@L.ChatList_SortByAlphabet"
         Click="@(() => OnClick(ChatListOrder.ByAlphabet))">
     </MenuEntry>
 </div>

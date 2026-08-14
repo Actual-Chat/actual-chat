@@ -9,7 +9,7 @@
     var cls = "post-panel-btn notify-call-btn btn-xs btn-transparent btn-primary";
     if (!m.IsActive)
         cls += " pseudo-disabled";
-    var tooltip = $"Alert {m.AlertTarget}";
+    var tooltip = L.Alert_Alert_Format(GetAlertTarget(m));
 }
 
 <ButtonRound
@@ -21,11 +21,11 @@
 </ButtonRound>
 
 @code {
-    private string AlertTarget => State.Value.AlertTarget;
+    private (ChatEntry, Moment)? _lastKnownOwnUnreadEntryInfo;
+    private string AlertTarget => GetAlertTarget(State.Value);
     private string AlertClass => State.Value.AlertClass;
     private RenderFragment AlertInfo => @<AlertConfirmationInfo Target="@AlertTarget" TargetClass="@AlertClass"/>;
-    private RenderFragment AlertTitle => @<p>Are you sure you want to alert <span class="@AlertClass">@AlertTarget</span>?</p>;
-    private (ChatEntry, Moment)? _lastKnownOwnUnreadEntryInfo;
+    private RenderFragment AlertTitle => @<p>@L.Alert_ConfirmUnread_Prefix<span class="@AlertClass">@AlertTarget</span>@L.Alert_ConfirmUnread_Suffix</p>;
 
     private IAuthors Authors => Hub.Authors;
     private IChats Chats => Hub.Chats;
@@ -43,16 +43,19 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
-        var alertTarget = "companion";
         if (chatId.Kind is ChatKind.Peer) {
-            var cls = "font-bold";
+            var alertTarget = "";
             if (chatId is PeerChatId peerChatId) {
                 var anotherAuthorId = peerChatId.AnotherAuthorId(chat.Rules.Account!.Id);
-                var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, default).ConfigureAwait(false);
+                var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
                 if (!(anotherAuthor?.Avatar.Name).IsNullOrEmpty())
                     alertTarget = anotherAuthor.Avatar.Name;
             }
-            return Model.EnabledUnread with { AlertTarget = alertTarget, AlertClass = cls}; // Always allowed for peer chats.
+            return Model.EnabledUnread with { // Always allowed for peer chats.
+                AlertTarget = alertTarget,
+                AlertClass = "font-bold",
+                IsPeerChat = true,
+            };
         }
 
         var isPublicAccessible = chat.IsPublic;
@@ -159,19 +162,19 @@
 
     private void OnNotifyAllClick(Model m) {
         if (!m.IsActive) {
-            ToastUI.Show(m.DisableReason, ToastDismissDelay.Short);
+            ToastUI.Show(GetDisableReason(m.DisableReason), ToastDismissDelay.Short);
             return;
         }
 
         var message = m.IsUnread
-            ? $"Are you sure you want to alert {AlertTarget}?"
-            : "Your messages have read recently. Do you still want to alert everyone?";
+            ? L.Alert_ConfirmUnread_Prefix + AlertTarget + L.Alert_ConfirmUnread_Suffix
+            : L.Alert_ConfirmRead;
         _ = ModalUI.Show(new ConfirmModal.Model(
             false,
             message,
             NotifyAllInternal) {
-            Title = "Alert confirmation",
-            ConfirmButtonText = "Alert",
+            Title = L.Alert_ConfirmTitle,
+            ConfirmButtonText = L.Alert_Confirm,
             MarkupTitle = m.IsUnread ? AlertTitle : null,
             AdditionalContent = AlertInfo,
             Class = "alert-confirm-modal",
@@ -181,7 +184,29 @@
     private void NotifyAllInternal()
         => _ = UICommander.Call(new Notifications_NotifyMembers(Session, Chat.Id));
 
+    // Private methods
+
+    private string GetAlertTarget(Model m)
+        => !m.AlertTarget.IsNullOrEmpty() ? m.AlertTarget
+            : m.IsPeerChat ? L.Alert_TargetCompanion
+            : L.Alert_TargetEveryone;
+
+    private string GetDisableReason(DisableReasonKind kind)
+        => kind switch {
+            DisableReasonKind.LargeGroup => L.Alert_DisabledLargeGroup,
+            DisableReasonKind.NoMessage => L.Alert_DisabledNoMessage,
+            DisableReasonKind.NoWritePermission => L.Alert_DisabledNoWritePermission,
+            _ => "",
+        };
+
     // Nested types
+
+    public enum DisableReasonKind {
+        None = 0,
+        LargeGroup,
+        NoMessage,
+        NoWritePermission,
+    }
 
     public sealed record Model {
         public static readonly Model Unavailable = new() { IsUnavailable = true };
@@ -190,24 +215,25 @@
 
         public static readonly Model DisabledForLargeGroup = new() {
             IsActive = false,
-            DisableReason = "Alert everyone is unavailable in chats with more than 10 people."
+            DisableReason = DisableReasonKind.LargeGroup,
         };
 
         public static readonly Model DisabledNoMessage = new() {
             IsActive = false,
-            DisableReason = "Alert everyone is disabled. You need to send a message first."
+            DisableReason = DisableReasonKind.NoMessage,
         };
 
         public static readonly Model DisabledNoWritePermission = new() {
             IsActive = false,
-            DisableReason = "Alert everyone is disabled. You should be able to write messages."
+            DisableReason = DisableReasonKind.NoWritePermission,
         };
 
         public bool IsUnavailable { get; private init; }
         public bool IsActive { get; private init; }
-        public string DisableReason { get; private init; } = "";
+        public DisableReasonKind DisableReason { get; private init; }
         public bool IsUnread { get; private init; }
-        public string AlertTarget { get; init; } = "everyone";
+        public string AlertTarget { get; init; } = "";
+        public bool IsPeerChat { get; init; }
         public string AlertClass { get; init; } = "";
         public string AnotherAuthorName { get; init; } = "";
     }

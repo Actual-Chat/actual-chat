@@ -3,10 +3,10 @@
 @{
     var m = State.Value;
     var voiceStatus = !m.CanChangeMustStreamVoice
-        ? "Disabled for anonymous users"
+        ? L.VoiceSettings_DisabledForAnonymous
         : m.MustStreamVoice
-            ? "On"
-            : "Off";
+            ? L.VoiceSettings_On
+            : L.VoiceSettings_Off;
 }
 
 <FormBlock Class="first last">
@@ -14,7 +14,7 @@
 
     <TileItem Click="@OnVoiceStreamingClick">
         <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
-        <Content>Voice streaming</Content>
+        <Content>@L.VoiceSettings_VoiceStreaming</Content>
         <Caption>@voiceStatus</Caption>
         <Right>
             <Toggle
@@ -26,13 +26,13 @@
 
     @if (m.EnableIncompleteUI) {
         var pttCaption = m.PttEnabledAt is null
-            ? "Not enabled in this chat"
+            ? L.VoiceSettings_PttNotEnabled
             : m.IsPushToTalk
-                ? "Wakes this device when someone speaks"
-                : "Off";
+                ? L.VoiceSettings_PttOn
+                : L.VoiceSettings_Off;
         <TileItem Click="@OnPushToTalkClick">
             <Icon><i class="icon-talking text-2xl"></i></Icon>
-            <Content>Push to Talk</Content>
+            <Content>@L.VoiceSettings_PushToTalk</Content>
             <Caption>@pttCaption</Caption>
             <Right>
                 <Toggle
@@ -52,7 +52,7 @@
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();
-        Context.Title = "Voice settings";
+        Context.Title = L.VoiceSettings_Title;
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

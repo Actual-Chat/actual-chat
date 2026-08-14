@@ -12,7 +12,7 @@
     if (_form == null)
         return;
 
-    Context.Title = "Place Type";
+    Context.Title = L.Place_TypeTitle;
     Context.ContextItems.Set(nameof(PlaceSettingsOwnerModalPage.ComputedModel.Place.IsPublic), m.IsPublic);
     var canEditProperties = m.Place.Rules.IsOwner();
 }
@@ -62,12 +62,13 @@
                 <Content>
                     <FormSection For="() => _form.ActualAliasId"
                                  InputId="@_form.AliasIdFormId"
-                                 Label="Custom link"
+                                 Label="@L.Form_CustomLink"
                                  IsLabelInsideInput="true">
-                        <ValidationMessage>
+                        <ValidationMessage Context="fieldLabel">
                             <AliasValidationMessage
                                 For="@(() => _form.ActualAliasId)"
                                 Scope="@AliasValidationMessage.AliasScope.Place"
+                                FieldLabel="@fieldLabel"
                                 CurrentAliasId="@_form.CurrentAliasId"
                                 AliasIdReader="@(() => _form.ActualAliasId)" />
                         </ValidationMessage>
@@ -128,7 +129,7 @@
 
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();
-        Context.Title = "Edit place settings";
+        Context.Title = L.Place_EditSettingsTitle;
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
         _aliasTextBoxRefSetter = c => {
@@ -223,7 +224,7 @@
         public bool IsPublic { get; set; }
 
         public string CurrentAliasId { get; set; } = "";
-        [AliasId, Display(Name = "Short name")]
+        [AliasId]
         public string ActualAliasId => IsPublic ? AliasId : "";
 
         public string FormId { get; }

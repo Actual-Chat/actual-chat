@@ -7,7 +7,7 @@
     <DataAnnotationsValidator/>
     <DialogFrame
         Class="peer-contact-editor-modal modal-sm"
-        Title="Edit contact"
+        Title="@L.PeerContact_Title"
         HasCloseButton="true"
         ButtonsClass="full-width">
         <Body>
@@ -26,7 +26,11 @@
                     </div>
                 </div>
             }
-            <FormSection For="() => _form.PeerContactName" InputId="@_form.PeerContactNameFieldId" Label="Display Name" IsLabelInsideInput="true">
+            <FormSection
+                For="() => _form.PeerContactName"
+                InputId="@_form.PeerContactNameFieldId"
+                Label="@L.PeerContact_DisplayName"
+                IsLabelInsideInput="true">
                 <TextBox @bind-Value="@_form.PeerContactName" Id="@_form.PeerContactNameFieldId" />
             </FormSection>
         </FormBlock>
@@ -34,16 +38,16 @@
             <FormBlock Class="block-user-form-block">
                 <Card>
                     <CardItem>
-                        <Title>@(_contact.IsBlocked ? "Unblock user" : "Block user")</Title>
+                        <Title>@(_contact.IsBlocked ? L.PeerContact_UnblockUser : L.PeerContact_BlockUser)</Title>
                         <Caption>
-                            @(_contact.IsBlocked ? "You blocked this user" : "They won't be able to message or call you")
+                            @(_contact.IsBlocked ? L.PeerContact_BlockedCaption : L.PeerContact_BlockCaption)
                         </Caption>
                         <Right>
                             <Button
                                 Type="@ButtonType.Button"
                                 Class="@(_contact.IsBlocked ? "btn-transparent btn-sm" : "btn-transparent btn-danger btn-sm")"
                                 Click="@OnToggleBlock">
-                                @(_contact.IsBlocked ? "Unblock" : "Block")
+                                @(_contact.IsBlocked ? L.PeerContact_Unblock : L.Common_Block)
                             </Button>
                         </Right>
                     </CardItem>
@@ -56,8 +60,11 @@
                 @{
                     var submitClass = $"btn-modal btn-primary {_formRef.IsValid.ToEnabledClass()}";
                 }
-                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
-                <Button Type="@ButtonType.Submit" IsDisabled="@(_contact is null)" Class="@submitClass">Save</Button>
+                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">@L.Common_Cancel</Button>
+                <Button
+                    Type="@ButtonType.Submit"
+                    IsDisabled="@(_contact is null)"
+                    Class="@submitClass">@L.Common_Save</Button>
             </FormButtons>
         </Buttons>
     </DialogFrame>

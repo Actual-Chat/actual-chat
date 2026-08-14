@@ -22,7 +22,7 @@
         <FormSection
             For="() => _model.Phone"
             InputId="phone"
-            Label="Phone"
+            Label="@L.Form_Phone"
             Class="grow"
             IsLabelInsideInput="true">
             <ChildContent>
@@ -179,7 +179,7 @@
     }
 
     public class Model {
-        [PhoneNumber, Display(Name = "Phone")]
+        [PhoneNumber]
         public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
     }
 }

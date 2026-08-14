@@ -8,7 +8,7 @@
     @if (MauiShare != null) {
         <Button Class="btn-modal" Click="OnMauiShareClick">
             <Icon><i class="icon-share-more"></i></Icon>
-            <Title>Share Externally</Title>
+            <Title>@L.Share_ShareExternally</Title>
         </Button>
     } else if (_canUseWebShare) {
         var textAndLink = Request.GetShareTextAndLink(UrlMapper);
@@ -19,7 +19,7 @@
                 data-share-link="@link"
                 >
             <Icon><i class="icon-share-more text-2xl"></i></Icon>
-            <Title>Share Externally</Title>
+            <Title>@L.Share_ShareExternally</Title>
         </Button>
     } else {
         var text = Request.HasLink() ? "Copy link" : "Copy to clipboard";

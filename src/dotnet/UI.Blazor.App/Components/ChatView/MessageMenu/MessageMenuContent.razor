@@ -55,7 +55,7 @@
                 Icon="icon-edit"
                 Class="important-item"
                 FocusOnEditor="true"
-                Text="Edit"
+                Text="@L.Common_Edit"
                 Click="@(() => ChatEditorUI.Edit(e))">
             </MenuEntry>
         }
@@ -63,14 +63,14 @@
             <MenuEntry
                 Icon="icon-reply"
                 FocusOnEditor="true"
-                Text="Reply"
+                Text="@L.MessageMenu_Reply"
                 Click="@Reply">
             </MenuEntry>
         }
         @if (canCopyText) {
             <MenuEntry
                 Icon="icon-copy"
-                Text="Copy text"
+                Text="@L.MessageMenu_CopyText"
                 Click="@(() => SelectionUI.CopyToClipboard(e.Id))">
             </MenuEntry>
         }
@@ -78,7 +78,7 @@
             <CopyTrigger Tooltip="" CopyText="@ClickedLinkUrl" Class="ac-menu-item !p-0">
                 <MenuEntry
                     Icon="icon-copy"
-                    Text="Copy link">
+                    Text="@L.MessageMenu_CopyLink">
                 </MenuEntry>
             </CopyTrigger>
         }
@@ -86,14 +86,14 @@
             <CopyTrigger Tooltip="" CopyText="@ClickedCode?.Trim()" Class="ac-menu-item !p-0">
                 <MenuEntry
                     Icon="icon-copy"
-                    Text="Copy code">
+                    Text="@L.MessageMenu_CopyCode">
                 </MenuEntry>
             </CopyTrigger>
         }
         @if (canCopyImage) {
             <MenuEntry
                 Icon="icon-copy"
-                Text="Copy image"
+                Text="@L.MessageMenu_CopyImage"
                 Click="@(() => Hub.ClipboardUI.WriteImage(ClickedImageUrl!))">
             </MenuEntry>
         }
@@ -101,21 +101,21 @@
             <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
                 <MenuEntry
                     Icon="icon-link-2"
-                    Text="Copy message link">
+                    Text="@L.MessageMenu_CopyMessageLink">
                 </MenuEntry>
             </CopyTrigger>
         }
         @if (canForward) {
             <MenuEntry
                 Icon="icon-share"
-                Text="Forward"
+                Text="@L.MessageMenu_Forward"
                 Click="@(() => SelectionUI.Forward(e.Id))">
             </MenuEntry>
         }
         @if (canStartThread) {
             <MenuEntry
                 Icon="icon-conversation"
-                Text="Start thread"
+                Text="@L.MessageMenu_StartThread"
                 Click="@(() => SelectionUI.StartThread(e.Id))">
             </MenuEntry>
         }
@@ -130,7 +130,7 @@
             <MenuEntry
                 Class="warning-item"
                 Icon="icon-trash03"
-                Text="Delete message"
+                Text="@L.MessageMenu_DeleteMessage"
                 Click="@(() => SelectionUI.Delete(e.Id))">
             </MenuEntry>
         }
@@ -140,35 +140,35 @@
         @if (canUnselect) {
             <MenuEntry
                 Icon="icon-copy"
-                Text="Copy selection"
+                Text="@L.MessageMenu_CopySelection"
                 Click="@(() => SelectionUI.CopyToClipboard())">
             </MenuEntry>
             <MenuEntry
                 Icon="icon-share"
-                Text="Forward selection"
+                Text="@L.MessageMenu_ForwardSelection"
                 Click="@(() => SelectionUI.Forward())">
             </MenuEntry>
             <MenuEntry
                 Icon="icon-conversation"
-                Text="Start thread"
+                Text="@L.MessageMenu_StartThread"
                 Click="@(() => SelectionUI.StartThread())">
             </MenuEntry>
             <MenuEntry
                 Icon="icon-trash03"
-                Text="Clear selection"
+                Text="@L.MessageMenu_ClearSelection"
                 Click="@(() => SelectionUI.Clear())">
             </MenuEntry>
             <MenuEntrySeparator/>
             <MenuEntry
                 Icon="icon-select"
-                Text="Unselect"
+                Text="@L.MessageMenu_Unselect"
                 Click="@(() => SelectionUI.Unselect(e.Id))">
             </MenuEntry>
         }
         @if (canSelect) {
             <MenuEntry
                 Icon="icon-select"
-                Text="Select"
+                Text="@L.MessageMenu_Select"
                 Click="@(() => SelectionUI.Select(e.Id))">
             </MenuEntry>
         }

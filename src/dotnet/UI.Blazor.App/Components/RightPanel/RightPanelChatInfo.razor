@@ -22,7 +22,7 @@
                     <Left>
                         <i class="text-2xl icon-ai-stars @iconCls"></i>
                     </Left>
-                    <Title>Summarize</Title>
+                    <Title>@L.RightPanel_Summarize</Title>
                     <Caption>@GetStateCaption(m.IsSummarized, m.IsOwner)</Caption>
                     <Right>
                         <Toggle
@@ -106,9 +106,9 @@
                 .Update(x => x.WithoutPttChat(chat.Id), CancellationToken.None);
     }
 
-    private static string GetStateCaption(bool isOn, bool isOwner) {
-        var state = isOn ? "On" : "Off";
-        return isOwner ? state : $"{state} - by chat owner";
+    private string GetStateCaption(bool isOn, bool isOwner) {
+        var state = isOn ? L.RightPanel_On : L.RightPanel_Off;
+        return isOwner ? state : L.RightPanel_StateByChatOwner_Format(state);
     }
 
     // Nested types

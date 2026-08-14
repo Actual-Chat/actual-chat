@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -66,10 +67,10 @@ public partial class ChatAudioUI
         if (!listeningChatIds.IsEmpty) {
             var confirmed = false;
             var model = new ConfirmModal.Model(false,
-                "Replay will pause listening, then resume it after you stop replay. Continue?",
+                L.Replay_ConfirmText,
                 () => { confirmed = true; }) {
-                Title = "Start replay?",
-                ConfirmButtonText = "Yes",
+                Title = L.Replay_ConfirmTitle,
+                ConfirmButtonText = L.Common_Yes,
             };
             var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
             await modalRef.WhenClosed.ConfigureAwait(false);

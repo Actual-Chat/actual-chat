@@ -4,10 +4,10 @@
 
 @* The global ctrl+/ Hotkey is inert while this modal is open, so this one takes
    over and turns the second press into a toggle-off. *@
-<Hotkey Keys="ctrl+/" AriaLabel="Close keyboard shortcuts" OnTrigger="@(() => Modal.Close())"/>
+<Hotkey Keys="ctrl+/" AriaLabel="@L.Shortcuts_CloseAriaLabel" OnTrigger="@(() => Modal.Close())"/>
 <DialogFrame
     Class="keyboard-shortcuts-modal"
-    Title="Keyboard shortcuts"
+    Title="@L.Shortcuts_Title"
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Bottom">
     <Body>
@@ -48,29 +48,29 @@
     protected override void OnInitialized() {
         var mod = Hub.BrowserInfo.IsMacOS ? "⌘" : "Ctrl";
         _sections = [
-            new("General", [
-                new("Jump to chat or person", [[mod, "K"]]),
-                new("Search chats", [[mod, "F"]]),
-                new("Focus message editor", [[mod, "E"]]),
-                new("Keyboard shortcuts", [[mod, "/"]]),
-                new("Close dialog, menu, or search", [["Esc"]]),
+            new(L.Shortcuts_General, [
+                new(L.Shortcuts_JumpToChat, [[mod, "K"]]),
+                new(L.Shortcuts_SearchChats, [[mod, "F"]]),
+                new(L.Shortcuts_FocusEditor, [[mod, "E"]]),
+                new(L.Shortcuts_KeyboardShortcuts, [[mod, "/"]]),
+                new(L.Shortcuts_CloseDialog, [["Esc"]]),
             ]),
-            new("Messages", [
-                new("Send message", [["Enter"]]),
-                new("New line", [["Shift", "Enter"]]),
-                new("Edit your last message", [["↑"]], "When the editor is empty"),
-                new("Cancel editing or reply", [["Esc"]]),
+            new(L.Shortcuts_Messages, [
+                new(L.Shortcuts_SendMessage, [["Enter"]]),
+                new(L.Shortcuts_NewLine, [["Shift", "Enter"]]),
+                new(L.Shortcuts_EditLastMessage, [["↑"]], L.Shortcuts_EditLastMessageCaption),
+                new(L.Shortcuts_CancelEditing, [["Esc"]]),
             ]),
-            new("Chat", [
-                new("Scroll chat", [["PgUp"], ["PgDn"]]),
-                new("Previous or next media in viewer", [["←"], ["→"]]),
+            new(L.Shortcuts_Chat, [
+                new(L.Shortcuts_ScrollChat, [["PgUp"], ["PgDn"]]),
+                new(L.Shortcuts_PrevNextMedia, [["←"], ["→"]]),
             ]),
-            new("Navigation", [
-                new("Move focus", [["Tab"], ["Shift", "Tab"]]),
-                new("Navigate lists and menus", [["↑"], ["↓"]]),
-                new("First or last menu item", [["Home"], ["End"]]),
-                new("Press focused control", [["Enter"], ["Space"]]),
-                new("Toggle selection in pickers", [["Space"], ["X"]]),
+            new(L.Shortcuts_Navigation, [
+                new(L.Shortcuts_MoveFocus, [["Tab"], ["Shift", "Tab"]]),
+                new(L.Shortcuts_NavigateLists, [["↑"], ["↓"]]),
+                new(L.Shortcuts_FirstLastItem, [["Home"], ["End"]]),
+                new(L.Shortcuts_PressControl, [["Enter"], ["Space"]]),
+                new(L.Shortcuts_ToggleSelection, [["Space"], ["X"]]),
             ]),
         ];
     }

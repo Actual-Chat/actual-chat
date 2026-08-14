@@ -1,5 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.Resources;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -45,19 +45,29 @@ internal static class ContentListPlumbing
     public static (string Key, string Title) GetLocalGroup(
         Moment at,
         ContentGrouping groupBy,
-        DateTimeConverter dateTimeConverter)
+        AppUIHub hub)
     {
-        var d = dateTimeConverter.ToLocalTime(at);
+        var d = hub.DateTimeConverter.ToLocalTime(at);
         return groupBy switch {
-            ContentGrouping.Day => ($"{d.Year:D4}-{d.Month:D2}-{d.Day:D2}", d.ToString("MMMM d, yyyy")),
-            ContentGrouping.Month => ($"{d.Year:D4}-{d.Month:D2}", d.ToString("MMMM yyyy")),
+            ContentGrouping.Day => ($"{d.Year:D4}-{d.Month:D2}-{d.Day:D2}", d.ToString("D", hub.DateFormatter)),
+            ContentGrouping.Month => ($"{d.Year:D4}-{d.Month:D2}", d.ToString("y", hub.DateFormatter)),
             _ => ("", ""),
         };
     }
 
+    // Per-row timestamp; the year shows only once it stops being the current one.
+    public static string GetItemDate(Moment at, AppUIHub hub)
+    {
+        var l = hub.StringLocalizer;
+        var date = hub.DateTimeConverter.ToLocalTime(at);
+        var today = hub.DateTimeConverter.ToLocalTime(hub.Clocks.SystemClock.Now);
+        var pattern = date.Year == today.Year ? l.Date_DayMonthTimePattern : l.Date_DayMonthYearTimePattern;
+        return date.ToString(pattern, hub.DateFormatter);
+    }
+
     // Day-level label shown by the floating date-visor — finer than the month group headers.
-    public static string GetVisorDate(Moment at, DateTimeConverter dateTimeConverter)
-        => dateTimeConverter.ToLocalTime(at).ToString("d MMMM yyyy");
+    public static string GetVisorDate(Moment at, AppUIHub hub)
+        => hub.DateTimeConverter.ToLocalTime(at).ToString("D", hub.DateFormatter);
 
     public static ContentListItem EmptyPlaceholder()
         => new() { Key = "empty", IsEmptyPlaceholder = true };
@@ -125,7 +135,6 @@ internal static class ContentListPlumbing
         if (!isVisible)
             return renderedData;
 
-        var dateTimeConverter = hub.DateTimeConverter;
         var kind = ResolveKind<TItem>();
 
         // 1. Translate the VirtualList query into row-space terms.
@@ -227,7 +236,7 @@ internal static class ContentListPlumbing
         for (var i = first; i <= last; i++) {
             var block = blocks[i];
             var items = await loadPage(block, cancellationToken).ConfigureAwait(false);
-            blockRows[i] = BuildBlockRowsNewestFirst(items, block, rowSize, groupBy, dateTimeConverter);
+            blockRows[i] = BuildBlockRowsNewestFirst(items, block, rowSize, groupBy, hub);
         }
 
         int rowsBefore, rowsAfter;
@@ -269,7 +278,7 @@ internal static class ContentListPlumbing
             while (rowsBefore < wantBefore && first > 0) {
                 first--;
                 var items = await loadPage(blocks[first], cancellationToken).ConfigureAwait(false);
-                blockRows[first] = BuildBlockRowsNewestFirst(items, blocks[first], rowSize, groupBy, dateTimeConverter);
+                blockRows[first] = BuildBlockRowsNewestFirst(items, blocks[first], rowSize, groupBy, hub);
                 rowsBefore += blockRows[first].Count;
             }
         }
@@ -287,7 +296,7 @@ internal static class ContentListPlumbing
                 }
                 last++;
                 var items = await loadPage(blocks[last], cancellationToken).ConfigureAwait(false);
-                blockRows[last] = BuildBlockRowsNewestFirst(items, blocks[last], rowSize, groupBy, dateTimeConverter);
+                blockRows[last] = BuildBlockRowsNewestFirst(items, blocks[last], rowSize, groupBy, hub);
                 rowsAfter += blockRows[last].Count;
             }
         }
@@ -397,7 +406,7 @@ internal static class ContentListPlumbing
         Block block,
         int rowSize,
         ContentGrouping groupBy,
-        DateTimeConverter dateTimeConverter)
+        AppUIHub hub)
         where TItem : IChatContentItem
     {
         var keyPrefix = rowSize == 1 ? "i" : "r";
@@ -405,10 +414,10 @@ internal static class ContentListPlumbing
         var rowIndex = 0;
         var runStart = 0;
         while (runStart < items.Length) {
-            var firstGroupKey = GetLocalGroup(items[runStart].At, groupBy, dateTimeConverter).Key;
+            var firstGroupKey = GetLocalGroup(items[runStart].At, groupBy, hub).Key;
             var runEnd = runStart;
             while (runEnd < items.Length
-                && GetLocalGroup(items[runEnd].At, groupBy, dateTimeConverter).Key == firstGroupKey)
+                && GetLocalGroup(items[runEnd].At, groupBy, hub).Key == firstGroupKey)
                 runEnd++;
 
             var runLength = runEnd - runStart;
@@ -423,12 +432,12 @@ internal static class ContentListPlumbing
                 var slice = new TItem[size];
                 for (var i = 0; i < size; i++)
                     slice[i] = items[p + size - 1 - i];
-                var rowGroup = GetLocalGroup(slice[^1].At, groupBy, dateTimeConverter);
+                var rowGroup = GetLocalGroup(slice[^1].At, groupBy, hub);
                 rows.Add(new RowSpec<TItem>(
                     $"{keyPrefix}:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
                     rowGroup.Key,
                     rowGroup.Title,
-                    GetVisorDate(slice[0].At, dateTimeConverter),
+                    GetVisorDate(slice[0].At, hub),
                     slice));
                 p += size;
                 rowIndex++;

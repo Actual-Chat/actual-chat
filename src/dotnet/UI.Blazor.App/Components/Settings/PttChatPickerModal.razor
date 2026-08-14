@@ -1,11 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<PttChatPickerModal.Model>
+@inherits ComponentBase<AppUIHub>
 
 @using ActualChat.Search
 
 <DialogFrame
     Class="ptt-chat-picker-modal"
-    Title="Add a Push to Talk chat"
+    Title="@L.Ptt_PickerTitle"
     HasCloseButton="true"
     NarrowViewSettings="@_viewSettings">
     <Body>
@@ -16,7 +17,7 @@
             SearchQuery="@_searchQuery"
             Changed="@StateHasChanged">
             <SearchBox
-                Placeholder="Search chats"
+                Placeholder="@L.Ptt_SearchChats"
                 MaxLength="@Constants.Chat.MaxSearchFilterLength"
                 TextChanged="@OnFilter"/>
             <ContactSelectorListView/>
@@ -24,9 +25,9 @@
     </FormBlock>
     </Body>
     <Buttons>
-        <Button Type="@ButtonType.Button" Class="btn-modal" Click="@(() => Modal.Close())">Cancel</Button>
+        <Button Type="@ButtonType.Button" Class="btn-modal" Click="@(() => Modal.Close())">@L.Common_Cancel</Button>
         <Button Type="@ButtonType.Submit" Class="btn-modal btn-primary" Click="@OnAdd" IsDisabled="@(!CanAdd)">
-            Add
+            @L.Common_Add
         </Button>
     </Buttons>
 </DialogFrame>

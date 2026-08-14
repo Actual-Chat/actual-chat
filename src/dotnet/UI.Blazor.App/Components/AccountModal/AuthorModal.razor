@@ -18,11 +18,11 @@
     }
 
     var cls = "author-modal modal-sm";
-    var title = "User profile";
+    var title = L.Account_UserProfile;
     if (m.IsOwnAuthor)
-        title = "Your profile";
+        title = L.Account_YourProfile;
     else if (author.IsAnonymous)
-        title = "Anonymous profile";
+        title = L.Account_AnonymousProfile;
     else
         cls += " wide-dialog-buttons";
 
@@ -58,20 +58,20 @@
             if (!author.IsAnonymous) {
                 <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
                     <Icon><i class="icon-sync text-lg"></i></Icon>
-                    <Title>Change avatar</Title>
+                    <Title>@L.Account_ChangeAvatar</Title>
                 </Button>
             } else {
                 <Button Class="btn-modal" Click="@(_ => OnEditAvatarClick(author))">
                     <Icon><i class="icon-sync text-lg md:hidden"></i></Icon>
-                    <Title>Edit avatar</Title>
+                    <Title>@L.Account_EditAvatar</Title>
                 </Button>
                 <Button Class="btn-modal btn-danger" Click="OnRevealClicked">
                     <Icon><i class="icon-eye text-xl md:hidden"></i></Icon>
-                    <Title>Reveal</Title>
+                    <Title>@L.Account_Reveal</Title>
                 </Button>
             }
         } else if (author.IsAnonymous) {
-            <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
+            <Button Class="btn-modal btn-primary" Click="OnCancel">@L.Common_OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
                 var authorName = author?.Avatar.Name ?? "";
@@ -80,7 +80,7 @@
                         <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
                             <i class="icon-question-mark-bubble text-xl"></i>
                             <span class="c-title">
-                                <span>Chat with</span>
+                                <span>@L.Account_ChatWith</span>
                                 <span class="c-name">@authorName</span>
                             </span>
                         </Button>
@@ -90,7 +90,7 @@
                             Click="OnStartPeerChat">
                             <i class="icon-message-ellipse text-xl"></i>
                             <span class="c-title">
-                                <span>Chat with</span>
+                                <span>@L.Account_ChatWith</span>
                                 <span class="c-name">@authorName</span>
                             </span>
                         </Button>
@@ -100,7 +100,7 @@
                         <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
                             <i class="icon-question-mark-bubble text-xl"></i>
                             <span class="c-title">
-                                <span>Chat with</span>
+                                <span>@L.Account_ChatWith</span>
                                 <span class="c-name">@authorName</span>
                             </span>
                         </Button>
@@ -112,19 +112,16 @@
                         <div class="c-incut @(toggleValue ? "show" : "")">
                             <div class="c-info">
                                 <i class="icon-alert-triangle text-lg text-warning"></i>
-                                <span>
-                                    Anonymous chats hide user identities and don't transmit or record your voice, though still
-                                    show real-time transcription. And you can reveal you real identity there at any moment.
-                                </span>
+                                <span>@L.Account_AnonymousChatInfo</span>
                             </div>
                         </div>
 
                         <TileItem Click="@OnChatTypeChanged" Class="@tileCls">
                             <Content>
-                                Anonymous chat
+                                @L.Account_AnonymousChat
                             </Content>
                             <Caption>
-                                Chat can be direct or anonymous.
+                                @L.Account_AnonymousChatCaption
                             </Caption>
                             <Right>
                                 <Toggle Class="mr-2"
@@ -136,7 +133,7 @@
                     </div>
                 }
             } else {
-                <Button Class="btn-modal" Click="OnCancel">Close</Button>
+                <Button Class="btn-modal" Click="OnCancel">@L.Common_Close</Button>
             }
         }
     </Buttons>
@@ -245,7 +242,7 @@
 
     private void OnEditAvatarClick(Author author) {
         Modal.Close();
-        _ = ModalUI.Show(new OwnAvatarEditorModal.Model(author.Avatar.Id, author.ChatId, "Edit avatar"));
+        _ = ModalUI.Show(new OwnAvatarEditorModal.Model(author.Avatar.Id, author.ChatId, L.Account_EditAvatar));
     }
 
     private void OnEditPeerContactClick(Contact contact) {

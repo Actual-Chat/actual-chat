@@ -382,6 +382,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.EmailSettings>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.LanguageSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.LanguageShortcut>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.NativeAppSettingsView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.PrivacySettings>();
@@ -1119,6 +1120,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.EmailSettings), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.LanguageSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.LanguageShortcut), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.NativeAppSettingsView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.PrivacySettings), AotTypeKind.Component),

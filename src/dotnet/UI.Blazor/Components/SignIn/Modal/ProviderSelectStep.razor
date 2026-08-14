@@ -52,7 +52,7 @@
             @if (m.HasSentCodeRecently) {
                 <div class="c-info">
                     <i class="icon-info"></i>
-                    <span>Code sent. Check your inbox or phone.</span>
+                    <span>@L.SignIn_CodeSent</span>
                 </div>
             }
         </FormSection>
@@ -69,13 +69,13 @@
                         <i class="icon-refresh"></i><span>Validating...</span>
                         break;
                     case ValidationState.Invalid:
-                        <span>Unavailable</span>
+                        <span>@L.SignIn_Unavailable</span>
                         break;
                     case ValidationState.None:
                     case ValidationState.Valid:
                     case ValidationState.CodeSentRecently:
                     default:
-                        <span>Continue</span>
+                        <span>@L.Common_Continue</span>
                         break;
                 }
             </Button>
@@ -311,7 +311,7 @@
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
-        [PhoneOrEmail, Display(Name = "Phone or email")]
+        [PhoneOrEmail]
         public string PhoneOrEmail { get; set; } = "";
         public string PhoneOrEmailFieldId { get; set; } = "";
     }

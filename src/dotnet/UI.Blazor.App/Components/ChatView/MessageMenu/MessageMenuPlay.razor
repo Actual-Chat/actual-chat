@@ -10,14 +10,14 @@
         <MenuEntry
             Icon="icon-play-fill"
             Class="important-item"
-            Text="Play"
+            Text="@L.MessageMenu_Play"
             Click="@OnPlay"
             MustKeepAwake="true">
         </MenuEntry>
     } else {
         <ButtonRound
             Class="play-btn btn-transparent btn-xs"
-            Tooltip="Play"
+            Tooltip="@L.MessageMenu_Play"
             TooltipPosition="FloatingPosition.Top"
             Click="@OnPlay"
             MustKeepAwake="true">
@@ -29,14 +29,14 @@
         <MenuEntry
             Icon="icon-stop-fill"
             Class="important-item"
-            Text="Stop"
+            Text="@L.Common_Stop"
             Click="@OnStop">
         </MenuEntry>
     } else {
         <ButtonRound
             Click="OnStop"
             Class="play-btn btn-xs btn-transparent"
-            Tooltip="Stop"
+            Tooltip="@L.Common_Stop"
             TooltipPosition="FloatingPosition.Top">
             <i class="icon-stop-fill text-xl text-primary"></i>
         </ButtonRound>

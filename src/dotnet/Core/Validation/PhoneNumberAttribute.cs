@@ -7,9 +7,9 @@ public sealed class PhoneNumberAttribute : ValidationAttribute
 {
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
-        var error = Validators.Phone.Validate(value as string);
-        return error is null
+        var errorKey = Validators.Phone.Validate(value as string);
+        return errorKey is null
             ? ValidationResult.Success
-            : validationContext.Error(ErrorMessage ?? error);
+            : validationContext.Error(ErrorMessage ?? errorKey);
     }
 }

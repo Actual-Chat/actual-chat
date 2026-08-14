@@ -41,12 +41,14 @@
         </div>
     }
     @if (ValidationMessage is not null) {
-        @ValidationMessage
+        @ValidationMessage(Label)
     }
     else @if (!HideValidationMessage) {
         var validationCls = isInvalid ? "invalid" : "";
         <div class="form-section-validation @validationCls">
-            @(isInvalid ? messages.First() : "")
+            @if (isInvalid) {
+                <LocalizedMessage Text="@messages.First()" FieldLabel="@Label"/>
+            }
         </div>
     }
 </section>
@@ -75,7 +77,7 @@
     [Parameter] public bool HideValidationMessage { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Right { get; set; }
-    [Parameter] public RenderFragment? ValidationMessage { get; set; }
+    [Parameter] public RenderFragment<string>? ValidationMessage { get; set; }
     [Parameter] public Expression<Func<TValue>>? For { get; set; }
 
     protected override void OnParametersSet() {

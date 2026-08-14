@@ -5,6 +5,7 @@ using ActualChat.Diagnostics;
 using ActualChat.Module;
 using ActualChat.Transcription;
 using ActualLab.Diagnostics;
+using ActualLab.IO;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Google;
@@ -22,12 +23,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
 
     private CoreServerSettings CoreServerSettings => field ??= Services.GetRequiredService<CoreServerSettings>();
 
-    private string PromptTemplateString => field
-        ??= File.ReadAllText(
-            ServiceKey == Constants.Translation.RealtimeServiceKey && !Settings.Translation.RealtimePromptFile.IsEmpty
-                ? CoreServerSettings.PromptsDir | Settings.Translation.RealtimePromptFile
-                : CoreServerSettings.PromptsDir | Settings.Translation.PromptFile
-        ).RequireNonEmpty();
+    private string PromptTemplateString => field ??= File.ReadAllText(GetPromptFilePath()).RequireNonEmpty();
 
     private Kernel Kernel => field ??= Services.GetRequiredService<Kernel>();
 
@@ -43,6 +39,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         string textToTranslate,
         Language targetLanguage,
         TranslationResult[] context,
+        string? contextHint = null,
         CancellationToken cancellationToken = default)
     {
         textToTranslate.RequireNonEmpty();
@@ -52,7 +49,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         using var activity = CoreServerInstruments.ActivitySource.StartActivity(GetType(), activityKind: ActivityKind.Client);
         try {
             var executionSettings = CreateExecutionSettings(textToTranslate, targetLanguage);
-            var chatHistory = await BuildRequest(textToTranslate, targetLanguage, context, cancellationToken).ConfigureAwait(false);
+            var chatHistory = await BuildRequest(textToTranslate, targetLanguage, context, contextHint, cancellationToken).ConfigureAwait(false);
 
             var response = await Completion
                 .GetChatMessageContentAsync(
@@ -81,6 +78,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         string textToTranslate,
         Language targetLanguage,
         TranslationResult[] context,
+        string? contextHint = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         textToTranslate.RequireNonEmpty();
@@ -90,7 +88,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         }
 
         var executionSettings = CreateExecutionSettings(textToTranslate, targetLanguage);
-        var chatHistory = await BuildRequest(textToTranslate, targetLanguage, context, cancellationToken).ConfigureAwait(false);
+        var chatHistory = await BuildRequest(textToTranslate, targetLanguage, context, contextHint, cancellationToken).ConfigureAwait(false);
 
         await foreach (var diff in StreamTranslation().ConfigureAwait(false))
             yield return diff;
@@ -132,6 +130,17 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
     }
 
     // Private methods
+
+    private FilePath GetPromptFilePath()
+    {
+        var promptFile = ServiceKey switch {
+            Constants.Translation.RealtimeServiceKey when !Settings.Translation.RealtimePromptFile.IsEmpty
+                => Settings.Translation.RealtimePromptFile,
+            Constants.Translation.UITextServiceKey => Settings.Translation.UITextPromptFile,
+            _ => Settings.Translation.PromptFile,
+        };
+        return CoreServerSettings.PromptsDir | promptFile;
+    }
 
     private PromptExecutionSettings CreateExecutionSettings(string textToTranslate, Language targetLanguage)
     {
@@ -175,7 +184,8 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         string textToTranslate,
         Language targetLanguage,
         TranslationResult[] context,
-        CancellationToken cancellationToken)
+        string? contextHint = null,
+        CancellationToken cancellationToken = default)
     {
         var chatHistory = new ChatHistory();
         var arguments = new KernelArguments {
@@ -184,9 +194,12 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         var systemMessage = await PromptTemplate
             .RenderAsync(Kernel, arguments, cancellationToken)
             .ConfigureAwait(false);
+        if (!contextHint.IsNullOrWhiteSpace())
+            systemMessage = $"{systemMessage}\n\n{contextHint}";
         chatHistory.AddSystemMessage(systemMessage);
 
-        if (context.Length == 0) {
+        // Chat-style few-shot examples would prime UI-text translations toward conversational register
+        if (context.Length == 0 && ServiceKey != Constants.Translation.UITextServiceKey) {
             // Provide translation examples to improve the quality of the translation
             if (targetLanguage.IsAnyEnglish) {
                 chatHistory.AddUserMessage("Хорошо.");

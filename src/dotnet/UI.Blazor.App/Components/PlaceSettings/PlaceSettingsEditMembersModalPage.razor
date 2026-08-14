@@ -3,18 +3,18 @@
 @inherits ComputedStateComponent<AppUIHub, PlaceSettingsEditMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
-    Context.Title = $"{m.MemberCount} members";
+    Context.Title = m.MemberCount == 1 ? L.Place_Members_One(m.MemberCount) : L.Place_Members_Other(m.MemberCount);
     Context.ContextItems.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
 <TileItem Click="@OnInviteClick">
     <Icon><i class="text-2xl icon-person-add text-primary"></i></Icon>
-    <Content><span class="text-primary">Add members</span></Content>
+    <Content><span class="text-primary">@L.Place_AddMembers</span></Content>
 </TileItem>
 
 <SearchBox
     Class="icon-align-right"
-    Placeholder="Search"
+    Placeholder="@L.Common_Search"
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
 

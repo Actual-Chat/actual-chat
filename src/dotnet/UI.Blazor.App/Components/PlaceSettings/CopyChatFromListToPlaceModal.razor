@@ -2,7 +2,7 @@
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<CopyChatFromListToPlaceModal.Model>
 
-<DialogFrame Title="Copy chat to place" HasCloseButton="true" Class="copy-chat-to-place-modal">
+<DialogFrame Title="@L.Place_CopyChatToPlaceTitle" HasCloseButton="true" Class="copy-chat-to-place-modal">
     <Body>
         <CopyChatFromListToPlaceModalContent OnChatClick="@OnCopyChatClick"/>
     </Body>

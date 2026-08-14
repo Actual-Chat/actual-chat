@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Resources;
+using Microsoft.Extensions.Localization;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -15,6 +17,7 @@ public class IncomingShareUI(AppUIHub hub)
         => field ??= Hub.Services.GetRequiredService<SentContentStorage>();
     private FilePreviews FilePreviews
         => field ??= Hub.Services.GetRequiredService<FilePreviews>();
+    private IStringLocalizer L => Hub.StringLocalizer;
     private ILogger Log { get; } = StaticLog.For<IncomingShareUI>();
 
     public void ShareText(string plainText, ChatId? targetChatId = null)
@@ -117,11 +120,14 @@ public class IncomingShareUI(AppUIHub hub)
                 return;
 
             var failedToUploadFilesNumber = failedTasks.Sum(c => c.Item3);
-            ToastUI.Show($"Failed to share {failedToUploadFilesNumber} files", "icon-alert-circle", ToastDismissDelay.Long);
+            var failedMessage = failedToUploadFilesNumber == 1
+                ? L.Share_FailedToShareCount_One(failedToUploadFilesNumber)
+                : L.Share_FailedToShareCount_Other(failedToUploadFilesNumber);
+            ToastUI.Show(failedMessage, "icon-alert-circle", ToastDismissDelay.Long);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to share files");
-            ToastUI.Show("Failed to share files", "icon-alert-circle", ToastDismissDelay.Long);
+            ToastUI.Show(L.Share_FailedToShareFiles, "icon-alert-circle", ToastDismissDelay.Long);
         }
     }
 

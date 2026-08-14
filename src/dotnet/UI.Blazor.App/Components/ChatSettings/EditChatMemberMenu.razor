@@ -17,7 +17,7 @@
     @if (m.CanPromoteToOwner) {
         <MenuEntry
             Icon="icon-crown"
-            Text="Promote to Owner"
+            Text="@L.Account_PromoteToOwner"
             Click="@(() => OnPromoteToOwnerClick(m.Author))">
         </MenuEntry>
     }
@@ -35,7 +35,7 @@
         <MenuEntry
             Class="warning-item"
             Icon="icon-minus-circle"
-            Text="Remove from group"
+            Text="@L.Account_RemoveFromGroup"
             Click="@(() => OnRemoveFromGroupClick(m.Author))">
         </MenuEntry>
     }

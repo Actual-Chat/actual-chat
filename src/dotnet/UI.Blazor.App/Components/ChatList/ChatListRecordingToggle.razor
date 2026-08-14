@@ -11,7 +11,7 @@
     <HeaderButton
         Class="@cls"
         Click="@(_ => ChatAudioUI.SetRecordingChatId(default))"
-        Tooltip="Stop"
+        Tooltip="@L.Common_Stop"
         TooltipPosition="FloatingPosition.Top">
         <i class="icon-mic-2 text-2xl"></i>
     </HeaderButton>
@@ -19,7 +19,7 @@
     <HeaderButton
         Class="@cls"
         Click="@(_ => ChatAudioUI.SetRecordingChatId(Chat.Id))"
-        Tooltip="Start"
+        Tooltip="@L.Common_Start"
         TooltipPosition="FloatingPosition.Top"
         MustKeepAwake="true">
         <i class="icon-mic-2 text-2xl"></i>

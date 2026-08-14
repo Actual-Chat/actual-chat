@@ -20,7 +20,7 @@
         <HeaderButton
             Class="btn-close-call"
             Click="@OnClose"
-            Tooltip="@(status == CallStatus.Dialing ? "Cancel call" : "Close")"
+            Tooltip="@(status == CallStatus.Dialing ? L.Banner_CancelCall : L.Common_Close)"
             TooltipPosition="FloatingPosition.Top">
             <i class="icon-close text-2xl"></i>
         </HeaderButton>
@@ -55,11 +55,11 @@
             ? LiveSessionUI.CancelCall(Chat.Id, CancellationToken.None)
             : LiveSessionUI.DismissCallStatus(Chat.Id, CancellationToken.None);
 
-    private static string Text(CallStatus status) => status switch {
-        CallStatus.Dialing => "You are calling…",
-        CallStatus.Accepted => "Call accepted",
-        CallStatus.Declined => "Call declined",
-        CallStatus.NoAnswer => "No answer",
+    private string Text(CallStatus status) => status switch {
+        CallStatus.Dialing => L.Banner_CallDialing,
+        CallStatus.Accepted => L.Banner_CallAccepted,
+        CallStatus.Declined => L.Banner_CallDeclined,
+        CallStatus.NoAnswer => L.Banner_CallNoAnswer,
         _ => "",
     };
 

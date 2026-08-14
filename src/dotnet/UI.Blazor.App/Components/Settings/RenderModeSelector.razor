@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are expected to be untrimmed.")]
 
-<TileTopic Topic="Rendering Mode"/>
+<TileTopic Topic="@L.RenderMode_Title"/>
 <Tile Class="render-mode-tile">
     <Form Model="@_formModel">
         <DataAnnotationsValidator/>
@@ -10,7 +11,7 @@
             <InputRadioGroup
                 TValue="@RenderModeKey"
                 Name="render-mode"
-                DisplayName="Rendering Mode"
+                DisplayName="@L.RenderMode_Title"
                 @bind-Value="_formModel.ModeKey">
 
                 <TileItem
@@ -20,11 +21,10 @@
                         <FormRadio TValue="@RenderModeKey" Id="@_formModel.AutoModeFormId" Value="@RenderModeKey.Auto"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.AutoModeFormId" Text="Auto" IsRequired="true"></Label>
+                        <Label InputId="@_formModel.AutoModeFormId" Text="@L.RenderMode_Auto" IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        Starts in Server-Side Rendering mode and loads WebAssembly Client in the background.
-                        Switches to WebAssembly Client once it's loaded.
+                        @L.RenderMode_AutoDescription
                     </Caption>
                 </TileItem>
 
@@ -35,10 +35,10 @@
                         <FormRadio TValue="@RenderModeKey" Id="@_formModel.ServerModeFormId" Value="@RenderModeKey.Server"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.ServerModeFormId" Text="Server-Side Rendering" IsRequired="true"></Label>
+                        <Label InputId="@_formModel.ServerModeFormId" Text="@L.RenderMode_Server" IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        Works best for less powerful devices; less responsive if you're outside of the U.S.
+                        @L.RenderMode_ServerDescription
                     </Caption>
                 </TileItem>
 
@@ -49,11 +49,10 @@
                         <FormRadio TValue="@RenderModeKey" Id="@_formModel.WasmModeFormId" Value="@RenderModeKey.Wasm"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.WasmModeFormId" Text="WebAssembly Client" IsRequired="true"></Label>
+                        <Label InputId="@_formModel.WasmModeFormId" Text="@L.RenderMode_Wasm" IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        Works best on more powerful devices; more responsive, requires less bandwidth,
-                        but downloads ~10MB once you enable this mode.
+                        @L.RenderMode_WasmDescription
                     </Caption>
                 </TileItem>
 
@@ -66,10 +65,7 @@
     private RenderModeKey _modeKey;
     private FormModel _formModel = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private RenderModeHelper RenderModeHelper => Hub.Services.GetRequiredService<RenderModeHelper>();
-
+    private RenderModeHelper RenderModeHelper => Services.GetRequiredService<RenderModeHelper>();
 
     protected override void OnInitialized() {
         _modeKey = (RenderModeHelper.CurrentMode?.Key[0] ?? 'a') switch {

@@ -3,18 +3,18 @@
 @inherits ComputedStateComponent<AppUIHub, EditChatMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
-    Context.Title = $"{m.MemberCount} members";
+    Context.Title = m.MemberCount == 1 ? L.Place_Members_One(m.MemberCount) : L.Place_Members_Other(m.MemberCount);
     Context.ContextItems.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
 <TileItem Click="@OnInviteClick">
     <Icon><i class="text-2xl icon-person-add text-primary"></i></Icon>
-    <Content><span class="text-primary">Add members</span></Content>
+    <Content><span class="text-primary">@L.Place_AddMembers</span></Content>
 </TileItem>
 
 <SearchBox
     Class="icon-align-right"
-    Placeholder="Search"
+    Placeholder="@L.Common_Search"
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
 
@@ -126,14 +126,12 @@
     private void OnInviteClick()
         => Context.StepIn(DiveInDialogPage.New<AddMemberModalPage>(ChatId));
 
-    private static string? FormatStatusText(bool isOwner, bool isModerator, bool isOwn) {
-        var statusText = isOwner ? "Owner" : isModerator ? "Moderator" : null;
-        if (isOwn) {
-            if (statusText != null)
-                statusText += ", your profile";
-            else
-                statusText = "Your profile";
-        }
+    private string? FormatStatusText(bool isOwner, bool isModerator, bool isOwn) {
+        var statusText = isOwner ? L.Members_Owner : isModerator ? L.Members_Moderator : null;
+        if (isOwn)
+            statusText = statusText != null
+                ? L.Members_StatusOwn_Format(statusText)
+                : L.Members_YourProfile;
         return statusText;
     }
 

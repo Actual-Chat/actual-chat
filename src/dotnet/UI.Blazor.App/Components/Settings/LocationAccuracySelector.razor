@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are expected to be untrimmed.")]
 
-<TileTopic Topic="Location Accuracy"/>
+<TileTopic Topic="@L.LocationAccuracy_Topic"/>
 <Tile Class="render-mode-tile">
     <Form Model="@_formModel">
         <DataAnnotationsValidator/>
@@ -20,10 +21,13 @@
                         <FormRadio TValue="@GeoTrackingAccuracy" Id="@_formModel.HighFormId" Value="@GeoTrackingAccuracy.High"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.HighFormId" Text="High" IsRequired="true"></Label>
+                        <Label
+                            InputId="@_formModel.HighFormId"
+                            Text="@L.LocationAccuracy_High"
+                            IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        Highest precision; uses more battery.
+                        @L.LocationAccuracy_HighCaption
                     </Caption>
                 </TileItem>
 
@@ -34,10 +38,13 @@
                         <FormRadio TValue="@GeoTrackingAccuracy" Id="@_formModel.BalancedFormId" Value="@GeoTrackingAccuracy.Balanced"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.BalancedFormId" Text="Balanced" IsRequired="true"></Label>
+                        <Label
+                            InputId="@_formModel.BalancedFormId"
+                            Text="@L.LocationAccuracy_Balanced"
+                            IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        Good precision with moderate battery use.
+                        @L.LocationAccuracy_BalancedCaption
                     </Caption>
                 </TileItem>
 
@@ -48,10 +55,10 @@
                         <FormRadio TValue="@GeoTrackingAccuracy" Id="@_formModel.LowFormId" Value="@GeoTrackingAccuracy.Low"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.LowFormId" Text="Low" IsRequired="true"></Label>
+                        <Label InputId="@_formModel.LowFormId" Text="@L.LocationAccuracy_Low" IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        Lowest precision; saves the most battery.
+                        @L.LocationAccuracy_LowCaption
                     </Caption>
                 </TileItem>
 

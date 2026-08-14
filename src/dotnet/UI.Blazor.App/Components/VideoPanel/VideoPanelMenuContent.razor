@@ -20,19 +20,19 @@
         @if (a.CanToggleFullscreen && !isExpanded) {
             <MenuEntry
                 Icon="icon-expand"
-                Text="Fullscreen"
+                Text="@L.Call_Fullscreen"
                 Click="@OnToggleFullscreen"/>
         }
         @if (a.CanToggleIsland && !isCollapsed) {
             <MenuEntry
                 Icon="icon-video-collapse"
-                Text="Float"
+                Text="@L.Call_Float"
                 Click="@OnToggleIsland"/>
         }
         @if (a.CanMinimize) {
             <MenuEntry
                 Icon="icon-eye-off"
-                Text="Hide"
+                Text="@L.Common_Hide"
                 Click="@OnMinimize"/>
         }
     }
@@ -45,7 +45,7 @@
         @if (a.CanSwitchCamera) {
             <MenuEntry
                 Icon="icon-camera-switch"
-                Text="Switch camera"
+                Text="@L.Call_SwitchCamera"
                 Click="@OnSwitchCamera"/>
         }
         @if (a.CanToggleVideo) {
@@ -71,13 +71,13 @@
         @if (a.CanShowVideoSettings) {
             <MenuEntry
                 Icon="icon-settings"
-                Text="Video settings"
+                Text="@L.Call_VideoSettings"
                 Click="@OnVideoSettings"/>
         }
         @if (a.CanShowVoiceSettings) {
             <MenuEntry
                 Icon="icon-options-2"
-                Text="Voice settings"
+                Text="@L.Call_VoiceSettings"
                 Click="@OnVoiceSettings"/>
         }
     }

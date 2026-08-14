@@ -1,0 +1,126 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
+{
+  "Validation_Required_Format": "Bitte fülle das Feld „{field}“ aus.",
+  "Validation_MinLength_Format": "Das Feld „{field}“ muss mindestens {min} Zeichen lang sein.",
+  "Validation_EmailAddress_Format": "„{field}“ ist keine gültige E-Mail-Adresse.",
+  "Validation_DeleteConfirmationRequired": "Bestätigung der Löschung ist erforderlich",
+  "Validation_DeleteConfirmationInvalid": "Gib zur Bestätigung DELETE ein",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Du hast nicht genug Rechte für diese Aktion.",
+  "Error_NotEnoughPermissions_Format": "Du hast nicht genug Rechte für diese Aktion. Benötigtes Recht: {permission}",
+  "Error_TooManyRequests": "Zu viele Anfragen.",
+  "Error_TooManyRequests_Format": "Zu viele Anfragen. Versuche es in {seconds} s erneut.",
+  "Error_VersionMismatch": "Die Daten haben sich geändert. Versuche es erneut.",
+  "Error_ChatNotFound": "Chat nicht gefunden.",
+  "Error_ChatEntryNotFound": "Nachricht nicht gefunden.",
+  "Error_AccountNotFound": "Konto nicht gefunden.",
+  "Error_AuthorNotFound": "Teilnehmer nicht gefunden.",
+  "Error_AvatarNotFound": "Profil nicht gefunden.",
+  "Error_ContactNotFound": "Kontakt nicht gefunden.",
+  "Error_MediaNotFound": "Datei nicht gefunden.",
+  "Error_UploadNotFound": "Upload nicht gefunden.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "Diese Registrierungsanfrage ist abgelaufen. Bitte melde dich erneut an.",
+  "Error_SessionExpired": "Deine Sitzung ist abgelaufen oder deaktiviert. Bitte starte die App neu.",
+  "Error_AlreadySignedIn": "Du bist bereits angemeldet.",
+  "Error_PhoneTaken": "Diese Telefonnummer wird bereits von einem anderen Konto verwendet.",
+  "Error_EmailTaken": "Diese E-Mail-Adresse wird bereits von einem anderen Konto verwendet.",
+  "Error_SmsNotDelivered": "Die Nachricht konnte nicht an die angegebene Telefonnummer zugestellt werden.",
+  "Error_CannotDeactivateCurrentSession": "Die aktuelle Sitzung kann nicht deaktiviert werden.",
+  "Error_PhoneFormatInvalid": "Ungültiges Telefonnummernformat.",
+  "Error_CannotChangeOwnStatus": "Du kannst deinen eigenen Status nicht ändern.",
+  "Error_ApiKeyExpirationRange_Format": "Die Gültigkeit des API-Schlüssels muss zwischen 1 und {days} Tagen liegen.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Du kannst diesen Chat nicht verlassen, weil du sein einziger Eigentümer bist. Füge zuerst einen weiteren Eigentümer hinzu.",
+  "Error_CannotRemoveSelf": "Du kannst dich nicht selbst aus den Chat-Mitgliedern entfernen.",
+  "Error_CannotRemoveChatOwner": "Du kannst einen Eigentümer dieses Chats nicht aus den Mitgliedern entfernen.",
+  "Error_CannotRemoveSearchBot": "Du kannst den KI-Suchbot nicht aus den Chat-Mitgliedern entfernen.",
+  "Error_OwnerCannotBeDemoted": "Chat-Eigentümer können nicht herabgestuft werden.",
+  "Error_AuthorAlreadyLeft": "Der ausgewählte Teilnehmer hat den Chat bereits verlassen.",
+  "Error_AutomaticRoleMembership": "Bei dieser Systemrolle wird die Mitgliedschaft automatisch vergeben.",
+  "Error_ManageMembershipInPlace": "Die Mitgliedschaft in öffentlichen Place-Chats verwaltest du in den Place-Einstellungen.",
+  "Error_AnonymousAvatarRequired": "Zum anonymen Beitreten wird ein anonymes Profil benötigt.",
+  "Error_GuestJoinNotAllowed": "In diesem Chat ist der Beitritt mit einem Gastkonto nicht erlaubt.",
+  "Error_AnonymousJoinNotAllowed": "In diesem Chat ist der anonyme Beitritt nicht erlaubt.",
+  "Error_OwnersRoleCannotBeEmpty": "In der Rolle „Eigentümer“ muss mindestens ein Nutzer bleiben.",
+  "Error_OnlyOwnersAllowed": "Diese Aktion ist nur Mitgliedern der Rolle „Eigentümer“ dieses Chats möglich.",
+
+  // Messages
+  "Error_CannotSendMessages": "Du kannst in diesem Chat keine Nachrichten senden.",
+  "Error_EmptyMessage": "Leere Nachrichten können nicht gesendet werden.",
+  "Error_CanEditOwnMessagesOnly": "Du kannst nur deine eigenen Nachrichten bearbeiten.",
+  "Error_OnlyTextCanBeEdited": "Nur Textnachrichten können bearbeitet werden.",
+  "Error_StreamingCannotBeEdited": "Laufende Aufnahmen können nicht bearbeitet werden.",
+  "Error_ForwardedCannotBeEdited": "Weitergeleitete Nachrichten können nicht bearbeitet werden.",
+  "Error_MessageNoLongerExists": "Diese Nachricht existiert nicht mehr.",
+  "Error_CannotRemoveMessage": "Du darfst diese Nachricht nicht löschen.",
+  "Error_CannotRemoveOwnerMessage": "Du darfst die Nachricht eines Eigentümers nicht löschen.",
+  "Error_CannotRestoreMessage": "Du darfst diese Nachricht nicht wiederherstellen.",
+  "Error_CannotRestoreOwnerMessage": "Du darfst die Nachricht eines Eigentümers nicht wiederherstellen.",
+  "Error_RootChatCannotHoldMessages": "Im Haupt-Chat eines Place kann nicht geschrieben werden — poste stattdessen in einem der Chats des Place.",
+  "Error_CanAttachOwnLocationsOnly": "Du kannst nur deinen eigenen geteilten Standort aus diesem Chat anhängen.",
+  "Error_NonContactMessageLimit_Format": "Du kannst bis zu {limit} Nachrichten senden, bis diese Person dich zu ihren Kontakten hinzufügt oder antwortet.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Nur Chat-Eigentümer und Moderatoren können Nachrichten anheften.",
+  "Error_PinLimit_Format": "Du kannst bis zu {limit} Nachrichten anheften.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Der Chat-Titel darf nicht leer sein.",
+  "Error_ThreadTitleEmpty": "Der Thread-Titel darf nicht leer sein.",
+  "Error_PlaceTitleEmpty": "Der Place-Titel darf nicht leer sein.",
+  "Error_PlaceUnavailable": "Der angeforderte Place ist nicht verfügbar.",
+  "Error_OnlyPlaceMembersCanAddChats": "Nur Mitglieder des Place können Chats hinzufügen.",
+  "Error_CannotMakeChatPublic": "Du hast nicht genug Rechte, um den Chat öffentlich zu machen.",
+  "Error_CustomLinkNotAllowed": "Für Place-Chats sind eigene Links nicht erlaubt.",
+  "Error_CustomLinkTaken_Format": "Der Link „{link}“ wird bereits von einem anderen Chat in diesem Place verwendet.",
+  "Error_WelcomeChatCannotBePrivate": "Der Chat „Welcome“ kann nicht auf privat gestellt werden.",
+  "Error_WelcomeChatCannotBeRemoved": "Der Chat „Welcome“ kann nicht gelöscht werden.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Nur Gruppen- oder Place-Chats können in einen Place kopiert werden.",
+  "Error_CannotCopyToSamePlace": "Ein Place-Chat kann nicht in denselben Place kopiert werden.",
+  "Error_MigrationRequiresChatOwner": "Für die Migration musst du Eigentümer dieses Chats sein.",
+  "Error_MigrationRequiresPlaceOwner": "Um einen Chat in einen Place zu kopieren, musst du Eigentümer des Place sein.",
+  "Error_OperationRequiresChatOwner": "Für diese Aktion musst du Eigentümer dieses Chats sein.",
+  "Error_OperationRequiresPlaceOwner": "Für diese Aktion musst du Eigentümer des Place sein, zu dem der Chat gehört.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Threads kannst du erst starten, wenn diese Person dich zu ihren Kontakten hinzufügt oder antwortet.",
+  "Error_SignInToFollowThread": "Melde dich an, um einem Thread zu folgen.",
+  "Error_OnlyPeerContactCanBeBlocked": "Nur persönliche Kontakte können blockiert werden.",
+  "Error_SignInToChat": "Melde dich an, um einer anderen Person zu schreiben.",
+  "Error_CannotChatWithUnauthenticated": "Mit einem nicht angemeldeten Nutzer kann kein Chat gestartet werden.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Nur ein Teilnehmer des Anrufs kann Host werden.",
+  "Error_CannotMuteOwner": "Du kannst das Mikrofon eines Eigentümers nicht ausschalten.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Nur der Host des Anrufs oder ein Chat-Eigentümer kann den Host wechseln.",
+  "Error_CallRequiresContact": "Du kannst diese Person erst anrufen, wenn sie dich zu ihren Kontakten hinzufügt oder antwortet.",
+  "Error_CannotMuteInPeerChat": "In einem Einzelchat kannst du das Mikrofon der anderen Person nicht ausschalten.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Nur der Host des Anrufs, ein Chat-Eigentümer oder Moderator kann den Anruf verwalten.",
+  "Error_VoiceStreamingModeLocked": "In diesem Chat kann der Sprachübertragungsmodus nicht geändert werden.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "In öffentlich zugänglichen Chats können keine Mitglieder benachrichtigt werden.",
+  "Error_AlertEveryoneUnavailable": "Dringende Benachrichtigungen sind in Chats mit mehr als 10 Personen nicht verfügbar.",
+  "Error_NobodyToNotify": "Niemand zu benachrichtigen.",
+  "Error_OnlyAuthorCanNotify": "Nur der Autor darf die erwähnten Personen benachrichtigen.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "Du hast keinen Zugriff auf diese Datei.",
+  "Error_FileTooBig": "Die Datei ist zu groß.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Dieser Einladungslink wurde bereits verwendet.",
+  "Error_InviteNotActive": "Dieser Einladungslink ist nicht mehr aktiv.",
+  "Error_InviteCodeNotFound": "Es wurde keine Einladung mit diesem Code gefunden.",
+  "Error_OnlyPlaceMembersCanUseCode": "Nur Mitglieder des Place können diesen Code verwenden.",
+  "Error_UserInvitesRemoved": "Nutzereinladungen werden nicht mehr unterstützt.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Tritt dem Chat bei, bevor du deinen Standort teilst.",
+  "Error_CanChangeOwnLocationsOnly": "In diesem Chat kannst du nur deinen eigenen geteilten Standort ändern.",
+  "Error_LocationSharingLimit_Format": "In diesem Chat teilen bereits {limit} Personen ihren Live-Standort — das ist das Maximum."
+}

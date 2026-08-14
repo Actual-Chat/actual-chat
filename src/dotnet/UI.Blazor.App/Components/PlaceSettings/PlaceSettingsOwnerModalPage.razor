@@ -84,13 +84,13 @@
     <FormBlock>
         <DataAnnotationsValidator/>
 
-        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="Place title">
+        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="@L.Form_PlaceTitle">
             <TextBox
                 @bind-Value="@_form.Title"
                 Id="@_form.TitleId"
                 ClearButton="true"/>
         </FormSection>
-        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="Description">
+        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="@L.Form_Description">
             <TextBox
                 @bind-Value="@_form.Description"
                 Id="@_form.DescriptionId"
@@ -161,7 +161,7 @@
 
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();
-        Context.Title = "Place Settings";
+        Context.Title = L.Place_SettingsTitle;
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
     }
@@ -258,7 +258,7 @@
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel {
-        [Required, MinLength(1)]
+        [Required]
         public string Title { get; set; } = "";
 
         public string Description { get; set; } = "";

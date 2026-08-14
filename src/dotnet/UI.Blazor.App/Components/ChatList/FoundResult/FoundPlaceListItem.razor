@@ -26,7 +26,11 @@
                     <span class="c-title">
                         <SearchMatchHighlighter Match="@m.TitleMatch"/>
                     </span>
-                    <span class="c-members">@m.MemberCount @("member".Pluralize(m.MemberCount))</span>
+                    <span class="c-members">
+                        @(m.MemberCount == 1
+                            ? L.Place_Members_One(m.MemberCount)
+                            : L.Place_Members_Other(m.MemberCount))
+                    </span>
                 </div>
                 <div class="c-second-line two-line">
                     <p class="line-clamp-2">

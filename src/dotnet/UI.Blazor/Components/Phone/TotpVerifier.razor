@@ -9,17 +9,18 @@
 <UITimer @key="@_timerKey" Period="@TimerPeriod" IsRecurring="false" Tick="@OnTimerTick" />
 <div class="totp-verifier @Class" @onclick="@(() => Focus())">
     <span class="c-description">
-        Enter the code we've sent to <span class="whitespace-nowrap">@(address)</span>
+        @L.Verify_EnterCodeSentTo_Prefix<span
+            class="whitespace-nowrap">@(address)</span>@L.Verify_EnterCodeSentTo_Suffix
     </span>
     <TotpInput @ref="_totpInput" Completed="OnInputCompleted" IsVerifying="@_isVerifying"/>
     @if (_totpNextSendAt is { } totpNextSendAt) {
         @if (Clocks.SystemClock.Now < totpNextSendAt) {
             <div class="c-resend-code">
-                <span>You can request a new code in</span>
+                <span>@L.Verify_RequestNewCodeIn</span>
                 <Countdown Class="w-9" EndsAt="totpNextSendAt"/>
             </div>
         } else {
-            <Button Class="btn-modal sign-in" Click="@SendTotp">Resend</Button>
+            <Button Class="btn-modal sign-in" Click="@SendTotp">@L.Verify_Resend</Button>
         }
     }
 </div>

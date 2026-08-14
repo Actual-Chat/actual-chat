@@ -3,11 +3,11 @@
 @inherits Menu<AppUIHub>
 
 <div class="camera-menu">
-    <div class="c-header">Select a camera</div>
+    <div class="c-header">@L.Call_SelectCamera</div>
     @if (_devices is null) {
-        <div class="c-loading">Loading…</div>
+        <div class="c-loading">@L.Common_Loading</div>
     } else if (_devices.Length == 0) {
-        <div class="c-empty">No cameras detected</div>
+        <div class="c-empty">@L.Call_NoCameras</div>
     } else {
         var hasFront = _devices.Any(d => d.IsFront);
         var hasBack = _devices.Any(d => d.IsBack);

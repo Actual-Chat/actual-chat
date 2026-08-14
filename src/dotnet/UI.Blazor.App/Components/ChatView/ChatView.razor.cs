@@ -6,6 +6,7 @@ using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -48,6 +49,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private NavigationManager Nav => Hub.Nav;
     private History History => Hub.History;
     private StateFactory StateFactory => Hub.StateFactory;
+    private IStringLocalizer L => Hub.StringLocalizer;
     private CancellationToken DisposeToken { get; }
     private ILogger Log => field ??= Hub.LogFor(GetType());
 

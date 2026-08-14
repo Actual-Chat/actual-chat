@@ -19,7 +19,7 @@
 @if (EditClick.HasDelegate) {
     <ButtonRound
         Class="btn-xs btn-transparent tile-btn"
-        Tooltip="Edit"
+        Tooltip="@L.Common_Edit"
         TooltipPosition="FloatingPosition.Top"
         Click="EditClick">
         <i class="icon-edit text-xl"></i>
@@ -28,7 +28,7 @@
 @if (CloseClick.HasDelegate) {
     <ButtonRound
         Class="btn-xs btn-transparent"
-        Tooltip="Close"
+        Tooltip="@L.Common_Close"
         TooltipPosition="FloatingPosition.Top"
         Click="@CloseClick">
         <i class="icon-close text-xl @cls"></i>
