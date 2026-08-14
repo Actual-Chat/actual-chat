@@ -304,9 +304,19 @@ export class InfiniteList {
         const listenerOptions = { signal: this.abortController.signal, passive: true, };
         this.ref.addEventListener('scroll', this.onScroll, listenerOptions);
         this.ref.addEventListener('scrollend', this.onScrollEnd, listenerOptions);
-        this.ref.addEventListener('pointerdown', this.onPointerDown, listenerOptions);
-        this.ref.addEventListener('pointerup', this.onPointerUp, listenerOptions);
-        this.ref.addEventListener('pointercancel', this.onPointerUp, listenerOptions);
+        // On iOS every element carrying a touch-related listener makes WebKit walk that
+        // element's whole renderer subtree once per rendering update, to union the rects of
+        // its touch region - and `pointer*` counts as touch-related there, same as `touch*`.
+        // Listening on `document` (already a target, and handled by a single O(1) whole-view
+        // rect) instead of on the scroller keeps the chat list out of that walk entirely.
+        // Measured at 6-12% of WebContent's main thread during a call.
+        // `click` is NOT touch-related, so it can stay wherever it likes - it rides along
+        // here only because it shares a handler.
+        document.addEventListener('pointerdown', this.onPointerDown, listenerOptions);
+        document.addEventListener('pointerup', this.onPointerUp, listenerOptions);
+        document.addEventListener('pointercancel', this.onPointerUp, listenerOptions);
+        document.addEventListener('touchend', this.onInteractiveEvent, listenerOptions);
+        document.addEventListener('click', this.onInteractiveEvent, listenerOptions);
         this.ref.addEventListener('wheel', this.onWheel, listenerOptions);
         this.itemSetChangeObserver = new MutationObserver(this.onItemSetChange);
         this.itemSetChangeObserver.observe(this.containerRef, { childList: true });
@@ -425,9 +435,11 @@ export class InfiniteList {
         this.whenRequestDataCompleted = null;
         this.ref.removeEventListener('scroll', this.onScroll);
         this.ref.removeEventListener('scrollend', this.onScrollEnd);
-        this.ref.removeEventListener('pointerdown', this.onPointerDown);
-        this.ref.removeEventListener('pointerup', this.onPointerUp);
-        this.ref.removeEventListener('pointercancel', this.onPointerUp);
+        document.removeEventListener('pointerdown', this.onPointerDown);
+        document.removeEventListener('pointerup', this.onPointerUp);
+        document.removeEventListener('pointercancel', this.onPointerUp);
+        document.removeEventListener('touchend', this.onInteractiveEvent);
+        document.removeEventListener('click', this.onInteractiveEvent);
         this.ref.removeEventListener('wheel', this.onWheel);
     }
 
@@ -730,8 +742,6 @@ export class InfiniteList {
                     keysToRemove.add(key);
                     this.sizeObserver.unobserve(itemRef);
                     this.visibilityObserver.unobserve(itemRef);
-                    itemRef.removeEventListener('touchend', this.onInteractiveEvent);
-                    itemRef.removeEventListener('click', this.onInteractiveEvent);
                 }
             }
         }
@@ -987,7 +997,15 @@ export class InfiniteList {
     };
 
     private onInteractiveEvent = (event: Event): void => {
-        const itemRef = event.currentTarget as HTMLElement;
+        // Delegated from `document`, so resolve the item the way the handler already resolves
+        // everything else - from the target. `.item` never nests inside `.item`, so this is
+        // exactly what `currentTarget` used to be; the containment test keeps one list from
+        // reacting to another's items.
+        const target = event.target as HTMLElement | null;
+        const itemRef = target?.closest<HTMLElement>('.item') ?? null;
+        if (!itemRef || !this.containerRef.contains(itemRef))
+            return;
+
         let key = getItemKey(itemRef);
         if (!key)
             return;
@@ -996,7 +1014,6 @@ export class InfiniteList {
         // text selection) must not affect anchoring or stickiness. 'always' (expand / Show-more) holds
         // the item and leaves the End edge - a deliberate "read history" action; 'keep-edge' (collapse)
         // holds only when not pinned - when pinned the sticky re-pin absorbs the shrink instead.
-        const target = event.target as HTMLElement | null;
         const holdRef = target?.closest<HTMLElement>('[data-vl-hold]');
         if (!holdRef || !itemRef.contains(holdRef))
             return;
@@ -1407,8 +1424,6 @@ export class InfiniteList {
             this.unmeasuredItems.add(itemKey);
         this.sizeObserver.observe(itemRef, { box: 'border-box' });
         this.visibilityObserver.observe(itemRef);
-        itemRef.addEventListener('touchend', this.onInteractiveEvent, { passive: true });
-        itemRef.addEventListener('click', this.onInteractiveEvent, { passive: true });
         // Blazor renders a true bool attribute as a valueless boolean attribute (data-skip=""), not
         // data-skip="true"; treat any present, non-"false" value as skip so the flag isn't silently lost.
         newItem.shouldSkipKey = itemRef.dataset.skip != null && itemRef.dataset.skip !== 'false';
@@ -1478,8 +1493,12 @@ export class InfiniteList {
         this.turnOffIsScrolling();
     }
 
-    private onPointerDown = (): void => {
-        this.isPointerDown = true;
+    // Both listen on `document`, so the down needs the containment test the element-level
+    // listener used to get for free. The up deliberately does NOT test it: a pointer that
+    // started here and was released elsewhere must still clear the flag, not strand it.
+    private onPointerDown = (event: Event): void => {
+        if (event.target instanceof Node && this.ref.contains(event.target))
+            this.isPointerDown = true;
     };
 
     private onPointerUp = (): void => {
