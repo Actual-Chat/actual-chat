@@ -1,4 +1,6 @@
+#if ANDROID
 using ActualChat.App.Maui.Activities;
+#endif
 using ActualChat.App.Maui.Audio;
 #if ANDROID || IOS || MACCATALYST
 using ActualChat.App.Maui.Location;
