@@ -4,10 +4,18 @@ inputs:
   base64:
     description: 'Base 64 encoded content of provisioning profile'
     required: true
+outputs:
+  name:
+    description: 'Profile name, as manual signing (PROVISIONING_PROFILE_SPECIFIER) expects it'
+    value: ${{ steps.install.outputs.name }}
+  uuid:
+    description: 'Profile UUID'
+    value: ${{ steps.install.outputs.uuid }}
 runs:
   using: "composite"
   steps:
     - name: Install the Apple certificate and provisioning profile
+      id: install
       shell: bash
       run: |-
         # create variables
@@ -19,6 +27,9 @@ runs:
         echo ::Applying provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         uuid=`grep UUID -A1 -a $PP_PATH | grep -io "[-A-F0-9]\{36\}"`
+        name=$(security cms -D -i $PP_PATH | plutil -extract Name raw -o - -)
         mv $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision
-        echo "Provisioning profile installed at ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision"
+        echo "Provisioning profile '$name' installed at ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision"
+        echo "uuid=$uuid" >> $GITHUB_OUTPUT
+        echo "name=$name" >> $GITHUB_OUTPUT
         ls -la ~/Library/MobileDevice/Provisioning\ Profiles

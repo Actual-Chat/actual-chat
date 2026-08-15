@@ -858,6 +858,11 @@
     <!-- Naming a profile switches the widget to manual signing, which distribution identities
          require - automatic signing only ever picks a development one. -->
     <VoxtActivitiesProfile Condition="'$(VoxtActivitiesProfile)' == ''"></VoxtActivitiesProfile>
+    <!-- Only application-identifier - the widget App ID has no capabilities. It matters because
+         the ipa job re-signs the embedded appex, and it must sign it with these, not with the
+         host app's or the share extension's. Ignored unless the signed path is taken. -->
+    <VoxtActivitiesEntitlements Condition="'$(VoxtActivitiesEntitlements)' == '' and '$(IsDevMaui)' == 'true'">Entitlements.dev.plist</VoxtActivitiesEntitlements>
+    <VoxtActivitiesEntitlements Condition="'$(VoxtActivitiesEntitlements)' == ''">Entitlements.prod.plist</VoxtActivitiesEntitlements>
     <!-- The documented macios hook for "run a target at the beginning of the build": it feeds
          MaciOSPrepareForBuild's DependsOnTargets, which sits near the top of BuildDependsOn,
          well before _CreateAppBundle collects the appex. The SDK never assigns this property,
@@ -873,7 +878,7 @@
        would land after the whole BuildDependsOn chain - past codesign, far too late. -->
   <Target Name="BuildVoxtActivities" BeforeTargets="_ExtendAppExtensionReferences"
           Condition="$([MSBuild]::IsOSPlatform('osx')) and $(TargetFramework.Contains('-ios'))">
-    <Exec Command="sh &quot;$(VoxtActivitiesDir)build.sh&quot; &quot;$(Configuration)&quot; &quot;$(VoxtActivitiesSdk)&quot; &quot;$(VoxtActivitiesWidgetId)&quot; &quot;$(ApplicationDisplayVersion)&quot; &quot;$(ApplicationVersion)&quot; &quot;$(VoxtActivitiesTeamId)&quot; &quot;$(VoxtActivitiesIdentity)&quot; &quot;$(VoxtActivitiesProfile)&quot;" />
+    <Exec Command="sh &quot;$(VoxtActivitiesDir)build.sh&quot; &quot;$(Configuration)&quot; &quot;$(VoxtActivitiesSdk)&quot; &quot;$(VoxtActivitiesWidgetId)&quot; &quot;$(ApplicationDisplayVersion)&quot; &quot;$(ApplicationVersion)&quot; &quot;$(VoxtActivitiesTeamId)&quot; &quot;$(VoxtActivitiesIdentity)&quot; &quot;$(VoxtActivitiesProfile)&quot; &quot;$(VoxtActivitiesEntitlements)&quot;" />
   </Target>
 
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('osx')) and $(TargetFramework.Contains('-ios'))">

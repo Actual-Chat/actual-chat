@@ -16,6 +16,9 @@ DEV_TEAM=${6:-${VOXT_ACTIVITIES_TEAM:-}}
 IDENTITY=${7:-${VOXT_ACTIVITIES_IDENTITY:-Apple Development}}
 # A profile name switches signing from automatic to manual - see the comment below.
 PROFILE=${8:-${VOXT_ACTIVITIES_PROFILE:-}}
+# Relative to this folder. Xcode derives one from the profile when it's omitted, but CI
+# re-signs the embedded appex afterwards and needs the same file to sign it with.
+ENTITLEMENTS=${9:-${VOXT_ACTIVITIES_ENTITLEMENTS:-}}
 
 if [ ! -d VoxtActivities.xcodeproj ] || [ project.yml -nt VoxtActivities.xcodeproj/project.pbxproj ]; then
     if ! command -v xcodegen >/dev/null 2>&1; then
@@ -62,6 +65,10 @@ elif [ -n "$DEV_TEAM" ]; then
         -allowProvisioningUpdates
 else
     set -- CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+fi
+
+if [ -n "$DEV_TEAM" ] && [ -n "$ENTITLEMENTS" ]; then
+    set -- "$@" "CODE_SIGN_ENTITLEMENTS=$ENTITLEMENTS"
 fi
 
 # A static archive is not a signable artifact - CodeSign fails outright on one - so the shim

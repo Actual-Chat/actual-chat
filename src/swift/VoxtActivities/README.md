@@ -26,7 +26,8 @@ single shared file — never copy it.
 
 `VoxtActivities.xcodeproj` is **generated from `project.yml` and gitignored**. `build.sh`
 regenerates it whenever it is missing or older than `project.yml`, so xcodegen is a build
-machine prerequisite, not just a one-off.
+machine prerequisite, not just a one-off — the ipa job installs it too, since a GitHub macOS
+runner has no xcodegen.
 
 ## Building
 
@@ -38,7 +39,8 @@ invokes `build.sh`. The products are then consumed as a `NativeReference` (the `
 Manually:
 
 ```sh
-./build.sh [CONFIG] [SDK] [BUNDLE_ID] [SHORT_VERSION] [BUILD_VERSION] [DEVELOPMENT_TEAM]
+./build.sh [CONFIG] [SDK] [BUNDLE_ID] [SHORT_VERSION] [BUILD_VERSION] [DEVELOPMENT_TEAM] \
+           [IDENTITY] [PROFILE] [ENTITLEMENTS]
 ./build.sh                              # Release / iphoneos / dev bundle id, unsigned
 ./build.sh Debug iphonesimulator
 ```
@@ -110,6 +112,11 @@ dotnet build ... -p:VoxtActivitiesTeamId=M287G8G83F \
 ```
 
 The profile must be one created for the widget's own App ID — the app's profile will not do.
+
+`Entitlements.dev.plist` / `Entitlements.prod.plist` hold the one entitlement the widget has,
+its `application-identifier`. Xcode would derive the same set from the profile on its own, but
+the ipa job re-signs the embedded appex after the .NET SDK has, and it signs it with this file —
+so the file, the App ID and the profile all have to agree.
 
 Passing the identity is not optional in the signed path: `project.yml` pins
 `CODE_SIGN_IDENTITY` to `""` for the unsigned default, an empty identity means "skip signing",

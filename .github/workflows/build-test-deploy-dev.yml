@@ -616,12 +616,14 @@ jobs:
           base64: ${{ secrets.PROVISIONING_PROFILE_SHARE_PROD_BASE64 }}
 
       - name: Install Provisioning Profile (Widget extension) for DEV
+        id: widget-profile-dev
         uses: ./.github/actions/install-provisioning-profile
         if: ${{env.IS_DEV_MAUI == 'true'}}
         with:
           base64: ${{ secrets.PROVISIONING_PROFILE_WIDGET_DEV_BASE64 }}
 
       - name: Install Provisioning Profile (Widget extension) for PROD
+        id: widget-profile-prod
         uses: ./.github/actions/install-provisioning-profile
         if: ${{env.IS_DEV_MAUI == 'false'}}
         with:
@@ -708,6 +710,14 @@ jobs:
           print-file: true
 
       - name: Build app package
+        env:
+          # App.Maui.csproj picks these up as MSBuild properties and passes them to
+          # src/swift/VoxtActivities/build.sh: only Xcode can put an embedded.mobileprovision
+          # into the widget appex, and a distribution identity needs a named profile because
+          # automatic signing only ever selects a development one.
+          VoxtActivitiesTeamId: M287G8G83F
+          VoxtActivitiesIdentity: Apple Distribution
+          VoxtActivitiesProfile: ${{ env.IS_DEV_MAUI == 'true' && steps.widget-profile-dev.outputs.name || steps.widget-profile-prod.outputs.name }}
         run: |-
           ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}" --use-native-aot "${{ github.event.inputs.useNativeAot || 'false' }}"
           pushd artifacts/publish/App.Maui/release_net11.0-ios_ios-arm64
@@ -716,7 +726,16 @@ jobs:
           rm -r Payload/ActualChat.app/PlugIns/*/_CodeSignature
           rm -r Payload/ActualChat.app/Frameworks/*/_CodeSignature
           codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" Payload/ActualChat.app/Frameworks/*
-          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" Payload/ActualChat.app/PlugIns/* --entitlements ${{github.workspace}}/src/dotnet/App.Maui.IosShareExt/${{env.ENTITLEMENTS_FILE}}
+          # Every appex carries its own application-identifier, so they can't share one
+          # entitlements file - signing the widget with the share extension's would leave it
+          # claiming .share while its profile says .widget.
+          for appex in Payload/ActualChat.app/PlugIns/*; do
+            case "$(basename "$appex")" in
+              VoxtActivitiesWidget.appex) entitlements=${{github.workspace}}/src/swift/VoxtActivities/${{env.ENTITLEMENTS_FILE}} ;;
+              *) entitlements=${{github.workspace}}/src/dotnet/App.Maui.IosShareExt/${{env.ENTITLEMENTS_FILE}} ;;
+            esac
+            codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements "$entitlements" "$appex"
+          done
           codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements ${{github.workspace}}/src/dotnet/App.Maui/Platforms/iOS/${{env.ENTITLEMENTS_FILE}} Payload/ActualChat.app
           zip -r "${{env.PACKAGE_FILE_NAME}}" Payload
           popd
