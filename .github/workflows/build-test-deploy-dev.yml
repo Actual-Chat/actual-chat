@@ -660,6 +660,11 @@ jobs:
       - name: Install workloads (pinned to the .NET 11 preview 6 workload band — see #3839)
         run: dotnet workload install maui ios maui-ios --from-rollback-file ${{github.workspace}}/.github/workloads-net11-p6.json
 
+      # VoxtActivities.xcodeproj is generated from project.yml, not committed - the iOS build
+      # (src/swift/VoxtActivities/build.sh) fails without xcodegen.
+      - name: Install xcodegen
+        run: brew install xcodegen
+
       - name: Replace git+ssh://git@ to https://
         run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' package-lock.json
 
