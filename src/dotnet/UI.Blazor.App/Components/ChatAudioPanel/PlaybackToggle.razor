@@ -17,7 +17,7 @@
         (_, true) => "listen-on",
         (_, false) => "listen-off",
     };
-    var tooltip = audioState.IsListening ? "Listening..." : "Listen";
+    var tooltip = audioState.IsListening ? L.Call_ListeningCountdown : L.Common_Listen;
     _rendered = m;
     // var loudBtnCls = "loud-btn " + (m.IsSpeakerphoneOn ? "on" : "off");
 }

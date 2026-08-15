@@ -51,14 +51,14 @@
         @if (a.CanToggleVideo) {
             <MenuEntry
                 Icon="icon-video"
-                Text="@(IsOwnRecording ? "Turn camera off" : "Turn camera on")"
+                Text="@(IsOwnRecording ? L.Video_TurnCameraOff : L.Video_TurnCameraOn)"
                 Click="@OnToggleVideo"/>
         }
         @if (a.CanToggleScreenCast) {
             <MenuEntry
                 Class="@(IsOwnScreenCasting ? "" : "screen-share-start")"
                 Icon="icon-screen-share"
-                Text="@(IsOwnScreenCasting ? "Stop sharing screen" : "Share screen")"
+                Text="@(IsOwnScreenCasting ? L.Call_StopScreenShare : L.Call_ShareScreen)"
                 Click="@OnToggleScreenCast"/>
         }
     }
@@ -89,7 +89,7 @@
     @if (hasChatActions) {
         <MenuEntry
             Icon="icon-message-ellipse"
-            Text="@(effectiveChatVisible ? "Hide chat" : "Show chat")"
+            Text="@(effectiveChatVisible ? L.Video_HideChat : L.Video_ShowChat)"
             Click="@OnToggleChatPanel"/>
     }
 

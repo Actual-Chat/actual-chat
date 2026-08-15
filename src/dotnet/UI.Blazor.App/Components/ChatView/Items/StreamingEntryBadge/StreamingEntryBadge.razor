@@ -3,10 +3,10 @@
 @implements IDisposable
 @{
     var text = !IsVoiceActive
-        ? "Listening"
+        ? L.Call_Listening
         : IsLanguageKnown || IsDetectingLanguageOver()
-            ? "Transcribing"
-            : "Detecting language";
+            ? L.Call_Transcribing
+            : L.Call_DetectingLanguage;
 }
 
 <p class="chat-message-markup">

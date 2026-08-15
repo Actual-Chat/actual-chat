@@ -1,5 +1,6 @@
 ﻿@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 @implements IDisposable
 @{
     var isInnerStep = Modal.Ref.StepRef != null;
@@ -22,7 +23,7 @@
 } else {
     var submitText = _settings!.SubmitButtonText;
     if (submitText.IsNullOrEmpty())
-        submitText = "Save";
+        submitText = L.Common_Save;
     <DialogInteractiveHeader
         Title="@Title"
         Modal="@Modal"

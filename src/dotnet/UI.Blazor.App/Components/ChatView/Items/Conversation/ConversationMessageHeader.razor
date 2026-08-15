@@ -1,8 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 @{
     var cls = IsSeparated ? "conversation-header sticky" : "conversation-header-short";
     var startDate = GetStartDateString();
-    var tooltip = IsSeparated ? "Collapse summary" : "Expand summary";
+    var tooltip = IsSeparated ? L.ChatView_CollapseSummary : L.ChatView_ExpandSummary;
 }
 
 <div class="@cls"
@@ -33,9 +34,6 @@
 
 @code{
     private string _loadingCls = "";
-
-    [Inject] private UIHub Hub { get; set; } = null!;
-    private TuneUI TuneUI => Hub.TuneUI;
 
     [Parameter] public Conversation Conversation { get; set; } = null!;
     [Parameter] public TranslatedText Title { get; set; } = TranslatedText.None;

@@ -16,7 +16,7 @@
     @foreach (var (requirement, error) in Failures.Items) {
         var title = HostInfo.IsDevelopmentInstance
             ? $"Error ({error.GetType().GetName()}):"
-            : "Error:";
+            : L.Error_Label;
         <ErrorToast @key="@requirement"
                Title="@title"
                Dismissed="@(_ => RequirementChecker.Remove(requirement))">@error.Message</ErrorToast>

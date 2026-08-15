@@ -8,7 +8,7 @@
 @implements IAttachmentWebFilePickerBackend
 @implements IAsyncDisposable
 @{
-    var placeholder = ScreenSize.IsNarrow() || (ScreenSize.IsLarge() && _isRightPanelVisible) ? "Message..." : "Write a message - or simply record one!";
+    var placeholder = ScreenSize.IsNarrow() || (ScreenSize.IsLarge() && _isRightPanelVisible) ? L.Editor_PlaceholderShort : L.Editor_Placeholder;
 
     RenderFragment RenderAttachmentListView() =>
         @<AttachmentListView

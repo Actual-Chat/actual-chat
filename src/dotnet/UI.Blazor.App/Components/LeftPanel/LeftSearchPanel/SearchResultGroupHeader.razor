@@ -3,10 +3,10 @@
 @inherits ComputedStateComponent<AppUIHub, bool>
 @{
     var isExpanded = State.Value;
-    var btnText = isExpanded ? "Show less" : "Show more";
+    var btnText = isExpanded ? L.Search_ShowLess : L.Search_ShowMore;
     var isExpandedCls = isExpanded ? "expanded" : "";
     var isCollapsedCls = IsCollapsed ? "collapsed" : "";
-    var title = IsGlobalSearchResult ? "Public chats & places" : Scope.ToString();
+    var title = IsGlobalSearchResult ? L.LeftPanel_PublicChatsAndPlaces : Scope.ToString();
 }
 
 <div class="search-result-group-header @isExpandedCls @isCollapsedCls">

@@ -7,8 +7,8 @@
     if (IsNarrow)
         wrapperCls += " narrow";
     var tooltip = IsDisabled
-        ? "Unavailable in this chat"
-        : isVideoOn ? "Stop video" : "Start video";
+        ? L.Call_UnavailableInChat
+        : isVideoOn ? L.Video_StopVideo : L.Video_StartVideo;
 }
 
 <div class="@wrapperCls video-wrapper">

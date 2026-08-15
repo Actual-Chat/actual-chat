@@ -122,7 +122,7 @@
         @if (canPin) {
             <MenuEntry
                 Icon="@(IsPinned ? "icon-unpin" : "icon-pin")"
-                Text="@(IsPinned ? "Unpin message" : "Pin message")"
+                Text="@(IsPinned ? L.MessageMenu_UnpinMessage : L.MessageMenu_PinMessage)"
                 Click="@Pin">
             </MenuEntry>
         }

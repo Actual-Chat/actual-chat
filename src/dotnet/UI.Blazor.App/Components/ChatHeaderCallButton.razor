@@ -9,7 +9,7 @@
 
 <HeaderButton
     Class="btn-start-call"
-    Tooltip="@(m.CanCall ? "Start call" : "You can call this user after they add you to contacts or reply")"
+    Tooltip="@(m.CanCall ? L.ChatHeader_StartCall : L.ChatHeader_CallUnavailable)"
     TooltipPosition="FloatingPosition.Bottom"
     IsDisabled="@(!m.CanCall)"
     Click="OnClick">

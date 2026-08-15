@@ -5,7 +5,7 @@
     if (m == null)
         return;
 
-    var statusText = m.IsOwner ? "Owner" : m.IsModerator ? "Moderator" : null;
+    var statusText = m.IsOwner ? L.Members_Owner : m.IsModerator ? L.Members_Moderator : null;
 }
 
 <div class="edit-member-menu edit-place-member-menu">
@@ -26,7 +26,7 @@
     @if (m.CanSetModerator) {
         <MenuEntry
             Icon="icon-shield"
-            Text="@(m.IsModerator ? "Remove Moderator" : "Make Moderator")"
+            Text="@(m.IsModerator ? L.Account_RemoveModerator : L.Account_MakeModerator)"
             Click="@(() => OnSetModeratorClick(m.Author, !m.IsModerator))">
         </MenuEntry>
     }

@@ -136,7 +136,7 @@
                         <span class="forwarded-chat-header-name">
                             @(!entry.Forwarded!.ChatTitle.IsNullOrEmpty()
                                 ? entry.Forwarded.ChatTitle
-                                : "Unknown chat")
+                                : L.ChatView_UnknownChat)
                         </span>
                     }
                 </div>
@@ -146,7 +146,7 @@
                     @{
                         var forwardedAuthorName = m.ForwardedAuthor?.Avatar.Name
                             ?? entry.Forwarded!.AuthorName.NullIfEmpty()
-                            ?? "Unknown author";
+                            ?? L.ChatView_UnknownAuthor;
                         var canClick = m.ForwardedAuthor != null || m.ForwardedChatEntryId is not null;
                     }
                     @if (canClick) {
