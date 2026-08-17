@@ -179,24 +179,62 @@ language across the whole digest, or leaving the chrome English.
 
 ---
 
-## 4. Native shells — separate mechanisms, no catalog access
+## 4. Native shells — mostly in-process, and only partly a "separate mechanism"
 
 Same principle as §3: these render on the device, which knows its own locale.
 
-| Surface | Size | Mechanism |
-|---|---|---|
-| iOS share extension (`App.Maui.IosShareExt/Components/*`) | ~18 strings | `.strings` — pure UIKit, no Blazor DI |
-| Android dialogs | 9 strings, 3 files | `strings.xml` per locale |
-| `Info.plist` usage descriptions | 6 iOS + 5 MacCatalyst | `InfoPlist.strings` per language |
-| Local notifications / Live Activity | ~6 strings | native, composed on-device |
+The old framing here — "separate mechanisms, no catalog access" — holds for
+only about a third of the list. The catalog is a **static**
+`Dictionary<Language, Dictionary<string, string>>` built from resources embedded
+in `UI.Blazor` (`AppStringLocalizer.Translations`, and
+`StringCatalogs.Assembly => typeof(Strings).Assembly`), so any code in a process
+that loads that assembly can already read it:
+
+| Surface | Size | Process | Catalog reachable | Actual mechanism |
+|---|---|---|---|---|
+| Android dialogs | 9 strings, 3 files | main app | **yes** | plain C#; no `strings.xml` needed |
+| Local notifications / Live Activity | ~6 strings | main app | **yes** | plain C# in `App.Maui` |
+| iOS share extension (`App.Maui.IosShareExt/Components/*`) | ~18 strings | separate appex | **no** — refs `Api.Contracts` + `Maui` only | undecided, see below |
+| `Info.plist` usage descriptions | 6 iOS + 5 MacCatalyst | OS reads them, app not running | **no** | `InfoPlist.strings` per language — genuinely native |
 
 Android dialog sites: `AndroidWebChromeClient.cs:267-270`,
 `AndroidNotificationsPermission.cs:44-52`, `WebViewMissingActivity.cs:28-37`.
 Local-notification sites: `ChatAttentionService.cs:225-226`
 (`"Chat attention required"`, `"Please check chats: …"`),
-`NotificationHelper.cs:211` (`"Attention required"`),
-`WalkieTalkieWakeHandler.cs:109`, `IosActivitiesBackend.cs:87`
-(`"Sharing live location"`), plus the `"Uploads"` channel name.
+`NotificationHelper.cs:211` (`"Attention required"`) and `:43` (the `"Uploads"`
+channel name), `WalkieTalkieWakeHandler.cs:109`, `IosActivitiesBackend.cs:87`
+and `AndroidActivitiesForegroundService.cs:424,509` (`"Sharing live location"`).
+
+So for the in-process two-thirds the strings are not the blocker — the
+*language* is. `LanguageUI.UILanguage` is a `SyncedState` scoped to the Blazor
+circuit, while this code runs on the native side (foreground service, FCM
+receiver, permission dialogs, Live Activity), where no such scope exists.
+
+### Deferred to the NSE PR — do not decide here
+
+Two questions are open, and they are the same question §3 already defers,
+because the answer to the first is what makes a .NET NSE viable or not:
+
+1. **Where the catalog lives.** Extensions can't reference `UI.Blazor` — pulling
+   the whole Blazor UI assembly into an appex is the wrong dependency for a
+   target fighting startup time and bundle size (see what #4132 spent its effort
+   on). Options: extract `Strings`, `StringCatalogs` and the 28 JSON resources
+   into a small dependency-free assembly (`ActualChat.Core`, or a new
+   `ActualChat.Localization`) that both `UI.Blazor` and the extensions
+   reference; give the extensions their own `.strings` and accept a second
+   translation source outside `AppLocalizationTest`'s key and placeholder
+   guarantees; or leave the extensions English.
+2. **How native-side code reads the current UI language.** Options: have
+   `LanguageUI` publish it to a process-wide accessor on change (one owner,
+   synchronous reads); read `LocalSettings` at each call site; or pass it down
+   from the Blazor side, which doesn't help the sites the OS invokes directly.
+
+Crossing the process boundary is already solved here: the share extension reads
+the session id from `AppleSharedSecureStorage` (`SessionInitializer.cs:35`), so
+the same shared keychain / app group can carry a language.
+
+`Info.plist` is the one part that is settled — `InfoPlist.strings` per language,
+independent of everything above, and doable at any time.
 
 ---
 
@@ -247,8 +285,12 @@ scan to `*.razor`, or moving such literals into `.cs` helpers (as
    `DbDevice.Language` as the fallback for anything that still renders
    server-side.
 3. §3's email track — settle the chrome language, then the 5 templates.
-4. §4's local-notification subset — cheap, no server change; then the rest of §4.
-5. §5 — needs a scope and liability decision first.
-6. §7 — small, and it removes a silent AI-translation cost.
-7. §0 last — flip the flag only once a user switching language gets a
+4. §4's `Info.plist` strings — settled and independent, doable any time.
+5. §4's in-process subset (Android dialogs, local notifications, Live Activity)
+   — needs only a native-side language accessor, no new mechanism.
+6. §4's iOS share extension — together with, or after, the NSE: both need the
+   catalog question answered the same way.
+7. §5 — needs a scope and liability decision first.
+8. §7 — small, and it removes a silent AI-translation cost.
+9. §0 last — flip the flag only once a user switching language gets a
    consistently localized app, notifications and OS prompts included.
