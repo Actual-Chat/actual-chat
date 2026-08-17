@@ -82,6 +82,33 @@ public class ChatMarkupHubExtTest
         rawMarkup.Should().Be(expectedMarkupText);
     }
 
+    [Theory]
+    [InlineData(MarkupConsumer.Notification, "Sent a location")]
+    [InlineData(MarkupConsumer.ChatListItemText, "Sent a location")]
+    [InlineData(MarkupConsumer.QuoteView, "Sent a location")]
+    [InlineData(MarkupConsumer.ReactionNotification, "your location")]
+    public void ShouldGetLocationMarkupInsteadOfOldClientFallbackContent(
+        MarkupConsumer consumer, string expectedMarkupText)
+    {
+        // arrange
+        using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
+        var chatId = GroupChatId.New();
+        var markupHub = new ChatMarkupHub(services, chatId);
+        var chatEntryId = ChatEntryId.New(chatId, 1);
+        var chatEntry = new TextEntry {
+            Id = chatEntryId,
+            LocationId = SharedLocationId.New(),
+            Content = "\U0001F4CD Location: https://www.openstreetmap.org/?mlat=1.5&mlon=2.5\n\nUpdate Voxt to the latest version to see it on the map.",
+        };
+
+        // act
+        var markup = markupHub.GetMarkup(chatEntry, consumer);
+        var rawMarkup = MarkupFormatter.Default.Format(markup);
+
+        // assert
+        rawMarkup.Should().Be(expectedMarkupText);
+    }
+
     [Fact]
     public void ShouldGetNotifyMembersMarkupWithoutTargetAuthorId()
     {

@@ -649,7 +649,9 @@ public class NotificationsBackend(IServiceProvider services)
         var (text, _) = await NotificationHelper
             .GetText(entry, MarkupConsumer.ReactionNotification, ChatMarkupHubFactory, cancellationToken)
             .ConfigureAwait(false);
-        if (!entry.Content.IsNullOrEmpty())
+        // TODO: 2026-07, drop !entry.HasLocation when the old client fallback Content goes away.
+        // Location Content is a maps-link fallback rather than user text, so it must not be quoted.
+        if (!entry.Content.IsNullOrEmpty() && !entry.HasLocation)
             text = $"\"{text}\"";
         text = $"{reaction.Emoji} to {text}";
         var userIds = new[] { author.UserId };
