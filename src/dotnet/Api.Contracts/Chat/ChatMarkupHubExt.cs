@@ -27,6 +27,11 @@ public static class ChatMarkupHubExt
             // HasAudio covers all audio/media entries now
             markup = new PlayableTextMarkup(translation?.Content ?? entry.Content, entry.Audio?.TimeMap ?? default);
             break;
+        case { HasLocation: true }:
+            // TODO: 2026-07, remove when all clients support location entries.
+            // Their Content is a maps-link fallback baked in for old clients - no other consumer must show it.
+            markup = GetEmptyMarkupReplacement(entry, consumer);
+            break;
         default:
             markup = markupHub.Parser.Parse(translation?.Content ?? entry.Content);
             if (ReferenceEquals(markup, MarkupParser.EmptyResult))
@@ -49,6 +54,11 @@ public static class ChatMarkupHubExt
         case { HasAudio: true }:
             // HasAudio covers all audio/media entries now
             markup = new PlayableTextMarkup(entry.Content, entry.Audio?.TimeMap ?? default);
+            break;
+        case { HasLocation: true }:
+            // TODO: 2026-07, remove when all clients support location entries.
+            // Their Content is a maps-link fallback baked in for old clients - no other consumer must show it.
+            markup = GetEmptyMarkupReplacement(entry, consumer);
             break;
         default:
             markup = markupHub.Parser.Parse(entry.Content);
