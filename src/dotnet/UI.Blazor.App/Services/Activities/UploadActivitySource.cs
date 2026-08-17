@@ -53,11 +53,7 @@ public class UploadActivitySource : IActivitySource, IDisposable, IHasDisposeSta
             var progress = await Hub.UploadSessionsState
                 .GetProgress(id, cancellationToken).ConfigureAwait(false);
             var length = session.FileProvider.Metadata.Length;
-            var itemUploaded = progress.Stage switch {
-                UploadStage.Uploading => (long)(length * Math.Clamp(progress.StageProgress, 0, 1)),
-                UploadStage.ServerProcessing => length,
-                _ => 0L,
-            };
+            var itemUploaded = (long)(length * progress.UploadedFraction);
             items.Add(new UploadActivityItem(id, session.FileName, itemUploaded, length));
             bytesUploaded += itemUploaded;
             totalBytes += length;
