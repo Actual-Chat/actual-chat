@@ -35,9 +35,9 @@ public class NotificationsPanelUI : UIWorkerBase<AppUIHub>, IComputeService, INo
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    // Panel open/close - only matters for the UntilPanelClosed retention mode.
     public void Open()
     {
+        // Panel open/close - only matters for the UntilPanelClosed retention mode.
         if (_panelOpenedAt.Value == null)
             _panelOpenedAt.Value = Now;
     }

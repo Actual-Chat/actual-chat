@@ -203,14 +203,14 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
             .ToDictionary(c => c.Id, c => c);
     }
 
-    // Same as ListUnordered(placeId, filter), but also keeps chats that were read recently: a read chat
-    // lingers in the notifications panel for the user-configured retention window, then drops out on its own.
     [ComputeMethod]
     protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnorderedForDisplay(
         PlaceId? placeId,
         ChatListSettings settings,
         CancellationToken cancellationToken = default)
     {
+        // Same as ListUnordered(placeId, filter), but also keeps chats that were read recently: a read chat
+        // lingers in the notifications panel for the user-configured retention window, then drops out on its own.
         var filter = settings.GetFilter();
         var chatById = await ListUnordered(placeId, filter, cancellationToken).ConfigureAwait(false);
         if (!filter.AcrossPlace)

@@ -79,8 +79,8 @@
         return new(hasAll, hasDMs, hasMentions);
     }
 
-    // A tab stays visible while it still retains recently-read chats, not only while there are unread ones.
     private async Task<bool> HasTab(ChatListFilter filter, CancellationToken cancellationToken) {
+        // A tab stays visible while it still retains recently-read chats, not only while there are unread ones.
         var retainedIds = await NotificationsPanelUI.GetRetainedSet(filter.Id, cancellationToken).ConfigureAwait(false);
         if (!retainedIds.IsEmpty)
             return true;
