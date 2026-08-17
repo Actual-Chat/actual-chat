@@ -47,6 +47,20 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
         await Task.Run(() => _focusHelper.WarmUpAudioMode(), CancellationToken.None).ConfigureAwait(false);
     }
 
+    public override async Task YieldCommunicationMode()
+    {
+        using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+        _focusHelper.YieldCommunicationMode();
+    }
+
+    public override async Task RestoreCommunicationMode()
+    {
+        using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+        await _focusHelper.RestoreCommunicationMode().ConfigureAwait(false);
+    }
+
     // Protected and private methods
 
     protected override async Task<MauiAudioFocusHandle?> RequestAudioFocus(AudioFocusMode mode)

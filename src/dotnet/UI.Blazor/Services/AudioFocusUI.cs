@@ -54,6 +54,15 @@ public class AudioFocusUI : ProcessorBase
     public virtual Task WarmUp()
         => Task.CompletedTask;
 
+    public virtual Task YieldCommunicationMode()
+        // A ring must not share the audio mode with a call: Android routes the ring stream through
+        // the communication device while the mode is InCommunication, i.e. into the earpiece.
+        // Callers must only yield when nothing is on the line; the pairing Restore is idempotent.
+        => Task.CompletedTask;
+
+    public virtual Task RestoreCommunicationMode()
+        => Task.CompletedTask;
+
     public virtual AudioFocusDiagnostics GetDiagnostics()
         => AudioFocusDiagnostics.Unsupported;
 

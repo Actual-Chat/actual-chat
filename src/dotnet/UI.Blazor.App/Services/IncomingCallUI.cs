@@ -27,7 +27,8 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // Held true across the Accept transition (ring ended, audio not yet started) so the over-lock
     // session doesn't momentarily read as ended and tear the screen down mid-accept.
     private readonly MutableState<bool> _isAccepting;
-    private volatile bool _overLockWasActive;
+    private bool _overLockWasActive;
+    private int _ringGeneration;
 
     public IState<ChatId?> OverLockChatId => _overLockChatId;
 
@@ -60,14 +61,15 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (chatId.Value.IsNullOrEmpty())
             return;
 
-        CallDebugLog?.LogInformation("CALL_TRACE: OnRing #{ChatId}, showOverLockScreen={ShowOverLockScreen}", chatId, showOverLockScreen);
+        CallDebugLog?.LogInformation("CALL_TRACE: OnRing #{ChatId}, showOverLockScreen={ShowOverLockScreen}",
+            chatId, showOverLockScreen);
         lock (_ringingLock) {
             var chatIds = _ringingChatIds.Value;
             if (!chatIds.Contains(chatId))
                 _ringingChatIds.Value = chatIds.Add(chatId);
         }
         if (showOverLockScreen) {
-            _overLockWasActive = false;
+            Volatile.Write(ref _overLockWasActive, false); // Publication: the teardown loop polls it
             _overLockChatId.Value = chatId;
         }
     }
@@ -84,7 +86,8 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private async Task RevealCallScreenAfterPaint()
     {
         await Task.Delay(TimeSpan.FromMilliseconds(200)).ConfigureAwait(false);
-        CallDebugLog?.LogInformation("CALL_TRACE: RevealCallScreen (after paint delay), Bridge={HasBridge}", Bridge is not null);
+        CallDebugLog?.LogInformation("CALL_TRACE: RevealCallScreen (after paint delay), Bridge={HasBridge}",
+            Bridge is not null);
         Bridge?.RevealCallScreen();
     }
 
@@ -106,6 +109,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (call is not null)
                 return call;
         }
+
         return null;
     }
 
@@ -141,7 +145,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public async Task Accept(ChatId chatId)
     {
-        var overLockScreen = _overLockChatId.Value == chatId;
+        var isOverLockScreen = _overLockChatId.Value == chatId;
         var call = await GetRingingCall(chatId, default).ConfigureAwait(true);
         EndRing(chatId);
         if (call is null) {
@@ -152,7 +156,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
         // Hold the over-lock session "active" until audio starts, so the transition (ring ended,
         // recording not yet on) doesn't read as a session end and tear the screen down.
-        if (overLockScreen)
+        if (isOverLockScreen)
             _isAccepting.Value = true;
         try {
             await LiveSessionUI.AcceptCall(chatId, default).ConfigureAwait(true);
@@ -172,20 +176,21 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             // audio without unlocking: the mic FGS is allowed because the activity (shown via
             // SetShowWhenLocked) counts as foreground. Otherwise dismiss the keyguard first, since the
             // FGS can't start from a background state.
-            var canStartAudio = overLockScreen
+            var canStartAudio = isOverLockScreen
                 || Bridge is null
                 || await Bridge.OnCallHandled(true).ConfigureAwait(true);
             // Over the lock screen the chat opens only on go-to-chat (after PIN); the in-call screen
             // covers everything until then. Audio doesn't need the chat route — it's state-driven.
-            if (!overLockScreen)
+            if (!isOverLockScreen)
                 await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
             if (canStartAudio) {
                 var micPermission = Hub.AudioRecorder.MicrophonePermission;
                 if (await micPermission.CheckOrRequest(CancellationToken.None).ConfigureAwait(true))
                     await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
-                else
+                else {
                     // Mic denied: still join the call as a listener.
                     await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
+                }
             }
         }
         finally {
@@ -195,10 +200,10 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public async Task Decline(ChatId chatId)
     {
-        var overLockScreen = _overLockChatId.Value == chatId;
+        var isOverLockScreen = _overLockChatId.Value == chatId;
         ClearOverLock();
         EndRing(chatId);
-        if (overLockScreen)
+        if (isOverLockScreen)
             Bridge?.MoveBehindLockScreen();
         else
             _ = Bridge?.OnCallHandled(false);
@@ -214,8 +219,8 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // in-call screen and open the chat. On a cancelled PIN we stay on the in-call screen.
     public async Task GoToChat(ChatId chatId)
     {
-        var unlocked = Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
-        if (!unlocked)
+        var isUnlocked = Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+        if (!isUnlocked)
             return;
 
         ClearOverLock();
@@ -250,7 +255,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return true;
 
         var inCall = await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
-        CallDebugLog?.LogInformation("CALL_TRACE: IsOverLockSessionActive #{ChatId} → inCall={InCall} (ring not confirmed)", chatId, inCall);
+        CallDebugLog?.LogInformation(
+            "CALL_TRACE: IsOverLockSessionActive #{ChatId} → inCall={InCall} (ring not confirmed)",
+            chatId, inCall);
         return inCall;
     }
 
@@ -270,11 +277,12 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private async Task SyncRings(CancellationToken cancellationToken)
     {
-        if (Bridge is not null)
+        if (Bridge is not null) {
             // A call push may have landed while the app was killed and the user opened it
             // from the launcher — pick the ring up from the still-active system notification.
             foreach (var chatId in await Bridge.ListActiveCallChatIds(cancellationToken).ConfigureAwait(false))
                 OnRing(chatId);
+        }
 
         var cCall = await Computed
             .Capture(() => GetIncomingCall(cancellationToken), cancellationToken)
@@ -308,26 +316,68 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // ringtone everywhere else. Fire-and-forget to mirror the sync Bridge calls (and keep the finally
         // teardown sync); the JS invocation swallows its own errors.
         if (Bridge is not null)
-            Bridge.StartRinging();
+            _ = StartNativeRinging(Interlocked.Increment(ref _ringGeneration));
         else
             _ = PlayWebRingtone(true);
     }
 
     private void StopRinging()
     {
-        if (Bridge is not null)
+        if (Bridge is not null) {
+            // Bumped first: a start still waiting on the audio mode drops instead of ringing on.
+            Interlocked.Increment(ref _ringGeneration);
             Bridge.StopRinging();
+            _ = RestoreAudioMode();
+        }
         else
             _ = PlayWebRingtone(false);
     }
 
-    private async Task PlayWebRingtone(bool start)
+    private async Task StartNativeRinging(int generation)
+    {
+        // The ringer stream follows the call route while the mode is InCommunication, so an armed
+        // session holding it would put the whole ring in the earpiece. Nothing on the line - nothing
+        // to protect: hand the mode back for the ring, exactly as a Normal-mode ring would sound.
+        var liveChatIds = GetLiveAudioChatIds();
+        Log.LogInformation("Incoming ring: live audio in [{ChatIds}]", liveChatIds.ToDelimitedString(","));
+        if (liveChatIds.Count == 0) {
+            try {
+                await Hub.AudioFocusUI.YieldCommunicationMode().ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Couldn't yield the communication mode to the incoming ring");
+            }
+        }
+
+        if (Volatile.Read(ref _ringGeneration) != generation)
+            return;
+
+        Bridge!.StartRinging();
+    }
+
+    private async Task RestoreAudioMode()
     {
         try {
-            await Hub.JS.InvokeVoidAsync(start ? JSStartRingtone : JSStopRingtone).ConfigureAwait(false);
+            await Hub.AudioFocusUI.RestoreCommunicationMode().ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Web ringtone {Action} failed", start ? "start" : "stop");
+            Log.LogWarning(e, "Couldn't restore the communication mode after the incoming ring");
+        }
+    }
+
+    private List<ChatId> GetLiveAudioChatIds()
+        => Hub.ActiveChatsUI.ActiveChats.Value
+            .Where(c => c.IsListening || c.IsRecording)
+            .Select(c => c.ChatId)
+            .ToList();
+
+    private async Task PlayWebRingtone(bool mustStart)
+    {
+        try {
+            await Hub.JS.InvokeVoidAsync(mustStart ? JSStartRingtone : JSStopRingtone).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Web ringtone {Action} failed", mustStart ? "start" : "stop");
         }
     }
 
@@ -377,9 +427,11 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
             if (cActive.Value)
-                _overLockWasActive = true;
-            else if (_overLockWasActive && _overLockChatId.Value is not null) {
-                CallDebugLog?.LogInformation("CALL_TRACE: ResetOverLockScreen teardown #{ChatId} (session ended, was active)", _overLockChatId.Value);
+                Volatile.Write(ref _overLockWasActive, true);
+            else if (Volatile.Read(ref _overLockWasActive) && _overLockChatId.Value is not null) {
+                CallDebugLog?.LogInformation(
+                    "CALL_TRACE: ResetOverLockScreen teardown #{ChatId} (session ended, was active)",
+                    _overLockChatId.Value);
                 ClearOverLock();
                 Bridge?.MoveBehindLockScreen();
             }
@@ -401,7 +453,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private void ClearOverLock()
     {
-        _overLockWasActive = false;
+        Volatile.Write(ref _overLockWasActive, false); // Publication: the teardown loop polls it
         _isAccepting.Value = false;
         _overLockChatId.Value = null;
     }
