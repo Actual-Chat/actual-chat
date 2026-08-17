@@ -47,7 +47,6 @@ public class AndroidActivitiesForegroundService : Service
     private const string ChannelId = "audio_widget";
     private const string LocationChannelId = "location_sharing";
     private const int NotificationId = 3001;
-    private const int MaxUploadLines = 5;
     private static ILogger Log { get; } = StaticLog.For<AndroidActivitiesForegroundService>();
     private static int _pendingStartCount;
     private static bool _isStopPending;
@@ -289,7 +288,15 @@ public class AndroidActivitiesForegroundService : Service
         var sizes = intent.Extras.GetLongArray(IntentExtras.UploadItemSizes) ?? [];
         var progresses = intent.Extras.GetLongArray(IntentExtras.UploadItemProgresses) ?? [];
 
-        var notification = BuildUploadNotification(fileCount, bytesUploaded, totalBytes, names, sizes, progresses);
+        var items = ImmutableList.CreateBuilder<UploadActivityItem>();
+        for (var i = 0; i < names.Length; i++)
+            items.Add(new UploadActivityItem(
+                "",
+                names[i],
+                i < progresses.Length ? progresses[i] : 0,
+                i < sizes.Length ? sizes[i] : 0));
+        var upload = new UploadActivity(fileCount, bytesUploaded, totalBytes, items.ToImmutable());
+        var notification = NotificationHelper.BuildUploadNotification(this, upload);
         StartForeground1(notification, ActivityKind.Uploading, requested);
         return StartCommandResult.NotSticky;
     }
@@ -450,43 +457,6 @@ public class AndroidActivitiesForegroundService : Service
         return builder.Build()!;
     }
 
-    private Android.App.Notification BuildUploadNotification(
-        int fileCount, long bytesUploaded, long totalBytes,
-        string[] names, long[] sizes, long[] progresses)
-    {
-        var percent = totalBytes == 0 ? 0 : (int)(100.0 * bytesUploaded / totalBytes);
-        var title = fileCount == 1 ? "Uploading 1 file" : $"Uploading {fileCount} files";
-        var summary = $"{FormatBytes(bytesUploaded)} / {FormatBytes(totalBytes)} ({percent}%)";
-
-        var style = new NotificationCompat.InboxStyle().SetSummaryText(summary)!;
-        var count = Math.Min(names.Length, MaxUploadLines);
-        for (var i = 0; i < count; i++) {
-            var done = i < progresses.Length ? progresses[i] : 0;
-            var size = i < sizes.Length ? sizes[i] : 0;
-            _ = style.AddLine($"{names[i]} — {FormatBytes(done)} / {FormatBytes(size)}");
-        }
-        if (names.Length > MaxUploadLines)
-            _ = style.AddLine($"…and {names.Length - MaxUploadLines} more");
-
-        var viewIntent = NotificationHelper.CreateViewIntent(this, Links.Home);
-        var viewPending = viewIntent is null
-            ? null
-            : PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable);
-
-        var builder = new NotificationCompat.Builder(this, NotificationHelper.Constants.ActivityUploadChannelId)
-            .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
-            .SetContentTitle(title)!
-            .SetContentText(summary)!
-            .SetStyle(style)!
-            .SetProgress(100, percent, indeterminate: false)!
-            .SetOngoing(true)!
-            .SetOnlyAlertOnce(true)!
-            .SetCategory(NotificationCompat.CategoryProgress)!;
-        if (viewPending is not null)
-            _ = builder.SetContentIntent(viewPending);
-        return builder.Build()!;
-    }
-
     private Android.App.Notification BuildLocationNotification(string chatSid, string chatTitle, int extraChatCount)
     {
         var stopIntent = new Intent(this, typeof(AndroidActivitiesForegroundService));
@@ -590,21 +560,6 @@ public class AndroidActivitiesForegroundService : Service
             ActivityKind.SharingLocation => LocationChannelId,
             _ => ChannelId,
         };
-
-    private static string FormatBytes(long bytes)
-    {
-        const double kb = 1024.0;
-        const double mb = 1024.0 * 1024.0;
-        const double gb = 1024.0 * 1024.0 * 1024.0;
-        if (bytes < kb)
-            return $"{bytes} B";
-        if (bytes < mb)
-            return $"{bytes / kb:0.#} KB";
-        if (bytes < gb)
-            return $"{bytes / mb:0.#} MB";
-
-        return $"{bytes / gb:0.##} GB";
-    }
 
     // Nested types
 

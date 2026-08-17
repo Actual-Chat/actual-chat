@@ -1,4 +1,5 @@
 using ActualChat.Notifications;
+using ActualChat.UI.Blazor.Services;
 using Android.App;
 using Android.Content;
 using Android.Graphics;
@@ -15,29 +16,20 @@ namespace ActualChat.App.Maui;
 public static class NotificationHelper
 {
     private const int ImageCacheSize = 5;
-
+    private const int MaxUploadLines = 5;
     private static readonly ThreadSafeLruCache<string, Bitmap?> ImagesCache = new (ImageCacheSize);
     private static ILogger? _log;
-
     public static readonly AtomicInteger RequestCodeProvider =
         new((int)Android.OS.SystemClock.ElapsedRealtime());
-
     public static string NotificationViewAction => Application.Context.PackageName + ".NotificationView";
-
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(NotificationHelper));
-
-    public static class Constants
-    {
-        public const string DefaultChannelId = "default_channel";
-        public const string AttentionChannelId = "internal_attention_channel";
-        public const string ActivityUploadChannelId = "activity_upload";
-    }
 
     public static void EnsureActivityChannelsExist(Context context)
     {
         var manager = (NotificationManager)context.GetSystemService(Context.NotificationService)!;
         if (manager.GetNotificationChannel(Constants.ActivityUploadChannelId) != null)
             return;
+
         var channel = new NotificationChannel(
             Constants.ActivityUploadChannelId,
             "Uploads",
@@ -223,5 +215,70 @@ public static class NotificationHelper
             channel.SetVibrationPattern(vibratePattern);
             notificationManager.CreateNotificationChannel(channel);
         }
+    }
+
+    // Shared by the foreground service (when uploading is the primary activity) and
+    // AndroidActivitiesBackend (when it isn't and needs its own notification).
+    public static Android.App.Notification BuildUploadNotification(
+        Context context,
+        UploadActivity upload)
+    {
+        var percent = upload.TotalBytes == 0 ? 0 : (int)(100.0 * upload.BytesUploaded / upload.TotalBytes);
+        var title = upload.FileCount == 1 ? "Uploading 1 file" : $"Uploading {upload.FileCount} files";
+        var summary = $"{FormatBytes(upload.BytesUploaded)} / {FormatBytes(upload.TotalBytes)} ({percent}%)";
+
+        var style = new NotificationCompat.InboxStyle().SetSummaryText(summary)!;
+        var count = Math.Min(upload.Items.Count, MaxUploadLines);
+        for (var i = 0; i < count; i++) {
+            var item = upload.Items[i];
+            _ = style.AddLine($"{item.FileName} — {FormatBytes(item.BytesUploaded)} / {FormatBytes(item.TotalBytes)}");
+        }
+        if (upload.Items.Count > MaxUploadLines)
+            _ = style.AddLine($"…and {upload.Items.Count - MaxUploadLines} more");
+
+        var viewIntent = CreateViewIntent(context, Links.Home);
+        var viewPending = viewIntent is null
+            ? null
+            : PendingIntent.GetActivity(context, 3, viewIntent, PendingIntentFlags.Immutable);
+
+        var builder = new NotificationCompat.Builder(context, Constants.ActivityUploadChannelId)
+            .SetSmallIcon(Resource.Drawable.notification_app_icon)!
+            .SetContentTitle(title)!
+            .SetContentText(summary)!
+            .SetStyle(style)!
+            .SetProgress(100, percent, indeterminate: false)!
+            .SetOngoing(true)!
+            .SetOnlyAlertOnce(true)!
+            .SetCategory(NotificationCompat.CategoryProgress)!;
+        if (viewPending is not null)
+            _ = builder.SetContentIntent(viewPending);
+        return builder.Build()!;
+    }
+
+    // Private methods
+
+    private static string FormatBytes(long bytes)
+    {
+        const double kb = 1024.0;
+        const double mb = 1024.0 * 1024.0;
+        const double gb = 1024.0 * 1024.0 * 1024.0;
+        if (bytes < kb)
+            return $"{bytes} B";
+        if (bytes < mb)
+            return $"{bytes / kb:0.#} KB";
+        if (bytes < gb)
+            return $"{bytes / mb:0.#} MB";
+
+        return $"{bytes / gb:0.##} GB";
+    }
+
+    // Nested types
+
+    public static class Constants
+    {
+        public const string DefaultChannelId = "default_channel";
+        public const string AttentionChannelId = "internal_attention_channel";
+        public const string ActivityUploadChannelId = "activity_upload";
+        public const int UploadNotificationId = 3002;
     }
 }

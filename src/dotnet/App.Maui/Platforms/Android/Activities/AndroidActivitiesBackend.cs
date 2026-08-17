@@ -3,6 +3,7 @@ using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
+using AndroidX.Core.App;
 using IntentExtras = ActualChat.App.Maui.Activities.AndroidActivitiesForegroundService.IntentExtras;
 
 namespace ActualChat.App.Maui.Activities;
@@ -152,10 +153,49 @@ public class AndroidActivitiesBackend : ActivitiesBackend
         }
         else
             Log.LogWarning("ShowImpl: couldn't start the FGS (kind={Kind})", primary.Kind);
+        UpdateUploadNotification(set);
+    }
+
+    private static void UpdateUploadNotification(ActivitySet set)
+    {
+        // The FGS renders only the primary activity, so an upload running behind an audio or
+        // location activity would otherwise never show its progress. It gets its own notification
+        // in that case - and none when it IS primary, which would duplicate the FGS one.
+        var upload = set.Primary is UploadActivity
+            ? null
+            : set.Activities.OfType<UploadActivity>().FirstOrDefault();
+        if (upload is null) {
+            CancelUploadNotification();
+            return;
+        }
+
+        var context = Context;
+        try {
+            NotificationHelper.EnsureActivityChannelsExist(context);
+            var notification = NotificationHelper.BuildUploadNotification(context, upload);
+            NotificationManagerCompat.From(context)
+                .Notify(NotificationHelper.Constants.UploadNotificationId, notification);
+        }
+        catch (Exception e) {
+            // Posting needs POST_NOTIFICATIONS on API 33+; a denied permission must not take the
+            // FGS down with it.
+            Log.LogWarning(e, "Couldn't post the upload notification");
+        }
+    }
+
+    private static void CancelUploadNotification()
+    {
+        try {
+            NotificationManagerCompat.From(Context).Cancel(NotificationHelper.Constants.UploadNotificationId);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Couldn't cancel the upload notification");
+        }
     }
 
     private static void HideImpl()
     {
+        CancelUploadNotification();
         if (!Volatile.Read(ref _isShown))
             return;
 
