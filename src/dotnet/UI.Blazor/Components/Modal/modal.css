@@ -59,7 +59,6 @@ body.narrow .modal-frame.modal-md {
     @apply w-auto h-auto;
     @apply rounded-b-none rounded-t-2xl;
     max-height: 80vh;
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 body.narrow .modal-frame.modal-sm {
     @apply absolute;
@@ -70,7 +69,6 @@ body.narrow .modal-frame.modal-sm {
     min-height: 0;
     max-height: 80vh;
     bottom: calc(4vh + var(--safe-area-bottom));
-    @apply pb-4;
 }
 
 .narrow .narrow-view__modal__position-bottom {
@@ -80,13 +78,11 @@ body.narrow .modal-frame.modal-sm {
     @apply w-auto h-auto;
     @apply rounded-b-none rounded-t-2xl;
     max-height: 80vh;
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 
 .narrow .narrow-view__modal__position-stretch {
     @apply rounded-none;
     padding-top: var(--safe-area-top);
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 
 .modal-frame .safe-area-bottom-overlay {
@@ -124,10 +120,10 @@ body.wide .modal-overlay-fullscreen .modal .modal-content {
     @apply flex-y items-stretch gap-y-2 overflow-hidden;
     @apply w-full h-full max-h-screen;
     @apply md:w-96 xl:w-104 2xl:w-112 md:h-auto md:max-h-192;
-    @apply pb-4;
     @apply rounded-lg;
     @apply font-medium;
     @apply md:shadow-modal-wide;
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
     transition-duration: 320ms;
     transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
     transition-behavior: allow-discrete;
@@ -135,6 +131,16 @@ body.wide .modal-overlay-fullscreen .modal .modal-content {
 }
 .modal-frame.modal-sm {
     @apply md:w-88 xl:w-104 2xl:w-120 md:h-auto md:max-h-192;
+}
+/* Full-bleed body (map, image) reaches the bottom edge: drop the 1rem breathing room.
+   Floating sheets (modal-sm) already sit above the home indicator via their bottom offset,
+   so they need nothing more; edge-flush modals (stretch / docked) keep the safe-area. */
+.modal-frame.full-bleed {
+    @apply pb-0;
+}
+.narrow .narrow-view__modal__position-stretch.full-bleed,
+.narrow .narrow-view__modal__position-bottom.full-bleed:not(.modal-sm) {
+    padding-bottom: var(--safe-area-bottom);
 }
 .modal-frame.fixed-height {
     @apply md:h-192;
