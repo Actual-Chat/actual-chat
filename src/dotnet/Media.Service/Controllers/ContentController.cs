@@ -45,9 +45,11 @@ public sealed class ContentController(IBlobStorages blobStorages, IMediaBackend 
             "video/x-matroska",
         };
 
+    // The response cache keys by path only, hence VaryByQueryKeys - w/o it "?download=1" gets
+    // the cached inline response, i.e. no Content-Disposition. And w/o Vary, a response cached
+    // for an origin-less request (tab navigation, <img>) breaks the CORS fetch reusing it.
     [HttpGet("{**blobId}")]
-    // Will NOT be cached in memory by response cache middleware
-    [CacheControlImmutable(Duration = 2592000 /*30 days*/)]
+    [CacheControlImmutable(Duration = 2592000 /*30 days*/, VaryByQueryKeys = ["download"], Vary = "Origin")]
     [EnableCors("CDN")]
     public async Task<ActionResult> Download(
         string blobId,

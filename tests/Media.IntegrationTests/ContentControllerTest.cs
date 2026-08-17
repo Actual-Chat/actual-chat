@@ -62,6 +62,20 @@ public class ContentControllerTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     [Fact]
+    public async Task SendsVaryOriginHeader()
+    {
+        // arrange
+        var blobId = await CreateMedia(TestImages.CreatePng(10, 10), "image/png", "image.png");
+        using var httpClient = AppHost.NewHttpClient();
+
+        // act
+        using var response = await httpClient.GetAsync($"api/content/{blobId}");
+
+        // assert
+        response.Headers.Vary.Should().Contain("Origin");
+    }
+
+    [Fact]
     public async Task ServesStoredImageInline()
     {
         // arrange
@@ -115,6 +129,47 @@ public class ContentControllerTest(AppHostFixture fixture, ITestOutputHelper @ou
         response.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
         response.Content.Headers.ContentDisposition!.DispositionType.Should().Be("attachment");
         response.Content.Headers.ContentDisposition.FileName.Should().Contain("image.bin");
+    }
+
+    [Fact]
+    public async Task ServesAttachmentWhenDownloadRequestedAfterInlineOne()
+    {
+        // arrange
+        var blobId = await CreateMedia(
+            TestImages.CreatePng(10, 10),
+            "application/octet-stream",
+            "image.bin");
+        using var httpClient = AppHost.NewHttpClient();
+        using var inlineResponse = await httpClient.GetAsync($"api/content/{blobId}");
+        inlineResponse.Content.Headers.ContentDisposition.Should().BeNull();
+
+        // act
+        using var response = await httpClient.GetAsync($"api/content/{blobId}?download=1");
+
+        // assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentDisposition!.DispositionType.Should().Be("attachment");
+        response.Content.Headers.ContentDisposition.FileName.Should().Contain("image.bin");
+    }
+
+    [Fact]
+    public async Task ServesInlineAfterDownloadRequest()
+    {
+        // arrange
+        var blobId = await CreateMedia(
+            TestImages.CreatePng(10, 10),
+            "application/octet-stream",
+            "image.bin");
+        using var httpClient = AppHost.NewHttpClient();
+        using var downloadResponse = await httpClient.GetAsync($"api/content/{blobId}?download=1");
+        downloadResponse.Content.Headers.ContentDisposition!.DispositionType.Should().Be("attachment");
+
+        // act
+        using var response = await httpClient.GetAsync($"api/content/{blobId}");
+
+        // assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentDisposition.Should().BeNull();
     }
 
     [Fact]

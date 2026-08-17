@@ -293,6 +293,10 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         else
             origins.AddRange(Constants.Hosts.AllProd.Select(host => $"https://{host}"));
 
+        // The app's own origin isn't necessarily among the ones above: worktrees are served
+        // from <worktree>.local.voxt.ai, which can't be listed upfront.
+        origins.Add(HostInfo.BaseUrl.ToUri().GetLeftPart(UriPartial.Authority));
+
         services.AddCors(options => {
             options.AddPolicy("Default", builder => {
                 builder.WithOrigins(origins.ToArray())
@@ -305,7 +309,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     .WithOrigins(origins.ToArray())
                     .WithMethods("GET")
                     .AllowAnyHeader()
-                    .WithExposedHeaders("Content-Encoding","Content-Length","Content-Range", "Content-Type", "Content-Disposition");
+                    .WithExposedHeaders("Content-Encoding", "Content-Length", "Content-Range", "Content-Type", "Content-Disposition");
             });
         });
         // services.Configure<HstsOptions>(options => {

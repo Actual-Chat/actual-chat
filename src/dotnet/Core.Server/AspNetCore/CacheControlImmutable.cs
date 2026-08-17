@@ -12,6 +12,8 @@ public sealed class CacheControlImmutableAttribute : ResultFilterAttribute
 
     public string[]? VaryByQueryKeys { get; set; }
 
+    public string? Vary { get; set; }
+
     public override void OnResultExecuting(ResultExecutingContext context)
     {
         var headers = context.HttpContext.Response.Headers;
@@ -26,6 +28,9 @@ public sealed class CacheControlImmutableAttribute : ResultFilterAttribute
             if (feature != null)
                 feature.VaryByQueryKeys = VaryByQueryKeys;
         }
+
+        if (!Vary.IsNullOrEmpty())
+            headers[HeaderNames.Vary] = Vary;
 
         var location = IsPrivate
             ? "private"
