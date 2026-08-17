@@ -16,6 +16,7 @@
 <DialogFrame
     Class="location-map-modal"
     HasHeader="false"
+    FullBleed="true"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
     <Body>
         <div class="c-map-host">
@@ -28,19 +29,19 @@
                     Markers="@markers"
                     Center="@m.Center"/>
                 <div class="c-map-menu">
-                    <button type="button" class="c-map-menu-item" @onclick="@OnOpenMapTypeMenu">
+                    <ButtonRound Class="btn-video-panel c-map-type" Click="@OnOpenMapTypeMenu">
                         <i class="icon-map"></i>
-                    </button>
-                    <button type="button" class="c-map-menu-item" @onclick="@OnLocate">
+                    </ButtonRound>
+                    <ButtonRound Class="btn-video-panel c-locate" Click="@OnLocate">
                         @if (m.IsLocating) {
                             <Spinner/>
                         } else {
                             <i class="icon-navigation-pointer"></i>
                         }
-                    </button>
+                    </ButtonRound>
                 </div>
             }
-            <ButtonRound Class="c-close" Click="@OnClose">
+            <ButtonRound Class="btn-video-panel c-close" Click="@OnClose">
                 <i class="icon-close"></i>
             </ButtonRound>
             @if (m.Participants.Count > 0) {

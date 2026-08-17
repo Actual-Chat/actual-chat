@@ -8,7 +8,8 @@
 <DialogFrame
     Class="@(m.IsPicking ? "share-location-modal picking" : "share-location-modal modal-sm")"
     NarrowViewSettings="@(m.IsPicking ? DialogFrameNarrowViewSettings.Default : DialogFrameNarrowViewSettings.Bottom)"
-    HasHeader="false">
+    HasHeader="false"
+    FullBleed="true">
     <Body>
         <div class="c-map-area">
             @if (m.OwnMarker is not null || m.IsPicking) {
@@ -30,26 +31,23 @@
                     <map-marker-pin></map-marker-pin>
                 </div>
             }
-            <ButtonRound Class="c-close" Click="@OnCloseOrBack">
+            <ButtonRound Class="btn-video-panel c-close" Click="@OnCloseOrBack">
                 <i class="@(m.IsPicking ? "icon-arrow-left" : "icon-close")"></i>
             </ButtonRound>
             @if (!m.MustRequestPermission || m.IsPicking) {
                 <div class="c-map-menu">
                     @if (m.EnableIncompleteUI) {
-                        <button type="button" class="c-map-menu-item" @onclick="@OnOpenMapTypeMenu">
+                        <ButtonRound Class="btn-video-panel c-map-type" Click="@OnOpenMapTypeMenu">
                             <i class="icon-map"></i>
-                        </button>
+                        </ButtonRound>
                     }
-                    <button
-                        type="button"
-                        class="c-map-menu-item"
-                        @onclick="@OnLocate">
+                    <ButtonRound Class="btn-video-panel c-locate" Click="@OnLocate">
                         @if (m.IsLocating) {
                             <Spinner/>
                         } else {
                             <i class="icon-navigation-pointer"></i>
                         }
-                    </button>
+                    </ButtonRound>
                 </div>
             }
         </div>
