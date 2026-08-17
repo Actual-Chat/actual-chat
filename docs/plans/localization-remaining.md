@@ -16,7 +16,7 @@ per-language completeness, placeholder preservation) and
 
 ---
 
-## 0. The picker doesn't ship — nothing below matters until it does
+## 0. Deliberately dormant — enable the picker LAST
 
 `Components/Settings/UserInterface.razor:6` wraps the App-language tile in
 `@if (m.EnableIncompleteUI)`, and `LanguageUI.DetectUILanguage`
@@ -28,11 +28,20 @@ if (!await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(
     return DefaultUILanguage;
 ```
 
-So in production every user gets English regardless of device locale, and there
-is no UI to change it. All 1206 keys are dormant. Enabling
+So today every user gets English regardless of device locale, and all 1206 keys
+are dormant. **This is intentional and stays that way until §2–§5 are done.**
+
+The reason is that localization is only partly a per-surface job. A user who
+switches the app to Spanish today would get a translated in-app UI while their
+push notifications, the iOS share sheet, every Android permission dialog and
+the OS microphone prompt all stayed English — a worse, more confusing result
+than a consistently English app. The flag is what keeps the half-finished state
+invisible.
+
+**Do not flip it as part of an intermediate PR.** Enabling
 `Features_EnableIncompleteUI` for the language path — or ungating it
-specifically — is a product decision, not a code change, but it gates the value
-of everything else here.
+specifically — is the *final* step, taken once push, email and the native
+shells are covered.
 
 ---
 
@@ -183,7 +192,9 @@ scan to `*.razor`, or moving such literals into `.cs` helpers (as
 ---
 
 ## Suggested order
-1. §0 — decide whether the picker ships; everything else is speculative until then.
-2. §2 + §3 together — one story: the server can't localize what it can't address.
-3. §4's local-notification subset — cheap, no server change.
-4. §5 — needs a scope and liability decision first.
+1. §2 + §3 together — one story: the server can't localize what it can't address.
+2. §4's local-notification subset — cheap, no server change; then the rest of §4.
+3. §5 — needs a scope and liability decision first.
+4. §7 — small, and it removes a silent AI-translation cost.
+5. §0 last — flip the flag only once a user switching language gets a
+   consistently localized app, notifications and OS prompts included.
