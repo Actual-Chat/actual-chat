@@ -29,7 +29,8 @@ if (!await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(
 ```
 
 So today every user gets English regardless of device locale, and all 1206 keys
-are dormant. **This is intentional and stays that way until §3–§5 are done.**
+are dormant. **This is intentional and stays that way until §3 and §4 are
+done.** (§5 does not gate it — see there.)
 
 The reason is that localization is only partly a per-surface job. A user who
 switches the app to Spanish today would get a translated in-app UI while their
@@ -238,16 +239,49 @@ independent of everything above, and doable at any time.
 
 ---
 
-## 5. Landing pages and legal docs — 44 files, zero `L.` usages
+## 5. Landing pages and legal docs — independent of §0, and mostly legal text
 
-`Pages/Landing/**` is completely untouched. It splits in two:
+`Pages/Landing/**` is completely untouched — 44 files, zero `L.` usages. The
+file count hides how lopsided it is:
 
-- **Marketing pages** — ordinary translation work, just large.
-- **`Pages/Landing/Docs/*`** — Terms, Privacy, Cookies, FAQ. Long-form legal
-  text where machine or AI translation carries liability. This is a policy
-  decision for whoever owns legal, not an engineering one; the usual answer is
-  to publish only human-reviewed translations, or keep one authoritative
-  English version and link to it.
+| Part | Files | Prose | Nature |
+|---|---|---|---|
+| Marketing pages | 26 | ~2,400 words | ordinary translation |
+| Docs chrome (nav, headers, panels) | 14 | small | ordinary translation |
+| Legal content — `DocsTermsContent`, `DocsPrivacyContent`, `DocsCookiesContent` | 3 | **~10,400 words** | liability |
+
+The legal text is over four times the marketing prose, and it is the part that
+cannot be machine-translated. Across 14 languages that is roughly 145,000 words
+of professional legal translation — the single largest cost in this whole
+effort, for the surface users read least. It stays a policy decision for
+whoever owns legal, not an engineering one; the usual answer is to publish only
+human-reviewed translations, or to keep one authoritative English version and
+link to it.
+
+### Translating marketing without per-language URLs returns nothing
+
+The value of a translated marketing page is organic search in that language,
+and nothing here is set up for that: `RootServerPage.razor:33` hardcodes
+`<html lang="en">`, there is no `hreflang` anywhere in the tree, and the routes
+are single-language (`/docs/privacy`, `/docs/terms`, …). A page that only
+translates at runtime in the visitor's browser is invisible to crawlers in every
+language but English.
+
+So the marketing half is not "ordinary translation work, just large" — it needs
+per-language routes, `hreflang` and a localized `<html lang>` before the
+translation is worth commissioning. Budget that first or skip the section.
+
+### This section does not gate §0
+
+§0's rule is that a user who switches to Spanish must not get a half-translated
+experience. Landing and legal pages sit *before* sign-in: a signed-in user
+switching the app language essentially never returns to the marketing page, and
+English-only legal documents are unremarkable. Gating the picker on this section
+would make it wait on ~145,000 words of legal translation that has nothing to do
+with the in-app experience.
+
+**§0's gate is §3 + §4.** §5 is an independent marketing/legal track that can
+run on its own schedule, or not at all.
 
 ---
 
@@ -290,7 +324,10 @@ scan to `*.razor`, or moving such literals into `.cs` helpers (as
    — needs only a native-side language accessor, no new mechanism.
 6. §4's iOS share extension — together with, or after, the NSE: both need the
    catalog question answered the same way.
-7. §5 — needs a scope and liability decision first.
-8. §7 — small, and it removes a silent AI-translation cost.
-9. §0 last — flip the flag only once a user switching language gets a
-   consistently localized app, notifications and OS prompts included.
+7. §7 — small, and it removes a silent AI-translation cost.
+8. §0 — flip the flag once §3 and §4 are done, i.e. once a user switching
+   language gets a consistently localized app, notifications and OS prompts
+   included.
+9. §5, independently and on its own schedule — the marketing half needs SEO
+   routing before translation pays off, and the legal half needs a liability
+   decision. Neither holds up §0.
