@@ -29,7 +29,7 @@ if (!await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(
 ```
 
 So today every user gets English regardless of device locale, and all 1206 keys
-are dormant. **This is intentional and stays that way until §2–§5 are done.**
+are dormant. **This is intentional and stays that way until §3–§5 are done.**
 
 The reason is that localization is only partly a per-surface job. A user who
 switches the app to Spanish today would get a translated in-app UI while their
@@ -102,38 +102,86 @@ identifiers), diagnostics entries, `CaptchaView`'s fake-reCAPTCHA branch,
 
 ---
 
-## 2. Account-level UI language — prerequisite for §3
+## 2. UI language is device-local — settled, no work
 
 `LanguageUI.UILanguage` is a `SyncedState` over `LocalSettings`
-(`LanguageUI.cs:34`) — device-local KVAS. The server never learns it.
+(`LanguageUI.cs:34`), and **it stays there**. There is no account-level UI
+language and none is planned: a display language belongs to the device the user
+is looking at, not to the account.
 
-Push notifications and emails are composed server-side for a recipient who
-isn't holding the device, so **they cannot be localized at all until the
-language reaches the account**. Needs: a language field on the account,
-sync from the device that changes it, a policy for multiple devices
-disagreeing, and a fallback when the account has never set one.
+This was previously written up here as a prerequisite for §3 — an account field
+plus device sync, a multi-device conflict policy and a fallback. That whole item
+is dropped. §3 is not blocked on anything.
+
+The consequence for the server is that anything it composes must get the
+language from the surface it is addressing: from the device registration for
+push (§3), and from the discussion for digests (§3).
 
 ---
 
 ## 3. Push notifications and email
 
-Blocked on §2. Text is small and centralised:
+Six strings, and none of them are the bulk of a push — author names, message
+text and chat titles are user content and pass through untranslated:
 
-- `Notifications.Service/NotificationHelper.cs:42` — `"Voice chat started"` /
-  `"{names} started a voice chat"`
+- `Notifications.Service/NotificationHelper.cs:32,62` — `"Voice chat started"`,
+  `"{names} started a voice chat"`, `"and {n} more"`,
+  `"+{n} earlier message(s)"`
 - `Notifications.Service/NotificationsBackend.cs:539` — `"Incoming call"` /
   `"Incoming video call"`
-- `Users.Templates/*.razor` — 5 templates (`EmailVerification`, `Digest`,
-  `DigestChat`, `EmailBody`, `DigestButton`)
 
-Note these duplicate strings the client also has (`"Incoming call"` appears in
-`IncomingCallModal.razor:21` too) — worth a shared key rather than two.
+`"Incoming call"` also exists in `IncomingCallModal.razor:21` and again as an
+English fallback in `service-worker.ts:169,172` — one shared key, not three.
+
+### Push — render client-side wherever the platform allows
+
+**Decision: the device renders the notification text, not the server.** The
+device already knows its own language (§2), so the payload should carry
+structured fields and let each platform compose. Where a platform can't, the
+device's language rides along with its registration — `DbDevice` gains a
+`Language` column, `Notifications_RegisterDevice` a matching field, and the app
+re-registers when `LanguageUI.UILanguage` changes.
+
+| Platform | Today | Work |
+|---|---|---|
+| Android | **already client-side** — `Notification = default` is deliberate (`FirebaseMessagingClient.cs:111-117`); `FirebaseMessagingService` composes via `NotificationHelper.ShowChatNotification` | replace the pre-composed `Body` key with structured ones |
+| Web | SW is ours and already calls `showNotification` itself (`service-worker.ts:211`, `:169` for calls), passing the server's title/body through | compose locally; needs the catalog in the worker and the UI language reachable from it (IndexedDB/Cache, written by the app) |
+| iOS | system renders `Aps.Alert{Title,Body}` while the app isn't running | **needs a Notification Service Extension** — the server half is ready (`MutableContent = true` is already set), the target doesn't exist |
+
+**The iOS NSE comes first, in its own PR.** It is the only genuinely new piece
+of machinery here, and it decides the shape of the rest: a .NET appex is
+constrained (separate process, ~30s budget, ~24 MB cap — compare what
+`App.Maui.IosShareExt` cost to get startup under a second), while a native
+Swift NSE with `.strings` is far lighter but duplicates the catalog outside the
+.NET pipeline and therefore outside `AppLocalizationTest`'s guarantees. Settle
+that trade-off against a real target before touching the payload format.
+
+Until the NSE exists, iOS falls back to server-rendered text keyed on the
+device's registered `Language` — which is why the `DbDevice` column is worth
+having regardless of how far client-side rendering gets.
+
+### Email — no device, so language comes from the content
+
+Already implemented for the part that matters: `EmailsBackend.cs:215` uses
+`GetDominantLanguage(chatId, …) ?? userLanguage`, so each chat's AI summary is
+generated in that chat's dominant language, falling back to
+`UserLanguageSettings.Primary`.
+
+What is not localized is the template chrome — `Users.Templates/*.razor`
+(`EmailVerification`, `Digest`, `DigestChat`, `EmailBody`, `DigestButton`):
+"Your email verification code", "Privacy Policy", "Terms and Conditions", the
+button labels. **Open:** a digest spans chats with different dominant languages,
+so the chrome needs one value the per-chat rule can't supply. Candidates are
+`UserLanguageSettings.Primary` (already computed as `userLanguage` at
+`EmailsBackend.cs:27,79`, and the only option that also covers
+`EmailVerification`, which has no discussion to derive from), the dominant
+language across the whole digest, or leaving the chrome English.
 
 ---
 
 ## 4. Native shells — separate mechanisms, no catalog access
 
-Not blocked on §2: these render on the device, which knows its own locale.
+Same principle as §3: these render on the device, which knows its own locale.
 
 | Surface | Size | Mechanism |
 |---|---|---|
@@ -192,9 +240,15 @@ scan to `*.razor`, or moving such literals into `.cs` helpers (as
 ---
 
 ## Suggested order
-1. §2 + §3 together — one story: the server can't localize what it can't address.
-2. §4's local-notification subset — cheap, no server change; then the rest of §4.
-3. §5 — needs a scope and liability decision first.
-4. §7 — small, and it removes a silent AI-translation cost.
-5. §0 last — flip the flag only once a user switching language gets a
+1. The iOS Notification Service Extension, on its own — it is the one new piece
+   of machinery, and whether it is a .NET appex or a native Swift one decides
+   the payload format §3 can adopt. Do it before changing any payload.
+2. §3's push track — structured payload, Android and web composing locally,
+   `DbDevice.Language` as the fallback for anything that still renders
+   server-side.
+3. §3's email track — settle the chrome language, then the 5 templates.
+4. §4's local-notification subset — cheap, no server change; then the rest of §4.
+5. §5 — needs a scope and liability decision first.
+6. §7 — small, and it removes a silent AI-translation cost.
+7. §0 last — flip the flag only once a user switching language gets a
    consistently localized app, notifications and OS prompts included.

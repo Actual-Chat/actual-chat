@@ -66,10 +66,12 @@ offline) and Gemini 3 (offline), upgrades Google to Chirp 3 and OpenAI to
 [Localization: what's left](./localization-remaining.md) — the app UI, server
 errors, validation and dates shipped in #3721; the App-language picker stays
 behind `EnableIncompleteUI` on purpose until the rest lands, so a user can't
-switch to a half-translated app. Remaining: an account-level UI language that
-push and email need before they can be localized at all, the native shells
-(iOS share extension, Android dialogs, `Info.plist`, local notifications), and
-the 44 untouched landing/legal pages. Flipping the flag is the last step.
+switch to a half-translated app. UI language is device-local by design, so the
+remaining surfaces localize where they render: push notifications composed on
+the device (which needs an iOS Notification Service Extension first), the
+digest emails, the native shells (iOS share extension, Android dialogs,
+`Info.plist`, local notifications), and the 44 untouched landing/legal pages.
+Flipping the flag is the last step.
 
 ### On-premises instances
 
