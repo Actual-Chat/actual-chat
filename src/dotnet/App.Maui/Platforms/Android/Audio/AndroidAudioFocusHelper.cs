@@ -17,6 +17,7 @@ public class AndroidAudioFocusHelper : IDisposable
     private readonly IAudioDeviceRouter _deviceRouter;
     private AudioFocusRequestClass? _focusRequest;
     private bool _hasFocus;
+    private bool _isCommunicationModeYielded;
 
     public event Action<AudioFocus>? OnFocusChanged;
     public event Action? OnOutputDevicesChanged;
@@ -112,6 +113,33 @@ public class AndroidAudioFocusHelper : IDisposable
             ? _deviceRouter.SetCommunicationDeviceAsync(cancellationToken)
             : Task.FromResult(false);
 
+    public void YieldCommunicationMode()
+    {
+        LogAudioState();
+
+        // An armed session holds InCommunication with no call in sight, so the ring borrows Normal back.
+        if (_isCommunicationModeYielded || _audioManager.Mode != Mode.InCommunication)
+            return;
+
+        _log.LogInformation("Yielding the communication mode to the incoming ring");
+        _audioManager.Mode = Mode.Normal;
+        _isCommunicationModeYielded = true;
+    }
+
+    public async Task RestoreCommunicationMode()
+    {
+        if (!_isCommunicationModeYielded)
+            return;
+
+        _isCommunicationModeYielded = false;
+        if (!_hasFocus)
+            return; // The focus went away while ringing - whoever takes it next sets the mode
+
+        _log.LogInformation("Restoring the communication mode after the incoming ring");
+        _audioManager.Mode = Mode.InCommunication;
+        await _deviceRouter.SetCommunicationDeviceAsync(CancellationToken.None).ConfigureAwait(false);
+    }
+
     public void AbandonFocus()
     {
         if (_focusRequest == null)
@@ -122,6 +150,27 @@ public class AndroidAudioFocusHelper : IDisposable
         _audioManager.AbandonAudioFocusRequest(_focusRequest);
         _audioManager.Mode = Mode.Normal;
         _hasFocus = false;
+    }
+
+    // Private methods
+
+    private void LogAudioState()
+    {
+        try {
+            var outputs = _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [];
+            var commDevice = OperatingSystem.IsAndroidVersionAtLeast(12)
+                ? _audioManager.CommunicationDevice?.Type
+                : null;
+            _log.LogInformation(
+                "Audio state: mode={Mode}, hasFocus={HasFocus}, isYielded={IsYielded}, commDevice={CommDevice}, "
+                + "ringerMode={RingerMode}, isMusicActive={IsMusicActive}, outputs=[{Outputs}]",
+                _audioManager.Mode, _hasFocus, _isCommunicationModeYielded,
+                commDevice, _audioManager.RingerMode, _audioManager.IsMusicActive,
+                string.Join(", ", outputs.Select(d => d.Type.ToString())));
+        }
+        catch (Exception e) {
+            _log.LogWarning(e, "Couldn't read the audio state");
+        }
     }
 
     private async Task<bool> RequestFocusAsync(AudioFocus audioFocus, AudioUsageKind audioUsageKind, AudioContentType audioContentType)
