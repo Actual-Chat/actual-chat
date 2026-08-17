@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
+using ActualChat.UI.Blazor.Resources;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -116,15 +117,18 @@ public partial class ChatVideoUI
     }
 
     public void OnRecordingError(string error, VideoSourceKind kind)
+        => OnRecordingError("", "", error, kind);
+
+    public void OnRecordingError(string code, string arg, string message, VideoSourceKind kind)
     {
-        if (kind == VideoSourceKind.ScreenCast && IsScreenCastAlreadyActiveError(error)) {
+        if (kind == VideoSourceKind.ScreenCast && IsScreenCastAlreadyActiveError(message)) {
             ClearRecordingError(VideoSourceKind.ScreenCast);
             _screenCastChatId.Value = null;
             _ = ShowScreenCastAlreadyActiveModal(CancellationToken.None);
             return;
         }
 
-        GetErrorState(kind).Value = error;
+        GetErrorState(kind).Value = Localize(code, arg, message);
         // Camera keeps the session alive — the user can cycle cameras to recover
         // (see VideoRecorder.switchCamera — it restarts from the interrupted state).
         // ScreenCast has no such retry path: a failed getDisplayMedia (user cancel,
@@ -183,6 +187,17 @@ public partial class ChatVideoUI
 
     private async Task ShowScreenCastAlreadyActiveModal(CancellationToken cancellationToken)
         => await ModalUI.Show(new ScreenCastAlreadyActiveModal.Model(), cancellationToken).ConfigureAwait(true);
+
+    private string Localize(string code, string arg, string message)
+        // Codes come from video-recorder.ts; anything else is browser or server
+        // wording we don't own, so it reaches the user untranslated.
+        => code switch {
+            "cameraUnavailable" => arg.IsNullOrEmpty()
+                ? L.Video_CameraUnavailable
+                : L.Video_CameraUnavailableNamed_Format(arg),
+            "restartRequired" => L.Video_RestartRequired,
+            _ => message,
+        };
 
     private static bool IsScreenCastAlreadyActiveError(string error)
         => error.Contains("Another screencast is already active", StringComparison.OrdinalIgnoreCase)

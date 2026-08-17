@@ -287,11 +287,28 @@ run on its own schedule, or not at all.
 
 ## 6. Smaller items
 
-- **TypeScript with no localization path**: `web-auth.ts:45` raises a raw
-  `alert()`; `video-recorder.ts:120,2893` produces camera-failure text that
-  reaches the user as toast text. Neither can read the catalog.
+- **Video recorder errors — done.** `video-recorder.ts` now hands C# an error
+  code plus its argument instead of English prose, and `ChatVideoUI.Localize`
+  maps the code onto `Video_CameraUnavailable`,
+  `Video_CameraUnavailableNamed_Format` and `Video_RestartRequired`. The old
+  framing ("TypeScript with no localization path") missed that this text already
+  crossed into C# via `OnRecordingError` — and that the same sink was being fed
+  a localized string from `ChatVideoUI.StateSync.cs:113` and an English one from
+  JS. Errors we don't originate — browser `DOMException`s, the server's
+  screencast message — carry an empty code and still reach the user as raw text;
+  that is unavoidable without the browser translating its own messages.
+- **`web-auth.ts:45` raises a raw `alert()`** when the sign-in popup is blocked.
+  Unlike the video errors this has no C#-ward channel — `AccountUI.cs:144` calls
+  `signIn` one-way — so it needs either a return value carrying a code or the
+  localized text passed in. Small, but it touches sign-in, so it was left out of
+  the pass above.
+- **`service-worker.ts:169,172`** falls back to an English `'Incoming call'`.
+  Genuinely catalog-less: no app, no DOM. §3's web push track puts the catalog
+  in the worker, which fixes this as a side effect.
 - **`App.Server` pre-language pages**: `ErrorServerPage`, `RootServerPage`
-  render before the UI language is resolved. Leave English.
+  render before the UI language is resolved. Leave English — but note
+  `RootServerPage.razor:33` is where the hardcoded `<html lang="en">` lives that
+  §5 flags for SEO.
 
 ---
 

@@ -1240,6 +1240,10 @@ public static class LocalizedStringsLocalizerExt
         public string Video_YesContinue => l["Video_YesContinue"].Value;
         public string Video_StopNow => l["Video_StopNow"].Value;
         public string Video_FailedToStartRecording => l["Video_FailedToStartRecording"].Value;
+        public string Video_CameraUnavailable => l["Video_CameraUnavailable"].Value;
+        public string Video_CameraUnavailableNamed_Format(object arg0)
+            => l["Video_CameraUnavailableNamed_Format", arg0].Value;
+        public string Video_RestartRequired => l["Video_RestartRequired"].Value;
         public string Video_HideChat => l["Video_HideChat"].Value;
         public string Video_ShowChat => l["Video_ShowChat"].Value;
         public string Video_StartVideo => l["Video_StartVideo"].Value;
