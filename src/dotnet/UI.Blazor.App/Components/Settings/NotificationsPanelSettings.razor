@@ -5,10 +5,10 @@
     var m = State.Value;
 }
 
+<p class="topic-description">
+    A chat you've read stays in the notifications panel for a while, then drops out on its own.
+</p>
 <Tile Class="notifications-panel-settings">
-    <p class="c-description">
-        A chat you've read stays in the notifications panel for a while, then drops out on its own.
-    </p>
     @foreach (var option in Options) {
         var isSelected = m.Retention == option;
         <TileItem Click="@(() => OnSelect(option))">

@@ -35,6 +35,13 @@ body.narrow .close-settings-btn {
     @apply text-caption-6;
 }
 
+/* Sits between a TileTopic and its tile: the negative margins pull it against
+   the topic and leave the tile the 8px gap the topic would have given it */
+.settings-tab .topic-description {
+    @apply -mt-1 -mb-2;
+    @apply text-caption-6 text-03;
+}
+
 /* ── Push to Talk tab ── */
 
 .ptt-practice .c-readout {
