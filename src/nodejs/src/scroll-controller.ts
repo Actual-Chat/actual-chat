@@ -258,6 +258,11 @@ export class ScrollController {
                 else if (Math.abs(landed - this.boundary) > FixPrecisionPx) {
                     this.over += this.boundary - landed;
                     this.boundary = landed;
+                    // What the band contributes to the transform is a function of `over`, so re-aiming
+                    // one without the other leaves the screen owing the difference - paid back over the
+                    // next two frames as a step out and a step home. Restored the way the crossing seed
+                    // does it, which is the only other place `over` is assigned rather than nudged.
+                    this.nudge(this.over - signedOverscroll(this.over) - this.overscrollOffset);
                     if (this.phase !== 'engaged')
                         this.engage(0);
                 }
