@@ -31,7 +31,7 @@
     <MemoryPackVersion>1.21.4</MemoryPackVersion>
     <MessagePackVersion>3.1.8</MessagePackVersion>
     <SemanticKernelVersion>1.76.0</SemanticKernelVersion>
-    <XamarinAndroidLifecycle>2.10.0.2</XamarinAndroidLifecycle>
+    <XamarinAndroidLifecycle>2.11.0.1</XamarinAndroidLifecycle>
   </PropertyGroup>
   <!--
     MAUI is not fully compatible with centralized packages management:
@@ -53,11 +53,11 @@
     <PackageVersion Include="Plugin.Firebase.Crashlytics" Version="4.0.0" />
     <PackageVersion Include="Plugin.Maui.Audio" Version="4.0.0" />
     <!-- Android -->
-    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.18.0" />
-    <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.6.0" />
-    <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.6.0" />
+    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.19.0.1" />
+    <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.6.0.1" />
+    <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.6.0.1" />
     <PackageVersion Include="Xamarin.AndroidX.DataStore.Preferences" Version="1.2.1" />
-    <PackageVersion Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.8.9.2" />
+    <PackageVersion Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.8.9.4" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Common" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Common.Java8" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Runtime" Version="$(XamarinAndroidLifecycle)" />
@@ -67,6 +67,7 @@
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Process" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Media" Version="1.8.0" />
+    <PackageVersion Include="Xamarin.AndroidX.Work.Runtime" Version="2.11.2.1" />
     <PackageVersion Include="Xamarin.Firebase.Analytics" Version="123.2.0" />
     <PackageVersion Include="Xamarin.Firebase.Crashlytics" Version="120.0.6" />
     <PackageVersion Include="Xamarin.Firebase.Messaging" Version="125.0.2" />

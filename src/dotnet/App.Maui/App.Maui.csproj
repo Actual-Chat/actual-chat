@@ -176,6 +176,7 @@
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.Process" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.Runtime" />
     <PackageReference Include="Xamarin.AndroidX.Media" />
+    <PackageReference Include="Xamarin.AndroidX.Work.Runtime" />
     <PackageReference Include="Plugin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Crashlytics" />

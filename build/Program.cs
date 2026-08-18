@@ -453,6 +453,7 @@ internal static class Program
                     "-maxCpuCount",
                     "-nodeReuse:false",
                     "-f net11.0-maccatalyst",
+                    @"/p:TargetFrameworks=\""net11.0-maccatalyst;net11.0\""", // otherwise needs maui-android etc
                     "-p:RuntimeIdentifier=maccatalyst-arm64",
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
