@@ -158,7 +158,6 @@ export class InfiniteList extends VirtualList {
     private readonly stability = new StabilityTracker();
     private readonly heights: ItemHeightController | null;
     private readonly visibleKeys = new Set<string>();
-    private readonly heightCache = new Map<string, number>();
     private readonly tOffsetBaseline = readTOffsetBaseline();
 
     private items = new Array<InfiniteListItem>();
@@ -349,7 +348,6 @@ export class InfiniteList extends VirtualList {
         this.items = [];
         this.indexByKey = new Map<string, number>();
         this.offsets = [0];
-        this.heightCache.clear();
         this.visibleKeys.clear();
         this.chainStart = Math.round(this.wrapperSize / 2) + this.tOffsetBaseline;
         this.setTOffset(this.tOffsetBaseline);
@@ -638,7 +636,7 @@ export class InfiniteList extends VirtualList {
             const item: InfiniteListItem = existing ?? {
                 key,
                 ref: itemRef,
-                height: this.heightCache.get(key) ?? -1,
+                height: -1,
                 mustSkipKey: false,
             };
             if (existing == null)
@@ -662,7 +660,6 @@ export class InfiniteList extends VirtualList {
             this.unobserveItem(item.ref);
             this.visibleKeys.delete(item.key);
             this.heights?.untrack(item.key);
-            this.heightCache.delete(item.key);
         }
         this.items = items;
         this.indexByKey = indexByKey;
@@ -688,7 +685,6 @@ export class InfiniteList extends VirtualList {
             const height = this.heights?.remeasure(item.key) ?? item.ref.getBoundingClientRect().height;
             if (height > 0 || isLaidOut(item.ref)) {
                 item.height = height;
-                this.heightCache.set(item.key, height);
                 continue;
             }
             if (item.height >= 0)
@@ -1467,7 +1463,6 @@ export class InfiniteList extends VirtualList {
             return;
 
         this.items[index].height = height;
-        this.heightCache.set(key, height);
         // Mid-render the offsets belong to the previous item set, so a re-layout here would anchor
         // against a chain that no longer exists; applyRender lays out once at the end anyway.
         if (!this.isApplyingRender)
@@ -1505,7 +1500,6 @@ export class InfiniteList extends VirtualList {
                 continue;
 
             this.items[index].height = height;
-            this.heightCache.set(key, height);
             hasItemChanges = true;
         }
 
