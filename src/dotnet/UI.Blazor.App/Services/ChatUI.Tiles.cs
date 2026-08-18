@@ -888,12 +888,16 @@ public partial class ChatUI
             if (audioRecordingEntry is not null) {
                 // Hide "Transcribing..." when a real transcription entry already exists
                 // (i.e., the last entry from this author is streaming content).
-                if (!HasPriorStreamingEntry(entries, currentAuthorId!))
+                var (isSuppressed, expiresAt) = GetStreamingSuppression(entries, currentAuthorId!);
+                if (!isSuppressed)
                     entries.Add(audioRecordingEntry);
-                else {
-                    // That answer has a grace period in it, so it goes stale on its own: without this
-                    // the badge would stay hidden until some other change happened to recompute the tile.
-                    Computed.GetCurrent()?.Invalidate(StreamingEntryGap);
+                else if (expiresAt is { } moment) {
+                    // The grace period goes stale on its own, so the tile has to come back when it
+                    // does - at that moment, not a whole gap after this render, or the badge returns
+                    // late by however much of the gap had already elapsed before it.
+                    var delay = moment - Clocks.ServerClock.Now;
+                    if (delay > TimeSpan.Zero)
+                        Computed.GetCurrent()?.Invalidate(delay);
                 }
             }
         }
@@ -1547,7 +1551,10 @@ public partial class ChatUI
         return (currentId, actualOffset);
     }
 
-    private bool HasPriorStreamingEntry(IList<ChatEntry> entries, AuthorId ownAuthorId)
+    // Null ExpiresAt with IsSuppressed means only a change can lift it - there is nothing to time out.
+    private (bool IsSuppressed, Moment? ExpiresAt) GetStreamingSuppression(
+        IList<ChatEntry> entries,
+        AuthorId ownAuthorId)
     {
         // Depth counts the caller's own audio entries rather than list positions, so anyone else
         // talking in between can't push the transcript out of the window.
@@ -1560,19 +1567,19 @@ public partial class ChatUI
             if (entry.AuthorId != ownAuthorId || !(entry.HasAudio || entry.IsContentStreaming))
                 continue;
             if (entry.IsContentStreaming)
-                return true;
+                return (true, null);
 
             // IsContentStreaming goes false the moment recognition closes one entry and stays false
             // until it opens the next, while the client keeps rendering that entry as streaming from
             // its own reader. Without this grace period "Transcribing..." flashes into every gap,
             // right next to a transcript the user can see is still running.
             if (entry.EndsAt is { } endsAt && now - endsAt < StreamingEntryGap)
-                return true;
+                return (true, endsAt + StreamingEntryGap);
 
             scanned++;
         }
 
-        return false;
+        return (false, null);
     }
 
     // Nested types
