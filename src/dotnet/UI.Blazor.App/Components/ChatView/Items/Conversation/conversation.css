@@ -157,10 +157,9 @@ body.hoverable .c-lc-showmore:hover {
 }
 
 .conversation-header {
-    /* Own padding, not spacing on any ancestor: only elements carrying data-key are measured, so a
-       group li's own box is invisible to the list and any gap there drifts its geometry. bg-01 is the
-       chat's own ground, so this reads as blank space. */
-    @apply pt-4;
+    /* No padding of its own, and neither has the collapsed form: expanding or collapsing swaps one for
+       the other, so any box the two do not share moves everything around it by that much on every
+       toggle. Measured at 16px when this carried pt-4 and the short form did not. */
     @apply rounded-t-lg;
     @apply bg-01;
     @apply min-h-15;
