@@ -10,6 +10,7 @@ public static class WalkieTalkieMicCapability
     private static readonly Lock Lock = new();
     private static readonly HashSet<object> Holders = new(ReferenceEqualityComparer.Instance);
     private static Action<bool>? _handler;
+    private static Action? _blockedHandler;
     private static ILogger Log => field ??= StaticLog.For(typeof(WalkieTalkieMicCapability));
 
     public static void SetHandler(Action<bool> handler)
@@ -17,6 +18,27 @@ public static class WalkieTalkieMicCapability
 
     public static void ResetHandler(Action<bool> handler)
         => Interlocked.CompareExchange(ref _handler, null, handler);
+
+    public static void SetBlockedHandler(Action handler)
+        => Volatile.Write(ref _blockedHandler, handler);
+
+    public static void ResetBlockedHandler(Action handler)
+        => Interlocked.CompareExchange(ref _blockedHandler, null, handler);
+
+    public static void ReportBlocked()
+    {
+        // The host's job, not ours: a permission prompt needs a foregrounded activity, and a
+        // headless reply has no way to reach one except through a notification.
+        if (Volatile.Read(ref _blockedHandler) is not { } handler)
+            return;
+
+        try {
+            handler.Invoke();
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Couldn't report the blocked microphone");
+        }
+    }
 
     public static Task HoldWhile(Func<Task> action)
     {

@@ -13,6 +13,7 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
     private readonly Lock _lock = new();
     private bool _isAccelerometerOn;
     private bool _isProximityOn;
+    private Moment _lastSampleAt;
 
     private ILogger Log => field ??= hub.LogFor(GetType());
 
@@ -45,6 +46,8 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
                 return;
 
             _isAccelerometerOn = false;
+            // Or a stale stamp would gate the first sample after the next start.
+            _lastSampleAt = default;
             Accelerometer.Default.ReadingChanged -= OnReadingChanged;
             try {
                 Accelerometer.Default.Stop();
@@ -57,8 +60,17 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
 
     private void OnReadingChanged(object? sender, AccelerometerChangedEventArgs e)
     {
+        // SensorSpeed.UI is only a hint: whenever another app pins the accelerometer at its max
+        // rate the shared HAL rate rises and every connection gets the flood (470Hz measured on a
+        // OnePlus CPH2747 against our 15Hz request), which would run three detectors and two locks
+        // that often on the platform main thread.
+        var now = hub.Clocks.CpuClock.Now;
+        if (now - _lastSampleAt < Constants.Audio.GestureSampleMinPeriod)
+            return;
+
+        _lastSampleAt = now;
         var a = e.Reading.Acceleration;
-        OnSample(new SensorSample(hub.Clocks.CpuClock.Now, a.X, a.Y, a.Z));
+        OnSample(new SensorSample(now, a.X, a.Y, a.Z));
     }
 
 #if ANDROID

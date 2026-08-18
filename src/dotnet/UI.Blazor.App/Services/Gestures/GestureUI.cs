@@ -13,9 +13,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     private static readonly GestureOptions DisarmedOptions = new(false, false, false, ShakeSensitivity.Medium);
 
     private readonly GestureRecognizer _recognizer = new(DisarmedOptions);
-    // Ring of the last ~5s of samples (at SensorSpeed.UI), logged on FaceDown fire - the only
-    // forensic record of what led to a gesture once it's fired on-device.
-    private readonly SensorSample[] _recentSamples = new SensorSample[80];
+    // Ring of the last ~5s of samples (at Constants.Audio.GestureSampleMinPeriod), logged on
+    // FaceDown fire - the only forensic record of what led to a gesture once it's fired on-device.
+    private readonly SensorSample[] _recentSamples = new SensorSample[100];
     private int _recentSampleIndex;
     private string _lastGuardStatus = "off";
     private volatile bool _isPracticeMode;

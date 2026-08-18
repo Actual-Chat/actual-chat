@@ -31,6 +31,15 @@ public static class WalkieTalkieWakeHandler
             // exemption window; the service self-guards the 5s startForeground rule.
             isServiceShown = ShowForegroundService(chatId, InitialTitle);
         }
+        // No activity has run in this process, so nothing can have started the service while the
+        // app was visible - which is the only way Android hands out the while-in-use microphone.
+        // This reply cannot record, and saying so now beats letting the user gesture into silence:
+        // the notification's full-screen intent brings the app up over the keyguard, and that is
+        // what earns the grant back.
+        if (!MainActivity.HasEverRun) {
+            Log.LogWarning("Wake in a process with no activity - the microphone can't be granted yet");
+            MicrophoneBlockedNotification.ShowUnavailable();
+        }
 
         try {
             BlazorWebViewApp.EnsureStarted();

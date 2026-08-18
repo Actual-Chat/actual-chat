@@ -26,6 +26,13 @@ public class AndroidActivitiesBackend : ActivitiesBackend
             if (IsStale())
                 return;
 
+            // MainActivity raises the armed service from OnCreate, and it's the only start that
+            // happens with the app reliably visible - the one Android grants the microphone type
+            // on. Hiding it here (a warm start leaves _isShown set from the previous scope) would
+            // stop it, and the re-show would run from the background with the mic type lost.
+            if (MauiPreferences.IsWalkieArmed)
+                return;
+
             HideImpl();
         });
     }
@@ -74,6 +81,8 @@ public class AndroidActivitiesBackend : ActivitiesBackend
     public static void Hide() => HideImpl();
 
     // Protected/internal methods
+
+    protected override bool IsArmedPersisted => MauiPreferences.IsWalkieArmed;
 
     protected override void OnArmedChanged(bool isArmed)
     {

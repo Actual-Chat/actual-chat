@@ -14,6 +14,13 @@ public static class NotificationHandler
         if (NotificationHelper.NotificationViewAction != intent.Action)
             return;
 
+        if (intent.GetBooleanExtra(MainActivity.RequestMicrophonePermissionExtraKey, false)) {
+            // Only an activity can show the permission dialog, which is the whole reason the
+            // microphone-blocked notification exists - the reply that hit this had no way there.
+            MicrophoneBlockedNotification.Dismiss();
+            MainActivity.Current.RequestMicrophonePermission();
+        }
+
         if (intent.GetBooleanExtra(IncomingCallNotifications.FullScreenExtraKey, false)) {
             DebugLog?.LogInformation("CALL_TRACE: HandleIntent full-screen intent, isColdStart={IsColdStart}", isColdStart);
             // Over the lock screen we don't navigate to the chat (it opens on go-to-chat). On a cold
