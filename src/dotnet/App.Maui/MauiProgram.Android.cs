@@ -40,6 +40,8 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(c => new AndroidNotificationsPermission(c.AppUIHub()));
         services.AddScoped<IDeviceNotifications>(_ => new AndroidDeviceNotifications());
         services.AddScoped<IIncomingCallsBridge>(_ => new AndroidIncomingCallsBridge());
+        services.AddScoped<IFullScreenCallsAvailability>(c =>
+            new AndroidFullScreenCallsAvailability(c.LogFor<AndroidFullScreenCallsAvailability>()));
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
         services.AddScoped<BatteryOptimizationHandler>(c => new AndroidBatteryOptimizationHandler(c.AppUIHub()));
         services.AddSingleton(c => new NativeGoogleAuth(c));
