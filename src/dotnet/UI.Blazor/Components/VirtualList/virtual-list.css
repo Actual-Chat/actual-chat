@@ -11,6 +11,14 @@
     contain: strict;
 }
 
+/* Not a decoration the consumer opts into: the scroll space is a fixed 4,000,000px that the
+   chain floats around the middle of, so a real scrollbar would be a sliver whose position means
+   nothing. FiniteList's spacers cover the unloaded ranges exactly, so its scrollbar is honest and
+   it keeps the choice. */
+.virtual-list.infinite-list {
+    @apply no-scrollbar;
+}
+
 .virtual-list > .data.render-index {
     @apply flex-none hidden;
     overflow-anchor: none;
@@ -141,6 +149,27 @@ body.narrow .list-view-layout.has-audio-panel-header .virtual-list > .c-wrapper 
     @apply min-h-14;
 }
 
+/* While the list owns this item's height, its own box says nothing about what the content wants -
+   that's read off the content element instead. min-height has to go for an item to reach 0, and
+   flex-shrink would otherwise compress the content to whatever height we wrote, making the content
+   element measure back exactly what we just set. */
+/* Selector depth matches the .item min-height rules above on purpose: anything shorter loses to
+   them, the item floors at 24px, and a plain message - which is 24px - animates from its own
+   height to itself, i.e. not at all. */
+.virtual-list > .c-wrapper > ul.c-virtual-container .item.c-height-controlled {
+    min-height: 0;
+    transition: height 150ms linear;
+}
+/* Only while the written height is out of step with the content - waiting out the settle delay, or
+   transitioning towards it. A settled controlled item is exactly its content's height, and clipping it
+   permanently cuts off whatever is meant to escape the box - the hover menu. */
+.virtual-list > .c-wrapper > ul.c-virtual-container .item.c-height-controlled.c-height-unsettled {
+    overflow: hidden;
+}
+.virtual-list > .c-wrapper > ul.c-virtual-container .item.c-height-controlled > * {
+    flex-shrink: 0;
+}
+
 .virtual-list > .c-wrapper > ul.c-virtual-container .group {
     @apply min-h-6;
     overflow-anchor: none;
@@ -153,4 +182,13 @@ body.narrow .list-view-layout.has-audio-panel-header .virtual-list > .c-wrapper 
 .virtual-list .skeleton-container {
     @apply flex flex-nowrap items-stretch content-start justify-start flex-col;
     overflow-anchor: none;
+}
+
+/* Laid out so it can be measured, positioned so it cannot push anything: the model needs the block
+   separator's exact outer height even when every item carrying one is outside the loaded window. */
+.virtual-list > .c-wrapper > ul.c-virtual-container > .c-separator-measure {
+    @apply absolute w-full;
+    @apply invisible pointer-events-none;
+    top: 0;
+    left: 0;
 }

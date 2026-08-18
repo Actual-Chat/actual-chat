@@ -1,9 +1,20 @@
+using ActualChat.Users;
+
 namespace ActualChat.UI.Blazor.Services;
 
 // Methods that mutate / read configurable client-side state — onboarding,
 // bubbles, audio sync, render mode, thread-pool tuning.
 public sealed partial class DebugUI
 {
+    [JSInvokable]
+    public async Task SetVirtualListOverlay(bool enable)
+    {
+        await Hub.UserSettingsUI.UserAppSettings()
+            .Update(x => x with { IsVirtualListOverlayEnabled = enable })
+            .ConfigureAwait(false);
+        Log.LogInformation("SetVirtualListOverlay({Enable}): done", enable);
+    }
+
 #pragma warning disable CA1822 // Can be static
     [JSInvokable]
     public string GetThreadPoolSettings()

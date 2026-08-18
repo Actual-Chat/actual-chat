@@ -72,6 +72,8 @@ public sealed record ConversationViewState(
 
 public partial class ChatUI
 {
+    private const int OwnAudioEntryScanDepth = 10;
+    private static readonly TimeSpan StreamingEntryGap = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
     // Server-side only: it reaches Google Managed Prometheus via the server's OTel pipeline, and MAUI
     // registers no meter at all - a device reports these numbers through the slow-build log below.
@@ -886,9 +888,13 @@ public partial class ChatUI
             if (audioRecordingEntry is not null) {
                 // Hide "Transcribing..." when a real transcription entry already exists
                 // (i.e., the last entry from this author is streaming content).
-                var hasPriorStreamingEntry = HasPriorStreamingEntry(entries, currentAuthorId!);
-                if (!hasPriorStreamingEntry)
+                if (!HasPriorStreamingEntry(entries, currentAuthorId!))
                     entries.Add(audioRecordingEntry);
+                else {
+                    // That answer has a grace period in it, so it goes stale on its own: without this
+                    // the badge would stay hidden until some other change happened to recompute the tile.
+                    Computed.GetCurrent()?.Invalidate(StreamingEntryGap);
+                }
             }
         }
         if (entries.Count == 0 && conversations.Length == 0)
@@ -1141,7 +1147,12 @@ public partial class ChatUI
     protected virtual async Task<ChatEntry?> GetAudioRecordingEntry(ChatId chatId, AuthorId ownAuthorId, CancellationToken cancellationToken)
     {
         var state = await Hub.AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
-        var isRecordingInTheChat = state.ChatId == chatId && state.RecordingStartTime.EpochOffsetTicks > 0;
+        // ChatId is the microphone session: set by MarkStarting, cleared by MarkStopped. Deliberately NOT
+        // RecordingStartTime, which OnRecordingStateChange sets and clears per *utterance* from the VAD —
+        // gating on it made this entry blink in and out for the whole session (measured: present ~5s out
+        // of every ~52s). While the mic is on for a chat there must always be an entry standing in for
+        // the upcoming transcript.
+        var isRecordingInTheChat = state.ChatId == chatId;
         if (!isRecordingInTheChat)
             return null;
 
@@ -1153,7 +1164,11 @@ public partial class ChatUI
         chatEntry = new TextEntry(entryId, 0) {
             AuthorId = ownAuthorId,
             Content = "",
-            BeginsAt = state.RecordingStartTime,
+            // The entry now outlives the first utterance, so RecordingStartTime is still epoch when the
+            // mic has just been switched on.
+            BeginsAt = state.RecordingStartTime.EpochOffsetTicks > 0
+                ? state.RecordingStartTime
+                : Clocks.SystemClock.Now,
             // TODO: rename SendingTag to ClientTag.
             // We need not null value because otherwise entry will not be included in the result view.
             SendingTag = new AudioRecordingMessageTag(),
@@ -1532,21 +1547,29 @@ public partial class ChatUI
         return (currentId, actualOffset);
     }
 
-    private static bool HasPriorStreamingEntry(IList<ChatEntry> entries, AuthorId ownAuthorId)
+    private bool HasPriorStreamingEntry(IList<ChatEntry> entries, AuthorId ownAuthorId)
     {
-        var j = 0;
-        for (var i = entries.Count - 1; i >= 0; i--) {
-            if (j > 50) // scan depth is 50 entries
-                break;
-            j++;
+        // Depth counts the caller's own audio entries rather than list positions, so anyone else
+        // talking in between can't push the transcript out of the window.
+        var now = Clocks.SystemClock.Now;
+        var scanned = 0;
+        for (var i = entries.Count - 1; i >= 0 && scanned < OwnAudioEntryScanDepth; i--) {
             var entry = entries[i];
-            if (entry.AuthorId != ownAuthorId)
+            if (entry.AuthorId != ownAuthorId || !(entry.HasAudio || entry.IsContentStreaming))
                 continue;
             if (entry.IsContentStreaming)
                 return true;
-            if (entry.HasAudio)
-                return false;
+
+            // IsContentStreaming goes false the moment recognition closes one entry and stays false
+            // until it opens the next, while the client keeps rendering that entry as streaming from
+            // its own reader. Without this grace period "Transcribing..." flashes into every gap,
+            // right next to a transcript the user can see is still running.
+            if (entry.EndsAt is { } endsAt && now - endsAt < StreamingEntryGap)
+                return true;
+
+            scanned++;
         }
+
         return false;
     }
 

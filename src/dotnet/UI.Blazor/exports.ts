@@ -54,6 +54,7 @@ export * from './Components/TextBox/text-box';
 export * from './Components/TextInput/text-input';
 export * from './Components/Tooltip/tooltip-host';
 export * from './Components/TotpInput/totp-input';
+export * from './Components/VirtualList/virtual-list';
 export * from './Components/VirtualList/finite-list';
 export * from './Components/VirtualList/infinite-list';
 export * from './Components/VisualMediaViewerModal/visual-media-viewer';

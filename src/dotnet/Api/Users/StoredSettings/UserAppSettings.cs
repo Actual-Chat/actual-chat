@@ -19,4 +19,6 @@ public sealed partial record UserAppSettings : StoredSettings, IHasOrigin, IHasK
     // MemoryPackOrder(8) reserved (was IsFaceDownMicStopEnabled, never shipped) — do not reuse.
     // Inverted so null/absent means ON: the face-down mic stop is enabled for everyone by default.
     [DataMember, MemoryPackOrder(9), Key(9)] public bool? IsFaceDownMicStopDisabled { get; init; }
+    // Toggled from the JS console via debugUI.showVirtualListOverlay(), not from the Settings UI.
+    [DataMember, MemoryPackOrder(10), Key(10)] public bool? IsVirtualListOverlayEnabled { get; init; }
 }

@@ -16,6 +16,8 @@ namespace ActualChat.UI.Blazor.Services;
 public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DebugUI.init";
+    private static readonly string JSApplyVirtualListOverlayMethod =
+        $"{BlazorUICoreModule.ImportName}.DebugUI.applyVirtualListOverlay";
 
     private DotNetObjectReference<DebugUI>? _blazorRef;
 
@@ -31,12 +33,30 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
     {
         _blazorRef = DotNetObjectReference.Create(this);
         WhenReady = JS.InvokeVoidAsync(JSInitMethod, _blazorRef).AsTask();
+        // Kept off WhenReady: a settings read is far slower than the init call, and everything else
+        // awaiting WhenReady only needs the JS side to exist.
+        _ = RestoreVirtualListOverlay();
     }
 
     public void Dispose()
     {
         _blazorRef.DisposeSilently();
         _blazorRef = null;
+    }
+
+    // Private methods
+
+    private async Task RestoreVirtualListOverlay()
+    {
+        try {
+            await WhenReady.ConfigureAwait(false);
+            var settings = await Hub.UserSettingsUI.UserAppSettings().Get().ConfigureAwait(false);
+            if (settings.IsVirtualListOverlayEnabled == true)
+                await JS.InvokeVoidAsync(JSApplyVirtualListOverlayMethod, true).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "RestoreVirtualListOverlay failed");
+        }
     }
 
     [JSInvokable]

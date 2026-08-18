@@ -15,6 +15,8 @@ public static class FiniteList
 public sealed partial class FiniteList<TItem>
     where TItem : class, IVirtualListItem
 {
+    // Rendered once more off-layout, so the position model can measure it
+    [Parameter] public RenderFragment? Separator { get; set; }
     protected override ValueTask<IJSObjectReference> CreateJSRef()
         => JS.InvokeAsync<IJSObjectReference>(FiniteList.JSCreateMethod,
             Ref,

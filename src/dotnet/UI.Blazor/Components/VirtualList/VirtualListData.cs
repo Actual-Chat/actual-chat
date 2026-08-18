@@ -23,6 +23,10 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
 
     public int? BeforeCount { get; init; }
     public int? AfterCount { get; init; }
+    // Read by FiniteList only. It models every position from one item size, so a block separator's
+    // extra height has to be known for the items it has never rendered too - otherwise the spacers
+    // are short by one separator each and the difference lands in the scroll position.
+    public IReadOnlyList<int>? SeparatorIndexes { get; init; }
     public int? EstimatedCount { get; init; }
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }
@@ -40,10 +44,13 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     public TItem? LastItem => field ??= GetLast(Items);
 
     public bool IsSimilarTo(VirtualListData<TItem> other)
+        // A separator moving changes every position after it even when the loaded items are the same
         => ReferenceEquals(this, other) ||
             (HasVeryFirstItem == other.HasVeryFirstItem
             && HasVeryLastItem == other.HasVeryLastItem
             && ScrollToKey == other.ScrollToKey
+            && (ReferenceEquals(SeparatorIndexes, other.SeparatorIndexes)
+                || (SeparatorIndexes?.SequenceEqual(other.SeparatorIndexes ?? []) ?? false))
             && Items.SequenceEqual(other.Items));
 
     // Private members

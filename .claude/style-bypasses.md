@@ -26,3 +26,9 @@ The **quoted snippet is the identity** — match on it first. The line number is
 the original start line and only a hint, since it drifts as the file changes;
 the rule is an abbreviated label, since its wording changes as the guide is
 edited. The reason can be as short as whose decision it was.
+
+## src/dotnet/UI.Blazor.App/Testing/VirtualListTestService.cs
+
+- L3 `public class VirtualListTestService(IServiceProvider services) : IComputeService`
+  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
+  members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)

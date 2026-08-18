@@ -6,37 +6,44 @@
 
 @{
     var defaultEdge = (VirtualListEdge)(DefaultEdge ?? 0);
+    var renderDirection = (VirtualListRenderDirection)(RenderDirection ?? 0);
+    var mustAnimateItemHeight = (AnimateItemHeight ?? 0) != 0;
 }
-
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>VirtualList Test Page</MainHeader>
 
 <div class="test-page-wrapper">
-<InfiniteList
-    Style="height: 600px;"
-    SpacerSize="10_000"
-    SkeletonCount="2"
-    DefaultEdge="@defaultEdge"
-    DataSource="this">
-    <Item>
-        <TestListItemBadge ItemRef="@context" />
-    </Item>
-    <Skeleton>
-        <div>
-            Skeleton @(context)...
-        </div>
-    </Skeleton>
-</InfiniteList>
+    <InfiniteList
+        Style="height: 600px;"
+        SpacerSize="10_000"
+        SkeletonCount="2"
+        DefaultEdge="@defaultEdge"
+        RenderDirection="@renderDirection"
+        AnimateItemHeight="@mustAnimateItemHeight"
+        DataSource="this">
+        <Item>
+            <TestListItemBadge ItemRef="@context"/>
+        </Item>
+        <Skeleton>
+            <div>
+                Skeleton @(context)...
+            </div>
+        </Skeleton>
+    </InfiniteList>
 
-<div class="m-3 pl-4">
-    <p>URL parameters:</p>
-    <ul class="list-disc">
-        <li><b>RangeSeed:</b> @RangeSeed</li>
-        <li><b>ContentSeed:</b> @ContentSeed</li>
-    </ul>
-
-</div>
+    <div class="m-3 pl-4">
+        <p>URL parameters:</p>
+        <ul class="list-disc">
+            <li><b>RangeSeed:</b> @RangeSeed &mdash; fixed = a stable item range, omit for one that keeps moving</li>
+            <li><b>ContentSeed:</b> @ContentSeed &mdash; fixed = stable item heights, omit for churn</li>
+            <li><b>DefaultEdge:</b> @defaultEdge (0 = Start, 1 = End)</li>
+            <li><b>RenderDirection:</b> @renderDirection (0 = Natural, 1 = Reverse)</li>
+            <li><b>AnimateItemHeight:</b> @mustAnimateItemHeight (1 = on)</li>
+            <li><b>HeightTransition:</b> @((HeightTransition ?? 1) != 0 ? "always" : "appearance")</li>
+            <li><b>HeightDelay:</b> @(HeightDelay?.Format() ?? "default") &mdash; settle delay, ms</li>
+        </ul>
+    </div>
 </div>
 
 @code {
@@ -46,10 +53,24 @@
     public int? ContentSeed { get; set; } = null;
     [Parameter, SupplyParameterFromQuery]
     public int? DefaultEdge { get; set; } = null;
+    [Parameter, SupplyParameterFromQuery]
+    public int? RenderDirection { get; set; } = null;
+    [Parameter, SupplyParameterFromQuery]
+    public int? AnimateItemHeight { get; set; } = null;
+    [Parameter, SupplyParameterFromQuery]
+    public int? HeightTransition { get; set; } = null;
+    [Parameter, SupplyParameterFromQuery]
+    public int? HeightDelay { get; set; } = null;
 
     public Task<VirtualListData<TestListItemRef>> GetData(
         VirtualListDataQuery query,
         VirtualListData<TestListItemRef> renderedData,
         CancellationToken cancellationToken)
-        => Service.GetItemKeys(query, RangeSeed, ContentSeed, cancellationToken);
+        => Service.GetItemKeys(
+            query,
+            RangeSeed,
+            ContentSeed,
+            (VirtualListEdge)(DefaultEdge ?? 0),
+            new VirtualListTestItemOptions((HeightTransition ?? 1) != 0, HeightDelay),
+            cancellationToken);
 }

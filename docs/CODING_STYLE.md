@@ -935,6 +935,27 @@ See [`.editorconfig`](../.editorconfig) for the complete list of silenced analyz
 
 ## TypeScript
 
+### Measuring time: `performance.now()`, never `Date.now()`
+
+Anything that measures an interval, a duration, a velocity, or an animation's progress uses
+`performance.now()`. `Date.now()` is wall-clock and quantised to a whole millisecond, so a duration
+built from it carries up to 1ms of error and a velocity built from it can be wrong by a large factor:
+two events a frame apart that happen to land in the same millisecond pair make a 50px frame read as
+50,000 px/s. It also moves when the system clock does.
+
+Mixing the two is worse than either, because their epochs are unrelated - a `Date.now()` value compared
+against a `performance.now()` one is out by about 1.7e12, so every such comparison is silently true.
+
+`Date.now()` is still right for a wall-clock instant that leaves the process: a timestamp sent to the
+server, serialised, or shown to a user.
+
+**In the virtual list** (`src/dotnet/UI.Blazor/Components/VirtualList/**` and
+`src/nodejs/src/scroll-controller.ts`) `Date.now()` is banned outright. Every value there is either a
+duration or a deadline, and the component has already been broken twice by this - once by the
+resolution and once by the mixed epochs. A use that is genuinely necessary needs explicit approval and
+a comment saying what it is and why the monotonic clock will not do.
+
+
 TypeScript follows the C# [Control-Flow Statements](#control-flow-statements)
 rules verbatim: `return`, `throw`, `break`, `continue`, and `yield` always get
 their own line, and each is followed by a blank line except in the cases listed

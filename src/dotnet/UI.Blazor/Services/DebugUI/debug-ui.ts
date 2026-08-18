@@ -5,6 +5,7 @@ import { DeviceOrientation, normalizeRotationQuarter, type RotationQuarter } fro
 import { RpcStream } from 'actuallab-rpc';
 import { OnDeviceAwake } from 'on-device-awake';
 import { SvgCache } from '../../Components/Avatar/svg-cache';
+import { VirtualListOverlay } from '../../Components/VirtualList/virtual-list-overlay';
 
 const { infoLog } = getLogs('DebugUI');
 
@@ -275,9 +276,8 @@ export class DebugUI {
         this.showSafeAreas(document.body.classList.contains('show-safe-areas') ? null : true);
     }
 
-    /** On-demand: toggles the VirtualList consistency checker (see virtual-list-debug.ts).
-     *  When on, every live list checks its geometry ~10×/s plus on data-request and render,
-     *  logging inconsistencies and accumulating them in globalThis.__vlDebugs[identity]. */
+    /** On-demand: makes every live InfiniteList compare its geometry model against the DOM after each
+     *  render and layout, warning when an item has drifted from where the model says it is. */
     public static virtualListDebug(enable = true): void {
         const vl = (globalThis as Record<string, unknown>).InfiniteList as
             { setDebugEnabled?: (e: boolean) => unknown } | undefined;
@@ -290,55 +290,18 @@ export class DebugUI {
         infoLog?.log(`virtualListDebug: ${enable ? 'enabled' : 'disabled'}`);
     }
 
-    /** Returns accumulated VirtualList consistency violations across all live lists.
-     *  Pass clear=true to also drain each list's buffer (so a poller doesn't re-report them). */
-    public static listVirtualListViolations(clear = false): unknown[] {
-        const reg = ((globalThis as Record<string, unknown>).__vlDebugs ?? {}) as
-            Record<string, { violations?: unknown[]; clear?: () => void }>;
-        const all: unknown[] = [];
-        for (const d of Object.values(reg)) {
-            if (d.violations)
-                all.push(...d.violations);
-            if (clear)
-                d.clear?.();
-        }
-
-        return all;
+    /** Toggles a one-line metrics overlay on every virtual list — infinite (chat, content tabs) and
+     *  finite (sidebar) alike: render direction, sticky edge, spacers, loaded ends, in-flight request.
+     *  Persisted in UserAppSettings, so it survives reloads and follows the account. */
+    public static showVirtualListOverlay(enable = true): void {
+        VirtualListOverlay.setEnabled(enable);
+        void this.backendRef.invokeMethodAsync('SetVirtualListOverlay', enable);
+        infoLog?.log(`showVirtualListOverlay: ${enable ? 'enabled' : 'disabled'}`);
     }
 
-    /** Returns message-item height changes (post-initial-measurement resizes) across all live lists —
-     *  use to find messages that don't reserve their final height up-front. Requires virtualListDebug(true).
-     *  Returns an offenders summary (by key, largest jump first) plus raw events. Pass clear=true to drain. */
-    public static listMessageResizes(clear = false): unknown {
-        interface Rec { key: string; kind: string; delta: number; ageMs: number; late: boolean }
-        const reg = ((globalThis as Record<string, unknown>).__vlDebugs ?? {}) as
-            Record<string, { itemResizeList?: Rec[]; clearItemResizes?: () => void }>;
-        const all: Rec[] = [];
-        for (const d of Object.values(reg)) {
-            if (d.itemResizeList)
-                all.push(...d.itemResizeList);
-            if (clear)
-                d.clearItemResizes?.();
-        }
-        const byKey = new Map<string, {
-            key: string; kind: string; count: number; totalDelta: number;
-            maxAbsDelta: number; firstAgeMs: number; late: boolean;
-        }>();
-        for (const r of all) {
-            const e = byKey.get(r.key) ?? {
-                key: r.key, kind: r.kind, count: 0, totalDelta: 0,
-                maxAbsDelta: 0, firstAgeMs: r.ageMs, late: false,
-            };
-            e.count++;
-            e.totalDelta += r.delta;
-            e.maxAbsDelta = Math.max(e.maxAbsDelta, Math.abs(r.delta));
-            e.firstAgeMs = Math.min(e.firstAgeMs, r.ageMs);
-            e.late = e.late || r.late;
-            byKey.set(r.key, e);
-        }
-
-        const offenders = [...byKey.values()].sort((a, b) => b.maxAbsDelta - a.maxAbsDelta);
-        return { total: all.length, offenders, raw: all };
+    // Applies the persisted setting on startup — no write-back, unlike showVirtualListOverlay.
+    public static applyVirtualListOverlay(enable: boolean): void {
+        VirtualListOverlay.setEnabled(enable);
     }
 
     public static startFusionMonitor(): void {

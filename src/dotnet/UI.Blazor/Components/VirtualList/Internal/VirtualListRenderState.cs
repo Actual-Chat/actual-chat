@@ -10,6 +10,8 @@ public sealed class VirtualListRenderState
     public Range<string> KeyRange { get; init; }
     public int? BeforeCount { get; init; }
     public int? AfterCount { get; init; }
+    // Indexes of items followed by a block separator, across the whole list
+    public IReadOnlyList<int>? SeparatorIndexes { get; init; }
     public int Count { get; init; }
     public int? EstimatedCount { get; init; }
 
