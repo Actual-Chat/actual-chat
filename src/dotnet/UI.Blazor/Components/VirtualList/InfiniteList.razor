@@ -10,9 +10,6 @@
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
     // We are unable to scroll to the right location until JS client part of the Virtual List created
     var data = Data;
-    var containerStyle = renderIndex == 0
-        ? "top: 0px;"
-        : "";
     var hasVeryFirstItem = data.HasVeryFirstItem;
     var hasVeryLastItem = data.HasVeryLastItem;
     var showOverscrollCue = ShowOverscrollCue
@@ -62,7 +59,7 @@
          class="c-wrapper c-initially-hidden">
 
         <ul @key="@VirtualListSpecialKeys.Container"
-            class="c-virtual-container" style="@containerStyle">
+            class="c-virtual-container">
 
             @if (showOverscrollCue) {
                 <li @key="@VirtualListSpecialKeys.TopOverscrollCue"
