@@ -26,6 +26,15 @@ body.narrow .close-settings-btn {
     @apply py-1.5;
 }
 
+/* ── Tile descriptions ── */
+
+/* Indented to the tile-item label column, so a description lines up with the
+   rows it describes */
+.settings-tab .tile > .c-description {
+    @apply pl-12 pr-16;
+    @apply text-caption-6;
+}
+
 /* ── Push to Talk tab ── */
 
 .ptt-practice .c-readout {
@@ -106,11 +115,6 @@ body.narrow .close-settings-btn {
 
 .data-collection-consent.tile .tile-item {
     @apply h-12;
-}
-.data-collection-consent.tile .c-description,
-.early-access-features.tile .c-description {
-    @apply pl-12 pr-16;
-    @apply text-caption-6;
 }
 
 /* ── Your Account tab ── */
