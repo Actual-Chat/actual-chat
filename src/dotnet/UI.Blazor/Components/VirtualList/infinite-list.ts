@@ -143,6 +143,13 @@ const JumpPriority = {
 export class InfiniteList extends VirtualList {
     public static isDebugEnabled = false;
     private static readonly instances = new Set<InfiniteList>();
+    private static readonly pageLockOwners = new Set<InfiniteList>();
+    private static pageLockSnapshot: {
+        htmlPosition: string,
+        htmlOverflowX: string,
+        bodyPosition: string,
+        bodyOverflowX: string,
+    } | null = null;
 
     public static setDebugEnabled(isEnabled: boolean): void {
         InfiniteList.isDebugEnabled = isEnabled;
@@ -304,6 +311,7 @@ export class InfiniteList extends VirtualList {
 
     public override dispose(): void {
         super.dispose();
+        InfiniteList.setPageLock(this, false);
         // Before the controller goes: it owns the transform, so after it is disposed nothing is left
         // that could take the translation back off a node Blazor has not removed yet.
         this.setTOffset(0);
@@ -1727,9 +1735,20 @@ export class InfiniteList extends VirtualList {
 
         this.isWatchingScreenAnchor = true;
         let stillFrames = 0;
+        let watched = this.screenAnchor;
         const tick = (): void => {
             const anchor = this.screenAnchor;
-            if (this.isDisposed || anchor == null || performance.now() - anchor.at > InteractiveAnchorTtlMs) {
+            // A second interaction can replace the anchor while this loop still runs, and the frames it
+            // has counted belong to the one that is gone: adopting them retires the new anchor early,
+            // dropping the hold before the render it was taken for has arrived.
+            if (anchor !== watched) {
+                watched = anchor;
+                stillFrames = 0;
+            }
+            // The same TTL rule the other two readers use: an anchor that has not been placed yet is
+            // waiting on a render, which on WASM can be seconds away.
+            const ttl = anchor?.isPlaced === false ? ScreenAnchorRenderTtlMs : InteractiveAnchorTtlMs;
+            if (this.isDisposed || anchor == null || performance.now() - anchor.at > ttl) {
                 this.releaseScreenAnchor();
                 return;
             }
@@ -2112,11 +2131,47 @@ export class InfiniteList extends VirtualList {
 
         // Keeps the text editor visible when the virtual keyboard appears or a message is submitted.
         const isPageScrolled = (window.visualViewport?.offsetTop ?? window.scrollY) !== 0;
-        const htmlElement = document.documentElement;
-        htmlElement.style.position = isPageScrolled ? 'fixed' : 'static';
-        htmlElement.style.overflowX = isPageScrolled ? 'hidden' : '';
-        document.body.style.position = isPageScrolled ? 'fixed' : 'static';
-        document.body.style.overflowX = isPageScrolled ? 'hidden' : '';
+        InfiniteList.setPageLock(this, isPageScrolled);
+    }
+
+    // The lock is on the document, so it belongs to whoever still needs it rather than to whoever
+    // wrote it last: one list disposing while another still has the keyboard up would otherwise hand
+    // the page back underneath it. Released on dispose as well - a list torn down with the keyboard
+    // open left html and body fixed for whatever came next, with nothing remaining to undo it.
+    private static setPageLock(owner: InfiniteList, mustLock: boolean): void {
+        const owners = InfiniteList.pageLockOwners;
+        if (mustLock)
+            owners.add(owner);
+        else
+            owners.delete(owner);
+
+        const html = document.documentElement;
+        const body = document.body;
+        if (owners.size !== 0) {
+            // Taken from the first lock rather than assumed: releasing to 'static' would overwrite
+            // whatever the page had inline before, which was never this component's to decide.
+            InfiniteList.pageLockSnapshot ??= {
+                htmlPosition: html.style.position,
+                htmlOverflowX: html.style.overflowX,
+                bodyPosition: body.style.position,
+                bodyOverflowX: body.style.overflowX,
+            };
+            html.style.position = 'fixed';
+            html.style.overflowX = 'hidden';
+            body.style.position = 'fixed';
+            body.style.overflowX = 'hidden';
+            return;
+        }
+
+        const snapshot = InfiniteList.pageLockSnapshot;
+        if (snapshot == null)
+            return;
+
+        InfiniteList.pageLockSnapshot = null;
+        html.style.position = snapshot.htmlPosition;
+        html.style.overflowX = snapshot.htmlOverflowX;
+        body.style.position = snapshot.bodyPosition;
+        body.style.overflowX = snapshot.bodyOverflowX;
     }
 
     // Every scroll target the list computes comes out of the model, so a model that drifts from the DOM
