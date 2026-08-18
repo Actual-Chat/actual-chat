@@ -62,7 +62,10 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply flex-none flex-x items-baseline gap-x-[3px];
 }
 .c-author-meta > .chat-message-kind-icon {
-    @apply -mb-0.5;
+    /* The glyph is an A under a wave, so it should read as a capital of the author-name font: at the
+       inherited 1rem it inks 12px against that font's 11px cap height, and 2.75px down seats it on
+       the shared baseline. Relative, so this stays optical and never moves the row. */
+    @apply relative top-[2.75px];
     @apply text-04 text-text-1;
 }
 
