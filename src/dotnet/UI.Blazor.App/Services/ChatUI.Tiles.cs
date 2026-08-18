@@ -912,7 +912,7 @@ public partial class ChatUI
         if (prevMessage is ChatEntryMessage prevEntryMessage) {
             prevEntry = prevEntryMessage.Entry;
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
-            isPrevAudio = prevEntry.HasAudio || prevEntry.IsContentStreaming;
+            isPrevAudio = IsAudioKind(prevEntry);
             hasVeryFirstItem = prevMessage.Kind == ChatMessageKind.WelcomeBlock;
         }
 
@@ -965,7 +965,7 @@ public partial class ChatUI
                 // A same-author message that switches kind (transcribed vs not) starts a new block,
                 // so its author header signals the kind change.
                 if (!isBlockStart && prevEntry != null && prevEntry.AuthorId == entry.AuthorId
-                    && isPrevAudio != entry.HasAudio)
+                    && isPrevAudio != IsAudioKind(entry))
                     isBlockStart = true;
                 var isForward = entry.Forwarded is not null;
                 var isPrevForward = prevEntry is not null && prevEntry.Forwarded is not null;
@@ -975,7 +975,7 @@ public partial class ChatUI
                     || (isForward && (!isPrevForward || isForwardFromOtherChat));
                 var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
                 var isEntryUnread = entry.LocalId > lastReadEntryId && !isClientMsg;
-                var isAudio = entry.HasAudio;
+                var isAudio = IsAudioKind(entry);
                 var flags = default(ChatMessageFlags);
                 if (isBlockStart)
                     flags |= ChatMessageFlags.BlockStart;
@@ -1460,6 +1460,14 @@ public partial class ChatUI
             Log,
             "Error prefetching chat tiles.",
             CancellationToken.None);
+
+    // What the author header signals as a kind: a streaming entry is audio that has not landed yet,
+    // and the recording placeholder stands in for one while carrying neither Audio nor a
+    // ContentStreamId - only its tag says so.
+    private static bool IsAudioKind(ChatEntry entry)
+        => entry.HasAudio
+            || entry.IsContentStreaming
+            || entry.SendingTag is AudioRecordingMessageTag;
 
     private static bool IsBlockStart(ChatEntry? prevEntry, ChatEntry entry)
     {
