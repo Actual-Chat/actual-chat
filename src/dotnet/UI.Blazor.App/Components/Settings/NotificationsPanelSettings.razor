@@ -3,24 +3,35 @@
 @inherits ComputedStateComponent<AppUIHub, NotificationsPanelSettings.Model>
 @{
     var m = State.Value;
+    _formModel.Retention = m.Retention;
 }
 
-<p class="topic-description">
-    A chat you've read stays in the notifications panel for a while, then drops out on its own.
-</p>
 <Tile Class="notifications-panel-settings">
-    @foreach (var option in Options) {
-        var isSelected = m.Retention == option;
-        <TileItem Click="@(() => OnSelect(option))">
-            <Icon><i class="icon-clock-2 text-2xl"></i></Icon>
-            <Content>@GetLabel(option)</Content>
-            <Right>
-                @if (isSelected) {
-                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
-                }
-            </Right>
-        </TileItem>
-    }
+    <Form Model="@_formModel">
+        <DataAnnotationsValidator/>
+
+        <FormBlock>
+            <p class="c-description">
+                A chat you've read stays in the notifications panel for a while, then drops out on its own.
+            </p>
+            <FormSection
+                For="() => _formModel.Retention"
+                InputId="@_formModel.RetentionFormId"
+                IsLabelInsideInput="true"
+                Label="Drop read chats"
+                IsRequired="true"
+                HideValidationMessage="true">
+                <InputSelect
+                    Value="_formModel.Retention"
+                    ValueExpression="@(() => _formModel.Retention)"
+                    ValueChanged="@((NotificationsPanelRetention retention) => OnRetentionChanged(retention))">
+                    @foreach (var option in Options) {
+                        <option value="@option">@GetLabel(option)</option>
+                    }
+                </InputSelect>
+            </FormSection>
+        </FormBlock>
+    </Form>
 </Tile>
 
 @code {
@@ -34,6 +45,11 @@
         NotificationsPanelRetention.Hours24,
     ];
 
+    private FormModel _formModel = null!;
+
+    protected override void OnInitialized()
+        => _formModel = new FormModel(ComponentIdGenerator);
+
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
 
@@ -42,9 +58,11 @@
         return new(settings.Retention);
     }
 
-    private Task OnSelect(NotificationsPanelRetention retention)
-        => UserSettingsUI.UserNotificationsPanelSettings()
+    private Task OnRetentionChanged(NotificationsPanelRetention retention) {
+        _formModel.Retention = retention;
+        return UserSettingsUI.UserNotificationsPanelSettings()
             .Update(x => x with { Retention = retention }, CancellationToken.None);
+    }
 
     private static string GetLabel(NotificationsPanelRetention retention)
         => retention switch {
@@ -59,6 +77,14 @@
         };
 
     // Nested types
+
+    public sealed class FormModel {
+        public NotificationsPanelRetention Retention { get; set; }
+        public string RetentionFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator)
+            => RetentionFormId = componentIdGenerator.Next("notifications-panel-retention");
+    }
 
     public sealed record Model(NotificationsPanelRetention Retention = NotificationsPanelRetention.Hour1) {
         public static readonly Model None = new();

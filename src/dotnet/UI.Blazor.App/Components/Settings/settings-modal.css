@@ -35,10 +35,8 @@ body.narrow .close-settings-btn {
     @apply text-caption-6;
 }
 
-/* Sits between a TileTopic and its tile: the negative margins pull it against
-   the topic and leave the tile the 8px gap the topic would have given it */
-.settings-tab .topic-description {
-    @apply -mt-1 -mb-2;
+/* Inset by the form block it sits in, so it lines up with the input below it */
+.settings-tab .notifications-panel-settings .c-description {
     @apply text-caption-6 text-03;
 }
 
