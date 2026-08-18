@@ -56,6 +56,16 @@ const MinTOffsetPx = 200;
 // Consecutive frames an anchored element must not move before the list stops holding it. Long enough
 // to bridge the gap between the model reaching its settled heights and the DOM getting there.
 const ScreenAnchorStillFrames = 12;
+// Below this a correction is not worth a style write.
+const StickyPinnedPx = 0.5;
+// What the consumer marks a position:sticky element with, so the list can keep it in step with the
+// content while the rubber band is hiding scroll from it.
+const StickyItemClass = 'vl-sticky';
+// How close to a scroll limit the list starts tracking where its sticky elements sit. An excursion
+// can only begin by crossing a limit, so the last in-band frame before one is always inside this
+// zone; away from the edges the tracking would cost a reflow per scroll event for nothing. Wide
+// enough to cover a frame of the fastest fling measured here (~390px at 60Hz) several times over.
+const StickyTrackingZonePx = 1000;
 // Consecutive frames the position must not move before the list acts on a standing intent - shifting
 // the chain back to the middle, or putting the render direction back. Event-based settle checks can't
 // do this: a fling delivers no events between frames and still passes them, while the position itself
@@ -88,6 +98,13 @@ const DefaultItemHeight = 48;
 // before it - i.e. inside the old range - and therefore animates.
 const EdgeSentinel = Symbol('virtualList.edge');
 type ItemKey = string | symbol;
+
+// A sticky element the consumer has declared, and where it last sat within the content while the
+// scroll was still inside its own band. Null until it has been seen there even once.
+interface StickyItem {
+    readonly ref: HTMLElement;
+    offset: number | null;
+}
 
 interface InfiniteListItem {
     readonly key: string;
@@ -177,6 +194,8 @@ export class InfiniteList extends VirtualList {
     // group has no modelled position at all.
     private screenAnchor: { id: string; top: number; at: number; isPlaced: boolean } | null = null;
     private isWatchingScreenAnchor = false;
+    private hasStickyOffset = false;
+    private stickyRefs = new Array<StickyItem>();
     private pendingJump: Jump | null = null;
     private isAwaitingStability = false;
     private isAwaitingJump = false;
@@ -239,6 +258,7 @@ export class InfiniteList extends VirtualList {
             : null;
         this.scrollController = new ScrollController(
             ref, true, this.containerRef, () => this.computeScrollLimits());
+        this.scrollController.onTransform = () => this.updateStickyItems();
 
         const listenerOptions = { passive: true, signal: this.abortController.signal };
         ref.addEventListener('scroll', this.onScroll, listenerOptions);
@@ -463,6 +483,7 @@ export class InfiniteList extends VirtualList {
         if (!sameKeys(oldKeys, this.items))
             this.lastSentQuery = null;
 
+        this.findStickyItems();
         this.measureItems();
         this.computeOffsets();
         if (!isFullReplacement)
@@ -808,6 +829,103 @@ export class InfiniteList extends VirtualList {
 
     // Where the chain sits in the fixed scroll space, and the only writer of it. The spacer stands
     // between the container's edge and the first item, so it comes out of the same number.
+    // What the rubber band is hiding: how far the scroller has run outside its own band. The transform
+    // cancels exactly this much of the scroll, which is why the content appears not to have moved by
+    // it - but position: sticky is resolved against the real scroll position, so anything sticky has
+    // re-clamped by it and the transform then moves it again. Measured on a bottom overscroll, a
+    // pinned conversation header travelled 140px relative to the content around it.
+    //
+    // Only this term, not the whole transform: the rest of the transform is the spring, which is
+    // motion the user is meant to see and which content and sticky elements share. Cancelling that as
+    // well doubled the problem - measured at 279px against 135px for leaving it alone.
+    private get hiddenScroll(): number {
+        const limits = this.scrollController.getEffectiveScrollLimits();
+        const scrollTop = this.ref.scrollTop;
+        return scrollTop - clamp(scrollTop, limits.min, limits.max);
+    }
+
+    // Holds every sticky element at the offset within the content it last had while the scroll was in
+    // band, so an excursion outside the band moves it exactly as much as it moves everything else.
+    //
+    // Not "cancel the hidden scroll on the pinned ones": which ones are pinned is the hard part, and
+    // three different tests for it were all wrong - against the parent, which for the header moves with
+    // it; against offsetTop, which the engine reports already shifted by the stick; and against the
+    // element's own inset, which mis-fires as soon as a correction has moved it. This needs none of
+    // that. An element that is not pinned already keeps its offset, so its correction is zero without
+    // anything having to know that; a pinned one is exactly the case where the offset changes.
+    //
+    // The baseline has to be tracked in band rather than sampled once the excursion is under way: by
+    // the first frame with a non-zero hidden scroll the element has already slid by that frame's worth
+    // of it, and holding it there only freezes the error. Measured on a bottom overscroll reaching
+    // 300px over 8 frames, sampling late held a pinned conversation header 113px off the content.
+    private updateStickyItems(): void {
+        if (this.stickyRefs.length === 0)
+            return;
+
+        if (this.hiddenScroll === 0) {
+            this.trackStickyItems();
+            return;
+        }
+
+        const containerTop = this.containerRef.getBoundingClientRect().top;
+        this.hasStickyOffset = true;
+        for (const sticky of this.stickyRefs) {
+            const ref = sticky.ref;
+            if (!ref.isConnected || sticky.offset == null)
+                continue;
+
+            const own = translateY(ref.style.transform);
+            const delta = sticky.offset - (ref.getBoundingClientRect().top - own - containerTop);
+            const wanted = Math.abs(delta) < StickyPinnedPx ? '' : `translate3d(0, ${delta}px, 0)`;
+            if (ref.style.transform !== wanted)
+                ref.style.transform = wanted;
+        }
+    }
+
+    // Where each sticky element sits within the content right now, which is what the next excursion
+    // holds it at. Sticking against the scrollport edge is the element's own business and moves this
+    // legitimately, so it is re-read rather than remembered from the render.
+    private trackStickyItems(): void {
+        const limits = this.scrollController.getEffectiveScrollLimits();
+        const scrollOffset = this.ref.scrollTop;
+        if (scrollOffset - limits.min > StickyTrackingZonePx && limits.max - scrollOffset > StickyTrackingZonePx)
+            return;
+
+        // Clearing the whole set before reading any of it costs one reflow instead of one per element,
+        // and happens on the single frame that ends an excursion.
+        if (this.hasStickyOffset) {
+            this.hasStickyOffset = false;
+            for (const sticky of this.stickyRefs)
+                if (sticky.ref.isConnected && sticky.ref.style.transform !== '')
+                    sticky.ref.style.transform = '';
+        }
+
+        const containerTop = this.containerRef.getBoundingClientRect().top;
+        for (const sticky of this.stickyRefs)
+            if (sticky.ref.isConnected)
+                sticky.offset = sticky.ref.getBoundingClientRect().top - containerTop;
+    }
+
+    // Declared by the consumer, with StickyItemClass, rather than discovered: finding them would mean
+    // a computed style for every descendant, and the insets have to be read the same way. Once per
+    // render, since the set only changes when the rendered items do.
+    //
+    // Baselines survive the rebuild: a render can land in the middle of an excursion, and an element
+    // that came back with a fresh one would be held wherever the hidden scroll had already pushed it.
+    private findStickyItems(): void {
+        const offsets = new Map(this.stickyRefs.map(x => [x.ref, x.offset]));
+        const refs = new Array<StickyItem>();
+        for (const ref of this.containerRef.querySelectorAll<HTMLElement>(`:scope .${StickyItemClass}`)) {
+            refs.push({ ref, offset: offsets.get(ref) ?? null });
+            offsets.delete(ref);
+        }
+        this.stickyRefs = refs;
+        // Whatever stopped being sticky would keep its last correction: nothing writes it again.
+        for (const ref of offsets.keys())
+            if (ref.isConnected && ref.style.transform !== '')
+                ref.style.transform = '';
+    }
+
     private writeChainPosition(): void {
         if (!this.isReverse) {
             this.containerRef.style.bottom = '';
@@ -1285,6 +1403,8 @@ export class InfiniteList extends VirtualList {
         // a diff has no notion of key order, so a bound token would have nothing to anchor against.
         const minAt = ops.findIndex(x => x.kind !== 'add');
         const maxAt = ops.reduce((acc, x, i) => x.kind !== 'add' ? i : acc, -1);
+        // Walked in chain order, i.e. top to bottom: the height controller hands out its animation
+        // budget in call order, and the items nearest the top are the ones worth spending it on.
         let hasParked = false;
         for (let i = minAt; i <= maxAt; i++) {
             const op = ops[i];
@@ -1298,8 +1418,8 @@ export class InfiniteList extends VirtualList {
             const replacedHeight = typeof op.replacedKey === 'string'
                 ? oldHeights.get(op.replacedKey)
                 : undefined;
-            heights.beginAppearance(op.key, this.items[index].ref, replacedHeight ?? 0);
-            hasParked = true;
+            hasParked = heights.beginAppearance(op.key, this.items[index].ref, replacedHeight ?? 0)
+                || hasParked;
         }
         return hasParked;
     }
@@ -1391,6 +1511,9 @@ export class InfiniteList extends VirtualList {
     }
 
     private onScroll = (event: Event): void => {
+        // Ahead of every early return below: this is not about what the scroll means, it is the sticky
+        // baseline, and it is only correct while the scroll is still inside its band.
+        this.updateStickyItems();
         this.stability.holdScroll(ScrollSettleMs);
         this.turnOffIsScrollingDebounced();
         if (!event.isTrusted)
@@ -2038,6 +2161,13 @@ function setSpacerSize(spacerRef: HTMLElement, size: number): void {
     const height = `${size}px`;
     if (spacerRef.style.height !== height)
         spacerRef.style.height = height;
+}
+
+// The y of a translate3d written by this component, and nothing else - these elements carry no other
+// transform, so anything unrecognised is zero.
+function translateY(transform: string): number {
+    const match = /translate3d\(\s*[^,]+,\s*(-?[\d.]+)px/.exec(transform);
+    return match == null ? 0 : parseFloat(match[1]);
 }
 
 function isLaidOut(itemRef: HTMLElement): boolean {

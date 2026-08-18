@@ -32,6 +32,12 @@ MutationProcessor.registerPresenceClasses(
     { container: virtualListItem, match: '.live-conversation-header', className: 'has-live-header' },
     { container: virtualListItem, match: '.show-author', className: 'has-show-author' },
     { container: virtualListItem, match: '.conversation-header', className: 'has-conversation-header' },
+    // Either header makes the item itself position:sticky, which is what the virtual list has to know:
+    // while its rubber band hides scroll from the content, sticky re-clamps against the real scroll
+    // position and the item would otherwise drift away from everything around it. One rule, not two -
+    // toggle(className, force) is absolute, so a second rule writing the same class would switch off
+    // what the first had set whenever its own match was absent.
+    { container: virtualListItem, match: '.conversation-header, .live-conversation-header', className: 'vl-sticky' },
 
     // The video panel's state, mirrored onto body. `body` is an ancestor of every mutation,
     // so a `body:has()` is re-proven on all of them - and the `.has-video-panel` compound
