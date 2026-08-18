@@ -3,12 +3,12 @@ using ActualChat.Kvas;
 namespace ActualChat.Users;
 
 /// <summary>
-/// User preferences for walkie-talkie push-to-talk: which chats may wake the
-/// device, and how the hands-free gestures behave.
+/// User preferences for Push to Talk: which chats may wake the device,
+/// and how the hands-free gestures behave.
 /// </summary>
 [DataContract, MessagePackObject]
-public sealed partial record UserWalkieTalkieSettings
-    : StoredSettings, IHasOrigin, IHasKvasKey<UserWalkieTalkieSettings>
+public sealed partial record UserPttSettings
+    : StoredSettings, IHasOrigin, IHasKvasKey<UserPttSettings>
 {
     // Matches ActiveChatsUI.MaxActiveChatCount, and bounds server wake fan-out per speaker.
     public const int MaxChatCount = 3;
@@ -55,7 +55,7 @@ public sealed partial record UserWalkieTalkieSettings
     public bool IsArmedIn(ChatId chatId, Moment? pttEnabledAt)
         => PttChats.Any(c => c.ChatId == chatId && IsArmed(pttEnabledAt, c.JoinedAt));
 
-    public UserWalkieTalkieSettings WithPttChat(ChatId chatId, Moment joinedAt)
+    public UserPttSettings WithPttChat(ChatId chatId, Moment joinedAt)
     {
         var pttChats = AllPttChats
             .Where(c => c.ChatId != chatId)
@@ -66,17 +66,17 @@ public sealed partial record UserWalkieTalkieSettings
         return WithPttChats(pttChats);
     }
 
-    public UserWalkieTalkieSettings WithoutPttChat(ChatId chatId)
+    public UserPttSettings WithoutPttChat(ChatId chatId)
         => WithPttChats(AllPttChats.Where(c => c.ChatId != chatId).ToArray());
 
     // Private methods
 
-    private UserWalkieTalkieSettings WithPttChats(PttChat[] pttChats)
+    private UserPttSettings WithPttChats(PttChat[] pttChats)
         => this with { PttChats = pttChats, PttChatIds = pttChats.Select(c => c.ChatId).ToArray() };
 }
 
 /// <summary>
-/// A per-chat walkie-talkie consent entry; armed only while <see cref="JoinedAt"/> is within
+/// A per-chat Push to Talk consent entry; armed only while <see cref="JoinedAt"/> is within
 /// the chat's current enable-epoch (>= <c>Chat.PttEnabledAt</c>).
 /// </summary>
 [DataContract, MessagePackObject]

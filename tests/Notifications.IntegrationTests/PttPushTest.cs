@@ -6,12 +6,12 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Notifications.IntegrationTests;
 
 [Collection(nameof(NotificationCollection))]
-public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class PttPushTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan WakeTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan NoWakeDelay = TimeSpan.FromSeconds(3);
-    // Must match NotificationCollection.AppHostFixture's WalkieTalkieWakeTtl override.
+    // Must match NotificationCollection.AppHostFixture's PttWakeTtl override.
     private static readonly TimeSpan WakeTtl = TimeSpan.FromSeconds(2);
 
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
@@ -183,7 +183,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         // arrange
         await using var host = await NewAppHost("wt-flag-off", o => o with {
             ConfigureHost = (__, cfg) =>
-                cfg.AddInMemory<NotificationsSettings>((x => x.EnableWalkieTalkiePush, "false")),
+                cfg.AddInMemory<NotificationsSettings>((x => x.EnablePttPush, "false")),
         });
         var tester = host.NewWebClientTester(Out);
         var sink = host.Services.GetRequiredService<FirebaseMessagingTestSink>();
@@ -206,7 +206,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
         // arrange
         await using var host = await NewAppHost("wt-member-cap", o => o with {
             ConfigureHost = (__, cfg) =>
-                cfg.AddInMemory<NotificationsSettings>((x => x.WalkieTalkieMaxChatMembers, "1")),
+                cfg.AddInMemory<NotificationsSettings>((x => x.PttMaxChatMembers, "1")),
         });
         var tester = host.NewWebClientTester(Out);
         var sink = host.Services.GetRequiredService<FirebaseMessagingTestSink>();
@@ -342,7 +342,7 @@ public class WalkieTalkiePushTest(AppHostFixture fixture, ITestOutputHelper @out
             chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart })));
         var enabledAt = chat.PttEnabledAt!.Value;
         await services.GetRequiredService<IServerKvasBackend>()
-            .ForUser(userId).UserWalkieTalkieSettings()
+            .ForUser(userId).UserPttSettings()
             .Update(x => x.WithPttChat(chatId, enabledAt));
     }
 

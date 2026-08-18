@@ -6,15 +6,15 @@ namespace ActualChat.UI.Blazor.App.Services;
 // proxy, so a fusion.AddService registration would fail on first resolution.
 
 /// <summary>
-/// Coordinates a walkie-talkie voice reply: resolves the target chat, opens the hot mic,
+/// Coordinates a PTT voice reply: resolves the target chat, opens the hot mic,
 /// and runs a cold-start dead-man switch that closes the mic if no voice is heard in time.
 /// Native triggers (iOS PTT, Android widget, gestures) drive it via <see cref="RequestReply"/>/<see cref="StopReply"/>.
 /// </summary>
-public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
+public sealed class PttReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
     private readonly object _lock = new();
     private CancellationTokenSource? _coldStartCts;
-    private WalkieTalkieReply? _reply;
+    private PttReply? _reply;
     private bool _everVoiced;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -34,17 +34,17 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         // soon as AudioRecord initializes, which it does even when the OS then hands it nothing.
         => !hasSignal && elapsed >= timeout;
 
-    public Task<WalkieTalkieReply?> RequestReply(CancellationToken cancellationToken)
-        => RequestReply(Constants.Audio.WalkieTalkieReplyRecencyWindow, cancellationToken);
+    public Task<PttReply?> RequestReply(CancellationToken cancellationToken)
+        => RequestReply(Constants.Audio.PttReplyRecencyWindow, cancellationToken);
 
-    public async Task<WalkieTalkieReply?> RequestReply(TimeSpan recencyWindow, CancellationToken cancellationToken)
+    public async Task<PttReply?> RequestReply(TimeSpan recencyWindow, CancellationToken cancellationToken)
     {
         // Null unless this call itself opened the mic, so no caller can stop someone else's reply.
         ChatAudioUI.Enable();
         if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is not null)
             return null; // Already hot - idempotent
 
-        var settings = await UserSettingsUI.UserWalkieTalkieSettings()
+        var settings = await UserSettingsUI.UserPttSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
         var armed = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
@@ -67,11 +67,11 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         if (chat?.Rules.Author?.Id is { } ownAuthorId)
             await LiveSessionUI.MutePeer(chatId, ownAuthorId, false, cancellationToken).ConfigureAwait(false);
 
-        var reply = new WalkieTalkieReply(chatId, Clocks.SystemClock.Now);
+        var reply = new PttReply(chatId, Clocks.SystemClock.Now);
         // The hold precedes the publish: a competitor can only displace this reply after seeing it
         // in _reply, so its Release always follows this Hold and the count never dips.
-        WalkieTalkieMicCapability.Hold(reply);
-        WalkieTalkieReply? displacedReply;
+        PttMicCapability.Hold(reply);
+        PttReply? displacedReply;
         lock (_lock) {
             displacedReply = _reply;
             _reply = reply;
@@ -81,12 +81,12 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             _coldStartCts = null;
         }
         if (displacedReply is not null)
-            WalkieTalkieMicCapability.Release(displacedReply);
+            PttMicCapability.Release(displacedReply);
 
-        var isBackground = BackgroundStateTracker.IsBackground.Value || ChatAudioUI.IsWalkieTalkieHeadless;
+        var isBackground = BackgroundStateTracker.IsBackground.Value || ChatAudioUI.IsPttHeadless;
         try {
             await ChatAudioUI.SetRecordingChatId(chatId,
-                    isPushToTalk: true,
+                    isPtt: true,
                     idleDuration: GetEffectiveHotWindow(settings.HotWindow, isBackground),
                     mustPlayBeginTune: settings.AreAudibleCuesEnabled)
                 .ConfigureAwait(false);
@@ -95,7 +95,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             lock (_lock)
                 if (_reply == reply)
                     _reply = null;
-            WalkieTalkieMicCapability.Release(reply);
+            PttMicCapability.Release(reply);
             throw;
         }
 
@@ -107,7 +107,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         return reply;
     }
 
-    public async Task StopReply(WalkieTalkieReply reply)
+    public async Task StopReply(PttReply reply)
     {
         // The identity check is what keeps a native trigger from closing a mic it didn't open:
         // anything that opens a reply in the meantime replaces _reply, and this then no-ops.
@@ -118,7 +118,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             _reply = null;
         }
         if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) != reply.ChatId) {
-            WalkieTalkieMicCapability.Release(reply);
+            PttMicCapability.Release(reply);
             return;
         }
 
@@ -127,7 +127,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
 
     public Task StopReply()
     {
-        WalkieTalkieReply? ownReply;
+        PttReply? ownReply;
         lock (_lock) {
             ownReply = _reply;
             _reply = null;
@@ -138,18 +138,18 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
     public Task PlayFailureCue()
         // Ungated on purpose: the cue is vibration-only and it is the sole signal that a
         // start trigger silently did nothing - symmetric with the ungated gesture ack.
-        => TuneUI.Play(Tune.WalkieReplyFailed);
+        => TuneUI.Play(Tune.PttReplyFailed);
 
     public static TimeSpan GetEffectiveHotWindow(TimeSpan hotWindow, bool isBackground)
         // A background activation has no visible mic indicator to prompt a manual stop,
         // so the hot window shrinks to keep an unnoticed open mic short.
         => isBackground
-            ? TimeSpanExt.Min(hotWindow, Constants.Audio.WalkieTalkieReplyBackgroundHotWindow)
+            ? TimeSpanExt.Min(hotWindow, Constants.Audio.PttReplyBackgroundHotWindow)
             : hotWindow;
 
     // Private methods
 
-    private async Task CloseReply(WalkieTalkieReply? ownReply)
+    private async Task CloseReply(PttReply? ownReply)
     {
         bool everVoiced;
         lock (_lock)
@@ -162,17 +162,17 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
 
             await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
             if (ownReply is null) {
-                // Closing any recording is intended, but a walkie cue would be a lie about a mic walkie
+                // Closing any recording is intended, but a PTT cue would be a lie about a mic PTT
                 // never opened - and _everVoiced is stale for it anyway.
-                Log.LogDebug("CloseReply: closed a recording walkie-talkie didn't open");
+                Log.LogDebug("CloseReply: closed a recording PTT didn't open");
                 return;
             }
 
-            _ = PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard);
+            _ = PlayCue(everVoiced ? Tune.PttReplyEnded : Tune.PttReplyNothingHeard);
         }
         finally {
             if (ownReply is not null)
-                WalkieTalkieMicCapability.Release(ownReply);
+                PttMicCapability.Release(ownReply);
         }
     }
 
@@ -185,11 +185,11 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             return await permission.CheckOrRequest(cancellationToken).ConfigureAwait(false);
 
         Log.LogWarning("RequestReply: no microphone permission, and nothing can request it headlessly");
-        WalkieTalkieMicCapability.ReportBlocked();
+        PttMicCapability.ReportBlocked();
         return false;
     }
 
-    private async Task WatchMicLive(WalkieTalkieReply reply)
+    private async Task WatchMicLive(PttReply reply)
     {
         // SetRecordingChatId only writes the intent, and every way the capture below it can fail
         // - the mic withheld, a read error, a producer thread that ends - leaves the recorder
@@ -197,19 +197,19 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         // without this the only feedback is the 15s "nothing heard" cue, which claims we listened.
         // The deadline runs from IsRecording, not from here: StartRecording legitimately takes
         // seconds, and timing it from the request killed replies that were about to work.
-        var startBudget = Constants.Audio.WalkieTalkieReplyMicStartTimeout;
+        var startBudget = Constants.Audio.PttReplyMicStartTimeout;
         if (!await WaitFor(reply, x => x.IsRecording, startBudget).ConfigureAwait(false)) {
             await ReportMicFailure(reply, "the recorder never started").ConfigureAwait(false);
             return;
         }
 
-        var timeout = Constants.Audio.WalkieTalkieReplyMicLiveTimeout;
+        var timeout = Constants.Audio.PttReplyMicLiveTimeout;
         if (!await WaitFor(reply, x => x.IsSignalDetected, timeout).ConfigureAwait(false))
             await ReportMicFailure(reply, "no captured audio").ConfigureAwait(false);
     }
 
     private async Task<bool> WaitFor(
-        WalkieTalkieReply reply, Func<AudioRecorderState, bool> predicate, TimeSpan budget)
+        PttReply reply, Func<AudioRecorderState, bool> predicate, TimeSpan budget)
     {
         var startedAt = CpuTimestamp.Now;
         var cState = AudioRecorder.State.Computed;
@@ -229,7 +229,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         }
     }
 
-    private async Task ReportMicFailure(WalkieTalkieReply reply, string reason)
+    private async Task ReportMicFailure(PttReply reply, string reason)
     {
         lock (_lock) {
             if (_reply != reply)
@@ -267,7 +267,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
     private async Task ColdStartWatch(ChatId chatId, CancellationTokenSource cts)
     {
         var cancellationToken = cts.Token;
-        var coldTimeout = Constants.Audio.WalkieTalkieReplyColdStartTimeout;
+        var coldTimeout = Constants.Audio.PttReplyColdStartTimeout;
         var startedAt = CpuTimestamp.Now;
 
         // Phase 1: cold-start dead-man - wait for the first IsVoiceActive on the target chat,
@@ -307,7 +307,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
 
     private async Task CloseFromWatcher(CancellationTokenSource cts, ChatId chatId, bool everVoiced)
     {
-        WalkieTalkieReply? ownReply;
+        PttReply? ownReply;
         lock (_lock) {
             // A superseded watcher owns nothing anymore - closing here would hit whatever reply
             // displaced its own.
@@ -322,17 +322,17 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         try {
             if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) == chatId)
                 await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
-            await PlayCue(everVoiced ? Tune.WalkieReplyEnded : Tune.WalkieReplyNothingHeard).ConfigureAwait(false);
+            await PlayCue(everVoiced ? Tune.PttReplyEnded : Tune.PttReplyNothingHeard).ConfigureAwait(false);
         }
         finally {
             if (ownReply is not null)
-                WalkieTalkieMicCapability.Release(ownReply);
+                PttMicCapability.Release(ownReply);
         }
     }
 
     private async Task PlayCue(Tune tune)
     {
-        var areCuesEnabled = await UserSettingsUI.UserWalkieTalkieSettings()
+        var areCuesEnabled = await UserSettingsUI.UserPttSettings()
             .Get(x => x.AreAudibleCuesEnabled, CancellationToken.None)
             .ConfigureAwait(false);
         if (areCuesEnabled)
@@ -341,7 +341,7 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
 }
 
 /// <summary>
-/// Identifies one open walkie-talkie reply, so a trigger that opened a mic can tell it apart
+/// Identifies one open PTT reply, so a trigger that opened a mic can tell it apart
 /// from one another trigger opened in the same chat.
 /// </summary>
-public sealed record WalkieTalkieReply(ChatId ChatId, Moment StartedAt);
+public sealed record PttReply(ChatId ChatId, Moment StartedAt);

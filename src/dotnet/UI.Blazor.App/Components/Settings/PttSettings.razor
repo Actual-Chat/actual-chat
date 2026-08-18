@@ -1,15 +1,15 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Services.Gestures
-@inherits ComputedStateComponent<AppUIHub, PushToTalkSettings.Model>
+@inherits ComputedStateComponent<AppUIHub, PttSettings.Model>
 @{
     var m = State.Value;
     var hasSensors = HostInfo.HostKind.IsMauiApp() && GestureUI.Feed.IsAccelerometerAvailable;
-    var canAddChat = m.Chats.Count < UserWalkieTalkieSettings.MaxChatCount;
+    var canAddChat = m.Chats.Count < UserPttSettings.MaxChatCount;
 }
 
 <div class="push-to-talk-settings">
-<TileTopic Topic="Push to Talk chats"/>
+<TileTopic Topic="Push-to-talk chats"/>
 <Tile>
     @foreach (var chat in m.Chats) {
         var isUnavailable = chat.Title is null;
@@ -25,13 +25,13 @@
     }
     @if (m.Chats.Count == 0) {
         <p class="c-description">
-            No chats yet. A Push to Talk chat may wake your device when someone starts speaking.
+            No chats yet. A Push-to-talk chat may wake your device when someone starts speaking.
         </p>
     }
 </Tile>
 <Button Class="add-avatar-btn" Click="@OnAddChat" IsDisabled="@(!canAddChat)">
     <Icon><i class="icon-plus text-xl"></i></Icon>
-    <Title>@(canAddChat ? "Add chat" : $"Up to {UserWalkieTalkieSettings.MaxChatCount} chats")</Title>
+    <Title>@(canAddChat ? "Add chat" : $"Up to {UserPttSettings.MaxChatCount} chats")</Title>
 </Button>
 
 @if (HostInfo.HostKind.IsMauiApp()) {
@@ -103,7 +103,7 @@
 
     @if (hasSensors) {
         <TileTopic Topic="Practice"/>
-        <PushToTalkPracticePanel/>
+        <PttPracticePanel/>
     }
 }
 
@@ -148,12 +148,12 @@
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await UserSettingsUI.UserWalkieTalkieSettings().Get(cancellationToken).ConfigureAwait(false);
+        var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
         var pttChats = settings.AllPttChats;
         var chats = new List<ChatItem>(pttChats.Length);
         foreach (var pttChat in pttChats) {
             var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
-            var isArmed = chat != null && UserWalkieTalkieSettings.IsArmed(chat.PttEnabledAt, pttChat.JoinedAt);
+            var isArmed = chat != null && UserPttSettings.IsArmed(chat.PttEnabledAt, pttChat.JoinedAt);
             chats.Add(new ChatItem(pttChat.ChatId, chat?.Title, isArmed));
         }
         return new Model(settings, chats);
@@ -162,56 +162,56 @@
     private static RenderFragment? GetCaption(ChatItem chat)
         => chat.Title is null || chat.IsArmed
             ? null
-            : b => b.AddContent(0, "Not active - the chat owner hasn't enabled Push to Talk");
+            : b => b.AddContent(0, "Not active - the chat owner hasn't enabled Push-to-talk");
 
     private Task OnRemove(ChatId chatId)
-        => UserSettingsUI.UserWalkieTalkieSettings().Update(x => x.WithoutPttChat(chatId), CancellationToken.None);
+        => UserSettingsUI.UserPttSettings().Update(x => x.WithoutPttChat(chatId), CancellationToken.None);
 
     private Task OnAddChat()
         => ModalUI.Show(new PttChatPickerModal.Model(
             State.Value.Chats.Select(c => c.Id).ToHashSet(),
-            UserWalkieTalkieSettings.MaxChatCount - State.Value.Chats.Count));
+            UserPttSettings.MaxChatCount - State.Value.Chats.Count));
 
     private Task OnToggleFlip()
-        => UserSettingsUI.UserWalkieTalkieSettings()
+        => UserSettingsUI.UserPttSettings()
             .Update(x => x with { IsFlipToTalkEnabled = !x.IsFlipToTalkEnabled }, CancellationToken.None);
 
     private Task OnToggleShake()
-        => UserSettingsUI.UserWalkieTalkieSettings()
+        => UserSettingsUI.UserPttSettings()
             .Update(x => x with { IsDoubleShakeEnabled = !x.IsDoubleShakeEnabled }, CancellationToken.None);
 
     private Task OnToggleHeadsetButton()
-        => UserSettingsUI.UserWalkieTalkieSettings()
+        => UserSettingsUI.UserPttSettings()
             .Update(
                 x => x with { IsHeadsetButtonEnabled = !(x.IsHeadsetButtonEnabled ?? true) },
                 CancellationToken.None);
 
     private Task OnTogglePttTransmit()
-        => UserSettingsUI.UserWalkieTalkieSettings()
+        => UserSettingsUI.UserPttSettings()
             .Update(
                 x => x with { IsPttTransmitEnabled = !(x.IsPttTransmitEnabled ?? true) },
                 CancellationToken.None);
 
     private Task OnToggleAlwaysOn()
-        => UserSettingsUI.UserWalkieTalkieSettings()
+        => UserSettingsUI.UserPttSettings()
             .Update(x => x with { AreGesturesAlwaysOn = !x.AreGesturesAlwaysOn }, CancellationToken.None);
 
     private Task OnToggleCues()
-        => UserSettingsUI.UserWalkieTalkieSettings()
+        => UserSettingsUI.UserPttSettings()
             .Update(x => x with { AreAudibleCuesEnabled = !x.AreAudibleCuesEnabled }, CancellationToken.None);
 
     private Task OnSetSensitivity(ShakeSensitivity sensitivity)
-        => UserSettingsUI.UserWalkieTalkieSettings()
+        => UserSettingsUI.UserPttSettings()
             .Update(x => x with { ShakeSensitivity = sensitivity }, CancellationToken.None);
 
     private Task OnSetHotWindow(TimeSpan hotWindow)
-        => UserSettingsUI.UserWalkieTalkieSettings()
+        => UserSettingsUI.UserPttSettings()
             .Update(x => x with { HotWindow = hotWindow }, CancellationToken.None);
 
     // Nested types
 
-    public sealed record Model(UserWalkieTalkieSettings Settings, IReadOnlyList<ChatItem> Chats) {
-        public static readonly Model None = new(new UserWalkieTalkieSettings(), []);
+    public sealed record Model(UserPttSettings Settings, IReadOnlyList<ChatItem> Chats) {
+        public static readonly Model None = new(new UserPttSettings(), []);
     }
 
     public sealed record ChatItem(ChatId Id, string? Title, bool IsArmed);

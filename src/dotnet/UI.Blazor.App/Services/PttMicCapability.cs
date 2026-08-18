@@ -1,17 +1,17 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// Reference-counted host hook for a walkie-talkie reply's microphone. Android answers it by
+/// Reference-counted host hook for a PTT reply's microphone. Android answers it by
 /// re-issuing its foreground service with the microphone type, which must happen synchronously
 /// inside the media-button or gesture callback that opens the reply.
 /// </summary>
-public static class WalkieTalkieMicCapability
+public static class PttMicCapability
 {
     private static readonly Lock Lock = new();
     private static readonly HashSet<object> Holders = new(ReferenceEqualityComparer.Instance);
     private static Action<bool>? _handler;
     private static Action? _blockedHandler;
-    private static ILogger Log => field ??= StaticLog.For(typeof(WalkieTalkieMicCapability));
+    private static ILogger Log => field ??= StaticLog.For(typeof(PttMicCapability));
 
     public static void SetHandler(Action<bool> handler)
         => Volatile.Write(ref _handler, handler);

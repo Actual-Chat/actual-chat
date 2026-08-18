@@ -11,25 +11,25 @@
         <i class="icon-talking text-2xl"></i>
     </Icon>
     <Body>
-        This chat is in Push to Talk mode - join to let it wake your device when someone speaks.
+        This chat is in Push-to-talk mode.
     </Body>
     <Buttons>
         <Button
             Class="btn-transparent unhovered"
-            Click="@OnJoinClick">Join</Button>
+            Click="@OnAllowClick">Allow</Button>
     </Buttons>
 </Banner>
 
 @code {
-    private SyncedState<PttJoinBannerUserSettings> _settings = null!;
+    private SyncedState<PttAllowBannerUserSettings> _settings = null!;
 
     private Chat Chat => ChatContext.Chat;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
     protected override void OnInitialized() {
-        var key = PttJoinBannerUserSettings.GetKey(Chat.Id);
-        _settings = StateFactory.NewUserSettingsSynced(UserSettingsUI, key, new PttJoinBannerUserSettings());
+        var key = PttAllowBannerUserSettings.GetKey(Chat.Id);
+        _settings = StateFactory.NewUserSettingsSynced(UserSettingsUI, key, new PttAllowBannerUserSettings());
     }
 
     public override async ValueTask DisposeAsync() {
@@ -64,25 +64,25 @@
         if (settings.DismissedAt >= enabledAt)
             return false;
 
-        var walkieTalkieSettings = await UserSettingsUI.UserWalkieTalkieSettings()
+        var PTTTalkieSettings = await UserSettingsUI.UserPttSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
-        return !walkieTalkieSettings.IsArmedIn(chat.Id, enabledAt);
+        return !PTTTalkieSettings.IsArmedIn(chat.Id, enabledAt);
     }
 
     // Event handlers
 
-    private Task OnJoinClick() {
+    private Task OnAllowClick() {
         var chat = Chat;
         if (chat.PttEnabledAt is not { } enabledAt)
             return Task.CompletedTask;
 
         // Never a raw client clock: JoinedAt must land within the current epoch (>= enabledAt).
         var joinedAt = Moment.Max(Clocks.ServerClock.Now, enabledAt);
-        return UserSettingsUI.UserWalkieTalkieSettings()
+        return UserSettingsUI.UserPttSettings()
             .Update(x => x.WithPttChat(chat.Id, joinedAt), CancellationToken.None);
     }
 
     private void OnDismiss()
-        => _settings.Value = new PttJoinBannerUserSettings { DismissedAt = Clocks.ServerClock.Now };
+        => _settings.Value = new PttAllowBannerUserSettings { DismissedAt = Clocks.ServerClock.Now };
 }

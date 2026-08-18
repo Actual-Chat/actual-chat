@@ -43,7 +43,7 @@ public class ApnsClientTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public async Task SendPushToTalkWakeSendsCorrectRequest()
+    public async Task SendPttWakeSendsCorrectRequest()
     {
         // arrange
         using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
@@ -62,7 +62,7 @@ public class ApnsClientTest(ITestOutputHelper @out) : TestBase(@out)
             var startedAt = Moment.EpochStart + TimeSpan.FromDays(20_000);
 
             // act
-            await client.SendPushToTalkWake(chatId, startedAt, "My Chat", [new Symbol("aabbccdd")], CancellationToken.None);
+            await client.SendPttWake(chatId, startedAt, "My Chat", [new Symbol("aabbccdd")], CancellationToken.None);
 
             // assert
             var request = handler.Requests.Should().ContainSingle().Subject;
@@ -91,7 +91,7 @@ public class ApnsClientTest(ITestOutputHelper @out) : TestBase(@out)
             new NotificationsSettings(), new FakeHttpClientFactory(handler), null!, NullLogger<ApnsClient>.Instance);
 
         // act
-        await client.SendPushToTalkWake(
+        await client.SendPttWake(
             ChatId.Parse("testchatid1234567890"), Moment.EpochStart, "T", [new Symbol("x")], CancellationToken.None);
 
         // assert

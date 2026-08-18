@@ -80,11 +80,11 @@ public static partial class MauiProgram
                     return;
 
                 AppNavigationQueue.Reset();
-                if (MauiPreferences.IsWalkieArmed) {
+                if (MauiPreferences.IsPttArmed) {
                     // This service is what holds the microphone grant, and Android only ever hands
                     // that to a service started while the app is in the foreground - so stopping it
                     // here costs every later wake its mic, with no way to earn it back.
-                    Log.LogInformation("Keeping AndroidActivitiesForegroundService: walkie-talkie is armed");
+                    Log.LogInformation("Keeping AndroidActivitiesForegroundService: PTT is armed");
                     return;
                 }
 

@@ -129,7 +129,7 @@ public class ReportPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         var chat = await services.Commander().Call(new ChatsBackend_Change(
             chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart })));
         await services.GetRequiredService<IServerKvasBackend>()
-            .ForUser(userId).UserWalkieTalkieSettings()
+            .ForUser(userId).UserPttSettings()
             .Update(x => x.WithPttChat(chatId, chat.PttEnabledAt!.Value));
     }
 

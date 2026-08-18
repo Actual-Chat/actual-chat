@@ -36,10 +36,10 @@ export enum Tune {
     DragStart,
     ChangeToggle,
     ClickButton,
-    WalkieReplyEnded,
-    WalkieReplyNothingHeard,
-    WalkieGestureDetected,
-    WalkieReplyFailed,
+    PttReplyEnded,
+    PttReplyNothingHeard,
+    PttGestureDetected,
+    PttReplyFailed,
     RecordingWillStop,
 }
 

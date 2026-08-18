@@ -41,13 +41,13 @@ public abstract class TuneUI : ProcessorBase
         [Tune.ChangeAttachments] = new ([20] /*, "change-attachments"*/),
         [Tune.ChangeLanguage] = new ([20, 20] /*, "change-language"*/),
         [Tune.ShowMenu] = new ([20] /*, "show-menu"*/),
-        // Walkie-talkie
-        [Tune.WalkieReplyEnded] = new ([100, 50, 100]),
-        [Tune.WalkieReplyNothingHeard] = new ([80]),
+        // PTT
+        [Tune.PttReplyEnded] = new ([100, 50, 100]),
+        [Tune.PttReplyNothingHeard] = new ([80]),
         // Long enough to be felt mid-shake, and a single pulse so it stays distinct from
-        // WalkieReplyFailed's three.
-        [Tune.WalkieGestureDetected] = new ([90]),
-        [Tune.WalkieReplyFailed] = new ([150, 100, 150, 100, 150]),
+        // PttReplyFailed's three.
+        [Tune.PttGestureDetected] = new ([90]),
+        [Tune.PttReplyFailed] = new ([150, 100, 150, 100, 150]),
     };
     // Suppress redundant tactile feedback fired as a side-effect of starting
     // recording: ConfirmRecording (mic-live signal ~0.5–1 s after start) and
@@ -84,7 +84,7 @@ public abstract class TuneUI : ProcessorBase
             await Hub.JS.InvokeVoidAsync(JSInitMethod, _backendRef, resolvedTunes).ConfigureAwait(false);
         }
         catch (JSDisconnectedException e) {
-            // The headless walkie-talkie scope marks its runtime disconnected up front, so this
+            // The headless PTT scope marks its runtime disconnected up front, so this
             // is the expected path on every wake - not something triage should be pointed at.
             Log.LogWarning(e, "Initialize skipped: the JS runtime is disconnected");
         }
@@ -186,10 +186,10 @@ public enum Tune
     DragStart,
     ChangeToggle,
     ClickButton,
-    WalkieReplyEnded,
-    WalkieReplyNothingHeard,
-    WalkieGestureDetected,
-    WalkieReplyFailed,
+    PttReplyEnded,
+    PttReplyNothingHeard,
+    PttGestureDetected,
+    PttReplyFailed,
     RecordingWillStop,
 }
 

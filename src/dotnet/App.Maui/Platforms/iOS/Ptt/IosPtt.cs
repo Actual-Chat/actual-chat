@@ -14,10 +14,10 @@ namespace ActualChat.App.Maui;
 
 /// <summary>
 /// Process-level Apple Push to Talk integration: one aggregate "Voxt" channel whose join
-/// survives app kill/reboot; incoming PTT pushes route into <see cref="WalkieTalkieSession"/>.
+/// survives app kill/reboot; incoming PTT pushes route into <see cref="PttSession"/>.
 /// Transmission mode follows the user's Push-to-Talk-reply setting.
 /// </summary>
-public static class IosPushToTalk
+public static class IosPtt
 {
     public const string ChannelName = "Voxt";
     private const string IsTransmitEnabledKey = "Voxt.Ptt.IsTransmitEnabled";
@@ -38,7 +38,7 @@ public static class IosPushToTalk
     private static int _isTransmitEnabled;
     private static int _isRemoteParticipantActive;
     private static int _lastWakeGeneration;
-    private static ILogger Log => field ??= StaticLog.For(typeof(IosPushToTalk));
+    private static ILogger Log => field ??= StaticLog.For(typeof(IosPtt));
 
     public static void Initialize()
     {
@@ -246,7 +246,7 @@ public static class IosPushToTalk
         }
 
         _ = BackgroundTask.Run(async () => {
-            var reply = await WalkieTalkieSession.HandleTransmit(IosPlatform.Instance)
+            var reply = await PttSession.HandleTransmit(IosPlatform.Instance)
                 .ConfigureAwait(false);
             bool isEndPending;
             lock (Lock) {
@@ -274,7 +274,7 @@ public static class IosPushToTalk
                 // The user let go before the app finished booting. The buffered words are real
                 // speech, so the reply still goes out - it just holds open long enough for
                 // AppleAudioCapture to drain the pre-roll into the encoder.
-                await Task.Delay(Constants.Audio.WalkieTalkiePreRollFlushDelay).ConfigureAwait(false);
+                await Task.Delay(Constants.Audio.PttPreRollFlushDelay).ConfigureAwait(false);
                 await StopTransmitReply(transmission).ConfigureAwait(false);
             }
         }, Log, "PTT transmit reply failed", CancellationToken.None);
@@ -320,7 +320,7 @@ public static class IosPushToTalk
 
     private static async Task StopTransmitReply(Transmission transmission)
     {
-        WalkieTalkieReply? reply;
+        PttReply? reply;
         long preRollToken;
         lock (Lock) {
             (reply, preRollToken) = (transmission.Reply, transmission.PreRollToken);
@@ -337,7 +337,7 @@ public static class IosPushToTalk
         // Only stop what this transmission opened - StopReply(reply) no-ops once anything else
         // has replaced the open reply, so a gesture-held mic is never closed here.
         var hub = services.GetRequiredService<AppUIHub>();
-        await hub.WalkieTalkieReplyUI.StopReply(reply).ConfigureAwait(false);
+        await hub.PttReplyUI.StopReply(reply).ConfigureAwait(false);
     }
 
     private static void OnOwnerWatchdogFired()
@@ -414,7 +414,7 @@ public static class IosPushToTalk
                 .DispatchToMainThread(() => UIApplication.SharedApplication.ApplicationState
                     == UIApplicationState.Active)
                 .ConfigureAwait(false);
-            await WalkieTalkieSession.HandleWake(chatId, startedAt, isForeground, IosPlatform.Instance)
+            await PttSession.HandleWake(chatId, startedAt, isForeground, IosPlatform.Instance)
                 .ConfigureAwait(false);
         }, Log, "PTT wake failed", CancellationToken.None);
     }
@@ -442,7 +442,7 @@ public static class IosPushToTalk
             return false;
 
         return transmission.IsEndPending
-            || transmission.CreatedAt.Elapsed > Constants.Audio.WalkieTalkiePttTransmitStartupTimeout;
+            || transmission.CreatedAt.Elapsed > Constants.Audio.PttTransmitStartupTimeout;
     }
 
     private static void ScheduleClearActiveParticipant(int generation)
@@ -477,11 +477,11 @@ public static class IosPushToTalk
         public long PreRollToken { get; set; }
         public bool IsStarting { get; set; }
         public bool IsStarted { get; set; }
-        public WalkieTalkieReply? Reply { get; set; }
+        public PttReply? Reply { get; set; }
         public bool IsEndPending { get; set; }
     }
 
-    private sealed class IosPlatform : WalkieTalkiePlatform
+    private sealed class IosPlatform : PttPlatform
     {
         public static readonly IosPlatform Instance = new();
 

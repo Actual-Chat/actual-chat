@@ -25,7 +25,7 @@ public static class ReplyTargetResolver
         }
         // Beyond the ordinary window a stamp is a last resort, not the first choice - otherwise an
         // unbounded window lets a days-old stamp outrank the chat you're looking at.
-        var isBestStale = best is not null && bestAt <= now - Constants.Audio.WalkieTalkieReplyRecencyWindow;
+        var isBestStale = best is not null && bestAt <= now - Constants.Audio.PttReplyRecencyWindow;
         if (best is not null && !isBestStale)
             return best;
 

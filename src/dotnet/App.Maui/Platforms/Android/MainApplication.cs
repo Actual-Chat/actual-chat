@@ -21,7 +21,7 @@ public class MainApplication : MauiApplication
         // and no Blazor scope, so nothing else raises the armed service - leaving no PTT badge and
         // no media session for the headset button. Android refuses a background start without an
         // exemption; TryStart logs that rather than throwing.
-        if (MauiPreferences.IsWalkieArmed)
+        if (MauiPreferences.IsPttArmed)
             AndroidActivitiesForegroundService.TryStartArmed(this);
     }
 

@@ -26,7 +26,7 @@ public class UserSettingsNullSetTest(AppHostFixture fixture, ITestOutputHelper @
     {
         // arrange
         await Tester.SignInAsBob();
-        var command = new UserSettings_Set(Tester.Session, nameof(UserWalkieTalkieSettings), null);
+        var command = new UserSettings_Set(Tester.Session, nameof(UserPttSettings), null);
 
         // act
         var act = () => Tester.Commander.Call(command);

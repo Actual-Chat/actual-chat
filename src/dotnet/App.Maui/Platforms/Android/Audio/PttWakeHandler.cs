@@ -9,13 +9,13 @@ using IntentExtras = ActualChat.App.Maui.Activities.AndroidActivitiesForegroundS
 namespace ActualChat.App.Maui.Audio;
 
 /// <summary>
-/// Android shell for walkie-talkie wakes: FGS lifecycle + FCM entry point;
-/// the portable core lives in <see cref="WalkieTalkieSession"/>.
+/// Android shell for PTT wakes: FGS lifecycle + FCM entry point;
+/// the portable core lives in <see cref="PttSession"/>.
 /// </summary>
-public static class WalkieTalkieWakeHandler
+public static class PttWakeHandler
 {
-    private const string InitialTitle = "Walkie-talkie";
-    private static ILogger Log => field ??= StaticLog.For(typeof(WalkieTalkieWakeHandler));
+    private const string InitialTitle = "Push-to-talk";
+    private static ILogger Log => field ??= StaticLog.For(typeof(PttWakeHandler));
 
     public static void Handle(NotificationData data)
     {
@@ -44,7 +44,7 @@ public static class WalkieTalkieWakeHandler
         try {
             BlazorWebViewApp.EnsureStarted();
             _ = BackgroundTask.Run(
-                () => WalkieTalkieSession.HandleWake(chatId, startedAt, isForeground, AndroidPlatform.Instance),
+                () => PttSession.HandleWake(chatId, startedAt, isForeground, AndroidPlatform.Instance),
                 Log, "SpeechStarted wake failed", CancellationToken.None);
         }
         catch (Exception e) {
@@ -57,7 +57,7 @@ public static class WalkieTalkieWakeHandler
     }
 
     public static void StopHeadlessSession()
-        => WalkieTalkieSession.StopHeadless(AndroidPlatform.Instance);
+        => PttSession.StopHeadless(AndroidPlatform.Instance);
 
     // Private methods
 
@@ -78,7 +78,7 @@ public static class WalkieTalkieWakeHandler
         // A wake is proof this user is armed, and it's the one signal that reaches a process the
         // user hasn't opened yet - so the next launch can raise the mic-typed service from the
         // foreground without waiting for the widget to work the armed set out. See MainActivity.
-        MauiPreferences.IsWalkieArmed = true;
+        MauiPreferences.IsPttArmed = true;
         var context = Platform.AppContext;
         var intent = new Intent(context, typeof(AndroidActivitiesForegroundService));
         intent.SetAction(AndroidActivitiesForegroundService.ActionShow);
@@ -122,7 +122,7 @@ public static class WalkieTalkieWakeHandler
 
     // Nested types
 
-    private sealed class AndroidPlatform : WalkieTalkiePlatform
+    private sealed class AndroidPlatform : PttPlatform
     {
         public static readonly AndroidPlatform Instance = new();
 

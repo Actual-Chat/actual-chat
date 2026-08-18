@@ -51,9 +51,9 @@ public static class UserSettingsUIExt
     public static UserSettingsAccessor<UserReplaySettings> UserReplaySettings(this UserSettingsUI settingsUI)
         => new(settingsUI, nameof(UserReplaySettings));
 
-    public static UserSettingsAccessor<UserWalkieTalkieSettings> UserWalkieTalkieSettings(
+    public static UserSettingsAccessor<UserPttSettings> UserPttSettings(
         this UserSettingsUI settingsUI)
-        => new(settingsUI, nameof(UserWalkieTalkieSettings));
+        => new(settingsUI, nameof(UserPttSettings));
 
     public static UserSettingsAccessor<UserNotificationsPanelSettings> UserNotificationsPanelSettings(
         this UserSettingsUI settingsUI)

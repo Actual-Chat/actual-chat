@@ -24,7 +24,7 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
     {
         _uploadKeepAlive = uploadKeepAlive;
         _activitiesUI = hub.Services.GetRequiredService<ActivitiesUI>();
-        // A Live Activity start from the background is rejected (walkie wake, upload finishing
+        // A Live Activity start from the background is rejected (PTT wake, upload finishing
         // late); re-render the last state when the app comes back to the foreground.
         _activitiesUI.IsBackground.Updated += OnBackgroundStateUpdated;
     }
@@ -99,8 +99,8 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
 
     private static void UpdateFallbackNotification(ActivitySet? state)
     {
-        // Audio kinds post nothing: AVAudioSession already keeps the app alive, and a walkie-talkie
-        // session is Apple's PushToTalk UI - a second banner for it is noise.
+        // Audio kinds post nothing: AVAudioSession already keeps the app alive, and a PTT
+        // session is Apple's Ptt UI - a second banner for it is noise.
         var center = UNUserNotificationCenter.Current;
         if (state?.Primary is not UploadActivity upload) {
             Remove(center, UploadNotificationId);
@@ -126,7 +126,7 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
             ActivityKind.Recording => "Recording",
             ActivityKind.Replaying => "Replaying",
             ActivityKind.Listening => "Listening",
-            ActivityKind.Armed => "Walkie-talkie is on",
+            ActivityKind.Armed => "Push-to-talk is on",
             _ => "",
         };
 

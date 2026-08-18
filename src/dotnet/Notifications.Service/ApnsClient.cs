@@ -34,7 +34,7 @@ public class ApnsClient(
         && !Settings.ApplePushBundleId.IsNullOrEmpty()
         && !Settings.ApplePushPrivateKeyPath.IsNullOrEmpty();
 
-    public async Task SendPushToTalkWake(
+    public async Task SendPttWake(
         ChatId chatId,
         Moment startedAt,
         string chatTitle,

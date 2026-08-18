@@ -3,7 +3,7 @@ namespace ActualChat.UI.Blazor.App.Services.Gestures;
 public static class HeadsetButtonPolicy
 {
     public static HeadsetButtonState GetState(
-        UserWalkieTalkieSettings settings,
+        UserPttSettings settings,
         IReadOnlyList<ChatId> pttChatIds,
         IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
         Moment now,

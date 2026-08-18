@@ -30,7 +30,7 @@ public class AndroidActivitiesBackend : ActivitiesBackend
             // happens with the app reliably visible - the one Android grants the microphone type
             // on. Hiding it here (a warm start leaves _isShown set from the previous scope) would
             // stop it, and the re-show would run from the background with the mic type lost.
-            if (MauiPreferences.IsWalkieArmed)
+            if (MauiPreferences.IsPttArmed)
                 return;
 
             HideImpl();
@@ -71,7 +71,7 @@ public class AndroidActivitiesBackend : ActivitiesBackend
         // AndroidActivitiesBackend instance of its own - so the session decides who stops, not the
         // instance.
         if (HeadlessBlazorScope.Current is not null) {
-            WalkieTalkieWakeHandler.StopHeadlessSession();
+            PttWakeHandler.StopHeadlessSession();
             return;
         }
 
@@ -82,7 +82,7 @@ public class AndroidActivitiesBackend : ActivitiesBackend
 
     // Protected/internal methods
 
-    protected override bool IsArmedPersisted => MauiPreferences.IsWalkieArmed;
+    protected override bool IsArmedPersisted => MauiPreferences.IsPttArmed;
 
     protected override void OnArmedChanged(bool isArmed)
     {
@@ -94,7 +94,7 @@ public class AndroidActivitiesBackend : ActivitiesBackend
         if (Interlocked.Exchange(ref _lastIsArmed, value) == value)
             return;
 
-        MauiPreferences.IsWalkieArmed = isArmed;
+        MauiPreferences.IsPttArmed = isArmed;
     }
 
     protected override void OnStateChanged(ActivitySet? state, ActivitySet? oldState)

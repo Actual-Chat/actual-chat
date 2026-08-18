@@ -110,7 +110,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         }
 
         if (data.NotificationKind == NotificationKind.SpeechStarted) {
-            WalkieTalkieWakeHandler.Handle(data);
+            PttWakeHandler.Handle(data);
             return;
         }
 

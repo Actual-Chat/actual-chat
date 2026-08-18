@@ -365,7 +365,7 @@ public partial class ChatAudioUI
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 // A throw here used to kill this worker silently, leaving the chat in the listening
-                // set with no player behind it - nothing retries, and the walkie wake path hits
+                // set with no player behind it - nothing retries, and the PTT wake path hits
                 // exactly that: it starts the listener on an RPC connection that reconnected a
                 // moment ago, so a transient failure is the norm rather than the exception.
                 Log.LogWarning(e,
@@ -689,9 +689,9 @@ public partial class ChatAudioUI
 
     private async Task StopListeningWhenIdleInBackground(CancellationToken cancellationToken)
     {
-        // Walkie-talkie hot->armed drop: in background (or a headless wake session), stop ALL
+        // PTT hot->armed drop: in background (or a headless wake session), stop ALL
         // listening - including keep-listening (armed PTT) chats, which the watcher above
-        // deliberately never stops - after WalkieTalkieIdleTimeout of silence. The FCM wake
+        // deliberately never stops - after PttIdleTimeout of silence. The FCM wake
         // push re-arms us.
         // Only platforms with a wake path that re-arms dropped listening:
         // FCM data pushes on Android, Apple Push to Talk on iOS.
@@ -705,10 +705,10 @@ public partial class ChatAudioUI
         Moment? idleSince = null;
         Moment? lastActiveAt = null;
         while (!cancellationToken.IsCancellationRequested) {
-            await Clocks.CpuClock.Delay(Constants.Audio.WalkieTalkieIdleCheckPeriod, cancellationToken)
+            await Clocks.CpuClock.Delay(Constants.Audio.PttIdleCheckPeriod, cancellationToken)
                 .ConfigureAwait(false);
 
-            var isBackground = backgroundStateTracker.IsBackground.Value || IsWalkieTalkieHeadless;
+            var isBackground = backgroundStateTracker.IsBackground.Value || IsPttHeadless;
             if (!isBackground) {
                 (idleSince, lastActiveAt) = (null, null);
                 continue;
@@ -732,13 +732,13 @@ public partial class ChatAudioUI
             if (hasAnyActivity)
                 lastActiveAt = now;
 
-            var dropAt = WalkieTalkie.ComputeIdleDropAt(
-                hasAnyActivity, lastActiveAt, idleSince.Value, Constants.Audio.WalkieTalkieIdleTimeout);
+            var dropAt = Ptt.ComputeIdleDropAt(
+                hasAnyActivity, lastActiveAt, idleSince.Value, Constants.Audio.PttIdleTimeout);
             if (dropAt is null || now < dropAt)
                 continue;
 
             Log.LogInformation(
-                "Walkie-talkie: {Count} listening chat(s) idle in background, dropping to armed",
+                "PTT: {Count} listening chat(s) idle in background, dropping to armed",
                 listeningChatIds.Count);
             await ClearListeningChats().ConfigureAwait(false);
             (idleSince, lastActiveAt) = (null, null);

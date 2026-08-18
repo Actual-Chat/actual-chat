@@ -48,7 +48,7 @@ public sealed class ListeningStreamProcessor : WorkerBase
             Provider = async ct => {
                 // Re-evaluated per (re)connect: a reconnect after the wake window must not
                 // re-play the trigger utterance from its start.
-                var catchUpFrom = WalkieTalkie.IsStaleWake(CatchUpFrom, clocks.ServerClock.Now)
+                var catchUpFrom = Ptt.IsStaleWake(CatchUpFrom, clocks.ServerClock.Now)
                     ? default
                     : CatchUpFrom;
                 Log.LogInformation("-> LiveStreams.GetListeningStream({ChatId}), catchUpFrom={CatchUpFrom}",

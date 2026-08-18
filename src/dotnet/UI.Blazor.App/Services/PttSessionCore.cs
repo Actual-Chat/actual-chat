@@ -3,11 +3,11 @@ using ActualChat.UI.Blazor.Services;
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// Scoped walkie-talkie session core: playback start, transmit, and reply teardown over
+/// Scoped PTT session core: playback start, transmit, and reply teardown over
 /// this scope's services. Scope resolution and the process-global teardown watcher live
-/// in App.Maui's static WalkieTalkieSession facade.
+/// in App.Maui's static PttSession facade.
 /// </summary>
-public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
+public sealed class PttSessionCore(AppUIHub hub) : IDisposable
 {
     private static readonly TimeSpan AudioFocusCheckPeriod = TimeSpan.FromSeconds(0.5);
     private const int AudioFocusChecks = 10;
@@ -24,11 +24,11 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
         Moment startedAt,
         bool isForeground,
         bool isHeadless,
-        WalkieTalkiePlatform platform)
+        PttPlatform platform)
     {
         var chatAudioUI = Hub.ChatAudioUI;
         if (isHeadless)
-            chatAudioUI.IsWalkieTalkieHeadless = true;
+            chatAudioUI.IsPttHeadless = true;
         chatAudioUI.Enable();
         // Fire-and-forget: ServerTimeSync's own loop only starts syncing after a 3s settling delay,
         // and everything downstream that wants server time would sit behind it.
@@ -60,7 +60,7 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
 
         // A fresh wake joins the trigger utterance from its start (it's still streaming or just
         // ended); a stale one goes straight to live listening.
-        if (!WalkieTalkie.IsStaleWake(startedAt, Hub.Clocks.SystemClock.Now))
+        if (!Ptt.IsStaleWake(startedAt, Hub.Clocks.SystemClock.Now))
             chatAudioUI.SetListeningCatchUp(chatId, startedAt);
         foreach (var armedChatId in armedChatIds)
             await chatAudioUI.SetListeningState(armedChatId, true).ConfigureAwait(false);
@@ -68,13 +68,13 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
         _ = platform.OnPlaybackStarted(Hub, chatId);
     }
 
-    public async Task<WalkieTalkieReply?> Transmit(
-        bool isHeadless, WalkieTalkiePlatform platform, CancellationToken cancellationToken)
+    public async Task<PttReply?> Transmit(
+        bool isHeadless, PttPlatform platform, CancellationToken cancellationToken)
     {
-        WalkieTalkieReply? reply = null;
+        PttReply? reply = null;
         try {
             if (isHeadless)
-                Hub.ChatAudioUI.IsWalkieTalkieHeadless = true;
+                Hub.ChatAudioUI.IsPttHeadless = true;
 
             // Rehearsing in Settings must never transmit, and RequestReply is idempotent, so a
             // gesture-opened mic would make it report success and the transmission would later
@@ -82,7 +82,7 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
             var isPracticeMode = Hub.GestureUI.IsPracticeMode;
             var recordingChatId = isPracticeMode ? null
                 : await Hub.ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
-            if (!WalkieTalkie.MayTransmit(isPracticeMode, recordingChatId))
+            if (!Ptt.MayTransmit(isPracticeMode, recordingChatId))
                 return null;
 
             // The live signal can't have fired for an utterance that ended before this process
@@ -90,21 +90,21 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
             if (platform.LastWake is { } lastWake)
                 Hub.IncomingVoiceActivityUI.NoteIncomingVoice(lastWake.ChatId, lastWake.At);
 
-            // Null unless this very call opened the mic - see WalkieTalkieReplyUI.RequestReply.
-            reply = await Hub.WalkieTalkieReplyUI
+            // Null unless this very call opened the mic - see PttReplyUI.RequestReply.
+            reply = await Hub.PttReplyUI
                 .RequestReply(ReplyTargetResolver.UnboundedRecencyWindow, cancellationToken)
                 .ConfigureAwait(false);
             return reply;
         }
         catch (OperationCanceledException e) {
-            // Expected degraded mode: the boot budget ran out - see WalkieTalkiePttTransmitStartupTimeout.
-            Log.LogWarning(e, "Walkie-talkie transmit didn't fit into the startup budget");
+            // Expected degraded mode: the boot budget ran out - see PttTransmitStartupTimeout.
+            Log.LogWarning(e, "PTT transmit didn't fit into the startup budget");
             await StopOrphanedReply(reply).ConfigureAwait(false);
             PlayFailureCue();
             return null;
         }
         catch (Exception e) {
-            Log.LogError(e, "Walkie-talkie transmit failed");
+            Log.LogError(e, "PTT transmit failed");
             await StopOrphanedReply(reply).ConfigureAwait(false);
             PlayFailureCue();
             return null;
@@ -117,14 +117,14 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
         // different async flow in the same scope) is what actually closes the mic and plays the
         // cue. Waiting for ChatId to clear - IsRecording stays false while the engine starts -
         // is what turns this into a real stop-then-dispose rather than a race with teardown.
-        await Hub.WalkieTalkieReplyUI.StopReply().ConfigureAwait(false);
+        await Hub.PttReplyUI.StopReply().ConfigureAwait(false);
         await Hub.AudioRecorder.State.Computed
             .When(x => x.ChatId is null, cancellationToken)
             .ConfigureAwait(false);
     }
 
     public void WatchAudioFocus(
-        int baselineDenialCount, ChatId chatId, WalkieTalkiePlatform platform, Func<Task> onDenied)
+        int baselineDenialCount, ChatId chatId, PttPlatform platform, Func<Task> onDenied)
         => _ = BackgroundTask.Run(async () => {
             // A denial makes ChatAudioUI.StateSync drop the replay/listening state it was just
             // given, and nothing throws - so the wake would end in silence instead of a fallback.
@@ -134,7 +134,7 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
                     if (Hub.ChatAudioUI.AudioFocusDenialCount == baselineDenialCount)
                         continue;
 
-                    Log.LogWarning("Walkie-talkie wake was denied audio focus for chat #{ChatId}", chatId);
+                    Log.LogWarning("PTT wake was denied audio focus for chat #{ChatId}", chatId);
                     platform.OnWakeFailed(chatId);
                     await onDenied.Invoke().ConfigureAwait(false);
                     return;
@@ -145,7 +145,7 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
 
     // Private methods
 
-    private async Task StopOrphanedReply(WalkieTalkieReply? reply)
+    private async Task StopOrphanedReply(PttReply? reply)
     {
         // Identity, not "is anything recording": StopReply(reply) no-ops unless this is still the
         // open reply, so a gesture that grabbed the mic meanwhile keeps it.
@@ -153,17 +153,17 @@ public sealed class WalkieTalkieSessionCore(AppUIHub hub) : IDisposable
             return;
 
         try {
-            Log.LogWarning("Closing the reply opened by a failed walkie-talkie transmit");
-            await Hub.WalkieTalkieReplyUI.StopReply(reply).ConfigureAwait(false);
+            Log.LogWarning("Closing the reply opened by a failed PTT transmit");
+            await Hub.PttReplyUI.StopReply(reply).ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Couldn't close the reply opened by a failed walkie-talkie transmit");
+            Log.LogWarning(e, "Couldn't close the reply opened by a failed PTT transmit");
         }
     }
 
     private void PlayFailureCue()
         // Fire-and-forget: tune playback must not block the caller or delay teardown watcher.
         => _ = BackgroundTask.Run(
-            () => Hub.WalkieTalkieReplyUI.PlayFailureCue(),
-            Log, "Couldn't play the walkie-talkie transmit failure cue", CancellationToken.None);
+            () => Hub.PttReplyUI.PlayFailureCue(),
+            Log, "Couldn't play the PTT transmit failure cue", CancellationToken.None);
 }

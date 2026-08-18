@@ -2,14 +2,14 @@ using ActualChat.Kvas;
 
 namespace ActualChat.Users.UnitTests;
 
-public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : TestBase(@out)
+public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
 
     [Fact]
     public void DefaultsAreSafe()
     {
-        var settings = new UserWalkieTalkieSettings();
+        var settings = new UserPttSettings();
         // act + assert
         settings.PttChatIds.Should().BeEmpty();
         settings.IsFlipToTalkEnabled.Should().BeTrue();
@@ -25,7 +25,7 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     public void ABlobPredatingTheHeadsetButtonReadsAsEnabled()
     {
         // arrange
-        var e2Era = new E2UserWalkieTalkieSettings {
+        var e2Era = new E2UserPttSettings {
             PttChatIds = [TestChatId],
             Origin = "test",
             AreAudibleCuesEnabled = false,
@@ -34,7 +34,7 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
         // act
         using var buffer = KvasSerializer.Default.Write(e2Era);
         var bytes = buffer.WrittenMemory;
-        var settings = KvasSerializer.Default.Read<UserWalkieTalkieSettings>(ref bytes);
+        var settings = KvasSerializer.Default.Read<UserPttSettings>(ref bytes);
 
         // assert
         settings.PttChatIds.Should().Equal(e2Era.PttChatIds);
@@ -52,12 +52,12 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
         // as default(T), so a plain `bool ... = true` silently reads as disabled.
 
         // arrange
-        var truncated = new TruncatedUserWalkieTalkieSettings { PttChatIds = [TestChatId] };
+        var truncated = new TruncatedUserPttSettings { PttChatIds = [TestChatId] };
 
         // act
         using var buffer = KvasSerializer.Default.Write(truncated);
         var bytes = buffer.WrittenMemory;
-        var settings = KvasSerializer.Default.Read<UserWalkieTalkieSettings>(ref bytes);
+        var settings = KvasSerializer.Default.Read<UserPttSettings>(ref bytes);
 
         // assert
         settings.PttChatIds.Should().Equal(truncated.PttChatIds);
@@ -69,7 +69,7 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     public void WithPttChatIsIdempotent()
     {
         var joinedAt = Moment.EpochStart + TimeSpan.FromDays(1);
-        var settings = new UserWalkieTalkieSettings()
+        var settings = new UserPttSettings()
             .WithPttChat(TestChatId, joinedAt)
             .WithPttChat(TestChatId, joinedAt);
         // act + assert
@@ -84,17 +84,17 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     {
         // arrange
         var t0 = Moment.EpochStart + TimeSpan.FromDays(1);
-        var chatIds = Enumerable.Range(0, UserWalkieTalkieSettings.MaxChatCount + 1)
+        var chatIds = Enumerable.Range(0, UserPttSettings.MaxChatCount + 1)
             .Select(i => ChatId.Parse($"evictionchat{i}"))
             .ToArray();
-        var settings = new UserWalkieTalkieSettings();
+        var settings = new UserPttSettings();
 
         // act
         for (var i = 0; i < chatIds.Length; i++)
             settings = settings.WithPttChat(chatIds[i], t0 + TimeSpan.FromMinutes(i));
 
         // assert: the least-recently-joined entry (index 0) is gone, the rest survive in order
-        settings.PttChats.Length.Should().Be(UserWalkieTalkieSettings.MaxChatCount);
+        settings.PttChats.Length.Should().Be(UserPttSettings.MaxChatCount);
         settings.PttChats.Select(c => c.ChatId).Should().Equal(chatIds.Skip(1));
         settings.PttChatIds.Should().Equal(chatIds.Skip(1));
     }
@@ -103,7 +103,7 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     public void LegacyPttChatIdsSurfaceUnarmed()
     {
         // arrange: a blob written before PttChats existed
-        var settings = new UserWalkieTalkieSettings { PttChatIds = [TestChatId] };
+        var settings = new UserPttSettings { PttChatIds = [TestChatId] };
         var enabledAt = Moment.EpochStart + TimeSpan.FromDays(1);
 
         // act + assert: visible for listing/removal, but never armed under any live epoch
@@ -118,16 +118,16 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
     {
         var enabledAt = Moment.EpochStart + TimeSpan.FromDays(1);
         // act + assert
-        UserWalkieTalkieSettings.IsArmed(null, enabledAt + TimeSpan.FromHours(1)).Should().BeFalse();
-        UserWalkieTalkieSettings.IsArmed(enabledAt, enabledAt - TimeSpan.FromSeconds(1)).Should().BeFalse();
-        UserWalkieTalkieSettings.IsArmed(enabledAt, enabledAt).Should().BeTrue();
-        UserWalkieTalkieSettings.IsArmed(enabledAt, enabledAt + TimeSpan.FromHours(1)).Should().BeTrue();
+        UserPttSettings.IsArmed(null, enabledAt + TimeSpan.FromHours(1)).Should().BeFalse();
+        UserPttSettings.IsArmed(enabledAt, enabledAt - TimeSpan.FromSeconds(1)).Should().BeFalse();
+        UserPttSettings.IsArmed(enabledAt, enabledAt).Should().BeTrue();
+        UserPttSettings.IsArmed(enabledAt, enabledAt + TimeSpan.FromHours(1)).Should().BeTrue();
     }
 
     [Fact]
     public void PassesThroughAllSerializers()
     {
-        var settings = new UserWalkieTalkieSettings {
+        var settings = new UserPttSettings {
             PttChatIds = [TestChatId],
             PttChats = [new PttChat(TestChatId, Moment.EpochStart + TimeSpan.FromDays(1))],
             IsFlipToTalkEnabled = false,
@@ -141,8 +141,8 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
         // act + assert
         AssertPassesThroughUnionSerializers(settings,
             (deserialized, original) => {
-                var d = (UserWalkieTalkieSettings)deserialized;
-                var o = (UserWalkieTalkieSettings)original;
+                var d = (UserPttSettings)deserialized;
+                var o = (UserPttSettings)original;
                 d.PttChatIds.Should().Equal(o.PttChatIds);
                 d.PttChats.Should().Equal(o.PttChats);
                 d.IsFlipToTalkEnabled.Should().Be(o.IsFlipToTalkEnabled);
@@ -190,9 +190,9 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
 
     // Nested types
 
-    // An exact copy of UserWalkieTalkieSettings as E2 shipped it - keys 0..7, no headset button.
+    // An exact copy of UserPttSettings as E2 shipped it - keys 0..7, no headset button.
     [DataContract, MessagePackObject]
-    public sealed partial record E2UserWalkieTalkieSettings
+    public sealed partial record E2UserPttSettings
     {
         [DataMember, Key(0)] public ChatId[] PttChatIds { get; init; } = [];
         [DataMember, Key(1)] public string Origin { get; init; } = "";
@@ -206,7 +206,7 @@ public partial class UserWalkieTalkieSettingsTest(ITestOutputHelper @out) : Test
 
     // Stops before HotWindow and AreAudibleCuesEnabled, both of which have property initializers.
     [DataContract, MessagePackObject]
-    public sealed partial record TruncatedUserWalkieTalkieSettings
+    public sealed partial record TruncatedUserPttSettings
     {
         [DataMember, Key(0)] public ChatId[] PttChatIds { get; init; } = [];
         [DataMember, Key(1)] public string Origin { get; init; } = "";

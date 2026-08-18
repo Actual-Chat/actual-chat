@@ -27,7 +27,7 @@ public static partial class MauiProgram
         services.AddScoped<IosPushNotifications>(c => new IosPushNotifications(c.AppUIHub()));
         services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<IosPushNotifications>());
-        services.AddScoped(c => new IosPushToTalkUI(c.AppUIHub()));
+        services.AddScoped(c => new IosPttUI(c.AppUIHub()));
         services.AddScoped<IDeviceNotifications>(_ => new IosDeviceNotifications());
         services.AddScoped<IRecordingPermissionRequester>(_ => new AppleRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
@@ -52,7 +52,7 @@ public static partial class MauiProgram
             var isDataCollectionEnabled = MauiPreferences.IsDataCollectionEnabled == true;
             CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isDataCollectionEnabled;
             FirebaseCloudMessagingImplementation.Initialize();
-            IosPushToTalk.Initialize();
+            IosPtt.Initialize();
 #endif
             return false;
         }));

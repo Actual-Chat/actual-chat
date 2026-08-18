@@ -86,8 +86,8 @@ public class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
         // Armed = chat-level PTT on + consent within its epoch; the backend stamps the epoch.
         var chat = await SensorTester.AppServices.Commander().Call(new ChatsBackend_Change(
             chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart })));
-        var walkieTalkieSettings = Hub.UserSettingsUI.UserWalkieTalkieSettings();
-        await walkieTalkieSettings.Update(x => x with {
+        var PTTTalkieSettings = Hub.UserSettingsUI.UserPttSettings();
+        await PTTTalkieSettings.Update(x => x with {
             PttChats = [new PttChat(chatId, chat.PttEnabledAt!.Value)],
             PttChatIds = [chatId],
             AreGesturesAlwaysOn = true,
@@ -101,7 +101,7 @@ public class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
         // act: the loop just ran, so its wall-clock floor puts the next tick ~15s out -
         // anything faster than that proves the settings write woke it
         await Task.Delay(TimeSpan.FromSeconds(1).Debuggable());
-        await walkieTalkieSettings.Update(x => x with { IsFlipToTalkEnabled = false });
+        await PTTTalkieSettings.Update(x => x with { IsFlipToTalkEnabled = false });
 
         // assert
         await TestExt.When(

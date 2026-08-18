@@ -90,9 +90,9 @@ is "almost-live", not "from-the-start". (Replay-mode subscribers use
 
 One exception: `GetListeningStream` takes a `catchUpFrom` moment (default =
 none), and streams whose `BeginsAt` is at/after it are served from t=0 with no
-trim. The walkie-talkie wake passes the trigger utterance's start there so the
+trim. The PTT wake passes the trigger utterance's start there so the
 cold boot doesn't cost the listener the first seconds — see
-[doc 10](10-walkie-talkie.md).
+[doc 10](10-push-to-talk.md).
 
 ### Per-author merge in the muxer
 

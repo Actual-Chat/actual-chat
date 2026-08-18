@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// Tracks, per armed chat, the last time INCOMING voice (from authors other than yourself)
-/// started arriving, so the walkie-talkie reply resolver can pick the chat that most recently spoke.
+/// started arriving, so the PTT reply resolver can pick the chat that most recently spoke.
 /// </summary>
 public class IncomingVoiceActivityUI(AppUIHub hub)
     : UIWorkerBase<AppUIHub>(hub), IComputeService, INotifyInitialized
@@ -54,7 +54,7 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
 
     public void ClearIncomingVoice(ChatId chatId)
     {
-        // Stopping a chat's audio must close its answer window too - otherwise the walkie widget
+        // Stopping a chat's audio must close its answer window too - otherwise the PTT widget
         // recomputes the very same state and the notification the user just dismissed comes back.
         if (_lastIncomingAt.TryRemove(chatId, out _))
             IncomingVoiceStamped?.Invoke();

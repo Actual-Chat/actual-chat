@@ -21,7 +21,7 @@ public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
 
     protected override async Task<bool?> Get(CancellationToken cancellationToken)
     {
-        // Must stay callable off the Blazor dispatcher and off the UI thread: a headless walkie-talkie
+        // Must stay callable off the Blazor dispatcher and off the UI thread: a headless PTT
         // scope never renders, so PermissionHandler.Check calls this directly. CheckStatusAsync only
         // reads the OS permission state (ContextCompat on Android, AVAudioSession on iOS), so it can.
         PermissionStatus status;

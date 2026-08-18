@@ -129,7 +129,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!await ServerKvasBackend
-                .IsWalkieTalkieArmed(account.Id, chatId, chat.PttEnabledAt, cancellationToken)
+                .IsPttArmed(account.Id, chatId, chat.PttEnabledAt, cancellationToken)
                 .ConfigureAwait(false))
             return;
 

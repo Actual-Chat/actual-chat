@@ -8,9 +8,9 @@ namespace ActualChat.App.Maui.Audio;
 public class AudioSession(AppUIHub hub) : IAsyncDisposable
 {
     // Past the hot window: while that window is open the owner legitimately stays PTT-held with
-    // no callback in between, so anything shorter would revert a live walkie session.
+    // no callback in between, so anything shorter would revert a live PTT session.
     private static readonly TimeSpan OwnerWatchdogTimeout =
-        Constants.Audio.WalkieTalkieIdleTimeout + TimeSpan.FromMinutes(1);
+        Constants.Audio.PttIdleTimeout + TimeSpan.FromMinutes(1);
     private static readonly TimeSpan OwnerWatchdogPeriod = TimeSpan.FromSeconds(30);
 
     private static readonly Lock OwnerLock = new();

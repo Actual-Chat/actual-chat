@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public class WalkieTalkieTest
+public class PttTest
 {
     private static readonly Moment T0 = Moment.EpochStart + TimeSpan.FromDays(20_000);
 
@@ -10,15 +10,15 @@ public class WalkieTalkieTest
     public void FreshWakeIsNotStale()
     {
         // act + assert
-        WalkieTalkie.IsStaleWake(T0, T0 + TimeSpan.FromSeconds(3)).Should().BeFalse();
-        WalkieTalkie.IsStaleWake(T0, T0 + Constants.Audio.WalkieTalkieStaleWakeAge).Should().BeFalse();
+        Ptt.IsStaleWake(T0, T0 + TimeSpan.FromSeconds(3)).Should().BeFalse();
+        Ptt.IsStaleWake(T0, T0 + Constants.Audio.PttStaleWakeAge).Should().BeFalse();
     }
 
     [Fact]
     public void OldWakeIsStale()
     {
         // act + assert
-        WalkieTalkie.IsStaleWake(T0, T0 + Constants.Audio.WalkieTalkieStaleWakeAge + TimeSpan.FromSeconds(1))
+        Ptt.IsStaleWake(T0, T0 + Constants.Audio.PttStaleWakeAge + TimeSpan.FromSeconds(1))
             .Should().BeTrue();
     }
 
@@ -26,7 +26,7 @@ public class WalkieTalkieTest
     public void OngoingStreamingYieldsNoDropTime()
     {
         // act
-        var dropAt = WalkieTalkie.ComputeIdleDropAt(
+        var dropAt = Ptt.ComputeIdleDropAt(
             hasAnyActivity: true, lastActiveAt: T0, T0, TimeSpan.FromMinutes(5));
 
         // assert
@@ -41,7 +41,7 @@ public class WalkieTalkieTest
         var lastActiveAt = T0 + TimeSpan.FromMinutes(2);
 
         // act
-        var dropAt = WalkieTalkie.ComputeIdleDropAt(hasAnyActivity: false, lastActiveAt, T0, idleTimeout);
+        var dropAt = Ptt.ComputeIdleDropAt(hasAnyActivity: false, lastActiveAt, T0, idleTimeout);
 
         // assert
         dropAt.Should().Be(T0 + TimeSpan.FromMinutes(2) + idleTimeout);
@@ -55,7 +55,7 @@ public class WalkieTalkieTest
         var lastActiveAt = T0 - TimeSpan.FromHours(2);
 
         // act
-        var dropAt = WalkieTalkie.ComputeIdleDropAt(hasAnyActivity: false, lastActiveAt, T0, idleTimeout);
+        var dropAt = Ptt.ComputeIdleDropAt(hasAnyActivity: false, lastActiveAt, T0, idleTimeout);
 
         // assert
         dropAt.Should().Be(T0 + idleTimeout);
@@ -65,7 +65,7 @@ public class WalkieTalkieTest
     public void NoActivityTimesFallBackToIdleSince()
     {
         // act
-        var dropAt = WalkieTalkie.ComputeIdleDropAt(
+        var dropAt = Ptt.ComputeIdleDropAt(
             hasAnyActivity: false, lastActiveAt: null, T0, TimeSpan.FromMinutes(5));
 
         // assert
@@ -76,14 +76,14 @@ public class WalkieTalkieTest
     public void PracticeModeBlocksTransmit()
     {
         // act + assert
-        WalkieTalkie.MayTransmit(isPracticeMode: true, recordingChatId: null).Should().BeFalse();
+        Ptt.MayTransmit(isPracticeMode: true, recordingChatId: null).Should().BeFalse();
     }
 
     [Fact]
     public void OpenMicBlocksTransmit()
     {
         // act + assert
-        WalkieTalkie.MayTransmit(isPracticeMode: false, ChatId.Parse("testchatid1234567890"))
+        Ptt.MayTransmit(isPracticeMode: false, ChatId.Parse("testchatid1234567890"))
             .Should().BeFalse();
     }
 
@@ -91,14 +91,14 @@ public class WalkieTalkieTest
     public void IdleNonPracticeStateAllowsTransmit()
     {
         // act + assert
-        WalkieTalkie.MayTransmit(isPracticeMode: false, recordingChatId: null).Should().BeTrue();
+        Ptt.MayTransmit(isPracticeMode: false, recordingChatId: null).Should().BeTrue();
     }
 
     [Fact]
     public void CapturedAudioIsNeverAMicFailure()
     {
         // act + assert
-        WalkieTalkieReplyUI
+        PttReplyUI
             .ShouldReportMicFailure(hasSignal: true, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(4))
             .Should().BeFalse();
     }
@@ -107,7 +107,7 @@ public class WalkieTalkieTest
     public void SilenceBeforeTheDeadlineIsNotYetAMicFailure()
     {
         // act + assert
-        WalkieTalkieReplyUI
+        PttReplyUI
             .ShouldReportMicFailure(hasSignal: false, TimeSpan.FromSeconds(3.9), TimeSpan.FromSeconds(4))
             .Should().BeFalse();
     }
@@ -118,7 +118,7 @@ public class WalkieTalkieTest
         // The recorder reports itself started as soon as AudioRecord initializes, so "no captured
         // samples" is the only honest signal that the microphone never actually opened.
         // act + assert
-        WalkieTalkieReplyUI
+        PttReplyUI
             .ShouldReportMicFailure(hasSignal: false, TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(4))
             .Should().BeTrue();
     }

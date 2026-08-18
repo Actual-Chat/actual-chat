@@ -123,7 +123,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
 
         var extraChatCount = pttChatIds.Count - 1;
         var now = Hub.Clocks.ServerClock.Now;
-        var recencyWindow = Constants.Audio.WalkieTalkieReplyRecencyWindow;
+        var recencyWindow = Constants.Audio.PttReplyRecencyWindow;
         var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
         var answer = GestureActivationPolicy.GetAnswerWindowChat(
             pttChatIds, lastIncomingVoiceAt, now, recencyWindow);

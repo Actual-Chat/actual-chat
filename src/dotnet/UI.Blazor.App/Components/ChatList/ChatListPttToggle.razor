@@ -4,7 +4,7 @@
 <HeaderButton
     Class="@Class"
     Click="@OnClick"
-    Tooltip="Leave Push to Talk"
+    Tooltip="Turn off Push-to-talk"
     TooltipPosition="FloatingPosition.Top">
     <i class="c-ptt-badge icon-talking text-2xl"></i>
 </HeaderButton>
@@ -15,7 +15,7 @@
 
     private void OnClick() {
         var chatId = ChatId;
-        _ = Hub.UserSettingsUI.UserWalkieTalkieSettings().Update(
+        _ = Hub.UserSettingsUI.UserPttSettings().Update(
             x => x.WithoutPttChat(chatId),
             CancellationToken.None);
     }

@@ -121,9 +121,9 @@ public partial class MainActivity : MauiAppCompatActivity
 
         // Here rather than anywhere in the app: Android only grants a foreground service the
         // microphone type if it starts while the app is in the foreground, and by the time the app
-        // knows its own armed chats it has often been backgrounded already - which costs the walkie
+        // knows its own armed chats it has often been backgrounded already - which costs the PTT
         // reply its mic for the whole life of the service. See ActivitiesBackend.OnArmedChanged.
-        if (MauiPreferences.IsWalkieArmed)
+        if (MauiPreferences.IsPttArmed)
             AndroidActivitiesForegroundService.TryStartArmed(this);
 
         // Attempt to have notification reception even after app is swiped out.
@@ -167,7 +167,7 @@ public partial class MainActivity : MauiAppCompatActivity
         // The one moment the microphone grant can be (re)earned: Android re-evaluates it on every
         // startForeground and denies it from the background, so a service that lost the type -
         // killed and revived while backgrounded - can only recover here.
-        if (MauiPreferences.IsWalkieArmed)
+        if (MauiPreferences.IsPttArmed)
             AndroidActivitiesForegroundService.TryStartArmed(this);
     }
 
@@ -309,14 +309,14 @@ public partial class MainActivity : MauiAppCompatActivity
 
     private void CloseHeadlessScope()
     {
-        // A live headless scope means a walkie reply may be recording with no UI on screen.
+        // A live headless scope means a PTT reply may be recording with no UI on screen.
         // TryDetachCurrent clears _current synchronously - a wake or a headset press racing this
         // must see no headless scope, not the one that's about to be stopped and disposed.
         if (HeadlessBlazorScope.TryDetachCurrent("MainActivity.OnCreate") is not { } scope)
             return;
 
         _ = BackgroundTask.Run(
-            () => WalkieTalkieSession.StopAndDispose(scope), Log, "Failed to close the headless walkie scope");
+            () => PttSession.StopAndDispose(scope), Log, "Failed to close the headless PTT scope");
     }
 
     private void DumpMemoryInfo()

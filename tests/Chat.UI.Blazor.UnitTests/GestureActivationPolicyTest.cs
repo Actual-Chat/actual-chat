@@ -117,7 +117,7 @@ public class GestureActivationPolicyTest
     [Fact]
     public void NeverForegroundedNeverArmsAfterOpen()
         // TimeSpan.MaxValue is what GestureUI passes for a headless scope that never saw
-        // the foreground - walkie wake must not inherit the after-open window.
+        // the foreground - PTT wake must not inherit the after-open window.
         => GestureActivationPolicy
             .ShouldSenseStartGestures(false, false, TimeSpan.MaxValue, [ChatA], NoVoice, T0, Window)
             .Should().BeFalse();

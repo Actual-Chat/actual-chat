@@ -4,11 +4,11 @@ using ActualChat.UI.Blazor.App.Services;
 namespace ActualChat.App.Maui.Services;
 
 /// <summary>
-/// Process-global walkie-talkie entry points: scope resolution (live WebView scope vs
+/// Process-global PTT entry points: scope resolution (live WebView scope vs
 /// <see cref="HeadlessBlazorScope"/>), app-ready waits, and headless-session teardown.
-/// Per-scope work lives in <see cref="WalkieTalkieSessionCore"/>.
+/// Per-scope work lives in <see cref="PttSessionCore"/>.
 /// </summary>
-public static class WalkieTalkieSession
+public static class PttSession
 {
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan TeardownCheckPeriod = TimeSpan.FromSeconds(5);
@@ -16,10 +16,10 @@ public static class WalkieTalkieSession
     private const int TeardownIdleChecks = 2;
     private static readonly Lock Lock = new();
     private static Task? _teardownWatcher;
-    private static ILogger Log => field ??= StaticLog.For(typeof(WalkieTalkieSession));
+    private static ILogger Log => field ??= StaticLog.For(typeof(PttSession));
 
     public static async Task HandleWake(
-        ChatId chatId, Moment startedAt, bool isForeground, WalkieTalkiePlatform platform)
+        ChatId chatId, Moment startedAt, bool isForeground, PttPlatform platform)
     {
         try {
             var app = await BlazorWebViewApp.WhenAppReady.WaitAsync(StartupTimeout).ConfigureAwait(false);
@@ -27,7 +27,7 @@ public static class WalkieTalkieSession
             await sessionResolver.SessionTask.WaitAsync(StartupTimeout).ConfigureAwait(false);
 
             var (scopedServices, isHeadless) = ResolveScope();
-            var core = scopedServices.GetRequiredService<WalkieTalkieSessionCore>();
+            var core = scopedServices.GetRequiredService<PttSessionCore>();
             var audioFocusDenialCount = core.AudioFocusDenialCount;
             await core.StartPlayback(chatId, startedAt, isForeground, isHeadless, platform)
                 .ConfigureAwait(false);
@@ -39,37 +39,37 @@ public static class WalkieTalkieSession
                     () => StopAndDisposeCurrent("audio focus denied"));
         }
         catch (Exception e) {
-            Log.LogError(e, "Walkie-talkie wake failed for chat #{ChatId}", chatId);
+            Log.LogError(e, "PTT wake failed for chat #{ChatId}", chatId);
             platform.OnWakeFailed(chatId);
             await StopAndDisposeCurrent("wake failed").ConfigureAwait(false);
         }
     }
 
-    public static async Task<WalkieTalkieReply?> HandleTransmit(WalkieTalkiePlatform platform)
+    public static async Task<PttReply?> HandleTransmit(PttPlatform platform)
     {
         var isHeadless = false;
         try {
             // One budget for the whole boot, shared by all three waits: the mic-permission check
             // inside RequestReply cannot show a prompt from a locked screen, so nothing here may
             // outlive it.
-            using var cts = new CancellationTokenSource(Constants.Audio.WalkieTalkiePttTransmitStartupTimeout);
+            using var cts = new CancellationTokenSource(Constants.Audio.PttTransmitStartupTimeout);
             var app = await BlazorWebViewApp.WhenAppReady.WaitAsync(cts.Token).ConfigureAwait(false);
             var sessionResolver = app.Services.GetRequiredService<TrueSessionResolver>();
             await sessionResolver.SessionTask.WaitAsync(cts.Token).ConfigureAwait(false);
 
             IServiceProvider scopedServices;
             (scopedServices, isHeadless) = ResolveScope();
-            var core = scopedServices.GetRequiredService<WalkieTalkieSessionCore>();
+            var core = scopedServices.GetRequiredService<PttSessionCore>();
             return await core.Transmit(isHeadless, platform, cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException e) {
             // The boot didn't reach the scope, so there is no reply to close and no cue to play -
             // core.Transmit handles its own failures past that point.
-            Log.LogWarning(e, "Walkie-talkie transmit didn't fit into the startup budget");
+            Log.LogWarning(e, "PTT transmit didn't fit into the startup budget");
             return null;
         }
         catch (Exception e) {
-            Log.LogError(e, "Walkie-talkie transmit failed");
+            Log.LogError(e, "PTT transmit failed");
             return null;
         }
         finally {
@@ -80,7 +80,7 @@ public static class WalkieTalkieSession
         }
     }
 
-    public static void StopHeadless(WalkieTalkiePlatform platform)
+    public static void StopHeadless(PttPlatform platform)
         => _ = BackgroundTask.Run(async () => {
             if (HeadlessBlazorScope.TryDetachCurrent("stopped by the user") is not { } headless)
                 return;
@@ -100,21 +100,21 @@ public static class WalkieTalkieSession
 
     public static async Task StopAndDispose(HeadlessBlazorScope scope, Action? onStopped = null)
     {
-        // The only disposal door for a headless scope: a scope may hold a hot walkie reply, and
+        // The only disposal door for a headless scope: a scope may hold a hot PTT reply, and
         // disposing one out from under an open mic drops the entry with nothing recorded.
         try {
             var hub = scope.Services.GetRequiredService<AppUIHub>();
             if (!hub.ChatAudioUI.IsRecording())
                 return;
 
-            Log.LogInformation("Closing a hot walkie reply before disposing the headless scope");
+            Log.LogInformation("Closing a hot PTT reply before disposing the headless scope");
             using var cts = new CancellationTokenSource(StopHotReplyTimeout);
-            await scope.Services.GetRequiredService<WalkieTalkieSessionCore>()
+            await scope.Services.GetRequiredService<PttSessionCore>()
                 .StopReplyAndWaitForRecorder(cts.Token)
                 .ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Couldn't close the hot walkie reply before disposing the headless scope");
+            Log.LogWarning(e, "Couldn't close the hot PTT reply before disposing the headless scope");
         }
         finally {
             onStopped?.Invoke();
@@ -137,14 +137,14 @@ public static class WalkieTalkieSession
         throw StandardError.Internal("No service scope is available.");
     }
 
-    private static void EnsureTeardownWatcher(WalkieTalkiePlatform platform)
+    private static void EnsureTeardownWatcher(PttPlatform platform)
     {
         lock (Lock)
             _teardownWatcher ??= BackgroundTask.Run(
                 () => WatchTeardown(platform), Log, "Teardown watcher failed", CancellationToken.None);
     }
 
-    private static async Task WatchTeardown(WalkieTalkiePlatform platform)
+    private static async Task WatchTeardown(PttPlatform platform)
     {
         try {
             var idleChecks = 0;
@@ -172,7 +172,7 @@ public static class WalkieTalkieSession
                 if (++idleChecks < TeardownIdleChecks)
                     continue;
 
-                Log.LogInformation("Walkie-talkie: headless session is idle, tearing down");
+                Log.LogInformation("PTT: headless session is idle, tearing down");
                 platform.OnHeadlessTeardown();
                 await StopAndDisposeCurrent("armed (idle)").ConfigureAwait(false);
                 return;

@@ -65,13 +65,13 @@ public static partial class Constants
         // Streaming / channel sizing
         public const int StreamingChannelCapacity = 1024;
         public static readonly TimeSpan ListeningDuration = TimeSpan.FromSeconds(60);
-        // Walkie-talkie mode (docs/superpowers/specs/2026-07-13-walkie-talkie-android-design.md).
-        // Invariant: must stay > the server's NotificationsSettings.WalkieTalkieWakeTtl (30s).
-        public static readonly TimeSpan WalkieTalkieIdleTimeout = TimeSpan.FromMinutes(5);
-        public static readonly TimeSpan WalkieTalkieIdleCheckPeriod = TimeSpan.FromSeconds(15);
+        // PTT mode.
+        // Invariant: must stay > the server's NotificationsSettings.PttWakeTtl (30s).
+        public static readonly TimeSpan PttIdleTimeout = TimeSpan.FromMinutes(5);
+        public static readonly TimeSpan PttIdleCheckPeriod = TimeSpan.FromSeconds(15);
         // Debounces GestureUI's activation loop: its inputs invalidate far more often than the
         // idle-check period, and it runs on battery-sensitive mobile clients.
-        public static readonly TimeSpan WalkieTalkieGestureCheckMinPeriod = TimeSpan.FromSeconds(0.25);
+        public static readonly TimeSpan PttGestureCheckMinPeriod = TimeSpan.FromSeconds(0.25);
         // Under-display proximity sensors emit sub-second false "near" readings while the phone
         // lies still (measured 0.2-1s on a OnePlus CPH2747), and each one used to disarm the
         // start gestures outright, so a cover only counts once it has held this long.
@@ -81,12 +81,12 @@ public static partial class Constants
         // against our 15Hz request - so the surplus is dropped at the platform edge.
         public static readonly TimeSpan GestureSampleMinPeriod = TimeSpan.FromMilliseconds(50);
         // Matches the wake push's FCM TTL; older wakes skip catch-up-from-start and go live.
-        public static readonly TimeSpan WalkieTalkieStaleWakeAge = TimeSpan.FromSeconds(60);
+        public static readonly TimeSpan PttStaleWakeAge = TimeSpan.FromSeconds(60);
         // Clock-fuzz allowance between a wake's startedAt and the target stream's BeginsAt.
         public static readonly TimeSpan ListeningCatchUpTolerance = TimeSpan.FromSeconds(2);
         // Must outlast ServerTimeSync's first sync (3s startup delay + a few RPC round trips).
         public static readonly TimeSpan ServerClockWaitTimeout = TimeSpan.FromSeconds(10);
-        // Short: a walkie reply that waits longer than this has already lost its answer window.
+        // Short: a PTT reply that waits longer than this has already lost its answer window.
         public static readonly TimeSpan ConnectivityWaitTimeout = TimeSpan.FromSeconds(3);
         // How long a stopping recorder may wait for its own pipeline tasks. Start() stops first,
         // so an unbounded wait here blocks every later recording behind a wedged one. Two drains
@@ -94,22 +94,22 @@ public static partial class Constants
         public static readonly TimeSpan RecorderDrainTimeout = TimeSpan.FromSeconds(1);
         // Startup waits the recorder proceeds without rather than lose the utterance.
         public static readonly TimeSpan RecorderStartupWaitTimeout = TimeSpan.FromSeconds(3);
-        // A walkie reply's two startup deadlines: how long the recorder may take to report itself
+        // A PTT reply's two startup deadlines: how long the recorder may take to report itself
         // recording, and how long after that the first captured sample may take. Both are shorter
         // than AudioRecorder.StartRecordingTimeout - a reply that slow has lost its answer window,
         // and the user needs the failure cue while they're still holding the phone.
-        public static readonly TimeSpan WalkieTalkieReplyMicStartTimeout = TimeSpan.FromSeconds(8);
-        public static readonly TimeSpan WalkieTalkieReplyMicLiveTimeout = TimeSpan.FromSeconds(4);
-        public static readonly TimeSpan WalkieTalkieReplyColdStartTimeout = TimeSpan.FromSeconds(15);
-        public static readonly TimeSpan WalkieTalkieReplyBackgroundHotWindow = TimeSpan.FromSeconds(15);
-        public static readonly TimeSpan WalkieTalkieReplyRecencyWindow = TimeSpan.FromSeconds(150);
+        public static readonly TimeSpan PttReplyMicStartTimeout = TimeSpan.FromSeconds(8);
+        public static readonly TimeSpan PttReplyMicLiveTimeout = TimeSpan.FromSeconds(4);
+        public static readonly TimeSpan PttReplyColdStartTimeout = TimeSpan.FromSeconds(15);
+        public static readonly TimeSpan PttReplyBackgroundHotWindow = TimeSpan.FromSeconds(15);
+        public static readonly TimeSpan PttReplyRecencyWindow = TimeSpan.FromSeconds(150);
         // Apple PTT transmit: the framework chimes when it activates the session, not when our
         // recorder exists, so audio is captured natively across the gap. Capacity must stay <=
         // 10 s, which is AppleAudioCapture's outBuffer size at RecordingSampleRate.
-        public static readonly TimeSpan WalkieTalkiePttTransmitStartupTimeout = TimeSpan.FromSeconds(8);
-        public static readonly TimeSpan WalkieTalkiePreRollCapacity = TimeSpan.FromSeconds(8);
-        public static readonly TimeSpan WalkieTalkiePreRollMinDuration = TimeSpan.FromSeconds(0.4);
-        public static readonly TimeSpan WalkieTalkiePreRollFlushDelay = TimeSpan.FromSeconds(1.5);
+        public static readonly TimeSpan PttTransmitStartupTimeout = TimeSpan.FromSeconds(8);
+        public static readonly TimeSpan PttPreRollCapacity = TimeSpan.FromSeconds(8);
+        public static readonly TimeSpan PttPreRollMinDuration = TimeSpan.FromSeconds(0.4);
+        public static readonly TimeSpan PttPreRollFlushDelay = TimeSpan.FromSeconds(1.5);
         public static readonly TimeSpan RecordingDuration = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxRealtimeStreamDrift = TimeSpan.FromSeconds(1.5);
         public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(3);

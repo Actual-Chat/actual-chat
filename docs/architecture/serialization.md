@@ -91,7 +91,7 @@ Two read paths remain, and neither of them writes:
   `0x1` → MessagePack, anything else → legacy unmarked JSON. `Write` always emits `0x1`.
   The `PreferMemoryPack` switch that flips it is **test-only** — it exists so tests can
   manufacture a legacy-shaped blob and prove the read leg still decodes it
-  (`UserWalkieTalkieSettingsTest`, `StoredSettingsSerializationTest`).
+  (`UserPttSettingsTest`, `StoredSettingsSerializationTest`).
 - **Flows** — `FlowData.FlowSerializer` is a `VersionedByteSerializer` whose format 0 is
   `Serializers.MessagePackTypeDecorating`, with `Serializers.MemoryPackTypeDecorating` as the
   `legacy:` leg for flow state persisted before the format byte existed.
@@ -157,7 +157,7 @@ on older types (`ChatUserSettings` pairs `MemoryPackOrder(3)` with `Key(2)`), so
 sequence separately rather than assuming they match.
 
 Either way, a member added later is absent from older blobs and deserializes as `default(T)` —
-a property initializer does not survive the gap. That is why `UserWalkieTalkieSettings.IsHeadsetButtonEnabled`
+a property initializer does not survive the gap. That is why `UserPttSettings.IsHeadsetButtonEnabled`
 is `bool?` and read as `?? true` rather than a `bool ... = true`. This applies to MessagePack
 just as much as to MemoryPack, so it holds for post-cutoff types too.
 
@@ -166,7 +166,7 @@ just as much as to MemoryPack, so it holds for post-cutoff types too.
 A brand-new type has no legacy blobs by definition, so it gets MessagePack markup only —
 including a new `StoredSettings` member, which needs `[Union(N, …)]` and no `[MemoryPackUnion]`.
 `StoredSettings` shows both shapes: it declares 23 `[Union]` members but only 20
-`[MemoryPackUnion]` ones, because `RecentGifs`, `RecentMentions`, and `UserWalkieTalkieSettings`
+`[MemoryPackUnion]` ones, because `RecentGifs`, `RecentMentions`, and `UserPttSettings`
 are MessagePack-only.
 
 #### What unblocks full removal

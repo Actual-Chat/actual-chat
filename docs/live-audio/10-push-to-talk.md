@@ -1,6 +1,6 @@
-# 10 — Walkie-talkie
+# 10 — PTT
 
-Walkie-talkie mode turns a chat into a hands-free voice channel on the mobile
+PTT mode turns a chat into a hands-free voice channel on the mobile
 apps: when someone starts speaking, the listener's device is woken by a push,
 plays the utterance without any UI, and can answer with a push-to-talk reply
 that never requires unlocking the phone. Once the reply's microphone is open,
@@ -12,19 +12,19 @@ device, and when**.
 
 ## States: off, armed, hot
 
-A chat is in exactly one of three walkie states per user:
+A chat is in exactly one of three PTT states per user:
 
 | State | Meaning | Source of truth |
 |---|---|---|
 | **off** | Ordinary chat. No wakes, no gestures, no reply button. | `Chat.PttEnabledAt` is null, or the user's consent is missing/stale |
-| **armed** | The chat may wake this device and may be answered hands-free. | `Chat.PttEnabledAt != null` **and** `UserWalkieTalkieSettings.PttChats` holds an entry with `JoinedAt >= PttEnabledAt` |
-| **hot** | The microphone is open for a walkie reply into this chat. | `WalkieTalkieReplyUI` holds a `WalkieTalkieReply` for it |
+| **armed** | The chat may wake this device and may be answered hands-free. | `Chat.PttEnabledAt != null` **and** `UserPttSettings.PttChats` holds an entry with `JoinedAt >= PttEnabledAt` |
+| **hot** | The microphone is open for a PTT reply into this chat. | `PttReplyUI` holds a `PttReply` for it |
 
 Armed is thus a **two-key state**: the chat owner turns PTT on for the chat
 (`Chat.PttEnabledAt`, a right-panel toggle; for peer chats either author may),
 and each author consents for themselves (`PttChats`, via the join banner or the
 per-chat Voice settings). `PttEnabledAt` doubles as a **consent epoch** —
-`UserWalkieTalkieSettings.IsArmed(pttEnabledAt, joinedAt)` requires
+`UserPttSettings.IsArmed(pttEnabledAt, joinedAt)` requires
 `JoinedAt >= PttEnabledAt`, so turning the chat's toggle off and on again
 invalidates every prior consent (and every prior banner dismissal) without any
 fan-out: stale consent is self-invalidating on both client and server.
@@ -50,7 +50,7 @@ from an author other than your own — `ShouldStamp`), and the wake path stamps
 it explicitly via `NoteIncomingVoice` because a wake may arrive for an
 utterance that is already over. `GestureActivationPolicy.HasAnswerWindow` /
 `GetAnswerWindowChat` then ask whether any armed chat has a stamp newer than
-`now - WalkieTalkieReplyRecencyWindow` (150 s).
+`now - PttReplyRecencyWindow` (150 s).
 
 ```mermaid
 stateDiagram-v2
@@ -82,16 +82,16 @@ sequenceDiagram
         LSB->>Q: Enqueue(SpeechStartedEvent(chatId, authorId, now))
     end
     Q->>NB: OnSpeechStartedEvent
-    NB->>NB: Settings.EnableWalkieTalkiePush
-    NB->>NB: ListUserIds ≤ WalkieTalkieMaxChatMembers
+    NB->>NB: Settings.EnablePttPush
+    NB->>NB: ListUserIds ≤ PttMaxChatMembers
     NB->>NB: exclude speaker + active participants
     loop per remaining user
-        NB->>NB: IsWalkieTalkieArmed (PttEnabledAt epoch + PttChats)
+        NB->>NB: IsPttArmed (PttEnabledAt epoch + PttChats)
         NB->>NB: ChatNotificationMode ≠ Muted
         NB->>NB: ListDevices (AndroidApp / iOSPttApp)
         NB->>NB: _wakePending.TryAdd((userId, chatId))
         NB->>FCM: SendSpeechStartedWake (AndroidApp)
-        NB->>APNs: SendPushToTalkWake (iOSPttApp)
+        NB->>APNs: SendPttWake (iOSPttApp)
     end
 ```
 
@@ -109,26 +109,26 @@ sequenceDiagram
 
 **`NotificationsBackend.OnSpeechStartedEvent`** is the fan-out side:
 
-1. `Settings.EnableWalkieTalkiePush` — the kill switch, checked first.
+1. `Settings.EnablePttPush` — the kill switch, checked first.
 2. `AuthorsBackend.ListUserIds(chatId)`; bail out if the member count exceeds
-   `Settings.WalkieTalkieMaxChatMembers` (100). A wake is a device-waking push
+   `Settings.PttMaxChatMembers` (100). A wake is a device-waking push
    per member, so large chats are excluded outright.
 3. Exclude the speaker's own `UserId` and everyone in
    `GetActiveParticipantUserIds` (resolved from
    `LiveSessionsBackend.ListParticipants` — they are already present and
    hearing it live).
-4. Per remaining user, `SendWalkieTalkieWake` runs isolated in its own
+4. Per remaining user, `SendPttWake` runs isolated in its own
    `try/catch` so one user's failure can't abort the fan-out.
 
-`SendWalkieTalkieWake` applies the per-user gates in order:
-`IsWalkieTalkieArmed(userId, chatId, chat.PttEnabledAt)` — the chat is fetched
+`SendPttWake` applies the per-user gates in order:
+`IsPttArmed(userId, chatId, chat.PttEnabledAt)` — the chat is fetched
 via `ChatsBackend.Get`, and consent stamped before the current epoch doesn't
 count; `ChatNotificationMode.Muted` (a muted
 chat never wakes you, even armed); `ListDevices` filtered to
 `DeviceType.AndroidApp` (FCM) and `DeviceType.iOSPttApp` (APNs), both bounded by
 `Constants.Notification.ActiveDevicePeriod`; and finally the dedup —
 `_wakePending`, a `RecentlySeenMap<(UserId, ChatId), Unit>` of capacity 10 000
-whose retention is `Settings.WalkieTalkieWakeTtl` (30 s), accessed under its own
+whose retention is `Settings.PttWakeTtl` (30 s), accessed under its own
 lock. While an entry is present, further wakes for that (user, chat) are
 dropped: one wake is presumed in flight and a second would only interrupt the
 playback the first one started.
@@ -155,7 +155,7 @@ which prunes dead tokens.
 `apns-topic: {ApplePushBundleId}.voip-ptt`, `apns-priority: 10` and a 60-second
 `apns-expiration`. The payload carries an empty `aps` dictionary plus `Kind`,
 `ChatId`, `Timestamp` and `chatTitle` — the PTT system UI needs a channel label
-at push time, before any RPC can run, so `SendWalkieTalkieWake` reads the chat
+at push time, before any RPC can run, so `SendPttWake` reads the chat
 title for this call alone. `IsConfigured` requires all four `ApplePush*`
 settings (`ApplePushKeyId`, `ApplePushTeamId`, `ApplePushBundleId`,
 `ApplePushPrivateKeyPath`; `ApplePushUseSandbox` selects the host); when they're
@@ -176,23 +176,23 @@ services is scoped.
 
 ```mermaid
 flowchart TD
-    FCM[FirebaseMessagingService<br/>NotificationKind.SpeechStarted] --> WH[WalkieTalkieWakeHandler.Handle]
-    APNS[IosPushToTalk.IncomingPushResult] --> DW[DispatchWake]
+    FCM[FirebaseMessagingService<br/>NotificationKind.SpeechStarted] --> WH[PttWakeHandler.Handle]
+    APNS[IosPtt.IncomingPushResult] --> DW[DispatchWake]
     WH --> HW
-    DW --> HW[WalkieTalkieSession.HandleWake]
-    PTT[Apple PTT Talk press<br/>DidBeginTransmitting] --> HT[WalkieTalkieSession.HandleTransmit]
+    DW --> HW[PttSession.HandleWake]
+    PTT[Apple PTT Talk press<br/>DidBeginTransmitting] --> HT[PttSession.HandleTransmit]
     HW --> RS{ResolveScope}
     HT --> RS
     RS -->|WebView scope published| LIVE[AppServicesAccessor scope]
     RS -->|otherwise| HL[HeadlessBlazorScope.GetOrCreate]
-    LIVE --> CORE[WalkieTalkieSessionCore]
+    LIVE --> CORE[PttSessionCore]
     HL --> CORE
     CORE --> SP[StartPlayback]
     CORE --> TR[Transmit]
     HL --> TW[EnsureTeardownWatcher<br/>WatchTeardown]
 ```
 
-### The facade — `WalkieTalkieSession` (App.Maui)
+### The facade — `PttSession` (App.Maui)
 
 A static class holding only what must be process-global: scope resolution,
 app-ready waits, and headless-session teardown.
@@ -206,7 +206,7 @@ app-ready waits, and headless-session teardown.
   action. Any failure logs, calls `platform.OnWakeFailed(chatId)` and disposes
   the headless scope.
 - **`HandleTransmit(platform)`** shares **one** cancellation budget —
-  `Constants.Audio.WalkieTalkiePttTransmitStartupTimeout` (8 s) — across the
+  `Constants.Audio.PttTransmitStartupTimeout` (8 s) — across the
   app-ready wait, the session wait and `core.Transmit`, because the
   microphone-permission check inside `RequestReply` cannot show a prompt from a
   locked screen and nothing may outlive it. Its `finally` arms the teardown
@@ -232,14 +232,14 @@ app-ready waits, and headless-session teardown.
   required because the replay-ended → listening-restored transition has a short
   gap that must not read as "session over".
 
-### The core — `WalkieTalkieSessionCore` (UI.Blazor.App)
+### The core — `PttSessionCore` (UI.Blazor.App)
 
 A scoped service over `AppUIHub`, so it works identically in a headless scope
 and in the live WebView scope.
 
 `StartPlayback(chatId, startedAt, isForeground, isHeadless, platform)`:
 
-1. Sets `ChatAudioUI.IsWalkieTalkieHeadless` when headless, calls
+1. Sets `ChatAudioUI.IsPttHeadless` when headless, calls
    `ChatAudioUI.Enable()`, and stamps
    `IncomingVoiceActivityUI.NoteIncomingVoice(chatId, startedAt)` — without this
    an utterance that ended during the boot would never open an answer window.
@@ -257,8 +257,8 @@ and in the live WebView scope.
    only because `StartScopedServices` starts it — `AfterFirstRender` never runs
    without a WebView, and a never-ready `ServerClock` used to hang listening
    outright.
-5. **Catch-up**: a fresh wake — `WalkieTalkie.IsStaleWake(startedAt, now)` false,
-   i.e. younger than `WalkieTalkieStaleWakeAge` (60 s, matching the FCM TTL) —
+5. **Catch-up**: a fresh wake — `Ptt.IsStaleWake(startedAt, now)` false,
+   i.e. younger than `PttStaleWakeAge` (60 s, matching the FCM TTL) —
    first stamps `ChatAudioUI.SetListeningCatchUp(chatId, startedAt)`. The
    listening player passes that anchor to `GetListeningStream`, and the
    server-side `ListeningStreamMuxer` serves streams whose `BeginsAt` is at/after
@@ -272,12 +272,12 @@ and in the live WebView scope.
 6. Fires `platform.OnPlaybackStarted(hub, chatId)`.
 
 `Transmit(isHeadless, platform, cancellationToken)` refuses to open the mic when
-`WalkieTalkie.MayTransmit(isPracticeMode, recordingChatId)` is false — rehearsing
+`Ptt.MayTransmit(isPracticeMode, recordingChatId)` is false — rehearsing
 in Settings must never transmit, and `RequestReply` is idempotent, so a
 gesture-opened mic would otherwise make the transmission report success and
 later close a reply it never started. It re-stamps `platform.LastWake` (the
 persisted wake) before calling
-`WalkieTalkieReplyUI.RequestReply(ReplyTargetResolver.UnboundedRecencyWindow, …)`,
+`PttReplyUI.RequestReply(ReplyTargetResolver.UnboundedRecencyWindow, …)`,
 and on any failure closes the reply **it** opened via `StopOrphanedReply` (an
 identity-checked `StopReply(reply)`, never a blanket stop) and fires
 `PlayFailureCue` as a background task.
@@ -305,7 +305,7 @@ costs the wake. `TryDetachCurrent(reason)` clears `Current` synchronously so
 every reader sees the handoff immediately while the caller disposes on its own
 schedule.
 
-### Android — `WalkieTalkieWakeHandler`
+### Android — `PttWakeHandler`
 
 `FirebaseMessagingService` routes `NotificationKind.SpeechStarted` here.
 `Handle(data)` validates `ChatId`/`StartedAt`, and when the app is backgrounded
@@ -314,20 +314,20 @@ starts the foreground service **first and synchronously**
 so the start lands inside the FCM high-priority exemption window; the service
 self-guards the 5-second `startForeground` rule. Only then does it call
 `BlazorWebViewApp.EnsureStarted()` and hand off to
-`WalkieTalkieSession.HandleWake` on a background task. Its `AndroidPlatform`
-implementation of `WalkieTalkiePlatform` maps
+`PttSession.HandleWake` on a background task. Its `AndroidPlatform`
+implementation of `PttPlatform` maps
 `OnWakeFailed` → fallback chat notification + hide the FGS *only if the wake
 still owns it* (`AndroidActivitiesBackend.IsForegroundServiceWakeOwned` — a wake
 failure must not take down a service the WebView widget has since taken over),
 `OnHeadlessTeardown` → hide the FGS, and `OnPlaybackStarted` → re-show it with
 the real chat title.
 
-### iOS — `IosPushToTalk`
+### iOS — `IosPtt`
 
 One aggregate channel named `"Voxt"` (fixed `ChannelUuid`) whose join survives
-app kill and reboot via `PTChannelRestorationDelegate`. `IosPushToTalkUI`, a
+app kill and reboot via `PTChannelRestorationDelegate`. `IosPttUI`, a
 scoped `UIWorkerBase`, watches `ChatAudioUI.GetPttChatIds` and calls
-`IosPushToTalk.Leave()` when the armed set empties, or
+`IosPtt.Leave()` when the armed set empties, or
 `SetTransmitEnabled(settings.IsPttTransmitEnabled ?? true)` + `EnsureJoined()`
 otherwise. `Initialize()` restores the transmit flag from `NSUserDefaults`
 *before* `PTChannelManager.Create`, because a restoration join fires
@@ -351,11 +351,11 @@ would show the channel as receiving forever.
 
 `ChatAudioUI.StateSync`'s `StopListeningWhenIdleInBackground` runs only on
 `AppKind.Android` / `AppKind.Ios` — the platforms that have a wake path able to
-re-arm dropped listening. Every `WalkieTalkieIdleCheckPeriod` (15 s), while
-`BackgroundStateTracker.IsBackground` or `IsWalkieTalkieHeadless` is set and
+re-arm dropped listening. Every `PttIdleCheckPeriod` (15 s), while
+`BackgroundStateTracker.IsBackground` or `IsPttHeadless` is set and
 there is neither a replay nor a recording, it polls `LiveStreamUI.HasActivity`
 across the listening set and feeds
-`WalkieTalkie.ComputeIdleDropAt(hasAnyActivity, lastActiveAt, idleSince, WalkieTalkieIdleTimeout)`.
+`Ptt.ComputeIdleDropAt(hasAnyActivity, lastActiveAt, idleSince, PttIdleTimeout)`.
 `HasActivity` is a **level**, not an edge, so the caller stamps `lastActiveAt`
 on the observed active→idle transition and `idleSince` clamps a stamp leaked
 from a prior session. Once `now` reaches the returned drop moment (5 minutes of
@@ -365,9 +365,9 @@ wake push re-arms it, which is exactly why the drop is safe.
 
 ## Reply (transmit) pipeline
 
-### `WalkieTalkieReplyUI`
+### `PttReplyUI`
 
-The single owner of a walkie reply. `RequestReply(recencyWindow, ct)`:
+The single owner of a PTT reply. `RequestReply(recencyWindow, ct)`:
 
 1. `ChatAudioUI.Enable()`, then return `null` if a recording is already in
    progress — the method is **idempotent**, and `null` means "this call did not
@@ -378,30 +378,30 @@ The single owner of a walkie reply. `RequestReply(recencyWindow, ct)`:
    `permission.CanPrompt`; a headless wake cannot prompt.
 4. Lift any soft host mute for your own author (`LiveSessionUI.MutePeer(…, false)`),
    exactly like the ordinary recorder toggle.
-5. Create `WalkieTalkieReply(chatId, StartedAt)` — the **identity** every trigger
-   later uses to stop only what it started — take `WalkieTalkieMicCapability.Hold(reply)`
+5. Create `PttReply(chatId, StartedAt)` — the **identity** every trigger
+   later uses to stop only what it started — take `PttMicCapability.Hold(reply)`
    *before* publishing it (so a competitor's `Release` always follows this
    `Hold` and the count never dips), swap it into `_reply` under the lock, kill
    the displaced reply's cold-start watcher inside that same lock, and release
    the displaced reply's hold outside it.
-6. `ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk: true, idleDuration: settings.HotWindow, mustPlayBeginTune: settings.AreAudibleCuesEnabled)`,
+6. `ChatAudioUI.SetRecordingChatId(chatId, isPtt: true, idleDuration: settings.HotWindow, mustPlayBeginTune: settings.AreAudibleCuesEnabled)`,
    then `StartColdStartWatch`.
 
 `StopReply(reply)` is identity-checked and no-ops once anything else has
 replaced the open reply; `StopReply()` closes whatever this service currently
-owns. `CloseReply` plays `Tune.WalkieReplyEnded` or `Tune.WalkieReplyNothingHeard`
+owns. `CloseReply` plays `Tune.PttReplyEnded` or `Tune.PttReplyNothingHeard`
 depending on `_everVoiced`, and releases the mic capability in a `finally`.
 
 The **cold-start dead-man switch** (`ColdStartWatch`) has two phases. Phase 1
 waits for the first `IsVoiceActive` on the target chat; if
-`ShouldColdClose(false, elapsed, WalkieTalkieReplyColdStartTimeout)` (15 s)
+`ShouldColdClose(false, elapsed, PttReplyColdStartTimeout)` (15 s)
 fires first, it closes the mic with the "nothing heard" cue. Phase 2 just
 follows `GetRecordingChatId` until the recording ends — the hot phase's close is
 owned by `RecordChat`'s own idle logic (`HotWindow`, incoming-voice reset,
 manual stop). `CloseFromWatcher` re-checks `ReferenceEquals(_coldStartCts, cts)`
 so a superseded watcher can never close a reply that displaced its own.
 
-`WalkieTalkieMicCapability` is the reference-counted host hook behind all of
+`PttMicCapability` is the reference-counted host hook behind all of
 this: `Hold` / `Release` / `HoldWhile`, with a platform handler that on Android
 re-issues the foreground service with the microphone type. The hold must be
 taken **synchronously inside the native callback** (media button, gesture) that
@@ -417,13 +417,13 @@ state non-null, so the foreground service runs continuously, started from the
 foreground (with the microphone type) at arming time.
 
 `MainActivity.OnCreate` is what raises it at launch, from the persisted
-`MauiPreferences.IsWalkieArmed` — the app doesn't know its own armed set until
+`MauiPreferences.IsPttArmed` — the app doesn't know its own armed set until
 Blazor has rendered and Kvas has loaded, by which time the start no longer counts
 as a foreground one. Three rules follow. `TryStartArmed` marks the service shown
 (`AndroidActivitiesBackend.MarkForegroundServiceShown`), or `HideImpl` — which
 early-returns on that flag — could never take the notification down again. No
 later-arriving scope may hide it: `AndroidActivitiesBackend`'s constructor skips
-its reconcile hide while `IsWalkieArmed`, since a warm start leaves the static
+its reconcile hide while `IsPttArmed`, since a warm start leaves the static
 `_isShown` set from the previous scope and stopping the service there would cost
 the microphone type for the rest of the session. And the mirrored flag is
 latched — `ActivitiesBackend.ShouldPersistArmed` refuses to persist an empty
@@ -440,7 +440,7 @@ Given the armed chats, the `IncomingVoiceActivityUI` snapshot, the focused chat
 and a recency window:
 
 1. Pick the armed chat with the newest incoming-voice stamp inside the window.
-2. If that best stamp is older than `WalkieTalkieReplyRecencyWindow`, treat it as
+2. If that best stamp is older than `PttReplyRecencyWindow`, treat it as
    stale and prefer the focused chat when it is armed — otherwise an unbounded
    window would let a days-old stamp outrank the chat you are looking at.
 3. Fall back to the stale best, then to the single armed chat when there is
@@ -455,25 +455,25 @@ and the resolver special-cases it to `Moment.EpochStart` rather than computing
 
 | Trigger | Path |
 |---|---|
-| Flip-to-talk, double-shake | `GestureUI.OnSample` → `GestureRecognizer` → `GestureActivationPolicy.Route` → `WalkieTalkieMicCapability.HoldWhile(RequestReply)` |
+| Flip-to-talk, double-shake | `GestureUI.OnSample` → `GestureRecognizer` → `GestureActivationPolicy.Route` → `PttMicCapability.HoldWhile(RequestReply)` |
 | Face-down | same, routed to `StopReply` |
 | Android headset button | `AndroidActivitiesForegroundService` media session → `HeadsetButtonPolicy.Decide` |
-| Apple PTT Talk button | `IosPushToTalk.OnTransmitBegan` → `WalkieTalkieSession.HandleTransmit` |
+| Apple PTT Talk button | `IosPtt.OnTransmitBegan` → `PttSession.HandleTransmit` |
 
 **Gestures.** `GestureUI` is a `UIWorkerBase` that owns the sensor subscription
 lifecycle: `SensorFeed` (no-op base class — there are no sensors on the web),
 `GestureRecognizer` over `FlipToTalkDetector`, `ShakeDetector` and
 `FaceDownDetector`, with the stop gesture evaluated first (on a live mic,
 closing always beats opening). Its `TrackActivation` loop recomputes
-`GestureOptions` from `UserWalkieTalkieSettings` and
+`GestureOptions` from `UserPttSettings` and
 `GestureActivationPolicy.ShouldSenseStartGestures(areGesturesAlwaysOn, isPracticeMode, pttChatIds, lastIncomingVoiceAt, now, recencyWindow)`,
 so **start** sensing is normally scoped to the answer window; `AreGesturesAlwaysOn`
 and practice mode are the two documented exceptions. The loop's floor is
-`WalkieTalkieGestureCheckMinPeriod` (0.25 s) — its inputs invalidate far more
+`PttGestureCheckMinPeriod` (0.25 s) — its inputs invalidate far more
 often than the check period and it runs on battery-sensitive devices — and it
 wakes early on `IncomingVoiceActivityUI.IncomingVoiceStamped`, the
 `PttChatIds` / recording-chat / app-settings invalidations, or after
-`WalkieTalkieIdleCheckPeriod`. `IsPracticeMode = false` disarms synchronously
+`PttIdleCheckPeriod`. `IsPracticeMode = false` disarms synchronously
 rather than waiting for the next tick.
 
 **Android headset button.** The media session's `OnMediaButtonEvent` maps
@@ -520,7 +520,7 @@ gets no `DidActivateAudioSession`), and supersedes any previous transmission.
 The **pre-roll** exists because the framework chimes and activates the session
 when the user presses Talk, not when our recorder exists — so
 `PttPreRoll` installs a tap on a temporary `AVAudioEngine` and fills a
-`PreRollBuffer` (`Core.Audio`) of `WalkieTalkiePreRollCapacity` (8 s, bounded by
+`PreRollBuffer` (`Core.Audio`) of `PttPreRollCapacity` (8 s, bounded by
 `AppleAudioCapture`'s 10 s output buffer). The buffer is a bounded one-shot ring:
 `TryAppend` runs on the real-time audio thread and drops the *oldest* samples on
 overflow (a slow boot must degrade to "lost the first words", not "lost
@@ -532,8 +532,8 @@ input node with nobody left to stop it. `AppleAudioCapture` calls
 `AVAudioEngine` instances must never hold the hardware input node at once — and
 drains the samples through the resampler in one-input-second chunks, only if the
 buffered format still matches the current hardware format.
-`WalkieTalkiePreRollMinDuration` (0.4 s) suppresses a drain too short to be
-speech, and `WalkieTalkiePreRollFlushDelay` (1.5 s) holds a reply open when the
+`PttPreRollMinDuration` (0.4 s) suppresses a drain too short to be
+speech, and `PttPreRollFlushDelay` (1.5 s) holds a reply open when the
 user released Talk before the app finished booting, so the buffered words still
 reach the encoder.
 
@@ -546,23 +546,23 @@ compatible with a live PTT call, while lowering it to `Playback` or `Ambient`
 would cut the incoming voice out. `AudioSession.Reconfigure` / `Reactivate`
 therefore report `AudioSessionSetup(IsConfigured, IsActivated)` as two separate
 bits. A **watchdog** (`ArmOwnerWatchdog` / `WatchOwner`, polling every 30 s)
-reverts a non-`App` owner held longer than `WalkieTalkieIdleTimeout + 1 min`
+reverts a non-`App` owner held longer than `PttIdleTimeout + 1 min`
 with no PTT callback, because `MayActivate` is false for both PTT owners and a
 stuck one disables every tune, playback and recording in the app. The revert
-also runs `SetOwnerWatchdogRecovery`, which `IosPushToTalk` wires to
+also runs `SetOwnerWatchdogRecovery`, which `IosPtt` wires to
 `StopTransmitting` + `ClearActiveParticipant` — reverting the app's view alone
 would leave the framework still showing a transmit.
 
 ## Heard receipts
 
-Walkie playback produces a third read-position kind. `ChatPlayer`'s
+PTT playback produces a third read-position kind. `ChatPlayer`'s
 `OnPlaybackTrackStarted` fires for each `ChatAudioTrackInfo`, checks that the
 chat is in `ChatAudioUI.GetPttChatIds`, and calls
 `ILiveAudioStreams.ReportPlayback(session, chatId, streamId, entryId)`.
 
 Server-side, `LiveAudioStreams.ReportPlayback` gates every report:
 `ChatPermissions.ReadAudio` on the caller's rules, then
-`ServerKvasBackend.IsWalkieTalkieArmed` for the caller's own account, then the
+`ServerKvasBackend.IsPttArmed` for the caller's own account, then the
 entry — the client-supplied `entryId` is accepted only after those gates and is
 otherwise resolved from the `streamId`, and it must belong to the same chat.
 The write is `ChatPositionsBackend_Set(accountId, chatId, ChatPositionKind.Heard, new ChatPosition(entryLid))`.
@@ -580,7 +580,7 @@ Two properties make this safe:
 
 ## Settings and gating
 
-`UserWalkieTalkieSettings` (`Api/Users/StoredSettings/`) is a `StoredSettings`
+`UserPttSettings` (`Api/Users/StoredSettings/`) is a `StoredSettings`
 record with `IHasOrigin`, so it round-trips through Kvas and syncs across
 devices:
 
@@ -592,7 +592,7 @@ devices:
 | `IsDoubleShakeEnabled` | `true` | Double-shake start gesture |
 | `ShakeSensitivity` | `Medium` | Ordered so `Medium` is the zero default; firing sets nest `Low ⊆ Medium ⊆ High` |
 | `AreGesturesAlwaysOn` | `false` | Sense start gestures outside the answer window |
-| `HotWindow` | 60 s | Idle duration handed to `SetRecordingChatId` for a walkie reply; clamped to `WalkieTalkieReplyBackgroundHotWindow` (15 s) when the reply starts in background or headless |
+| `HotWindow` | 60 s | Idle duration handed to `SetRecordingChatId` for a PTT reply; clamped to `PttReplyBackgroundHotWindow` (15 s) when the reply starts in background or headless |
 | `AreAudibleCuesEnabled` | `true` | Begin/end/nothing-heard tunes |
 | `IsHeadsetButtonEnabled` | `null` → `true` | Headset hook / play-pause opens a reply |
 | `IsPttTransmitEnabled` | `null` → `true` | Apple PTT transmission mode (`FullDuplex` vs `ListenOnly`) |
@@ -618,7 +618,7 @@ auto-arms the owner; other authors get `PttJoinBanner` (dismissal stored per
 chat in `PttJoinBannerUserSettings`, expiring with the epoch) or the Voice
 settings row, which is disabled while the chat's PTT is off.
 
-**Gating.** The walkie UI is admin-only preview surface, hidden behind
+**Gating.** The PTT UI is admin-only preview surface, hidden behind
 `Features_EnableIncompleteUI` (which returns `false` for any non-admin account
 and otherwise reads `UserAppSettings.IsIncompleteUIEnabled`). `SettingsModal`
 shows the Push-to-Talk page only when `HostInfo.HostKind.IsMauiApp() && EnableIncompleteUI`;
@@ -637,37 +637,37 @@ working if the flag is later turned off; only the UI for changing it goes away.
 
 | Constant | Value | Meaning |
 |---|---|---|
-| `WalkieTalkieIdleTimeout` | 5 min | Background silence after which listening drops from hot to armed |
-| `WalkieTalkieIdleCheckPeriod` | 15 s | Poll period of the idle-drop loop; also the answer-window expiry floor in `GestureUI` |
-| `WalkieTalkieGestureCheckMinPeriod` | 0.25 s | Debounce floor for `GestureUI`'s activation loop |
+| `PttIdleTimeout` | 5 min | Background silence after which listening drops from hot to armed |
+| `PttIdleCheckPeriod` | 15 s | Poll period of the idle-drop loop; also the answer-window expiry floor in `GestureUI` |
+| `PttGestureCheckMinPeriod` | 0.25 s | Debounce floor for `GestureUI`'s activation loop |
 | `GestureSampleMinPeriod` | 50 ms | Floor between accelerometer samples handed to the detectors |
 | `ProximitySuppressionDelay` | 0.5 s | How long "near" must hold before it suppresses start gestures |
-| `WalkieTalkieStaleWakeAge` | 60 s | Older wakes skip the from-start catch-up and go straight to live listening |
+| `PttStaleWakeAge` | 60 s | Older wakes skip the from-start catch-up and go straight to live listening |
 | `ListeningCatchUpTolerance` | 2 s | Clock-fuzz allowance between a wake's `startedAt` and the target stream's `BeginsAt` |
-| `WalkieTalkieReplyColdStartTimeout` | 15 s | Cold-start dead-man: no voice within this and the mic closes with the "nothing heard" cue |
-| `WalkieTalkieReplyRecencyWindow` | 150 s | The answer window — how long after incoming voice a hands-free reply may start |
-| `WalkieTalkiePttTransmitStartupTimeout` | 8 s | Whole-boot budget for an Apple PTT transmit |
-| `WalkieTalkiePreRollCapacity` | 8 s | Pre-roll ring size; must stay ≤ `AppleAudioCapture`'s 10 s output buffer |
-| `WalkieTalkiePreRollMinDuration` | 0.4 s | Below this the pre-roll isn't drained |
-| `WalkieTalkiePreRollFlushDelay` | 1.5 s | Hold-open after an early Talk release, so the pre-roll reaches the encoder |
-| `UserWalkieTalkieSettings.MaxChatCount` | 3 | Max armed chats per user |
-| `NotificationsSettings.WalkieTalkieWakeTtl` | 30 s | Server-side per-(user, chat) wake dedup retention |
-| `NotificationsSettings.WalkieTalkieMaxChatMembers` | 100 | Chats larger than this never wake anyone |
+| `PttReplyColdStartTimeout` | 15 s | Cold-start dead-man: no voice within this and the mic closes with the "nothing heard" cue |
+| `PttReplyRecencyWindow` | 150 s | The answer window — how long after incoming voice a hands-free reply may start |
+| `PttTransmitStartupTimeout` | 8 s | Whole-boot budget for an Apple PTT transmit |
+| `PttPreRollCapacity` | 8 s | Pre-roll ring size; must stay ≤ `AppleAudioCapture`'s 10 s output buffer |
+| `PttPreRollMinDuration` | 0.4 s | Below this the pre-roll isn't drained |
+| `PttPreRollFlushDelay` | 1.5 s | Hold-open after an early Talk release, so the pre-roll reaches the encoder |
+| `UserPttSettings.MaxChatCount` | 3 | Max armed chats per user |
+| `NotificationsSettings.PttWakeTtl` | 30 s | Server-side per-(user, chat) wake dedup retention |
+| `NotificationsSettings.PttMaxChatMembers` | 100 | Chats larger than this never wake anyone |
 | `AndroidConfig.TimeToLive` in `SendSpeechStartedWake` | 60 s | FCM queue lifetime of a wake |
 | APNs `apns-expiration` in `ApnsClient` | 60 s | Same, for the iOS PTT wake |
 
 Cross-invariants worth keeping in mind when tuning these:
 
-- **`WalkieTalkieIdleTimeout` > `WalkieTalkieWakeTtl`.** The client drops to
+- **`PttIdleTimeout` > `PttWakeTtl`.** The client drops to
   armed after 5 minutes of silence and relies on the next wake to re-arm it; if
   the server's 30 s dedup window outlived the client's listening window, the
   re-arming wake would be suppressed as a duplicate.
-- **`WalkieTalkieStaleWakeAge` = the push TTL (60 s).** A wake that outlives the
+- **`PttStaleWakeAge` = the push TTL (60 s).** A wake that outlives the
   transport's own queue lifetime is by definition stale, so it must not trigger
   a from-start catch-up.
-- **`AudioSession`'s owner watchdog > `WalkieTalkieIdleTimeout`.** It runs at
-  `WalkieTalkieIdleTimeout + 1 min`; anything shorter would revert a live walkie
+- **`AudioSession`'s owner watchdog > `PttIdleTimeout`.** It runs at
+  `PttIdleTimeout + 1 min`; anything shorter would revert a live PTT
   session, during which the PTT owner legitimately persists with no callback in
   between.
-- **`WalkieTalkiePreRollCapacity` ≤ `AppleAudioCapture`'s output buffer** (10 s
+- **`PttPreRollCapacity` ≤ `AppleAudioCapture`'s output buffer** (10 s
   at `RecordingSampleRate`), or the drain would be truncated.

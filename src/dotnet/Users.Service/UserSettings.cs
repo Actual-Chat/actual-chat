@@ -24,7 +24,7 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         [nameof(UserTranscodingTestSettings)] = typeof(UserTranscodingTestSettings),
         [nameof(FakeDeviceContactOptions)] = typeof(FakeDeviceContactOptions),
         [nameof(UserReplaySettings)] = typeof(UserReplaySettings),
-        [nameof(UserWalkieTalkieSettings)] = typeof(UserWalkieTalkieSettings),
+        [nameof(UserPttSettings)] = typeof(UserPttSettings),
         [nameof(UserNotificationsPanelSettings)] = typeof(UserNotificationsPanelSettings),
         [nameof(RecentMentions)] = typeof(RecentMentions),
         [nameof(RecentGifs)] = typeof(RecentGifs),
@@ -130,8 +130,8 @@ public class UserSettings(IServiceProvider services) : IUserSettings
                 return typeof(ChatUserSettings);
             if (key.StartsWith(AddChatMembersBannerUserSettings.KeyPrefix))
                 return typeof(AddChatMembersBannerUserSettings);
-            if (key.StartsWith(PttJoinBannerUserSettings.KeyPrefix))
-                return typeof(PttJoinBannerUserSettings);
+            if (key.StartsWith(PttAllowBannerUserSettings.KeyPrefix))
+                return typeof(PttAllowBannerUserSettings);
 
             return typeof(StoredSettings);
         }

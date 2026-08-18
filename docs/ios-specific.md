@@ -423,7 +423,7 @@ against `map.csv` rather than assuming.
 device build of current `dev` fails with `error MT7140` because `Entitlements.dev.plist`
 requests it. Stripping the key (`plutil -remove "com\.apple\.developer\.push-to-talk"`)
 unblocks the build at the cost of PTT in that build — fine for profiling, useless for
-profiling the walkie path itself. Fixing it properly means adding the entitlement to the
+profiling the PTT path itself. Fixing it properly means adding the entitlement to the
 `chat.actual.dev.app` profile in the portal.
 
 **The share extension gets the diagnostic port too.** `DOTNET_DiagnosticPorts` is written

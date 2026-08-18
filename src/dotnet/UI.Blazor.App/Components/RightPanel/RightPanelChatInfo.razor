@@ -38,7 +38,7 @@
                     <Left>
                         <i class="text-2xl icon-talking @pttIconCls"></i>
                     </Left>
-                    <Title>Push to Talk</Title>
+                    <Title>Push-to-talk</Title>
                     <Caption>@GetStateCaption(m.IsPttEnabled, m.IsOwner)</Caption>
                     <Right>
                         <Toggle
@@ -99,10 +99,10 @@
 
         // Flipping the toggle is itself consent: auto-arm the owner with the server-stamped epoch.
         if (isPttEnabled && newChat?.PttEnabledAt is { } enabledAt)
-            await UserSettingsUI.UserWalkieTalkieSettings()
+            await UserSettingsUI.UserPttSettings()
                 .Update(x => x.WithPttChat(chat.Id, enabledAt), CancellationToken.None);
         else if (!isPttEnabled)
-            await UserSettingsUI.UserWalkieTalkieSettings()
+            await UserSettingsUI.UserPttSettings()
                 .Update(x => x.WithoutPttChat(chat.Id), CancellationToken.None);
     }
 

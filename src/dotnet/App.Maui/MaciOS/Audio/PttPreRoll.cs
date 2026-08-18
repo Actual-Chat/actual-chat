@@ -51,7 +51,7 @@ public static class PttPreRoll
                 return 0;
             }
 
-            var capacity = (int)(sampleRate * Constants.Audio.WalkieTalkiePreRollCapacity.TotalSeconds);
+            var capacity = (int)(sampleRate * Constants.Audio.PttPreRollCapacity.TotalSeconds);
             var buffer = new PreRollBuffer(token, sampleRate, capacity);
             var frameLength = (uint)(sampleRate / 1000 * Constants.Audio.OpusFrameDurationMs);
             input.InstallTapOnBus(0, frameLength, format, (pcm, _) => buffer.TryAppend(pcm.AsReadOnlySpan()));
@@ -124,7 +124,7 @@ public static class PttPreRoll
         if (buffer is null || format is null)
             return null;
 
-        var minSampleCount = (int)(buffer.SampleRate * Constants.Audio.WalkieTalkiePreRollMinDuration.TotalSeconds);
+        var minSampleCount = (int)(buffer.SampleRate * Constants.Audio.PttPreRollMinDuration.TotalSeconds);
         var samples = buffer.TryDrain(buffer.Token, minSampleCount);
         return samples is null ? null : new PreRollTake(samples, format);
     }

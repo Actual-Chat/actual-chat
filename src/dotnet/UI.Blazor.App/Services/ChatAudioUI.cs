@@ -44,7 +44,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private new ILogger? DebugLog => DebugMode ? Log : null;
 
     public bool IsAudioSyncEnabled { get; set; } = true;
-    public bool IsWalkieTalkieHeadless { get; set; }
+    public bool IsPttHeadless { get; set; }
     public SyncedState<UserReplaySettings> ReplaySettings { get; init; }
     public IState<ReplayState?> ReplayState => _replayState;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time
@@ -120,13 +120,13 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         // Armed = consent within the chat's current enable-epoch; the Chats.Get dependency
         // re-arms/disarms everything downstream when an owner flips the chat's PTT toggle.
         await Hub.ChatUI.WhenReady.ConfigureAwait(false);
-        var pttChats = await UserSettingsUI.UserWalkieTalkieSettings()
+        var pttChats = await UserSettingsUI.UserPttSettings()
             .Get(x => x.PttChats, cancellationToken)
             .ConfigureAwait(false);
         var result = new List<ChatId>(pttChats.Length);
         foreach (var pttChat in pttChats) {
             var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
-            if (chat != null && UserWalkieTalkieSettings.IsArmed(chat.PttEnabledAt, pttChat.JoinedAt))
+            if (chat != null && UserPttSettings.IsArmed(chat.PttEnabledAt, pttChat.JoinedAt))
                 result.Add(pttChat.ChatId);
         }
         return result;
@@ -230,7 +230,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public ValueTask SetRecordingChatId(
         ChatId? chatId,
-        bool isPushToTalk = false,
+        bool isPtt = false,
         TimeSpan? idleDuration = null,
         bool mustPlayBeginTune = true)
     {
@@ -259,7 +259,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
                 // Begin recording
                 var chat = activeChats.FirstOrDefault(c => c.ChatId == chatId);
-                var mustListen = !isPushToTalk;
+                var mustListen = !isPtt;
                 if (chat == null)
                     chat = new ActiveChat(chatId, mustListen, true, now, mustListen ? now : default);
                 else {

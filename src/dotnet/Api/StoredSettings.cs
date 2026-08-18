@@ -49,13 +49,13 @@ namespace ActualChat;
 [Union(14, typeof(UserReplaySettings))]
 [Union(15, typeof(RecentMentions))]
 [Union(16, typeof(RecentGifs))]
-[Union(17, typeof(UserWalkieTalkieSettings))]
+[Union(17, typeof(UserPttSettings))]
 [Union(18, typeof(UserNotificationsPanelSettings))]
 // Chat-User settings
 [Union(50, typeof(ChatUserSettings))]
 [Union(51, typeof(ChatInviteSettings))]
 [Union(52, typeof(AddChatMembersBannerUserSettings))]
-[Union(53, typeof(PttJoinBannerUserSettings))]
+[Union(53, typeof(PttAllowBannerUserSettings))]
 // Local settings
 [Union(100, typeof(LocalAppSettings))]
 [Union(101, typeof(LocalOnboardingSettings))]

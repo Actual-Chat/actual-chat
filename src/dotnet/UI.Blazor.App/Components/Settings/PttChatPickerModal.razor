@@ -5,7 +5,7 @@
 
 <DialogFrame
     Class="ptt-chat-picker-modal"
-    Title="Add a Push to Talk chat"
+    Title="Add a Push-to-talk chat"
     HasCloseButton="true"
     NarrowViewSettings="@_viewSettings">
     <Body>
@@ -62,7 +62,7 @@
         var joinedAt = Hub.Clocks.ServerClock.Now;
         // CanAdd bounds the selection to the capacity seen at open time; if another device
         // fills it concurrently, WithPttChat evicts the least-recently-joined entry instead.
-        await settingsUI.UserWalkieTalkieSettings().Update(x => {
+        await settingsUI.UserPttSettings().Update(x => {
             foreach (var chatId in chatIds)
                 x = x.WithPttChat(chatId, joinedAt);
             return x;

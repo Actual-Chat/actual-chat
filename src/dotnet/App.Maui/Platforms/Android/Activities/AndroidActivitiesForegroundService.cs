@@ -118,9 +118,9 @@ public class AndroidActivitiesForegroundService : Service
         // Never while a chat is armed. This service is what holds the microphone grant, and Android
         // only hands that to a service started with the app in the foreground - so stopping it from
         // a background path (a headless session tearing down, a wake failing) costs every later
-        // walkie reply its mic, with no way to earn it back until MainActivity runs again.
-        if (MauiPreferences.IsWalkieArmed) {
-            Log.LogInformation("Stop: keeping the foreground service - walkie-talkie is armed");
+        // PTT reply its mic, with no way to earn it back until MainActivity runs again.
+        if (MauiPreferences.IsPttArmed) {
+            Log.LogInformation("Stop: keeping the foreground service - PTT is armed");
             return;
         }
 
@@ -143,9 +143,9 @@ public class AndroidActivitiesForegroundService : Service
         CreateNotificationChannel();
         NotificationHelper.EnsureActivityChannelsExist(this);
         _micCapabilityHandler = OnMicCapabilityRequested;
-        WalkieTalkieMicCapability.SetHandler(_micCapabilityHandler);
+        PttMicCapability.SetHandler(_micCapabilityHandler);
         _micBlockedHandler = MicrophoneBlockedNotification.ShowPermissionDenied;
-        WalkieTalkieMicCapability.SetBlockedHandler(_micBlockedHandler);
+        PttMicCapability.SetBlockedHandler(_micBlockedHandler);
     }
 
     public override void OnDestroy()
@@ -153,11 +153,11 @@ public class AndroidActivitiesForegroundService : Service
         Log.LogDebug("OnDestroy");
         Volatile.Write(ref _isStopping, true);
         if (_micCapabilityHandler is { } micCapabilityHandler) {
-            WalkieTalkieMicCapability.ResetHandler(micCapabilityHandler);
+            PttMicCapability.ResetHandler(micCapabilityHandler);
             _micCapabilityHandler = null;
         }
         if (_micBlockedHandler is { } micBlockedHandler) {
-            WalkieTalkieMicCapability.ResetBlockedHandler(micBlockedHandler);
+            PttMicCapability.ResetBlockedHandler(micBlockedHandler);
             _micBlockedHandler = null;
         }
         _requestId = RandomStringGenerator.Default.Next();
@@ -256,7 +256,7 @@ public class AndroidActivitiesForegroundService : Service
             capabilities |= PlaybackStateCompat.ActionStop;
         }
         // Armed reports Paused, not Playing: nothing is playing, and the system media UI animates a
-        // Playing session - a permanent "something is playing" pulse for an idle walkie. Paused
+        // Playing session - a permanent "something is playing" pulse for an idle PTT. Paused
         // still keeps the session alive for the headset button, which Stopped would not.
         var isIdle = kind is ActivityKind.Armed
             || (kind is (ActivityKind.Replaying or ActivityKind.Listening) && isPaused);
@@ -367,7 +367,7 @@ public class AndroidActivitiesForegroundService : Service
             ActivityKind.Recording => "Recording",
             ActivityKind.Listening => "Listening",
             ActivityKind.Replaying => "Replaying",
-            ActivityKind.Armed => "Walkie-talkie is on",
+            ActivityKind.Armed => "Push-to-talk is on",
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
 
@@ -484,11 +484,11 @@ public class AndroidActivitiesForegroundService : Service
     private Android.App.Notification BuildStartingNotification(ActivityKind kind)
         // Carries real text because the armed start (TryStartArmed) has no chat to name yet and
         // this notification is all the user sees until the backend arrives, which takes as long as
-        // Blazor needs to render. A blank one reads as "walkie-talkie isn't running".
+        // Blazor needs to render. A blank one reads as "PTT isn't running".
         => new NotificationCompat.Builder(this, GetChannelId(kind))
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetContentTitle(kind switch {
-                ActivityKind.Armed => "Walkie-talkie is on",
+                ActivityKind.Armed => "Push-to-talk is on",
                 ActivityKind.Recording => "Recording",
                 ActivityKind.Uploading => "Uploading",
                 ActivityKind.SharingLocation => "Sharing live location",
@@ -576,7 +576,7 @@ public class AndroidActivitiesForegroundService : Service
         manager.CreateNotificationChannel(
             new NotificationChannel(LocationChannelId, "Location sharing", NotificationImportance.Low));
         // High so an open microphone surfaces over the keyguard instead of sitting in the shade,
-        // silent because the walkie's own cues already say it started - this is the visual half.
+        // silent because the PTT's own cues already say it started - this is the visual half.
         var recordingChannel = new NotificationChannel(
             RecordingChannelId, "Recording alerts", NotificationImportance.High);
         recordingChannel.SetSound(null, null);
@@ -614,10 +614,10 @@ public class AndroidActivitiesForegroundService : Service
             // The hold is taken synchronously inside the media-button dispatch, which is where
             // Android hands out the while-in-use exemption a background mic start needs, and it is
             // released when the trigger ends - a reply that never opened can't leave it raised.
-            var replyUI = hub.WalkieTalkieReplyUI;
+            var replyUI = hub.PttReplyUI;
             var whenHandled = action == HeadsetButtonAction.StopReply
                 ? replyUI.StopReply()
-                : WalkieTalkieMicCapability.HoldWhile(() => replyUI.RequestReply(CancellationToken.None));
+                : PttMicCapability.HoldWhile(() => replyUI.RequestReply(CancellationToken.None));
             _ = BackgroundTask.Run(() => whenHandled, Log, $"{action} from the headset button failed",
                 CancellationToken.None);
             return true;

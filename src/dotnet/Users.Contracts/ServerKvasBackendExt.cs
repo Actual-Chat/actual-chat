@@ -20,7 +20,7 @@ public static class ServerKvasBackendExt
         bool isOutermost = false)
         => new(serverKvasBackend, chatId, isOutermost);
 
-    public static async Task<bool> IsWalkieTalkieArmed(
+    public static async Task<bool> IsPttArmed(
         this IServerKvasBackend serverKvasBackend,
         UserId userId,
         ChatId chatId,
@@ -33,7 +33,7 @@ public static class ServerKvasBackendExt
         if (pttEnabledAt is null)
             return false;
 
-        var settings = await serverKvasBackend.ForUser(userId).UserWalkieTalkieSettings()
+        var settings = await serverKvasBackend.ForUser(userId).UserPttSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
         return settings.IsArmedIn(chatId, pttEnabledAt);

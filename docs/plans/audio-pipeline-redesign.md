@@ -171,7 +171,7 @@ transitions* at idle it is reliable and immediate.
   reconfigures on *escalation*, but `Release` reconfigures on **every**
   de-escalation — so each recording start/stop costs a pair, plus an
   `AudioEngines.Pause()`/`Resume()` bounce, plus a VPIO restart whose AEC then
-  re-converges. In walkie-talkie use that is per press.
+  re-converges. In PTT use that is per press.
 - **`Tunes` and `Playback` are the same engine twice.** `AudioEngine`'s only
   per-instance state besides its `AVAudioEngine` is `Mode`, which is read **only
   in log messages**. Both are a bare engine with player nodes on `MainMixerNode`.

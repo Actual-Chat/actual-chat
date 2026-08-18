@@ -9,7 +9,7 @@ public sealed class BackgroundHotWindowTest
     {
         // act
         var hotWindow = TimeSpan.FromSeconds(60);
-        var effective = WalkieTalkieReplyUI.GetEffectiveHotWindow(hotWindow, isBackground: false);
+        var effective = PttReplyUI.GetEffectiveHotWindow(hotWindow, isBackground: false);
 
         // assert
         effective.Should().Be(hotWindow);
@@ -19,18 +19,18 @@ public sealed class BackgroundHotWindowTest
     public void BackgroundClampsToShortWindow()
     {
         // act
-        var effective = WalkieTalkieReplyUI.GetEffectiveHotWindow(TimeSpan.FromSeconds(60), isBackground: true);
+        var effective = PttReplyUI.GetEffectiveHotWindow(TimeSpan.FromSeconds(60), isBackground: true);
 
         // assert
-        effective.Should().Be(Constants.Audio.WalkieTalkieReplyBackgroundHotWindow);
+        effective.Should().Be(Constants.Audio.PttReplyBackgroundHotWindow);
     }
 
     [Fact]
     public void BackgroundNeverExtendsShorterWindow()
     {
         // act
-        var hotWindow = Constants.Audio.WalkieTalkieReplyBackgroundHotWindow - TimeSpan.FromSeconds(5);
-        var effective = WalkieTalkieReplyUI.GetEffectiveHotWindow(hotWindow, isBackground: true);
+        var hotWindow = Constants.Audio.PttReplyBackgroundHotWindow - TimeSpan.FromSeconds(5);
+        var effective = PttReplyUI.GetEffectiveHotWindow(hotWindow, isBackground: true);
 
         // assert
         effective.Should().Be(hotWindow);

@@ -6,14 +6,14 @@ namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 // Guards proxy/registration mismatches that only surface on first real resolution -
 // a sealed class registered as a Fusion compute service has no generated proxy and
-// throws only when a live scope resolves it (see WalkieTalkieReplyUI, E1..cleanup).
+// throws only when a live scope resolves it (see PttReplyUI, E1..cleanup).
 
 [Collection(nameof(ChatUICollection))]
-public class WalkieServiceResolutionTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
+public class PttServiceResolutionTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ChatAppHostFixture>(fixture, @out)
 {
     [Fact]
-    public async Task ScopedWalkieServicesResolve()
+    public async Task ScopedPttServicesResolve()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -21,9 +21,9 @@ public class WalkieServiceResolutionTest(ChatAppHostFixture fixture, ITestOutput
         var hub = services.AppUIHub();
 
         // act + assert
-        hub.WalkieTalkieReplyUI.Should().NotBeNull();
+        hub.PttReplyUI.Should().NotBeNull();
         hub.IncomingVoiceActivityUI.Should().NotBeNull();
         hub.GestureUI.Should().NotBeNull();
-        services.GetRequiredService<WalkieTalkieSessionCore>().Should().NotBeNull();
+        services.GetRequiredService<PttSessionCore>().Should().NotBeNull();
     }
 }

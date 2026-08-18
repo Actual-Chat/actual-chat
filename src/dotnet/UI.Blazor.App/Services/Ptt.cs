@@ -1,9 +1,9 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public static class WalkieTalkie
+public static class Ptt
 {
     public static bool IsStaleWake(Moment startedAt, Moment now)
-        => now - startedAt > Constants.Audio.WalkieTalkieStaleWakeAge;
+        => now - startedAt > Constants.Audio.PttStaleWakeAge;
 
     public static Moment? ComputeIdleDropAt(
         bool hasAnyActivity, Moment? lastActiveAt, Moment idleSince, TimeSpan idleTimeout)

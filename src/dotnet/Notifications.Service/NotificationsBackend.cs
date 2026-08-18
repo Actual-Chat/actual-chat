@@ -27,7 +27,7 @@ public class NotificationsBackend(IServiceProvider services)
     // Not thread-safe by itself - always access under lock.
     private readonly RecentlySeenMap<(UserId UserId, ChatId ChatId), Unit> _wakePending = new(
         WakePendingCapacity,
-        services.GetRequiredService<NotificationsSettings>().WalkieTalkieWakeTtl);
+        services.GetRequiredService<NotificationsSettings>().PttWakeTtl);
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
@@ -770,11 +770,11 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         var (chatId, authorId, startedAt) = eventCommand;
-        if (!Settings.EnableWalkieTalkiePush)
+        if (!Settings.EnablePttPush)
             return;
 
         var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
-        if (userIds.Length > Settings.WalkieTalkieMaxChatMembers)
+        if (userIds.Length > Settings.PttMaxChatMembers)
             return;
 
         var speaker = await AuthorsBackend
@@ -790,12 +790,12 @@ public class NotificationsBackend(IServiceProvider services)
         await targetUserIds
             .Select(async userId => {
                 try {
-                    await SendWalkieTalkieWake(userId, chatId, authorId, startedAt, cancellationToken)
+                    await SendPttWake(userId, chatId, authorId, startedAt, cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (Exception e) when (e is not OperationCanceledException) {
                     Log.LogError(e,
-                        "Walkie-talkie wake failed for user '{UserId}' in chat '{ChatId}'", userId, chatId);
+                        "PTT wake failed for user '{UserId}' in chat '{ChatId}'", userId, chatId);
                 }
             })
             .Collect(cancellationToken)
@@ -1061,17 +1061,17 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    private async Task SendWalkieTalkieWake(
+    private async Task SendPttWake(
         UserId userId, ChatId chatId, AuthorId authorId, Moment startedAt, CancellationToken cancellationToken)
     {
-        if (!await IsArmedForWalkieTalkie(userId, chatId, cancellationToken).ConfigureAwait(false)) {
-            Log.LogInformation("Walkie wake for user '{UserId}' in chat '{ChatId}': not armed", userId, chatId);
+        if (!await IsArmedForPtt(userId, chatId, cancellationToken).ConfigureAwait(false)) {
+            Log.LogInformation("PTT wake for user '{UserId}' in chat '{ChatId}': not armed", userId, chatId);
             return;
         }
 
         var mode = await GetNotificationMode(userId, chatId, cancellationToken).ConfigureAwait(false);
         if (mode == ChatNotificationMode.Muted) {
-            Log.LogInformation("Walkie wake for user '{UserId}' in chat '{ChatId}': muted", userId, chatId);
+            Log.LogInformation("PTT wake for user '{UserId}' in chat '{ChatId}': muted", userId, chatId);
             return;
         }
 
@@ -1087,7 +1087,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ToList();
         if (fcmDeviceIds.Count == 0 && pttDeviceIds.Count == 0) {
             Log.LogInformation(
-                "Walkie wake for user '{UserId}' in chat '{ChatId}': no wake-capable devices among {DeviceCount}",
+                "PTT wake for user '{UserId}' in chat '{ChatId}': no wake-capable devices among {DeviceCount}",
                 userId, chatId, devices.Count);
             return;
         }
@@ -1095,13 +1095,13 @@ public class NotificationsBackend(IServiceProvider services)
         lock (_wakePending) {
             _wakePending.Prune();
             if (!_wakePending.TryAdd((userId, chatId))) {
-                Log.LogInformation("Walkie wake for user '{UserId}' in chat '{ChatId}': deduped", userId, chatId);
+                Log.LogInformation("PTT wake for user '{UserId}' in chat '{ChatId}': deduped", userId, chatId);
                 return;
             }
         }
 
         Log.LogInformation(
-            "Walkie wake for user '{UserId}' in chat '{ChatId}': sending to {FcmCount} FCM / {PttCount} PTT device(s)",
+            "PTT wake for user '{UserId}' in chat '{ChatId}': sending to {FcmCount} FCM / {PttCount} PTT device(s)",
             userId, chatId, fcmDeviceIds.Count, pttDeviceIds.Count);
         if (fcmDeviceIds.Count != 0)
             await FirebaseMessagingClient
@@ -1112,16 +1112,16 @@ public class NotificationsBackend(IServiceProvider services)
             // The PTT system UI needs a channel/speaker label at push time, before any RPC.
             var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
             await ApnsClient
-                .SendPushToTalkWake(chatId, startedAt, chat?.Title.NullIfEmpty() ?? "Voxt", pttDeviceIds, cancellationToken)
+                .SendPttWake(chatId, startedAt, chat?.Title.NullIfEmpty() ?? "Voxt", pttDeviceIds, cancellationToken)
                 .ConfigureAwait(false);
         }
     }
 
-    private async Task<bool> IsArmedForWalkieTalkie(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+    private async Task<bool> IsArmedForPtt(UserId userId, ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         return await ServerKvasBackend
-            .IsWalkieTalkieArmed(userId, chatId, chat?.PttEnabledAt, cancellationToken)
+            .IsPttArmed(userId, chatId, chat?.PttEnabledAt, cancellationToken)
             .ConfigureAwait(false);
     }
 

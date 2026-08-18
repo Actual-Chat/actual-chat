@@ -32,7 +32,7 @@ public sealed class MauiBlazorApp : AppBase
         if (_mauiWebView != null)
             await _mauiWebView.SetScopedServices(Services, session).ConfigureAwait(true);
 #if IOS
-        _ = Services.GetService<IosPushToTalkUI>();
+        _ = Services.GetService<IosPttUI>();
 #endif
 
         FirebaseAnalyticsExt.ActivateOwnAnalyticsCollection(Services);

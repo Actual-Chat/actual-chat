@@ -19,25 +19,25 @@ public class HeadsetButtonPolicyTest
 
     [Fact]
     public void RecentVoiceInAnArmedChatOpensTheWindow()
-        => GetState(new UserWalkieTalkieSettings(), RecentVoiceInA).HasAnswerWindow.Should().BeTrue();
+        => GetState(new UserPttSettings(), RecentVoiceInA).HasAnswerWindow.Should().BeTrue();
 
     [Fact]
     public void StaleVoiceLeavesTheWindowClosed()
-        => GetState(new UserWalkieTalkieSettings(), OldVoiceInA).HasAnswerWindow.Should().BeFalse();
+        => GetState(new UserPttSettings(), OldVoiceInA).HasAnswerWindow.Should().BeFalse();
 
     [Fact]
     public void VoiceInAnUnarmedChatLeavesTheWindowClosed()
-        => GetState(new UserWalkieTalkieSettings(), RecentVoiceInB).HasAnswerWindow.Should().BeFalse();
+        => GetState(new UserPttSettings(), RecentVoiceInB).HasAnswerWindow.Should().BeFalse();
 
     [Fact]
     public void AnEmptyArmedSetLeavesTheWindowClosed()
-        => GetState(new UserWalkieTalkieSettings(), RecentVoiceInA, pttChatIds: []).HasAnswerWindow.Should().BeFalse();
+        => GetState(new UserPttSettings(), RecentVoiceInA, pttChatIds: []).HasAnswerWindow.Should().BeFalse();
 
     [Fact]
     public void AlwaysOnGesturesNeverOpenTheWindow()
     {
         // arrange
-        var settings = new UserWalkieTalkieSettings { AreGesturesAlwaysOn = true };
+        var settings = new UserPttSettings { AreGesturesAlwaysOn = true };
 
         // act
         var withNoVoice = GetState(settings, NoVoice);
@@ -57,7 +57,7 @@ public class HeadsetButtonPolicyTest
     public void PracticeModeNeverOpensTheWindow()
     {
         // act
-        var state = GetState(new UserWalkieTalkieSettings(), NoVoice, isPracticeMode: true);
+        var state = GetState(new UserPttSettings(), NoVoice, isPracticeMode: true);
 
         // assert
         state.HasAnswerWindow.Should().BeFalse();
@@ -68,7 +68,7 @@ public class HeadsetButtonPolicyTest
     public void AlwaysOnPlusPracticeModeStillDoesNotStartAReply()
     {
         // arrange
-        var settings = new UserWalkieTalkieSettings { AreGesturesAlwaysOn = true };
+        var settings = new UserPttSettings { AreGesturesAlwaysOn = true };
 
         // act
         var state = GetState(settings, NoVoice, isPracticeMode: true);
@@ -79,19 +79,19 @@ public class HeadsetButtonPolicyTest
 
     [Fact]
     public void AMissingSettingReadsAsEnabled()
-        => GetState(new UserWalkieTalkieSettings { IsHeadsetButtonEnabled = null }, RecentVoiceInA)
+        => GetState(new UserPttSettings { IsHeadsetButtonEnabled = null }, RecentVoiceInA)
             .IsEnabled.Should().BeTrue();
 
     [Fact]
     public void AnExplicitlyDisabledSettingReadsAsDisabled()
-        => GetState(new UserWalkieTalkieSettings { IsHeadsetButtonEnabled = false }, RecentVoiceInA)
+        => GetState(new UserPttSettings { IsHeadsetButtonEnabled = false }, RecentVoiceInA)
             .IsEnabled.Should().BeFalse();
 
     [Fact]
     public void AHotReplyIsCarriedThroughToTheDecision()
     {
         // act
-        var state = GetState(new UserWalkieTalkieSettings(), NoVoice, isReplyHot: true);
+        var state = GetState(new UserPttSettings(), NoVoice, isReplyHot: true);
 
         // assert
         Decide(state).Should().Be(HeadsetButtonAction.StopReply);
@@ -183,7 +183,7 @@ public class HeadsetButtonPolicyTest
     // Private methods
 
     private static HeadsetButtonState GetState(
-        UserWalkieTalkieSettings settings,
+        UserPttSettings settings,
         IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
         IReadOnlyList<ChatId>? pttChatIds = null,
         bool isReplyHot = false,

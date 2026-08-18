@@ -1,10 +1,10 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// Platform hooks for the walkie-talkie session: wake failure, playback start,
+/// Platform hooks for the PTT session: wake failure, playback start,
 /// foreground-wake completion, and headless-session teardown.
 /// </summary>
-public abstract class WalkieTalkiePlatform
+public abstract class PttPlatform
 {
     public abstract void OnWakeFailed(ChatId chatId);
     public abstract void OnHeadlessTeardown();

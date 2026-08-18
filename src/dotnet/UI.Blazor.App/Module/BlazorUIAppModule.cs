@@ -82,11 +82,11 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // Live stream UI
         fusion.AddService<LiveStreamUI>(ServiceLifetime.Scoped);
         fusion.AddService<IncomingVoiceActivityUI>(ServiceLifetime.Scoped);
-        services.AddScoped(c => new WalkieTalkieReplyUI(c.AppUIHub()));
+        services.AddScoped(c => new PttReplyUI(c.AppUIHub()));
         if (!HostInfo.HostKind.IsMauiApp())
             services.AddScoped(_ => new SensorFeed()); // MauiSensorFeed is registered in MauiAppModule
         services.AddScoped(c => new GestureUI(c.AppUIHub()));
-        services.AddScoped(c => new WalkieTalkieSessionCore(c.AppUIHub()));
+        services.AddScoped(c => new PttSessionCore(c.AppUIHub()));
         fusion.AddService<LiveSessionUI>(ServiceLifetime.Scoped);
         fusion.AddService<LiveBlockUI>(ServiceLifetime.Scoped);
         fusion.AddService<IncomingCallUI>(ServiceLifetime.Scoped);

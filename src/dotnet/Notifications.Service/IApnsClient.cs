@@ -2,7 +2,7 @@ namespace ActualChat.Notifications;
 
 public interface IApnsClient
 {
-    Task SendPushToTalkWake(
+    Task SendPttWake(
         ChatId chatId,
         Moment startedAt,
         string chatTitle,

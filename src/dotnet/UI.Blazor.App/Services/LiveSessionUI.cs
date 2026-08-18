@@ -263,7 +263,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     {
         // A scope torn down whole (app closed, headless session disposed) never reaches the loop's
         // own "chat left the set" branch, so the server kept believing we were here for the whole
-        // 90s ParticipantStaleness - and suppressed every walkie wake as "already present".
+        // 90s ParticipantStaleness - and suppressed every PTT wake as "already present".
         foreach (var (chatId, kind) in current)
             try {
                 await SetParticipation(chatId, kind, false, CancellationToken.None).ConfigureAwait(false);

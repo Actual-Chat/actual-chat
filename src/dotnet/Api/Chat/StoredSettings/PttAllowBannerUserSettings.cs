@@ -1,13 +1,13 @@
 namespace ActualChat.Chat;
 
 /// <summary>
-/// Stores the dismissed-at timestamp for the "Join Push-to-Talk" banner;
+/// Stores the dismissed-at timestamp for the "Allow Push to Talk" banner;
 /// a dismissal older than the chat's <c>PttEnabledAt</c> epoch no longer hides the banner.
 /// </summary>
 [DataContract, MessagePackObject]
-public sealed partial record PttJoinBannerUserSettings : StoredSettings
+public sealed partial record PttAllowBannerUserSettings : StoredSettings
 {
-    public static readonly string KeyPrefix = "@PttJoinBanner(";
+    public static readonly string KeyPrefix = "@PttAllowBanner(";
     public static readonly string KeySuffix = ")";
 
     public static string GetKey(ChatId chatId) => $"{KeyPrefix}{chatId.RootChatId.Value}{KeySuffix}";

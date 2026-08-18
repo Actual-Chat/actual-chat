@@ -105,7 +105,7 @@ public partial class ChatAudioUI
     {
         if (!_listeningCatchUpAnchors.TryGetValue(chatId, out var anchor))
             return default;
-        if (!WalkieTalkie.IsStaleWake(anchor, ServerNow))
+        if (!Ptt.IsStaleWake(anchor, ServerNow))
             return anchor;
 
         _listeningCatchUpAnchors.TryRemove(chatId, out _);

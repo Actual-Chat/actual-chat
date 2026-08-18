@@ -27,18 +27,18 @@
     @if (m.EnableIncompleteUI) {
         var pttCaption = m.PttEnabledAt is null
             ? "Not enabled in this chat"
-            : m.IsPushToTalk
+            : m.IsPtt
                 ? "Wakes this device when someone speaks"
                 : "Off";
-        <TileItem Click="@OnPushToTalkClick">
+        <TileItem Click="@OnPttClick">
             <Icon><i class="icon-talking text-2xl"></i></Icon>
-            <Content>Push to Talk</Content>
+            <Content>Push-to-talk</Content>
             <Caption>@pttCaption</Caption>
             <Right>
                 <Toggle
                     IsDisabled="@(m.PttEnabledAt is null)"
-                    IsChecked="@m.IsPushToTalk"
-                    IsCheckedChanged="@(_ => OnPushToTalkClick())"/>
+                    IsChecked="@m.IsPtt"
+                    IsCheckedChanged="@(_ => OnPttClick())"/>
             </Right>
         </TileItem>
     }
@@ -68,7 +68,7 @@
         var settings = await UserSettingsUI.GetChatVoiceMode(chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var pttEnabledAt = chat?.PttEnabledAt;
-        var walkieTalkieSettings = await UserSettingsUI.UserWalkieTalkieSettings()
+        var PTTTalkieSettings = await UserSettingsUI.UserPttSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
         var mustStreamVoice = settings.VoiceMode.HasVoice();
@@ -76,7 +76,7 @@
         return new (
             mustStreamVoice,
             settings.CanChange,
-            walkieTalkieSettings.IsArmedIn(chatId, pttEnabledAt),
+            PTTTalkieSettings.IsArmedIn(chatId, pttEnabledAt),
             pttEnabledAt,
             isIncompleteUIEnabled);
     }
@@ -91,7 +91,7 @@
     private Task OnVoiceStreamingClick()
         => OnMustStreamVoiceChanged(!State.Value.MustStreamVoice);
 
-    private async Task OnPushToTalkClick() {
+    private async Task OnPttClick() {
         var m = State.Value;
         if (m.PttEnabledAt is not { } enabledAt)
             return;
@@ -99,8 +99,8 @@
         var chatId = ChatId;
         // Never a raw client clock: JoinedAt must land within the current epoch (>= enabledAt).
         var joinedAt = Moment.Max(Clocks.ServerClock.Now, enabledAt);
-        await UserSettingsUI.UserWalkieTalkieSettings().Update(
-            x => m.IsPushToTalk ? x.WithoutPttChat(chatId) : x.WithPttChat(chatId, joinedAt),
+        await UserSettingsUI.UserPttSettings().Update(
+            x => m.IsPtt ? x.WithoutPttChat(chatId) : x.WithPttChat(chatId, joinedAt),
             CancellationToken.None);
     }
 
@@ -109,7 +109,7 @@
     public sealed record ComputedModel(
         bool MustStreamVoice,
         bool CanChangeMustStreamVoice,
-        bool IsPushToTalk,
+        bool IsPtt,
         Moment? PttEnabledAt,
         bool EnableIncompleteUI);
 }

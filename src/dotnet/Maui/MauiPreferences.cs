@@ -15,7 +15,7 @@ public static class MauiPreferences
     private const string IsDataCollectionEnabledKey = "analytics";
     private const string ThemeKey = "Theme";
     private const string MinReportableClientVersionKey = "min_reportable_client_version";
-    private const string IsWalkieArmedKey = "is_walkie_armed";
+    private const string IsPttArmedKey = "is_ptt_armed";
 
     private static readonly Lock Lock = new();
     private static readonly ConcurrentDictionary<string, object?> Cache = new();
@@ -45,11 +45,11 @@ public static class MauiPreferences
         set => Set(MinReportableClientVersionKey, value ?? "");
     }
 
-    public static bool IsWalkieArmed {
-        // Mirrors the app's armed-chat state so MainActivity can raise the walkie foreground
+    public static bool IsPttArmed {
+        // Mirrors the app's armed-chat state so MainActivity can raise the PTT foreground
         // service while still in the foreground - the app's own state arrives far too late.
-        get => Get<bool?>(IsWalkieArmedKey) ?? false;
-        set => Set(IsWalkieArmedKey, value);
+        get => Get<bool?>(IsPttArmedKey) ?? false;
+        set => Set(IsPttArmedKey, value);
     }
 
     public static string? GetHostIp(string hostName)

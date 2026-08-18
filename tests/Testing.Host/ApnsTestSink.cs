@@ -18,14 +18,14 @@ public sealed class ApnsTestSink(ILogger<ApnsTestSink> log) : IApnsClient
     public void Clear()
         => _wakes.Clear();
 
-    public Task SendPushToTalkWake(
+    public Task SendPttWake(
         ChatId chatId,
         Moment startedAt,
         string chatTitle,
         IReadOnlyCollection<Symbol> deviceIds,
         CancellationToken cancellationToken)
     {
-        log.LogInformation("SendPushToTalkWake: chat {ChatId} -> {DeviceCount} device(s)", chatId, deviceIds.Count);
+        log.LogInformation("SendPttWake: chat {ChatId} -> {DeviceCount} device(s)", chatId, deviceIds.Count);
         _wakes.Enqueue(new ApnsPttWakeMessage(chatId, startedAt, chatTitle, [..deviceIds]));
         return Task.CompletedTask;
     }

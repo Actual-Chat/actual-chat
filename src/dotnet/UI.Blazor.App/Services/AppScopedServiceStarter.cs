@@ -119,7 +119,7 @@ public sealed class AppScopedServiceStarter
             var baseDelay = TimeSpan.FromSeconds(hostKind.IsServer() ? 0.25 : 1);
 
             // Ahead of the delay below: these two drive the OS-level activity UI, and on Android
-            // that includes the armed walkie-talkie notification the user expects at launch.
+            // that includes the armed PTT notification the user expects at launch.
             Hub.Services.GetRequiredService<ActivitiesUI>().Start();
             _ = Hub.ActivitiesBackend; // Touch. Auto-starts on construction; WebView-only - see StartScopedServices
 
@@ -169,7 +169,7 @@ public sealed class AppScopedServiceStarter
         // renders, and each one silently wedges an audio path when it doesn't run:
         // - ServerTimeSync: ServerClock.WhenReady never completes, so the listening player hangs.
         // - ConnectivityUI: IsConnected is seeded false on MAUI and only its worker ever sets it,
-        //   so the recorder's WhenConnected wait never returns and no walkie reply can record.
+        //   so the recorder's WhenConnected wait never returns and no PTT reply can record.
         // - AudioFocusUI.WarmUp: without it every wake takes a cold Normal -> InCommunication
         //   transition, and the first track is built before the route reaches the speaker.
         services.GetService<ServerTimeSync>()?.Start();

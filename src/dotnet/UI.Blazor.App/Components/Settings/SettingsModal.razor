@@ -9,7 +9,7 @@
     var showMyAccount = !isGuest;
     var showLogout = !isGuest;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
-    var showPushToTalk = HostInfo.HostKind.IsMauiApp() && m.EnableIncompleteUI;
+    var showPtt = HostInfo.HostKind.IsMauiApp() && m.EnableIncompleteUI;
     var quitTitle = $"Quit {CoreConstants.AppName}";
 }
 
@@ -39,10 +39,10 @@
             </ChildContent>
         </SettingsTab>
 
-        @if (showPushToTalk) {
-            <SettingsTab @key="4" TabIndex="4" Title="Push to Talk" Id="@SettingsTabId.PushToTalk"
+        @if (showPtt) {
+            <SettingsTab @key="4" TabIndex="4" Title="Push-to-talk" Id="@SettingsTabId.Ptt"
                 IconClass="icon-talking">
-                <PushToTalkSettings/>
+                <PttSettings/>
             </SettingsTab>
         }
 

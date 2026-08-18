@@ -148,7 +148,7 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         }
         finally {
             // Ends the engine and its VPIO with the capture rather than with the focus scope,
-            // which in walkie-talkie mode is released minutes later. It also has to happen
+            // which in PTT mode is released minutes later. It also has to happen
             // before the latch reports the input node free, or a PTT press landing in between
             // would start a second AVAudioEngine on a node this one still holds.
             engine.Release();

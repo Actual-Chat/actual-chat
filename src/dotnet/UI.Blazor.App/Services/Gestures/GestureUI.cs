@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.App.Services.Gestures;
 
 /// <summary>
 /// Owns the sensor subscription lifecycle and turns recognized gestures into
-/// walkie-talkie reply start/stop. Sensors are live only while a reply is plausible.
+/// PTT reply start/stop. Sensors are live only while a reply is plausible.
 /// </summary>
 public sealed class GestureUI : UIWorkerBase<AppUIHub>
 {
@@ -28,7 +28,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
-    private WalkieTalkieReplyUI WalkieTalkieReplyUI => Hub.WalkieTalkieReplyUI;
+    private PttReplyUI PttReplyUI => Hub.PttReplyUI;
     private BackgroundStateTracker BackgroundStateTracker => field ??= Services.GetRequiredService<BackgroundStateTracker>();
 
     public SensorFeed Feed { get; }
@@ -106,7 +106,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         try {
             // Only compute methods may be captured: Computed.Capture<T> hard-casts the last node
             // used by the producer, and UserSettingsUI.Get is a plain method whose last node is a
-            // Computed<StoredSettings>. GetPttChatIds reads the whole UserWalkieTalkieSettings
+            // Computed<StoredSettings>. GetPttChatIds reads the whole UserPttSettings
             // record, so its invalidation also covers the flip/shake/sensitivity toggles below.
             var cPttChatIds = await Computed
                 .Capture(() => ChatAudioUI.GetPttChatIds(cancellationToken), cancellationToken)
@@ -119,10 +119,10 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 .ConfigureAwait(false);
 
             var wasBackground = BackgroundStateTracker.IsBackground.Value;
-            // Null while backgrounded/headless: a scope that starts without a visible app (walkie
+            // Null while backgrounded/headless: a scope that starts without a visible app (PTT
             // wake, FGS) must not get the after-open arming window.
             _lastForegroundedAt = wasBackground ? null : Clocks.CpuClock.Now;
-            var minPeriod = Constants.Audio.WalkieTalkieGestureCheckMinPeriod;
+            var minPeriod = Constants.Audio.PttGestureCheckMinPeriod;
             var lastCheckAt = Clocks.CpuClock.Now - minPeriod;
             while (!cancellationToken.IsCancellationRequested) {
                 var minWait = minPeriod - (Clocks.CpuClock.Now - lastCheckAt);
@@ -154,12 +154,12 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 var pttChatIds = cPttChatIds.Value;
                 var isMicOpen = cRecordingChatId.Value is not null;
                 var isFaceDownStopEnabled = !(cAppSettings.Value.IsFaceDownMicStopDisabled ?? false);
-                var settings = await UserSettingsUI.UserWalkieTalkieSettings()
+                var settings = await UserSettingsUI.UserPttSettings()
                     .Get(cancellationToken)
                     .ConfigureAwait(false);
                 var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
                 var now = Clocks.ServerClock.Now;
-                var recencyWindow = Constants.Audio.WalkieTalkieReplyRecencyWindow;
+                var recencyWindow = Constants.Audio.PttReplyRecencyWindow;
                 var sinceForegrounded = _lastForegroundedAt is { } foregroundedAt
                     ? Clocks.CpuClock.Now - foregroundedAt
                     : TimeSpan.MaxValue;
@@ -197,9 +197,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 else
                     Feed.StopProximity();
 
-                // WalkieTalkieIdleCheckPeriod is the wall-clock floor for the answer-window expiry;
+                // PttIdleCheckPeriod is the wall-clock floor for the answer-window expiry;
                 // everything else races it so a state change takes effect on the next tick.
-                var whenTimeout = Clocks.CpuClock.Delay(Constants.Audio.WalkieTalkieIdleCheckPeriod, waitCts.Token);
+                var whenTimeout = Clocks.CpuClock.Delay(Constants.Audio.PttIdleCheckPeriod, waitCts.Token);
                 await Task.WhenAny(
                         whenTimeout,
                         whenWoken,
@@ -253,7 +253,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
 
         // Immediate tactile ack that the gesture registered - the mic-open cue comes later (or
         // never, in practice mode), which is too late to tell "not detected" from "not opened".
-        _ = Hub.TuneUI.Play(Tune.WalkieGestureDetected);
+        _ = Hub.TuneUI.Play(Tune.PttGestureDetected);
         if (route == GestureRoute.Practice) {
             PracticeGestureDetected?.Invoke(gesture);
             return;
@@ -265,7 +265,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         // Unbounded, like the widget and iOS PTT: a gesture explicitly asks to record, so it
         // resolves to the focused/last/single armed chat even with no recent incoming voice.
         var whenHandled = route == GestureRoute.StartReply
-            ? WalkieTalkieMicCapability.HoldWhile(() => WalkieTalkieReplyUI.RequestReply(
+            ? PttMicCapability.HoldWhile(() => PttReplyUI.RequestReply(
                 ReplyTargetResolver.UnboundedRecencyWindow, CancellationToken.None))
             : StopTransmitting();
         _ = BackgroundTask.Run(() => whenHandled, Log, $"{gesture.Kind} handling failed", CancellationToken.None);
@@ -276,7 +276,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         // FaceDown means "I'm done transmitting": the mic reply and any outgoing camera or
         // screencast stream stop together.
         ChatVideoUI.StopStreaming();
-        return WalkieTalkieReplyUI.StopReply();
+        return PttReplyUI.StopReply();
     }
 
     private void Wake()
