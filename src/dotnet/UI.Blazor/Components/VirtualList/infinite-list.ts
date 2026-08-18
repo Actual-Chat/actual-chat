@@ -81,6 +81,9 @@ const RecentreReservePercent = 20;
 // toggle it on every measure.
 const ChainFittingExitPx = 64;
 const InteractiveAnchorTtlMs = 2000;
+// A WASM render can arrive several seconds after its click; the screen anchor has to survive until
+// that replacement DOM exists, while its shorter active hold starts only once placement begins.
+const ScreenAnchorRenderTtlMs = 10_000;
 // Overscrolling past the loaded chain is legitimate - it is how reading further back starts, and the
 // window follows. This is only where it stops being a scroll and starts being a fall: far enough out
 // that the query built from there asks for a window the data can't reach, so nothing would ever come
@@ -1543,7 +1546,7 @@ export class InfiniteList extends VirtualList {
             return;
 
         this.interactiveAnchor = null;
-        this.screenAnchor = null;
+        this.releaseScreenAnchor();
         this.updatePinnedEdge();
         this.updateViewportThrottled();
     };
@@ -1647,8 +1650,9 @@ export class InfiniteList extends VirtualList {
         const anchor = this.screenAnchor;
         if (anchor == null)
             return false;
-        if (performance.now() - anchor.at > InteractiveAnchorTtlMs) {
-            this.screenAnchor = null;
+        const ttl = anchor.isPlaced ? InteractiveAnchorTtlMs : ScreenAnchorRenderTtlMs;
+        if (performance.now() - anchor.at > ttl) {
+            this.releaseScreenAnchor();
             return false;
         }
 
@@ -1667,18 +1671,25 @@ export class InfiniteList extends VirtualList {
         }
 
         anchor.isPlaced = true;
+        anchor.at = performance.now();
         this.watchScreenAnchor();
         // Against where the chain is now, not where it was written: this runs before applyLayout, and
         // twice per render when appearing items are parked.
         this.writeChainPosition();
-        // Where the element would sit if it were not stuck to the viewport edge. Sticky is suspended
-        // for the measurement because a stuck element reports the edge it is stuck to, and no amount
-        // of moving the chain changes that - so aiming at its rendered position would move the chain
-        // without moving the element, over and over. Its flow position is the thing that follows.
+        // Where the element would sit if neither it nor its owning list item were stuck to the viewport
+        // edge. A stuck element reports the edge it is stuck to, and no amount of moving the chain
+        // changes that - so aiming at its rendered position would move the chain without moving the
+        // element, over and over. Its flow position is the thing that follows.
+        const stickyRef = anchorRef.closest<HTMLElement>(`.${StickyItemClass}`);
         const position = anchorRef.style.position;
+        const stickyPosition = stickyRef?.style.position ?? '';
         anchorRef.style.position = 'static';
+        if (stickyRef != null)
+            stickyRef.style.position = 'static';
         const flowTop = anchorRef.getBoundingClientRect().top - this.ref.getBoundingClientRect().top;
         anchorRef.style.position = position;
+        if (stickyRef != null)
+            stickyRef.style.position = stickyPosition;
         this.chainStart += anchor.top - flowTop;
         return true;
     }
@@ -1698,8 +1709,7 @@ export class InfiniteList extends VirtualList {
         const tick = (): void => {
             const anchor = this.screenAnchor;
             if (this.isDisposed || anchor == null || performance.now() - anchor.at > InteractiveAnchorTtlMs) {
-                this.isWatchingScreenAnchor = false;
-                this.screenAnchor = null;
+                this.releaseScreenAnchor();
                 return;
             }
 
@@ -1812,8 +1822,9 @@ export class InfiniteList extends VirtualList {
         const anchor = this.screenAnchor;
         if (anchor == null)
             return false;
-        if (performance.now() - anchor.at > InteractiveAnchorTtlMs) {
-            this.screenAnchor = null;
+        const ttl = anchor.isPlaced ? InteractiveAnchorTtlMs : ScreenAnchorRenderTtlMs;
+        if (performance.now() - anchor.at > ttl) {
+            this.releaseScreenAnchor();
             return false;
         }
 
