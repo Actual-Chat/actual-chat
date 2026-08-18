@@ -56,15 +56,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         // Stop any existing recording first
         await Stop(cancellationToken).ConfigureAwait(false);
 
-        // Bounded: a scope that never starts ConnectivityUI would wedge the mic here forever.
-        try {
-            await ConnectivityUI.WhenConnected(cancellationToken)
-                .WaitAsync(Constants.Audio.ConnectivityWaitTimeout, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (TimeoutException) {
-            Log.LogWarning("Start: no connectivity signal yet, starting the recorder anyway");
-        }
+        // No connectivity wait here on purpose: opening the mic doesn't need the network, and
+        // CreateAudioStream - which does - still waits.
 
         // Create a new recording context
         var recordingCts = cancellationToken.CreateLinkedTokenSource();
@@ -129,27 +122,36 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 // Best effort: Stop must proceed to draining the tasks.
             }
 
+        // Both waits are bounded: Start() calls Stop() first, so a pipeline task that never
+        // finishes used to block every later recording until StartRecordingTimeout gave up.
         var processTask = Interlocked.Exchange(ref _processTask, null);
         if (waitForProcessTask && processTask is not null)
             try {
-                await processTask.ConfigureAwait(false);
+                await processTask.WaitAsync(Constants.Audio.RecorderDrainTimeout).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { }
+            catch (TimeoutException) {
+                Log.LogWarning("Stop: the audio processing task didn't finish in time, abandoning it");
+            }
             catch (Exception e) {
                 Log.LogError(e, "Failed to process audio stream");
                 throw;
             }
 
         var sendTask = Interlocked.Exchange(ref _sendTask, null);
-        if (sendTask != null)
+        if (sendTask is not null)
             try {
-                await sendTask.ConfigureAwait(false);
+                await sendTask.WaitAsync(Constants.Audio.RecorderDrainTimeout).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { }
+            catch (TimeoutException) {
+                Log.LogWarning("Stop: the audio send task didn't finish in time, abandoning it");
+            }
             catch (Exception e) {
                 Log.LogError(e, "Failed to send audio stream");
                 throw;
             }
+
         CompleteAudioStream();
         ClearRecordingContext();
 
@@ -494,7 +496,16 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         if (chatId is null)
             return null;
 
-        await ConnectivityUI.WhenConnected(cancellationToken).ConfigureAwait(false);
+        // Bounded like the one in Start: unbounded here means a connectivity signal that never
+        // arrives swallows the whole utterance with nothing logged.
+        try {
+            await ConnectivityUI.WhenConnected(cancellationToken)
+                .WaitAsync(Constants.Audio.ConnectivityWaitTimeout, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            Log.LogWarning("CreateAudioStream: no connectivity signal yet, streaming anyway");
+        }
 
         var stream = Channel.CreateBounded<IMemoryOwner<byte>>(
             new BoundedChannelOptions(Constants.Audio.StreamingChannelCapacity) {
@@ -550,6 +561,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             await _vad.EnsureInitialized(cancellationToken).ConfigureAwait(false);
             _vad.Reset();
             var samplesSinceLastReport = samplesPerRecordingInProgressCall;
+            var hasEverHadSignal = false;
             // Cadence on the Process loop body itself: if iterations stall >60ms,
             // the bottleneck is upstream of the encoder (encoder logs already show
             // queue=0, encode-call ≤3ms — so it waits on us). Localizes whether
@@ -578,10 +590,14 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
                     // Notify that microphone is captured (UI-only, sync — no JSI hop:
                     // the heartbeat lives on the web-only JS AudioRecorderState hub, which MAUI bypasses).
+                    // A withheld microphone still delivers frames, just all-zero ones, so counting
+                    // frames alone would report a healthy signal for one that records silence.
+                    hasEverHadSignal = hasEverHadSignal || HasSignal(memory.Span);
                     samplesSinceLastReport += memory.Length;
                     if (samplesSinceLastReport >= samplesPerRecordingInProgressCall) {
                         samplesSinceLastReport = 0;
-                        engine.MicrophoneIsCaptured();
+                        if (hasEverHadSignal)
+                            engine.MicrophoneIsCaptured();
                     }
 
                     // Process the audio frame (sync — returns Task.CompletedTask)
@@ -681,6 +697,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
         private async Task HandleVadEvent(VoiceActivityChange change, CancellationToken cancellationToken)
         {
+            log.LogInformation("VAD: {Kind}", change.Kind);
             if (change.Kind == VoiceActivityKind.Start) {
                 if (_voiceActive) return;
 
@@ -688,7 +705,10 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 var firstFrameSourceCapturedAt = TrimPreRollBuffer();
 
                 var stream = await engine.CreateAudioStream(firstFrameSourceCapturedAt, cancellationToken).ConfigureAwait(false);
-                if (stream == null) return;
+                if (stream == null) {
+                    log.LogWarning("VAD: voice started but no audio stream could be created");
+                    return;
+                }
 
                 _encodeSendWorker = FuncWorker.Start(ct => EncodeAndSend(stream, ct), cancellationToken);
                 _voiceActive = true;
@@ -823,6 +843,15 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             finally {
                 engine.CompleteAudioStream();
             }
+        }
+
+        private static bool HasSignal(ReadOnlySpan<float> samples)
+        {
+            foreach (var sample in samples)
+                if (sample != 0f)
+                    return true;
+
+            return false;
         }
     }
     #endregion

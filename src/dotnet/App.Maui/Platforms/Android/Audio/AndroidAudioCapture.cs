@@ -111,8 +111,13 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                 catch { /* Ignore */ }
             });
 
+            var isSilent = true;
+            var windowPeak = 0f;
             try {
                 recorder!.StartRecording();
+                // startRecording() can fail without throwing - the mic is then withheld and every
+                // Read returns an error code, which used to end this loop in complete silence.
+                Log.LogInformation("Capture started: recordingState={RecordingState}", recorder.RecordingState);
 
                 while (!cancellationToken.IsCancellationRequested) {
                     int readCount;
@@ -122,16 +127,28 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                         readCount = recorder.Read(
                             floatReadBuffer.Buffer, 0, frameSamples * 2, 0);
                     }
-                    catch (Exception) {
+                    catch (Exception e) {
+                        Log.LogWarning(e, "AudioRecord.Read threw - ending capture");
                         break;
                     }
 
                     if (readCount <= 0) {
-                        if (readCount < 0)
-                            break; // error
+                        if (readCount < 0) {
+                            Log.LogWarning("AudioRecord.Read returned {ReadCount} - ending capture", readCount);
+                            break;
+                        }
 
                         continue;
                     }
+
+                    // Only while the mic has never produced anything: the peak feeds the
+                    // digital-silence check below, which goes quiet once real audio arrives.
+                    if (isSilent)
+                        for (var i = 0; i < readCount; i++) {
+                            var level = MathF.Abs(floatReadBuffer.Buffer[i]);
+                            if (level > windowPeak)
+                                windowPeak = level;
+                        }
 
                     // Push to ring buffer (fire-and-forget: drop if full)
                     buffer.TryWrite(floatReadBuffer.Buffer.AsSpan(0, readCount));
@@ -155,6 +172,22 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                             Log.LogWarning(
                                 "audio-capture-cadence: {Gaps} gap(s) >80ms in last second; max gap {MaxMs:F0}ms; gc 0/1/2={Gen0}/{Gen1}/{Gen2}",
                                 readGapsInWindow, readMaxGapMs, gen0, gen1, gen2);
+                        // Only while nothing has ever arrived: all-zero samples are what the OS
+                        // hands a process it has quietly denied the mic to, but VoiceCommunication's
+                        // noise suppressor also gates ordinary pauses to exact zeros, so warning on
+                        // every silent second would cry wolf through every normal recording.
+                        if (isSilent) {
+                            if (windowPeak > 0f) {
+                                isSilent = false;
+                                Log.LogInformation("audio-capture: first audio, peak {Peak:F3}", windowPeak);
+                            }
+                            else {
+                                Log.LogWarning(
+                                    "audio-capture: the microphone has delivered nothing but digital silence");
+                            }
+                        }
+
+                        windowPeak = 0f;
                         readGapsInWindow = 0;
                         readMaxGapMs = 0;
                         readGen0Start += gen0; readGen1Start += gen1; readGen2Start += gen2;
@@ -166,6 +199,10 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                 Log.LogError(ex, "Error while capturing audio on Android");
             }
             finally {
+                // The consumer parks on the ring buffer with no timeout, so a producer that ends
+                // before cancellation wedges the whole recording silently.
+                if (!cancellationToken.IsCancellationRequested)
+                    Log.LogWarning("Capture producer ended before the recording was stopped");
                 floatReadBuffer.Release();
                 try {
                     if (recorder.RecordingState == RecordState.Recording)
