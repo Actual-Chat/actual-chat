@@ -67,6 +67,10 @@ body.hoverable .system-entry.message-wrapper:hover {
        the shared baseline. Relative, so this stays optical and never moves the row. */
     @apply relative top-[2.75px];
     @apply text-04 text-text-1;
+    /* The icon font's ascent exceeds the name font's, so a baseline-aligned line box built around it
+       came out 2px taller - which moved the whole header down by 2px on rows that have an icon and
+       not on rows that don't. Zero leading keeps the glyph off the line's own measurements. */
+    @apply leading-[0];
 }
 
 .chat-message .avatar-name.skeleton {
