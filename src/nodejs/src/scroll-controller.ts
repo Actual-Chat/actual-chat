@@ -168,16 +168,23 @@ export class ScrollController {
             this.lastScrollTime = performance.now();
             const opts = { passive: true, signal: this.abort.signal };
             element.addEventListener('scroll', () => this.onScroll(), opts);
-            element.addEventListener('touchstart', () => this.onTouchStart(), opts);
             element.addEventListener('wheel', () => this.onWheel(), opts);
-            // On the document: a touch keeps the target it started on, and a virtualized list unloads
-            // rows from under the finger, so touchend can land on a detached node the element never
-            // hears. Only the last finger leaving is a release.
+            // On the document because a touch listener on this element costs WebKit a walk of its whole
+            // subtree per rendering update (6-12% of its main thread, measured during a call), and
+            // because a touch keeps the target it started on - a list that unloads rows from under the
+            // finger delivers touchend to a node this element would never hear from.
+            const docOpts = { passive: true, capture: true, signal: this.abort.signal };
+            // A touch is dispatched to where it began, so containment sees exactly what the element saw.
+            document.addEventListener('touchstart', (e: TouchEvent) => {
+                if (e.target instanceof Node && element.contains(e.target))
+                    this.onTouchStart();
+            }, docOpts);
+            // Only the last finger leaving is a release; onTouchEnd ignores a gesture this controller
+            // never saw start, which every instance in the app now hears.
             const onTouchEnd = (e: TouchEvent) => {
                 if (e.touches.length === 0)
                     this.onTouchEnd();
             };
-            const docOpts = { passive: true, capture: true, signal: this.abort.signal };
             document.addEventListener('touchend', onTouchEnd, docOpts);
             document.addEventListener('touchcancel', onTouchEnd, docOpts);
             // A resize (keyboard, sub-header) moves the limits without a scroll event; snap rather than

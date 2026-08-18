@@ -271,8 +271,13 @@ export class InfiniteList extends VirtualList {
         // Visibility is reported with an "is the user looking at the newest item" flag that is forced
         // off while the tab is hidden, so coming back has to re-report it.
         document.addEventListener('visibilitychange', this.onDocumentVisibilityChange, listenerOptions);
-        this.containerRef.addEventListener('click', this.onInteractiveEvent, listenerOptions);
-        this.containerRef.addEventListener('touchend', this.onInteractiveEvent, listenerOptions);
+        // On the document because a touch listener on this container costs WebKit a walk of the whole
+        // transcript per rendering update (6-12% of its main thread, measured during a call), and in
+        // the capture phase so a control that stops the event cannot hide it from us. The handler
+        // resolves everything from event.target, so it only has to test containment itself.
+        const captureOptions = { signal: this.abortController.signal, passive: true, capture: true };
+        document.addEventListener('click', this.onInteractiveEvent, captureOptions);
+        document.addEventListener('touchend', this.onInteractiveEvent, captureOptions);
 
         this.sizeObserver = new ResizeObserver(this.onResize);
         this.sizeObserver.observe(ref, { box: 'border-box' });
@@ -1598,7 +1603,11 @@ export class InfiniteList extends VirtualList {
     // absorbs the size change through its edge re-pin instead.
     private onInteractiveEvent = (event: Event): void => {
         const target = event.target as HTMLElement | null;
-        const holdRef = target?.closest<HTMLElement>('[data-vl-hold]');
+        // The listener is on the document, so every list in the app hears every click and touch.
+        if (target == null || !this.containerRef.contains(target))
+            return;
+
+        const holdRef = target.closest<HTMLElement>('[data-vl-hold]');
         if (holdRef == null)
             return;
         if (holdRef.dataset.vlHold === 'keep-edge' && this.pinnedEdge != null)
@@ -1637,7 +1646,7 @@ export class InfiniteList extends VirtualList {
         this.setPinnedEdge(null);
         // A control marked data-anchor="below" reveals rows ABOVE itself, so the item below it is what
         // must keep its screen position - otherwise the revealed rows push everything downward.
-        const anchorKey = target?.closest('[data-anchor="below"]') != null
+        const anchorKey = target.closest('[data-anchor="below"]') != null
             ? this.getFirstContentKeyBelow(key) ?? key
             : key;
         this.interactiveAnchor = { key: anchorKey, at: performance.now() };
