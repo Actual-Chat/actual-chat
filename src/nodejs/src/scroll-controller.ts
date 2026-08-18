@@ -58,6 +58,10 @@ export class ScrollController {
 
     private readonly abort = new AbortController();
 
+    // Told whenever the composed transform changes, so an owner can keep in step anything the
+    // transform moves but the layout does not - see InfiniteList's sticky items.
+    public onTransform: (() => void) | null = null;
+
     private isTouching = false;
     private lastScrollTop = 0;
     private lastScrollTime = 0;
@@ -583,6 +587,7 @@ export class ScrollController {
         const transform = y === 0 ? '' : `translate3d(0, ${y}px, 0)`;
         if (this.overscrollElement.style.transform !== transform)
             this.overscrollElement.style.transform = transform;
+        this.onTransform?.();
     }
 
     private setOverflowLocked(locked: boolean): void {

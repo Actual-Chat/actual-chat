@@ -13,6 +13,11 @@ const TransitionSlackMs = 60;
 // header and text settle, and the shrink-then-regrow of re-recognition.
 const DefaultSettleDelayMs = 100;
 const HeightEpsilon = 0.5;
+// How many items may animate their height at once. Everything past it is written to its real height
+// on the spot. Expanding a conversation turns one item into a whole thread, and animating all of them
+// buys nothing over animating the first few - the direction of the change is already obvious - while
+// costing a full-height transition per item.
+const MaxAnimatedItems = 3;
 
 interface ItemHeightState {
     ref: HTMLElement;
@@ -152,12 +157,14 @@ export class ItemHeightController {
     }
 
     // Parks the item at `startHeight` so it grows in from there: 0 for an item that genuinely arrived,
-    // the outgoing item's height for one that replaced another.
-    public beginAppearance(key: string, itemRef: HTMLElement, startHeight: number): void {
+    // the outgoing item's height for one that replaced another. Returns whether it was parked at all -
+    // past the animation budget it is left at its own height, and the caller has nothing to re-anchor
+    // around. Slots go in call order, which the caller makes top to bottom.
+    public beginAppearance(key: string, itemRef: HTMLElement, startHeight: number): boolean {
         this.track(key, itemRef);
         const state = this.states.get(key);
-        if (state == null || this.isSuspended)
-            return;
+        if (state == null || this.isSuspended || !this.hasAnimationSlot(state))
+            return false;
 
         state.isAppearing = true;
         this.write(key, state, startHeight, false);
@@ -166,6 +173,7 @@ export class ItemHeightController {
         // resolving the start height first the browser only ever sees the final one and the item pops.
         void itemRef.offsetHeight;
         this.schedule(key, state);
+        return true;
     }
 
     // Whether an item should animate depends on whether it is on screen, and mid-render the list's
@@ -178,6 +186,11 @@ export class ItemHeightController {
         this.isBatching = false;
         const keys = [...this.deferred];
         this.deferred.clear();
+        // Top to bottom, so a batch of changes larger than the animation budget spends it on the items
+        // nearest the top rather than on whichever one the observer happened to report first. Document
+        // order is that order in both render directions - the container is a plain flex column, and
+        // rendering in reverse anchors the chain differently without reordering it.
+        keys.sort((a, b) => compareDomOrder(this.states.get(a)?.ref, this.states.get(b)?.ref));
         for (const key of keys) {
             const state = this.states.get(key);
             if (state != null)
@@ -327,7 +340,8 @@ export class ItemHeightController {
     private scheduleNow(key: string, state: ItemHeightState): void {
         const mustAnimate = !this.isSuspended
             && this.isVisible(key)
-            && (state.isAppearing || (state.mustAnimateChanges && state.isControlled));
+            && (state.isAppearing || (state.mustAnimateChanges && state.isControlled))
+            && this.hasAnimationSlot(state);
         if (!mustAnimate) {
             this.cancelTimer(state);
             state.isAppearing = false;
@@ -452,6 +466,25 @@ export class ItemHeightController {
         return true;
     }
 
+    // Whether this item may animate: either it already holds one of the budget's slots, or one is free.
+    // Counting rather than tracking a number, because a slot is given up along a good half-dozen paths -
+    // settling, being applied instantly, suspension, the item going away - and a counter that misses one
+    // of them silently stops animating anything at all.
+    private hasAnimationSlot(state: ItemHeightState): boolean {
+        if (isAnimationPending(state))
+            return true;
+
+        let used = 0;
+        for (const other of this.states.values()) {
+            if (other === state || !isAnimationPending(other))
+                continue;
+
+            if (++used >= MaxAnimatedItems)
+                return false;
+        }
+        return true;
+    }
+
     private getTransitionMs(): number {
         if (this.transitionMs > 0)
             return this.transitionMs;
@@ -492,6 +525,22 @@ export class ItemHeightController {
 // a flag with no expiry would then refuse every later write and freeze the item at that height.
 function isAnimating(state: ItemHeightState): boolean {
     return state.animatingUntil > performance.now();
+}
+
+// Whether the item is using up one of the animation slots: waiting out its settle delay, transitioning,
+// or parked at an appearance start height and not yet scheduled - the height it shows is not the height
+// its content wants, and getting there is what the budget is for.
+function isAnimationPending(state: ItemHeightState): boolean {
+    return state.isAppearing || state.timer != null || isAnimating(state);
+}
+
+// Document order, which for these items is top to bottom. Deliberately not a position comparison: this
+// runs mid-render, where every rect read is a forced layout.
+function compareDomOrder(a: HTMLElement | undefined, b: HTMLElement | undefined): number {
+    if (a == null || b == null || a === b)
+        return 0;
+
+    return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 ? -1 : 1;
 }
 
 // Whether a class-attribute change was somebody else's. Ours are the two markers written here, and

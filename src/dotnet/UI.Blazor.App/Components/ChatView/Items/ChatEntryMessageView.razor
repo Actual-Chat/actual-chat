@@ -100,7 +100,7 @@
                     Click="@_onClickCallback"/>
             } else if (showTime) {
                 var timestamp = DateTimeConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
-                <div class="c-empty">
+                <div class="c-empty vl-sticky">
                     <span class="chat-message-timestamp-on-hover">@timestamp</span>
                 </div>
             }

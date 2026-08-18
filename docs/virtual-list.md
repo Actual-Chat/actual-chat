@@ -83,6 +83,10 @@ whether the term is a real identifier in the source or only shorthand used here.
 - **drift** — *`drift` in `startOverscrollReturn`; separately `checkModelDrift`.* Two unrelated senses.
   In the spring: how far the live native scroll has wandered from the boundary, which the transform
   compensates. In the debug checker: how far the DOM's item positions have diverged from the model.
+- **hidden scroll** — *`hiddenScroll`.* How far the scroller has run outside its own band,
+  `scrollTop - clamp(scrollTop, min, max)`. This is the part of the scroll the transform cancels, so
+  the content appears not to have moved by it. Only this part, not the whole transform: the rest is
+  the spring, which is motion the user is meant to see.
 - **stillness** — *prose; `isWatchingStillness`, `RecentreStillFrames`.* Three consecutive animation
   frames in which `scrollTop` has not changed, no finger is down and no overscroll is active. Stricter
   than "no scroll events", which a fling passes while it is still moving.
@@ -319,7 +323,8 @@ from `chainStart`, and `computeScrollLimits` converts them to `scrollTop` coordi
 Because folding happens at every render, `tOffset` never accumulates. Measured over 20s of the stress
 page (messages arriving, the newest item's height churning 4×/s), it is non-zero on 4% of frames in
 natural and 12% in reverse, peaks at 41px and 206px respectively, and its longest unbroken excursion
-past 20px is **150–190ms**. That is why sticky counter-translation is not implemented yet — §7.
+past 20px is **150–190ms**. That is why the *translation* still drags sticky items along rather than
+counter-translating them — §7. The *overscroll* case is handled, and separately: see §3.7.
 
 There is a second cap, on the *standing* offset rather than on the correction: past `maxTOffset` —
 half a screen, floored at 200px for a list that is briefly tiny — the translation is folded on the
@@ -747,6 +752,60 @@ well above 60fps and the Android rows from a 60Hz phone, so **frame counts do no
 rows**; the milliseconds do. Only the Android rows have a meaningful denominator: 97 samples is the
 whole 1600ms recording window.
 
+#### Sticky items during an excursion
+
+A `position: sticky` element is resolved during layout, against the *real* scroll position. An
+excursion runs `scrollTop` outside the band and the transform hides exactly that much of it — so the
+content looks still, while every stuck element re-clamps by the hidden scroll and slides away from the
+content around it. On a bottom overscroll a pinned conversation header travelled **140px** relative to
+its neighbours; on Android the author avatars did the same, which is what it looks like on a device.
+
+Note what is *not* the problem: a stuck header being carried along by the rubber band is correct, and
+is what a native one does. The problem is it moving relative to everything it is stuck to.
+
+The list holds each declared sticky element at the offset within the content it had while the scroll
+was last in band, by writing a `translate3d` onto it. Three properties make this work:
+
+- **It never has to decide which elements are pinned.** That is the hard part, and three tests for it
+  were all wrong — against the parent, which for the header moves with it; against `offsetTop`, which
+  the engine reports already shifted by the stick; against the element's own inset, which mis-fires as
+  soon as a correction has moved it. Holding the offset needs none of them: an element that is not
+  pinned already keeps its offset, so its correction is zero without anything knowing that, and a
+  pinned one is exactly the case where the offset changes. It also self-limits — once a stuck element
+  reaches the bottom of its containing block it stops sliding on its own, and the correction stops
+  growing with it (measured: saturating at 140px while the hidden scroll ran on to 300px).
+- **The baseline is tracked in band, not sampled when the excursion starts.** By the first frame with
+  a non-zero hidden scroll the element has already slid by that frame's worth of it, so sampling then
+  just freezes the error — measured at 113px still flying, on an excursion that reached 300px over 8
+  frames. Tracking runs from the scroll handler, ahead of every early return in it, because this is
+  not about what the scroll *means*.
+- **Only near the edges.** An excursion can only begin by crossing a limit, so the last in-band frame
+  before one is always within `StickyTrackingZonePx` (1000px) of it. Away from the edges the tracking
+  would cost a reflow per scroll event for nothing.
+
+Elements are **declared, not discovered**: the consumer marks them with `vl-sticky` (`StickyItemClass`),
+and the chat view does that through the presence-class system — on the item for a conversation header,
+on the avatar itself for an author badge, since there only the picture is sticky. Discovery would mean
+a computed style for every descendant on every render. Two consequences worth knowing:
+
+- **`classList.toggle(name, force)` is absolute.** Two presence rules writing one class means the
+  second one switches off what the first set whenever its own match is absent. One rule with a
+  multi-selector match, never two rules with the same class name.
+- **Baselines survive a re-scan.** A render can land in the middle of an excursion, and an element
+  that came back with a fresh baseline would be held wherever the hidden scroll had already pushed it.
+
+Measured on a bottom overscroll of 300px, travel relative to a non-sticky item on screen — the whole
+point being that during a rubber band *everything* moves, so only relative travel means anything:
+
+| | before | after |
+|---|---|---|
+| conversation header item | 140px | **0px** |
+| the `.conversation-header` inside it | 140px | **0px** |
+| author avatars (5 on screen, worst) | 19px | **0px** |
+
+In band nothing changes: the header still pins at exactly its `-17px` inset, with zero corrections
+written to it across 40 scroll steps.
+
 ### 3.8 Spacers, the end anchor, and the conversation that fits on screen
 
 **The spacers** do three jobs at once, and it is worth seeing all three:
@@ -933,6 +992,25 @@ pinned edge joins the diff as a sentinel symbol, which is what makes a message a
 is parked at that edge count as inside the range rather than as an extension. And nothing animates for
 the first `AppearanceQuietMs` (300ms) after the list is revealed, or opening a chat would play the
 whole first screen in.
+
+**At most `MaxAnimatedItems` (3) items animate at once**, in either direction, and everything past that
+is written to its real height on the spot. Expanding a conversation turns one item into a whole thread;
+animating all of them buys nothing over animating the first few — the direction of the change is
+already obvious — while costing a full-height transition per item. Two details matter:
+
+- **The slots go top to bottom, in both render directions.** Appearances get theirs in call order, and
+  `applyAppearances` walks the diff in chain order; anything else is sorted into document order when
+  the batch ends. Document order is top to bottom either way — the container is a plain flex column,
+  and rendering in reverse anchors the chain differently without reordering it.
+- **A slot is counted, not tracked.** An item holds one while it is parked at an appearance height,
+  waiting out its settle delay, or transitioning. A counter would have to be given back along a good
+  half-dozen paths — settling, being applied instantly, suspension, the item going away — and one
+  missed release would silently stop the list animating anything ever again.
+
+Measured on expanding a conversation, items with a height in flight on the same frame: **5 with the cap
+lifted, 3 with it in place.** Collapsing the same conversation animates none — it removes items rather
+than shrinking them — so the shrink side of the budget rests on the gate sitting in the one place every
+height change passes through, not on a measurement.
 
 **Stability** is the tracker both use: a height write in the settle delay, a running transition, and a
 recent scroll all count as "in flight", and everything that wants to reposition the list asks here
@@ -1312,13 +1390,12 @@ can see no chats at all".
 
 - **Sticky items are dragged by the translation.** `position: sticky` is resolved during layout and a
   transform is applied after it, so a pinned conversation header is displaced by the full `tOffset` —
-  measured at exactly 200px for a 200px translation. It is not counter-translated yet, on the grounds
-  that the offset is transient: measured non-zero on 4% (natural) / 12% (reverse) of frames, with the
-  longest excursion past 20px lasting 150–190ms. The fix, when a sustained non-overscroll translation is
-  added, is to counter-translate the pinned ones only — which the model can decide without a DOM read,
-  since a sticky item is pinned exactly when its flow position `chainStart + offsets[i] - viewOffset` is
-  above the sticky threshold. During an *overscroll* no counter-translation is wanted: dragging stuck
-  headers along is what a native rubber band does.
+  measured at exactly 200px for a 200px translation. This is the `tOffset` case only; the overscroll
+  case is fixed (§3.7). It is not corrected yet on the grounds that the offset is transient: measured
+  non-zero on 4% (natural) / 12% (reverse) of frames, with the longest excursion past 20px lasting
+  150–190ms. The same offset-holding §3.7 uses would cover it, and the model could decide it without a
+  DOM read at all, since a sticky item is pinned exactly when its flow position
+  `chainStart + offsets[i] - viewOffset` is above the sticky threshold.
 
 - **`reanchor` is not direction-aware.** It holds the item at the viewport top in both directions; in
   reverse it should hold the bottom, keeping `chainEnd` fixed. Today reverse gets the equivalent effect
