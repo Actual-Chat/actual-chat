@@ -175,8 +175,13 @@ body.narrow .list-view-layout.has-audio-panel-header .virtual-list > .c-wrapper 
     overflow-anchor: none;
 }
 
+/* The same top padding the collapsed form carries (.item.has-conversation-message): expanding or
+   collapsing swaps one of these boxes for the other, so a gap on one and not the other moves
+   everything above it by that much on every toggle. The inset absorbs the padding, so the header
+   still reaches the top edge when pinned instead of hanging 16px below it. */
 .virtual-list > .c-wrapper > ul.c-virtual-container .item.has-conversation-header {
-    @apply sticky -top-px z-20;
+    @apply sticky z-20 pt-4;
+    top: -17px;
 }
 
 .virtual-list .skeleton-container {
