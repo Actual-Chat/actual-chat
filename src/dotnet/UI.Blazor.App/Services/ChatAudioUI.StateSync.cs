@@ -15,6 +15,7 @@ public partial class ChatAudioUI
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(true); // Intended
         var baseChains = new[] {
             AsyncChain.From(InitializeListening),
+            AsyncChain.From(StopListeningWhenPttDisarmed),
             AsyncChain.From(InvalidateActiveChatDependencies),
             AsyncChain.From(InvalidateReplayDependencies),
             AsyncChain.From(PushRecordingState),
@@ -50,6 +51,25 @@ public partial class ChatAudioUI
         var chatIdsToListenTo = await GetChatsYouNeedToKeepListeningTo(cancellationToken).ConfigureAwait(false);
         foreach (var chatId in chatIdsToListenTo)
             await SetListeningState(chatId, true).ConfigureAwait(false);
+    }
+
+    private async Task StopListeningWhenPttDisarmed(CancellationToken cancellationToken)
+    {
+        var cKeepListeningChatIds = await Computed
+            .Capture(() => GetChatsYouNeedToKeepListeningTo(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var oldChatIds = (HashSet<ChatId>?)null;
+        await foreach (var c in cKeepListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
+            var chatIds = c.Value.ToHashSet();
+            if (oldChatIds is not null) {
+                // Arming is the only thing that keeps such a chat listening, and StopListeningWhenIdle
+                // deliberately runs no watcher for it - so leaving PTT is what must end that listening,
+                // ongoing conversation or not.
+                foreach (var chatId in oldChatIds.Except(chatIds))
+                    await SetListeningState(chatId, false).ConfigureAwait(false);
+            }
+            oldChatIds = chatIds;
+        }
     }
 
     private async Task InvalidateActiveChatDependencies(CancellationToken cancellationToken)
