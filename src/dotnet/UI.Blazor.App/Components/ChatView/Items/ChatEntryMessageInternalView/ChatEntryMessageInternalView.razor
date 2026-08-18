@@ -76,6 +76,9 @@
     // No visible content (no text, status icon or translation mark) → mark the markup empty so it renders
     // hidden from the first frame. The JS used to add this one frame late, which made attachment-only
     // messages render ~1 text line taller, then collapse — re-anchoring the list (a jump).
+    var hasNoStreamedText = sm.RetainedText.IsNullOrEmpty()
+        && sm.ChangedText.IsNullOrEmpty()
+        && sm.AnimatedText.IsNullOrEmpty();
     var isEmptyMarkup = !m.IsStreaming
         && trimmedContent.IsNullOrEmpty()
         && !entry.HasLocation
@@ -84,16 +87,18 @@
 }
 <div @ref="Ref" class="chat-message-markup @translationCls @streamingCls @(isEmptyMarkup ? "empty" : "")">
     @if (m.IsStreaming) {
-        @if (IsOwnMessage
-             && sm.RetainedText.IsNullOrEmpty()
-             && sm.ChangedText.IsNullOrEmpty()
-             && sm.AnimatedText.IsNullOrEmpty()
-             && !HasNewerStreamingEntry()) {
+        @if (IsOwnMessage && hasNoStreamedText && !HasNewerStreamingEntry()) {
             <StreamingEntryBadge
                 ChatId="@ChatContext.Chat.Id"
                 IsVoiceActive="@true"
                 IsLanguageKnown="@m.IsChatLanguageSelected"
                 VoiceStartedAt="@entry.BeginsAt"/>
+        }
+        else if (!IsOwnMessage && hasNoStreamedText) {
+            @* Someone else is speaking and their first words have not arrived. The badge is for our
+               own recording; this only has to say that the message is on its way, and it keeps the
+               row from being an author header over nothing. *@
+            <span class="c-streaming-ellipsis">…</span>
         }
         @if (!sm.RetainedText.IsNullOrEmpty()) {
             <span class="retained">@sm.RetainedText</span>

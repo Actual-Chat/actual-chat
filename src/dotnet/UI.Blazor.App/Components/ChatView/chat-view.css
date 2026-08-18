@@ -260,6 +260,10 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply font-bold;
 }
 
+.chat-message-markup .c-streaming-ellipsis {
+    @apply opacity-50;
+}
+
 .chat-message-markup .changes:empty {
     filter: opacity(0);
 }
