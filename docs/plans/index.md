@@ -13,25 +13,6 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
-### Virtual list: translation-based scrolling
-
-[Virtual list: translation-based scrolling](./virtual-list-translation-scrolling.md)
-— stop correcting the virtual list's position with `scrollTop`, which ends an
-in-flight fling on WebKit, and correct with a CSS transform instead. The visible
-position becomes `scrollTop + container.top + transform`: `scrollTop` is reserved
-for jumps at a standstill, `top` changes on renders (where layout is already
-being paid for, and where the transform offset is folded back in), and everything
-continuous is a transform. Includes separating the `InfiniteList` and `FiniteList`
-JavaScript first, since almost none of this applies to the latter.
-
-**Implemented.** The design and the measurements now live in
-[docs/virtual-list.md](../virtual-list.md) — §0 for the invariants, §1.4 for the
-third term and the fold, §2.4 for the return spring, §3.1 for which term moves
-when. The plan is kept for its provenance: the WebKit source paths, the engine
-bug links, and the survey of what other virtualized lists do. Still open there:
-sticky counter-translation, a direction-aware `reanchor`, and measuring a real
-fling on WebKit and Android.
-
 ### Hashtags
 
 [Hashtags](./hashtags.md) — `#hashtag` markup parsed into a new

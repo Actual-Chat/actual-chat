@@ -1860,8 +1860,7 @@ stale-touch backstop.*
 
 ---
 
-The provenance behind these decisions — engine source paths, bug links, the survey of other
-implementations, and the phase plan this was built to — is in
-[docs/plans/virtual-list-translation-scrolling.md](plans/virtual-list-translation-scrolling.md). It is
-a separate document on purpose: this one describes what the code does, that one describes why it was
-believed it would work.
+This document describes what the code does. Why it was believed it would work — engine source paths,
+bug links, the survey of what other virtualized lists do, and the phase plan this was built to — was
+in `docs/plans/virtual-list-translation-scrolling.md`, removed once the work shipped; `git log` has
+it if it is ever needed.
