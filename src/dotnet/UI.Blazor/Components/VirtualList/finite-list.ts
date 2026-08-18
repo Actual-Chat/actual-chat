@@ -1,63 +1,36 @@
-import { PromiseSourceWithTimeout, throttle } from 'actuallab-core';
-import { NumberRange, Range } from './ts/range';
-import { VirtualListRenderState } from './ts/virtual-list-render-state';
-import { VirtualListDataQuery } from './ts/virtual-list-data-query';
-import { getLogs } from 'logging';
-import { fastRaf } from 'fast-raf';
+import { throttle } from 'actuallab-core';
 import { DotNet } from '@microsoft/dotnet-js-interop';
+import { getLogs } from 'logging';
+import { NumberRange, Range } from './ts/range';
+import { VirtualListDataQuery } from './ts/virtual-list-data-query';
+import { VirtualListRenderState } from './ts/virtual-list-render-state';
+import { VirtualList } from './virtual-list';
+import { isSpacerShown, VirtualListOverlayStats } from './virtual-list-overlay';
 
-const { warnLog, debugLog } = getLogs('FiniteList');
+const { debugLog } = getLogs('FiniteList');
 
-const UpdateViewportInterval = 64;
-const UpdateItemVisibilityInterval = 250;
-// Only ever fires when a request never comes back at all - endRender/renderSkipped cover both
-// normal outcomes - so it is a fault backstop, not flow control. Firing it is worth a warning.
-const RequestDataTimeout = 2500;
+const UpdateViewportIntervalMs = 64;
+const UpdateItemVisibilityIntervalMs = 250;
 const DefaultItemSize = 48;
-// Republish threshold for the measured item size: below this the spacers would be rewritten for
-// sub-pixel noise, and every spacer rewrite is a chance for the browser to clamp scrollTop.
+// Below this the spacers would be rewritten for sub-pixel noise, and every spacer rewrite is a
+// chance for the browser to clamp scrollTop.
 const ItemSizeEpsilon = 0.5;
-const AnchorEpsilon = 0.5;
+// indexAt removes the separators above its guess; one pass per separator in the way is enough.
+const IndexAtMaxPasses = 4;
 
-const delayMs = (ms: number): Promise<void> => new Promise<void>(resolve => setTimeout(resolve, ms));
-
-/// A virtualized list of a known length whose items are all the same height, save for a few
-/// irregular ones (separators). Item position is a pure function of index, so loading a different
-/// window cannot move what is already on screen. See InfiniteList for the unbounded, anchored case.
-export class FiniteList {
-    // Debug-only: when > 0, inject a random [0, value) ms delay before each data request to
-    // simulate uncached data and surface scroll/data timing races. 0 in prod.
-    public static debugDataLoadDelayMs = 0;
-    private static readonly _instances = new Set<FiniteList>();
-
-    public static getInstances(): FiniteList[] {
-        return [...FiniteList._instances];
-    }
-
-    private readonly ref: HTMLElement;
-    private readonly wrapperRef: HTMLElement;
-    private readonly containerRef: HTMLElement;
-    private readonly spacerRef: HTMLElement;
-    private readonly endSpacerRef: HTMLElement;
-    private readonly renderStateRef: HTMLElement;
-    private readonly renderIndexRef: HTMLElement;
-    private readonly blazorRef: DotNet.DotNetObject;
-    private readonly identity: string;
-    private readonly expandMultiplier: number;
-    private readonly abortController: AbortController;
-    private readonly renderObserver: MutationObserver;
+// A virtualized list of a known length whose items are all one height, save for a few irregular
+// ones. Item position is a pure function of index, so a window move alone cannot shift what is on
+// screen - only a change of the measured item size or an irregular item entering above the viewport can.
+export class FiniteList extends VirtualList {
     private readonly sizeObserver: ResizeObserver;
     private readonly visibilityObserver: IntersectionObserver;
     private readonly visibleKeys = new Set<string>();
-    private readonly rowGap: number;
 
-    private isDisposed = false;
-    private isRevealed = false;
-    private lastRenderIndex = -1;
     private itemSize = DefaultItemSize;
-    private renderState: VirtualListRenderState | null = null;
-    private whenRequestDataCompleted: PromiseSourceWithTimeout<void> | null = null;
-    private scrollAnchor: { key: string; offset: number } | null = null;
+    // The extra height an item carrying a block separator has over a regular one, and where in the
+    // whole list those items are. Together they make a position an exact function of index again.
+    private separatorSize = 0;
+    private separatorIndexes = new Array<number>();
 
     public static create(
         ref: HTMLElement,
@@ -72,284 +45,132 @@ export class FiniteList {
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
         identity: string,
-        expandMultiplier: number,
+        private readonly expandMultiplier: number,
     ) {
-        globalThis['FiniteList'] = FiniteList;
-        this.ref = ref;
-        this.blazorRef = backendRef;
-        this.identity = identity;
-        this.expandMultiplier = expandMultiplier;
-
-        this.wrapperRef = this.ref.querySelector(':scope > .c-wrapper')!;
-        this.containerRef = this.wrapperRef.querySelector(':scope > .c-virtual-container')!;
-        this.spacerRef = this.containerRef.querySelector(':scope > .c-spacer-start')!;
-        this.endSpacerRef = this.containerRef.querySelector(':scope > .c-spacer-end')!;
-        this.renderStateRef = this.ref.querySelector(':scope > .data.render-state')!;
-        this.renderIndexRef = this.ref.querySelector(':scope > .data.render-index')!;
-        this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
-
-        this.abortController = new AbortController();
-        const listenerOptions = { signal: this.abortController.signal, passive: true };
-        this.ref.addEventListener('scroll', this.onScroll, listenerOptions);
-
-        // Both triggers, because a render arrives in several batches: the items and the render-state
-        // JSON can land in different ones. endRender gates on the JSON's render index.
-        this.renderObserver = new MutationObserver(this.onRenderIndexChanged);
-        this.renderObserver.observe(this.renderIndexRef, { attributes: true });
-        this.renderObserver.observe(this.containerRef, { childList: true });
-        this.sizeObserver = new ResizeObserver(this.onResize);
-        this.sizeObserver.observe(this.ref);
-        this.visibilityObserver = new IntersectionObserver(this.onItemVisibilityChanged, { root: this.ref });
-
-        FiniteList._instances.add(this);
-        this.endRender();
+        super(ref, backendRef, identity);
+        const listenerOptions = { passive: true, signal: this.abortController.signal };
+        ref.addEventListener('scroll', this.onScroll, listenerOptions);
+        this.sizeObserver = new ResizeObserver(() => this.updateViewportThrottled());
+        this.sizeObserver.observe(ref);
+        this.visibilityObserver = new IntersectionObserver(this.onItemVisibilityChanged, { root: ref });
+        this.start();
     }
 
-    /** Called by blazor */
-    public dispose(): void {
-        this.isDisposed = true;
-        FiniteList._instances.delete(this);
-        this.abortController.abort();
-        this.renderObserver.disconnect();
+    public override dispose(): void {
+        super.dispose();
         this.sizeObserver.disconnect();
         this.visibilityObserver.disconnect();
-        this.releaseRequestDataGuard();
     }
 
-    /** Called by blazor */
-    public reset(): void {
-        this.renderState = null;
-        this.lastRenderIndex = -1;
-        this.scrollAnchor = null;
-        this.visibleKeys.clear();
-        this.isRevealed = false;
-        this.wrapperRef.style.visibility = '';
-        this.releaseRequestDataGuard();
-    }
-
-    /** Called by blazor when the new data turned out to be identical to the rendered one */
-    public renderSkipped(): void {
-        this.releaseRequestDataGuard();
-    }
-
-    // Private methods
-
-    private endRender(): void {
-        const rs = this.parseRenderState();
-        // Blazor applies a render in several batches and the render-state JSON is deliberately
-        // written in the last one (RenderAtDepth), so an earlier trigger sees the new items next to
-        // the previous state. Laying spacers out against that pair moves every item below them by
-        // the whole spacer delta, so wait for the JSON's own render index to advance.
-        if (rs === null || rs.renderIndex <= this.lastRenderIndex)
-            return;
-
-        this.lastRenderIndex = rs.renderIndex;
-        this.renderState = rs;
-        this.observeItems();
-        fastRaf({
-            key: `finiteList_${this.identity}`,
-            read: () => {
-                this.measureItemSize();
-                this.captureAnchor();
-            },
-            write: () => {
-                this.layout(rs);
-                if (rs.scrollToKey)
-                    this.scrollToKey(rs.scrollToKey, rs.scrollToKeyInTheMiddle ?? false);
-                else
-                    this.restoreAnchor();
-                this.reveal();
-                this.releaseRequestDataGuard();
-                void this.requestData();
-            },
-        });
-    }
-
-    // The size source is any regular item; irregular ones (separators) carry extra height and would
-    // poison the estimate. Sticking to one key while it stays rendered keeps the value from flapping
-    // between two rows that differ by a sub-pixel.
-    private measureItemSize(): void {
-        const sizeSource = this.containerRef.querySelector<HTMLElement>(':scope > li.item[data-vl-size-source]');
-        if (!sizeSource)
-            return;
-
-        const size = sizeSource.getBoundingClientRect().height + this.rowGap;
-        if (size <= 0 || Math.abs(size - this.itemSize) < ItemSizeEpsilon)
-            return;
-
-        debugLog?.log(`measureItemSize: ${this.itemSize} -> ${size}`);
-        this.itemSize = size;
-    }
-
-    private layout(rs: VirtualListRenderState): void {
+    public getOverlayStats(): VirtualListOverlayStats {
+        const rs = this.renderState;
         const beforeCount = rs.beforeCount ?? 0;
-        const afterCount = rs.afterCount ?? 0;
-        this.setSpacerSize(this.spacerRef, beforeCount * this.itemSize);
-        this.setSpacerSize(this.endSpacerRef, afterCount * this.itemSize);
+        const total = beforeCount + rs.count + (rs.afterCount ?? 0);
+        return {
+            renderDirection: 'down',
+            stickyEdge: null,
+            hasStartSpacer: isSpacerShown(this.spacerRef),
+            hasEndSpacer: isSpacerShown(this.endSpacerRef),
+            hasVeryFirstItem: rs.hasVeryFirstItem,
+            hasVeryLastItem: rs.hasVeryLastItem,
+            isRequestingData: this.isRequestingData,
+            isRendering: false,
+            lastDataRequestAt: this.lastDataRequestAt,
+            lastRenderAt: this.lastRenderAt,
+            window: `${this.visibleKeys.size}(${beforeCount}-${beforeCount + rs.count})`,
+            total,
+            meanItemHeight: this.itemSize,
+        };
     }
 
-    private setSpacerSize(spacerRef: HTMLElement, size: number): void {
-        spacerRef.style.height = `${size}px`;
-        spacerRef.style.display = size > 0 ? 'flex' : 'none';
+    // Protected methods
+
+    protected onReset(): void {
+        this.separatorIndexes = [];
+        this.visibleKeys.clear();
     }
 
-    private captureAnchor(): void {
-        const viewportTop = this.ref.getBoundingClientRect().top;
-        for (const itemRef of this.itemRefs()) {
-            const rect = itemRef.getBoundingClientRect();
-            if (rect.bottom <= viewportTop)
-                continue;
+    protected onRender(rs: VirtualListRenderState): void {
+        this.observeItems();
+        this.measureItemSize();
+        this.measureSeparatorSize();
+        this.separatorIndexes = rs.separatorIndexes ?? [];
 
-            this.scrollAnchor = { key: itemRef.dataset.key!, offset: rect.top - viewportTop };
-            return;
-        }
-        this.scrollAnchor = null;
-    }
+        const beforeCount = rs.beforeCount ?? 0;
+        const itemCount = beforeCount + rs.count + (rs.afterCount ?? 0);
+        // Both spacers stand for items nobody has rendered, so their heights come from the model - and
+        // the model now counts the separators among them. Sitting in the same flex column as the items,
+        // each also contributes a row gap that the position it stands for does not.
+        this.setSpacerSize(this.spacerRef, this.topOf(beforeCount));
+        this.setSpacerSize(this.endSpacerRef, this.topOf(itemCount) - this.topOf(beforeCount + rs.count));
+        // The only scroll this list ever writes: an explicit request to show a given item. A window
+        // move cannot shift what is on screen - position is a function of index - so nothing else has
+        // anything to correct, and a correction here would be indistinguishable from the user's own
+        // scroll and would end their fling.
+        if (rs.scrollToKey)
+            this.scrollToKey(rs.scrollToKey, rs.scrollToKeyInTheMiddle ?? false);
 
-    // Items keep their position across renders by construction, but an irregular row entering the
-    // loaded window above the viewport - or the one-off itemSize change - still shifts content.
-    private restoreAnchor(): void {
-        const anchor = this.scrollAnchor;
-        if (!anchor)
-            return;
-
-        const itemRef = this.getItemRef(anchor.key);
-        if (!itemRef)
-            return;
-
-        const viewportTop = this.ref.getBoundingClientRect().top;
-        const delta = itemRef.getBoundingClientRect().top - viewportTop - anchor.offset;
-        if (Math.abs(delta) < AnchorEpsilon)
-            return;
-
-        debugLog?.log(`restoreAnchor: ${delta}`);
-        this.ref.scrollTop += delta;
-    }
-
-    private scrollToKey(key: string, inTheMiddle: boolean): void {
-        const itemRef = this.getItemRef(key);
-        if (!itemRef)
-            return;
-
-        const viewportTop = this.ref.getBoundingClientRect().top;
-        const offset = itemRef.getBoundingClientRect().top - viewportTop;
-        const target = inTheMiddle
-            ? offset - (this.ref.clientHeight - this.itemSize) / 2
-            : offset;
-        this.ref.scrollTop += target;
-        this.captureAnchor();
-    }
-
-    private reveal(): void {
-        if (this.isRevealed)
-            return;
-
-        this.isRevealed = true;
-        this.wrapperRef.style.visibility = 'visible';
-    }
-
-    private onRenderIndexChanged = (): void => {
-        if (!this.isDisposed)
-            this.endRender();
-    };
-
-    private onScroll = (): void => {
-        if (!this.isDisposed)
-            this.updateViewportThrottled();
-    };
-
-    private onResize = (): void => {
-        if (!this.isDisposed)
-            this.updateViewportThrottled();
-    };
-
-    private readonly updateViewportThrottled = throttle(
-        () => this.updateViewport(),
-        UpdateViewportInterval,
-        'default');
-
-    private updateViewport(): void {
+        this.reveal();
         void this.requestData();
     }
 
-    private onItemVisibilityChanged = (entries: IntersectionObserverEntry[]): void => {
-        for (const entry of entries) {
-            const key = (entry.target as HTMLElement).dataset.key;
-            if (!key)
-                continue;
+    // Wrapper coordinates of the item at `index`, counting the separators that come before it.
+    private topOf(index: number): number {
+        return index * this.itemSize + this.separatorsBefore(index) * this.separatorSize;
+    }
 
-            if (entry.isIntersecting)
-                this.visibleKeys.add(key);
+    // How many separators sit above `index`. A separator index is the item it follows, so an index
+    // equal to it is still below the separator.
+    private separatorsBefore(index: number): number {
+        const indexes = this.separatorIndexes;
+        let low = 0;
+        let high = indexes.length;
+        while (low < high) {
+            const mid = (low + high) >> 1;
+            if (indexes[mid] < index)
+                low = mid + 1;
             else
-                this.visibleKeys.delete(key);
+                high = mid;
         }
-        this.updateItemVisibilityThrottled();
-    };
-
-    private readonly updateItemVisibilityThrottled = throttle(
-        () => this.updateItemVisibility(),
-        UpdateItemVisibilityInterval,
-        'default');
-
-    private updateItemVisibility(): void {
-        if (this.isDisposed)
-            return;
-
-        const rs = this.renderState;
-        const isEndAnchorVisible = rs != null
-            && rs.hasVeryLastItem
-            && this.ref.scrollTop + this.ref.clientHeight >= this.ref.scrollHeight - 1;
-        void this.blazorRef.invokeMethodAsync(
-            'UpdateItemVisibility', this.identity, [...this.visibleKeys], isEndAnchorVisible);
+        return low;
     }
 
-    private observeItems(): void {
-        this.visibilityObserver.disconnect();
-        this.visibleKeys.clear();
-        for (const itemRef of this.itemRefs())
-            this.visibilityObserver.observe(itemRef);
-    }
+    // The inverse of topOf: the index whose row contains `offset`.
+    private indexAt(offset: number): number {
+        if (this.itemSize <= 0)
+            return 0;
 
-    private async requestData(): Promise<void> {
-        if (this.isDisposed)
-            return;
+        let index = Math.floor(offset / this.itemSize);
+        // Each separator above pushes the answer earlier, and removing them can never uncover another
+        // one below - so this converges in as many steps as there are separators in the way, i.e. one
+        // for the chat list.
+        for (let pass = 0; pass < IndexAtMaxPasses; pass++) {
+            const next = Math.floor((offset - this.separatorsBefore(index) * this.separatorSize) / this.itemSize);
+            if (next === index)
+                break;
 
-        const query = this.buildDataQuery();
-        if (query === null)
-            return;
-
-        const whenRequestDataCompleted = this.whenRequestDataCompleted;
-        if (whenRequestDataCompleted && !whenRequestDataCompleted.isCompleted) {
-            debugLog?.log(`requestData: the previous request is not completed yet`);
-            return;
+            index = next;
         }
-
-        const newWhenRequestDataCompleted = new PromiseSourceWithTimeout<void>();
-        newWhenRequestDataCompleted.setTimeout(RequestDataTimeout, () => {
-            warnLog?.log(`requestData: no render within ${RequestDataTimeout}ms - the request never came back`);
-            newWhenRequestDataCompleted.resolve(undefined);
-        });
-        this.whenRequestDataCompleted = newWhenRequestDataCompleted;
-        debugLog?.log(`requestData:`, query);
-        if (FiniteList.debugDataLoadDelayMs > 0)
-            await delayMs(Math.random() * FiniteList.debugDataLoadDelayMs);
-
-        await this.blazorRef.invokeMethodAsync('RequestData', query);
+        return Math.max(0, index);
     }
 
-    private buildDataQuery(): VirtualListDataQuery | null {
+    protected buildDataQuery(): VirtualListDataQuery | null {
         const rs = this.renderState;
-        if (!rs || rs.count === 0)
+        if (rs.count === 0 || (rs.hasVeryFirstItem && rs.hasVeryLastItem))
             return null;
-        if (rs.hasVeryFirstItem && rs.hasVeryLastItem)
+
+        // A hidden list has no viewport to load around, and the zone that falls out of a zero height
+        // asks for index 0 - which would walk the window to the top behind the user's back.
+        const clientHeight = this.ref.clientHeight;
+        if (clientHeight <= 0)
             return null;
 
         const beforeCount = rs.beforeCount ?? 0;
         const afterCount = rs.afterCount ?? 0;
         const itemCount = beforeCount + rs.count + afterCount;
         const loadedRange = new NumberRange(beforeCount, beforeCount + rs.count);
-        const viewportItemCount = this.ref.clientHeight / this.itemSize;
-        const firstVisible = Math.floor(this.ref.scrollTop / this.itemSize);
+        const viewportItemCount = clientHeight / this.itemSize;
+        const firstVisible = this.indexAt(this.ref.scrollTop);
         const zone = Math.ceil(viewportItemCount * this.expandMultiplier);
         const wantStart = Math.max(0, firstVisible - zone);
         const wantEnd = Math.min(itemCount, Math.ceil(firstVisible + viewportItemCount) + zone);
@@ -368,30 +189,121 @@ export class FiniteList {
         return query;
     }
 
-    private releaseRequestDataGuard(): void {
-        this.whenRequestDataCompleted?.resolve(undefined);
-        this.whenRequestDataCompleted = null;
+    // Private methods
+
+    // The size source is any regular item; irregular ones (block separators) carry extra height and
+    // would poison the estimate. Sticking to one key while it stays rendered keeps the value from
+    // flapping between two rows that differ by a sub-pixel.
+    private measureItemSize(): void {
+        const sizeSource = this.containerRef.querySelector<HTMLElement>(':scope > li.item[data-vl-size-source]');
+        if (!sizeSource)
+            return;
+
+        const size = sizeSource.getBoundingClientRect().height + this.rowGap;
+        if (size <= 0 || Math.abs(size - this.itemSize) < ItemSizeEpsilon)
+            return;
+
+        debugLog?.log(`[${this.identity}] measureItemSize: ${this.itemSize} -> ${size}`);
+        this.itemSize = size;
     }
 
-    private parseRenderState(): VirtualListRenderState | null {
-        const rsJson = this.renderStateRef.textContent;
-        if (!rsJson)
-            return null;
+    private setSpacerSize(spacerRef: HTMLElement, size: number): void {
+        const height = size > 0 ? Math.max(0, size - this.rowGap) : 0;
+        const display = size > 0 ? 'flex' : 'none';
+        // Written only when it changes: on WebKit every content-height change of a scroller is a chance
+        // to end a fling, and both spacers are rewritten on every render.
+        if (spacerRef.style.display !== display)
+            spacerRef.style.display = display;
+        if (parseFloat(spacerRef.style.height) !== height)
+            spacerRef.style.height = `${height}px`;
+    }
 
-        try {
-            return JSON.parse(rsJson) as VirtualListRenderState;
+    // The separator is rendered once off-layout so it can be measured even when every item carrying
+    // one is outside the loaded window. Its margins are part of what it costs, and they are not in
+    // the element's own box.
+    private measureSeparatorSize(): void {
+        const measureRef = this.containerRef
+            .querySelector<HTMLElement>(':scope > .c-separator-measure > *');
+        if (measureRef == null)
+            return;
+
+        const style = getComputedStyle(measureRef);
+        const size = measureRef.getBoundingClientRect().height
+            + (parseFloat(style.marginTop) || 0)
+            + (parseFloat(style.marginBottom) || 0);
+        if (size < 0 || Math.abs(size - this.separatorSize) < ItemSizeEpsilon)
+            return;
+
+        debugLog?.log(`[${this.identity}] measureSeparatorSize: ${this.separatorSize} -> ${size}`);
+        this.separatorSize = size;
+    }
+
+    private scrollToKey(key: string, isInTheMiddle: boolean): void {
+        const itemRef = this.getItemRef(key);
+        if (!itemRef)
+            return;
+
+        const offset = itemRef.getBoundingClientRect().top - this.ref.getBoundingClientRect().top;
+        this.ref.scrollTop += isInTheMiddle
+            ? offset - (this.ref.clientHeight - this.itemSize) / 2
+            : offset;
+    }
+
+    private onScroll = (): void => {
+        if (this.isDisposed)
+            return;
+
+        this.updateViewportThrottled();
+    };
+
+    private readonly updateViewportThrottled = throttle(
+        () => void this.requestData(),
+        UpdateViewportIntervalMs,
+        'default');
+
+    private onItemVisibilityChanged = (entries: IntersectionObserverEntry[]): void => {
+        for (const entry of entries) {
+            const key = (entry.target as HTMLElement).dataset.key;
+            if (!key)
+                continue;
+
+            if (entry.isIntersecting)
+                this.visibleKeys.add(key);
+            else
+                this.visibleKeys.delete(key);
         }
-        catch (error) {
-            warnLog?.log(`parseRenderState: failed to parse render state`, error);
-            return null;
-        }
+
+        this.updateItemVisibilityThrottled();
+    };
+
+    private readonly updateItemVisibilityThrottled = throttle(
+        () => this.updateItemVisibility(),
+        UpdateItemVisibilityIntervalMs,
+        'default');
+
+    private updateItemVisibility(): void {
+        const isEndAnchorVisible = this.renderState.hasVeryLastItem
+            && this.ref.scrollTop + this.ref.clientHeight >= this.ref.scrollHeight - 1;
+        void this.reportVisibility([...this.visibleKeys], isEndAnchorVisible);
+    }
+
+    // Keys that left the DOM are dropped, but the rest keep their state: clearing the whole set here
+    // and re-observing would report an empty viewport on every render, which reads downstream as "the
+    // user can see no chats at all".
+    private observeItems(): void {
+        this.visibilityObserver.disconnect();
+        const itemRefs = this.itemRefs();
+        const keys = new Set(itemRefs.map(x => x.dataset.key!));
+        for (const key of [...this.visibleKeys])
+            if (!keys.has(key))
+                this.visibleKeys.delete(key);
+        for (const itemRef of itemRefs)
+            this.visibilityObserver.observe(itemRef);
     }
 
     private itemRefs(): HTMLElement[] {
         return [...this.containerRef.querySelectorAll<HTMLElement>(':scope > li.item[data-key]')];
     }
-
-    private getItemRef(key: string): HTMLElement | null {
-        return this.containerRef.querySelector<HTMLElement>(`:scope > li.item[data-key="${CSS.escape(key)}"]`);
-    }
 }
+
+(globalThis as unknown as { FiniteList: typeof FiniteList }).FiniteList = FiniteList;

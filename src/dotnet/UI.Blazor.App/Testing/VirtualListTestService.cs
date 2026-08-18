@@ -1,35 +1,45 @@
 namespace ActualChat.UI.Blazor.App.Testing;
 
-public class VirtualListTestService : IComputeService
+/// <summary>
+/// The per-item height-animation knobs <see cref="IVirtualListItem"/> exposes, as a value the test
+/// page can pass through <see cref="VirtualListTestService.GetItemKeys"/>'s compute-method cache.
+/// </summary>
+public sealed record VirtualListTestItemOptions(bool MustAnimateHeightChanges, int? HeightSettleDelayMs);
+
+public class VirtualListTestService(IServiceProvider services) : IComputeService
 {
-    private static readonly string[] Words = { "best", "virtual", "scroll", "ever", "100%", "absolutely" };
+    private static readonly string[] Words = ["best", "virtual", "scroll", "ever", "100%", "absolutely"];
+    private const int InitialPageSize = 40;
 
-    private Moment Start { get; }
-    private MomentClock Clock { get; }
-
-    public VirtualListTestService(IServiceProvider services)
-    {
-        Clock = services.Clocks().CpuClock;
-        Start = Clock.Now;
-    }
+    private MomentClock Clock { get; } = services.Clocks().CpuClock;
+    private Moment Start { get; } = services.Clocks().CpuClock.Now;
 
     [ComputeMethod]
     public virtual async Task<VirtualListData<TestListItemRef>> GetItemKeys(
         VirtualListDataQuery query,
         int? rangeSeed,
         int? contentSeed,
+        VirtualListEdge defaultEdge,
+        VirtualListTestItemOptions itemOptions,
         CancellationToken cancellationToken)
     {
         var rangeSeedValue = rangeSeed ?? await GetSeed(0, 3, cancellationToken).ConfigureAwait(false);
         var range = GetKeyRange(rangeSeedValue);
-        var start = range.Start;
-        var end = range.End;
-        if (!query.IsNone) {
-            var queryRange = query.KeyRange;
-            start = int.Parse(queryRange.Start, NumberStyles.Integer);
-            start += query.MoveRange.Start;
-            end = int.Parse(queryRange.End, NumberStyles.Integer);
-            end += query.MoveRange.End;
+        int start, end;
+        if (query.IsNone) {
+            // Bounded, so a large range still exercises virtualization rather than rendering everything.
+            if (defaultEdge.IsEnd()) {
+                end = range.End;
+                start = end - InitialPageSize;
+            }
+            else {
+                start = range.Start;
+                end = start + InitialPageSize;
+            }
+        }
+        else {
+            start = int.Parse(query.KeyRange.Start, NumberStyles.Integer) + query.MoveRange.Start;
+            end = int.Parse(query.KeyRange.End, NumberStyles.Integer) + query.MoveRange.End;
         }
 
         start = Math.Max(range.Start, start);
@@ -38,12 +48,16 @@ public class VirtualListTestService : IComputeService
         var result = new VirtualListData<TestListItemRef>(
             Enumerable
                 .Range(start, end - start + 1)
-                .Select(key => new TestListItemRef(key, rangeSeedValue, contentSeed))
+                .Select(key => new TestListItemRef(key, rangeSeedValue, contentSeed) {
+                    MustAnimateHeightChanges = itemOptions.MustAnimateHeightChanges,
+                    HeightSettleDelayMs = itemOptions.HeightSettleDelayMs,
+                })
                 .ToList()) {
             HasVeryFirstItem = start == range.Start,
             HasVeryLastItem = end == range.End,
         };
         await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+
         return result;
     }
 
@@ -65,6 +79,7 @@ public class VirtualListTestService : IComputeService
         var description = Enumerable.Range(0, wordCount)
             .Select(_ => Words[rnd.Next(Words.Length)])
             .ToDelimitedString(" ");
+
         return new TestListItem(key, $"#{key}", description, fontSize);
     }
 
@@ -75,9 +90,9 @@ public class VirtualListTestService : IComputeService
         return Task.FromResult((int)((offset + (Clock.Now - Start).TotalSeconds) / changePeriod));
     }
 
-    // Protected methods
+    // Private methods
 
-    protected static Range<int> GetKeyRange(int seed)
+    private static Range<int> GetKeyRange(int seed)
     {
         seed = Math.Abs(seed);
         return new Range<int>(-seed / 2, 50 + seed);

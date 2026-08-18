@@ -230,6 +230,24 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     }
 
     [ComputeMethod]
+    public virtual async Task<IReadOnlyList<int>> GetSeparatorIndexes(
+        PlaceId? placeId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
+    {
+        // Same rule GetTile applies per item, but over the whole ordering rather than a tile: the
+        // separator's height has to be modelled for items nowhere near the loaded window.
+        var chatInfos = await List(placeId, chatListSettings, cancellationToken).ConfigureAwait(false);
+        var result = new List<int>();
+        for (var i = 0; i < chatInfos.Count - 1; i++) {
+            var chatInfo = chatInfos[i];
+            var nextChatInfo = chatInfos[i + 1];
+            if (chatInfo != null && nextChatInfo != null && chatInfo.Contact.IsPinned && !nextChatInfo.Contact.IsPinned)
+                result.Add(i);
+        }
+
+        return result;
+    }
+
+    [ComputeMethod]
     public virtual async Task<VirtualListTile<ChatListItemModel>> GetTile(
         PlaceId? placeId, Tile<int> indexTile, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {

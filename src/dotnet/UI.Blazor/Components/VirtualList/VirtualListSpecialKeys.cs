@@ -8,6 +8,7 @@ internal static class VirtualListSpecialKeys
     public static readonly object TopOverscrollCue = new();
     public static readonly object Spacer = new();
     public static readonly object EndSpacer = new();
+    public static readonly object SeparatorMeasure = new();
     public static readonly object EndAnchor = new();
     public static readonly object Container = new();
 }

@@ -15,6 +15,7 @@
         Count = data.Count,
         BeforeCount = data.BeforeCount,
         AfterCount = data.AfterCount,
+        SeparatorIndexes = data.SeparatorIndexes,
         EstimatedCount = data.EstimatedCount,
         HasVeryFirstItem = data.HasVeryFirstItem,
         HasVeryLastItem = data.HasVeryLastItem,
@@ -33,7 +34,7 @@
 }
 
 <div @ref="Ref"
-     class="@Class virtual-list finite-list no-scrollbar"
+     class="@Class virtual-list finite-list"
      style="@Style">
 
     <div @key="@VirtualListSpecialKeys.RenderIndex"
@@ -77,6 +78,14 @@
                         @Item(item)
                     </li>
                 }
+            }
+
+            @if (Separator != null) {
+                <li @key="@VirtualListSpecialKeys.SeparatorMeasure"
+                    class="c-separator-measure"
+                    aria-hidden="true">
+                    @Separator
+                </li>
             }
 
             <li @key="@VirtualListSpecialKeys.EndSpacer"

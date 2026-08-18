@@ -49,6 +49,53 @@ only runs when explicitly enabled, so it costs nothing in normal use.
 
 ## Part 1 — The instruments
 
+### The on-screen overlay (start here)
+
+The lightest instrument: a one-line readout pinned over **every** virtual list, infinite and finite.
+Use it to watch behavior while you use the app, before reaching for the checker.
+
+```js
+debugUI.showVirtualListOverlay(true)    // or false
+```
+
+It persists in `UserAppSettings.IsVirtualListOverlayEnabled`, so it survives reloads and follows the
+account — `DebugUI.RestoreVirtualListOverlay` re-applies it at startup. There is no Settings-UI
+toggle; the console is the only entry point.
+
+A chat scrolled to the newest, with older messages still to load, looks like this:
+
+```
+↓  ⇊⟳  ~(5/48]~  h=115.7
+```
+
+**The layout is fixed — glyphs never appear or disappear, only their colour changes** (the direction
+arrow swaps between two equal-width glyphs). So the bar never reflows and your eye can stay on one
+spot. Dark gray means "not this / not happening".
+
+| Field | Meaning |
+|---|---|
+| `↓` / `↑` | render direction — `↑` = reverse, in cyan (it's the notable state); `↓` = natural, in plain light gray |
+| `⇊` | a data request is in flight (amber) |
+| `⟳` | a render is in progress (cyan) |
+| `~` … `~` | the start / end spacer, amber when shown. They sit *outside* the brackets because that's where a spacer physically is — the unloaded region beyond the window. A lit one means skeletons once it reaches the viewport |
+| `[` `]` vs `(` `)` | **square = that end of the data is loaded**, round = there's more that way. So `[5/48]` is a fully loaded chat, `(5/48)` has more in both directions |
+| bracket **colour** | green = that end is the **sticky edge**. Glyph and colour are independent because loaded-ness and stickiness are independent |
+| `5/48` | **infinite**: visible / rendered |
+| `6(0-6)/6` | **finite**: visible(first-last rendered index) / total |
+| `h=115.7` | mean height of the items rendered *right now* (not the lifetime running mean in `statistics.itemSize`) |
+
+It is a UI, not a state dump. Two things make it watchable:
+
+- **Momentary events are held.** `⇊` and `⟳` stay lit for `HoldMs` (500 ms) after they end, driven by
+  the `lastDataRequestAt` / `lastRenderAt` timestamps in the stats — so a request that begins and
+  finishes between two refreshes is still drawn. Measured: never under 350 ms on screen.
+- **State changes flash white** for the same window. The flash signature includes the *tone*, not just
+  the text — with a fixed layout most changes are colour-only (an arrow lighting, a bracket becoming
+  sticky), so keying on text alone would mean nothing ever flashed.
+
+Counters don't flash, and the numeric spans have reserved widths (`minWidthCh`), so the bar keeps a
+stable width instead of resizing whenever a count crosses a power of ten.
+
 ### What the checker does
 
 When enabled, every live list runs `VirtualListDebug.check()`:
@@ -135,7 +182,7 @@ is integer-floored and shifts a few px on reflow, so sub-tolerance deviation isn
 | `viewport-gap` | a hole between rendered elements inside the viewport (partial blank) — skipped when content is shorter than the viewport (legit for short lists) | missing/short spacer, chain not covering |
 | `void-below-newest` | infinite list settled (not scrolling), pinned at its maximum scroll, with a gap *past the newest* item. Checked when End-preferred or content taller than viewport | the model overshoots the DOM: `itemRange.end` exceeds the real content end, so the magnet pins to a max that sits below the last item. Measured **against the DOM** (`lastContentBottom`), not `itemRange` — `CutVirtualSpaceAtBottom` sizes the wrapper to `itemRange.end + endAnchorSize`, so `(scrollTop + clientHeight) - contentBottom` is identically ≤ 0 in model coordinates and a model-side check is structurally blind to this, the same way `anchor-jump` is blind to `scroll-clamp` |
 | `void-above-oldest` | symmetric: settled with a gap *past the oldest* item. Checked when Start-preferred or content taller than viewport (a short list's non-preferred edge legitimately has a gap) | edge magnet not pinning flush |
-| `scrolltop-out-of-range` | `scrollTop` outside `[0, scrollHeight-clientHeight]` (top-to-bottom convention) | bad scroll write |
+| `scrolltop-out-of-range` | `scrollOffset` outside `[0, scrollHeight-clientHeight]` — the model coordinate, so this holds in both render directions | bad scroll write |
 | `anchor-jump` | timer-detected: a keyed item still on screen moved by more than scrollTop should account for (`Δtop + Δscroll > JumpEps`) | re-layout without compensating scroll |
 | `render-jump` | render-detected: a visible anchored item moved during a render with no intentional scroll (bracketed inside `restoreScrollPosition`) | **the no-jump-invariant violation** — chase these for "it jumps when I scroll" |
 | `scroll-clamp` | the scroll range shrank out from under the viewport, leaving `scrollTop` pulled back and pinned at the new maximum | a wrapper resize while parked near the end. `anchor-jump` is *structurally blind* to this — content and scroll move together, so its `Δtop + Δscroll` is exactly 0 — which is why it needs its own check. The signature is deliberately narrow (range must shrink, scroll must go back, and the result must be pinned at the new max): the list has several scroll-write paths and only one stamps `lastProgrammaticScrollAt`, so a looser "scroll moved by itself" test is far too noisy |
@@ -162,8 +209,28 @@ This section is about **`InfiniteList`**. The scrollbar case (sidebar / contacts
 ### `InfiniteList` — no scrollbar (chat view) — the hard one
 
 Everything is **absolutely positioned**: the container is positioned, and spacers plus
-fixed-size item slots place every item on one tall virtual vertical space. scrollTop=0 is the
-bottom (newest); negative is up. The list is End-anchored.
+fixed-size item slots place every item on one tall virtual vertical space.
+
+**Render direction — read this before interpreting any scroll number.** The list has a
+`RenderDirection` parameter (`Natural` | `Reverse` | `Auto`, C# enum + `ts/virtual-list-render-direction.ts`):
+
+- **Natural** — `flex-direction: column`, chain anchored by `container.style.top`, native
+  `scrollTop` runs `0 …  maxScrollTop` top-to-bottom.
+- **Reverse** — `flex-direction: column-reverse`, chain anchored by `container.style.bottom`,
+  native `scrollTop` runs `-maxScrollTop … 0` with **0 = the newest**. The browser holds the
+  wrapper's *bottom* edge fixed, so an item resize or an append at the End edge keeps the newest
+  flush **with no scroll write at all** — which is the whole point of the mode.
+- **Auto** — reverse exactly while flush at the End edge, natural everywhere else. The switch
+  point lives in `updateAutoDirection` and its two tunables `AutoReverseEnterPx` /
+  `AutoReverseExitPx`; the flip itself is `setReverse`, which must land direction + chain anchor +
+  translated scroll in one task.
+
+So `scrollTop` alone is meaningless without knowing the direction. Everything in the class works
+in **wrapper coordinates** instead — `scrollOffset`, the viewport top within the wrapper, always
+in `[0, maxScrollTop]` whichever direction is active. Only `maxScrollTop` / `scrollOffset` /
+`toScrollTop` / `setScrollOffset` and `containerOffset` know about the flip. Snapshots record
+**both** `scrollTop` (native) and `scrollOffset` (model); every check does its math on
+`scrollOffset`.
 
 **Anchoring.** On each render the list always re-renders at least one **anchored item** — an item
 retained from the previous render. Anchored items are not just kept in the DOM, they are kept at

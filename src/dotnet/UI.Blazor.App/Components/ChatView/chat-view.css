@@ -198,19 +198,6 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     user-select: none;
     -webkit-touch-callout: none;
 }
-/* Every frame of this transition re-maps the position of every composited layer
-   below the message, so its cost is duration x 60Hz x how often it starts - once
-   per added line, ~0.85/s while someone is talking. Measured on an iPhone 13 Pro,
-   disabling it outright moved WebContent from 0.409 to 0.326 cores at 250ms.
-   200ms is the shortest that still reads as smooth. */
-.chat-message-markup.streaming {
-    transition: height 0.2s linear;
-}
-/* Disable streaming height animation when user is scrolled up (not at sticky end) —
-   the message is off-screen so the transition only causes jitter */
-.virtual-list:not(.sticky-end) .chat-message-markup.streaming {
-    transition: none;
-}
 .chat-message-markup.empty {
     @apply hidden;
 }
@@ -428,6 +415,12 @@ body.hoverable .chat-message-quote:hover,
 }
 body.narrow .message-file-attachments {
     @apply max-w-full;
+}
+
+/* Wraps the empty-chat content and the welcome message into the single element a virtual-list item is
+   measured through. flex-y keeps the two stacked exactly as they were as separate item children. */
+.chat-welcome-block-view {
+    @apply flex-y;
 }
 
 .chat-welcome-block {

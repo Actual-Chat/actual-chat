@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
 @typeparam TItem
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Components.Internal
 @inherits VirtualList<TItem>
 @{
@@ -11,9 +10,6 @@
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
     // We are unable to scroll to the right location until JS client part of the Virtual List created
     var data = Data;
-    var endAnchorSize = ScreenSize.IsNarrow()
-        ? 48
-        : 4;
     var containerStyle = renderIndex == 0
         ? "top: 0px;"
         : "";
@@ -21,12 +17,6 @@
     var hasVeryLastItem = data.HasVeryLastItem;
     var showOverscrollCue = ShowOverscrollCue
         && hasVeryFirstItem;
-    var spacerStyleDisplay = hasVeryFirstItem
-        ? "none"
-        : "flex";
-    var endSpacerStyleDisplay = hasVeryLastItem
-        ? "none"
-        : "flex";
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,
@@ -52,7 +42,7 @@
 }
 
 <div @ref="Ref"
-     class="@Class virtual-list no-scrollbar"
+     class="@Class virtual-list infinite-list"
      style="@Style">
 
     <div @key="@VirtualListSpecialKeys.RenderIndex"
@@ -82,9 +72,11 @@
                 </li>
             }
 
+            @* Sized and shown or hidden entirely from JS - see setSpacerSize. Rendering a display
+               here as well would make Blazor the second owner of the same property, and its writes
+               land as a whole style attribute, taking the JS-set height with them. *@
             <li @key="@VirtualListSpecialKeys.Spacer"
-                class="c-spacer-start"
-                style="display: @spacerStyleDisplay">
+                class="c-spacer-start">
                 <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
             </li>
 
@@ -97,15 +89,19 @@
                         @Item(item)
                     </li>
                 } else {
-                    <li @key="@item.RenderKey" class="item@(edgeClass)" data-key="@item.Key" data-skip="@item.ShouldSkipKey">
+                    <li @key="@item.RenderKey"
+                        class="item@(edgeClass)"
+                        data-key="@item.Key"
+                        data-skip="@item.ShouldSkipKey"
+                        data-vl-h-transition="@(item.MustAnimateHeightChanges ? null : "appearance")"
+                        data-vl-h-delay="@(item.HeightSettleDelayMs?.Format())">
                         @Item(item)
                     </li>
                 }
             }
 
             <li @key="@VirtualListSpecialKeys.EndSpacer"
-                class="c-spacer-end"
-                style="display: @endSpacerStyleDisplay">
+                class="c-spacer-end">
                 <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
             </li>
 

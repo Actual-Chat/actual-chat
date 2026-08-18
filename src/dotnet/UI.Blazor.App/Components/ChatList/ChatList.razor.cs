@@ -33,6 +33,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
         }
 
         var chatCountTask = ChatListUI.GetCount(placeId, chatListSettings, cancellationToken);
+        var separatorIndexesTask = ChatListUI.GetSeparatorIndexes(placeId, chatListSettings, cancellationToken);
         var chatIndex = await chatIndexTask.ConfigureAwait(false);
         var chatCount = await chatCountTask.ConfigureAwait(false);
 
@@ -94,6 +95,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
             Index = renderedData.Index + 1,
             BeforeCount = firstItemPosition,
             AfterCount = (chatCount - lastItemPosition - 1).Clamp(0, chatCount),
+            SeparatorIndexes = await separatorIndexesTask.ConfigureAwait(false),
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = scrollToKey,

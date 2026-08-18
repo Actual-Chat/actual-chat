@@ -5,7 +5,12 @@
     var tooltip = IsSeparated ? "Collapse summary" : "Expand summary";
 }
 
+@* The list holds this element's on-screen position across the render the toggle triggers. It has to
+   be the same id in both forms, because that is what makes them the same thing to the list: expanded,
+   the header sits inside a group the list doesn't track, and collapsed it is an item whose key the
+   expansion removes - so there is no key that survives either way round. *@
 <div class="@cls"
+     data-vl-anchor="@Conversation.Id.Value"
      data-menu="@(MenuRef.New<ConversationMenu>(Conversation.Id.Value, IsSeparated.ToString()))">
     <div class="bg-wrapper">
         @if (ShowToggle) {
