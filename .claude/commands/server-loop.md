@@ -17,8 +17,9 @@ are typically running together.
 `server-loop` is running** — the loop owns the dotnet process and will
 fight you. To restart the running .NET server, use one of:
 
-- `s` or `x` keypress in the loop terminal — the loop forwards it to
-  `/health/stop` (works from any environment).
+- `s` or `x` keypress in the loop terminal — in fact *any* key except
+  `j`, which is reserved for the rebundle below. The loop forwards it to
+  `/health/stop`.
 - `curl https://local.voxt.ai/health/stop` (it's a **GET**, not POST —
   POST returns 400 from antiforgery).
 - `debugUI.stopServer()` from the browser console.
@@ -28,6 +29,10 @@ A clean stop makes the loop rebuild and relaunch automatically. A
 the marker line `Last step failed, remove this file to restart the loop.`
 is the last line of `tmp/server-loop.log`. To unstick, delete that file
 or press a key in the loop terminal.
+
+To rebuild **only the TS/CSS bundle** without stopping anything, press `j`
+in the loop terminal or `touch tmp/server-loop-rebundle` — see "Rebundle
+without restarting the server" below for what it does and does not get you.
 
 ### The loop rebuild is the PREFERRED way to check everything
 
@@ -63,6 +68,100 @@ Workflow when iterating on TS / shared code with the loop running:
 That's it. ~30 seconds and the bundle the page loads is fresh. Manual
 `npm run build:Debug` is appropriate ONLY when the loop isn't running
 (or when you're hunting a build error in isolation).
+
+### Rebundle without restarting the server
+
+Two triggers, same code path (`Invoke-Rebundle` in `server-loop.ps1`):
+
+- **Press `j` in the loop terminal.** For the developer, who has it
+  focused. It is the one key the loop does *not* treat as "stop the
+  server".
+- **`touch tmp/server-loop-rebundle`** (or, in pwsh,
+  `New-Item -ItemType File tmp/server-loop-rebundle -Force`). For everyone
+  who can't reach that terminal — Claude in Docker, another shell, a
+  script. `tmp/` is shared across host / WSL / Docker.
+
+Either way, while the server is up: the loop's 200ms poll picks the request
+up, runs `npm run build:Debug` inline, and **keeps the same server process**
+— no stop, no `dotnet build`, no startup wait. Watch `tmp/server-loop.log`
+for:
+
+```
+[hh:mm:ss] Rebundle: npm run build:Debug (server keeps running)...
+[hh:mm:ss] Rebundle: done in 8.2s.
+[hh:mm:ss] Rebundle: the server serves the new bundle — reload the page with caching disabled …
+```
+
+TS/lint errors land in `tmp/server-loop-npm-build.log` and produce a
+`Rebundle: FAILED (exit code N) …` line. A failed rebundle does **not** park
+the loop and does **not** touch the server — fix the TS and request another
+one. Requesting a rebundle while one is running is fine; the sentinel is
+deleted before the build starts, so the second request queues another pass.
+A `j` pressed while a keyboard stop is already in flight is declined with
+`Rebundle: ignored — a server stop is already in flight.`
+
+**This is a TYPE-CHECK fast path first and a hot-swap second.** The server
+keeps running, and it does serve the new bundle — but the *browser* still has
+to be told to re-fetch it:
+
+- The page URL is `/dist/bundle.<hash>.js`, fingerprinted at `dotnet build`
+  time and served `Cache-Control: immutable`. It does not change on a
+  rebundle, so a plain reload always serves the cached copy — you need a
+  cache-bypassing reload (see `/debug-ui`).
+- If the .NET static-asset manifest and the new bundle disagree on size, the
+  loop logs `Rebundle: WARNING — the server still advertises N bytes …`.
+  That means the manifest predates the bundle; restart for a full rebuild.
+- `Rebundle: WARNING — the server still serves a precompressed /dist copy …`
+  means `-p:DisableBuildCompression=true` didn't take (see below) — most
+  likely the running server was launched by an older `server-loop.ps1`.
+  Restart the loop.
+
+Either way this is still the cheapest way to type-check TS from Docker
+(~8s vs ~1min for an in-Docker `tsc --noEmit`).
+
+### Why the loop builds with `-p:DisableBuildCompression=true`
+
+Both Step 2 (`dotnet build`) and Step 3 (`dotnet run`) get
+`-p:DisableBuildCompression=true`, in every configuration.
+
+Without it, build-time static-asset compression writes `.gz` copies under
+`artifacts/obj/App.Wasm/<config>/compressed/` and MapStaticAssets hands those
+to any browser sending `Accept-Encoding: gzip`. Only `dotnet build`
+regenerates them, so a rebundle — which runs npm and nothing else — would be
+**invisible** to the browser while looking like it worked.
+`Directory.Build.props` sets `CompressionEnabled=false` globally, but
+`App.Wasm.csproj` re-enables it for `Release` (the loop's default `-c`); a
+command-line global property overrides both.
+
+Two notes for anyone touching this:
+
+- It must be on **both** steps. Global properties are part of a project's
+  build identity, so `dotnet build` with it and `dotnet run` without it are
+  two different builds — MSBuild would redo the whole thing in Step 3.
+- It disables *build* compression only. `dotnet publish` still precompresses,
+  which is what real deployments want, so this doesn't affect release builds.
+
+### Steps 1 and 2 are skipped when nothing changed
+
+The loop stamps `tmp/server-loop-npm-build.stamp` and
+`tmp/server-loop-dotnet-build.<config>.stamp` before each step succeeds and
+skips the step when nothing it consumes is newer:
+
+- **npm-build** consumes `src/nodejs`, `src/dotnet` (minus `.cs`/`.csproj`/
+  MSBuild files — but `.razor`/`.cshtml` count, Tailwind scans them),
+  `resources/sounds/converted`, and the root build config. So a **C#-only**
+  change skips it.
+- **dotnet-build** consumes all of `src` + `lib` + the root MSBuild files —
+  including `App.Wasm/wwwroot/dist`, because the bundle is what
+  MapStaticAssets fingerprints. So it is skipped only when *nothing* changed.
+  This costs nothing in safety: Step 3's `dotnet run` builds anyway; skipping
+  Step 2 only avoids doing the same build twice.
+
+Log lines read `Step 1/3 (npm-build) — skipped, no bundle input changed …`.
+If you ever suspect a stale skip, `rm tmp/server-loop-*.stamp` forces a full
+cycle. Detection is mtime-based, so a tool that *preserves* mtimes when
+writing (archive extraction, a restored backup) can hide a change — normal
+edits from any editor, git, Claude, or Docker bind mounts bump mtimes fine.
 
 ## Cross-environment caveat
 
@@ -123,8 +222,12 @@ Setup details and usage live in `/debug-ui`.
 | `tmp/server-loop-server-run.out` | Step 3 — `dotnet run` stdout |
 | `tmp/server-loop-server-run.err` | Step 3 — `dotnet run` stderr (empty on a healthy run) |
 | `tmp/server-loop-server-run.log` | Server's `ActualChat_DevLog` — the structured app diagnostics, richer than stdout |
+| `tmp/server-loop-rebundle` | Write it to request an in-place rebundle (same as pressing `j` in the loop terminal); the loop deletes it when it starts building |
+| `tmp/server-loop-npm-build.stamp` | "npm-build last succeeded at" (UTC ticks) — drives the skip check |
+| `tmp/server-loop-dotnet-build.<config>.stamp` | Same for dotnet-build, per `-c` configuration |
 
-All six files are wiped at the start of each loop iteration. The loop
+All six log files are wiped at the start of each loop iteration; the
+`.stamp` files deliberately survive it. The loop
 banner-prints these paths once at startup and never again, so per-step
 log lines stay terse — `[hh:mm:ss] Step N/3 (name)`.
 
@@ -196,6 +299,13 @@ pwsh -NoProfile -c "
             Write-Host 'PAUSED: server-loop is waiting for restart.' -ForegroundColor Yellow
             Write-Host '  -> delete tmp/server-loop.log, or press a key in the loop terminal.'
         }
+    }
+
+    \$rebundleFlag = Join-Path \$tmp 'server-loop-rebundle'
+    if (Test-Path \$rebundleFlag) {
+        Write-Host ''
+        Write-Host 'Rebundle requested, not yet picked up (tmp/server-loop-rebundle still exists).'
+        Write-Host '  -> the loop deletes it when it starts the npm build; if it lingers, the loop is not on step 3.'
     }
 
     Write-Host ''
