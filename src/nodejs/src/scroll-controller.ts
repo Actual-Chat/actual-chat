@@ -61,6 +61,10 @@ const MaxCarrySpeedPxS = MaxBouncePx * Math.sqrt(ReturnStiffness) * Math.E;
 const MinExcursionPx = 2;
 // A finger still for this long is a touchend that never arrived.
 const TouchStaleMs = 3000;
+// ...and content still moving with nothing heard from the finger for this long is the same thing. A
+// dragging finger reports touchmove every frame, so silence while the content flies is a release whose
+// touchend went to an item recycled out of the document - detached, so nothing on document saw it.
+const TouchSilenceMs = 400;
 // A gap this long between scroll events ends the motion; the next one says for itself what it is.
 const MotionGapMs = 200;
 // Backstop, not mechanism: if a phase ever stops advancing, this hands the element back. Nothing else
@@ -100,6 +104,7 @@ export class ScrollController {
     public onTransform: (() => void) | null = null;
 
     private isTouching = false;
+    private lastTouchTime = 0;
     private lastScrollTop = 0;
     private lastScrollTime = 0;
     private recentSpeed = 0;            // px/ms, signed, smoothed - the native scroll's own speed
@@ -191,6 +196,10 @@ export class ScrollController {
             };
             document.addEventListener('touchend', onTouchEnd, docOpts);
             document.addEventListener('touchcancel', onTouchEnd, docOpts);
+            // Only a timestamp: what it proves is that the gesture is still being delivered at all.
+            document.addEventListener('touchmove', () => {
+                this.lastTouchTime = performance.now();
+            }, docOpts);
             // A resize (keyboard, sub-header) moves the limits without a scroll event; snap rather than
             // spring, or a viewport growth bounces the edge back over ~400ms.
             this.resizeObserver = new ResizeObserver(() => {
@@ -471,6 +480,7 @@ export class ScrollController {
         this.isTouching = true;
         this.isTouchMotion = true;
         this.stillSince = now;
+        this.lastTouchTime = now;
         this.stopMomentumTakeover(true);
         this.addMomentumSample(this.element.scrollTop, now);
         if (this.phase !== 'engaged')
@@ -799,12 +809,17 @@ export class ScrollController {
         this.follow(scrollTop);
         if (this.isTouching) {
             // A finger still this long is a touchend that never arrived; left alone the list stays parked
-            // off its own content.
-            if (Math.abs(scrollTop - this.stillTop) > FixPrecisionPx) {
+            // off its own content. While the content is moving that test can never come due - the fling
+            // resets it every frame - so silence from the finger stands in for stillness there. Without
+            // it a release lost to a recycled touch target follows the fling out: measured at 60528px
+            // past the limit over 571 frames, which is a blank screen until it decays.
+            const hasMoved = Math.abs(scrollTop - this.stillTop) > FixPrecisionPx;
+            if (hasMoved) {
                 this.stillTop = scrollTop;
                 this.stillSince = time;
             }
-            else if (time - this.stillSince > TouchStaleMs) {
+            if (time - this.stillSince > TouchStaleMs
+                || (hasMoved && time - this.lastTouchTime > TouchSilenceMs)) {
                 this.onTouchEnd();
             }
 
