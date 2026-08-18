@@ -908,19 +908,21 @@ export class InfiniteList extends VirtualList {
     // holds it at. Sticking against the scrollport edge is the element's own business and moves this
     // legitimately, so it is re-read rather than remembered from the render.
     private trackStickyItems(): void {
-        const limits = this.scrollController.getEffectiveScrollLimits();
-        const scrollOffset = this.ref.scrollTop;
-        if (scrollOffset - limits.min > StickyTrackingZonePx && limits.max - scrollOffset > StickyTrackingZonePx)
-            return;
-
         // Clearing the whole set before reading any of it costs one reflow instead of one per element,
-        // and happens on the single frame that ends an excursion.
+        // and happens on the single frame that ends an excursion. It has to precede the tracking-zone
+        // test: the excursion is what triggers the load, and the re-anchor that follows moves the limits
+        // a page away, so a correction left on the elements would never be handed back.
         if (this.hasStickyOffset) {
             this.hasStickyOffset = false;
             for (const sticky of this.stickyRefs)
                 if (sticky.ref.isConnected && sticky.ref.style.transform !== '')
                     sticky.ref.style.transform = '';
         }
+
+        const limits = this.scrollController.getEffectiveScrollLimits();
+        const scrollOffset = this.ref.scrollTop;
+        if (scrollOffset - limits.min > StickyTrackingZonePx && limits.max - scrollOffset > StickyTrackingZonePx)
+            return;
 
         const containerTop = this.containerRef.getBoundingClientRect().top;
         for (const sticky of this.stickyRefs)
@@ -1259,8 +1261,12 @@ export class InfiniteList extends VirtualList {
         }
 
         const itemRef = this.getItemRef(jump.target.key);
-        if (itemRef == null)
+        if (itemRef == null) {
+            // Nothing retries the stranded recovery this jump superseded, and the check is otherwise
+            // only re-armed by a scroll - which a stranded view gives the user no way to make.
+            this.repinIfStrandedDebounced();
             return;
+        }
 
         this.scrollToItem(itemRef, jump.target.position, jump.isSmooth);
     }

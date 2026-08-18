@@ -153,7 +153,8 @@ in a later section looks loaded — most of them are.*
   why it suppresses new animations and waits out the ones in flight.
 - **stranded** — *`repinIfStranded`, `JumpPriority.stranded`.* The viewport has ended up more than
   twice the overscroll allowance — six screens — from the chain, so nothing on screen can pull it back.
-  A fault, answered by a jump to the default edge.
+  A fault, answered by a jump to the default edge. Ranks below a navigation jump, which places the view
+  itself; if that jump's target never renders it re-arms this check rather than leaving the view stranded.
 - **direction borrow** — *`setDirection`, `mustRestoreDirection`.* A reverse list rendering natural for
   the duration of a screen-anchored interaction, and back at the next quiet moment (§3.2).
 
@@ -548,7 +549,7 @@ overscroll rows are the summary of §3.7.*
 | the render that follows a screen anchor | — | the chain moves so the element's *flow* position lands where its rendered one was, then per-frame holds by the translation until it has been still 12 frames | `container.top`, then `transform` |
 | the chain eats into the reserve | any → watching for a quiet moment | armed by `applyLayout`, and the watcher cancels itself the moment the chain is no longer off centre | — |
 | a quiet moment while armed | watching → re-centre and/or direction restore | chain moved to the middle, scroll shifted by the same amount, flagged `reanchor` and unclamped; and/or `setDirection` back to the configured one | `container.top` + `scrollTop`, cancelling |
-| a settle finds the viewport more than `2 × maxOverscroll` from the chain | any → Placing | a priority-1 jump to the default edge, which outranks a queued navigation jump | `scrollTop` |
+| a settle finds the viewport more than `2 × maxOverscroll` from the chain | any → Placing | a jump to the default edge; a queued navigation jump supersedes it, and re-arms this check if its target never arrives | `scrollTop` |
 | viewport resize | any | the list re-pins now and again when stable; the controller separately opens its guard window, ends any excursion at the boundary, and clamps to the new limits — a snap, not a return | `transform`, sometimes `scrollTop` |
 | Blazor calls `reset()` | any → initial | items, offsets and caches cleared, `tOffset` returned to its configured baseline, pin and anchors dropped, direction restored, chain re-centred, the reveal watch restarted | `container.top` |
 

@@ -46,6 +46,7 @@ export class ItemHeightController {
     private transitionMs = 0;
     private isSuspended = false;
     private isBatching = false;
+    private pendingRestore: HTMLElement[] | null = null;
 
     constructor(
         private readonly containerRef: HTMLElement,
@@ -186,16 +187,7 @@ export class ItemHeightController {
         this.isBatching = false;
         const keys = [...this.deferred];
         this.deferred.clear();
-        // Top to bottom, so a batch of changes larger than the animation budget spends it on the items
-        // nearest the top rather than on whichever one the observer happened to report first. Document
-        // order is that order in both render directions - the container is a plain flex column, and
-        // rendering in reverse anchors the chain differently without reordering it.
-        keys.sort((a, b) => compareDomOrder(this.states.get(a)?.ref, this.states.get(b)?.ref));
-        for (const key of keys) {
-            const state = this.states.get(key);
-            if (state != null)
-                this.schedule(key, state);
-        }
+        this.drain(keys);
     }
 
     // While a reposition waits for the list to stop moving, changes still to come land instantly:
@@ -295,17 +287,27 @@ export class ItemHeightController {
             itemRef.style.transition = '';
     }
 
+    // Batched like a render: one callback carries every item a width change touched, and writing each
+    // one as it is read would flush the layout the next read needs.
     private onContentResize = (entries: ResizeObserverEntry[]): void => {
-        for (const entry of entries) {
-            const key = this.contentKeys.get(entry.target);
-            const state = key == null ? undefined : this.states.get(key);
-            if (key == null || state == null)
-                continue;
+        const wasBatching = this.isBatching;
+        this.isBatching = true;
+        try {
+            for (const entry of entries) {
+                const key = this.contentKeys.get(entry.target);
+                const state = key == null ? undefined : this.states.get(key);
+                if (key == null || state == null)
+                    continue;
 
-            const contentHeight = entry.borderBoxSize.length > 0
-                ? entry.borderBoxSize[0].blockSize
-                : entry.contentRect.height;
-            this.setIntrinsic(key, state, contentHeight + getOuterExtra(state));
+                const contentHeight = entry.borderBoxSize.length > 0
+                    ? entry.borderBoxSize[0].blockSize
+                    : entry.contentRect.height;
+                this.setIntrinsic(key, state, contentHeight + getOuterExtra(state));
+            }
+        }
+        finally {
+            if (!wasBatching)
+                this.endBatch();
         }
     };
 
@@ -327,6 +329,44 @@ export class ItemHeightController {
         this.schedule(key, state);
     }
 
+    // Every visibility read happens before the first write, and the whole batch shares one flush:
+    // interleaving them costs a forced layout per item, which a width change makes O(rendered items).
+    private drain(keys: string[]): void {
+        // Top to bottom, so a batch of changes larger than the animation budget spends it on the items
+        // nearest the top rather than on whichever one the observer happened to report first. Document
+        // order is that order in both render directions - the container is a plain flex column, and
+        // rendering in reverse anchors the chain differently without reordering it.
+        keys.sort((a, b) => compareDomOrder(this.states.get(a)?.ref, this.states.get(b)?.ref));
+        const pending = new Array<{ key: string, state: ItemHeightState, isVisible: boolean }>();
+        for (const key of keys) {
+            // The same guard schedule() applies: a key deferred while its height was known can be
+            // recycled before the drain, and the state standing in its place has none yet. Writing
+            // that would round -1 down to a 0px item.
+            const state = this.states.get(key);
+            if (state == null || state.intrinsic < 0)
+                continue;
+
+            pending.push({ key, state, isVisible: this.isVisible(key) });
+        }
+        if (pending.length === 0)
+            return;
+
+        const restore = new Array<HTMLElement>();
+        this.pendingRestore = restore;
+        try {
+            for (const item of pending)
+                this.scheduleNow(item.key, item.state, item.isVisible);
+        }
+        finally {
+            this.pendingRestore = null;
+            if (restore.length > 0) {
+                void this.containerRef.offsetHeight;
+                for (const itemRef of restore)
+                    itemRef.style.transition = '';
+            }
+        }
+    }
+
     private schedule(key: string, state: ItemHeightState): void {
         if (state.intrinsic < 0)
             return;
@@ -337,9 +377,9 @@ export class ItemHeightController {
             this.scheduleNow(key, state);
     }
 
-    private scheduleNow(key: string, state: ItemHeightState): void {
+    private scheduleNow(key: string, state: ItemHeightState, isVisible?: boolean): void {
         const mustAnimate = !this.isSuspended
-            && this.isVisible(key)
+            && (isVisible ?? this.isVisible(key))
             && (state.isAppearing || (state.mustAnimateChanges && state.isControlled))
             && this.hasAnimationSlot(state);
         if (!mustAnimate) {
@@ -461,8 +501,12 @@ export class ItemHeightController {
         this.setUnsettled(state, false);
         itemRef.style.transition = 'none';
         itemRef.style.height = `${target}px`;
-        void itemRef.offsetHeight;
-        itemRef.style.transition = '';
+        if (this.pendingRestore != null)
+            this.pendingRestore.push(itemRef);
+        else {
+            void itemRef.offsetHeight;
+            itemRef.style.transition = '';
+        }
         return true;
     }
 
