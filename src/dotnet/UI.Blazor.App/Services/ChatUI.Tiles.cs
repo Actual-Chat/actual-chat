@@ -1159,8 +1159,12 @@ public partial class ChatUI
         // of every ~52s). While the mic is on for a chat there must always be an entry standing in for
         // the upcoming transcript.
         var isRecordingInTheChat = state.ChatId == chatId;
-        if (!isRecordingInTheChat)
+        if (!isRecordingInTheChat) {
+            // Cleared rather than just skipped: the next session in this chat would otherwise be handed
+            // this same entry back, carrying the BeginsAt and ClientUid of the one that has ended.
+            _audioRecordingEntry = null;
             return null;
+        }
 
         var chatEntry = _audioRecordingEntry;
         if (chatEntry?.ChatId == chatId)
@@ -1574,7 +1578,7 @@ public partial class ChatUI
         var scanned = 0;
         for (var i = entries.Count - 1; i >= 0 && scanned < OwnAudioEntryScanDepth; i--) {
             var entry = entries[i];
-            if (entry.AuthorId != ownAuthorId || !(entry.HasAudio || entry.IsContentStreaming))
+            if (entry.AuthorId != ownAuthorId || !IsAudioKind(entry))
                 continue;
             if (entry.IsContentStreaming)
                 return (true, null);
