@@ -32,6 +32,9 @@ interface ItemHeightState {
     animatingUntil: number;
     animationTimer: ReturnType<typeof setTimeout> | null;
     timer: ReturnType<typeof setTimeout> | null;
+    // Padding, borders and content margins, or -1 when they must be read again. Cached because
+    // measureItems re-measures every item on every render and this resolves two computed styles.
+    outerExtra: number;
 }
 
 // Owns `style.height` of every item in a list that animates heights. What the list's geometry model
@@ -127,6 +130,7 @@ export class ItemHeightController {
             animatingUntil: 0,
             animationTimer: null,
             timer: null,
+            outerExtra: -1,
         });
         this.contentKeys.set(contentRef, key);
         this.contentObserver.observe(contentRef, { box: 'border-box' });
@@ -249,6 +253,7 @@ export class ItemHeightController {
             this.reassertClasses(state);
             // The item's own padding is part of the height it needs, and a class can change it without
             // the content ever resizing - so the chrome has to be re-read, not assumed.
+            state.outerExtra = -1;
             this.remeasure(key);
         }
     };
@@ -302,6 +307,9 @@ export class ItemHeightController {
                 const contentHeight = entry.borderBoxSize.length > 0
                     ? entry.borderBoxSize[0].blockSize
                     : entry.contentRect.height;
+                // A resize is the one moment the chrome can change with no class changing - a width
+                // change can move padding through a media query - so it is re-read, not trusted.
+                state.outerExtra = -1;
                 this.setIntrinsic(key, state, contentHeight + getOuterExtra(state));
             }
         }
@@ -613,14 +621,18 @@ function release(itemRef: HTMLElement): void {
 // flex item, so it establishes its own formatting context and nothing collapses out of it - and
 // leaving them out is how content ends up painted over whatever follows.
 function getOuterExtra(state: ItemHeightState): number {
+    if (state.outerExtra >= 0)
+        return state.outerExtra;
+
     const itemStyle = getComputedStyle(state.ref);
     const contentStyle = getComputedStyle(state.contentRef);
-    return (parseFloat(itemStyle.paddingTop) || 0)
+    state.outerExtra = (parseFloat(itemStyle.paddingTop) || 0)
         + (parseFloat(itemStyle.paddingBottom) || 0)
         + (parseFloat(itemStyle.borderTopWidth) || 0)
         + (parseFloat(itemStyle.borderBottomWidth) || 0)
         + (parseFloat(contentStyle.marginTop) || 0)
         + (parseFloat(contentStyle.marginBottom) || 0);
+    return state.outerExtra;
 }
 
 // An item renders exactly one element, and that element is what carries its intrinsic height - the
