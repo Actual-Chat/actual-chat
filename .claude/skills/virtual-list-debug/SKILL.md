@@ -1,13 +1,14 @@
 ---
 name: virtual-list-debug
-version: 1.0.0
+version: 2.0.0
 description: |
-  Debug the VirtualList component — enable the on-demand consistency checker, drain its
-  violations to a file via the watchdog, and reason about WHY a violation happened. Use when
-  the chat-view (or sidebar) list jumps while scrolling, shows a blank/empty screen, gets stuck
-  (can't reach the bottom / shows endless skeletons), or over-scroll-and-catch-up misbehaves.
-  Also the canonical reference for the list's invariants (anchoring, the no-jump rule, the three
-  reset cases). Pairs with /server-loop (server side) and /debug-ui (browser side).
+  Instruments and workflow for debugging the VirtualList — the chat transcript (`InfiniteList`) and
+  the sidebar (`FiniteList`). Covers the built-in consistency checker, the on-screen overlay, the
+  five `?vl*` URL flags, the touch-gesture rig, the frame recorder, attaching to a real Android
+  device over CDP, and how to read a trace without being fooled by a measurement artifact. Use when
+  the list jumps while scrolling, blanks, sticks on skeletons, or the overscroll/bounce misbehaves.
+  The component's specification is `docs/virtual-list.md`; this skill is only how to *measure* it.
+  Pairs with /debug-ui (browser side) and /server-loop (server side).
 allowed-tools:
   - Bash
   - Read
@@ -22,370 +23,424 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# /virtual-list-debug — debug the VirtualList
+# /virtual-list-debug — instruments and workflow
 
-There are **two** virtualized lists, with deliberately different machinery:
+## Ground rules before you measure anything
 
-- **`InfiniteList`** (`infinite-list.ts`) — the absolutely-positioned list used for chat messages,
-  the content tabs and the log view. No scrollbar; the wrapper is a fixed huge scroll space and
-  items are held in place by anchoring. Everything below is about this one.
-- **`FiniteList`** (`finite-list.ts`) — used by `ChatList` (the sidebar). Known item count, uniform
-  item height, real scrollbar. An item's position is `index * itemSize`, so loading a different
-  window cannot move what is on screen — the no-jump invariant is structural rather than
-  maintained. See "FiniteList" at the end; most of this skill does not apply to it.
+**The spec is [`docs/virtual-list.md`](../../../docs/virtual-list.md) (132KB).** Look invariants up
+there; do not trust a summary, including this one. The section map you will actually use:
 
-`InfiniteList` is subtle: every visible item is positioned by a precomputed model, and the most
-common bugs are **visual jumps while scrolling**, **blank/partial-blank viewport**, and
-**stuck loading**.
+| Need | Section |
+|---|---|
+| Vocabulary — `chainStart`, `tOffset`, `viewOffset`, pinning vs. anchoring | §1 |
+| The eleven enforced invariants | §2 |
+| The model and the three position terms | §3.1 |
+| Render direction (`Natural` \| `Reverse` — there is **no** `Auto`) | §3.2 |
+| States, transitions, loops, which term may move when | §3.3–§3.6 |
+| Overscroll: the band, resistance, bounce, floor — what the rig judges | §3.7 |
+| Spacers, end anchor, short conversations | §3.8 |
+| Re-anchoring | §3.9 |
+| Item heights and stability | §3.10 |
+| Rules that came from painful debugging | §3.12 |
+| Browser/OS/device quirks — read §4.11 before injecting any gesture | §4 |
+| Measuring, and the traps that gave confidently wrong answers | §5 |
+| `FiniteList` | §6 |
 
-This skill gives you (1) the instrumentation to *catch* those bugs with enough detail to fix
-them, and (2) the invariants to *reason* about them. Read both halves before touching geometry —
-naive "fixes" here routinely trade one symptom (blank) for another (jumps).
+Two facts that decide whether a measurement means anything:
 
-The checker lives in a separate file, `virtual-list-debug.ts`, and is **off by default** — it
-only runs when explicitly enabled, so it costs nothing in normal use.
+- **`scrollTop` alone is meaningless.** What the user sees is the sum of three terms (§3.1):
+  `scrollTop`, the container's position in the wrapper, and the composed transform. Each moves
+  content without the others moving. The only honest measure is the on-screen position of a **real
+  item, followed by key**, sampled every frame.
+- **The wrapper is a fixed 4,000,000px** (`InfiniteSize`, mirrored in `InfiniteList.razor.cs` and
+  `infinite-list.ts` — the two must agree). It never resizes for the life of the list. Nothing in the
+  current design shrinks a spacer to re-origin the coordinate system.
 
 ---
 
-## Part 1 — The instruments
+## 1. The instruments
 
-### The on-screen overlay (start here)
+### 1.1 The consistency checker
 
-The lightest instrument: a one-line readout pinned over **every** virtual list, infinite and finite.
-Use it to watch behavior while you use the app, before reaching for the checker.
+```js
+debugUI.virtualListDebug(true)                   // preferred; warns if InfiniteList isn't loaded yet
+globalThis.InfiniteList.setDebugEnabled(true)    // same thing, one level down
+```
+
+Sets the static `InfiniteList.isDebugEnabled` flag, so it covers every live `InfiniteList` **and
+every one created afterwards**. State is per page — a reload drops it. `FiniteList` is **not**
+instrumented.
+
+It runs `checkModelDrift(reason)` from exactly three places in `infinite-list.ts`:
+
+- `render` — after a render has been applied,
+- `settled` — when the list comes to rest,
+- `setDebugEnabled` — once, immediately, on every live list when you turn it on.
+
+`checkModelDrift` bails out early when there are fewer than two items or `stability.isAnimating`
+(height animations in flight), so **a silent checker during an animation is not a pass**. It picks
+the first non-`position: sticky` item as the baseline — conversation headers report where they are
+stuck, not where they sit in the flow — and compares every other non-sticky item's real
+`getBoundingClientRect().top` against `offsets[i] - offsets[base]`. Only the **worst** offender is
+reported, past `DriftWarnThresholdPx` (8px).
+
+The same pass always calls `checkContentOverflow(reason)`, which walks every item that is not
+`c-height-unsettled` and compares its box against the height its content actually requires (content
+box + content margins + item padding + borders). Two warnings come out of it: an item whose content
+needs more than `ContentOverflowThresholdPx` (2px) more than its box — that surplus paints straight
+over the item below — and an item that renders more than one child element, since only the first is
+measured.
+
+**Output is `warnLog` only.** There is no violation buffer, no ring, nothing to drain, no return
+value — you read the browser console. The `InfiniteList` scope defaults to `Warn`, so these appear
+without any setup. To also see the flow (`repinEdge`, `jump`, `applyLayout: re-centred`):
+
+```js
+logLevels.override('InfiniteList', 1)   // 1 = Debug; persisted in localStorage + IndexedDB
+logLevels.reset()                       // back to package defaults
+```
+
+`ScrollController`'s own backstop bypasses the log scopes entirely and calls `console.warn` directly:
+`ScrollController: phase '<phase>' stopped advancing` means a phase ran `LockWatchdogMs` (1500ms)
+without finishing and the scroller was handed back. That message is always a defect.
+
+What the checker **does not** cover: blank viewports, gaps between items, scroll clamps, jumps
+during an animation, anything in `FiniteList`, and anything about the band. For those, record a trace
+(§3).
+
+### 1.2 The on-screen overlay
 
 ```js
 debugUI.showVirtualListOverlay(true)    // or false
 ```
 
-It persists in `UserAppSettings.IsVirtualListOverlayEnabled`, so it survives reloads and follows the
-account — `DebugUI.RestoreVirtualListOverlay` re-applies it at startup. There is no Settings-UI
-toggle; the console is the only entry point.
+A one-line readout pinned to the top-right of **every** virtual list, infinite and finite. It
+persists in `UserAppSettings.IsVirtualListOverlayEnabled` and is re-applied at startup by
+`DebugUI.RestoreVirtualListOverlay` → `debugUI.applyVirtualListOverlay` (which does not write back).
+There is no Settings-UI toggle; the console is the only entry point. It refreshes every 200ms and
+reads only inline styles, so it costs no layout. It lives in `document.body`, because
+`.virtual-list` sets `contain: strict`, which clips even fixed-position descendants.
 
-A chat scrolled to the newest, with older messages still to load, looks like this:
+A chat scrolled to the newest with older messages still to load:
 
 ```
-↓  ⇊⟳  ~(5/48]~  h=115.7
+↑  ⇊⟳  ~(5/48]~  h=115.7
 ```
 
-**The layout is fixed — glyphs never appear or disappear, only their colour changes** (the direction
-arrow swaps between two equal-width glyphs). So the bar never reflows and your eye can stay on one
-spot. Dark gray means "not this / not happening".
+**The layout is fixed — glyphs never appear or disappear, only their colour changes**, so the bar
+never reflows. Dark gray (`off`) means "not this / not happening".
 
 | Field | Meaning |
 |---|---|
-| `↓` / `↑` | render direction — `↑` = reverse, in cyan (it's the notable state); `↓` = natural, in plain light gray |
+| `↑` / `↓` | render direction — `↑` = reverse (cyan, the notable state), `↓` = natural (light gray). The chat view is always `Reverse` |
 | `⇊` | a data request is in flight (amber) |
-| `⟳` | a render is in progress (cyan) |
-| `~` … `~` | the start / end spacer, amber when shown. They sit *outside* the brackets because that's where a spacer physically is — the unloaded region beyond the window. A lit one means skeletons once it reaches the viewport |
-| `[` `]` vs `(` `)` | **square = that end of the data is loaded**, round = there's more that way. So `[5/48]` is a fully loaded chat, `(5/48)` has more in both directions |
-| bracket **colour** | green = that end is the **sticky edge**. Glyph and colour are independent because loaded-ness and stickiness are independent |
-| `5/48` | **infinite**: visible / rendered |
+| `⟳` | a render/animation is in progress (cyan) |
+| `~` … `~` | start / end spacer shown, amber when lit. They sit *outside* the brackets because that is where a spacer physically is |
+| `[` `]` vs `(` `)` | square = that end of the data is loaded (`hasVeryFirstItem` / `hasVeryLastItem`), round = there is more that way |
+| bracket **colour** | green = that end is the pinned edge. Glyph and colour are independent because loaded-ness and pinnedness are |
+| `5/48` | **infinite**: visible / rendered. `total` is null for infinite lists, so nothing follows the slash before the closing bracket |
 | `6(0-6)/6` | **finite**: visible(first-last rendered index) / total |
-| `h=115.7` | mean height of the items rendered *right now* (not the lifetime running mean in `statistics.itemSize`) |
+| `h=115.7` | mean height of the items rendered right now |
 
-It is a UI, not a state dump. Two things make it watchable:
+Two things make it watchable: `⇊` and `⟳` stay lit for `HoldMs` (500ms) after they end, driven by
+`lastDataRequestAt` / `lastRenderAt`, so a request that begins and ends between two ticks is still
+drawn; and a changed value flashes white for the same window, keyed on *text plus tone*, because with
+a fixed layout most state changes are colour-only. Counters do not flash and have reserved widths, so
+the bar does not strobe or resize as numbers cross a power of ten.
 
-- **Momentary events are held.** `⇊` and `⟳` stay lit for `HoldMs` (500 ms) after they end, driven by
-  the `lastDataRequestAt` / `lastRenderAt` timestamps in the stats — so a request that begins and
-  finishes between two refreshes is still drawn. Measured: never under 350 ms on screen.
-- **State changes flash white** for the same window. The flash signature includes the *tone*, not just
-  the text — with a fixed layout most changes are colour-only (an arrow lighting, a bracket becoming
-  sticky), so keying on text alone would mean nothing ever flashed.
+### 1.3 URL flags
 
-Counters don't flash, and the numeric spans have reserved widths (`minWidthCh`), so the bar keeps a
-stable width instead of resizing whenever a count crosses a power of ten.
+Five, all read from `location.search`. Put them in the URL and reload — `?vltoffset` is read per
+instance at construction, `?vlloaddelay` and `?vlfriction` once at module load, `?vllock` is memoized
+on first use.
 
-### What the checker does
+| Flag | Where | What it does |
+|---|---|---|
+| `?vltoffset=<px>` | `infinite-list.ts` `readTOffsetBaseline` | Starts the list with a standing translation baseline instead of 0. Everything that folds, re-pins or computes limits then has to be correct against a non-zero base — the state where the three-term geometry actually breaks. The rig's fold check runs only with this set |
+| `?vlloaddelay=<ms>` | `virtual-list.ts` `readLoadDelay` | Holds **every** data load for that long. A fast fling into history is only interesting while the loads cannot keep up with it, and that state is otherwise a race to catch. This is how you reproduce continuous "load more" on demand |
+| `?vllock=0` / `=1` | `scroll-controller.ts` `canLockOverflow` | Forces the two-frame `overflow: hidden` fling kill off / on. Default is on everywhere except WebKit. `0` reproduces the "nothing stops a fling" half of the iOS problem on desktop |
+| `?vltakeover=0` / `=1` | `scroll-controller.ts` `canTakeOverMomentum` | Forces the WebKit release takeover off / on. Default is iOS+WebKit only. `1` exercises the FLIP handoff and the spring on desktop Chrome |
+| `?vlfriction=<max>x<ramp>` | `scroll-controller.ts` `readFriction` | Overrides the resistance curve (default `0.667x444`) for feel tuning on a device. `max` must be in (0, 1) |
 
-When enabled, every live list runs `VirtualListDebug.check()`:
+Also useful: `/test/virtual-list` (admin only) takes `RangeSeed`, `ContentSeed`, `DefaultEdge`,
+`RenderDirection` (0 = Natural, 1 = Reverse), `AnimateItemHeight`, `HeightTransition`, `HeightDelay`.
+**Pin `RangeSeed` and `ContentSeed`** unless the churn is the subject — otherwise the page re-seeds
+its range every 3s and item content every 10s and moves under your measurement. Note §4.10: at phone
+width the chat-list panel is painted over that page and hit-tests every point of it, so injected
+gestures never reach the list there; real-gesture tests have to run against a chat.
 
-- on a **timer**, ~10×/s (100 ms interval),
-- right after a **data request** is sent (`onRequestData`), and
-- right after a **render** (`onEvent('render')`).
+### 1.4 The rig — `tools/virtual-list-rig/`
 
-Each run captures a `VlSnapshot` (scrollTop, scrollHeight, itemRange, viewport, spacer sizes,
-DOM content extents, …) plus DOM geometry, then runs every check. Violations are logged (deduped)
-via `warnLog` and accumulated in a ring buffer (last 200) per list.
+`rig.mjs` drives **real touch gestures** into a Chrome debug port over CDP, records the controller
+frame by frame with `recorder.js`, and judges the result mechanically against the rules in §3.7. This
+is how the overscroll model is verified; the phones are for feel.
 
-### Turning it on
-
-Three equivalent entry points — all set the same static flag and start a checker on every live
-list and every new one:
-
-```js
-// In the page console / via evaluate_script:
-debugUI.virtualListDebug(true)          // preferred; warns if InfiniteList isn't loaded yet
-globalThis.InfiniteList.setDebugEnabled(true)   // same thing, lower level
-```
-
-Disable with `false`. State is per-page, so a **reload drops it** — re-enable after navigating.
-
-### Reading violations live
-
-```js
-debugUI.listVirtualListViolations()        // array of all violations across all live lists
-debugUI.listVirtualListViolations(true)    // same, then DRAINS each list's buffer (clear=true)
-```
-
-Each list also registers itself at `globalThis.__vlDebugs[identity]`, with `globalThis.__vlDebug`
-pointing at the most-recently-started one. The chat-view list's `identity` is the **chat id**
-(`Chat.Id.Value`); the sidebar list has its own identity. Use `__vlDebugs` to inspect one list
-in isolation:
-
-```js
-Object.keys(globalThis.__vlDebugs)         // which lists are live
-globalThis.__vlDebug.violations            // newest list's buffer (no drain)
-globalThis.__vlDebug.lastRequest           // snapshot at the last data request
-```
-
-### The watchdog (drain to file — don't pollute chat)
-
-For anything beyond a glance, run the watchdog instead of pasting buffers into the conversation.
-It connects to host Chrome over CDP, finds the `local.voxt.ai` page, enables the checker, and
-every second drains violations (`clear=true`) into `tmp/vl-violations.jsonl` (one JSON object per
-line, each stamped with `at`). It re-enables the checker after reloads automatically.
+Needs Chrome started with remote debugging (`ai chrome`, port 9222; `ai chrome*2` adds 9223), a Voxt
+chat open in it, and the server running. **Give the page a mobile viewport first** — at desktop width
+the chat view is not the touch-scrolling element (chrome-devtools MCP: `emulate` with
+`412x915x2.6,mobile,touch`).
 
 ```bash
-node tmp/vl-violation-watch.mjs            # defaults: chromePort=9222, pollMs=1000
-node tmp/vl-violation-watch.mjs 9223 500   # other Chrome / faster poll
+node tools/virtual-list-rig/rig.mjs all 9222              # every scenario, lock on
+node tools/virtual-list-rig/rig.mjs all 9222 nolock       # ordinary path without the two-frame overflow kill
+node tools/virtual-list-rig/rig.mjs all 9222 takeover     # force the iOS takeover on Chrome
+node tools/virtual-list-rig/rig.mjs all 9222 takeover 1000 # ...with folds based at tOffset=1000px
+node tools/virtual-list-rig/rig.mjs swing-back 9222       # one scenario
+node tools/virtual-list-rig/soak.mjs 60 9223              # 60 random gestures, judged as a whole
+node tools/virtual-list-rig/soak.mjs 60 9223 takeover 1000
 ```
 
-It truncates `tmp/vl-violations.jsonl` on start. Workflow: start the watchdog → reload the page →
-reproduce (scroll) → read the jsonl. Tail it or load it:
+Scenarios: `pull-release`, `throw-out`, `throw-top`, `swing-back`, `catch`, `catch-drag`, `updown`,
+`brake`, `repeat-catch`, `repeat-updown`, `control-fling`, `fling-edge`, `native-resume` (takeover
+only), `cross-and-back`. Traces land in `tmp/traces/rig-<scenario>.json`; the soak's in
+`tmp/traces/soak.json`. `soak.mjs` uses a fixed seed, so a failing run re-runs identically.
 
-```bash
-wc -l tmp/vl-violations.jsonl
-# group by violation code:
-cat tmp/vl-violations.jsonl | jq -r .code | sort | uniq -c | sort -rn
-# look at the jump cases with their geometry:
-cat tmp/vl-violations.jsonl | jq 'select(.code=="render-jump" or .code=="anchor-jump")'
+Run the matrix on **two chats**: one longer than the viewport (a real band) and one shorter (a band
+collapsed to a point, `min == max`). Both must pass on the ordinary lock/nolock paths and with
+takeover forced at a 1000px `tOffset` baseline.
+
+The judge checks rules, not feel: the band never inverts, no gesture starts inside a band, every
+excursion ends with the band transform at zero and the position legal, the finger is followed through
+the curve's slope, the band never moves by more than the rules allow, the owner's translation settles
+at the configured baseline. With a non-zero baseline it also constructs a consistent
+translation/model pair, folds it, and verifies the rendered content does not move (rendered motion is
+measured from container geometry, so folding is not a false jump). `coast after release` on
+`swing-back` and `updown` should match `control-fling` — a throw from overscroll is a throw. On
+`fling-edge` the excursion should go out to roughly `MaxBouncePx` (150px) past where it was noticed
+before coming home; that is the bounce.
+
+**Three things the rig cannot do.** Synthetic CDP touch drops flings intermittently unless moves are
+~12ms apart and sent without awaiting each ack — so a single zero coast proves nothing, repeat it.
+Desktop Chrome does not scroll off the main thread the way WebKit does, so the iOS-specific jitter
+does not reproduce here; `nolock` reproduces the "nothing stops a fling" half only. And it cannot
+reproduce iOS choosing an unscrollable target before `touchstart`: `catch-drag` proves that the
+controller releases its lock and preserves geometry, not that the same caught gesture can resume
+native scrolling on iOS.
+
+> **Known gap:** both `rig.mjs` and `soak.mjs` still call
+> `globalThis.debugUI?.listVirtualListViolations?.(true) ?? []`, which no longer exists. The
+> `violations` column in their output is therefore **always 0** and proves nothing. The checker they
+> enable still warns to the console — read it there until those two call sites are replaced.
+
+### 1.5 The recorder — `tools/virtual-list-rig/recorder.js`
+
+A self-contained IIFE you evaluate in the page. It finds `.virtual-list.infinite-list`, waits for its
+`scrollController` (the controller sets that expando on its element in its constructor), and installs
+itself, re-arming every 500ms so it survives the list being re-created by navigation. It exposes:
+
+```js
+window.__vlt.rows      // per-frame samples (capped at 12000)
+window.__vlt.events    // touchstart/move/end/cancel (capped at 6000)
+window.__vlt.stop()    // restores onTransform, removes the document listeners
 ```
 
-### Driving a reproduction
+**Why it does not sample only on rAF — read this before writing your own tracer.** A recorder that
+samples on its own `requestAnimationFrame` can run *before* the controller's frame callback and so
+reads the **new** `scrollTop` against **last** frame's transform. That produces a phantom step of
+exactly the scroll delta on every moving frame — a perfectly convincing, entirely fictional jump on
+every frame of every fling. `recorder.js` therefore hooks `sc.onTransform` (chaining the previous
+handler) and takes an *authoritative* sample in a microtask right after the controller writes; its
+rAF loop is only a fallback for frames where nothing was written, and an authoritative sample
+replaces a rAF sample from the same frame. Samples are throttled to 4ms apart.
 
-Use `/debug-ui` (chrome-devtools MCP) to sign in and open a long chat. To reproduce the user's
-"vicious scroll" (fast, half-to-full-screen per frame, both directions, variable speed), drive
-`scrollTop` from the page. **Caveat:** directly setting `el.scrollTop` each frame *masks* the
-list's own scrollTop-compensation — so the timer-based `anchor-jump` check can miss real jumps
-that way. The within-render `render-jump` check is immune (it brackets the layout write itself),
-so trust `render-jump` for programmatic scrolls and `anchor-jump` more for human/wheel scrolls.
+Row fields:
 
-### The checks (what each violation means)
+| Field | Meaning |
+|---|---|
+| `t` | ms since the recorder armed |
+| `top` | `list.scrollTop`, native |
+| `tf` | the composed `translate3d` y on `.c-virtual-container` |
+| `base` | `tf - band` — the owner's contribution, i.e. `-tOffset`. Should settle at `-vltoffset` |
+| `phase` | `in-band` \| `following` (finger down past an edge) \| `engaged` (past an edge, nobody holding it) |
+| `decision` | `momentumPhase`: `none` \| `arming` \| `transform` (the WebKit takeover) |
+| `vis` | what the band puts on screen — `signedOverscroll(over)`, i.e. after resistance. 0 when in-band |
+| `band` | `scrollController.bandOffset` — the band's own share of the transform |
+| `drift` | the **raw** pull `over` behind `vis`. 0 when in-band |
+| `spr` | signed `springVisible` during a takeover |
+| `sp` | `scrollSpeed` in px/s (the return phase's measurement; 0 unless `engaged`) |
+| `lock` | 1 while `overflow-y: hidden` is forced on the scroller |
+| `min`, `max` | `getEffectiveScrollLimits()`, in the same `scrollTop` coordinate as `top` |
+| `cy` | the container's top relative to the list's top |
+| `ch`, `cl` | container height, list `clientHeight` |
 
-Defined in `virtual-list-debug.ts`. Tolerances: `Eps=8`, `GapEps=24`, `JumpEps=12` px (geometry
-is integer-floored and shifts a few px on reflow, so sub-tolerance deviation isn't real).
-
-| code | meaning | typical cause |
-|------|---------|---------------|
-| `blank-viewport` | content is loaded but neither an item nor a skeleton-spacer intersects the viewport — user sees blank wrapper | wrapper sized far larger than the chain, scroll parked in the void |
-| `viewport-gap` | a hole between rendered elements inside the viewport (partial blank) — skipped when content is shorter than the viewport (legit for short lists) | missing/short spacer, chain not covering |
-| `void-below-newest` | infinite list settled (not scrolling), pinned at its maximum scroll, with a gap *past the newest* item. Checked when End-preferred or content taller than viewport | the model overshoots the DOM: `itemRange.end` exceeds the real content end, so the magnet pins to a max that sits below the last item. Measured **against the DOM** (`lastContentBottom`), not `itemRange` — `CutVirtualSpaceAtBottom` sizes the wrapper to `itemRange.end + endAnchorSize`, so `(scrollTop + clientHeight) - contentBottom` is identically ≤ 0 in model coordinates and a model-side check is structurally blind to this, the same way `anchor-jump` is blind to `scroll-clamp` |
-| `void-above-oldest` | symmetric: settled with a gap *past the oldest* item. Checked when Start-preferred or content taller than viewport (a short list's non-preferred edge legitimately has a gap) | edge magnet not pinning flush |
-| `scrolltop-out-of-range` | `scrollOffset` outside `[0, scrollHeight-clientHeight]` — the model coordinate, so this holds in both render directions | bad scroll write |
-| `anchor-jump` | timer-detected: a keyed item still on screen moved by more than scrollTop should account for (`Δtop + Δscroll > JumpEps`) | re-layout without compensating scroll |
-| `render-jump` | render-detected: a visible anchored item moved during a render with no intentional scroll (bracketed inside `restoreScrollPosition`) | **the no-jump-invariant violation** — chase these for "it jumps when I scroll" |
-| `scroll-clamp` | the scroll range shrank out from under the viewport, leaving `scrollTop` pulled back and pinned at the new maximum | a wrapper resize while parked near the end. `anchor-jump` is *structurally blind* to this — content and scroll move together, so its `Δtop + Δscroll` is exactly 0 — which is why it needs its own check. The signature is deliberately narrow (range must shrink, scroll must go back, and the result must be pinned at the new max): the list has several scroll-write paths and only one stamps `lastProgrammaticScrollAt`, so a looser "scroll moved by itself" test is far too noisy |
-
-`render-jump` detail carries `{ key, before, after, drift, scrollType, renderIndex }` — the item
-that jumped and by how much, which is what you need to fix anchoring.
-
-### Adding a new check
-
-Write a `Check` (pure read: `(vl, snapshot, geom) => VlViolation | null`) as a hoisted `function`
-(the `checks` record references them before their textual position) and add it to
-`VirtualListDebug.checks`. Prefer model-level, scroll-independent assertions (compare `itemRange`
-vs `scrollHeight`) over pixel reads where possible — they're stabler. Validate with
-`npm run build:Verify` (or trigger the `/server-loop` rebuild).
+Event fields: `t`, `type`, `n` (touch count), `y` (mean clientY), `top`, `phase`, `decision`.
 
 ---
 
-## Part 2 — The invariants (what "correct" means)
+## 2. Attaching to a real device over CDP
 
-This section is about **`InfiniteList`**. The scrollbar case (sidebar / contacts, `chat-list`) is
-`FiniteList` now — a separate component with its own, much smaller invariant set; see the
-"FiniteList" section below.
+### Android Chrome
 
-### `InfiniteList` — no scrollbar (chat view) — the hard one
+```bash
+adb devices                                             # confirm the phone is authorized
+adb forward tcp:9333 localabstract:chrome_devtools_remote
+curl -s http://localhost:9333/json/list | jq -r '.[] | select(.type=="page") | "\(.url)\t\(.webSocketDebuggerUrl)"'
+```
 
-Everything is **absolutely positioned**: the container is positioned, and spacers plus
-fixed-size item slots place every item on one tall virtual vertical space.
+**Forward to a free port.** Host Chrome usually owns 9222 and 9223 (`ai chrome`, `ai chrome*2`), and
+`adb forward tcp:9222 …` will either fail or shadow the desktop browser the rig expects. 9333 is
+free in practice.
 
-**Render direction — read this before interpreting any scroll number.** The list has a
-`RenderDirection` parameter (`Natural` | `Reverse` | `Auto`, C# enum + `ts/virtual-list-render-direction.ts`):
+Then attach with `ws` (already a dependency, `^8.18.0`, installed) and follow the pattern in
+`rig.mjs`: open the socket from `webSocketDebuggerUrl`, `Runtime.enable`, and evaluate with
+`Runtime.evaluate` + `returnByValue: true` (add `awaitPromise: true` for async expressions, and
+always check `exceptionDetails` — a page-side throw comes back as a *successful* CDP response).
 
-- **Natural** — `flex-direction: column`, chain anchored by `container.style.top`, native
-  `scrollTop` runs `0 …  maxScrollTop` top-to-bottom.
-- **Reverse** — `flex-direction: column-reverse`, chain anchored by `container.style.bottom`,
-  native `scrollTop` runs `-maxScrollTop … 0` with **0 = the newest**. The browser holds the
-  wrapper's *bottom* edge fixed, so an item resize or an append at the End edge keeps the newest
-  flush **with no scroll write at all** — which is the whole point of the mode.
-- **Auto** — reverse exactly while flush at the End edge, natural everywhere else. The switch
-  point lives in `updateAutoDirection` and its two tunables `AutoReverseEnterPx` /
-  `AutoReverseExitPx`; the flip itself is `setReverse`, which must land direction + chain anchor +
-  translated scroll in one task.
+```js
+import { createRequire } from 'node:module';
+import fs from 'node:fs';
+// Resolved against this script's own location — adjust the hops if it doesn't sit in tools/<dir>/.
+const require = createRequire(new URL('../../package.json', import.meta.url));
+const WebSocket = require('ws');
 
-So `scrollTop` alone is meaningless without knowing the direction. Everything in the class works
-in **wrapper coordinates** instead — `scrollOffset`, the viewport top within the wrapper, always
-in `[0, maxScrollTop]` whichever direction is active. Only `maxScrollTop` / `scrollOffset` /
-`toScrollTop` / `setScrollOffset` and `containerOffset` know about the flip. Snapshots record
-**both** `scrollTop` (native) and `scrollOffset` (model); every check does its math on
-`scrollOffset`.
+const pages = await (await fetch('http://localhost:9333/json/list')).json();
+const target = pages.find(x => x.type === 'page' && (x.url || '').includes('voxt.ai'));
+const ws = new WebSocket(target.webSocketDebuggerUrl, { perMessageDeflate: false });
+// ... id/pending plumbing exactly as in rig.mjs ...
+await send('Runtime.enable');
+await ev(fs.readFileSync('tools/virtual-list-rig/recorder.js', 'utf8'));
+// ... gesture ...
+const trace = JSON.parse(await ev('JSON.stringify({ rows: window.__vlt.rows, events: window.__vlt.events })'));
+```
 
-**Anchoring.** On each render the list always re-renders at least one **anchored item** — an item
-retained from the previous render. Anchored items are not just kept in the DOM, they are kept at
-the **same on-screen position**. A render typically adds items at one end, removes items at the
-other end, and resizes/removes the top/bottom spacers — all while the anchored part stays put.
-When scrolling up, the list loads items *above* the current set and grows the top; the bottom
-stays anchored (and vice-versa).
+The recorder is device-agnostic — it is exactly what the phones used. Screen on and the tab in the
+foreground, or you get no animation frames and an empty trace.
 
-**The no-jump invariant (the big one).** Items currently on screen — *or even just off-screen* —
-must **not change position** from render to render, unless the list makes a deliberate decision to
-**reposition**. Equivalently: across a render, a still-visible keyed item moves by exactly
-`-Δscroll` and no more. Extra movement is a jump (`render-jump` / `anchor-jump`). This is the
-invariant the user means by "it jumps when you scroll past certain items."
+### What actually moves the list, and what does not
 
-**Reposition = reset.** A reposition is a *controlled* decision to reset the anchors: re-render
-everything and scroll to the desired location. After a reset the view usually still doesn't
-visibly jump — or it changes only because, e.g., the top spacer was removed (we're explicitly
-showing there's nothing above now). There are essentially **three reset cases**:
-
-1. **New item set.** We discard everything currently displayed and jump to a completely different
-   location (e.g. navigate / "jump to message"). We're now at a new position and render from there.
-
-2. **Reached an edge → drop a spacer.** We reach the top or bottom (or both) and conclude we no
-   longer need one or both spacers, so we remove them and resolve the reset.
-
-3. **Need a spacer again.** Symmetric to (2): while scrolling we conclude an edge item is no
-   longer visible and we now *need* a spacer there again — add it and **explicitly scroll**
-   (unless the current scroll position is already correct).
-
-**The spacer subtlety — not every spacer change is a reset.** There's a precomputed (anticipated)
-list size before each write; anchored items live somewhere on that tall space. Removing the **top
-spacer** simply shrinks the region above the topmost item to zero — that's a size change of the
-existing space, not a re-anchor. The reset/explicit-scroll obligation is specifically case (3):
-when scrolling down far enough that the top item leaves the view and a top spacer must reappear.
-
-### Over-scroll and catch-up (must keep working)
-
-The wrapper is intentionally sized from a big estimate (`count × geometryItemSize`), so the user
-can fling-scroll far **above/below** the currently-loaded region into empty space, and on pause the
-list loads and settles to the right place. This is desired behavior — do **not** "fix" blanks by
-shrinking the wrapper to fit the chain. The correct fix for blanks/jumps is **correct anchoring
-and catch-up**, not a smaller scroll range. (This was learned the hard way: shrinking the wrapper
-killed over-scroll and introduced jumps; all such changes were reverted.)
-
-#### The model: a fixed, huge virtual space
-
-Think of the no-scrollbar list as a fully-virtualized vertical space with **fixed boundaries** and
-a stable coordinate system. We start rendering near zero and assume the user could scroll, say, a
-million screens (≈ a billion px) up and the same down. Spacers at the top and bottom represent that
-space. The key intent: **pretend the spacers are huge all the time** and keep the coordinate
-system stable, rather than mutating it as the user moves.
-
-This matters because shrinking the top spacer to zero (what the code does today at an edge)
-**changes the list's coordinate system** — every anchored position is now measured against a
-different origin. That re-origin is a frequent source of jumps. The intended direction is to avoid
-that.
-
-#### Edge handling: rubber-band, not re-origin (intended direction)
-
-The simple rule for the empty space at an edge: **if there is a spacer *after the last item* or
-*before the first item*, the visible empty gap should be reduced to zero — and no skeletons are
-shown in it** (the spacer element stays, but renders nothing).
-
-The intended *mechanism* (a change from today's shrink-to-zero) is a **rubber-band**: keep the
-spacer notionally huge, and run a continuous job (a timer/tick) that, whenever the list is
-currently stuck to the top or bottom edge, **drags the list back toward that boundary** to close
-the empty gap — like a rubber end snapping shut. A gentle/animated drag on desktop; the right feel
-on mobile is TBD. Because we never resize the spacer or move the origin, nothing in the top/bottom
-spacer-size bookkeeping changes — the only new logic is the drag-to-boundary tick. This keeps the
-coordinate system fixed and sidesteps the re-origin jumps.
-
-> Status: today the edge is handled by shrinking the spacer to zero. The rubber-band model above is
-> the intended replacement. Documented here so the desired end-state is unambiguous even before the
-> code changes.
-
-#### Desired properties (the acceptance bar)
-
-1. **Catch-up from anywhere.** From any current view, the user may scroll to essentially *any*
-   reasonable position — including instantly flinging ~a million items past what's loaded. The list
-   is expected to **eventually catch up** and display what belongs there. It catches up
-   **part-by-part**: each iteration renders more items than the last (accelerating, so it closes a
-   huge gap in a bounded number of steps) — but **every render still keeps its anchors**, so
-   **nothing jumps** along the way. Scrolling past the loaded region, and even far past it, must
-   still converge.
-
-2. **Bounded ends.** The user must **not** be able to scroll past the very first item or the very
-   last item. (Today that bound is enforced by shrinking the edge spacers to zero; that mechanism
-   will likely change to the rubber-band above — but the *property* to preserve is simply: no
-   scrolling beyond the first/last item.)
-
-### Symptom → invariant → where to look
-
-- **Jumps while scrolling** → no-jump invariant → `render-jump`/`anchor-jump`; inspect
-  `restoreScrollPosition` (read captures `jumpAnchor`, write compares via `captureViewportAnchor`)
-  and whether a non-reset render moved the anchor.
-- **Blank / partial-blank** → `blank-viewport` / `viewport-gap`; content not covering the viewport.
-- **Settles past an edge (gap above oldest / below newest)** → `void-above-oldest` / `void-below-newest`;
-  the edge magnet (`edge-bounce.ts`) isn't pinning flush.
-- **Stuck (endless skeletons / can't reach bottom)** → check the skeleton watchdog warning and
-  whether a needed reset (case 2/3) isn't firing; confirm `hasVeryLastItem` and end-edge anchoring.
+- **`Input.synthesizeScrollGesture` with `gestureSourceType: 'touch'` does not move the list.**
+  Verified: delta 0. On this page it delivers `touchstart: 1, touchmove: 0, touchend: 1` (§4.11).
+  Do not build anything on it.
+- **`Input.dispatchTouchEvent` sequences do**, once `Emulation.setTouchEmulationEnabled` is on — but
+  only if the moves arrive close together. Moves more than ~25ms apart get the fling dropped
+  intermittently. `rig.mjs`'s `fling()` is the working pattern: fire moves **12ms apart without
+  awaiting each ack**, collect the promises, `Promise.all` them, then `touchEnd`.
+- **A mouse or wheel gesture is useless for anything past an edge.** `ScrollController.onScroll`
+  snaps `scrollTop` back to the boundary whenever the motion is not a finger
+  (`!(isTouching || isTouchMotion)`) — by design, and that includes middle-button autoscroll. You
+  will never see a band from one.
+- **Over adb, `Input.dispatchTouchEvent` arrives too unevenly** for Chrome's velocity tracker to read
+  as a throw — it scrolls but never flings (§4.10). On a phone use `adb shell input swipe`, and map
+  page → screen coordinates as `chrome + cssY * devicePixelRatio` where
+  `chrome = screenHeight - innerHeight * devicePixelRatio` (~532px on a 3120px device; ignoring it
+  puts every gesture in the URL bar).
+- **Bring the tab to the front** (`Page.bringToFront`) and check that the point you aim at hit-tests
+  into the list.
 
 ---
 
-## Files
+## 3. Reading a trace
 
-- `src/dotnet/UI.Blazor/Components/VirtualList/infinite-list.ts` — the anchored list; debug hooks:
-  `static enableDebug` / `setDebugEnabled`, `startDebug`, `captureViewportAnchor`,
-  `noteRenderJump` wiring in `restoreScrollPosition`. Registers `globalThis.InfiniteList`.
-- `src/dotnet/UI.Blazor/Components/VirtualList/finite-list.ts` — the index-positioned list.
-  Registers `globalThis.FiniteList`; `FiniteList.debugDataLoadDelayMs` injects data latency.
-- `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list-debug.ts` — the checker. Currently
-  instruments `InfiniteList` only.
-- `src/dotnet/UI.Blazor/Services/DebugUI/debug-ui.ts` — `virtualListDebug()`, `listVirtualListViolations()`.
-- `tmp/vl-violation-watch.mjs` — the drain-to-file watchdog.
-- `.claude/skills/virtual-list-debug/vl-scroll-trace.js` — per-frame scroll/position tracer; the only thing that catches a scroll clamp.
-- `InfiniteSize` (`10_000_000`) is defined in both `InfiniteList.razor.cs` and `infinite-list.ts`
-  and must stay in sync; it is well under the browser's max element height.
+Load a trace and go through these in order. Each one found a real defect; none of them is
+`scrollTop` on its own.
 
-## FiniteList
+**1. Distance past `min`/`max` while `phase === 'in-band'`.** In-band means the controller believes
+the position is legal. If `top < min` or `top > max` while in-band, the crossing was never noticed
+and no band was drawn — the list is simply somewhere it must not be.
 
-`ChatList` is the only user. Model:
-
-```
-top(i)       = i * itemSize
-startSpacer  = firstLoadedIndex * itemSize
-endSpacer    = (N - lastLoadedIndex - 1) * itemSize
-wrapper      = content-driven (no explicit height write)
+```js
+const escapes = rows.filter(r => r.phase === 'in-band' && (r.top < r.min - 1 || r.top > r.max + 1));
+const worst = Math.max(0, ...escapes.map(r => Math.max(r.min - r.top, r.top - r.max)));
 ```
 
-`itemSize` is measured from a **designated row** rather than estimated: `IVirtualListItem.HasRegularSize`
-(false for `ChatListItemModel.IsLastItemInBlock`, the pinned-block separator) projects to
-`data-vl-size-source` on the `li`, and the list measures the first such row and sticks to it. No running
-average, so nothing drifts.
+A frame or two just after a load is not automatically a bug — the limits are recomputed from the
+model and a page of history arriving moves them. A **sustained** run, or an excursion of hundreds of
+px, is.
 
-Two things that bit during development and will bite again:
+**2. Unbroken `following` runs.** `following` means a finger is down past an edge. A long run of it
+with no `touchend` in `events` is a release that never registered — the list stays parked and the
+band never returns. There are three backstops (`TouchStaleMs` 3000, `TouchSilenceMs` 400,
+`LockWatchdogMs` 1500), so a run longer than ~1.5–3s means one of them fired; find the matching
+`console.warn`.
 
-- **A render arrives in several Blazor batches.** The items and the render-state JSON land in
-  different ones (that is what `RenderAtDepth Depth="5"` is for). Laying spacers out against a
-  half-updated pair moves everything below them by the whole spacer delta. `endRender` gates on the
-  JSON's own `renderIndex` advancing — the only reliable "everything is consistent" signal.
-- **Capture the scroll anchor in the rAF read phase**, immediately before writing spacers — not on
-  scroll. An anchor captured at scroll time and restored later scrolls the user back to where they
-  were, which is the bug this component exists to remove.
+**3. `lock` frames.** `lock === 1` is `overflow-y: hidden` forced on the scroller — the user cannot
+scroll at all during those frames. Two-frame runs are the intended fling kill. Long runs, or a run
+that ends the trace, mean the scroller was never handed back.
 
-### Validating it
+**4. Peak `|vis|`, and how far the position travelled.** `vis` is what the band actually puts on
+screen after resistance, so it is bounded by the curve (`0.667` max resistance over a `444px` ramp)
+and by `MaxBouncePx` (150) for a release. A large `|vis|` is a band that was seeded wrong. Keep it
+separate from ordinary travel: the limits themselves already grant up to **three screens**
+(`MaxOverscrollScreens`) past *loaded* content whenever that end of the data is not yet known
+(§3.7) — travelling into that space is legal and is how reading further back begins. It is not
+overscroll, and "fixing" it re-breaks catch-up.
 
-`render-jump`/`anchor-jump` measure `dTop + dScroll`, which is identically 0 when the browser clamps
-`scrollTop` — so the checker is structurally blind to a clamp, and it equally *false-positives* on a
-correct compensation (content held still while scrollTop moves). For `FiniteList` the honest metric is:
-**while the user is not scrolling, does anything on screen move?**
+**5. Then, and only then, rendered motion.**
 
-Rig: `/bot-army 400 0` as an admin test agent, mobile emulation, `FiniteList.debugDataLoadDelayMs = 2500`,
-then fling with a relative `scrollBy` loop and measure `dTop` of items visible in consecutive frames,
-outside the fling windows. Baseline: 618/620 idle frames with zero movement; the 2 outliers are a
-single-frame 250px flicker when landing at the very top mid-load.
+> **The container moving is not a jump.** `cy` (and the container's `top`) move on every prepend by
+> construction: loading history changes `chainStart` and the container's position **by the same
+> amount**, so the items inside it do not move at all (§3.1). A fold does the same to `tOffset` and
+> the chain together. A check on `cy`, on `scrollTop - transform` (that is `viewOffset`), or on
+> container geometry alone will report a screenful of motion that never happened.
 
-Note the tab must be foregrounded (`select_page` with `bringToFront`) — a backgrounded tab throttles
-rAF to ~1 Hz and every number you measure will be garbage.
+The only honest rendered-motion check **follows a specific item by key** across frames:
+
+```js
+const el = document.querySelector('.virtual-list.infinite-list .item[data-key="<key>"]');
+const y = el.getBoundingClientRect().top;   // sample this every frame, compare consecutive samples
+```
+
+Items carry `data-key` on the `li.item` (groups are `li.group` and carry none), which is the same
+handle `infinite-list.ts` itself indexes by.
+
+When something does move, decompose it into the three terms that can cause it (§3.1): the container's
+position in wrapper coordinates, the item's offset within the chain, and the scroll position.
+
+### Artifacts that look exactly like bugs
+
+- **A rAF-only recorder reports a phantom step of exactly the scroll delta on every moving frame.**
+  See §1.5. This is the single most expensive trap here.
+- **rAF sampling lags a composited scroll**: during a fling the main thread can read 0 for one frame
+  and double for the next. It cancels over three frames — discontinuity tests must run on a smoothed
+  series, never on a single-frame delta.
+- **A hidden tab gets no rAF at all.** A Chrome window behind another window reports
+  `visibilityState === 'hidden'` and stops firing animation frames; every probe hangs and every
+  recording comes back empty. `Page.bringToFront` does **not** fix it — use a visible window or a
+  dedicated `--headless=new` instance.
+- **A teleported scroll position reads as a huge velocity.** Reaching an edge with
+  `scrollTop += 3000` in a loop hands the bounce thousands of px/s it did not earn (or, if the writes
+  land in the same millisecond, none at all). Walk out over several frames, or drive it through
+  `scrollController.scrollTo`, which zeroes the estimate for its 300ms suppression window.
+- **Test data that changes under the measurement** — pin `RangeSeed` and `ContentSeed` on
+  `/test/virtual-list`.
+- **A stale WASM bundle.** After a rebuild, a plain reload in WebAssembly mode keeps serving the
+  cached hashed bundle from the service worker. Hard-reload with caches cleared, or you are measuring
+  the old code (§4.12).
+
+---
+
+## 4. Symptom → first instrument
+
+| Symptom | Start with |
+|---|---|
+| "It jumps when I scroll past certain messages" | Checker on, watch for `model drift after render/settled`. Then a trace, followed by item key — not by container geometry |
+| One message paints over the next | Checker on — `content overflow after …` names the item and the surplus |
+| Blank / partial-blank viewport | Trace: `top` vs `min`/`max`, and whether `cy + ch` still covers `cl`. Check `repinIfStranded: gap=…` warnings |
+| Stuck on skeletons / cannot reach the bottom | Overlay: is `⇊` lit forever, is the end bracket square? Then `?vlloaddelay=0` vs. a large value to see whether it is a load-ordering problem |
+| Overscroll / bounce / edge feel wrong | The rig, both chats, all three modes. Then §3.7 |
+| Scrolling dies entirely | `lock` frames in a trace; the `ScrollController: phase '…' stopped advancing` warning |
+| Continuous "load more" during a fling | `?vlloaddelay=<ms>` reproduces it on demand |
+| Anything about the sidebar | `FiniteList` — §6. It is not instrumented by the checker; the overlay does cover it |
+
+---
+
+## 5. Files
+
+| Path | What it is |
+|---|---|
+| `docs/virtual-list.md` | **The specification.** Invariants live here, not in this skill |
+| `src/dotnet/UI.Blazor/Components/VirtualList/infinite-list.ts` | The chat list. `isDebugEnabled` / `setDebugEnabled`, `checkModelDrift`, `checkContentOverflow`, `readTOffsetBaseline`. Registers `globalThis.InfiniteList` (and `InfiniteList.instances`) |
+| `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list.ts` | The shared base. `readLoadDelay` (`?vlloaddelay`), request guard and retry |
+| `src/dotnet/UI.Blazor/Components/VirtualList/finite-list.ts` | The sidebar list. Registers `globalThis.FiniteList` |
+| `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list-overlay.ts` | The on-screen overlay |
+| `src/nodejs/src/scroll-controller.ts` | The band, the resistance, the takeover. `getDebugState`, `getEffectiveScrollLimits`, `bandOffset`, `onTransform`; `?vllock`, `?vltakeover`, `?vlfriction`. Sets the `element.scrollController` expando |
+| `src/dotnet/UI.Blazor/Services/DebugUI/debug-ui.ts` | `virtualListDebug()`, `showVirtualListOverlay()`, `applyVirtualListOverlay()` |
+| `src/dotnet/UI.Blazor/Services/DebugUI/DebugUI.cs`, `.Settings.cs` | Overlay persistence via `UserAppSettings.IsVirtualListOverlayEnabled` |
+| `tools/virtual-list-rig/rig.mjs` | Scenario rig + judge. Also the reference CDP client |
+| `tools/virtual-list-rig/soak.mjs` | Long seeded random gesture mix, judged as a whole |
+| `tools/virtual-list-rig/recorder.js` | The frame recorder — desktop and phones alike |
+| `tools/virtual-list-rig/README.md` | Rig usage, folded into §1.4 above |
+| `src/dotnet/UI.Blazor.App/Testing/VirtualListTestPage.razor` | `/test/virtual-list`, admin only |
+
+Validation of any TypeScript change: **do not run `npm`/`dotnet` yourself if `/server-loop` is
+running** — trigger its rebuild and read the errors there. Otherwise `npm run build:Verify`.
