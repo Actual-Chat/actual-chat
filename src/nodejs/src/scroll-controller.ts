@@ -102,8 +102,6 @@ export class ScrollController {
 
     // Fires whenever the composed transform changes - see InfiniteList's sticky items.
     public onTransform: (() => void) | null = null;
-    // Fires when a finger lands on this element, before anything here decides what the gesture is.
-    public onTouch: (() => void) | null = null;
 
     private isTouching = false;
     private lastTouchTime = 0;
@@ -119,9 +117,7 @@ export class ScrollController {
     private overflowLockEpoch = 0;
     private resizeObserver: ResizeObserver | null = null;
 
-    // Composed into one transform; the three come and go independently.
     private overscrollOffset = 0;       // px, the rubber band's own displacement
-    private baseOffset = 0;             // px, the owner's, via setBaseOffset
     private hasRepaintNudge = false;
 
     private phase: Phase = 'in-band';
@@ -338,22 +334,12 @@ export class ScrollController {
         return landed - before;
     }
 
-    // The owner's own translation, added to the band's; a transform can move content without ending a
-    // fling, which a scrollTop write cannot.
-    public setBaseOffset(offset: number): void {
-        if (this.baseOffset === offset)
-            return;
-
-        this.baseOffset = offset;
-        this.writeTransform();
-    }
-
     public getDebugState(): ScrollDebugState {
         return {
             phase: this.phase,
             visible: this.phase === 'in-band' ? 0 : signedOverscroll(this.over),
             drift: this.phase === 'in-band' ? 0 : this.over,
-            offset: this.overscrollOffset + this.baseOffset,
+            offset: this.overscrollOffset,
             locked: this.isOverflowLocked,
             speed: this.recentSpeed,
             scrollSpeed: this.phase === 'engaged' ? this.scrollSpeed : 0,
@@ -362,16 +348,10 @@ export class ScrollController {
         };
     }
 
-    // The band's part of the transform alone: a position derived from scrollTop is out by this much
-    // for as long as an excursion lasts.
+    // The transform the content carries, which is what anything resolved during layout - position:
+    // sticky above all - is out by for as long as an excursion lasts.
     public get bandOffset(): number {
         return this.overscrollOffset;
-    }
-
-    // The whole transform the content carries - the band's part and the owner's together - which is
-    // what anything resolved during layout, position: sticky above all, is out by.
-    public get transformOffset(): number {
-        return this.overscrollOffset + this.baseOffset;
     }
 
     public getEffectiveScrollLimits(): { min: number, max: number } {
@@ -515,9 +495,6 @@ export class ScrollController {
     private onTouchStart(): void {
         const now = performance.now();
         this.isTouching = true;
-        // The owner's cue to fold its own translation. A fold moves the container in layout and leaves
-        // scrollTop, the limits and the screen alone, so nothing below has to know it happened.
-        this.onTouch?.();
         this.isTouchMotion = true;
         this.stillSince = now;
         this.lastTouchTime = now;
@@ -1060,9 +1037,9 @@ export class ScrollController {
         this.writeTransform();
     }
 
-    // The only writer of the property, so that none of its three contributors can erase the others.
+    // The only writer of the property, so that neither of its contributors can erase the other.
     private writeTransform(): void {
-        const y = this.overscrollOffset + this.baseOffset + (this.hasRepaintNudge ? RepaintNudgePx : 0);
+        const y = this.overscrollOffset + (this.hasRepaintNudge ? RepaintNudgePx : 0);
         const transform = y === 0 ? '' : `translate3d(0, ${y}px, 0)`;
         if (this.overscrollElement.style.transform !== transform)
             this.overscrollElement.style.transform = transform;

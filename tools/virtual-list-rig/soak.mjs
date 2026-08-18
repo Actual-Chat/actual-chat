@@ -1,7 +1,7 @@
 // Soak: a long random sequence of real gestures at the bottom edge on chrome2, judged continuously
 // against the rules. Single scenarios pass; what broke on the phones was state leaking from one
 // gesture into the next, and only a long mixed run finds that.
-//   node soak.mjs [gestures=60] [port=9223] [mode] [tOffsetBaseline]
+//   node soak.mjs [gestures=60] [port=9223] [mode]
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 const require = createRequire(new URL('../../package.json', import.meta.url));
@@ -10,8 +10,6 @@ const RECORDER = fs.readFileSync(new URL('./recorder.js', import.meta.url), 'utf
 const COUNT = Number(process.argv[2] || 60);
 const PORT = Number(process.argv[3] || 9223);
 const mode = process.argv[4] || '';
-const T_OFFSET_BASELINE = Number(process.argv[5] || 0);
-if (!Number.isFinite(T_OFFSET_BASELINE)) throw new Error('tOffsetBaseline must be a finite number');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Deterministic pseudo-random so a failing soak can be re-run.
 let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
@@ -36,7 +34,9 @@ const applyViewport = async () => {
         return null;
 
     const match = /^(\d+)x(\d+)(?:x([\d.]+))?$/.exec(value);
-    if (!match) throw new Error('VL_RIG_VIEWPORT must be <width>x<height>[x<deviceScaleFactor>] or "off"');
+    if (!match)
+        throw new Error('VL_RIG_VIEWPORT must be <width>x<height>[x<deviceScaleFactor>] or "off"');
+
     const metrics = {
         width: Number(match[1]),
         height: Number(match[2]),
@@ -49,28 +49,10 @@ const applyViewport = async () => {
 await applyViewport();
 const url = new URL(target.url);
 if (mode === 'takeover') url.searchParams.set('vltakeover', '1'); else url.searchParams.delete('vltakeover');
-if (T_OFFSET_BASELINE !== 0) url.searchParams.set('vltoffset', String(T_OFFSET_BASELINE)); else url.searchParams.delete('vltoffset');
 if (url.toString() !== target.url) { await send('Page.navigate', { url: url.toString() }); await sleep(6000); }
 else { await send('Page.reload', { ignoreCache: true }); await sleep(6000); }
 await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
 const ev = async (e, aw = false) => { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: aw, timeout: 60000 }); if (r.exceptionDetails) throw new Error(JSON.stringify(r.exceptionDetails).slice(0, 300)); return r.result.value; };
-const foldCheck = T_OFFSET_BASELINE === 0 ? { ok: true } : JSON.parse(await ev(`JSON.stringify((() => {
-    const list = document.querySelector('.virtual-list.infinite-list');
-    const instance = [...(globalThis.InfiniteList?.instances ?? [])].find(x => x.ref === list);
-    if (!instance) return { ok: false, error: 'InfiniteList instance not found' };
-    const before = instance.containerRef.getBoundingClientRect().top;
-    instance.chainStart += 137;
-    instance.writeChainPosition();
-    instance.setTOffset(instance.tOffsetBaseline + 137);
-    const prepared = instance.containerRef.getBoundingClientRect().top;
-    const folded = instance.foldTOffset();
-    const after = instance.containerRef.getBoundingClientRect().top;
-    const base = instance.scrollController.getDebugState().offset - instance.scrollController.bandOffset;
-    return { ok: Math.abs(folded - 137) < 0.1 && Math.abs(instance.tOffset - instance.tOffsetBaseline) < 0.1
-        && Math.abs(prepared - before) < 1 && Math.abs(after - before) < 1
-        && Math.abs(base + instance.tOffsetBaseline) < 0.1,
-        folded, tOffset: instance.tOffset, base, preparedDrift: prepared - before, drift: after - before };
-})())`));
 const box = JSON.parse(await ev(`(()=>{const b=document.querySelector('.virtual-list.infinite-list').getBoundingClientRect();return JSON.stringify({x:Math.round(b.left+b.width/2),y:Math.round(b.top+b.height/2)})})()`));
 const touch = (type, y) => send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: box.x, y, radiusX: 4, radiusY: 4, force: 1 }] });
 const moves = async (ys, gap = 12) => { const acks = []; for (const y of ys) { acks.push(touch('touchMove', y)); await sleep(gap); } await Promise.all(acks); };
@@ -134,28 +116,19 @@ for (let i = 1; i < rows.length; i++) { const p = rows[i - 1], r = rows[i]; if (
 const maxTf = Math.max(...rows.map(r => Math.abs(r.tf)));
 const maxBand = Math.max(...rows.map(r => Math.abs(r.band)));
 const last = rows[rows.length - 1];
-const expectedBase = -T_OFFSET_BASELINE;
-const baseError = Math.abs(last.base - expectedBase);
-let folds = 0;
-for (let i = 1; i < rows.length; i++) {
-    const previousError = Math.abs(rows[i - 1].base - expectedBase);
-    const error = Math.abs(rows[i].base - expectedBase);
-    if (previousError > 8 && error <= 1 && Math.abs(rows[i].base - rows[i - 1].base) > 8)
-        folds++;
-}
+// The band is the only thing that may write the transform, so whatever is left once its own share is
+// taken out has to be zero on every frame.
+const baseError = Math.max(...rows.map(r => Math.abs(r.base)));
 console.log(`soak: ${COUNT} gestures, ${rows.length} frames`);
-console.log(`  inversions ${inversions}  debt-starts ${debtStarts}  bad-ends ${badEnds}  rule-steps ${ruleSteps}  stuck-frames ${stuckFrames}  max|band| ${Math.round(maxBand)}  max|tf| ${Math.round(maxTf)}  final ${last.phase} band=${last.band} base=${last.base} over=${last.drift}  folds ${folds}  violations ${violations.length}`);
+console.log(`  inversions ${inversions}  debt-starts ${debtStarts}  bad-ends ${badEnds}  rule-steps ${ruleSteps}  stuck-frames ${stuckFrames}  max|band| ${Math.round(maxBand)}  max|tf| ${Math.round(maxTf)}  final ${last.phase} band=${last.band} over=${last.drift}  worst|base| ${baseError.toFixed(1)}  violations ${violations.length}`);
 const engagedFrames = rows.filter(r => r.phase !== 'in-band').length;
 console.log(`  band engaged on ${engagedFrames} frames`);
-if (T_OFFSET_BASELINE !== 0)
-    console.log(`  ${foldCheck.ok ? 'PASS' : 'FAIL'} tOffset fold: folded=${foldCheck.folded} base=${foldCheck.base} drift=${foldCheck.drift}`);
 const passed = inversions + debtStarts + badEnds + ruleSteps + stuckFrames + violations.length === 0
     && last.phase === 'in-band'
     && last.decision === 'none'
     && Math.abs(last.band) < 1
     && baseError < 1
-    && engagedFrames > 200
-    && foldCheck.ok;
+    && engagedFrames > 200;
 console.log(`  ${passed ? 'PASS' : 'FAIL'}`);
 console.log('  sequence:', log.join(' '));
 ws.close(); process.exit(passed ? 0 : 1);

@@ -3,8 +3,8 @@
 // controller frame by frame through the same recorder as the phones, and judges the result against
 // the rules. Everything the phones did by hand, repeatable here.
 //
-//   node rig.mjs <scenario> [port] [mode] [tOffsetBaseline]
-//   node rig.mjs all 9222 takeover 1000
+//   node rig.mjs <scenario> [port] [mode]
+//   node rig.mjs all 9222 takeover
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 const require = createRequire(new URL('../../package.json', import.meta.url));
@@ -16,8 +16,6 @@ const PORT = Number(process.argv[3] || 9222);
 const mode = process.argv[4] || '';
 const NOLOCK = mode === 'nolock';
 const TAKEOVER = mode === 'takeover';
-const T_OFFSET_BASELINE = Number(process.argv[5] || 0);
-if (!Number.isFinite(T_OFFSET_BASELINE)) throw new Error('tOffsetBaseline must be a finite number');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const list = await (await fetch(`http://localhost:${PORT}/json/list`)).json();
@@ -40,7 +38,9 @@ const applyViewport = async () => {
         return null;
 
     const match = /^(\d+)x(\d+)(?:x([\d.]+))?$/.exec(value);
-    if (!match) throw new Error('VL_RIG_VIEWPORT must be <width>x<height>[x<deviceScaleFactor>] or "off"');
+    if (!match)
+        throw new Error('VL_RIG_VIEWPORT must be <width>x<height>[x<deviceScaleFactor>] or "off"');
+
     const metrics = {
         width: Number(match[1]),
         height: Number(match[2]),
@@ -54,7 +54,6 @@ await applyViewport();
 const url = new URL(target.url);
 if (NOLOCK) url.searchParams.set('vllock', '0'); else url.searchParams.delete('vllock');
 if (TAKEOVER) url.searchParams.set('vltakeover', '1'); else url.searchParams.delete('vltakeover');
-if (T_OFFSET_BASELINE !== 0) url.searchParams.set('vltoffset', String(T_OFFSET_BASELINE)); else url.searchParams.delete('vltoffset');
 if (url.toString() !== target.url) {
     await send('Page.navigate', { url: url.toString() }); await sleep(6000);
 }
@@ -66,24 +65,6 @@ const ev = async (expression, awaitPromise = false) => {
     if (r.exceptionDetails) throw new Error('PAGE ' + JSON.stringify(r.exceptionDetails).slice(0, 400));
     return r.result.value;
 };
-const foldCheck = T_OFFSET_BASELINE === 0 ? { ok: true } : JSON.parse(await ev(`JSON.stringify((() => {
-    const list = document.querySelector('.virtual-list.infinite-list');
-    const instance = [...(globalThis.InfiniteList?.instances ?? [])].find(x => x.ref === list);
-    if (!instance) return { ok: false, error: 'InfiniteList instance not found' };
-    const before = instance.containerRef.getBoundingClientRect().top;
-    instance.chainStart += 137;
-    instance.writeChainPosition();
-    instance.setTOffset(instance.tOffsetBaseline + 137);
-    const prepared = instance.containerRef.getBoundingClientRect().top;
-    const folded = instance.foldTOffset();
-    const after = instance.containerRef.getBoundingClientRect().top;
-    const base = instance.scrollController.getDebugState().offset - instance.scrollController.bandOffset;
-    return { ok: Math.abs(folded - 137) < 0.1 && Math.abs(instance.tOffset - instance.tOffsetBaseline) < 0.1
-        && Math.abs(prepared - before) < 1 && Math.abs(after - before) < 1
-        && Math.abs(base + instance.tOffsetBaseline) < 0.1,
-        folded, tOffset: instance.tOffset, base, preparedDrift: prepared - before, drift: after - before };
-})())`));
-
 // Touch emulation on: Chrome then treats dispatched touch events as a real touch device.
 await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
 await send('Emulation.setEmitTouchEventsForMouse', { enabled: false });
@@ -227,15 +208,9 @@ const judge = (name, { rows, events, violations }) => {
         if (s > worst) { worst = s; worstAt = i; }
     }
     const last = rows[rows.length - 1];
-    const expectedBase = -T_OFFSET_BASELINE;
-    const baseError = Math.abs(last.base - expectedBase);
-    let folds = 0;
-    for (let i = 1; i < rows.length; i++) {
-        const previousError = Math.abs(rows[i - 1].base - expectedBase);
-        const error = Math.abs(rows[i].base - expectedBase);
-        if (previousError > 8 && error <= 1 && Math.abs(rows[i].base - rows[i - 1].base) > 8)
-            folds++;
-    }
+    // The band is the only thing that may write the transform, so what is left of it after the band's
+    // own share is taken out has to be zero on every frame - not just at the end.
+    const baseError = Math.max(...rows.map(r => Math.abs(r.base)));
     const phases = [...new Set(rows.map(r => r.phase))].join('/');
     const maxOver = Math.max(...rows.map(r => Math.abs(r.drift)));
     const ends = rows.filter((r, i) => i > 0 && isActive(rows[i - 1]) && !isActive(r)).length;
@@ -274,14 +249,18 @@ const judge = (name, { rows, events, violations }) => {
     // past the ramp only a third of a pull reaches the screen, and that is the resistance, not a fault.
     const slopeAt = over => 1 - Math.min(0.667 * Math.abs(over) / 444, 0.667);
     let ignored = 0;
-    { let open = null; for (const e of events) { if (e.type === 'touchstart' && !open) open = { t: e.t, y0: e.y, y1: e.y }; if (open && e.y != null) open.y1 = e.y; if (open && (e.type === 'touchend' || e.type === 'touchcancel')) { const a = rows.findIndex(r => r.t >= open.t), b = rows.findIndex(r => r.t >= e.t); const finger = Math.abs(open.y1 - open.y0); if (a >= 0 && b > a && finger > 60 && Math.abs(content[b] - content[a]) < finger * slopeAt(rows[a].drift) * 0.4) ignored++; open = null; } } }
+    // Measured over the finger's own frames, so the last sample is the one before the release: the first
+    // frame at or after it already carries the return, which is motion the finger did not make and
+    // which can point either way - the same gesture then passes or fails on which frame the release
+    // lands next to.
+    { let open = null; for (const e of events) { if (e.type === 'touchstart' && !open) open = { t: e.t, y0: e.y, y1: e.y }; if (open && e.y != null) open.y1 = e.y; if (open && (e.type === 'touchend' || e.type === 'touchcancel')) { const a = rows.findIndex(r => r.t >= open.t); let b = rows.findIndex(r => r.t > e.t); b = b < 0 ? rows.length - 1 : b - 1; const finger = Math.abs(open.y1 - open.y0); if (a >= 0 && b > a && finger > 60 && Math.abs(content[b] - content[a]) < finger * slopeAt(rows[a].drift) * 0.4) ignored++; open = null; } } }
     let coast = 0;
     { const rel = [...events].reverse().find(e => e.type === 'touchend' || e.type === 'touchcancel'); if (rel) { const a = rows.findIndex(r => r.t >= rel.t); let end = a; for (let i = a; i < rows.length - 1; i++) if (Math.abs(rows[i + 1].top - rows[i].top) > 0.5) end = i + 1; if (a >= 0) coast = rows[end].top - rows[a].top; } }
     console.log(`\n== ${name} ==  ${rows.length} frames, phases ${phases}   coast after release ${Math.round(coast)}px`);
     const violationCodes = violations.map(x => x.code).join(',');
-    console.log(`   worst step ${worst.toFixed(1)}px (${rows[worstAt]?.phase})  max|over| ${Math.round(maxOver)}  ended ${last.phase} over=${last.drift} band=${last.band} base=${last.base}  folds ${folds}  handbacks ${ends}  inversions ${inversions}  debt-starts ${debtStarts}  bad-ends ${badEnds}  finger-ignored ${ignored}  jerk ${jerk.toFixed(1)}  violations ${violations.length}${violationCodes ? ` (${violationCodes})` : ''}`);
+    console.log(`   worst step ${worst.toFixed(1)}px (${rows[worstAt]?.phase})  max|over| ${Math.round(maxOver)}  ended ${last.phase} over=${last.drift} band=${last.band}  worst|base| ${baseError.toFixed(1)}  handbacks ${ends}  inversions ${inversions}  debt-starts ${debtStarts}  bad-ends ${badEnds}  finger-ignored ${ignored}  jerk ${jerk.toFixed(1)}  violations ${violations.length}${violationCodes ? ` (${violationCodes})` : ''}`);
     fs.writeFileSync(`tmp/traces/rig-${name}.json`, JSON.stringify({ rows, events, violations }));
-    return { worst, ended: last.phase, decision: last.decision, over: last.drift, band: last.band, base: last.base, baseError, folds, jerk, ends, inversions, debtStarts, badEnds, ignored, ruleSteps, violations: violations.length };
+    return { worst, ended: last.phase, decision: last.decision, over: last.drift, band: last.band, baseError, jerk, ends, inversions, debtStarts, badEnds, ignored, ruleSteps, violations: violations.length };
 };
 
 fs.mkdirSync('tmp/traces', { recursive: true });
@@ -297,8 +276,6 @@ console.log('\nSUMMARY');
 for (const [n, r] of Object.entries(results)) {
     const ok = r.ended === 'in-band' && r.decision === 'none' && Math.abs(r.band) < 1 && Math.abs(r.over) < 1 && r.baseError < 1 && r.inversions === 0 && r.debtStarts === 0 && r.badEnds === 0 && r.ignored === 0 && r.ruleSteps === 0 && r.violations === 0;
     r.ok = ok;
-    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${n.padEnd(15)} ended ${r.ended} band=${r.band} base=${r.base}  folds ${r.folds}  inv ${r.inversions}  debt ${r.debtStarts}  badEnd ${r.badEnds}  ignored ${r.ignored}  ruleSteps ${r.ruleSteps}  violations ${r.violations}`);
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${n.padEnd(15)} ended ${r.ended} band=${r.band} worst|base| ${r.baseError.toFixed(1)}  inv ${r.inversions}  debt ${r.debtStarts}  badEnd ${r.badEnds}  ignored ${r.ignored}  ruleSteps ${r.ruleSteps}  violations ${r.violations}`);
 }
-if (T_OFFSET_BASELINE !== 0)
-    console.log(`  ${foldCheck.ok ? 'PASS' : 'FAIL'}  tOffset fold    folded=${foldCheck.folded} base=${foldCheck.base} drift=${foldCheck.drift}`);
-ws.close(); process.exit(Object.values(results).every(x => x.ok) && foldCheck.ok ? 0 : 1);
+ws.close(); process.exit(Object.values(results).every(x => x.ok) ? 0 : 1);

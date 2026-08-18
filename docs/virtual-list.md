@@ -44,8 +44,8 @@ in a later section looks loaded — most of them are.*
   the chain floats in. It is not "the content" — it is a reservation of scroll range, almost all of it
   empty.
 - **container** — *`containerRef`, `.c-virtual-container`.* The `<ul>` holding the items, absolutely
-  positioned inside the wrapper and placed from the model. The element whose transform carries every
-  position correction.
+  positioned inside the wrapper and placed from the model. The element the rubber band translates, and
+  the only element with a transform at all.
 - **spacer** — *`spacerRef` / `endSpacerRef`, `.c-spacer-start` / `.c-spacer-end`.* A block at each end
   of the container, sized from the model, standing in for the unloaded range. In `InfiniteList` its
   size is a stub that means nothing exact; in `FiniteList` it covers the unloaded range precisely. It
@@ -54,21 +54,15 @@ in a later section looks loaded — most of them are.*
   newest message clear of the message editor overlapping the list. Nothing to do with `reanchor` or
   with scroll anchoring, despite the name.
 
-### The three position terms
+### The two position terms
 
 - **scroll offset** — *`scrollOffset`.* The browser's scroll position expressed in wrapper coordinates,
-  always in `[0, maxScrollTop]`. Not `scrollTop`: in reverse `scrollTop` is negative, and the two
-  conversion functions are the only place that knows.
-- **view offset** — *`viewOffset`.* The wrapper coordinate the top of the viewport is actually looking
-  at: `scrollOffset + tOffset`. **This, not `scrollOffset`, is "the list's position".** It deliberately
-  does *not* include the rubber band's own transform (§3.7).
-- **translation**, **tOffset** — *`tOffset`, `setTOffset`, `maxTOffset`.* The third position term: the
-  container is translated by `-tOffset`. A correction the list holds *outside* the model, and the only
-  term that may change while something is moving. Production starts it at zero; `?vltoffset=<px>` gives
-  it a non-zero diagnostic baseline without changing the model's rules.
-- **fold**, **folding** — *`foldTOffset`.* Move the translation into the model —
-  `chainStart -= tOffset - baseline; tOffset = baseline` — in one frame, so nothing on screen moves. A
-  fold is a *renumbering*, not a motion.
+  always in `[0, maxScrollTop]`, and **"the list's position"**. Not `scrollTop`: in reverse `scrollTop`
+  is negative, and the two conversion functions are the only place that knows. It deliberately does not
+  include the rubber band's own transform (§3.7).
+- **chain position** — *`chainStart`, `writeChainPosition`.* Where the loaded window sits in the scroll
+  space, written to the container as `top` or `bottom`. Moving it is a *renumbering*, not a motion:
+  every correction the list makes between renders is either this or the scroll position.
 
 ### The band and the rubber band
 
@@ -103,9 +97,9 @@ in a later section looks loaded — most of them are.*
 - **settle** — *`settle()`.* The ordinary path's one finger-up write, once nothing is on screen and the
   scroll is still. The iOS transform takeover finishes without this write because its native scroll is
   already parked at the boundary.
-- **sticky shift** — *`StickyShiftProperty`, `updateStickyItems`.* Minus whatever the content's
-  transform is carrying, written to every declared sticky element's own inset. It moves the browser's
-  sticky clamp out of layout space and into screen space (§3.7).
+- **sticky shift** — *`updateStickyItems`, `writeStickyInsets`.* Minus whatever the band's transform
+  is carrying, added to every declared sticky element's own inset while an excursion is open. It moves
+  the browser's sticky clamp out of layout space and into screen space (§3.7).
 - **overscroll allowance** — *`maxOverscroll`* in `InfiniteList`. Three screens. How far past *loaded*
   content the band lets you go, because that is how reading further back starts.
 
@@ -206,8 +200,10 @@ browsers the design depends on, as opposed to enforces, are in §4.*
 7. **`InfiniteList` has no visible scrollbar**, which is what lets `scrollTop` sit anywhere in a 4M
    space without showing the user something meaningless. `FiniteList` keeps its scrollbar, because its
    spacers cover the unloaded ranges exactly and its scrollbar is therefore honest.
-8. **Every read of the list's position goes through `viewOffset`** (§3.1). The visible position is a
-   sum of three terms, and code that reads only one of them disagrees with what is on screen.
+8. **The list writes no transform of its own** (§3.1). Everything it corrects is either the scroll
+   position or the chain's, both of which the browser resolves `position: sticky` and its own
+   rasterization against. The rig checks it: the composed transform minus the band's own share has to
+   be zero on every frame.
 9. **`scrollTop` is never *animated*.** Nothing interpolates it towards a target over several frames.
    The list writes it where a jump is what the user asked for, where the list is still, and — at most
    once per frame — to follow a pinned edge the content has moved, each write being the whole remaining
@@ -235,13 +231,12 @@ browsers the design depends on, as opposed to enforces, are in §4.*
 render direction. §3.3–3.6 are the state machine: states, transitions, loops, and which term may move
 when. §3.7 is the overscroll model. §3.8–3.12 are the parts that earned their own section.*
 
-### 3.1 The model, and the three terms that place it
+### 3.1 The model, and the two terms that place it
 
 *The list turns the browser's scroll anchoring off and places every item itself, from a model:
-`chainStart` plus a prefix sum of measured heights. What the user sees is the sum of three terms —
-`scrollTop`, the container's position, and a transform — and the third one, `tOffset`, is the only one
-that may change while anything is moving. It is folded into the model whenever a layout is happening
-anyway, and never left standing longer than `FoldDelayMs`.*
+`chainStart` plus a prefix sum of measured heights. What the user sees is the sum of two terms —
+`scrollTop` and the container's position — and every correction moves one of them. The list writes no
+transform at all; the only transform on the container is the rubber band's, and it is the controller's.*
 
 #### Why there is a model at all
 
@@ -308,138 +303,52 @@ Because the clamp is silent, the code never trusts the constant. The realized he
 (`wrapperRef.offsetHeight`) on every layout, and every wrapper-relative calculation uses the
 measurement.
 
-#### The third term: the translation
+#### There is no third term
 
-`chainStart` is where the chain sits *in layout*. There is a third term on top of it — a transform on
-the container — and the position the user sees is the sum of all three:
+`chainStart` is where the chain sits *in layout*, and the position the user sees is the sum of two
+things only:
 
 ```
 visible position  =  scrollTop        the browser's, driven by the user
                   +  container.top    the model's placement of the chain
-                  +  transform        the continuous correction, ours
 ```
 
-The list holds its part of that third term as `tOffset`. The container is translated by `-tOffset`, so
-the coordinate the top of the viewport is looking at — in the same frame `chainStart` and `offsets` are
-measured in — is
+so item `i` sits at `chainStart + offsets[i] - scrollOffset` on screen, and **every position read in
+the list goes through `scrollOffset`**.
 
-```ts
-viewOffset = scrollOffset + tOffset
-```
+There used to be a third: a transform on the container (`tOffset`), which the list wrote for every
+correction that happened between renders — the pinned edge following a growing transcript, a screen
+anchor held through an expand. The argument for it was that a transform composites after layout, so
+writing it cannot end a fling, cannot be clamped and cannot fight the user, which a `scrollTop` write
+can. What it cost was everything that resolves against the browser's own idea of the position:
+`position: sticky` clamped where the scroller was rather than where the user was looking (§3.7), the
+compositor rasterized around the same stale place, and the model needed a fold, a fold delay, a
+standing-excursion cap and a diagnostic baseline to keep it honest.
 
-and item `i` sits at `chainStart + offsets[i] - viewOffset` on screen. **Every position read in the
-list goes through `viewOffset`**, never through `scrollOffset`; the two differ by whatever the
-translation is holding, including for the loader deciding which items are visible.
+Both of those corrections turned out to be cases where the user is *not* scrolling — a message arriving
+while parked at the edge, a tap on a conversation header — so the reason to avoid the scroll position
+did not apply to either. They write it now (§3.6), the term is gone, and with it the fold.
 
-Note what `viewOffset` deliberately leaves out: the rubber band's own transform (§3.7). The band is a
-third thing that moves the content, and folding it in here was tried and was expensively wrong —
-re-anchoring and re-pinning are written in these coordinates, and the band changes every frame a
-return runs, so they chase it. Measured on a phone, the frame after a return started: the scroll moved
-66px, the transform 172px, and the content jumped 106px, because a re-anchor had corrected for a band
-offset that was never in its coordinates. A consumer that wants the on-screen position wants
-`viewOffset` minus the controller's `bandOffset`, and only the ones that read rather than write.
+The container still carries a transform, but it is the rubber band's and it belongs to
+`ScrollController` (§3.7), which is its only writer: the band's own displacement and a sub-pixel
+repaint nudge (§4.6), composed into one value.
 
-The point of the term is §3.6's problem in one sentence: **a transform is composited after layout, so
-writing it cannot end a fling, cannot be clamped, and cannot fight the user, which is exactly what a
-`scrollTop` write does.** What is left of that is the correction no scroll write could afford: holding
-a screen anchor still, once per frame, for the whole length of an expand.
+#### Corrections between renders
 
-`ScrollController` is the only writer of the container's `transform`, because a transform is a single
-property and its contributors are independent: the rubber band, the list's `tOffset` (passed in as
-`setBaseOffset(-tOffset)`), and a sub-pixel repaint nudge (§4.6). Each sets its own contribution and
-the controller writes the sum.
+Two things correct the position without a render having asked them to, and both write the scroll
+position, once per frame at most:
 
-#### When the translation is standing
+- **The pinned edge's follow** — `repinEdge` → `scheduleFollow`. A render, re-layout or viewport
+  resize moved the edge in the DOM by no more than `maxOverscroll`, so the view follows it (§3.6).
+- **A screen-anchor hold** — `correctScreenAnchor`, once per frame for the duration of a
+  `data-vl-anchor` interaction. Expanding a conversation summary moves the chain by the whole of what
+  is still growing — measured at 349px — and this is what holds the tapped header still through it. Its
+  `maxOverscroll` bound is a runaway guard against the loop feeding itself, not a size limit.
 
-Between a fold and whatever raised it, `tOffset` is off its baseline and the container carries the
-difference. **One** thing raises it: a **screen-anchor hold** — `correctScreenAnchor`, once per frame
-for the duration of a `data-vl-anchor` interaction. Expanding a conversation moves the chain by the
-whole of what is still growing — measured at 349px — and the translation is what holds the anchored
-element still through it, which no per-frame `scrollTop` write could do. Its `maxOverscroll` bound is
-a runaway guard against the loop feeding itself, not a size limit.
-
-The re-pin follow used to be the second raiser, and by far the more frequent one. It is a scroll write
-on a frame now (§3.6): a follow moves the position the user is at, and the scroll position is the term
-the compositor and `position: sticky` read as well.
-
-Separately, `?vltoffset=<px>` makes `tOffset` non-zero *permanently*, but its excursion zero: every
-fold returns to that baseline rather than to zero. That is the point of it — see below.
-
-So the one window in which a translation stands is short and ordinary — the length of an expand or
-collapse, which is exactly when the user is looking — and even that is broken up, because `watchFold`
-folds it again every `FoldDelayMs` for as long as the hold keeps re-raising it.
-
-#### Folding
-
-`foldTOffset()` turns the translation's excursion from its configured baseline into the model's own
-coordinates:
-
-```ts
-const excursion = tOffset - tOffsetBaseline;
-chainStart -= excursion;
-tOffset = tOffsetBaseline;
-```
-
-Both style writes land in the same frame, so **nothing on screen moves** — measured at exactly 0px in
-both render directions. Note what is *not* invariant: `viewOffset` itself changes by the negative
-excursion, since the chain and the viewport frame move together. What survives is
-`viewOffset - chainStart`, which is what every position depends on.
-
-Folding costs one layout pass and **no scroll write at all**, which is what makes it safe at any time —
-but it is only *free* at a render, where the layout is happening regardless. The translation is
-therefore temporary by rule: it is folded at the first of these that comes along, and one always does.
-
-- **at every render and re-layout**, first thing in `applyLayout`, so everything below it works in the
-  coordinates the user is looking at;
-- **when the list settles** — on scroll settle (`turnOffIsScrolling`) and on stability
-  (`repinWhenStable`);
-- **before any `scrollTop` write**, or the jump would land by the standing excursion from where it was
-  asked for — which is why `setScrollOffset` also renumbers its target by the same amount after folding;
-- **before a direction switch** (§3.2), for the same reason;
-- **before a follow** (§3.6), which is a `scrollTop` write like any other;
-- **when a finger lands on the list** (`ScrollController.onTouch`) — the gesture is about to move it,
-  native inertia is over, and the layout pass costs nothing a drag is not already paying;
-- **past `maxTOffset`**, below;
-- **on dispose and on reset**, so the transform cannot outlive its owner;
-- and otherwise on the first frame **`FoldDelayMs` (100ms) after the excursion left the baseline**
-  (`watchFold`), which is the backstop for a correction that nothing follows up on.
-
-The delay is there because a fold costs the layout pass the translation exists to avoid, and
-corrections arrive in bursts — an expand hold is one correction per frame for its whole length. The
-backstop additionally waits for two things: no render in progress, and no rubber band open. A fold is a
-layout write, and layout landing on a live fling is the one claim in this design that has never been
-measured on a device (§7).
-
-The limits are fold-invariant, which is why a fold may land mid-excursion: the model's limits are
-derived from `chainStart`, and `computeScrollLimits` converts them to `scrollTop` coordinates by
-subtracting `tOffset` — a fold changes both by the same amount.
-
-The non-zero baseline exists to prove that this is a real invariant rather than an accident of zero.
-With `?vltoffset=1000`, the chain is initialized 1000px further into wrapper coordinates, every fold
-returns to 1000 rather than zero, scroll targets and limits include the same baseline, and normal
-loading, anchoring and pinning continue in those coordinates. The rig additionally constructs a
-consistent 137px excursion around that baseline, folds it, and asserts that the rendered container
-moves by less than one pixel.
-
-Because folding happens at every render, the excursion from the baseline never accumulates. Measured
-over 20s of the stress page (messages arriving, the newest item's height churning 4×/s) *while the
-re-pin follow still used the translation*, it was non-zero on 4% of frames in natural and 12% in
-reverse, peaked at 41px and 206px respectively, with a longest unbroken excursion past 20px of
-**150–190ms**. Those numbers are an upper bound now: that raiser writes the scroll position instead,
-and what remains is the expand hold, itself folded every `FoldDelayMs`.
-
-There is a second cap, on the *standing excursion* rather than on the correction: past `maxTOffset` —
-half a screen (`MaxTOffsetScreens`), floored at 200px (`MinTOffsetPx`) for a list that is briefly tiny
-— the translation is folded on the spot rather than left in place, because both engines rasterize
-tiles around where the *scroller* thinks it is, and content carried far from there is content the
-compositor has not painted. That fold is a layout write, so it is still not a scroll write.
-
-That cap is the re-pin follow's (`repinEdge`). A screen anchor is deliberately not held to it:
-`correctScreenAnchor` bounds itself by `maxOverscroll` instead, because expanding a block moves the
-chain by the whole of what is still growing — measured at 349px, already past `maxTOffset` on a phone
-— and holding the anchor through exactly that is the point. Its bound is a runaway guard against a
-loop feeding itself, not a size limit, and the hold is short enough for the rasterization argument
-above not to bite.
+Both are cases where the user is not scrolling: the first only runs while the list is pinned, which the
+user's first scroll event ends, and the second only starts from a tap on a control inside a conversation
+header. That is what makes a scroll write the right instrument for them, and both defer any frame with
+a finger down, an open band, or a scroll of the user's still settling.
 
 ### 3.2 The render direction
 
@@ -511,8 +420,7 @@ sticky badges beside them. Only a top-anchored chain leaves what is above a grow
 So a screen-anchored interaction (§3.9) on a reverse list **borrows natural**: `setDirection(false)`
 at the interaction, `mustRestoreDirection` set, and the configured direction put back by
 `watchQuietMoment` once the position has been still for three frames with no finger down and no
-excursion open. `setDirection` is a coordinate translation, not a scroll: it folds the translation
-first, cancels any excursion (its boundary belongs to the axis about to disappear), measures the
+excursion open. `setDirection` is a coordinate change, not a scroll: it cancels any excursion (its boundary belongs to the axis about to disappear), measures the
 container's screen position, flips `flex-direction`, re-lays out, and writes back exactly the drift
 that measurement shows — unclamped, because the two directions expose different limits — then resets
 the controller's motion tracking, since every `scrollTop` it remembers was on the old axis. Direction,
@@ -534,7 +442,7 @@ axes; one linear diagram would be tidier and wrong.*
 | **Following** | the controller's phase is `following` | the browser moves `scrollTop` freely past an edge; the controller draws the resisted share into the transform (§3.7) |
 | **Engaged** | the controller's phase is `engaged` | ordinary path: the browser, if it still is, plus the carry and floor; iOS takeover: the native scroll is locked at the boundary and an exact spring owns the band transform (§3.7) |
 | **Free-scrolling** | `stability.isScrolling` — a `holdScroll(200ms)` re-armed by every scroll event | the browser; the list only reads |
-| **Resting** | none of the above, and `tOffset` is at its configured baseline | nobody |
+| **Resting** | none of the above | nobody |
 
 Note "Resting" says nothing about item height animations, which can and do run while the position is
 still. That is a third condition, tracked separately by `StabilityTracker`, and it is why
@@ -551,11 +459,11 @@ still. That is a third condition, tracked separately by `StabilityTracker`, and 
 
 | latch | armed by | what it is waiting for |
 |---|---|---|
-| `isAwaitingStability` | `repinWhenStable` | animations and scrolling to stop, then re-pin, fold, clamp, and re-run the drift check |
+| `isAwaitingStability` | `repinWhenStable` | animations and scrolling to stop, then re-pin, clamp, and re-run the drift check |
 | `isAwaitingOverscrollEnd` | `repinWhenOverscrollEnds` | the excursion to end, by rAF poll — the stability tracker cannot answer this (§3.6) |
 | `isAwaitingJump` | `requestJump` while animating | animations to finish, with new ones suspended meanwhile |
 | `isWatchingStillness` | `watchQuietMoment` | a quiet moment, then re-centre (`mustRecentre`) and/or restore the direction (`mustRestoreDirection`) |
-| `isWatchingScreenAnchor` | `applyScreenAnchor` | the anchored element to stop moving for `ScreenAnchorStillFrames` (12) frames while animations finish, holding it by the translation meanwhile |
+| `isWatchingScreenAnchor` | `applyScreenAnchor` | the anchored element to stop moving for `ScreenAnchorStillFrames` (12) frames while animations finish, holding it with a per-frame scroll write meanwhile |
 
 And one fault the code detects rather than stores: **stranded**, §3.6.
 
@@ -568,7 +476,7 @@ overscroll rows are the summary of §3.7.*
 |---|---|---|---|
 | any `scroll` event | Resting → Free-scrolling | hold the scroll for 200ms and arm the settle timer — this much happens for every scroll event except the list's own follow, which is recognised by where it landed and dropped whole | `scrollTop` |
 | the same event, trusted and outside the guard window | — | additionally: drop any interactive or screen anchor, re-derive the pinned edge, queue a data query | — |
-| 200ms with no scroll event, or `scrollend` | Free-scrolling → Resting | fold and write the chain position, release the scroll hold, re-derive the pin, report visibility, query, arm the stranded check | `container.top` |
+| 200ms with no scroll event, or `scrollend` | Free-scrolling → Resting | release the scroll hold, re-derive the pin, report visibility, query, arm the stranded check | — |
 | a scroll event past a limit, finger down | in-band → following | latch the boundary; seed `over` at the true excursion and the transform at its resisted share; each frame after: `over += Δscroll`, nudge by the resisted share | `transform` |
 | a scroll event past a limit, no finger, ordinary path | in-band → engaged | the same seed, the carry seeded from the fling's speed, then the bounce and the floor per frame | `transform` |
 | a scroll event past a limit, no finger, iOS/WebKit | in-band → engaged + momentum `arming` | seed the same band, estimate the recent native velocity, then perform the next-frame lock/FLIP handoff | `transform`, then `scrollTop` + `transform` |
@@ -585,21 +493,21 @@ overscroll rows are the summary of §3.7.*
 | the same, delta past `maxOverscroll` | Pinned → Placing | a re-placement: up to three `setScrollOffset` passes, re-measuring between them because near an edge `container.top` moves with the scroll | `scrollTop` |
 | `repinEdge` called during an excursion | Pinned → awaiting overscroll end | deferred; past a boundary the measured position is not the visible one and the write would snap the bounce | — |
 | `scrollToKey` that is not the newest item | any → Placing | suppress new height animations, wait out the ones in flight, then place the item at `center` or `end` | `container.top` then `scrollTop` |
-| `scrollToKey` that *is* the newest item, end loaded | any → Pinned End | pin and re-pin, which in reverse writes nothing at all — so a message you just posted still animates in | `transform` |
+| `scrollToKey` that *is* the newest item, end loaded | any → Pinned End | pin and re-pin, which in reverse is a follow of a few pixels or nothing at all — so a message you just posted still animates in | `scrollTop` |
 | the user scrolls away from the edge | Pinned → Free | `updatePinnedEdge` finds neither edge within `EdgeEpsilon` (4px); on desktop `onWheel` also clears the pin even inside the guard window | — |
 | a `data-vl-hold` control is clicked or tapped | Pinned → Free, interactive anchor set | the clicked item — or the first content item below it, for `data-anchor="below"` — is what the next render holds; `keep-edge` controls leave a pinned list alone; expires after 2s | — |
 | a `data-vl-hold` control inside a `data-vl-anchor` element | Pinned → Free, screen anchor set | the element's rendered screen position is recorded; a reverse list borrows natural (§3.2) | — |
-| the render that follows a screen anchor | — | the chain moves so the element's *flow* position lands where its rendered one was, then per-frame holds by the translation until it has been still 12 frames | `container.top`, then `transform` |
+| the render that follows a screen anchor | — | the chain moves so the element's *flow* position lands where its rendered one was, then a per-frame scroll write holds it there until it has been still 12 frames | `container.top`, then `scrollTop` |
 | the chain eats into the reserve | any → watching for a quiet moment | armed by `applyLayout`, and the watcher cancels itself the moment the chain is no longer off centre | — |
 | a quiet moment while armed | watching → re-centre and/or direction restore | chain moved to the middle, scroll shifted by the same amount, flagged `reanchor` and unclamped; and/or `setDirection` back to the configured one | `container.top` + `scrollTop`, cancelling |
 | a settle finds the viewport more than `2 × maxOverscroll` from the chain | any → Placing | a jump to the default edge; a queued navigation jump supersedes it, and re-arms this check if its target never arrives | `scrollTop` |
-| viewport resize | any | the list re-pins now and again when stable; the controller separately opens its guard window, ends any excursion at the boundary, and clamps to the new limits — a snap, not a return | `transform`, sometimes `scrollTop` |
-| Blazor calls `reset()` | any → initial | items, offsets and caches cleared, `tOffset` returned to its configured baseline, pin and anchors dropped, direction restored, chain re-centred, the reveal watch restarted | `container.top` |
+| viewport resize | any | the list re-pins now and again when stable; the controller separately opens its guard window, ends any excursion at the boundary, and clamps to the new limits — a snap, not a return | `scrollTop` |
+| Blazor calls `reset()` | any → initial | items, offsets and caches cleared, pin and anchors dropped, direction restored, chain re-centred, the reveal watch restarted | `container.top` |
 
 ### 3.5 The loops
 
 *Five loops: render (`MutationObserver` → `applyRender`, nine steps), scroll-to-data (a 64ms throttle
-building a query in `viewOffset` coordinates), overscroll (§3.7), re-centre (a rAF watcher waiting
+building a query in wrapper coordinates), overscroll (§3.7), re-centre (a rAF watcher waiting
 for a quiet moment), and height (`ResizeObserver` → settle delay → transition → settle).*
 
 **Render.** `MutationObserver` → `onRenderBatch` → `applyRender`. The render index attribute and the
@@ -619,7 +527,7 @@ index matches the attribute.
 6. `applyAppearances` — the key diff decides which additions animate in (§3.10); anything parked makes
    the chain shorter than the model says, so offsets and the anchor are recomputed against the settled
    geometry;
-7. `applyLayout`: update chain fitting, re-read the wrapper size, **fold**, perform or arm a re-centre,
+7. `applyLayout`: update chain fitting, re-read the wrapper size, perform or arm a re-centre,
    size both spacers, write the chain position, correct a watched screen anchor, and clamp — unless
    something is animating, or the list is pinned and about to correct itself anyway;
 8. `applyRenderIntent`: a `scrollToKey` becomes a pin or a jump; a fresh interactive or screen anchor
@@ -628,7 +536,7 @@ index matches the attribute.
 9. back in `onRender`: report visibility, queue a data query, run the drift check.
 
 **Scroll → data.** A trusted scroll event re-derives the pinned edge and queues `requestData` on a
-64ms throttle. `buildDataQuery` works entirely in `viewOffset` coordinates: it takes the viewport,
+64ms throttle. `buildDataQuery` works entirely in wrapper coordinates: it takes the viewport,
 expands it by `expandMultiplier` screens, unions in the range that must stay loaded — whatever is on
 screen, or the `retainedItemCount` (5) items nearest the viewport centre when nothing is — and asks for
 the difference, but only if the gap is worth a render (half a viewport) or a skeleton is already
@@ -644,7 +552,7 @@ forever.
 **Overscroll.** limit crossed → following (transform) → release. The ordinary path becomes engaged:
 bounce, then floor (transform) → settle (one reconciling write). iOS/WebKit instead freezes native
 momentum, transfers the exact rendered position into `translate3d`, and runs the whole return there.
-The next list settle folds only the owner's `tOffset`; the iOS spring never becomes a data-position
+The iOS spring never becomes a data-position
 delta. Details in §3.7.
 
 **Re-centre.** Loading walks the chain towards one end of the fixed space. When it eats into the
@@ -680,7 +588,7 @@ animation racing the compositor is not a usable continuous-motion primitive.
 |---|---|---|
 | `scrollTop` | **jumps, follows and compensated handoffs** — never interpolated towards a target | may end or race native inertia unless overflow is already locked |
 | `container.top` / `bottom` | **at a render**, which is paying for layout anyway | one layout pass |
-| `transform` (`tOffset`, and the band's own) | **everything continuous, at any time** | composite only |
+| `transform` | **the rubber band only**, and it is `ScrollController`'s (§3.7) | composite only |
 
 So the permitted `scrollTop` writers in the list are exactly the cases where a jump is what the user
 asked for, or where nothing is moving and a jump is invisible:
@@ -697,19 +605,24 @@ asked for, or where nothing is moving and a jump is invisible:
    boundary and transfer the measured screen delta into the transform in the same frame (§3.7).
 8. **A follow** — the pinned edge moving with content that grew under it (`scheduleFollow`,
    `ScrollController.followBy`). One write per frame at most, in the frame's write phase, from a
-   measurement taken in its read phase; skipped outright while a finger is down or a band is open;
-   clamped into the limits and read back like every other write.
+   measurement taken in its read phase; clamped into the limits and read back like every other write.
+9. **A screen-anchor hold** — the same mechanism holding a tapped conversation header still while the
+   block under it expands (`correctScreenAnchor`), once per frame for the length of the animation.
 
 The controller's own writes are listed in §3.7; each is at a standstill or with the fling deliberately
 frozen, and each is read back.
 
-The follow is the one write that lands while the list may still be moving, and it is a scroll write
-because of what it *is*: it moves the position the user is at, and everything that resolves against
-that position — the compositor's rasterization, `position: sticky` — reads `scrollTop`, not our
-transform. Carrying it in the translation instead kept the number the browser believes pointing at a
-place the user had left. What is still a transform change is the screen-anchor hold and the whole of
-the rubber band: the first is folded into the model at the next render, the second is reset to zero at
-the end of the excursion.
+The last two are the writes that land between renders, and they are scroll writes because of what they
+*are*: they move the position the user is at, and everything that resolves against that position — the
+compositor's rasterization, `position: sticky` — reads `scrollTop`. Carried in a transform instead,
+all of that kept pointing at a place the user had left. Neither of them fights a scroll of the user's,
+because neither happens during one: the follow only runs while the list is pinned, which the user's
+first scroll event ends, and a hold only starts from a tap on a control. Both defer any frame with a
+finger down, an open band, or a scroll still settling — deferred, not dropped, so the correction
+survives a finger resting on the list. The follow's retry waits on a 10Hz bucket
+(`FollowRetryHz`) rather than the next frame: a rest can last as long as the user likes, and a pending
+animation frame makes the browser run its whole rendering lifecycle, so polling at frame rate would
+cost a style recalc per frame to re-read three booleans.
 
 **What separates a follow from a re-placement is not its size.** A follow is anything scrolling could
 itself have produced, up to `maxOverscroll` (three screens); a re-placement moves the view further than
@@ -717,10 +630,10 @@ any scroll could have carried it. Size is the wrong test because on a short view
 message can exceed half a screen, and jumping there would end a fling for an ordinary new message.
 
 Measured over 15s of the stress page while pinned to the newest message — messages arriving, the
-newest item's height churning 4×/s — while the follow was still a translation, which is why the
-"after" rows show no `scrollTop` frames at all. What that column was really measuring is that nothing
-writes the scroll position *per render*, which still holds; the follow writes it once per *frame*
-instead. The right-hand column is the one that matters either way — how flush the end was held:
+newest item's height churning 4×/s — from when the follow was a translation. The right-hand column is
+the one that still means anything: how flush the end was actually held. The middle columns record what
+the correction was made of at the time, and the follow has since moved from the transform to the scroll
+position, one write per frame instead of one per render.
 
 | | `scrollTop` frames | chain moves | translated frames | end held flush to |
 |---|---|---|---|---|
@@ -730,20 +643,19 @@ instead. The right-hand column is the one that matters either way — how flush 
 | Chrome, reverse, after | **0** | 30 | 191 | ±0.07px |
 | Android, reverse, after | **0 of 901** | 35 | 154 | ±0.07px |
 
-Reverse holds the newest message exactly where it was and stops writing the scroll position to do it.
-Natural rests in the right place but lags a growing item by up to a re-layout's worth — §7.
+Reverse holds the newest message exactly where it was. Natural rests in the right place but lags a
+growing item by up to a re-layout's worth — §7.
 
 **Re-anchoring is not on either list.** Compensating a change the code just made to the model is a
-coordinate translation, not a scroll: `reanchor` moves `chainStart`, and the container's position
-follows it at the same render.
+renumbering, not a scroll: `reanchor` moves `chainStart`, and the container's position follows it at
+the same render.
 
 #### Edge pinning
 
 When the list is pinned to an edge (normally the End), a render that moves that edge triggers a
 re-pin: measure where the edge actually is in the DOM and move so it is flush. It is measured from the
 DOM rather than derived from the model because the pin has to land flush even when the model runs a
-pixel or two long — and a rect already carries the translation, so the gap it reports is the visible
-one and the target comes out in `viewOffset` coordinates directly. A target within `RepinEpsilon`
+pixel or two long. A target within `RepinEpsilon`
 (1px) of where the view already is is dropped: when the list is already flush, the re-derived target
 sits about one device pixel off on a fractional-DPI screen, and writing it would flip the position by
 a pixel on every render.
@@ -809,8 +721,8 @@ at.
 the content's `translate3d`. Under a finger, every engine uses the same delta resistance. After release,
 the ordinary path continues to observe the browser and supplies a carry and return floor; iOS/WebKit
 instead freezes native inertia, FLIP-transfers the exact rendered position into the transform, and runs
-an exact critically damped spring. The owner's `tOffset` remains an independent transform contributor
-through both paths. Verified mechanically by the rig and qualitatively on an iPhone.*
+an exact critically damped spring. The band is the only thing on the container's transform, in both
+paths. Verified mechanically by the rig and qualitatively on an iPhone.*
 
 #### The band
 
@@ -834,11 +746,9 @@ Three adjustments before the band is handed to the controller, all easy to lose 
 - a chain that fits on screen caps `max` at `chainStart` (§3.8);
 - an inverted band (`min > max`) is collapsed to a single point, towards `max` when the default edge
   is End;
-- the result is shifted by `-tOffset` and clamped into `[0, maxScrollTop]`, because the controller's
-  band is in `scrollTop` and these limits are in what the user sees. Unshifted, the rubber band would
-  engage `tOffset` px early at one edge and that much late at the other. Unclamped, short content in
-  reverse leaves `min` permanently out of reach and the scroller reads every resting frame as an
-  overscroll to bounce back from.
+- the result is clamped into `[0, maxScrollTop]`: unclamped, short content in reverse leaves `min`
+  permanently out of reach and the scroller reads every resting frame as an overscroll to bounce back
+  from.
 
 Crucially **both limits are enforced the same way by the same code**, and neither coincides with the
 scroller's own end — see §3.12 for why that matters. A `null` limit from the model (no items yet)
@@ -849,24 +759,24 @@ means no limit that way.
 The position the user sees is the pair `(scrollTop, transform)`. Everything below follows from four
 rules:
 
-1. **Every transform contributor has one owner.** `ScrollController` is the only writer of the CSS
-   property and composes the band's `overscrollOffset`, the list's `baseOffset` (`-tOffset`) and the
-   repaint nudge. The ordinary band changes its part only by `nudge(delta)`. During the iOS takeover the
-   first FLIP is also a nudge, after which the spring owns and assigns only `overscrollOffset`; it never
-   overwrites `baseOffset`.
+1. **The transform has one owner.** `ScrollController` is the only writer of the CSS property, and
+   composes the band's `overscrollOffset` with the repaint nudge (§4.6). The ordinary band changes its
+   part only by `nudge(delta)`. During the iOS takeover the first FLIP is also a nudge, after which the
+   spring owns and assigns `overscrollOffset`.
 2. **Every `scrollTop` write is named and read back.** The ordinary path writes for a catch, settle,
    wheel/cancel/watchdog end, tiny or non-touch crossing, and the owner's `scrollTo` / clamp. The iOS
    path additionally snaps to the boundary after forcing the overflow lock, and repeats that snap if
    native movement leaks through. Only the measured visual effect of a write is transferred into the
-   transform. Anything else that wants to correct a moving view is a translation.
+   transform. Anything else that wants to correct a moving view moves the scroll position or the
+   chain's, never this.
 3. **The two release paths are intentionally different.** Non-iOS uses the browser's continuing scroll
    and locks overflow for only two frames when it must kill an outward fling. iOS/WebKit cannot rely on
    a `scrollTop` write to stop inertia, so its takeover force-locks overflow for the whole, now-short
    transform return (§4.3–§4.5).
 4. **Loading coordinates never become a synthetic inertia engine.** The iOS spring moves only the band
-   contribution. It does not advance `tOffset`, `chainStart`, the data-query viewport, or the pinned
-   edge. An earlier experiment drove inertial deltas through the list's translation; the loader then
-   believed a top-edge pull was travelling toward the opposite end and rendered skeletons there.
+   contribution. It does not advance `chainStart`, the data-query viewport, or the pinned edge. An
+   earlier experiment drove inertial deltas through the list's own coordinates; the loader then believed
+   a top-edge pull was travelling toward the opposite end and rendered skeletons there.
 
 The ordinary state is small: `boundary` (the edge, in `scrollTop` px, latched at the crossing), `over`
 (the raw pull the display corresponds to), and `carried` with its `bounceCap` while a bounce is under
@@ -908,15 +818,16 @@ The handoff is one measured FLIP:
    the band transform. The native coordinate changes, but the rendered content does not.
 4. Convert the sampled native velocity through the resistance curve's slope and run the exact
    critically damped solution in `overscrollOffset`. `writeTransform` emits
-   `translate3d(0, y, 0)` and composes the owner's existing `-tOffset` unchanged.
+   `translate3d(0, y, 0)`.
 5. Keep `scrollTop` at the boundary. If WebKit leaks a native step despite the lock, repeat the
    measured snap and put the landed delta into the transform before continuing the same spring.
-6. At zero, clear the band contribution and release overflow. There is no fold and no data-position
-   update because the spring never entered the list's model.
+6. At zero, clear the band contribution and release overflow. There is no data-position update, because
+   the spring never entered the list's model.
 
 The first versions sampled for several frames after release, delayed the freeze to a predicted minimum
-absolute speed, or emulated the remaining inertial scroll in `tOffset`. Moving the freeze merely moved
-the visible out-of-sync frames earlier or later, and synthetic `tOffset` corrupted loading. The FLIP
+absolute speed, or emulated the remaining inertial scroll in a transform of the list's own. Moving the
+freeze merely moved the visible out-of-sync frames earlier or later, and the synthetic one corrupted
+loading. The FLIP
 handoff removes both races: one native position is traded for one transform position, once.
 
 **Engaged, outward — the ordinary-path bounce.** A release that is still heading out keeps its
@@ -1134,17 +1045,31 @@ header travelled **140px** relative to its neighbours, and on Android the author
 Note what is *not* the problem: a stuck header carried along by the rubber band is correct, and is what
 a native one does. The problem is it moving relative to everything it is stuck to.
 
-**The clamp moves, not the element.** Each declared sticky element's own insets are rewritten as
-`calc(<its own inset> ± var(--vl-sticky-shift))`, and the shift — minus the whole transform the content
-is carrying — is written once per frame on the container. The threshold then sits exactly where the
-transform is about to take the element, so what the browser paints is what the same amount of real
-scrolling would have painted. Measured against a real scroll of the same size, worst case over every
+**The clamp moves, not the element.** Each declared sticky element's own insets are rewritten with the
+shift in them — `top: base + shift`, `bottom: base - shift`, where the shift is minus whatever the
+band's transform is carrying. The threshold then sits exactly where the transform is about to take the
+element, so what the browser paints is what the same amount of real scrolling would have painted. Measured against a real scroll of the same size, worst case over every
 sticky element on screen:
 
 | the content moved | transform alone | with the shift |
 |---|---|---|
 | 120px up | 27px off | **0.00px** |
 | 120px down | 109px off | **0.00px** |
+
+And under a live band rather than a synthetic transform. The position is the pair
+(`scrollTop`, transform), so rewriting the same frame as pure scroll — all of the transform moved into
+`scrollTop` — must move nothing on screen, sticky elements included. With a finger held 66.3px past the
+bottom edge:
+
+| | content | sticky, worst on screen |
+|---|---|---|
+| with the shift | 0.25px | **0.25px** |
+| without it | 0.25px | 27–66px |
+
+The 0.25px is the scroll write's own rounding, and it moves everything equally. The range in the last
+cell is content-dependent: 66.25px where the stuck elements are conversation headers with the whole
+transform to give up, 27.25px where they are avatar badges that hit the bottom of their own message
+group first.
 
 Four things follow from doing it this way:
 
@@ -1154,18 +1079,14 @@ Four things follow from doing it this way:
   soon as a correction has moved it. The browser does the clamping here, so even the awkward case is
   exact rather than approximated: an element stuck now that would not be after the move un-sticks by
   the right amount, and one riding the bottom of its containing block keeps riding it.
-- **It covers both terms of the transform at once** — the band's and the list's own — because both
-  displace a stuck element the same way. The band's part additionally covers the *hidden scroll*, the
-  distance the scroller has run outside its own band, for free: that part is already in the layout
-  position the browser clamped, and the shift is exactly what the transform then does to it.
-- **A fold is invisible to it.** A fold moves the container in layout and the transform back by the
-  same amount, so the clamp threshold and the flow position move together and a stuck element does not
-  budge. Without this, every fold snapped every stuck element by the excursion.
-- **It costs one style write per frame**, on the container, rather than a read and a write per element.
-  The insets are installed on the elements when a shift first stands and removed when it returns to
-  zero, so the value read back is always the element's own stylesheet rather than a stale copy of it —
-  a media query or a class may have changed it meanwhile. An inset the stylesheet never set reads back
-  as `auto` and is left alone: an unset inset is a clamp the element does not have.
+- **It covers the *hidden scroll* for free** — the distance the scroller has run outside its own band.
+  That part is already in the layout position the browser clamped, and the shift is exactly what the
+  transform then does to it, so one number answers for both.
+- **Nothing is written in band.** The insets are read from the element and written back with the shift
+  in them the first time it has to carry one, and removed when it stops, so the value read is always
+  the element's own stylesheet rather than a stale copy of it — a media query or a class may have
+  changed it in between. An inset the stylesheet never set reads back as `auto` and is left alone: an
+  unset inset is a clamp the element does not have. (Verified on Blink; §7 lists the WebKit check.)
 
 Elements are **declared, not discovered**: the consumer marks them with `vl-sticky` (`StickyItemClass`),
 and the chat view does that through the presence-class system — on the item for a conversation header,
@@ -1176,17 +1097,18 @@ a computed style for every descendant on every render. One consequence worth kno
   second one switches off what the first set whenever its own match is absent. One rule with a
   multi-selector match, never two rules with the same class name.
 
-Measured on a bottom overscroll of 300px, travel relative to a non-sticky item on screen — the whole
-point being that during a rubber band *everything* moves, so only relative travel means anything:
-
-| | before | after |
-|---|---|---|
-| conversation header item | 140px | **0px** |
-| the `.conversation-header` inside it | 140px | **0px** |
-| author avatars (5 on screen, worst) | 19px | **0px** |
+**Travel relative to the content is the wrong measure of this**, and it is worth saying because the
+previous mechanism was built around it. Holding every sticky element at a fixed offset within the
+content makes that number zero — by un-sticking them all for the duration. But a stuck element is
+*supposed* to move relative to the content: that is what being stuck means, and it is what a real
+scroll of the same size does. So the number to drive to zero is the difference from that, which is what
+the tables above measure. On the same 300px gesture the worst relative travel is 48px with the shift
+and 87px without it, and the 48px is correct: it is an avatar badge sliding within its own message
+group until the group's bottom stops it, exactly as a real scroll would slide it.
 
 In band nothing is written at all: the shift is zero, the elements carry no inline insets, and the
-header pins at exactly its `-17px` inset.
+header pins at exactly its `-17px` inset. Verified mid-band on a 66.3px excursion — every element
+carrying an inset of `base - 66.26px` — and after it, with every inline inset removed again.
 
 ### 3.8 Spacers, the end anchor, and the conversation that fits on screen
 
@@ -1335,7 +1257,7 @@ correction moves the chain without moving the element, and repeats.
 lifetime it re-applies on every render that follows — including the ones growing revealed items in from
 zero — each time forcing a target measured before any of them existed. Measured on a single expand:
 four applications, 124px of drift. What holds the element through that growth is `watchScreenAnchor`:
-per frame, by the translation, until the element has been still for `ScreenAnchorStillFrames` (12)
+per frame, by a scroll write, until the element has been still for `ScreenAnchorStillFrames` (12)
 frames and no animation runs — the model reaches the settled heights before the DOM does, and
 re-laying out to them while the DOM is still transitioning moves the whole chain by what is left to
 grow (measured at 349px, arriving one frame after the tracker went quiet). A correction that runs past
@@ -1694,14 +1616,26 @@ and it only clears a value it still owns.
 
 Driving the scroll position from JavaScript at frame rate is visibly jittery on Android even when every
 frame lands on time — one missed frame in a per-frame write stream is visible. Nothing in the list
-*animates* `scrollTop`: the rubber band shows and hides the native scroll with a **transform** (§3.7),
-and so does the screen-anchor hold (§3.1).
+*animates* `scrollTop`: the only transform left is the rubber band's, and it shows and hides the native
+scroll rather than interpolating anything (§3.7).
 
-The follow (§3.6) is the one thing that writes it repeatedly — at most once per frame, and only while
-the pinned edge is actually moving, which means a message arriving or an item's height animating. It is
+Two things write the scroll position repeatedly (§3.6): the follow, while the pinned edge is actually
+moving — a message arriving, an item's height animating — and the screen-anchor hold, for the length of
+an expand. Both write at most once per frame, and neither runs while the user is scrolling. It is
 a correction and not an animation: every write is the whole remaining gap as measured in that frame, so
-a missed frame costs lateness rather than a step. Whether that reads as jitter on a device is the open
-question this carries — §7.
+a missed frame costs lateness rather than a step.
+
+`tools/virtual-list-rig/follow.mjs` drives both paths head to head — 2px of correction per frame for
+six seconds each, recording a real item's on-screen position. In Chrome they are indistinguishable:
+
+| | frames | mean step | still frames | step-to-step change (p50 / p90 / max) |
+|---|---|---|---|---|
+| `scrollTop` per frame | 719 | 2.00px | 0 | 0.00 / 0.00 / 0.00px |
+| `transform` per frame | 686 | 2.00px | 0 | 0.00 / 0.00 / 0.00px |
+
+Which is the engine this section is *not* about. Point the same script at a phone's debug port and it
+answers the question properly; until someone does, the Android case stands as written and is listed
+in §7.
 
 ### 4.8 iOS moves the *document* when the keyboard opens
 
@@ -1767,9 +1701,10 @@ the finger followed through the curve's slope, no unexplained transform step, an
 violation.
 
 `rig.mjs all <port>` runs the ordinary path, `nolock` removes its two-frame kill, and `takeover` forces
-the iOS handoff on Chrome. A final numeric argument supplies a standing `tOffset` baseline; with 1000px
-the rig also constructs and folds a 137px excursion and verifies both the baseline and rendered
-geometry. `soak.mjs` runs a long random mix. Run a long chat and a chat whose band collapses to a point;
+the iOS handoff on Chrome. `follow.mjs` is separate and answers one question: whether the pinned edge's
+per-frame `scrollTop` write is as smooth as the transform it replaced (§4.7). The judge additionally
+asserts that the composed transform minus the band's own share is zero on every frame, which is what
+makes "the list writes no transform" a checked property. `soak.mjs` runs a long random mix. Run a long chat and a chat whose band collapses to a point;
 the iPhone is still required for off-main-thread feel, because forced takeover in desktop Chrome proves
 the state/geometry rules but cannot reproduce WebKit's compositor timing.
 
@@ -1796,10 +1731,18 @@ Two things are built in and worth reaching for first:
 
 Measurement traps worth knowing, each of which produced a confidently wrong answer first:
 
-- **`scrollTop - transform` is not the visible position.** It is `viewOffset`, and a fold moves
-  `viewOffset` and the chain by the same amount (§3.1) — so every fold reads as a screenful of motion
-  that never happened. What the user sees move is `viewOffset - chainStart`; in a harness that is
-  `scrollTop - transform - container.top` (or `+ container.bottom` in reverse).
+- **`scrollTop` alone is not the visible position.** The chain moves under it — a re-anchor, a
+  re-centre, a page of history arriving — and each of those changes `scrollTop`'s meaning without
+  moving anything on screen. What the user sees move is `scrollOffset - chainStart`; in a harness that
+  is `scrollTop - container.top` (or `+ container.bottom` in reverse), with the band's transform taken
+  off if one is open.
+- **A gesture measured one frame past the release is measuring the return.** The rig's "did the content
+  follow the finger" rule compared the frame at or *after* `touchend`, by which point the spring has
+  already moved the content back — or, entering the band, further out. On `catch-drag` that turned one
+  correct 93px-of-120px drag into 31px, and the verdict then depended on which frame the release landed
+  next to: the same gesture failed 4 times in 5 on one build and 2 in 5 on another, with nothing
+  different about the drag. The finger's own travel ends at the release, and the sample has to as well.
+
 - **A hidden tab gets no rAF.** A Chrome window behind another window reports
   `document.visibilityState === 'hidden'` and stops firing animation frames, so every rAF-driven probe
   hangs and every recording comes back empty. `Page.bringToFront` does not fix it. Run measurements in a
@@ -1847,9 +1790,9 @@ the DOM handles (wrapper, container, both spacers), and the initial reveal.
 | a 4M wrapper with an absolutely positioned chain floating in it | the container stays in flow (`position: relative`), so the wrapper's height is content-driven |
 | spacers as a rough reservation | spacers that cover the unloaded ranges **exactly** |
 | no scrollbar, because the range is mostly empty | a real scrollbar, which is therefore honest |
-| re-anchoring, edge pinning, re-centring, stranded recovery, a translation term | none of it |
+| re-anchoring, edge pinning, re-centring, stranded recovery | none of it |
 | heights measured per item and animated | one measured item height plus one measured separator height |
-| `scrollTop` written for jumps, re-placements, re-centres, direction switches and stranded recovery | one writer only: an explicit `scrollToKey` |
+| `scrollTop` written for jumps, re-placements, re-centres, direction switches, stranded recovery, and once per frame by a follow or an expand hold | one writer only: an explicit `scrollToKey` |
 
 All of that follows from one property: **position is a pure function of index.** So a window move alone
 cannot shift what is on screen, and there is nothing to correct. Only two things can move content — the
@@ -1894,20 +1837,40 @@ can see no chats at all".
 
 ## 7. Known open issues
 
-*What is known not to be done: the follow's per-frame `scrollTop` writes are unmeasured on a device;
-`reanchor` holds the viewport top in both directions; a fling read through loading history is
-unmeasured; a touch that lands during the short iOS lock cannot scroll in that same gesture; and a long
-hold trips the stale-touch backstop.*
+*What is known not to be done: a load that moves the limits under a dragging finger drops the band; the
+two per-frame `scrollTop` writers are unmeasured on a device; the `auto` inset reading is verified on
+Blink only; `reanchor` holds the viewport top in both directions; a fling read through loading history
+is unmeasured; a touch that lands during the short iOS lock cannot scroll in that same gesture; and a
+long hold trips the stale-touch backstop.*
 
-- **The follow writes `scrollTop` on frames the pinned edge moves, and §4.7 is about exactly that.**
-  While an item's height animates, the edge moves every frame, so the follow writes every frame — and
-  §4.7 records, from a device, that a per-frame write stream is visibly jittery on Android. It is not
-  an animation (each write is the whole remaining gap, measured in that frame, so a missed frame is
-  late rather than stepped) and the rig sees no steps in Chrome, but the Android case is the one that
-  produced §4.7 and it has not been re-measured since the change. If it does read as jitter, the same
-  correction can go back on the model instead — `chainStart -= delta` with a container write, which is
-  a fold done immediately: also sticky-exact, also no scroll write, at the price of a layout pass per
-  frame.
+- **A load that moves the limits outward under a dragging finger drops the excursion.**
+  `ScrollController.onScroll` asks `getViolatedBoundary` where the scroll is, and a limit that moved
+  past it while the finger was still pulling answers "in band" — so `endPhase(null)` runs, `over` goes
+  to zero and the band transform is discarded in one frame. Measured with the soak's 60 gestures: six
+  or seven occurrences per run, with `over` up to 180px, which is ~24px of transform vanishing in a
+  frame; the rig's `bad-ends` catches it only when the next frame happens to be outside the limits, so
+  a soak run passes or fails on timing. **It predates the translation work** — a soak against the
+  previous commit reproduces the same six occurrences and the same `bad-ends 1`. The fix is for the
+  crossing to be re-aimed rather than abandoned, the way `scrollTo`'s `reanchor` path already does it:
+  a limit that moves under an open excursion should move the latched boundary with it.
+
+- **Two things write `scrollTop` per frame, and §4.7 is about exactly that.** While an item's height
+  animates, the pinned edge moves every frame, so the follow writes every frame; an expand hold does
+  the same for the length of its animation. §4.7 records, from a device, that a per-frame write stream
+  is visibly jittery on Android. Neither is an animation (each write is the whole remaining gap,
+  measured in that frame, so a missed frame is late rather than stepped), neither runs while the user
+  is scrolling, the rig sees no steps in Chrome, and driven head to head there the two write paths are
+  identical to the pixel (§4.7) — but Chrome is not the engine §4.7 came from, and the Android case has
+  not been re-measured since the change. If it does read as jitter, the same correction can move to the
+  model instead — `chainStart -= delta` with a container write, which is sticky-exact for the same
+  reason a scroll write is, at the price of a layout pass per frame.
+
+- **`readInset`'s `auto` is verified on Blink, not on WebKit.** The sticky shift only moves an inset
+  the element's own stylesheet set, and it tells them apart by `getComputedStyle` returning `auto` for
+  one it did not. Probed on Chrome 151, including on a stuck element, that is what comes back. An engine
+  that returned a length there instead would give the element a clamp it does not have — a header that
+  sticks to the bottom edge as well as the top. iOS is a first-class target, so this wants one probe in
+  Safari.
 
 - **`reanchor` is not direction-aware.** It holds the item at the viewport top in both directions; in
   reverse it should hold the bottom, keeping `chainEnd` fixed. Today reverse gets the equivalent effect
@@ -1915,8 +1878,8 @@ hold trips the stale-touch backstop.*
 
 - **A fling read through history is still unmeasured against this design.** The Android numbers above
   cover the two mechanisms that were broken — the held overflow lock, and the per-render `scrollTop`
-  write — but not the remaining claim, that folding (a `container.top` write) during a live fling leaves
-  it running. That rests on the churn measurement in the plan document and on §4.3, not on a device.
+  write — but not the remaining claim, that moving the chain (a `container.top` write, which a
+  re-anchor or a re-centre does at a render) during a live fling leaves it running. That rests on the churn measurement in the plan document and on §4.3, not on a device.
   Testing it needs a chat with enough history that flinging through it triggers loads, on an account the
   phone is signed into; §4.10 explains why the test page cannot stand in.
 
@@ -1928,6 +1891,20 @@ hold trips the stale-touch backstop.*
   overscroll. The critically damped return is deliberately strong (`k = 1600`, no crossing or
   oscillation) to make this window short. The full mechanical suite can force the takeover in Chrome;
   the remaining iOS validation is qualitative device testing of compositor timing and feel.
+
+- **The screen-anchor hold is not frame-coalesced.** The follow measures in a frame's read phase and
+  writes in its write phase, at most once per frame; the hold does neither. It runs from a raw
+  `requestAnimationFrame` *and* synchronously from `applyLayout`, so one render can read geometry after
+  a container write and then write `scrollTop` twice — once for the hold, once for a re-centre. It is
+  correct (the re-centre re-reads the position after the hold's write) and it only happens during an
+  expand, where nothing else is moving, but it is the one per-frame writer that does not go through the
+  frame's phases.
+
+- **The sticky shift writes one inset per element per frame, not one property per frame.** The
+  container-variable form it replaced was a single write; this is O(elements on screen), plus one
+  `getComputedStyle` per element on the frame a band opens. It is the same order as the mechanism
+  *both* of those replaced (a rect read and a transform write per element per frame) and no device
+  regression has been measured, but it has not been profiled on a phone either.
 
 - **`TouchStaleMs` fires on a genuine long hold** (§3.12).
 

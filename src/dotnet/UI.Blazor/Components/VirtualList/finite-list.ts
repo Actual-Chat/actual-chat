@@ -80,8 +80,6 @@ export class FiniteList extends VirtualList {
             window: `${this.visibleKeys.size}(${beforeCount}-${beforeCount + rs.count})`,
             total,
             meanItemHeight: this.itemSize,
-            // Nothing translates a finite list's container, so this is structural rather than unknown.
-            tOffset: 0,
         };
     }
 

@@ -4,7 +4,7 @@ version: 2.0.0
 description: |
   Instruments and workflow for debugging the VirtualList — the chat transcript (`InfiniteList`) and
   the sidebar (`FiniteList`). Covers the built-in consistency checker, the on-screen overlay, the
-  five `?vl*` URL flags, the touch-gesture rig, the frame recorder, attaching to a real Android
+  four `?vl*` URL flags, the touch-gesture rig, the frame recorder, attaching to a real Android
   device over CDP, and how to read a trace without being fooled by a measurement artifact. Use when
   the list jumps while scrolling, blanks, sticks on skeletons, or the overscroll/bounce misbehaves.
   The component's specification is `docs/virtual-list.md`; this skill is only how to *measure* it.
@@ -32,9 +32,9 @@ there; do not trust a summary, including this one. The section map you will actu
 
 | Need | Section |
 |---|---|
-| Vocabulary — `chainStart`, `tOffset`, `viewOffset`, pinning vs. anchoring | §1 |
+| Vocabulary — `chainStart`, `scrollOffset`, pinning vs. anchoring | §1 |
 | The eleven enforced invariants | §2 |
-| The model and the three position terms | §3.1 |
+| The model and the two position terms | §3.1 |
 | Render direction (`Natural` \| `Reverse` — there is **no** `Auto`) | §3.2 |
 | States, transitions, loops, which term may move when | §3.3–§3.6 |
 | Overscroll: the band, resistance, bounce, floor — what the rig judges | §3.7 |
@@ -150,13 +150,11 @@ the bar does not strobe or resize as numbers cross a power of ten.
 
 ### 1.3 URL flags
 
-Five, all read from `location.search`. Put them in the URL and reload — `?vltoffset` is read per
-instance at construction, `?vlloaddelay` and `?vlfriction` once at module load, `?vllock` is memoized
-on first use.
+Four, all read from `location.search`. Put them in the URL and reload — `?vlloaddelay` and
+`?vlfriction` are read once at module load, `?vllock` and `?vltakeover` are memoized on first use.
 
 | Flag | Where | What it does |
 |---|---|---|
-| `?vltoffset=<px>` | `infinite-list.ts` `readTOffsetBaseline` | Starts the list with a standing translation baseline instead of 0. Everything that folds, re-pins or computes limits then has to be correct against a non-zero base — the state where the three-term geometry actually breaks. The rig's fold check runs only with this set |
 | `?vlloaddelay=<ms>` | `virtual-list.ts` `readLoadDelay` | Holds **every** data load for that long. A fast fling into history is only interesting while the loads cannot keep up with it, and that state is otherwise a race to catch. This is how you reproduce continuous "load more" on demand |
 | `?vllock=0` / `=1` | `scroll-controller.ts` `canLockOverflow` | Forces the two-frame `overflow: hidden` fling kill off / on. Default is on everywhere except WebKit. `0` reproduces the "nothing stops a fling" half of the iOS problem on desktop |
 | `?vltakeover=0` / `=1` | `scroll-controller.ts` `canTakeOverMomentum` | Forces the WebKit release takeover off / on. Default is iOS+WebKit only. `1` exercises the FLIP handoff and the spring on desktop Chrome |
@@ -184,10 +182,10 @@ the chat view is not the touch-scrolling element (chrome-devtools MCP: `emulate`
 node tools/virtual-list-rig/rig.mjs all 9222              # every scenario, lock on
 node tools/virtual-list-rig/rig.mjs all 9222 nolock       # ordinary path without the two-frame overflow kill
 node tools/virtual-list-rig/rig.mjs all 9222 takeover     # force the iOS takeover on Chrome
-node tools/virtual-list-rig/rig.mjs all 9222 takeover 1000 # ...with folds based at tOffset=1000px
 node tools/virtual-list-rig/rig.mjs swing-back 9222       # one scenario
 node tools/virtual-list-rig/soak.mjs 60 9223              # 60 random gestures, judged as a whole
-node tools/virtual-list-rig/soak.mjs 60 9223 takeover 1000
+node tools/virtual-list-rig/soak.mjs 60 9223 takeover
+node tools/virtual-list-rig/follow.mjs 9223               # the follow's write path, scroll vs transform
 ```
 
 Scenarios: `pull-release`, `throw-out`, `throw-top`, `swing-back`, `catch`, `catch-drag`, `updown`,
@@ -197,14 +195,13 @@ only), `cross-and-back`. Traces land in `tmp/traces/rig-<scenario>.json`; the so
 
 Run the matrix on **two chats**: one longer than the viewport (a real band) and one shorter (a band
 collapsed to a point, `min == max`). Both must pass on the ordinary lock/nolock paths and with
-takeover forced at a 1000px `tOffset` baseline.
+takeover forced.
 
 The judge checks rules, not feel: the band never inverts, no gesture starts inside a band, every
 excursion ends with the band transform at zero and the position legal, the finger is followed through
-the curve's slope, the band never moves by more than the rules allow, the owner's translation settles
-at the configured baseline. With a non-zero baseline it also constructs a consistent
-translation/model pair, folds it, and verifies the rendered content does not move (rendered motion is
-measured from container geometry, so folding is not a false jump). `coast after release` on
+the curve's slope, the band never moves by more than the rules allow, and the transform is the band's
+alone - what is left of it once the band's share is taken out has to be zero on every frame, which is
+what makes "the list writes no transform" a checked property. `coast after release` on
 `swing-back` and `updown` should match `control-fling` — a throw from overscroll is a throw. On
 `fling-edge` the excursion should go out to roughly `MaxBouncePx` (150px) past where it was noticed
 before coming home; that is the bounce.
@@ -250,7 +247,7 @@ Row fields:
 | `t` | ms since the recorder armed |
 | `top` | `list.scrollTop`, native |
 | `tf` | the composed `translate3d` y on `.c-virtual-container` |
-| `base` | `tf - band` — the owner's contribution, i.e. `-tOffset`. Should settle at `-vltoffset` |
+| `base` | `tf - band` — whatever is on the transform that is not the band's. The list writes no transform, so this is 0 on every frame, and the judge fails a run where it is not |
 | `phase` | `in-band` \| `following` (finger down past an edge) \| `engaged` (past an edge, nobody holding it) |
 | `decision` | `momentumPhase`: `none` \| `arming` \| `transform` (the WebKit takeover) |
 | `vis` | what the band puts on screen — `signedOverscroll(over)`, i.e. after resistance. 0 when in-band |
@@ -369,9 +366,8 @@ overscroll, and "fixing" it re-breaks catch-up.
 
 > **The container moving is not a jump.** `cy` (and the container's `top`) move on every prepend by
 > construction: loading history changes `chainStart` and the container's position **by the same
-> amount**, so the items inside it do not move at all (§3.1). A fold does the same to `tOffset` and
-> the chain together. A check on `cy`, on `scrollTop - transform` (that is `viewOffset`), or on
-> container geometry alone will report a screenful of motion that never happened.
+> amount**, so the items inside it do not move at all (§3.1). A check on `cy`, or on container geometry
+> alone, will report a screenful of motion that never happened.
 
 The only honest rendered-motion check **follows a specific item by key** across frames:
 
@@ -429,7 +425,7 @@ position in wrapper coordinates, the item's offset within the chain, and the scr
 | Path | What it is |
 |---|---|
 | `docs/virtual-list.md` | **The specification.** Invariants live here, not in this skill |
-| `src/dotnet/UI.Blazor/Components/VirtualList/infinite-list.ts` | The chat list. `isDebugEnabled` / `setDebugEnabled`, `checkModelDrift`, `checkContentOverflow`, `readTOffsetBaseline`. Registers `globalThis.InfiniteList` (and `InfiniteList.instances`) |
+| `src/dotnet/UI.Blazor/Components/VirtualList/infinite-list.ts` | The chat list. `isDebugEnabled` / `setDebugEnabled`, `checkModelDrift`, `checkContentOverflow`. Registers `globalThis.InfiniteList` (and `InfiniteList.instances`) |
 | `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list.ts` | The shared base. `readLoadDelay` (`?vlloaddelay`), request guard and retry |
 | `src/dotnet/UI.Blazor/Components/VirtualList/finite-list.ts` | The sidebar list. Registers `globalThis.FiniteList` |
 | `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list-overlay.ts` | The on-screen overlay |

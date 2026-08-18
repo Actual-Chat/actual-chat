@@ -41,9 +41,6 @@ export interface VirtualListOverlayStats {
     window: string;
     total: number | null;
     meanItemHeight: number;
-    // The standing translation the container carries. Zero at rest; a re-pin follow raises it and a
-    // fold returns it, so watching it is how you tell one from the other. Always 0 for FiniteList.
-    tOffset: number;
 }
 
 // What a live list exposes to its overlay. Structural, like VirtualListDebugTarget, so this module
@@ -185,17 +182,6 @@ export class VirtualListOverlay {
                 // Fits `h=NN.N` exactly. Triple-digit means widen by one, but a mean item height only
                 // crosses 100px on a genuine content change, so it isn't a source of jitter.
                 minWidthCh: 6,
-                align: 'right',
-            },
-            {
-                id: 'tOffset',
-                text: `Δ=${s.tOffset.toFixed(0)}`,
-                // Lit while a translation is standing, since that is the interesting state: at rest it
-                // is 0 and says so quietly.
-                tone: Math.abs(s.tOffset) >= 1 ? 'warn' : 'dim',
-                mustFlashOnChange: true,
-                // Fits `Δ=-NNNN`, past the half-screen cap a follow is allowed to reach.
-                minWidthCh: 7,
                 align: 'right',
             },
         ];

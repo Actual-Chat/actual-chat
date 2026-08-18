@@ -18,23 +18,29 @@ every gesture reads as "finger ignored".
 node tools/virtual-list-rig/rig.mjs all 9222            # every scenario, lock on
 node tools/virtual-list-rig/rig.mjs all 9222 nolock     # ordinary path without the two-frame overflow kill
 node tools/virtual-list-rig/rig.mjs all 9222 takeover   # force the iOS takeover on Chrome
-node tools/virtual-list-rig/rig.mjs all 9222 takeover 1000 # keep folds based at tOffset=1000px
 node tools/virtual-list-rig/rig.mjs swing-back 9222     # one scenario
 node tools/virtual-list-rig/soak.mjs 60 9223            # 60 random gestures, judged as a whole
-node tools/virtual-list-rig/soak.mjs 60 9223 takeover 1000
+node tools/virtual-list-rig/soak.mjs 60 9223 takeover
+node tools/virtual-list-rig/follow.mjs 9223             # the follow's write path, scroll vs transform
 ```
+
+`follow.mjs` answers one question and is not part of the matrix: the pinned edge follows content that
+grew under it by writing `scrollTop` once per frame, and docs/virtual-list.md §4.7 records that a
+per-frame write stream was visibly jittery on Android. It drives 2px of correction per frame down each
+path in turn and reports what a real item did on screen. Chrome shows no difference between them, so
+the run that matters is against a phone's debug port.
 
 Run the matrix on two chats: one longer than the viewport (a real band) and one shorter (a band
 collapsed to a point, `min == max`). Both must pass on the ordinary lock/nolock paths and with takeover
-forced at a 1000px `tOffset` baseline.
+forced.
 
 The judge checks the rules, not feel: the band never inverts, no gesture starts inside a band, every
 excursion ends with the band transform at zero and the position legal, the finger is followed through
 the curve's slope, and the band never moves by more than the rules allow. It also enables the VirtualList
-consistency checker and fails on any violation. The owner's translation must settle at the configured
-baseline. With a non-zero baseline the rig also constructs a consistent translation/model pair, folds
-it, and verifies that the rendered content does not move. Rendered motion is measured from container
-geometry so folding it is not a false jump.
+consistency checker and fails on any violation. It also checks that the band is the *only* thing
+writing the transform: what is left of the composed transform once the band's own share is taken out
+has to be zero on every frame, which makes "the list writes no transform of its own" a checked property
+rather than a claim.
 `coast after release` on
 `swing-back` and `updown` should match `control-fling` — a throw from overscroll is a throw. On
 `fling-edge` (a fling reaching the edge with the finger up) the excursion should go out to roughly

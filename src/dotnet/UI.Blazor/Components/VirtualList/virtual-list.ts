@@ -8,7 +8,7 @@ import { VirtualListOverlay, VirtualListOverlayStats, VirtualListOverlayTarget }
 
 const { warnLog } = getLogs('VirtualList');
 
-// Debug aid, like ?vltoffset: ?vlloaddelay=<ms> holds every data load for that long. A fast fling into
+// Debug aid: ?vlloaddelay=<ms> holds every data load for that long. A fast fling into
 // history is only interesting while the loads can't keep up with it, and that state is otherwise a race
 // to catch.
 const LoadDelayMs = readLoadDelay();
