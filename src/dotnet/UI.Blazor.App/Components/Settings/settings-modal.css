@@ -33,6 +33,14 @@ body.narrow .close-settings-btn {
     @apply flex-x gap-x-1;
 }
 
+/* ── Voice & Transcription tab ── */
+
+/* Radio rows add 10px of air around their 20px content, so 8px here reads as
+   the same visual gap as the 16px input-based blocks use */
+.settings-tab .listening-linger-form {
+    @apply py-2;
+}
+
 /* ── App Settings tab ── */
 
 .settings-tab .app-settings .tile-item {

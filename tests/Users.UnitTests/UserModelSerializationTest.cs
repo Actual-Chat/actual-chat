@@ -141,11 +141,11 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void UserListeningSettings_Basic()
     {
         var settings = new UserListeningSettings {
-            ContinuedListening = ContinuedListening.For30Seconds,
+            ListeningLinger = ListeningLinger.For30Seconds,
             Origin = "https://actual.chat",
         };
         var s = settings.PassThroughSerializers(Out);
-        s.ContinuedListening.Should().Be(ContinuedListening.For30Seconds);
+        s.ListeningLinger.Should().Be(ListeningLinger.For30Seconds);
         s.Origin.Should().Be(settings.Origin);
     }
 

@@ -16,5 +16,5 @@ public sealed partial record UserListeningSettings : StoredSettings, IHasOrigin,
     [DataMember, MemoryPackOrder(1), Key(1)]
     public string Origin { get; init; } = "";
     [DataMember, MemoryPackOrder(2), Key(2)]
-    public ContinuedListening ContinuedListening { get; init; }
+    public ListeningLinger ListeningLinger { get; init; }
 }

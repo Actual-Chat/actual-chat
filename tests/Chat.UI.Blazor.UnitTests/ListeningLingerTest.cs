@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public class ContinuedListeningTest
+public class ListeningLingerTest
 {
     private static readonly Moment T0 = Moment.EpochStart + TimeSpan.FromDays(20_000);
     private static readonly TimeSpan ListenerTimeout = TimeSpan.FromSeconds(60);

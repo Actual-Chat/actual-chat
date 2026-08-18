@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, ContinuedListeningSettings.Model>
+@inherits ComputedStateComponent<AppUIHub, ListeningLingerSettings.Model>
 @{
 #pragma warning disable IL2091
     if (State.IsInitial(out var m))
@@ -11,10 +11,10 @@
 <Form Model="@_formModel">
     <DataAnnotationsValidator/>
 
-    <FormBlock>
+    <FormBlock Class="listening-linger-form">
         <InputRadioGroup
-            Name="continued-listening"
-            DisplayName="Continued Listening"
+            Name="listening-linger"
+            DisplayName="Keep listening"
             @bind-Value="_formModel.SelectedId">
 
             @foreach (var option in Options) {
@@ -28,7 +28,7 @@
                             Value="@option.Id"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@formId" Text="@option.Title"></Label>
+                        <Label InputId="@formId" Text="@option.Title" IsRequired="true"></Label>
                     </Content>
                 </TileItem>
             }
@@ -39,10 +39,10 @@
 
 @code {
     private static readonly Option[] Options = [
-        new(nameof(ContinuedListening.None), "Off — stop when the conversation ends"),
-        new(nameof(ContinuedListening.For10Seconds), "10 seconds"),
-        new(nameof(ContinuedListening.For30Seconds), "30 seconds"),
-        new(nameof(ContinuedListening.For1Minute), "1 minute"),
+        new(nameof(ListeningLinger.None), "Off"),
+        new(nameof(ListeningLinger.For10Seconds), "10 seconds"),
+        new(nameof(ListeningLinger.For30Seconds), "30 seconds"),
+        new(nameof(ListeningLinger.For1Minute), "1 minute"),
     ];
 
     private FormModel _formModel = null!;
@@ -57,7 +57,7 @@
         var settings = await UserSettingsUI.UserListeningSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
-        return new(settings.ContinuedListening);
+        return new(settings.ListeningLinger);
     }
 
     private Task OnSelectedIdChanged(string id) {
@@ -68,9 +68,9 @@
 
         async Task UpdateSettings() {
             await prevUpdateTask.SilentAwait();
-            var value = Enum.Parse<ContinuedListening>(id);
+            var value = Enum.Parse<ListeningLinger>(id);
             await UserSettingsUI.UserListeningSettings()
-                .Update(x => x with { ContinuedListening = value }, CancellationToken.None);
+                .Update(x => x with { ListeningLinger = value }, CancellationToken.None);
             await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
         }
     }
@@ -86,7 +86,7 @@
     public sealed record Option(string Id, string Title);
 
     public sealed class FormModel {
-        private string _selectedId = nameof(ContinuedListening.None);
+        private string _selectedId = nameof(ListeningLinger.None);
 
         private string FormId { get; }
 
@@ -104,7 +104,7 @@
         public event Func<string, Task>? SelectedIdChanged;
 
         public FormModel(ComponentIdGenerator componentIdGenerator)
-            => FormId = componentIdGenerator.Next("continued-listening-form");
+            => FormId = componentIdGenerator.Next("listening-linger-form");
 
         public string GetFormId(string id)
             => $"{FormId}-{id}";
@@ -113,5 +113,5 @@
             => _selectedId = model.Value.ToString();
     }
 
-    public sealed record Model(ContinuedListening Value);
+    public sealed record Model(ListeningLinger Value);
 }

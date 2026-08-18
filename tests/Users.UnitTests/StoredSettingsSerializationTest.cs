@@ -104,7 +104,7 @@ public partial class StoredSettingsSerializationTest
     public void LegacyUserListeningSettingsDeserializesAsUserListeningSettings()
     {
         // arrange
-        // Legacy has no slot 2 (ContinuedListening) — it must read as the default.
+        // Legacy has no slot 2 (ListeningLinger) — it must read as the default.
         var legacy = new LegacyUserListeningSettings {
             AlwaysListenedChatIds = [ChatId.Parse("the-actual-one")],
             Origin = "listening-test",
@@ -117,7 +117,7 @@ public partial class StoredSettingsSerializationTest
 
         // assert
         result.Origin.Should().Be(legacy.Origin);
-        result.ContinuedListening.Should().Be(ContinuedListening.None);
+        result.ListeningLinger.Should().Be(ListeningLinger.None);
     }
 
     // --- New → Legacy compatibility ---
@@ -174,7 +174,7 @@ public partial class StoredSettingsSerializationTest
         // arrange
         var settings = new UserListeningSettings {
             Origin = "new-listening-test",
-            ContinuedListening = ContinuedListening.For30Seconds,
+            ListeningLinger = ListeningLinger.For30Seconds,
         };
 
         // act
@@ -201,7 +201,7 @@ public partial class StoredSettingsSerializationTest
         // arrange
         var settings = new UserListeningSettings {
             Origin = "mp-listening-test",
-            ContinuedListening = ContinuedListening.For30Seconds,
+            ListeningLinger = ListeningLinger.For30Seconds,
         };
 
         // act

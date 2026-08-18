@@ -526,7 +526,7 @@ public partial class ChatAudioUI
         var cpuClock = Clocks.CpuClock;
         var mustStop = false;
         // Speaker session = the user recorded during this listening session, so their
-        // continued-listening setting applies once the chat goes quiet; a pure listener
+        // listening-linger setting applies once the chat goes quiet; a pure listener
         // session always holds for listenerTimeout - see ComputeStopListeningAt.
         var hasRecorded = await GetRecordingChatId().ConfigureAwait(false) == chatId;
         var lastActivityAt = serverClock.Now;
@@ -607,7 +607,7 @@ public partial class ChatAudioUI
                 .Capture(() => ChatVideoUI.GetOwnSourceKind(chatId, ct), ct)
                 .ConfigureAwait(false);
             var cSetting = await Computed
-                .Capture(() => GetContinuedListening(ct), ct)
+                .Capture(() => GetListeningLinger(ct), ct)
                 .ConfigureAwait(false);
 
             while (!ct.IsCancellationRequested) {
@@ -969,12 +969,12 @@ public partial class ChatAudioUI
         return IsActuallyConversing(stats, ownAuthor?.Id, isTranscriptionOn, AudioSettings);
     }
 
-    // Exists so Computed.Capture in WhenIdle gets a Computed<ContinuedListening>: capture binds
+    // Exists so Computed.Capture in WhenIdle gets a Computed<ListeningLinger>: capture binds
     // to the innermost compute-method call, which otherwise is IUserSettings.Get producing an
     // invariant Computed<StoredSettings?> - the cast to any settings type throws.
     [ComputeMethod]
-    protected virtual Task<ContinuedListening> GetContinuedListening(CancellationToken cancellationToken)
-        => UserSettingsUI.UserListeningSettings().Get(x => x.ContinuedListening, cancellationToken);
+    protected virtual Task<ListeningLinger> GetListeningLinger(CancellationToken cancellationToken)
+        => UserSettingsUI.UserListeningSettings().Get(x => x.ListeningLinger, cancellationToken);
 
     [ComputeMethod]
     protected virtual async Task<RecordingBeepState> GetRecordingBeepState(CancellationToken cancellationToken)

@@ -202,7 +202,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public static Moment ComputeStopListeningAt(
         Moment lastActivityAt, bool hasRecorded, TimeSpan listenerTimeout, TimeSpan speakerTimeout)
-        // A speaker session (the user recorded during it) ends per their continued-listening
+        // A speaker session (the user recorded during it) ends per their listening-linger
         // setting; a pure listener session always holds for the fixed listener timeout, so
         // joining muted stays usable even with the setting off.
         => lastActivityAt + (hasRecorded ? speakerTimeout : listenerTimeout);

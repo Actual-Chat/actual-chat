@@ -606,8 +606,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ChatPosition` - Represents a user's read or view position in a chat.
 - `ChatPositionKind` (enum) - Specifies the type of position tracked in a chat.
 - `ChatUsageListKind` (enum) - Specifies the type of chat usage tracking list.
-- `ContinuedListening` (enum) - Specifies how long listening continues after voice activity in a chat ends.
-- `ContinuedListeningExt` (static class) - Extension methods for ContinuedListening.
+- `ListeningLinger` (enum) - Specifies how long listening keeps running after a chat's conversation goes quiet.
+- `ListeningLingerExt` (static class) - Extension methods for ListeningLinger.
 - `Presence` (enum) - Specifies a user's online presence status.
 - `TimeZone` (record) - Represents a time zone with identifier and display name.
 - `TotpPurpose` (enum) - Specifies the purpose of a time-based one-time password (TOTP).
@@ -617,7 +617,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `UserChatSettings` (record) - Per-chat user preferences and state.
 - `UserEmailsSettings` (record) - Email notification and digest preferences.
 - `UserLanguageSettings` (record) - Language and localization preferences.
-- `UserListeningSettings` (record) - Global continued-listening preference for audio playback.
+- `UserListeningSettings` (record) - Global listening-linger preference for audio playback.
 - `UserNavbarSettings` (record) - Navigation bar customization settings.
 - `UserOnboardingSettings` (record) - Onboarding state and completion tracking.
 - `UserChatRecordingDetectedLanguage` (record) - Detected language for chat recording.

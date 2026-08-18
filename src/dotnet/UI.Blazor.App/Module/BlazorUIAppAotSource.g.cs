@@ -134,7 +134,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactsPermissionBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContentListDateVisor>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContinuedListeningSettings>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListeningLingerSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationFooterView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationHeaderView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationMenu>();
@@ -872,7 +872,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactsPermissionBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContentListDateVisor), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ContinuedListeningSettings), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ListeningLingerSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationFooterView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationHeaderView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationMenu), AotTypeKind.Component),
