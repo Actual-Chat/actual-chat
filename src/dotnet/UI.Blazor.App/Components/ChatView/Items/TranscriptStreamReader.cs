@@ -6,7 +6,10 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
 {
-    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.25, 5);
+    // 0.5s to 2s, doubling. The previous ladder reached 9s and 13s cumulative, so a stream that
+    // became available a few seconds in was not noticed for another ten - which is what left an
+    // ellipsis or a "Transcribing" badge standing over a message that had already been transcribed.
+    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5, 2, multiplier: 2);
 
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private ILiveAudioStreams LiveAudioStreams => hub.LiveAudioStreams;
