@@ -72,7 +72,8 @@ public sealed record ConversationViewState(
 
 public partial class ChatUI
 {
-    private const int OwnAudioEntryScanDepth = 10;
+    // How far back along the chat the streaming verdict looks, in entry ids.
+    private const int StreamingScanDepth = 20;
     private static readonly TimeSpan StreamingEntryGap = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
     // Server-side only: it reaches Google Managed Prometheus via the server's OTel pipeline, and MAUI
@@ -888,17 +889,10 @@ public partial class ChatUI
             if (audioRecordingEntry is not null) {
                 // Hide "Transcribing..." when a real transcription entry already exists
                 // (i.e., the last entry from this author is streaming content).
-                var (isSuppressed, expiresAt) = GetStreamingSuppression(entries, currentAuthorId!);
-                if (!isSuppressed)
+                var suppression = await GetStreamingSuppression(chatId, currentAuthorId!, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!suppression.IsSuppressed)
                     entries.Add(audioRecordingEntry);
-                else if (expiresAt is { } moment) {
-                    // The grace period goes stale on its own, so the tile has to come back when it
-                    // does - at that moment, not a whole gap after this render, or the badge returns
-                    // late by however much of the gap had already elapsed before it.
-                    var delay = moment - Clocks.ServerClock.Now;
-                    if (delay > TimeSpan.Zero)
-                        Computed.GetCurrent()?.Invalidate(delay);
-                }
             }
         }
         if (entries.Count == 0 && conversations.Length == 0)
@@ -1565,35 +1559,49 @@ public partial class ChatUI
         return (currentId, actualOffset);
     }
 
+    // Asked of the chat, not of a tile: a tile is five ids wide, so scanning its entries answered
+    // "is my transcript running" from whatever five happened to be at the end - and rolled the answer
+    // over every five entries. Reading the tail through ChatEntryReader takes a dependency on exactly
+    // what it pulls, so the verdict is invalidated by the entries that could change it.
+    //
     // Null ExpiresAt with IsSuppressed means only a change can lift it - there is nothing to time out.
-    private (bool IsSuppressed, Moment? ExpiresAt) GetStreamingSuppression(
-        IList<ChatEntry> entries,
-        AuthorId ownAuthorId)
+    [ComputeMethod(ConsolidationDelay = 0.05)]
+    protected virtual async Task<StreamingSuppression> GetStreamingSuppression(
+        ChatId chatId,
+        AuthorId ownAuthorId,
+        CancellationToken cancellationToken)
     {
-        // Depth counts the caller's own audio entries rather than list positions, so anyone else
-        // talking in between can't push the transcript out of the window.
+        var lidRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (lidRange.IsEmpty)
+            return StreamingSuppression.None;
+
         // Server clock: EndsAt below is server-stamped, and a device clock a few seconds off either
         // way turns the grace period into "always" or "never".
         var now = Clocks.ServerClock.Now;
-        var scanned = 0;
-        for (var i = entries.Count - 1; i >= 0 && scanned < OwnAudioEntryScanDepth; i--) {
-            var entry = entries[i];
+        var reader = new ChatEntryReader(Chats, Session, chatId);
+        var scanRange = new Range<long>(Math.Max(lidRange.Start, lidRange.End - StreamingScanDepth), lidRange.End);
+        await foreach (var entry in reader.ReadReverse(scanRange, cancellationToken).ConfigureAwait(false)) {
             if (entry.AuthorId != ownAuthorId || !IsAudioKind(entry))
                 continue;
             if (entry.IsContentStreaming)
-                return (true, null);
+                return StreamingSuppression.Indefinite;
 
             // IsContentStreaming goes false the moment recognition closes one entry and stays false
             // until it opens the next, while the client keeps rendering that entry as streaming from
             // its own reader. Without this grace period "Transcribing..." flashes into every gap,
             // right next to a transcript the user can see is still running.
-            if (entry.EndsAt is { } endsAt && now - endsAt < StreamingEntryGap)
-                return (true, endsAt + StreamingEntryGap);
+            if (entry.EndsAt is not { } endsAt || now - endsAt >= StreamingEntryGap)
+                continue;
 
-            scanned++;
+            // The answer goes stale on its own, so it expires itself rather than making the whole
+            // tile recompute a flat gap later.
+            var delay = endsAt + StreamingEntryGap - now;
+            if (delay > TimeSpan.Zero)
+                Computed.GetCurrent()?.Invalidate(delay);
+            return new StreamingSuppression(true, endsAt + StreamingEntryGap);
         }
 
-        return (false, null);
+        return StreamingSuppression.None;
     }
 
     // Nested types
