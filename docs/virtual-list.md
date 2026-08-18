@@ -347,6 +347,35 @@ property and its contributors are independent: the rubber band, the list's `tOff
 `setBaseOffset(-tOffset)`), and a sub-pixel repaint nudge (§4.6). Each sets its own contribution and
 the controller writes the sum.
 
+#### When the translation is standing
+
+Between a fold and whatever raised it, `tOffset` is off its baseline and the container carries the
+difference. Two things raise it, and both are corrections the list makes *without* a scroll write:
+
+- **A re-pin follow** — `repinEdge`. A render, re-layout or viewport resize moved the pinned edge in
+  the DOM, and the delta is within `maxOverscroll`. It is a translation rather than a scroll write
+  because a follow routinely lands while the list is still moving, and a `scrollTop` write there would
+  end a fling. Past `maxTOffset` — half a screen, floored at 200px — it folds on the spot (§3.1).
+- **A screen-anchor hold** — `correctScreenAnchor`, once per frame for the duration of a
+  `data-vl-anchor` interaction. Expanding a conversation moves the chain by the whole of what is still
+  growing — measured at 349px — and the translation is what holds the anchored element still through
+  it. Its `maxOverscroll` bound is a runaway guard against the loop feeding itself, not a size limit.
+
+Separately, `?vltoffset=<px>` makes `tOffset` non-zero *permanently*, but its excursion zero: every
+fold returns to that baseline rather than to zero. That is the point of it — see below.
+
+So the windows in which a translation stands are short and ordinary: the tail of a scroll that grew
+the transcript, and the length of an expand or collapse. Both are exactly when the user is looking.
+
+**Known consequence.** `position: sticky` resolves inside the container's transform, so while a
+translation stands, a sticky element pins against a frame that is displaced by it. Measured with
+`?vltoffset=1000`, which holds that state permanently: a sticky avatar badge sat 36.9px from where it
+should pin, against 0px with the translation at zero. `updateStickyItems` corrects for the *band's*
+part of the transform but is gated on `hiddenScroll`, which a follow never sets — so the `tOffset`
+part is uncorrected. Keying that gate off the whole transform instead is not a free change: the
+comment on `hiddenScroll` records that cancelling the spring term as well was measured at 279px
+against 135px for leaving it alone.
+
 #### Folding
 
 `foldTOffset()` turns the translation's excursion from its configured baseline into the model's own
