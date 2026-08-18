@@ -1551,7 +1551,9 @@ public partial class ChatUI
     {
         // Depth counts the caller's own audio entries rather than list positions, so anyone else
         // talking in between can't push the transcript out of the window.
-        var now = Clocks.SystemClock.Now;
+        // Server clock: EndsAt below is server-stamped, and a device clock a few seconds off either
+        // way turns the grace period into "always" or "never".
+        var now = Clocks.ServerClock.Now;
         var scanned = 0;
         for (var i = entries.Count - 1; i >= 0 && scanned < OwnAudioEntryScanDepth; i--) {
             var entry = entries[i];
