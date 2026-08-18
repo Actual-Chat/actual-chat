@@ -398,6 +398,13 @@ half a screen (`MaxTOffsetScreens`), floored at 200px (`MinTOffsetPx`) for a lis
 tiles around where the *scroller* thinks it is, and content carried far from there is content the
 compositor has not painted. That fold is a layout write, so it is still not a scroll write.
 
+That cap is the re-pin follow's (`repinEdge`). A screen anchor is deliberately not held to it:
+`correctScreenAnchor` bounds itself by `maxOverscroll` instead, because expanding a block moves the
+chain by the whole of what is still growing — measured at 349px, already past `maxTOffset` on a phone
+— and holding the anchor through exactly that is the point. Its bound is a runaway guard against a
+loop feeding itself, not a size limit, and the hold is short enough for the rasterization argument
+above not to bite.
+
 ### 3.2 The render direction
 
 *The direction is configured at construction — `Reverse` for the chat view — and there is no `Auto`.
@@ -1720,8 +1727,10 @@ Two things are built in and worth reaching for first:
   flow. The same pass runs `checkContentOverflow`, which catches an item whose box is smaller than the
   content it must reserve for — the usual cause of one message painting over the next.
 - **The overlay**, which draws the live render direction, pinned edge, spacer visibility, known ends,
-  request and render activity, window sizes and mean item height, refreshed every 200ms and reading
-  only inline styles so it costs no layout.
+  request and render activity, window sizes and mean item height, refreshed every 200ms. It is not
+  free: positioning itself reads `getBoundingClientRect()` and `documentElement.clientWidth`, and it
+  writes its own styles between one list's read and the next one's, so with several lists enabled each
+  tick costs a synchronous layout. Debug-only and off by default, which is why it is left that way.
 
 Measurement traps worth knowing, each of which produced a confidently wrong answer first:
 
@@ -1801,10 +1810,11 @@ it — one pass per separator in the way, i.e. one for the chat list.
 Both measurements are taken rather than assumed, and both have a wrinkle:
 
 - **The item size** comes from an item the data source marked `HasRegularSize` (`data-vl-size-source`),
-  plus one row gap. Items carrying a separator are irregular and would poison the estimate. Sticking to
-  a marked key while it stays rendered also keeps the value from flapping between two rows that differ
-  by a sub-pixel; changes under `ItemSizeEpsilon` (0.5px) are ignored outright, because every spacer
-  rewrite is a chance for the browser to clamp `scrollTop`.
+  plus one row gap. Items carrying a separator are irregular and would poison the estimate. The marked
+  item is re-found on every render and is simply the first one in the DOM, so which row it is changes
+  as the window moves; what keeps the value from flapping between two rows that differ by a sub-pixel
+  is `ItemSizeEpsilon` (0.5px) alone, below which a change is ignored outright — every spacer rewrite
+  is a chance for the browser to clamp `scrollTop`.
 - **The separator size** is measured from an invisible, absolutely positioned copy rendered once
   (`.c-separator-measure`), so the model has its exact outer height even when every item carrying one is
   outside the loaded window. Its margins are part of what it costs and are not in its own box, so they
