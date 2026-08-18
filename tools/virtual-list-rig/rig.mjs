@@ -30,6 +30,27 @@ ws.on('message', d => { const m = JSON.parse(d.toString()); if (m.id && pending.
 await new Promise(r => ws.on('open', r));
 await send('Runtime.enable'); await send('Page.enable');
 await send('Page.bringToFront');
+// The chat view is only the touch-scrolling element on a phone-shaped viewport, and an emulation
+// override belongs to the session that set it - Chrome drops it when that client detaches, which is
+// how a matrix run ends up half-measured on a desktop layout. So this session sets its own.
+//   VL_RIG_VIEWPORT=412x915x2.6   (default; VL_RIG_VIEWPORT=off leaves the window alone)
+const applyViewport = async () => {
+    const value = process.env.VL_RIG_VIEWPORT ?? '412x915x2.6';
+    if (value === 'off')
+        return null;
+
+    const match = /^(\d+)x(\d+)(?:x([\d.]+))?$/.exec(value);
+    if (!match) throw new Error('VL_RIG_VIEWPORT must be <width>x<height>[x<deviceScaleFactor>] or "off"');
+    const metrics = {
+        width: Number(match[1]),
+        height: Number(match[2]),
+        deviceScaleFactor: Number(match[3] ?? 0),
+        mobile: true,
+    };
+    await send('Emulation.setDeviceMetricsOverride', metrics);
+    return metrics;
+};
+await applyViewport();
 const url = new URL(target.url);
 if (NOLOCK) url.searchParams.set('vllock', '0'); else url.searchParams.delete('vllock');
 if (TAKEOVER) url.searchParams.set('vltakeover', '1'); else url.searchParams.delete('vltakeover');

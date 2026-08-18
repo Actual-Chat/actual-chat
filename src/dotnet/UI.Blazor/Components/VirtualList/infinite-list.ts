@@ -3,6 +3,7 @@ import { DotNet } from '@microsoft/dotnet-js-interop';
 import { getLogs } from 'logging';
 import { clamp } from 'math';
 import { DeviceInfo } from 'device-info';
+import { fastRaf } from 'fast-raf';
 import { ScrollController, ScrollLimits } from 'scroll-controller';
 import { NumberRange, Range } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
@@ -53,19 +54,19 @@ const RepinMaxPasses = 3;
 // compositor has not painted. Half a screen, floored for a list that is briefly tiny.
 const MaxTOffsetScreens = 0.5;
 const MinTOffsetPx = 200;
+// How long the translation may stand before it is folded into the model. It buys a correction that
+// costs no layout, which is worth something only while corrections keep arriving; past this it is
+// just the container disagreeing with the model, and the fold that ends it costs one layout pass.
+const FoldDelayMs = 100;
 // Consecutive frames an anchored element must not move before the list stops holding it. Long enough
 // to bridge the gap between the model reaching its settled heights and the DOM getting there.
 const ScreenAnchorStillFrames = 12;
-// Below this a correction is not worth a style write.
-const StickyPinnedPx = 0.5;
-// What the consumer marks a position:sticky element with, so the list can keep it in step with the
-// content while the rubber band is hiding scroll from it.
+// What the consumer marks a position:sticky element with, so the list can move its sticky threshold
+// by whatever the content's transform is carrying - see updateStickyItems.
 const StickyItemClass = 'vl-sticky';
-// How close to a scroll limit the list starts tracking where its sticky elements sit. An excursion
-// can only begin by crossing a limit, so the last in-band frame before one is always inside this
-// zone; away from the edges the tracking would cost a reflow per scroll event for nothing. Wide
-// enough to cover a frame of the fastest fling measured here (~390px at 60Hz) several times over.
-const StickyTrackingZonePx = 1000;
+// The custom property that threshold is written to, so a frame of it costs one style write rather
+// than one per element.
+const StickyShiftProperty = '--vl-sticky-shift';
 // Consecutive frames the position must not move before the list acts on a standing intent - shifting
 // the chain back to the middle, or putting the render direction back. Event-based settle checks can't
 // do this: a fling delivers no events between frames and still passes them, while the position itself
@@ -102,11 +103,11 @@ const DefaultItemHeight = 48;
 const EdgeSentinel = Symbol('virtualList.edge');
 type ItemKey = string | symbol;
 
-// A sticky element the consumer has declared, and where it last sat within the content while the
-// scroll was still inside its own band. Null until it has been seen there even once.
+// A sticky element the consumer has declared, and whether its insets are currently expressed in terms
+// of the shift.
 interface StickyItem {
     readonly ref: HTMLElement;
-    offset: number | null;
+    isShifted: boolean;
 }
 
 interface InfiniteListItem {
@@ -184,6 +185,10 @@ export class InfiniteList extends VirtualList {
     // tOffset. A transform composites after layout, so writing it can't end a fling the way a scrollTop
     // write does - which is what every correction between renders uses it for.
     private tOffset = 0;
+    // When the excursion last left the baseline, and the watch that folds it once it may - see
+    // watchFold. Zero whenever the translation is at its baseline.
+    private tOffsetSince = 0;
+    private isWatchingFold = false;
     // The direction in force right now, which is the configured one except while an anchored element
     // is being held - see onInteractiveEvent.
     private isReverse: boolean;
@@ -204,8 +209,13 @@ export class InfiniteList extends VirtualList {
     // group has no modelled position at all.
     private screenAnchor: { id: string; top: number; at: number; isPlaced: boolean } | null = null;
     private isWatchingScreenAnchor = false;
-    private hasStickyOffset = false;
+    private stickyShift = 0;
     private stickyRefs = new Array<StickyItem>();
+    // The pinned edge's follow, which is a scroll write on a frame rather than a translation: whether
+    // one is already booked for this frame, and where the last one landed, so onScroll can tell that
+    // echo from the user.
+    private isFollowScheduled = false;
+    private lastFollowTop: number | null = null;
     private pendingJump: Jump | null = null;
     private isAwaitingStability = false;
     private isAwaitingJump = false;
@@ -269,6 +279,7 @@ export class InfiniteList extends VirtualList {
         this.scrollController = new ScrollController(
             ref, true, this.containerRef, () => this.computeScrollLimits());
         this.scrollController.onTransform = () => this.updateStickyItems();
+        this.scrollController.onTouch = () => this.foldTOffset();
         this.setTOffset(this.tOffsetBaseline);
         const listenerOptions = { passive: true, signal: this.abortController.signal };
         ref.addEventListener('scroll', this.onScroll, listenerOptions);
@@ -610,6 +621,43 @@ export class InfiniteList extends VirtualList {
 
         this.tOffset = tOffset;
         this.scrollController.setBaseOffset(-tOffset);
+        if (this.tOffsetExcursion === 0)
+            this.tOffsetSince = 0;
+        else if (this.tOffsetSince === 0) {
+            this.tOffsetSince = performance.now();
+            this.watchFold();
+        }
+    }
+
+    // The backstop that makes the translation temporary by rule: everything else that folds waits for
+    // something to happen - a render, a settle, a scroll write, a finger landing - and a correction
+    // that is the last thing to happen would otherwise stand until the next one.
+    //
+    // The delay is there because the fold costs the layout pass the translation exists to avoid, and
+    // corrections arrive in bursts: an expand hold is one per frame for its whole length. The band is
+    // waited out because a fold is a layout write, and layout landing on a live fling is the one claim
+    // in this design never measured on a device.
+    private watchFold(): void {
+        if (this.isWatchingFold)
+            return;
+
+        this.isWatchingFold = true;
+        const tick = (): void => {
+            if (this.isDisposed || this.tOffsetSince === 0) {
+                this.isWatchingFold = false;
+                return;
+            }
+            if (performance.now() - this.tOffsetSince < FoldDelayMs
+                || this.isApplyingRender
+                || this.scrollController.isOverscrollActive) {
+                requestAnimationFrame(tick);
+                return;
+            }
+
+            this.isWatchingFold = false;
+            this.foldTOffset();
+        };
+        requestAnimationFrame(tick);
     }
 
     // Turns the translation into the model's own coordinates: the chain moves by the offset while the
@@ -854,118 +902,78 @@ export class InfiniteList extends VirtualList {
             this.scrollController.clampToLimits();
     }
 
-    // Where the chain sits in the fixed scroll space, and the only writer of it. The spacer stands
-    // between the container's edge and the first item, so it comes out of the same number.
-    // What the rubber band is hiding: how far the scroller has run outside its own band. The transform
-    // cancels exactly this much of the scroll, which is why the content appears not to have moved by
-    // it - but position: sticky is resolved against the real scroll position, so anything sticky has
-    // re-clamped by it and the transform then moves it again. Measured on a bottom overscroll, a
-    // pinned conversation header travelled 140px relative to the content around it.
+    // Sticky elements are clamped during layout, against the real scroll position, and the content's
+    // transform is applied after that - so a stuck one is carried by the transform instead of staying
+    // where it is stuck. Measured here: a 120px transform moved every stuck element by the whole 120px.
     //
-    // Only this term, not the whole transform: the rest of the transform is the spring, which is
-    // motion the user is meant to see and which content and sticky elements share. Cancelling that as
-    // well doubled the problem - measured at 279px against 135px for leaving it alone.
-    private get hiddenScroll(): number {
-        const limits = this.scrollController.getEffectiveScrollLimits();
-        const scrollTop = this.ref.scrollTop;
-        return scrollTop - clamp(scrollTop, limits.min, limits.max);
-    }
-
-    // Holds every sticky element at the offset within the content it last had while the scroll was in
-    // band, so an excursion outside the band moves it exactly as much as it moves everything else.
-    //
-    // Not "cancel the hidden scroll on the pinned ones": which ones are pinned is the hard part, and
-    // three different tests for it were all wrong - against the parent, which for the header moves with
-    // it; against offsetTop, which the engine reports already shifted by the stick; and against the
-    // element's own inset, which mis-fires as soon as a correction has moved it. This needs none of
-    // that. An element that is not pinned already keeps its offset, so its correction is zero without
-    // anything having to know that; a pinned one is exactly the case where the offset changes.
-    //
-    // The baseline has to be tracked in band rather than sampled once the excursion is under way: by
-    // the first frame with a non-zero hidden scroll the element has already slid by that frame's worth
-    // of it, and holding it there only freezes the error. Measured on a bottom overscroll reaching
-    // 300px over 8 frames, sampling late held a pinned conversation header 113px off the content.
+    // What moves is the threshold, not the element. `top: base + shift` puts the clamp where the
+    // transform is about to take it, so the browser paints what the same amount of real scrolling would
+    // have painted - measured at 0.00px against a real scroll of ±120px over every element on screen,
+    // against 27px and 109px for the transform alone. Which elements are pinned never comes into it,
+    // and that is the point: three different tests for pinnedness were all wrong, and the browser needs
+    // none. Both terms of the transform, since both displace a stuck element the same way.
     private updateStickyItems(): void {
-        if (this.stickyRefs.length === 0)
+        const shift = -this.scrollController.transformOffset;
+        if (shift === this.stickyShift)
             return;
 
-        if (this.hiddenScroll === 0) {
-            this.trackStickyItems();
-            return;
-        }
-
-        const containerTop = this.containerRef.getBoundingClientRect().top;
-        this.hasStickyOffset = true;
-        // Read every position before writing any of them, for the reason trackStickyItems states: a
-        // write invalidates style, so an interleaved pass costs a recalc per element instead of one
-        // for the batch. The set is every sticky item in the loaded window - a header or a badge per
-        // message - and this runs on each frame of an excursion, which is where jitter shows.
-        const wanted = new Array<string | null>(this.stickyRefs.length).fill(null);
-        for (let i = 0; i < this.stickyRefs.length; i++) {
-            const sticky = this.stickyRefs[i];
-            const ref = sticky.ref;
-            if (!ref.isConnected || sticky.offset == null)
-                continue;
-
-            const own = translateY(ref.style.transform);
-            const delta = sticky.offset - (ref.getBoundingClientRect().top - own - containerTop);
-            wanted[i] = Math.abs(delta) < StickyPinnedPx ? '' : `translate3d(0, ${delta}px, 0)`;
-        }
-        for (let i = 0; i < this.stickyRefs.length; i++) {
-            const value = wanted[i];
-            const ref = this.stickyRefs[i].ref;
-            // style.transform is an inline-style read, so it does not undo the split above.
-            if (value != null && ref.style.transform !== value)
-                ref.style.transform = value;
-        }
+        this.stickyShift = shift;
+        // One custom property on the container rather than a write per element: the set is a header or
+        // a badge per message, and this runs on every frame of an excursion.
+        if (shift === 0)
+            this.containerRef.style.removeProperty(StickyShiftProperty);
+        else
+            this.containerRef.style.setProperty(StickyShiftProperty, `${shift}px`);
+        for (const sticky of this.stickyRefs)
+            this.setStickyShifted(sticky, shift !== 0);
     }
 
-    // Where each sticky element sits within the content right now, which is what the next excursion
-    // holds it at. Sticking against the scrollport edge is the element's own business and moves this
-    // legitimately, so it is re-read rather than remembered from the render.
-    private trackStickyItems(): void {
-        // Clearing the whole set before reading any of it costs one reflow instead of one per element,
-        // and happens on the single frame that ends an excursion. It has to precede the tracking-zone
-        // test: the excursion is what triggers the load, and the re-anchor that follows moves the limits
-        // a page away, so a correction left on the elements would never be handed back.
-        if (this.hasStickyOffset) {
-            this.hasStickyOffset = false;
-            for (const sticky of this.stickyRefs)
-                if (sticky.ref.isConnected && sticky.ref.style.transform !== '')
-                    sticky.ref.style.transform = '';
-        }
-
-        const limits = this.scrollController.getEffectiveScrollLimits();
-        const scrollOffset = this.ref.scrollTop;
-        if (scrollOffset - limits.min > StickyTrackingZonePx && limits.max - scrollOffset > StickyTrackingZonePx)
+    // Whether this element's insets are expressed in terms of the shift. Installed only while there is
+    // one to carry, so what gets read next time is the element's own stylesheet: a media query or a
+    // class that changed the inset meanwhile must not be overwritten from a stale copy of it.
+    private setStickyShifted(sticky: StickyItem, isShifted: boolean): void {
+        if (sticky.isShifted === isShifted || !sticky.ref.isConnected)
             return;
 
-        const containerTop = this.containerRef.getBoundingClientRect().top;
-        for (const sticky of this.stickyRefs)
-            if (sticky.ref.isConnected)
-                sticky.offset = sticky.ref.getBoundingClientRect().top - containerTop;
+        sticky.isShifted = isShifted;
+        const style = sticky.ref.style;
+        if (!isShifted) {
+            style.top = '';
+            style.bottom = '';
+            return;
+        }
+
+        const computed = getComputedStyle(sticky.ref);
+        const top = readInset(computed.top);
+        const bottom = readInset(computed.bottom);
+        if (top != null)
+            style.top = `calc(${top}px + var(${StickyShiftProperty}, 0px))`;
+        if (bottom != null)
+            style.bottom = `calc(${bottom}px - var(${StickyShiftProperty}, 0px))`;
     }
 
     // Declared by the consumer, with StickyItemClass, rather than discovered: finding them would mean
-    // a computed style for every descendant, and the insets have to be read the same way. Once per
-    // render, since the set only changes when the rendered items do.
-    //
-    // Baselines survive the rebuild: a render can land in the middle of an excursion, and an element
-    // that came back with a fresh one would be held wherever the hidden scroll had already pushed it.
+    // a computed style for every descendant. Once per render, since the set only changes when the
+    // rendered items do.
     private findStickyItems(): void {
-        const offsets = new Map(this.stickyRefs.map(x => [x.ref, x.offset]));
+        const known = new Map(this.stickyRefs.map(x => [x.ref, x]));
         const refs = new Array<StickyItem>();
         for (const ref of this.containerRef.querySelectorAll<HTMLElement>(`:scope .${StickyItemClass}`)) {
-            refs.push({ ref, offset: offsets.get(ref) ?? null });
-            offsets.delete(ref);
+            const sticky = known.get(ref) ?? { ref, isShifted: false };
+            // A render can land in the middle of an excursion, and an element that arrives during one
+            // has to be given the shift the others are already carrying.
+            this.setStickyShifted(sticky, this.stickyShift !== 0);
+            refs.push(sticky);
+            known.delete(ref);
         }
         this.stickyRefs = refs;
-        // Whatever stopped being sticky would keep its last correction: nothing writes it again.
-        for (const ref of offsets.keys())
-            if (ref.isConnected && ref.style.transform !== '')
-                ref.style.transform = '';
+        // Whatever stopped being sticky would keep the insets it was given: nothing writes them again.
+        for (const sticky of known.values())
+            this.setStickyShifted(sticky, false);
     }
 
+    // Where the chain sits in the fixed scroll space, and the only writer of it. The spacer stands
+    // between the container's edge and the first item, so it comes out of the same number.
     private writeChainPosition(): void {
         if (!this.isReverse) {
             this.containerRef.style.bottom = '';
@@ -1119,61 +1127,17 @@ export class InfiniteList extends VirtualList {
             return;
         }
 
-        // Measured from the DOM rather than derived from the model: an edge re-pin has to land flush
-        // even when the model runs a pixel or two long, and the DOM is the thing the user sees. A rect
-        // already carries the translation, so the gap it reports is the visible one and the target it
-        // produces is in the same coordinates as viewOffset.
-        const measureTarget = (): number => {
-            const viewRect = this.ref.getBoundingClientRect();
-            const viewOffset = this.viewOffset;
-            const minViewOffset = this.tOffsetBaseline;
-            const maxViewOffset = minViewOffset + this.maxScrollTop;
-            let delta: number;
-            if (edge === VirtualListEdge.Start) {
-                const firstRef = this.firstItemRef;
-                delta = firstRef
-                    ? firstRef.getBoundingClientRect().top - viewRect.top
-                    : minViewOffset - viewOffset;
-            }
-            else {
-                const anchorRect = this.endAnchorRef.getBoundingClientRect();
-                if (anchorRect.height > 0)
-                    delta = anchorRect.bottom - viewRect.bottom;
-                else {
-                    const lastRef = this.lastItemRef;
-                    delta = lastRef
-                        ? lastRef.getBoundingClientRect().bottom - viewRect.bottom
-                        : maxViewOffset - viewOffset;
-                }
-            }
-            const target = clamp(viewOffset + delta, minViewOffset, maxViewOffset);
-            // Same cap as computeScrollLimits: the end anchor must not push the first message off the
-            // top of a conversation that fits on screen.
-            return this.isChainWithinViewport ? Math.min(target, this.chainStart) : target;
-        };
-
-        let target = measureTarget();
+        let target = this.measureEdgeTarget(edge);
         const delta = target - this.viewOffset;
         if (Math.abs(delta) < RepinEpsilon)
             return;
 
         // Anything scrolling could itself have produced is a follow, however large - a message arrived,
-        // a transcript grew, the viewport resized under a pinned list - and a follow never writes
-        // scrollTop, because it routinely lands while the list is still moving. Size alone does not
-        // make one a re-placement: on a short viewport a single tall message can exceed the translation
-        // cap, and jumping there would end a fling for an ordinary new message.
+        // a transcript grew, the viewport resized under a pinned list. Size alone does not make one a
+        // re-placement: on a short viewport a single tall message can exceed a screen, and jumping
+        // there would end a fling for an ordinary new message.
         if (Math.abs(delta) <= this.maxOverscroll) {
-            debugLog?.log(`[${this.identity}] repinEdge: ${edge} by ${delta.toFixed(1)} (${reason})`);
-            const tOffset = this.tOffset + delta;
-            this.setTOffset(tOffset);
-            // Past the cap the translation stops being free to leave standing, so it is made real at
-            // once. That costs a layout pass and - unlike the jump below - interrupts nothing.
-            if (Math.abs(tOffset - this.tOffsetBaseline) > this.maxTOffset)
-                this.foldTOffset();
-
-            // A translation moves the view without a scroll event, so nothing else will notice that
-            // the window it is looking at has changed.
-            this.updateViewportThrottled();
+            this.scheduleFollow(reason);
             return;
         }
 
@@ -1186,9 +1150,104 @@ export class InfiniteList extends VirtualList {
                 return;
 
             this.setScrollOffset(target);
-            target = measureTarget();
+            target = this.measureEdgeTarget(edge);
         }
         debugLog?.log(`[${this.identity}] repinEdge: ${edge} (${reason})`);
+    }
+
+    // Where the pinned edge wants the view, in viewOffset coordinates. Measured from the DOM rather
+    // than derived from the model: an edge re-pin has to land flush even when the model runs a pixel
+    // or two long, and the DOM is the thing the user sees. A rect already carries the translation, so
+    // the gap it reports is the visible one and the target it produces is in viewOffset coordinates.
+    private measureEdgeTarget(edge: VirtualListEdge): number {
+        const viewRect = this.ref.getBoundingClientRect();
+        const viewOffset = this.viewOffset;
+        const minViewOffset = this.tOffsetBaseline;
+        const maxViewOffset = minViewOffset + this.maxScrollTop;
+        let delta: number;
+        if (edge === VirtualListEdge.Start) {
+            const firstRef = this.firstItemRef;
+            delta = firstRef
+                ? firstRef.getBoundingClientRect().top - viewRect.top
+                : minViewOffset - viewOffset;
+        }
+        else {
+            const anchorRect = this.endAnchorRef.getBoundingClientRect();
+            if (anchorRect.height > 0)
+                delta = anchorRect.bottom - viewRect.bottom;
+            else {
+                const lastRef = this.lastItemRef;
+                delta = lastRef
+                    ? lastRef.getBoundingClientRect().bottom - viewRect.bottom
+                    : maxViewOffset - viewOffset;
+            }
+        }
+        const target = clamp(viewOffset + delta, minViewOffset, maxViewOffset);
+        // Same cap as computeScrollLimits: the end anchor must not push the first message off the top
+        // of a conversation that fits on screen.
+        return this.isChainWithinViewport ? Math.min(target, this.chainStart) : target;
+    }
+
+    // A follow moves the position the user is at, so it moves the scroll position - the term the
+    // compositor and position: sticky read too. Carried in the translation instead, all of those keep
+    // pointing at a place the user has left.
+    //
+    // On a frame, and re-measured there, because a render is not the last thing to move the edge before
+    // the frame ends and several renders in one frame must not become several writes. Measured in the
+    // read phase and written in the write phase, so it is not this that makes someone else's read
+    // synchronous.
+    private scheduleFollow(reason: string): void {
+        if (this.isFollowScheduled)
+            return;
+
+        this.isFollowScheduled = true;
+        let delta = 0;
+        fastRaf({
+            read: () => delta = this.measureFollow(),
+            write: () => {
+                this.isFollowScheduled = false;
+                this.applyFollow(delta, reason);
+            },
+        });
+    }
+
+    private measureFollow(): number {
+        const edge = this.pinnedEdge;
+        if (this.isDisposed || edge == null || this.items.length === 0)
+            return 0;
+
+        // A finger owns the position while it is down. An excursion means the position is not the one
+        // on screen, and it has its own way back.
+        if (this.scrollController.isTouchActive)
+            return 0;
+        if (this.scrollController.isOverscrollActive) {
+            this.repinWhenOverscrollEnds();
+            return 0;
+        }
+
+        const delta = this.measureEdgeTarget(edge) - this.viewOffset;
+        return Math.abs(delta) < RepinEpsilon || Math.abs(delta) > this.maxOverscroll ? 0 : delta;
+    }
+
+    private applyFollow(delta: number, reason: string): void {
+        if (delta === 0 || this.isDisposed)
+            return;
+
+        // The translation is the other term of the same position and shifts what scrollTop means with
+        // it; folding first leaves this one thing to move. The delta survives it - a fold moves the
+        // target and the view by the same amount.
+        this.foldTOffset();
+        const applied = this.scrollController.followBy(delta);
+        // Nothing landed, so there is no echo to recognise - and a value left over from the last one
+        // would swallow a user scroll that happened to stop on it.
+        this.lastFollowTop = applied === 0 ? null : this.ref.scrollTop;
+        if (applied === 0)
+            return;
+
+        debugLog?.log(`[${this.identity}] applyFollow: ${this.pinnedEdge} by ${applied.toFixed(1)} (${reason})`);
+        // Nothing else will notice that the window the list is looking at has changed: the scroll event
+        // this produces is the list's own, and onScroll drops it.
+        this.updateViewportThrottled();
     }
 
     // Anything that had to wait for the list to stop moving: the edge re-pin an animation grew away
@@ -1557,10 +1616,21 @@ export class InfiniteList extends VirtualList {
         this.updateViewportThrottled();
     }
 
+    // Whether the scroll is standing exactly where the last follow put it, which makes the event it is
+    // about this list's own write. A guard window would be the obvious way to do this and the wrong
+    // one: a growing transcript writes one follow per render, so the window would never close, and it
+    // would swallow the swipe that is supposed to end the pin - which is exactly how the view used to
+    // get trapped at the bottom. One value instead, so the user's very first event past it is theirs.
+    private isFollowEcho(): boolean {
+        return this.lastFollowTop != null
+            && Math.abs(this.ref.scrollTop - this.lastFollowTop) <= RepinEpsilon;
+    }
+
     private onScroll = (event: Event): void => {
-        // Ahead of every early return below: this is not about what the scroll means, it is the sticky
-        // baseline, and it is only correct while the scroll is still inside its band.
-        this.updateStickyItems();
+        if (this.isFollowEcho())
+            return;
+
+        this.lastFollowTop = null;
         this.stability.holdScroll(ScrollSettleMs);
         this.turnOffIsScrollingDebounced();
         if (!event.isTrusted)
@@ -1577,6 +1647,12 @@ export class InfiniteList extends VirtualList {
     };
 
     private onScrollEnd = (): void => {
+        // A follow ends with one of these too, and it is not a gesture ending: turnOffIsScrolling
+        // re-derives the pinned edge, and doing that from the list's own write means re-deriving it
+        // mid-animation, when the rendered edge is the one thing that is not settled.
+        if (this.isFollowEcho())
+            return;
+
         this.turnOffIsScrolling();
     };
 
@@ -2281,11 +2357,12 @@ function setSpacerSize(spacerRef: HTMLElement, size: number): void {
         spacerRef.style.height = height;
 }
 
-// The y of a translate3d written by this component, and nothing else - these elements carry no other
-// transform, so anything unrecognised is zero.
-function translateY(transform: string): number {
-    const match = /translate3d\(\s*[^,]+,\s*(-?[\d.]+)px/.exec(transform);
-    return match == null ? 0 : parseFloat(match[1]);
+// An inset the element actually uses, in px, or null for the `auto` every engine reports for one its
+// stylesheet never set. An unset inset is a clamp the element does not have, and giving it one here
+// would stick it against an edge it was never meant to reach.
+function readInset(value: string): number | null {
+    const result = Number.parseFloat(value);
+    return Number.isFinite(result) ? result : null;
 }
 
 function isLaidOut(itemRef: HTMLElement): boolean {

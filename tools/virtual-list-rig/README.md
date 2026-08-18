@@ -4,9 +4,15 @@ Drives real touch gestures into a Chrome debug port and judges the rubber band a
 `docs/virtual-list.md` §3.7. This is how the overscroll model is verified; the phones are for feel.
 
 Needs a Chrome started with remote debugging (`ai chrome`, port 9222; `ai chrome*2` adds 9223), a
-Voxt chat open in it, and the server running. Give the page a mobile viewport first — on desktop
-width the chat view is not the touch-scrolling element (chrome-devtools MCP: `emulate` with
-`412x915x2.6,mobile,touch`, or DevTools device mode).
+Voxt chat open in it, and the server running. Both scripts put the page in a 412x915x2.6 mobile
+viewport themselves, because on desktop width the chat view is not the touch-scrolling element — and
+because an emulation override belongs to the session that set it, so one applied from elsewhere
+disappears the moment that client detaches, halfway through a matrix run. `VL_RIG_VIEWPORT=390x844x3`
+picks another one; `VL_RIG_VIEWPORT=off` leaves the window as it is.
+
+The window also has to be **visible**: an occluded or minimised Chrome window gets no
+`requestAnimationFrame` at all, so the recorder collects nothing, the app never finishes mounting, and
+every gesture reads as "finger ignored".
 
 ```
 node tools/virtual-list-rig/rig.mjs all 9222            # every scenario, lock on

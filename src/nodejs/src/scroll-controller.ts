@@ -102,6 +102,8 @@ export class ScrollController {
 
     // Fires whenever the composed transform changes - see InfiniteList's sticky items.
     public onTransform: (() => void) | null = null;
+    // Fires when a finger lands on this element, before anything here decides what the gesture is.
+    public onTouch: (() => void) | null = null;
 
     private isTouching = false;
     private lastTouchTime = 0;
@@ -312,6 +314,30 @@ export class ScrollController {
             this.scrollTo(clamped, { smooth: false });
     }
 
+    // A pinned edge following content that grew under it: at most one write per frame, clamped into
+    // the band and read back. Deliberately not a jump - a growing transcript produces one of these per
+    // render, and opening the suppression window that often would leave it permanently open, with the
+    // speed estimate never running again. Remembering what landed is enough instead: that is what
+    // tells this controller, and its owner, their own echo when the scroll event arrives.
+    public followBy(delta: number): number {
+        if (!this.enableScrollConstraints || this.isTouching || this.phase !== 'in-band')
+            return 0;
+
+        const before = this.element.scrollTop;
+        const limits = this.getEffectiveScrollLimits();
+        const top = clamp(before + delta, limits.min, limits.max);
+        if (Math.abs(top - before) <= FixPrecisionPx)
+            return 0;
+
+        this.element.scrollTop = top;
+        const landed = this.element.scrollTop;
+        this.lastScrollTop = landed;
+        this.lastScrollTime = performance.now();
+        this.lastWrittenTop = landed;
+        this.nudgeRepaint();
+        return landed - before;
+    }
+
     // The owner's own translation, added to the band's; a transform can move content without ending a
     // fling, which a scrollTop write cannot.
     public setBaseOffset(offset: number): void {
@@ -340,6 +366,12 @@ export class ScrollController {
     // for as long as an excursion lasts.
     public get bandOffset(): number {
         return this.overscrollOffset;
+    }
+
+    // The whole transform the content carries - the band's part and the owner's together - which is
+    // what anything resolved during layout, position: sticky above all, is out by.
+    public get transformOffset(): number {
+        return this.overscrollOffset + this.baseOffset;
     }
 
     public getEffectiveScrollLimits(): { min: number, max: number } {
@@ -483,6 +515,9 @@ export class ScrollController {
     private onTouchStart(): void {
         const now = performance.now();
         this.isTouching = true;
+        // The owner's cue to fold its own translation. A fold moves the container in layout and leaves
+        // scrollTop, the limits and the screen alone, so nothing below has to know it happened.
+        this.onTouch?.();
         this.isTouchMotion = true;
         this.stillSince = now;
         this.lastTouchTime = now;
