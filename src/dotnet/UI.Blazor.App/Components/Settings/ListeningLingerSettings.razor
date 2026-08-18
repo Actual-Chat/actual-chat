@@ -40,9 +40,9 @@
 @code {
     private static readonly Option[] Options = [
         new(nameof(ListeningLinger.None), "Off"),
+        new(nameof(ListeningLinger.For5Seconds), "5 seconds"),
         new(nameof(ListeningLinger.For10Seconds), "10 seconds"),
         new(nameof(ListeningLinger.For30Seconds), "30 seconds"),
-        new(nameof(ListeningLinger.For1Minute), "1 minute"),
     ];
 
     private FormModel _formModel = null!;

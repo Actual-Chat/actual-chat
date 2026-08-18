@@ -6,9 +6,9 @@ namespace ActualChat.Users;
 public enum ListeningLinger
 {
     None = 0,
+    For5Seconds = 5,
     For10Seconds = 10,
     For30Seconds = 30,
-    For1Minute = 60,
 }
 
 public static class ListeningLingerExt
