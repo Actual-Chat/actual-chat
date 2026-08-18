@@ -111,19 +111,37 @@ const parkAtTop = async () => {
         const lim = l.scrollController.getEffectiveScrollLimits(); l.scrollTop = lim.min;
         await new Promise(r => setTimeout(r, 500)); return 1; })()`, true);
 };
+// The checker the rig enables only warns to the console - the queryable violation list it used to
+// read was removed with virtual-list-debug.ts, and `?.` on the missing call made the judge's
+// "violations === 0" pass for free. These are the warnings themselves.
+const violationLog = [];
+ws.on('message', d => {
+    const m = JSON.parse(d.toString());
+    if (m.method !== 'Runtime.consoleAPICalled')
+        return;
+
+    const text = (m.params.args || []).map(a => a.value ?? a.description ?? '').join(' ');
+    if (/model drift|content overflow/i.test(text))
+        violationLog.push(text.slice(0, 300));
+});
+
 const arm = async () => {
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await sleep(50);
     await ev(RECORDER);
-    await ev(`globalThis.debugUI?.virtualListDebug?.(true); globalThis.debugUI?.listVirtualListViolations?.(true); 1`);
+    await ev(`globalThis.debugUI?.virtualListDebug?.(true); 1`);
+    violationLog.length = 0;
     await ev(`window.__vlt.rows.length = 0; window.__vlt.events.length = 0; 1`);
 };
-const pull = async () => JSON.parse(await ev(`JSON.stringify({
-    rows: window.__vlt.rows,
-    events: window.__vlt.events,
-    violations: globalThis.debugUI?.listVirtualListViolations?.(true) ?? [],
-})`));
+const pull = async () => {
+    const data = JSON.parse(await ev(`JSON.stringify({
+        rows: window.__vlt.rows,
+        events: window.__vlt.events,
+    })`));
+    data.violations = violationLog.slice();
+    return data;
+};
 
 const yMid = box.top + box.h / 2;
 const scenarios = {

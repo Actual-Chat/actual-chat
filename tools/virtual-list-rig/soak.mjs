@@ -57,7 +57,19 @@ const moves = async (ys, gap = 12) => { const acks = []; for (const y of ys) { a
 await ev(`(()=>{const l=document.querySelector('.virtual-list.infinite-list');l.scrollTop=l.scrollController.getEffectiveScrollLimits().max;return 1})()`);
 await sleep(600);
 await ev(RECORDER); await ev(`window.__vlt.rows.length=0; window.__vlt.events.length=0; 1`);
-await ev(`globalThis.debugUI?.virtualListDebug?.(true); globalThis.debugUI?.listVirtualListViolations?.(true); 1`);
+await ev(`globalThis.debugUI?.virtualListDebug?.(true); 1`);
+// The checker only warns to the console; the list it used to expose went with virtual-list-debug.ts,
+// and `?.` on the missing call made "violations === 0" pass for free.
+const violationLog = [];
+ws.on('message', d => {
+    const m = JSON.parse(d.toString());
+    if (m.method !== 'Runtime.consoleAPICalled')
+        return;
+
+    const text = (m.params.args || []).map(a => a.value ?? a.description ?? '').join(' ');
+    if (/model drift|content overflow/i.test(text))
+        violationLog.push(text.slice(0, 300));
+});
 const y = box.y;
 const gestures = {
     pullHoldRelease: async () => { await touch('touchStart', y + 100); await moves(Array.from({ length: 20 }, (_, i) => y + 100 - 12 * (i + 1))); await sleep(200 + rnd() * 600); await touch('touchEnd', y - 140); },
@@ -83,11 +95,11 @@ for (let i = 0; i < COUNT; i++) {
     if (i % 2 === 1) { await ev(`(()=>{const l=document.querySelector('.virtual-list.infinite-list');const sc=l.scrollController;const s=sc.getDebugState();const lim=sc.getEffectiveScrollLimits();if(s.phase==='in-band'&&Math.abs(l.scrollTop-lim.max)>5){l.scrollTop=lim.max;}return 1})()`); await sleep(500); }
 }
 await sleep(3000);
-const { rows, events, violations } = JSON.parse(await ev(`JSON.stringify({
+const { rows, events } = JSON.parse(await ev(`JSON.stringify({
     rows: window.__vlt.rows,
     events: window.__vlt.events,
-    violations: globalThis.debugUI?.listVirtualListViolations?.(true) ?? [],
 })`));
+const violations = violationLog.slice();
 fs.mkdirSync('tmp/traces', { recursive: true }); fs.writeFileSync('tmp/traces/soak.json', JSON.stringify({ rows, events, violations, log }));
 // judge
 let inversions = 0, debtStarts = 0, badEnds = 0, ruleSteps = 0, stuckFrames = 0;
