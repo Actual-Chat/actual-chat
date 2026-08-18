@@ -979,6 +979,8 @@ public partial class ChatUI
                 var flags = default(ChatMessageFlags);
                 if (isBlockStart)
                     flags |= ChatMessageFlags.BlockStart;
+                if (isAudio)
+                    flags |= ChatMessageFlags.Audio;
                 if (isForwardBlockStart)
                     flags |= ChatMessageFlags.ForwardStart;
                 if (isForwardAuthorBlockStart)
