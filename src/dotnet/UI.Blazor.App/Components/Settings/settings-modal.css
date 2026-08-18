@@ -18,6 +18,14 @@ body.narrow .close-settings-btn {
     @apply hidden;
 }
 
+/* ── Tile-item blocks (theme, render mode, listening linger, ...) ── */
+
+/* A tile-item row already carries 10px of air around its 20px content, so a
+   block of them pads by 6 to leave the same 24px gap an input block gets from 16 */
+.settings-tab .form-block:has(> .tile-item) {
+    @apply py-1.5;
+}
+
 /* ── Push to Talk tab ── */
 
 .ptt-practice .c-readout {
@@ -31,14 +39,6 @@ body.narrow .close-settings-btn {
 
 .push-to-talk-settings .c-sensitivity {
     @apply flex-x gap-x-1;
-}
-
-/* ── Voice & Transcription tab ── */
-
-/* Radio rows add 10px of air around their 20px content, so 8px here reads as
-   the same visual gap as the 16px input-based blocks use */
-.settings-tab .listening-linger-form {
-    @apply py-2;
 }
 
 /* ── App Settings tab ── */
