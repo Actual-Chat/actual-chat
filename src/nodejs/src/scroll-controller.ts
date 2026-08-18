@@ -104,6 +104,10 @@ export class ScrollController {
     private lastScrollTime = 0;
     private recentSpeed = 0;            // px/ms, signed, smoothed - the native scroll's own speed
     private suppressUntil = 0;
+    // Where this controller's own last synchronous write landed, so the suppression window can tell an
+    // echo of that write from a scroll that has moved on since. null when it cannot know - a smooth
+    // scroll lands over many frames - and then the window keeps its original, blanket meaning.
+    private lastWrittenTop: number | null = null;
     private isOverflowLocked = false;
     private overflowLockEpoch = 0;
     private resizeObserver: ResizeObserver | null = null;
@@ -252,10 +256,13 @@ export class ScrollController {
             if (options.smooth === false) {
                 this.lastScrollTop = landed;
                 this.lastScrollTime = performance.now();
+                this.lastWrittenTop = landed;
                 this.nudgeRepaint();
             }
-            else
+            else {
+                this.lastWrittenTop = null;
                 this.element.scrollTo({ top, behavior: 'smooth' });
+            }
             return;
         }
         target.scrollIntoView({
@@ -358,7 +365,14 @@ export class ScrollController {
 
         this.lastScrollTop = scrollTop;
         this.lastScrollTime = now;
-        if (this.phase === 'engaged' || this.momentumPhase !== 'none' || now < this.suppressUntil)
+        // The window above suppresses the estimators, which is what it is for. It must not suppress the
+        // boundary itself: a fling that crosses inside the window is unbounded until it expires, and a
+        // load re-anchoring under that fling re-arms it - measured at 9712px past the limit in 290ms,
+        // with getViolatedBoundary answering correctly on every one of the 18 events that were dropped
+        // here. Only the echo of this controller's own write is still ignored.
+        const isOwnWrite = this.lastWrittenTop == null
+            || Math.abs(scrollTop - this.lastWrittenTop) <= FixPrecisionPx;
+        if (this.phase === 'engaged' || this.momentumPhase !== 'none' || (now < this.suppressUntil && isOwnWrite))
             return;
 
         const boundary = this.getViolatedBoundary(scrollTop);
@@ -385,6 +399,7 @@ export class ScrollController {
             // position before it, and leaving that reads the correction back as the user's own travel.
             this.lastScrollTop = this.element.scrollTop;
             this.lastScrollTime = performance.now();
+            this.lastWrittenTop = this.element.scrollTop;
             return;
         }
 
@@ -670,6 +685,7 @@ export class ScrollController {
         const landed = this.element.scrollTop;
         this.lastBandTop = landed;
         this.lastScrollTop = landed;
+        this.lastWrittenTop = landed;
         this.lastScrollTime = now;
         this.followTop = landed;
         this.followTime = now;
@@ -909,6 +925,7 @@ export class ScrollController {
 
         this.lastScrollTop = this.element.scrollTop;
         this.lastScrollTime = performance.now();
+        this.lastWrittenTop = this.element.scrollTop;
         this.recentSpeed = 0;
     }
 
