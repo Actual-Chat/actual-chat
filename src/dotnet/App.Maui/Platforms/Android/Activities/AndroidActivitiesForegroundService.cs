@@ -46,6 +46,7 @@ public class AndroidActivitiesForegroundService : Service
     public const string ActionStop = "ACTION_STOP";
     private const string ChannelId = "audio_widget";
     private const string RecordingChannelId = "audio_recording";
+    private const string RecordingQuietChannelId = "audio_recording_quiet";
     private const string LocationChannelId = "location_sharing";
     private const int NotificationId = 3001;
     private static ILogger Log { get; } = StaticLog.For<AndroidActivitiesForegroundService>();
@@ -494,6 +495,7 @@ public class AndroidActivitiesForegroundService : Service
                 _ => "Voxt",
             })!
             .SetOngoing(true)!
+            .SetOnlyAlertOnce(true)!
             .SetVisibility(NotificationCompat.VisibilityPublic)!
             .Build()!;
 
@@ -510,6 +512,9 @@ public class AndroidActivitiesForegroundService : Service
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetContentIntent(viewPending)!
             .SetOngoing(true)!
+            // One banner per session: a Listening <-> Recording flip re-posts this same
+            // notification, and each re-post would otherwise pop over the keyguard again.
+            .SetOnlyAlertOnce(true)!
             // Public so an open microphone is still legible over the keyguard - that's exactly
             // when the user needs to see it, and it names only a chat they're already in.
             .SetVisibility(NotificationCompat.VisibilityPublic)!
@@ -573,11 +578,19 @@ public class AndroidActivitiesForegroundService : Service
         // High so an open microphone surfaces over the keyguard instead of sitting in the shade,
         // silent because the walkie's own cues already say it started - this is the visual half.
         var recordingChannel = new NotificationChannel(
-            RecordingChannelId, "Recording", NotificationImportance.High);
+            RecordingChannelId, "Recording alerts", NotificationImportance.High);
         recordingChannel.SetSound(null, null);
         recordingChannel.EnableVibration(false);
         recordingChannel.LockscreenVisibility = NotificationVisibility.Public;
         manager.CreateNotificationChannel(recordingChannel);
+        // A channel's importance is fixed when it's created - it can't be lowered later, and the
+        // High one is already out there - so the no-banner case needs a channel of its own.
+        var quietRecordingChannel = new NotificationChannel(
+            RecordingQuietChannelId, "Recording", NotificationImportance.Low);
+        quietRecordingChannel.SetSound(null, null);
+        quietRecordingChannel.EnableVibration(false);
+        quietRecordingChannel.LockscreenVisibility = NotificationVisibility.Public;
+        manager.CreateNotificationChannel(quietRecordingChannel);
     }
 
     private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, int repeatCount)
@@ -632,7 +645,12 @@ public class AndroidActivitiesForegroundService : Service
         => kind switch {
             ActivityKind.Uploading => NotificationHelper.Constants.ActivityUploadChannelId,
             ActivityKind.SharingLocation => LocationChannelId,
-            ActivityKind.Recording => RecordingChannelId,
+            // The banner exists for the case the user can't see the app; with the app in front of
+            // them it lands on top of the UI that's already showing the recording, and Android's
+            // own microphone indicator is up as well.
+            ActivityKind.Recording => AndroidUtils.IsAppForeground() ?? false
+                ? RecordingQuietChannelId
+                : RecordingChannelId,
             _ => ChannelId,
         };
 
