@@ -887,16 +887,27 @@ export class InfiniteList extends VirtualList {
 
         const containerTop = this.containerRef.getBoundingClientRect().top;
         this.hasStickyOffset = true;
-        for (const sticky of this.stickyRefs) {
+        // Read every position before writing any of them, for the reason trackStickyItems states: a
+        // write invalidates style, so an interleaved pass costs a recalc per element instead of one
+        // for the batch. The set is every sticky item in the loaded window - a header or a badge per
+        // message - and this runs on each frame of an excursion, which is where jitter shows.
+        const wanted = new Array<string | null>(this.stickyRefs.length).fill(null);
+        for (let i = 0; i < this.stickyRefs.length; i++) {
+            const sticky = this.stickyRefs[i];
             const ref = sticky.ref;
             if (!ref.isConnected || sticky.offset == null)
                 continue;
 
             const own = translateY(ref.style.transform);
             const delta = sticky.offset - (ref.getBoundingClientRect().top - own - containerTop);
-            const wanted = Math.abs(delta) < StickyPinnedPx ? '' : `translate3d(0, ${delta}px, 0)`;
-            if (ref.style.transform !== wanted)
-                ref.style.transform = wanted;
+            wanted[i] = Math.abs(delta) < StickyPinnedPx ? '' : `translate3d(0, ${delta}px, 0)`;
+        }
+        for (let i = 0; i < this.stickyRefs.length; i++) {
+            const value = wanted[i];
+            const ref = this.stickyRefs[i].ref;
+            // style.transform is an inline-style read, so it does not undo the split above.
+            if (value != null && ref.style.transform !== value)
+                ref.style.transform = value;
         }
     }
 
