@@ -45,6 +45,7 @@ public class AndroidActivitiesForegroundService : Service
     public const string ActionShow = "ACTION_SHOW";
     public const string ActionStop = "ACTION_STOP";
     private const string ChannelId = "audio_widget";
+    private const string RecordingChannelId = "audio_recording";
     private const string LocationChannelId = "location_sharing";
     private const int NotificationId = 3001;
     private static ILogger Log { get; } = StaticLog.For<AndroidActivitiesForegroundService>();
@@ -53,10 +54,14 @@ public class AndroidActivitiesForegroundService : Service
     private static int _lastRequestedTypes;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
+    private string _lastTitle = "";
+    private string _lastLink = "";
+    private Bitmap? _lastAlbumArt;
     private Android.App.Notification? _lastNotification;
     private int _lastKind = -1;
     private bool _hasMicType;
     private Action<bool>? _micCapabilityHandler;
+    private Action? _micBlockedHandler;
     private bool _isStopping;
 
     public static void TryStartArmed(Context context)
@@ -69,7 +74,10 @@ public class AndroidActivitiesForegroundService : Service
         intent.PutExtra(IntentExtras.Kind, (int)ActivityKind.Armed);
         intent.PutExtra(
             IntentExtras.ServiceTypes, (int)(ActivityServiceTypes.Playback | ActivityServiceTypes.Microphone));
-        TryStart(context, intent);
+        // Without this the backend's _isShown stays false while the service is genuinely running,
+        // and HideImpl - which early-returns on it - can never take the armed notification down.
+        if (TryStart(context, intent))
+            AndroidActivitiesBackend.MarkForegroundServiceShown();
     }
 
     public static bool TryStart(Context context, Intent intent)
@@ -106,6 +114,15 @@ public class AndroidActivitiesForegroundService : Service
 
     public static void Stop(Context context)
     {
+        // Never while a chat is armed. This service is what holds the microphone grant, and Android
+        // only hands that to a service started with the app in the foreground - so stopping it from
+        // a background path (a headless session tearing down, a wake failing) costs every later
+        // walkie reply its mic, with no way to earn it back until MainActivity runs again.
+        if (MauiPreferences.IsWalkieArmed) {
+            Log.LogInformation("Stop: keeping the foreground service - walkie-talkie is armed");
+            return;
+        }
+
         // StopService() while a StartForegroundService() request hasn't reached OnStartCommand yet makes
         // Android kill the process with ForegroundServiceDidNotStartInTimeException, even though
         // OnStartCommand does call StartForeground(). Let the service stop itself in that case.
@@ -126,6 +143,8 @@ public class AndroidActivitiesForegroundService : Service
         NotificationHelper.EnsureActivityChannelsExist(this);
         _micCapabilityHandler = OnMicCapabilityRequested;
         WalkieTalkieMicCapability.SetHandler(_micCapabilityHandler);
+        _micBlockedHandler = MicrophoneBlockedNotification.ShowPermissionDenied;
+        WalkieTalkieMicCapability.SetBlockedHandler(_micBlockedHandler);
     }
 
     public override void OnDestroy()
@@ -135,6 +154,10 @@ public class AndroidActivitiesForegroundService : Service
         if (_micCapabilityHandler is { } micCapabilityHandler) {
             WalkieTalkieMicCapability.ResetHandler(micCapabilityHandler);
             _micCapabilityHandler = null;
+        }
+        if (_micBlockedHandler is { } micBlockedHandler) {
+            WalkieTalkieMicCapability.ResetBlockedHandler(micBlockedHandler);
+            _micBlockedHandler = null;
         }
         _requestId = RandomStringGenerator.Default.Next();
         Interlocked.Exchange(ref _pendingStartCount, 0);
@@ -218,13 +241,7 @@ public class AndroidActivitiesForegroundService : Service
             _mediaSession.SetCallback(new Callback());
         }
 
-        var text = kind switch {
-            ActivityKind.Recording => "Recording",
-            ActivityKind.Listening => "Listening",
-            ActivityKind.Replaying => "Replaying",
-            ActivityKind.Armed => "Walkie-talkie is on",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-        };
+        var text = GetKindText(kind);
         var title = chatTitle;
         if (extraChatCount > 0)
             title += extraChatCount == 1 ? " (+ 1 chat)" : $" (+ {extraChatCount} chats)";
@@ -261,13 +278,13 @@ public class AndroidActivitiesForegroundService : Service
                 if (!Equals(lastRequestId, _requestId))
                     return;
 
-                var metadata = new MediaMetadataCompat.Builder()
-                    .PutString(MediaMetadataCompat.MetadataKeyTitle, title)!
-                    .PutString(MediaMetadataCompat.MetadataKeyArtist, text)!
-                    .PutBitmap(MediaMetadataCompat.MetadataKeyAlbumArt, bitmap)!
-                    .Build();
-                _mediaSession.SetMetadata(metadata);
-                var notification = BuildNotification(_mediaSession, link);
+                // Kept so a microphone-capability change can re-render the same notification with
+                // the new label instead of leaving "Listening" on screen while the mic is open.
+                _lastTitle = title;
+                _lastAlbumArt = bitmap;
+                _lastLink = link;
+                SetMetadata(title, text, bitmap);
+                var notification = BuildNotification(_mediaSession, link, kind);
                 StartForeground1(notification, kind, requested);
             });
 
@@ -332,11 +349,50 @@ public class AndroidActivitiesForegroundService : Service
             if (Volatile.Read(ref _isStopping) || Volatile.Read(ref _lastKind) == (int)kind)
                 return;
 
-            var notification = Volatile.Read(ref _lastNotification) ?? BuildStartingNotification(kind);
+            // Re-labelled, not re-posted as-is: reusing it left "Listening" on screen with the
+            // microphone open.
             var requested = (ActivityServiceTypes)Volatile.Read(ref _lastRequestedTypes);
             if (isMicrophoneNeeded)
                 requested |= ActivityServiceTypes.Microphone;
-            StartForeground1(notification, kind, requested);
+            // Falls back to a freshly built notification rather than the previous one: the armed
+            // idle case has no media session to relabel, and reposting the low-importance armed
+            // notification would leave nothing on the lock screen at the moment the mic opens.
+            StartForeground1(Relabel(kind) ?? BuildStartingNotification(kind), kind, requested);
+        }
+    }
+
+    private static string GetKindText(ActivityKind kind)
+        => kind switch {
+            ActivityKind.Recording => "Recording",
+            ActivityKind.Listening => "Listening",
+            ActivityKind.Replaying => "Replaying",
+            ActivityKind.Armed => "Walkie-talkie is on",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+
+    private void SetMetadata(string title, string text, Bitmap? albumArt)
+        => _mediaSession?.SetMetadata(new MediaMetadataCompat.Builder()
+            .PutString(MediaMetadataCompat.MetadataKeyTitle, title)!
+            .PutString(MediaMetadataCompat.MetadataKeyArtist, text)!
+            .PutBitmap(MediaMetadataCompat.MetadataKeyAlbumArt, albumArt)!
+            .Build());
+
+    private Android.App.Notification? Relabel(ActivityKind kind)
+    {
+        // Null until a real activity has been rendered - the bare armed start carries no chat, so
+        // there's nothing to relabel and the caller keeps whatever is already on screen.
+        if (_mediaSession is null || _lastTitle.IsNullOrEmpty())
+            return null;
+        if (kind is not (ActivityKind.Recording or ActivityKind.Listening or ActivityKind.Replaying))
+            return null;
+
+        try {
+            SetMetadata(_lastTitle, GetKindText(kind), _lastAlbumArt);
+            return BuildNotification(_mediaSession, _lastLink, kind);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Couldn't relabel the notification for {Kind}", kind);
+            return null;
         }
     }
 
@@ -370,6 +426,11 @@ public class AndroidActivitiesForegroundService : Service
             // A mic FGS started over the keyguard can be rejected (SecurityException /
             // ForegroundServiceStartNotAllowedException) on some OEMs — log rather than crash.
             Log.LogError(e, "StartForeground failed (kind={Kind})", kind);
+            // A wake-revived process never was foreground, so it can't earn the while-in-use
+            // microphone and this reply is already lost - tell the user while they're still holding
+            // the phone, rather than leaving them with cues that promised a recording.
+            if (kind is ActivityKind.Recording)
+                MicrophoneBlockedNotification.ShowUnavailable();
         }
     }
 
@@ -427,14 +488,16 @@ public class AndroidActivitiesForegroundService : Service
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetContentTitle(kind switch {
                 ActivityKind.Armed => "Walkie-talkie is on",
+                ActivityKind.Recording => "Recording",
                 ActivityKind.Uploading => "Uploading",
                 ActivityKind.SharingLocation => "Sharing live location",
                 _ => "Voxt",
             })!
             .SetOngoing(true)!
+            .SetVisibility(NotificationCompat.VisibilityPublic)!
             .Build()!;
 
-    private Android.App.Notification BuildNotification(MediaSessionCompat mediaSession, string link)
+    private Android.App.Notification BuildNotification(MediaSessionCompat mediaSession, string link, ActivityKind kind)
     {
         var viewIntent = NotificationHelper.CreateViewIntent(this, link);
         var viewPending = PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable);
@@ -443,10 +506,13 @@ public class AndroidActivitiesForegroundService : Service
         stopIntent.SetAction(ActionStop);
         var stopPending = PendingIntent.GetService(this, 4, stopIntent, PendingIntentFlags.Immutable);
 
-        var builder = new NotificationCompat.Builder(this, ChannelId)
+        var builder = new NotificationCompat.Builder(this, GetChannelId(kind))
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetContentIntent(viewPending)!
             .SetOngoing(true)!
+            // Public so an open microphone is still legible over the keyguard - that's exactly
+            // when the user needs to see it, and it names only a chat they're already in.
+            .SetVisibility(NotificationCompat.VisibilityPublic)!
             .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop", stopPending)!;
 
         var mediaStyle = new AndroidX.Media.App.NotificationCompat.MediaStyle()
@@ -504,6 +570,14 @@ public class AndroidActivitiesForegroundService : Service
             new NotificationChannel(ChannelId, "Audio Widget", NotificationImportance.Low));
         manager.CreateNotificationChannel(
             new NotificationChannel(LocationChannelId, "Location sharing", NotificationImportance.Low));
+        // High so an open microphone surfaces over the keyguard instead of sitting in the shade,
+        // silent because the walkie's own cues already say it started - this is the visual half.
+        var recordingChannel = new NotificationChannel(
+            RecordingChannelId, "Recording", NotificationImportance.High);
+        recordingChannel.SetSound(null, null);
+        recordingChannel.EnableVibration(false);
+        recordingChannel.LockscreenVisibility = NotificationVisibility.Public;
+        manager.CreateNotificationChannel(recordingChannel);
     }
 
     private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, int repeatCount)
@@ -558,6 +632,7 @@ public class AndroidActivitiesForegroundService : Service
         => kind switch {
             ActivityKind.Uploading => NotificationHelper.Constants.ActivityUploadChannelId,
             ActivityKind.SharingLocation => LocationChannelId,
+            ActivityKind.Recording => RecordingChannelId,
             _ => ChannelId,
         };
 

@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Activities;
 using Android.App;
 using Android.Runtime;
 
@@ -16,6 +17,12 @@ public class MainApplication : MauiApplication
     {
         WarmUpWebView();
         base.OnCreate();
+        // Any process start, not only a user launch. A message push starts us with no MainActivity
+        // and no Blazor scope, so nothing else raises the armed service - leaving no PTT badge and
+        // no media session for the headset button. Android refuses a background start without an
+        // exemption; TryStart logs that rather than throwing.
+        if (MauiPreferences.IsWalkieArmed)
+            AndroidActivitiesForegroundService.TryStartArmed(this);
     }
 
     protected override MauiApp CreateMauiApp()

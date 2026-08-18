@@ -487,8 +487,9 @@ public class GestureDetectorTest
         var options = new GestureOptions(false, true, false, ShakeSensitivity.High);
         var r = new GestureRecognizer(options);
         r.SetProximityCovered(true);
-        // act + assert
-        foreach (var sample in Rest(0).Concat(Burst(1.4f, extremes: 5, startMs: 1000, stepMs: 70)))
+        // act + assert: upright, i.e. pocket-like - a phone resting screen-up is covered by
+        // RecognizerCoverDoesNotSuppressWhileRestingScreenUp instead.
+        foreach (var sample in RestUpright(0).Concat(BurstUpright(1.4f, extremes: 5, startMs: 1000, stepMs: 70)))
             r.Process(sample).Should().BeNull("covered carry must suppress shake");
     }
 
@@ -547,7 +548,7 @@ public class GestureDetectorTest
     }
 
     [Fact]
-    public void RecognizerCoverEdgeResetsHalfBuiltFlip()
+    public void RecognizerSustainedCoverResetsHalfBuiltFlip()
     {
         var options = new GestureOptions(true, false, false, ShakeSensitivity.Medium);
         var r = new GestureRecognizer(options);
@@ -555,9 +556,42 @@ public class GestureDetectorTest
         r.Process(Portrait(0)).Should().BeNull();
         r.Process(Landscape(300)).Should().BeNull();
         r.SetProximityCovered(true);
+        // Past ProximitySuppressionDelay and not resting screen-up, so the cover really suppresses
+        r.Process(Portrait(900)).Should().BeNull("a held cover suppresses the flip it would have fired");
+        r.SetProximityCovered(false);
+        r.Process(Landscape(1200)).Should().BeNull();
+        r.Process(Portrait(1500)).Should().BeNull("pocketing must wipe half-built start-gesture state");
+    }
+
+    [Fact]
+    public void RecognizerCoverSpikeKeepsHalfBuiltFlip()
+    {
+        var options = new GestureOptions(true, false, false, ShakeSensitivity.Medium);
+        var r = new GestureRecognizer(options);
+        // act + assert: under-display proximity sensors blip "near" while the phone is still,
+        // and a blip that never reaches the dwell must not wipe a gesture in progress.
+        r.Process(Portrait(0)).Should().BeNull();
+        r.Process(Landscape(300)).Should().BeNull();
+        r.SetProximityCovered(true);
         r.SetProximityCovered(false);
         r.Process(Landscape(600)).Should().BeNull();
-        r.Process(Portrait(900)).Should().BeNull("pocketing must wipe half-built start-gesture state");
+        r.Process(Portrait(900)).Should().NotBeNull("a sub-dwell proximity spike must not disarm gestures");
+    }
+
+    [Fact]
+    public void RecognizerCoverDoesNotSuppressWhileRestingScreenUp()
+    {
+        var options = new GestureOptions(false, true, false, ShakeSensitivity.High);
+        var r = new GestureRecognizer(options);
+        // act: a phone flat on a desk reads "near" on some devices, but it isn't pocketed
+        r.SetProximityCovered(true);
+        r.Process(FaceUp(0)).Should().BeNull();
+        var hasFired = false;
+        foreach (var sample in Burst(1.4f, extremes: 6, startMs: 1000, stepMs: 70))
+            hasFired |= r.Process(sample) is { Kind: GestureKind.DoubleShake };
+
+        // assert
+        hasFired.Should().BeTrue("a flat, screen-up phone must stay shakeable despite a stuck 'near'");
     }
 
     [Fact]
@@ -568,12 +602,13 @@ public class GestureDetectorTest
         r.SetProximityCovered(true);
         // act + assert
         r.Process(UpsideDown(0)).Should().BeNull();
-        // The >2s gap triggers the recognizer reset: _isUpsideDown clears, _isCovered survives.
-        foreach (var sample in Rest(2600).Concat(Burst(1.4f, extremes: 5, startMs: 3600, stepMs: 70)))
+        // The >2s gap triggers the recognizer reset: _isUpsideDown clears, the covered level
+        // survives. Upright throughout, so the resting-screen-up veto can't confound it.
+        foreach (var sample in RestUpright(2600).Concat(BurstUpright(1.4f, extremes: 5, startMs: 3600, stepMs: 70)))
             r.Process(sample).Should().BeNull("covered suppression must survive the gap reset");
         r.SetProximityCovered(false);
         var hasFired = false;
-        foreach (var sample in Rest(4200).Concat(Burst(1.4f, extremes: 6, startMs: 5200, stepMs: 70)))
+        foreach (var sample in RestUpright(4200).Concat(BurstUpright(1.4f, extremes: 6, startMs: 5200, stepMs: 70)))
             hasFired |= r.Process(sample) is { Kind: GestureKind.DoubleShake };
         hasFired.Should().BeTrue("after uncover the latch must not linger - the gap reset cleared it");
     }
@@ -640,6 +675,23 @@ public class GestureDetectorTest
         for (var i = 0; i < extremes; i++) {
             var x = i % 2 == 0 ? amplitude : -amplitude;
             yield return new SensorSample(At(startMs + (i * stepMs)), x, 0f, 1f);
+        }
+    }
+
+    private static IEnumerable<SensorSample> RestUpright(double startMs, double durationMs = 1000, double stepMs = 60)
+    {
+        for (var t = 0d; t < durationMs; t += stepMs)
+            yield return new SensorSample(At(startMs + t), 0f, 1f, 0f);
+    }
+
+    private static IEnumerable<SensorSample> BurstUpright(
+        float amplitude, int extremes, double startMs, double stepMs)
+    {
+        // Gravity on Y, so ProximityGuard's resting-screen-up veto stays out of the way and the
+        // covered level itself is what the test observes.
+        for (var i = 0; i < extremes; i++) {
+            var x = i % 2 == 0 ? amplitude : -amplitude;
+            yield return new SensorSample(At(startMs + (i * stepMs)), x, 1f, 0f);
         }
     }
 }

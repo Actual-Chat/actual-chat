@@ -44,7 +44,9 @@ public abstract class TuneUI : ProcessorBase
         // Walkie-talkie
         [Tune.WalkieReplyEnded] = new ([100, 50, 100]),
         [Tune.WalkieReplyNothingHeard] = new ([80]),
-        [Tune.WalkieGestureDetected] = new ([40]),
+        // Long enough to be felt mid-shake, and a single pulse so it stays distinct from
+        // WalkieReplyFailed's three.
+        [Tune.WalkieGestureDetected] = new ([90]),
         [Tune.WalkieReplyFailed] = new ([150, 100, 150, 100, 150]),
     };
     // Suppress redundant tactile feedback fired as a side-effect of starting

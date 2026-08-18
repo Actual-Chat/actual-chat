@@ -73,6 +73,11 @@ public sealed class AppScopedServiceStarter
             // ReSharper disable once ExplicitCallerInfoArgument
             Tracer.Point("BrowserInit completed");
 
+            // Here rather than in AfterFirstRender, whose render gate + 1s delay left gestures dead
+            // for the first seconds after launch - but not before this point: everything below
+            // pushes to JS modules that don't exist until BrowserInit has completed.
+            StartScopedServices(Hub.Services);
+
             // Finishing with AccountUI
             await Hub.AccountUI.WhenReady.ConfigureAwait(false);
             await Hub.ChatUI.RestoreNavbarSelectedGroup().ConfigureAwait(false);
@@ -113,13 +118,15 @@ public sealed class AppScopedServiceStarter
             var hostKind = HostInfo.HostKind;
             var baseDelay = TimeSpan.FromSeconds(hostKind.IsServer() ? 0.25 : 1);
 
+            // Ahead of the delay below: these two drive the OS-level activity UI, and on Android
+            // that includes the armed walkie-talkie notification the user expects at launch.
+            Hub.Services.GetRequiredService<ActivitiesUI>().Start();
+            _ = Hub.ActivitiesBackend; // Touch. Auto-starts on construction; WebView-only - see StartScopedServices
+
             // Starting less important UI services
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
             Hub.Services.GetRequiredService<SessionTokens>().Start();
-            Hub.Services.GetRequiredService<ActivitiesUI>().Start();
             Hub.Services.GetRequiredService<ReconnectUI>().Start();
-            StartScopedServices(Hub.Services);
-            _ = Hub.ActivitiesBackend; // Touch. Auto-starts on construction; WebView-only - see StartScopedServices
             _ = Hub.NotificationsPanelUI; // Touch. Auto-starts read-retention tracking on construction.
             _ = Hub.VideoQualityUI; // Touch. Constructor calls Start(); chains gate on first video activity.
             Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
@@ -151,6 +158,9 @@ public sealed class AppScopedServiceStarter
 
     public static void StartScopedServices(IServiceProvider services)
     {
+        // Exactly once per scope: PrepareFirstRender for a WebView scope, HeadlessBlazorScope for
+        // a headless one. AudioFocusUI.WarmUp flips the audio mode for ~300ms, so a second call
+        // would re-prime the HAL for nothing.
         // Runs for any scope, headless or WebView. Everything here must work with a disconnected
         // SafeJSRuntime - see HeadlessBlazorScope. ActivitiesBackend is deliberately absent: the wake
         // handler owns the foreground service, and every widget output parks on DispatchToBlazor.

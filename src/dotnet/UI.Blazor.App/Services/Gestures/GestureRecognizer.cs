@@ -10,7 +10,8 @@ public sealed record GestureOptions(
 /// <summary>
 /// Routes samples to the enabled detectors and emits a single gesture stream.
 /// The stop gesture is evaluated first: on the mic, closing always beats opening.
-/// Start gestures are suppressed while pocketed: proximity-covered or carried upside-down.
+/// Start gestures are suppressed while pocketed: carried upside-down, or proximity-covered
+/// for long enough in an orientation that isn't "resting screen-up on a surface".
 /// </summary>
 public sealed class GestureRecognizer
 {
@@ -28,10 +29,12 @@ public sealed class GestureRecognizer
     private readonly Lock _lock = new();
     private readonly FlipToTalkDetector _flip = new();
     private readonly FaceDownDetector _faceDown = new();
+    private readonly ProximityGuard _proximity = new();
     private readonly ShakeDetector _shake;
     private GestureOptions _options;
     private Moment? _lastSampleAt;
-    private bool _isCovered;
+    private bool _isProximitySuppressed;
+    private bool _wasSuppressed;
     private bool _isUpsideDown;
 
     public GestureOptions Options {
@@ -78,7 +81,7 @@ public sealed class GestureRecognizer
     public string GuardStatus {
         get {
             lock (_lock)
-                return (_isCovered, _isUpsideDown) switch {
+                return (_isProximitySuppressed, _isUpsideDown) switch {
                     (true, true) => "covered+upside-down",
                     (true, false) => "covered",
                     (false, true) => "upside-down",
@@ -96,10 +99,10 @@ public sealed class GestureRecognizer
     public void SetProximityCovered(bool isCovered)
     {
         lock (_lock) {
-            var wasSuppressed = _isCovered || _isUpsideDown;
-            _isCovered = isCovered;
+            // The edge is only recorded here; whether it suppresses anything is decided per
+            // sample, once it has held and against an orientation that can actually be pocketed.
+            _proximity.SetCovered(isCovered, _lastSampleAt ?? default);
             _faceDown.SetProximityCovered(isCovered);
-            ResetStartDetectorsOnSuppressionEdgeUnguarded(wasSuppressed);
         }
     }
 
@@ -113,8 +116,23 @@ public sealed class GestureRecognizer
             UpdateUpsideDownUnguarded(sample);
             if (_options.IsFaceDownEnabled && _faceDown.Process(sample))
                 return new GestureEvent(GestureKind.FaceDown, sample.At);
-            if (_isCovered || _isUpsideDown)
+
+            _isProximitySuppressed = _proximity.IsSuppressing(sample);
+            var isSuppressed = _isProximitySuppressed || _isUpsideDown;
+            if (isSuppressed) {
+                // Reset on the way IN, so no half-built flip/shake state survives pocketing; on
+                // the way out the detectors are already clean - they saw no samples while
+                // suppressed. Driven by the debounced decision, so a sensor spike can't wipe a
+                // shake that's already in progress.
+                if (!_wasSuppressed) {
+                    _flip.Reset();
+                    _shake.Reset();
+                }
+                _wasSuppressed = true;
                 return null;
+            }
+
+            _wasSuppressed = false;
             if (_options.IsFlipToTalkEnabled && _flip.Process(sample))
                 return new GestureEvent(GestureKind.FlipToTalk, sample.At);
             if (_options.IsDoubleShakeEnabled && _shake.Process(sample))
@@ -143,27 +161,18 @@ public sealed class GestureRecognizer
         if (axis == GravityAxis.None)
             return;
 
-        var wasSuppressed = _isCovered || _isUpsideDown;
         // MAUI yields Y ≈ +1 for an UPRIGHT portrait on both platforms (verified on-device
         // 2026-08-11), so top-down pocket carry is the NEGATIVE end of Y.
         _isUpsideDown = axis == GravityAxis.Y && sample.Y <= -UpsideDownMinY;
-        ResetStartDetectorsOnSuppressionEdgeUnguarded(wasSuppressed);
-    }
-
-    private void ResetStartDetectorsOnSuppressionEdgeUnguarded(bool wasSuppressed)
-    {
-        // Reset on the way IN, so no half-built flip/shake state survives pocketing; on the
-        // way out the detectors are already clean - they saw no samples while suppressed.
-        if (wasSuppressed || !(_isCovered || _isUpsideDown))
-            return;
-
-        _flip.Reset();
-        _shake.Reset();
     }
 
     private void ResetUnguarded()
     {
+        // The proximity level is deliberately kept: it's edge-driven, so forgetting it would
+        // leave us reading "uncovered" until the sensor next changes its mind.
         _isUpsideDown = false;
+        _isProximitySuppressed = false;
+        _wasSuppressed = false;
         _flip.Reset();
         _shake.Reset();
         _faceDown.Reset();

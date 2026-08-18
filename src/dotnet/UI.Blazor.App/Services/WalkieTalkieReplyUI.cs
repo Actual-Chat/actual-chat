@@ -29,6 +29,11 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
     public static bool ShouldColdClose(bool everVoiced, TimeSpan elapsed, TimeSpan coldTimeout)
         => !everVoiced && elapsed >= coldTimeout;
 
+    public static bool ShouldReportMicFailure(bool hasSignal, TimeSpan elapsed, TimeSpan timeout)
+        // Keyed on captured samples, not on IsRecording: the recorder reports itself started as
+        // soon as AudioRecord initializes, which it does even when the OS then hands it nothing.
+        => !hasSignal && elapsed >= timeout;
+
     public Task<WalkieTalkieReply?> RequestReply(CancellationToken cancellationToken)
         => RequestReply(Constants.Audio.WalkieTalkieReplyRecencyWindow, cancellationToken);
 
@@ -95,6 +100,10 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
         }
 
         StartColdStartWatch(chatId);
+        _ = BackgroundTask.Run(
+            () => WatchMicLive(reply),
+            Log, $"{nameof(WatchMicLive)} failed",
+            CancellationToken.None);
         return reply;
     }
 
@@ -176,7 +185,61 @@ public sealed class WalkieTalkieReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(
             return await permission.CheckOrRequest(cancellationToken).ConfigureAwait(false);
 
         Log.LogWarning("RequestReply: no microphone permission, and nothing can request it headlessly");
+        WalkieTalkieMicCapability.ReportBlocked();
         return false;
+    }
+
+    private async Task WatchMicLive(WalkieTalkieReply reply)
+    {
+        // SetRecordingChatId only writes the intent, and every way the capture below it can fail
+        // - the mic withheld, a read error, a producer thread that ends - leaves the recorder
+        // reporting success with nothing arriving. The begin tune has already played by then, so
+        // without this the only feedback is the 15s "nothing heard" cue, which claims we listened.
+        // The deadline runs from IsRecording, not from here: StartRecording legitimately takes
+        // seconds, and timing it from the request killed replies that were about to work.
+        var startBudget = Constants.Audio.WalkieTalkieReplyMicStartTimeout;
+        if (!await WaitFor(reply, x => x.IsRecording, startBudget).ConfigureAwait(false)) {
+            await ReportMicFailure(reply, "the recorder never started").ConfigureAwait(false);
+            return;
+        }
+
+        var timeout = Constants.Audio.WalkieTalkieReplyMicLiveTimeout;
+        if (!await WaitFor(reply, x => x.IsSignalDetected, timeout).ConfigureAwait(false))
+            await ReportMicFailure(reply, "no captured audio").ConfigureAwait(false);
+    }
+
+    private async Task<bool> WaitFor(
+        WalkieTalkieReply reply, Func<AudioRecorderState, bool> predicate, TimeSpan budget)
+    {
+        var startedAt = CpuTimestamp.Now;
+        var cState = AudioRecorder.State.Computed;
+        while (true) {
+            var state = cState.Value;
+            if (state.ChatId == reply.ChatId && predicate.Invoke(state))
+                return true;
+            if (ShouldReportMicFailure(false, startedAt.Elapsed, budget))
+                return false;
+
+            using var stepCts = new CancellationTokenSource();
+            var whenChanged = cState.WhenInvalidated(stepCts.Token);
+            var whenTimeout = Clocks.CpuClock.Delay((budget - startedAt.Elapsed).Positive(), stepCts.Token);
+            await Task.WhenAny(whenChanged, whenTimeout).ConfigureAwait(false);
+            stepCts.CancelAndDisposeSilently();
+            cState = await cState.Update(CancellationToken.None).ConfigureAwait(false);
+        }
+    }
+
+    private async Task ReportMicFailure(WalkieTalkieReply reply, string reason)
+    {
+        lock (_lock) {
+            if (_reply != reply)
+                return; // Superseded - whatever displaced it owns the mic now
+        }
+
+        Log.LogWarning(
+            nameof(WatchMicLive) + ": chat #{ChatId} - {Reason}, closing the reply", reply.ChatId, reason);
+        await StopReply(reply).ConfigureAwait(false);
+        await PlayFailureCue().ConfigureAwait(false);
     }
 
     private void StartColdStartWatch(ChatId chatId)

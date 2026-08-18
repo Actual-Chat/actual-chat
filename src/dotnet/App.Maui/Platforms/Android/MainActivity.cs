@@ -55,7 +55,13 @@ public partial class MainActivity : MauiAppCompatActivity
 
     public static MainActivity Current => _current
         ?? throw StandardError.Internal($"{nameof(MainActivity)} isn't created yet.");
+    // Whether an activity has run in THIS process, which is what decides if the foreground service
+    // could ever have earned the microphone: Android grants it only to a service started while the
+    // app is visible, and the grant then outlives the activity. Unlike Current, this never reverts.
+    public static bool HasEverRun { get; private set; }
     public static readonly TimeSpan MaxPermissionRequestDuration = TimeSpan.FromMinutes(1);
+    public static string RequestMicrophonePermissionExtraKey
+        => field ??= Platform.AppContext.PackageName + ".RequestMicrophonePermission";
     private static readonly Tracer Tracer = Tracer.Default[nameof(MainActivity)];
 
     private ActivityResultLauncher _permissionRequestLauncher = null!;
@@ -91,6 +97,7 @@ public partial class MainActivity : MauiAppCompatActivity
         CloseHeadlessScope();
 
         Interlocked.Exchange(ref _current, this);
+        HasEverRun = true;
         // If app is sent to background with back button
         // and user brings it back to foreground by launching app icon or picking app from recents,
         // then warm start happens https://developer.android.com/topic/performance/vitals/launch-time#warm
@@ -152,6 +159,16 @@ public partial class MainActivity : MauiAppCompatActivity
         // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
         var contentView = FindViewById(Android.Resource.Id.Content);
         contentView!.ViewTreeObserver!.AddOnPreDrawListener(new SplashDelayer(contentView));
+    }
+
+    protected override void OnResume()
+    {
+        base.OnResume();
+        // The one moment the microphone grant can be (re)earned: Android re-evaluates it on every
+        // startForeground and denies it from the background, so a service that lost the type -
+        // killed and revived while backgrounded - can only recover here.
+        if (MauiPreferences.IsWalkieArmed)
+            AndroidActivitiesForegroundService.TryStartArmed(this);
     }
 
     protected override void OnDestroy()
@@ -249,6 +266,19 @@ public partial class MainActivity : MauiAppCompatActivity
         // exactly when the managed runtime is busy collecting - and the JNI-heavy dump below blocks
         // the UI thread long enough to be reported as an ANR.
         _ = Task.Run(DumpMemoryInfo);
+    }
+
+    public void RequestMicrophonePermission()
+    {
+        // Deliberately not routed through MicrophonePermissionHandler: this runs from a notification
+        // tap with no Blazor scope guaranteed, and the OS dialog is all we need.
+        try {
+            RequestPermission(Android.Manifest.Permission.RecordAudio,
+                isGranted => Log.LogInformation("RequestMicrophonePermission: granted={IsGranted}", isGranted));
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "RequestMicrophonePermission failed");
+        }
     }
 
     public void RequestPermission(string permission, Action<bool> onReceiveResult, bool throwIfHavePendingRequest = false)

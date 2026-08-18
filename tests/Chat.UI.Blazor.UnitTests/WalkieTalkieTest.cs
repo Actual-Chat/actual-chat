@@ -93,4 +93,33 @@ public class WalkieTalkieTest
         // act + assert
         WalkieTalkie.MayTransmit(isPracticeMode: false, recordingChatId: null).Should().BeTrue();
     }
+
+    [Fact]
+    public void CapturedAudioIsNeverAMicFailure()
+    {
+        // act + assert
+        WalkieTalkieReplyUI
+            .ShouldReportMicFailure(hasSignal: true, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(4))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void SilenceBeforeTheDeadlineIsNotYetAMicFailure()
+    {
+        // act + assert
+        WalkieTalkieReplyUI
+            .ShouldReportMicFailure(hasSignal: false, TimeSpan.FromSeconds(3.9), TimeSpan.FromSeconds(4))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void SilencePastTheDeadlineIsAMicFailure()
+    {
+        // The recorder reports itself started as soon as AudioRecord initializes, so "no captured
+        // samples" is the only honest signal that the microphone never actually opened.
+        // act + assert
+        WalkieTalkieReplyUI
+            .ShouldReportMicFailure(hasSignal: false, TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(4))
+            .Should().BeTrue();
+    }
 }

@@ -414,7 +414,22 @@ background at that moment — so a service first started by a wake can never
 record, however it is re-typed. That's what `ActivityKind.Armed` is for. While
 any chat is armed, `AudioActivitySource.GetArmedChat` keeps `ActivitiesBackend`'s
 state non-null, so the foreground service runs continuously, started from the
-foreground (with the microphone type) at arming time. The service then latches
+foreground (with the microphone type) at arming time.
+
+`MainActivity.OnCreate` is what raises it at launch, from the persisted
+`MauiPreferences.IsWalkieArmed` — the app doesn't know its own armed set until
+Blazor has rendered and Kvas has loaded, by which time the start no longer counts
+as a foreground one. Three rules follow. `TryStartArmed` marks the service shown
+(`AndroidActivitiesBackend.MarkForegroundServiceShown`), or `HideImpl` — which
+early-returns on that flag — could never take the notification down again. No
+later-arriving scope may hide it: `AndroidActivitiesBackend`'s constructor skips
+its reconcile hide while `IsWalkieArmed`, since a warm start leaves the static
+`_isShown` set from the previous scope and stopping the service there would cost
+the microphone type for the rest of the session. And the mirrored flag is
+latched — `ActivitiesBackend.ShouldPersistArmed` refuses to persist an empty
+armed set until the session has seen a non-empty one, because `GetPttChatIds` is
+legitimately empty during startup and RPC reconnects, and persisting that would
+strand the *next* launch without a foreground-raised, mic-typed service. The service then latches
 the mic type: once granted, every later `startForeground` keeps it, because
 those all run in the background and dropping the type would forfeit the grant
 permanently.
@@ -468,6 +483,27 @@ Only the first down edge acts (`repeatCount != 0` passes through — one press
 delivers both edges plus auto-repeats, and acting twice would open and instantly
 close the mic); a hot reply always maps to `StopReply` regardless of window or
 practice mode, because leaving a live mic open is the unsafe direction.
+`GestureUI` is started from `AppScopedServiceStarter.PrepareFirstRender`, not
+`AfterFirstRender` — nothing in the sensing path needs a rendered WebView, and the
+latter's render gate plus its 1 s delay left a shake doing nothing for the first
+seconds after launch.
+
+Two things condition the raw sensor stream before the detectors see it.
+`MauiSensorFeed` drops samples closer together than
+`Constants.Audio.GestureSampleMinPeriod` (50 ms): `SensorSpeed.UI` is only a hint, and
+any other app pinning the accelerometer at its maximum rate raises the shared HAL rate
+and floods every connection (470 Hz measured against our 15 Hz request). And
+`ProximityGuard` decides what a "near" reading means: under-display sensors emit
+sub-second false positives while the phone lies still, so a cover suppresses the start
+gestures only after it has held for `ProximitySuppressionDelay` (0.5 s), and never
+while the last gravity-dominated reading says the phone is resting screen-up. The
+resting-face-up veto is latched rather than evaluated per sample, because mid-shake the
+accelerometer reads gravity plus hand motion — which is exactly when the veto must hold.
+The flip/shake reset on the suppression edge is driven by that debounced decision, so a
+sensor spike can no longer wipe a gesture in progress. The proximity *level* survives
+`GestureRecognizer`'s sample-gap reset: it is edge-driven, so forgetting it would read as
+"uncovered" until the sensor next changed its mind.
+
 `GestureUI.GetHeadsetButtonState` publishes `IsEnabled` / `HasAnswerWindow` with
 `Volatile` reads/writes, since the native handler calls it off any of our
 threads. `HeadsetButtonPolicy.GetState` deliberately uses `HasAnswerWindow`
@@ -604,6 +640,8 @@ working if the flag is later turned off; only the UI for changing it goes away.
 | `WalkieTalkieIdleTimeout` | 5 min | Background silence after which listening drops from hot to armed |
 | `WalkieTalkieIdleCheckPeriod` | 15 s | Poll period of the idle-drop loop; also the answer-window expiry floor in `GestureUI` |
 | `WalkieTalkieGestureCheckMinPeriod` | 0.25 s | Debounce floor for `GestureUI`'s activation loop |
+| `GestureSampleMinPeriod` | 50 ms | Floor between accelerometer samples handed to the detectors |
+| `ProximitySuppressionDelay` | 0.5 s | How long "near" must hold before it suppresses start gestures |
 | `WalkieTalkieStaleWakeAge` | 60 s | Older wakes skip the from-start catch-up and go straight to live listening |
 | `ListeningCatchUpTolerance` | 2 s | Clock-fuzz allowance between a wake's `startedAt` and the target stream's `BeginsAt` |
 | `WalkieTalkieReplyColdStartTimeout` | 15 s | Cold-start dead-man: no voice within this and the mic closes with the "nothing heard" cue |

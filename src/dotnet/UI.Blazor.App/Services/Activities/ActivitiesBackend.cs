@@ -13,6 +13,7 @@ public class ActivitiesBackend : IDisposable
     private readonly ComputedState<ActivitySet?> _state;
     private readonly bool _isAndroidHost;
     private ActivitySet? _lastState;
+    private bool? _hasEverBeenArmed;
 
     private AppUIHub Hub { get; }
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -43,6 +44,21 @@ public class ActivitiesBackend : IDisposable
         _state.Updated -= OnStateUpdated;
         _state.Dispose();
     }
+
+    // False on platforms that don't mirror it; Android reads the value MainActivity launches from.
+    protected virtual bool IsArmedPersisted => false;
+
+    public static bool NextHasEverBeenArmed(bool? hasEverBeenArmed, bool isArmedPersisted, bool isArmed)
+        // Seeded from the stored value on the first recompute, not from false: a session that only
+        // ever sees an empty set is exactly what a disarm elsewhere looks like, and seeding false
+        // would make that disarm unwritable - leaving the app armed, notification and all, for good.
+        => (hasEverBeenArmed ?? isArmedPersisted) || isArmed;
+
+    public static bool ShouldPersistArmed(bool isArmed, bool hasEverBeenArmed)
+        // An empty armed set before the first non-empty one is indistinguishable from "the
+        // settings haven't loaded yet", and persisting it costs the next launch the mic-typed
+        // foreground service - which only MainActivity can raise, and only while visible.
+        => isArmed || hasEverBeenArmed;
 
     // Protected methods
 
@@ -100,7 +116,11 @@ public class ActivitiesBackend : IDisposable
         var pttChatIds = _isAndroidHost
             ? await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false)
             : [];
-        OnArmedChanged(pttChatIds.Count > 0);
+        var isArmed = pttChatIds.Count > 0;
+        var hasEverBeenArmed = NextHasEverBeenArmed(_hasEverBeenArmed, IsArmedPersisted, isArmed);
+        _hasEverBeenArmed = hasEverBeenArmed;
+        if (ShouldPersistArmed(isArmed, hasEverBeenArmed))
+            OnArmedChanged(isArmed);
 
         var set = await ActivitiesUI.GetActivitySet(cancellationToken).ConfigureAwait(false);
         return set.IsEmpty ? null : set;
