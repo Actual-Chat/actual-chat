@@ -59,7 +59,7 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply mt-1;
 }
 .c-author-header > .c-author-meta {
-    @apply flex-none flex-x items-end gap-x-1.5;
+    @apply flex-none flex-x items-end gap-x-[3px];
 }
 .c-author-meta > .chat-message-kind-icon {
     @apply -mb-0.5;
