@@ -1788,13 +1788,20 @@ export class InfiniteList extends VirtualList {
         this.ref.style.flexDirection = isReverse ? 'column-reverse' : 'column';
         this.applyLayout('direction');
         const drift = this.containerRef.getBoundingClientRect().top - viewTop - before;
-        if (canMeasure && Math.abs(drift) >= RepinEpsilon) {
+        if (!canMeasure) {
+            // Nothing was measured, so nothing here knows where the scroll belongs - and a clamp against
+            // the incoming axis would park it exactly where the correction above declined to.
+        }
+        else if (Math.abs(drift) >= RepinEpsilon) {
             this.lastProgrammaticScrollAt = performance.now();
             // Unclamped: the position is valid by construction, and the two directions expose different
-            // limits, so the incoming band must not adjust it.
+            // limits, so the incoming band must not adjust it - which is why the clamp is the other
+            // branch and not the next line. Out of the new limits is an excursion, and the band answers
+            // for it; a clamp here would replace the screen-preserving position with a boundary.
             this.scrollController.scrollTo(this.ref.scrollTop + drift, { smooth: false, clamp: false });
         }
-        this.scrollController.clampToLimits();
+        else
+            this.scrollController.clampToLimits();
         // Every scrollTop the controller remembers was measured on the axis that just went away.
         this.scrollController.resetMotionTracking();
         debugLog?.log(`[${this.identity}] setDirection: reverse=${isReverse}, drift=${drift}`);
