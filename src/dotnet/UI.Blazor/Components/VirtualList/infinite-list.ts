@@ -156,13 +156,14 @@ export class InfiniteList extends VirtualList {
     private readonly heights: ItemHeightController | null;
     private readonly visibleKeys = new Set<string>();
     private readonly heightCache = new Map<string, number>();
+    private readonly tOffsetBaseline = readTOffsetBaseline();
 
     private items = new Array<InfiniteListItem>();
     private indexByKey = new Map<string, number>();
     // offsets[i] is the distance from the chain's top to item i's top; offsets[n] is one row gap past
     // the chain's bottom.
     private offsets = [0];
-    private chainStart = Math.round(InfiniteSize / 2);
+    private chainStart = Math.round(InfiniteSize / 2) + this.tOffsetBaseline;
     // What the browser actually gave the wrapper. Chrome keeps layout coordinates in 1/64 of a physical
     // pixel in a 32-bit int, so a length past 2^25 physical pixels is silently clamped - at
     // devicePixelRatio 3.75 a 10M-px wrapper comes back 8,947,847. In reverse every coordinate is
@@ -246,7 +247,7 @@ export class InfiniteList extends VirtualList {
         this.lastWrapperSize = InfiniteSize;
         this.wrapperRef.style.height = `${InfiniteSize}px`;
         this.wrapperSize = this.wrapperRef.offsetHeight || InfiniteSize;
-        this.chainStart = Math.round(this.wrapperSize / 2);
+        this.chainStart = Math.round(this.wrapperSize / 2) + this.tOffsetBaseline;
         this.isReverse = renderDirection === VirtualListRenderDirection.Reverse;
         ref.style.flexDirection = this.isReverse ? 'column-reverse' : 'column';
         this.heights = mustAnimateItemHeight
@@ -259,7 +260,7 @@ export class InfiniteList extends VirtualList {
         this.scrollController = new ScrollController(
             ref, true, this.containerRef, () => this.computeScrollLimits());
         this.scrollController.onTransform = () => this.updateStickyItems();
-
+        this.setTOffset(this.tOffsetBaseline);
         const listenerOptions = { passive: true, signal: this.abortController.signal };
         ref.addEventListener('scroll', this.onScroll, listenerOptions);
         ref.addEventListener('scrollend', this.onScrollEnd, listenerOptions);
@@ -342,8 +343,8 @@ export class InfiniteList extends VirtualList {
         this.offsets = [0];
         this.heightCache.clear();
         this.visibleKeys.clear();
-        this.chainStart = Math.round(this.wrapperSize / 2);
-        this.setTOffset(0);
+        this.chainStart = Math.round(this.wrapperSize / 2) + this.tOffsetBaseline;
+        this.setTOffset(this.tOffsetBaseline);
         this.setPinnedEdge(null);
         this.interactiveAnchor = null;
         this.isWatchingScreenAnchor = false;
@@ -545,6 +546,10 @@ export class InfiniteList extends VirtualList {
         return Math.max(MinTOffsetPx, this.ref.clientHeight * MaxTOffsetScreens);
     }
 
+    private get tOffsetExcursion(): number {
+        return this.tOffset - this.tOffsetBaseline;
+    }
+
     private get scrollOffset(): number {
         return this.isReverse ? this.ref.scrollTop + this.maxScrollTop : this.ref.scrollTop;
     }
@@ -553,6 +558,16 @@ export class InfiniteList extends VirtualList {
     // translation counted in. Every position read goes through this rather than through scrollOffset -
     // the two differ by whatever the translation is holding, and code reading the raw scroll would
     // disagree with what is on screen, including the loader deciding which items are visible.
+    // The wrapper coordinate the viewport is looking at, in the model's own terms - scroll position plus
+    // the translation this class writes, and deliberately not the rubber band's.
+    //
+    // The band is a third thing that moves the content, so this is not where the content is on screen
+    // while an excursion is open. Folding it in here anyway is wrong, and expensively so: re-anchoring
+    // and re-pinning are written in these coordinates, and the band changes every frame a spring runs,
+    // so they chase it. Measured on a phone, the frame after a spring started: the scroll moved 66px,
+    // the transform moved 172px, and the content jumped 106px, because the re-anchor had corrected for
+    // a band offset that was never in its coordinates. A consumer that wants the on-screen position
+    // wants viewOffset minus the controller's bandOffset, and only the ones that read rather than write.
     private get viewOffset(): number {
         return this.scrollOffset + this.tOffset;
     }
@@ -563,18 +578,14 @@ export class InfiniteList extends VirtualList {
 
     // A jump to an absolute position, and the only thing that writes scrollTop. The translation has to
     // become real first - and the target then has to be renumbered into the coordinates the fold just
-    // created, because the caller measured it against a chain that has since moved by exactly tOffset.
+    // created, because the caller measured it against a chain that has since moved by the folded part.
     private setScrollOffset(scrollOffset: number, isSmooth = false, mustClamp = true, isReanchor = false): void {
-        const tOffset = this.tOffset;
-        if (this.foldTOffset()) {
-            this.writeChainPosition();
-            scrollOffset -= tOffset;
-        }
+        scrollOffset -= this.foldTOffset();
 
         this.lastProgrammaticScrollAt = performance.now();
         if (isSmooth)
             this.stability.holdScroll(SmoothScrollMs);
-        this.scrollController.scrollTo(this.toScrollTop(scrollOffset),
+        this.scrollController.scrollTo(this.toScrollTop(scrollOffset - this.tOffsetBaseline),
             { smooth: isSmooth, clamp: mustClamp, reanchor: isReanchor });
     }
 
@@ -586,18 +597,20 @@ export class InfiniteList extends VirtualList {
         this.scrollController.setBaseOffset(-tOffset);
     }
 
-    // Turns the translation into the model's own coordinates: the chain moves by the offset and the
-    // transform goes back to zero, in one style write, so nothing on screen moves. It costs a layout
+    // Turns the translation into the model's own coordinates: the chain moves by the offset while the
+    // old transform still holds the view, then the transform goes back to its configured baseline. The
+    // reset is last so a transform observer sees the completed fold, never the intermediate position. It costs a layout
     // pass and no scroll write at all, which is what makes it safe at any time - but it is only *free*
-    // at a render, where the layout is happening regardless. Returns whether the chain moved, so a
-    // caller about to write its position anyway can skip the extra write.
-    private foldTOffset(): boolean {
-        if (this.tOffset === 0)
-            return false;
+    // at a render, where the layout is happening regardless.
+    private foldTOffset(): number {
+        const tOffset = this.tOffsetExcursion;
+        if (tOffset === 0)
+            return 0;
 
-        this.chainStart -= this.tOffset;
-        this.setTOffset(0);
-        return true;
+        this.chainStart -= tOffset;
+        this.writeChainPosition();
+        this.setTOffset(this.tOffsetBaseline);
+        return tOffset;
     }
 
     private topOf(item: InfiniteListItem): number {
@@ -764,7 +777,8 @@ export class InfiniteList extends VirtualList {
             return false;
 
         const reserve = (this.wrapperSize / 2) * (RecentreReservePercent / 100);
-        return this.chainStart < reserve || this.chainEnd > this.wrapperSize - reserve;
+        return this.chainStart - this.tOffsetBaseline < reserve
+            || this.chainEnd - this.tOffsetBaseline > this.wrapperSize - reserve;
     }
 
     private applyLayout(reason: string): void {
@@ -784,7 +798,7 @@ export class InfiniteList extends VirtualList {
         let scrollShift = 0;
         if (this.mustRecentre) {
             this.mustRecentre = false;
-            const target = Math.round((wrapperSize - this.chainSize) / 2);
+            const target = Math.round((wrapperSize - this.chainSize) / 2) + this.tOffsetBaseline;
             scrollShift = target - this.chainStart;
             this.chainStart = target;
             debugLog?.log(`[${this.identity}] applyLayout: re-centred by ${scrollShift} (${reason})`);
@@ -942,7 +956,9 @@ export class InfiniteList extends VirtualList {
     }
 
     private get startSpacerSize(): number {
-        return this.renderState.hasVeryFirstItem ? 0 : clamp(this.chainStart, 0, this.spacerSize);
+        return this.renderState.hasVeryFirstItem
+            ? 0
+            : clamp(this.chainStart - this.tOffsetBaseline, 0, this.spacerSize);
     }
 
     private get endSpacerSize(): number {
@@ -1084,10 +1100,14 @@ export class InfiniteList extends VirtualList {
         const measureTarget = (): number => {
             const viewRect = this.ref.getBoundingClientRect();
             const viewOffset = this.viewOffset;
+            const minViewOffset = this.tOffsetBaseline;
+            const maxViewOffset = minViewOffset + this.maxScrollTop;
             let delta: number;
             if (edge === VirtualListEdge.Start) {
                 const firstRef = this.firstItemRef;
-                delta = firstRef ? firstRef.getBoundingClientRect().top - viewRect.top : -viewOffset;
+                delta = firstRef
+                    ? firstRef.getBoundingClientRect().top - viewRect.top
+                    : minViewOffset - viewOffset;
             }
             else {
                 const anchorRect = this.endAnchorRef.getBoundingClientRect();
@@ -1097,10 +1117,10 @@ export class InfiniteList extends VirtualList {
                     const lastRef = this.lastItemRef;
                     delta = lastRef
                         ? lastRef.getBoundingClientRect().bottom - viewRect.bottom
-                        : this.maxScrollTop - viewOffset;
+                        : maxViewOffset - viewOffset;
                 }
             }
-            const target = clamp(viewOffset + delta, 0, this.maxScrollTop);
+            const target = clamp(viewOffset + delta, minViewOffset, maxViewOffset);
             // Same cap as computeScrollLimits: the end anchor must not push the first message off the
             // top of a conversation that fits on screen.
             return this.isChainWithinViewport ? Math.min(target, this.chainStart) : target;
@@ -1122,8 +1142,8 @@ export class InfiniteList extends VirtualList {
             this.setTOffset(tOffset);
             // Past the cap the translation stops being free to leave standing, so it is made real at
             // once. That costs a layout pass and - unlike the jump below - interrupts nothing.
-            if (Math.abs(tOffset) > this.maxTOffset && this.foldTOffset())
-                this.writeChainPosition();
+            if (Math.abs(tOffset - this.tOffsetBaseline) > this.maxTOffset)
+                this.foldTOffset();
 
             // A translation moves the view without a scroll event, so nothing else will notice that
             // the window it is looking at has changed.
@@ -1161,8 +1181,7 @@ export class InfiniteList extends VirtualList {
             this.repinEdge('settled');
             // Settled is the other place a translation can become real for free - nothing is moving,
             // so the layout pass it costs is one nobody is waiting on.
-            if (this.foldTOffset())
-                this.writeChainPosition();
+            this.foldTOffset();
 
             this.scrollController.clampToLimits();
             this.checkModelDrift('settled');
@@ -1560,9 +1579,8 @@ export class InfiniteList extends VirtualList {
             return;
 
         // Nothing is moving, so whatever the translation was standing in for can become part of the
-        // model - which keeps it near zero between renders as well as across them.
-        if (this.foldTOffset())
-            this.writeChainPosition();
+        // model - which keeps it near its baseline between renders as well as across them.
+        this.foldTOffset();
 
         this.stability.releaseScroll();
         this.updatePinnedEdge();
@@ -1733,8 +1751,7 @@ export class InfiniteList extends VirtualList {
         const canMeasure = isLaidOut(this.ref);
         // The position this holds by comes off the container, so anything the translation is carrying
         // has to be in the model before the first measurement, not between the two.
-        if (this.foldTOffset())
-            this.writeChainPosition();
+        this.foldTOffset();
 
         // The two directions put the scroll origin at opposite ends, so a return still running holds a
         // boundary from the axis about to be replaced - left alone it spends the rest of its life
@@ -1784,7 +1801,7 @@ export class InfiniteList extends VirtualList {
         // still growing - measured at 349px - and holding an anchor through that is the entire point.
         // What it catches is the loop feeding itself, which doubles every frame and would reach any
         // bound at all within about thirty of them.
-        if (Math.abs(tOffset) > this.maxOverscroll)
+        if (Math.abs(tOffset - this.tOffsetBaseline) > this.maxOverscroll)
             return null;
 
         this.setTOffset(tOffset);
@@ -2172,6 +2189,15 @@ function translateY(transform: string): number {
 
 function isLaidOut(itemRef: HTMLElement): boolean {
     return itemRef.getClientRects().length > 0;
+}
+
+function readTOffsetBaseline(): number {
+    const value = new URLSearchParams(location.search).get('vltoffset');
+    if (value == null)
+        return 0;
+
+    const result = Number(value);
+    return Number.isFinite(result) ? result : 0;
 }
 
 // contentRect is always content-box even under box:'border-box', which undersizes anything whose

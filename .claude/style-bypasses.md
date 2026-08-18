@@ -32,3 +32,10 @@ edited. The reason can be as short as whose decision it was.
 - L3 `public class VirtualListTestService(IServiceProvider services) : IComputeService`
   — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
   members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
+
+## src/nodejs/src/scroll-controller.ts
+
+- L452 `switch (this.phase) {`
+  — switch case labels not indented relative to `switch` — required: the
+  repo's eslint `indent` rule is configured with `SwitchCase: 0` and fails the
+  build on the indented form, so eslint wins over the style guide here
