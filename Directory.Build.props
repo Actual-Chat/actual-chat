@@ -89,7 +89,7 @@
     <Features>strict</Features>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <MauiVersion Condition="$(IsMauiProject)">11.0.0-preview.6.26360.8</MauiVersion>
+    <MauiVersion Condition="$(IsMauiProject)">11.0.0-preview.7.26406.9</MauiVersion>
 
     <!-- Globalization: must be invariant in every executable! -->
     <InvariantGlobalization>true</InvariantGlobalization>

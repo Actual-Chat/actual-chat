@@ -226,6 +226,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LinkRow>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListenButtonBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveActivitiesDisabledBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveConversationFooterView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveConversationHeaderView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LocalLinkPreview>();
@@ -963,6 +964,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.LinkRow), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListenButtonBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.LiveActivitiesDisabledBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LiveConversationFooterView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LiveConversationHeaderView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LocalLinkPreview), AotTypeKind.Component),
