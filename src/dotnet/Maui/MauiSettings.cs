@@ -68,7 +68,9 @@ public static class MauiSettings
         // crashes) via ApplicationExitInfo on the next launch. See MauiStartupBreadcrumbs.
         public const bool EnableStartupBreadcrumbs = true;
         // Warn-logs main-looper message dispatches that block the main thread for too long.
-        // Android-only; see AndroidMainThreadMonitor.
-        public const bool EnableMainThreadMonitor = true;
+        // Android-only; see AndroidMainThreadMonitor. Off by default: any Looper printer makes
+        // Looper.loopOnce build two strings per main-thread message and adds two JNI upcalls,
+        // i.e. it feeds the ART GC pressure and native->Runnable transitions it's meant to observe.
+        public const bool EnableMainThreadMonitor = false;
     }
 }
