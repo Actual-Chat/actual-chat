@@ -296,11 +296,20 @@ export class FiniteList extends VirtualList {
         this.visibilityObserver.disconnect();
         const itemRefs = this.itemRefs();
         const keys = new Set(itemRefs.map(x => x.dataset.key!));
+        let hasDeparted = false;
         for (const key of [...this.visibleKeys])
-            if (!keys.has(key))
+            if (!keys.has(key)) {
                 this.visibleKeys.delete(key);
+                hasDeparted = true;
+            }
         for (const itemRef of itemRefs)
             this.visibilityObserver.observe(itemRef);
+
+        // Nothing else will report a departure: an intersection callback only arrives for a node that
+        // is still observed, so a render that drops every item - a filter that now matches nothing -
+        // would leave the last report standing and the consumer acting on keys that are gone.
+        if (hasDeparted)
+            this.updateItemVisibilityThrottled();
     }
 
     private itemRefs(): HTMLElement[] {

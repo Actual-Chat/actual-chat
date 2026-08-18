@@ -47,6 +47,14 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
 
     public override async ValueTask DisposeAsync()
     {
+        // A list that goes away has to retract what it last reported, because nothing else will: a place
+        // or filter switching to an empty result destroys this component rather than rendering it with
+        // no rows, so the JS side is gone before it could say so - and the consumer would go on acting
+        // on keys for rows that no longer exist.
+        if (LastReportedItemVisibility.VisibleKeys.Count != 0) {
+            LastReportedItemVisibility = VirtualListItemVisibility.Empty;
+            ItemVisibilityChanged?.Invoke(LastReportedItemVisibility);
+        }
         await base.DisposeAsync();
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;

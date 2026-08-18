@@ -1937,7 +1937,14 @@ export class InfiniteList extends VirtualList {
         'delayHead');
 
     private updateVisibility(): void {
-        if (this.isDisposed || this.items.length === 0)
+        if (this.isDisposed)
+            return;
+
+        // An empty list has to say so once, or a switch to a result with nothing in it leaves the
+        // consumer holding the keys from before. Only once both ends are known, though: "no items
+        // yet" during the first load is a different statement, and reporting it would act on it.
+        if (this.items.length === 0
+            && !(this.renderState.hasVeryFirstItem && this.renderState.hasVeryLastItem))
             return;
 
         const visibleKeys = [...this.visibleKeys];
