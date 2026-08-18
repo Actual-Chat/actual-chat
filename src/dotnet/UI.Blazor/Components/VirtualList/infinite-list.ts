@@ -334,6 +334,7 @@ export class InfiniteList extends VirtualList {
             window: `${this.visibleKeys.size}/${this.items.length}`,
             total: null,
             meanItemHeight: this.meanItemHeight,
+            tOffset: this.tOffset,
         };
     }
 
