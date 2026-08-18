@@ -16,20 +16,20 @@
     <Buttons>
         <Button
             Class="btn-transparent unhovered"
-            Click="@OnAllowClick">Allow</Button>
+            Click="@OnJoinClick">Allow</Button>
     </Buttons>
 </Banner>
 
 @code {
-    private SyncedState<PttAllowBannerUserSettings> _settings = null!;
+    private SyncedState<PttJoinBannerUserSettings> _settings = null!;
 
     private Chat Chat => ChatContext.Chat;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
     protected override void OnInitialized() {
-        var key = PttAllowBannerUserSettings.GetKey(Chat.Id);
-        _settings = StateFactory.NewUserSettingsSynced(UserSettingsUI, key, new PttAllowBannerUserSettings());
+        var key = PttJoinBannerUserSettings.GetKey(Chat.Id);
+        _settings = StateFactory.NewUserSettingsSynced(UserSettingsUI, key, new PttJoinBannerUserSettings());
     }
 
     public override async ValueTask DisposeAsync() {
@@ -72,7 +72,7 @@
 
     // Event handlers
 
-    private Task OnAllowClick() {
+    private Task OnJoinClick() {
         var chat = Chat;
         if (chat.PttEnabledAt is not { } enabledAt)
             return Task.CompletedTask;
@@ -84,5 +84,5 @@
     }
 
     private void OnDismiss()
-        => _settings.Value = new PttAllowBannerUserSettings { DismissedAt = Clocks.ServerClock.Now };
+        => _settings.Value = new PttJoinBannerUserSettings { DismissedAt = Clocks.ServerClock.Now };
 }

@@ -339,7 +339,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaybackToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttChatPickerModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttAllowBanner>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttJoinBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttPracticePanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu>();
@@ -1077,7 +1077,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaybackToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttChatPickerModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.PttAllowBanner), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PttJoinBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttPracticePanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu), AotTypeKind.Component),
