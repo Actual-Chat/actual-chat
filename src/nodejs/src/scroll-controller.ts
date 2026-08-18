@@ -224,6 +224,16 @@ export class ScrollController {
                 const limits = this.getEffectiveScrollLimits();
                 top = clamp(top, limits.min, limits.max);
             }
+            // Written before the band is re-aimed, so the re-aim can use what the engine accepted:
+            // WebKit takes only part of a write while inertia runs, and a boundary taken from the
+            // request would describe a position the content is not at. A smooth scroll lands over many
+            // frames and has nothing to read back, so it re-aims at the request as before.
+            const before = this.element.scrollTop;
+            if (options.smooth === false) {
+                this.element.scrollTop = top;
+                void this.element.offsetHeight; // Triggers reflow
+            }
+            const landed = options.smooth === false ? this.element.scrollTop : top;
             // A re-anchor is the same view renumbered, so the boundary moves with it and a return in
             // flight carries on. Overscrolling an edge is what loads the data that re-anchors, so this
             // fires constantly. A new destination re-aims the excursion instead: boundary and `over`
@@ -231,17 +241,17 @@ export class ScrollController {
             // the new edge rather than dropping it.
             if (this.isOverscrollActive) {
                 if (options.reanchor)
-                    this.translateScrollCoordinates(top - this.element.scrollTop);
-                else if (Math.abs(top - this.boundary) > FixPrecisionPx) {
-                    this.over += this.boundary - top;
-                    this.boundary = top;
+                    this.translateScrollCoordinates(landed - before);
+                else if (Math.abs(landed - this.boundary) > FixPrecisionPx) {
+                    this.over += this.boundary - landed;
+                    this.boundary = landed;
                     if (this.phase !== 'engaged')
                         this.engage(0);
                 }
             }
             if (options.smooth === false) {
-                this.element.scrollTop = top;
-                void this.element.offsetHeight; // Triggers reflow
+                this.lastScrollTop = landed;
+                this.lastScrollTime = performance.now();
                 this.nudgeRepaint();
             }
             else
@@ -371,6 +381,10 @@ export class ScrollController {
         // events and no wheel events, so it is caught here, not in onWheel).
         if (Math.abs(over) < MinExcursionPx || !(this.isTouching || this.isTouchMotion)) {
             this.element.scrollTop = boundary;
+            // The snap is what the next event has to measure from: the tracking above recorded the
+            // position before it, and leaving that reads the correction back as the user's own travel.
+            this.lastScrollTop = this.element.scrollTop;
+            this.lastScrollTime = performance.now();
             return;
         }
 
