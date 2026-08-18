@@ -63,15 +63,39 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         ChatEntryId? repliedChatEntryId,
         CancellationToken cancellationToken = default)
     {
+        // Both waits are bounded and proceed anyway: neither is worth losing an utterance over,
+        // and unbounded they burn the whole StartRecordingTimeout before the mic is even opened.
         var audioInitializer = Hub.AudioInitializer;
-        await audioInitializer.WhenInitialized.ConfigureAwait(false);
+        try {
+            await audioInitializer.WhenInitialized
+                .WaitAsync(Constants.Audio.RecorderStartupWaitTimeout, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            Log.LogWarning(nameof(StartRecording) + ": audio initialization is still pending, starting anyway");
+        }
 
-        // Ensure server clock is synced before recording — JS needs a valid
-        // offset to report source timestamps on the server-synced clock
-        // (same as VideoRecorder).
+        // The offset stamps frames; it isn't needed to open the microphone. Every device sleep
+        // trips the suspend-drift gate, so awaiting a re-sync here delayed every gesture.
         var serverTimeSync = Hub.Services.GetService<ServerTimeSync>();
-        if (serverTimeSync != null)
-            await serverTimeSync.EnsureSynced(cancellationToken).ConfigureAwait(false);
+        if (serverTimeSync != null) {
+            if (serverTimeSync.SyncCount > 0) {
+                _ = BackgroundTask.Run(
+                    () => serverTimeSync.EnsureSynced(CancellationToken.None),
+                    Log, "Background server clock re-sync failed", CancellationToken.None);
+            }
+            else {
+                // Never synced: there's no offset to stamp with, so this one has to wait.
+                try {
+                    await serverTimeSync.EnsureSynced(cancellationToken)
+                        .WaitAsync(Constants.Audio.RecorderStartupWaitTimeout, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (TimeoutException) {
+                    Log.LogWarning(nameof(StartRecording) + ": the server clock isn't synced yet, starting anyway");
+                }
+            }
+        }
 
         using var releaser = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
         releaser.MarkLockedLocally();

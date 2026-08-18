@@ -18,6 +18,8 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
     protected static readonly string JSSetConnectedMethod
         = $"{BlazorUICoreModule.ImportName}.ConnectivityUI.setConnected";
 
+    private static readonly TimeSpan PushToJSTimeout = TimeSpan.FromSeconds(2);
+
     private readonly MutableState<bool> _isConnected;
     private readonly MutableState<RpcConnectionInfo?> _connectionInfo;
     private int _lastConnectionIndex;
@@ -125,10 +127,17 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
         // A headless scope has no page to push to, and this whole chain runs under RetryForever -
         // so letting the disconnect escape would restart it about once a second, forever. The C#
         // state above is what the app consumes; only the DOM mirror is lost.
+        // Bounded, because a call that never completes parks PushIsConnectedToJS before its
+        // ConnectionState loop - freezing IsConnected at its initial false and costing everything
+        // that waits on WhenConnected (the recorder, most visibly) its full timeout.
+        using var cts = new CancellationTokenSource(PushToJSTimeout);
         try {
-            await JS.InvokeVoidAsync(method, CancellationToken.None, value).ConfigureAwait(false);
+            await JS.InvokeVoidAsync(method, cts.Token, value).ConfigureAwait(false);
         }
         catch (JSDisconnectedException) { }
+        catch (OperationCanceledException) {
+            Log.LogWarning("PushToJS: {Method} didn't complete in {Timeout}", method, PushToJSTimeout);
+        }
     }
 
     private async Task ResetReconnectDelaysWhenComeOnline(CancellationToken cancellationToken)

@@ -72,6 +72,14 @@ public static partial class Constants
         // Debounces GestureUI's activation loop: its inputs invalidate far more often than the
         // idle-check period, and it runs on battery-sensitive mobile clients.
         public static readonly TimeSpan WalkieTalkieGestureCheckMinPeriod = TimeSpan.FromSeconds(0.25);
+        // Under-display proximity sensors emit sub-second false "near" readings while the phone
+        // lies still (measured 0.2-1s on a OnePlus CPH2747), and each one used to disarm the
+        // start gestures outright, so a cover only counts once it has held this long.
+        public static readonly TimeSpan ProximitySuppressionDelay = TimeSpan.FromSeconds(0.5);
+        // SensorSpeed.UI is a hint, not a contract: another app pinning the accelerometer at its
+        // max rate raises the shared HAL rate and every connection gets the flood - 470Hz measured
+        // against our 15Hz request - so the surplus is dropped at the platform edge.
+        public static readonly TimeSpan GestureSampleMinPeriod = TimeSpan.FromMilliseconds(50);
         // Matches the wake push's FCM TTL; older wakes skip catch-up-from-start and go live.
         public static readonly TimeSpan WalkieTalkieStaleWakeAge = TimeSpan.FromSeconds(60);
         // Clock-fuzz allowance between a wake's startedAt and the target stream's BeginsAt.
@@ -80,6 +88,18 @@ public static partial class Constants
         public static readonly TimeSpan ServerClockWaitTimeout = TimeSpan.FromSeconds(10);
         // Short: a walkie reply that waits longer than this has already lost its answer window.
         public static readonly TimeSpan ConnectivityWaitTimeout = TimeSpan.FromSeconds(3);
+        // How long a stopping recorder may wait for its own pipeline tasks. Start() stops first,
+        // so an unbounded wait here blocks every later recording behind a wedged one. Two drains
+        // must still fit inside AudioRecorder.StopRecordingTimeout.
+        public static readonly TimeSpan RecorderDrainTimeout = TimeSpan.FromSeconds(1);
+        // Startup waits the recorder proceeds without rather than lose the utterance.
+        public static readonly TimeSpan RecorderStartupWaitTimeout = TimeSpan.FromSeconds(3);
+        // A walkie reply's two startup deadlines: how long the recorder may take to report itself
+        // recording, and how long after that the first captured sample may take. Both are shorter
+        // than AudioRecorder.StartRecordingTimeout - a reply that slow has lost its answer window,
+        // and the user needs the failure cue while they're still holding the phone.
+        public static readonly TimeSpan WalkieTalkieReplyMicStartTimeout = TimeSpan.FromSeconds(8);
+        public static readonly TimeSpan WalkieTalkieReplyMicLiveTimeout = TimeSpan.FromSeconds(4);
         public static readonly TimeSpan WalkieTalkieReplyColdStartTimeout = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan WalkieTalkieReplyBackgroundHotWindow = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan WalkieTalkieReplyRecencyWindow = TimeSpan.FromSeconds(150);
