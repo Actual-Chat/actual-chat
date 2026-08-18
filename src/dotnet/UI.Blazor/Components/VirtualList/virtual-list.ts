@@ -1,4 +1,4 @@
-import { PromiseSourceWithTimeout } from 'actuallab-core';
+import { delayAsync, PromiseSourceWithTimeout } from 'actuallab-core';
 import { DotNet } from '@microsoft/dotnet-js-interop';
 import { getLogs } from 'logging';
 import { VirtualListDataQuery } from './ts/virtual-list-data-query';
@@ -7,6 +7,11 @@ import { Range } from './ts/range';
 import { VirtualListOverlay, VirtualListOverlayStats, VirtualListOverlayTarget } from './virtual-list-overlay';
 
 const { warnLog } = getLogs('VirtualList');
+
+// Debug aid, like ?vltoffset: ?vlloaddelay=<ms> holds every data load for that long. A fast fling into
+// history is only interesting while the loads can't keep up with it, and that state is otherwise a race
+// to catch.
+const LoadDelayMs = readLoadDelay();
 
 // Only fires when a request never comes back at all - endRender and renderSkipped cover both normal
 // outcomes - so it is a fault backstop, not flow control.
@@ -139,6 +144,9 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
         this.lastDataRequestAt = performance.now();
         this.lastSentQuery = query;
         try {
+            if (LoadDelayMs > 0)
+                await delayAsync(LoadDelayMs);
+
             await this.blazorRef.invokeMethodAsync('RequestData', query);
         }
         catch (e) {
@@ -238,4 +246,13 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
             return null;
         }
     }
+}
+
+function readLoadDelay(): number {
+    const value = new URLSearchParams(location.search).get('vlloaddelay');
+    if (value == null)
+        return 0;
+
+    const result = Number(value);
+    return Number.isFinite(result) && result > 0 ? result : 0;
 }
