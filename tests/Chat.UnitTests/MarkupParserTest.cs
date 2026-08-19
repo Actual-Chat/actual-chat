@@ -1782,6 +1782,64 @@ code
         results.Should().AllSatisfy(x => x.Formatted.Should().Be(expected[x.Index]));
     }
 
+    [Fact]
+    public void PlainTextFastPathMatchesTheParser()
+    {
+        // Parse() skips the grammar for a line that provably holds no markup, so every input here
+        // must produce exactly what the grammar produced before that shortcut existed.
+        // arrange
+        var texts = new[] {
+            "Ну да.",
+            "будем мержить?",
+            "А ты звонил здесь или мне просто что-то не то пришло?",
+            "Yeah, that's what we do.",
+            "Quick update: the release build is green, p95 is 89 ms (down from 143).",
+            "«Можно катить?» — думаю, да; пик памяти ~1,5 ГБ.",
+            "  leading and trailing spaces  ",
+            " ",
+            "",
+            "5 * 3 = 15",
+            "-1 is the answer",
+            "- list item",
+            "> quoted",
+            "# Header",
+            "c#5 and item#2 are not hashtags",
+            "#tag",
+            "a@b.com",
+            "mailto:a@b.com",
+            "www.example.com",
+            "WWW.EXAMPLE.COM",
+            "see https://example.com/x for details",
+            "ftp://example.com",
+            "ratio 1:2, time 10:30",
+            "**bold**",
+            "*italic*",
+            "||spoiler||",
+            "`code`",
+            "| a | b |",
+            "line1\r\nline2",
+            "line1\nline2",
+            "text\u2028more",
+        };
+        var parser = new MarkupParser();
+
+        // act & assert
+        foreach (var text in texts) {
+            var expected = MarkupParser.ParseRaw(text).Simplify();
+            var actual = parser.Parse(text);
+            MarkupFormatter.Default.Format(actual).Should().Be(MarkupFormatter.Default.Format(expected), text);
+            actual.GetType().Should().Be(expected.GetType(), text);
+        }
+    }
+
+    [Fact]
+    public void PlainTextIsOneParagraphOfOneTextMarkup()
+    {
+        var text = "Hello, world - how are you doing (today)?";
+        var m = new MarkupParser().Parse(text).Should().BeOfType<ParagraphMarkup>().Subject;
+        m.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+    }
+
     // Helpers
 
     private static string CellText(TableRowMarkup row, int index)

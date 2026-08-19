@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text.RegularExpressions;
 using Pidgin;
 using Pidgin.Configuration;
@@ -19,6 +20,10 @@ public sealed partial class MarkupParser : IMarkupParser
     public bool AllowIncompleteMarkup { get; init; }
     public Markup Parse(string text)
     {
+        // The shortcut produces what Simplify() would; the raw tree splits the text per word.
+        if (MustSimplify && IsPlainText(text))
+            return new ParagraphMarkup(new PlainTextMarkup(text));
+
         var markup = ParseRaw(text, UseUnparsedTextMarkup, AllowIncompleteMarkup);
         if (MustSimplify)
             markup = markup.Simplify();
@@ -48,12 +53,28 @@ public sealed partial class MarkupParser : IMarkupParser
         return result.Success ? result.Value : EmptyResult;
     }
 
+    private static bool IsPlainText(string text)
+    {
+        // A single line leaves only a list/quote/header marker out of the block elements, and none
+        // of the three tolerates indentation; every inline element starts with a MarkupStartChars
+        // char; and a url needs a literal "://" or "www." - UrlRegex is case-sensitive.
+        if (text.Length == 0 || text[0] is '-' or '>')
+            return false;
+        if (text.AsSpan().ContainsAny(MarkupStartChars))
+            return false;
+
+        return !text.Contains("://") && !text.Contains("www.");
+    }
+
     // Everything Pidgin rents goes through our own pool - see ParserArrayPoolProvider
     private static readonly IConfiguration<char> ParserConfiguration =
         Pidgin.Configuration.Configuration.Default<char>()
             .WithArrayPoolProvider(ParserArrayPoolProvider.Instance);
 
     // Character classes
+
+    // Everything that can start markup, plus every line separator the grammar knows - see IsPlainText
+    private static readonly SearchValues<char> MarkupStartChars = SearchValues.Create("*`@|#\r\n\u2028");
 
     // The predicates are separate from the parsers because CharRun builds its scanners straight
     // from them - see CharRunParser for why a character run doesn't go through a combinator.
