@@ -46,10 +46,11 @@ const AppearanceQuietMs = 300;
 // How long an item that leaves the render is remembered as having been on screen. A key that comes back
 // inside this window did not appear - the source dropped it and put it back, which happens while a
 // conversation block materializes around messages that were already there - and growing it from nothing
-// is the one thing that must not happen to something the user was already reading. Long enough to cover
-// the render that drops it plus the one that brings it back, short enough that a genuine return from
-// far outside the window is still an arrival.
-const ReappearanceMs = 1500;
+// is the one thing that must not happen to something the user was already reading. The window is what
+// says which returns count: one the source never meant is effectively instant, a render or two apart,
+// while anything the user asked for - collapsing a conversation and expanding it again - takes as long
+// as reaching for the control twice, and is supposed to grow in like the first time.
+const ReappearanceMs = 200;
 // A re-pin re-derives its target from the DOM; when already flush that target sits ~1 device px off on
 // fractional-DPI screens, and writing it flips the position by a pixel on every render.
 const RepinEpsilon = 1;
@@ -1671,6 +1672,7 @@ export class InfiniteList extends VirtualList {
         const holdRef = target.closest<HTMLElement>('[data-vl-hold]');
         if (holdRef == null)
             return;
+
         if (holdRef.dataset.vlHold === 'keep-edge' && this.pinnedEdge != null)
             return;
 
