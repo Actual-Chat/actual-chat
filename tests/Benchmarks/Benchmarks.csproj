@@ -5,10 +5,10 @@
     <IsTestProject>false</IsTestProject>
     <IsPackable>false</IsPackable>
     <!-- BenchmarkDotNet requires assembly name to match the csproj name -->
-    <AssemblyName>Core.Benchmarks</AssemblyName>
+    <AssemblyName>Benchmarks</AssemblyName>
   </PropertyGroup>
 
-  <!-- Remove global usings that require references beyond Core -->
+  <!-- Remove global usings that require server-side or test-only references -->
   <ItemGroup>
     <Using Remove="ActualChat.Blobs" />
     <Using Remove="ActualChat.Mesh" />
@@ -24,7 +24,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\dotnet\Core\Core.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\UI.App\UI.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Samples\*.txt" LogicalName="%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

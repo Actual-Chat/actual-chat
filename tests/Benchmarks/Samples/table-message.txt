@@ -1,0 +1,12 @@
+Вот результаты замеров с dev, по билдам за неделю:
+
+| Build | Platform | Startup, ms | RPC reconnects | Notes |
+| --- | :-- | --: | --: | :-- |
+| v2.9.1 | Android | 1 840 | 3 | baseline |
+| v2.9.2 | Android | 1 615 | 1 | **-12%** after the mibc update |
+| v2.9.2 | iOS | 2 210 | 0 | still dominated by the WASM boot |
+| v2.9.3 | Android | 1 590 | 1 | no regression from @`Frol`u:jo4vst32iijq's audio PR |
+| v2.9.3 | iOS | 2 190 | 2 | reconnects are the mesh node churn, see `LiveAudioStreams.cs:81` |
+| v2.9.3 | Windows | 980 | 0 | — |
+
+Короче, **startup на Android стал заметно лучше**, а iOS упирается в другое — там надо смотреть на boot самого рантайма, а не на наш код. Reconnect'ы на iOS я бы отдельно посмотрел: два из них — это ровно тот кейс, про который мы говорили.

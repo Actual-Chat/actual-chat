@@ -1,0 +1,1 @@
+@`Frol`u:jo4vst32iijq ^ , that's PR review from Opus and Codex. **#1 and #2 are the ones worth fixing before merge**, the rest is cleanup. Я посмотрю ещё раз, когда ты запушишь фикс — если там всё ок и не хуже, чем раньше, мержим в dev сегодня, а релизить будем завтра. Только сделай, чтобы это был один коммит, чтобы легче было откатить.

@@ -1,16 +1,17 @@
 using ActualChat.Search;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
 
-namespace ActualChat.Core.Benchmarks;
+namespace ActualChat.Benchmarks;
 
 /// <summary>
 /// In-memory search benchmarks: <see cref="Search"/> builds a two-prefix query and matches +
 /// ranks 1000 documents of 2-5 words (~20% match); <see cref="ExtractMatches"/> measures
 /// <see cref="SearchQuery.GetMatchParts"/> over a 5-word text with 3 matched words.
-/// Run: dotnet run -c Release --project tests/Core.Benchmarks -- SearchBenchmarks
+/// Run: dotnet run -c Release --project tests/Benchmarks -- SearchBenchmarks
 /// </summary>
+[Config(typeof(InProcessShortRunConfig))]
 [MemoryDiagnoser]
-[ShortRunJob]
 public class SearchBenchmarks
 {
     private const int DocumentCount = 1000;

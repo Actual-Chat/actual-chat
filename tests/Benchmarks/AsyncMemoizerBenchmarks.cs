@@ -1,17 +1,18 @@
 using ActualChat.Internal;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
 
-namespace ActualChat.Core.Benchmarks;
+namespace ActualChat.Benchmarks;
 
 /// <summary>
 /// Benchmarks for AsyncMemoizer per-frame allocation and throughput.
 /// Compares the new linked-list <see cref="AsyncMemoizer{T}"/> against the legacy
 /// push-based <see cref="OldAsyncMemoizer{T}"/> across various reader counts.
-/// Run: dotnet run -c Release --project tests/Core.Benchmarks
+/// Run: dotnet run -c Release --project tests/Benchmarks
 /// </summary>
+[Config(typeof(InProcessShortRunConfig))]
 [MemoryDiagnoser]
 [ThreadingDiagnoser]
-[ShortRunJob]
 public class AsyncMemoizerBenchmarks
 {
     public enum MemoizerKind { Old, New }
