@@ -455,6 +455,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             picture,
             new SearchDocument(name, userName)) {
             IsChatMember = true,
+            MentionName = name,
         };
     }
 
@@ -516,7 +517,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         case PlaceId:
             return ("place", c.Title);
         case UserId or AuthorId:
-            return (c.IsChatMember ? null : "- not in this chat", c.Title);
+            return (c.IsChatMember ? null : "- not in this chat", c.MentionName.NullIfEmpty() ?? c.Title);
         case ChatId:
             if (c.PlaceId is not { } placeId)
                 return (null, c.Title); // standalone group chat

@@ -7,6 +7,7 @@ internal sealed class ChatMentionResolver(IServiceProvider services, ChatId chat
     private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
     private IPlaces Places => field ??= services.GetRequiredService<IPlaces>();
+    private AuthorUI AuthorUI => field ??= services.GetRequiredService<AuthorUI>();
     public ChatId ChatId { get; } = chatId;
 
     ValueTask<Author?> IMentionResolver<Author>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
@@ -38,9 +39,11 @@ internal sealed class ChatMentionResolver(IServiceProvider services, ChatId chat
         case UserMention um: {
             var accountTask = Accounts.Get(Session, um.UserId, cancellationToken);
             var memberIdsTask = Authors.ListUserIds(Session, ChatId, cancellationToken);
+            var nameTask = AuthorUI.GetUserName(ChatId, um.UserId, cancellationToken);
             var account = await accountTask.ConfigureAwait(false);
             var memberIds = await memberIdsTask.ConfigureAwait(false);
-            var name = account?.Avatar.Name ?? um.Name;
+            var userName = await nameTask.ConfigureAwait(false);
+            var name = userName.NullIfEmpty() ?? account?.Avatar.Name ?? um.Name;
             return new UserMention(um.Id, name) {
                 Account = account,
                 IsChatMember = memberIds.Contains(um.UserId),

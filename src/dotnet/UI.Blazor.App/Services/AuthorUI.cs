@@ -1,3 +1,4 @@
+using ActualChat.Contacts;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -5,10 +6,32 @@ public class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
     private IAccounts Accounts => Hub.Accounts;
     private IAuthors Authors => Hub.Authors;
+    private IContacts Contacts => Hub.Contacts;
 
     [ComputeMethod]
     public virtual Task<AuthorFull> GetOwn(ChatId chatId, CancellationToken cancellationToken)
         => Authors.GetOwn(Session, chatId, cancellationToken).Require();
+
+    [ComputeMethod]
+    public virtual async Task<string> GetUserName(ChatId chatId, UserId userId, CancellationToken cancellationToken)
+    {
+        // The name you see for this user: their avatar name in this chat if they're a member of it,
+        // otherwise your rename of them. Both already account for a rename; "" means neither applies.
+        if (userId.IsGuestOrNull())
+            return "";
+
+        var author = await Authors.GetByUserId(Session, chatId, userId, cancellationToken).ConfigureAwait(false);
+        if (author is not null)
+            return author.Avatar.Name;
+
+        var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+        if (ownAccount.IsGuestOrNull())
+            return "";
+
+        var contactId = ContactId.NewUser(ownAccount.Id, userId);
+        var contact = await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
+        return contact?.PreferredPeerName ?? "";
+    }
 
     public Task<ModalRef> Show(AuthorId authorId)
         => ModalUI.Show(new AuthorModal.Model(authorId), CancellationToken.None);

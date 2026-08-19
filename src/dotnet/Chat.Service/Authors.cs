@@ -37,24 +37,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (authorFull is null)
             return null;
 
-        var userId = authorFull.UserId;
-        var author = authorFull.ToAuthor();
-        if (userId.IsGuestOrNull())
-            return author;
-
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account.Id == userId)
-            return author; // Its own author
-
-        var contactId = ContactId.NewUser(account.Id, userId);
-        var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
-        var preferredPeerName = contact.PreferredPeerName;
-        if (!preferredPeerName.IsNullOrEmpty() && preferredPeerName != author.Avatar.Name) {
-            var avatar = author.Avatar with { Name = preferredPeerName };
-            author = author with { Avatar = avatar };
-        }
-
-        return author;
+        return await WithPreferredName(session, authorFull.ToAuthor(), authorFull.UserId, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public virtual async Task<AuthorFull?> GetOwn(
@@ -84,7 +68,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (author is null || author.IsAnonymous)
             return null; // Never de-anonymize: an anonymous participant isn't resolvable by their user id.
 
-        return author.ToAuthor();
+        return await WithPreferredName(session, author.ToAuthor(), userId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -446,6 +430,26 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     }
 
     // Private methods
+
+    private async ValueTask<Author> WithPreferredName(
+        Session session, Author author, UserId userId, CancellationToken cancellationToken)
+    {
+        // Your rename of that contact wins over their own avatar name everywhere they're shown.
+        if (userId.IsGuestOrNull())
+            return author;
+
+        var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (ownAccount.Id == userId)
+            return author; // Its own author
+
+        var contactId = ContactId.NewUser(ownAccount.Id, userId);
+        var contact = await ContactsBackend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
+        var preferredPeerName = contact.PreferredPeerName;
+        if (preferredPeerName.IsNullOrEmpty() || preferredPeerName == author.Avatar.Name)
+            return author;
+
+        return author with { Avatar = author.Avatar with { Name = preferredPeerName } };
+    }
 
     private async Task ChangeSystemRoleMembership(
         ChatId chatId,
