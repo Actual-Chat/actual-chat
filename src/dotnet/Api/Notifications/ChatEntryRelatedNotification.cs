@@ -71,6 +71,11 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
         var recentMessages = MergeRecentMessages(e, this);
         var newestIsIncoming = EntryLid >= e.EntryLid;
         var beepGroup = newestIsIncoming ? BeepGroup : e.BeepGroup;
+        // Only the newest message's group survives the merge, so a handover inside one soft-update
+        // batch (B speaks, then A again, all before the buffer drains) would read as an
+        // uninterrupted A run and never alert for B. Forgetting the last-beeped speaker makes the
+        // merged notification look like the fresh context it actually is.
+        var isSpeakerChanged = !BeepGroup.IsNullOrEmpty() && BeepGroup != e.BeepGroup;
 
         // A gap between messages long enough to count as a conversation lull resets the beep
         // back-off, so this fresh message alerts immediately instead of inheriting the back-off.
@@ -99,7 +104,7 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
             BeepGroup = beepGroup,
             BeepCount = isLull ? 0 : e.BeepCount,
             LastBeepAt = isLull ? default : e.LastBeepAt,
-            LastBeepGroup = isLull ? "" : e.LastBeepGroup,
+            LastBeepGroup = isLull || isSpeakerChanged ? "" : e.LastBeepGroup,
         };
     }
 
