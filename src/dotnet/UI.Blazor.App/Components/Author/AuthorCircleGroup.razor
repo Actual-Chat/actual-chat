@@ -20,7 +20,10 @@
         for (var i = 0; i < maxLength; i++) {
             var authorId = authorIds[i];
             var lastAuthorCls = i == maxLength - 1 ? "last-author" : "";
-            <div class="author-circle" style="z-index: @zIndex;">
+            @* Keyed by author: without it the diff is positional, so anyone leaving the group re-points
+               every avatar after them at a different author - which reloads the image and shows the
+               loading skeleton in its place. *@
+            <div @key="@authorId" class="author-circle" style="z-index: @zIndex;">
                 <div class="@lastAuthorCls author-wrapper">
                     <AuthorCircle AuthorId="@authorId" Size="@avatarSize"/>
                 </div>

@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, FoundMention[]>
 @implements IModalView<ChatQuickNavModal.Model>
@@ -28,7 +28,8 @@
             @foreach (var item in results) {
                 var cls = item == selection ? "c-item selected" : "c-item";
                 var targetId = item.MentionRef.Target;
-                <div class="@cls"
+                <div @key="@item.MentionRef.Value"
+                     class="@cls"
                      @onmouseover="@(_ => Selection = item)"
                      @onclick="@(_ => Select(item))">
                     <div class="c-content">

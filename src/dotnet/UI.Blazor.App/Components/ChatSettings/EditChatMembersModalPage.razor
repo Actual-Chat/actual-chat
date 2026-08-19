@@ -26,10 +26,10 @@
         /* At the moment there is no available actions for owners and own membership hence do not show menu  */
         var showMenu = !(isOwn || isOwner);
         var dataMenuAttr = showMenu ? MenuRef.New<EditChatMemberMenu>(authorId.Value).ToString() : null;
-        <li data-menu="@dataMenuAttr"
+        <li @key="@authorId"
+            data-menu="@dataMenuAttr"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <AuthorBadge
-                @key="@authorId"
                 AuthorId="@authorId"
                 ShowPresence="true"
                 StatusText="@statusText" />

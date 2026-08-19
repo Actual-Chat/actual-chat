@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, MessageReactions.Model?>
 @{
     var serverModel = State.Value;
@@ -12,7 +12,7 @@
 
 <ul class="message-reactions @Class">
     @foreach (var reaction in m.Reactions) {
-        <ReactionBadge Reaction="reaction" OwnReaction="m.OwnReaction" Entry="Entry" />
+        <ReactionBadge @key="@reaction.Emoji" Reaction="reaction" OwnReaction="m.OwnReaction" Entry="Entry" />
     }
 
     <li class="message-reactions-add"

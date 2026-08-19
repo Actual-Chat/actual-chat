@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, FoundMention[]>
 @{
@@ -60,7 +60,8 @@
                 var cls = mention == selection ? "selected" : "";
                 var targetId = mention.MentionRef.Target;
                 var isQuoted = targetId is ChatId or PlaceId;
-                <div class="@cls mention-list-item"
+                <div @key="@mention.MentionRef.Value"
+                     class="@cls mention-list-item"
                      data-editor-focus="true"
                      data-mention-ref="@mention.MentionRef.Value"
                      @onclick="@(_ => Manager.SelectMention(mention))">

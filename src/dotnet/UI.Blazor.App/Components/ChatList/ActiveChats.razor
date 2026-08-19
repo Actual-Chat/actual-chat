@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, List<Chat>>
 @{
     DebugLog?.LogDebug("Rendered: {List}", ChatListKind.Active);
@@ -12,7 +12,7 @@
 
     <div class="chat-list chat-list-active">
         @foreach(var chat in chats) {
-            <ChatListItem ListKind="@ChatListKind.Active" Chat="@chat"/>
+            <ChatListItem @key="@chat.Id" ListKind="@ChatListKind.Active" Chat="@chat"/>
         }
     </div>
 </div>

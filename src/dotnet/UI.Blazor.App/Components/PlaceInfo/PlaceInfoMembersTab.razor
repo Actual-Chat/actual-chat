@@ -1,4 +1,4 @@
-@{
+﻿@{
     var m = Data;
 }
 
@@ -9,11 +9,11 @@
         var statusText = FormatStatusText(isOwner, m.IsModerator(authorId), isOwn);
         var showMenu = !(isOwn || isOwner);
         var dataMenuAttr = showMenu ? MenuRef.New<EditPlaceMemberMenu>(authorId.Value).ToString() : null;
-        <li data-menu="@dataMenuAttr"
+        <li @key="@authorId"
+            data-menu="@dataMenuAttr"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="grow">
                 <AuthorBadge
-                    @key="@authorId"
                     AuthorId="@authorId"
                     ShowPresence="true"
                     StatusText="@statusText" />

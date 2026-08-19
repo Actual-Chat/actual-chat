@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
 @using StringBuilderExt = ActualLab.Text.StringBuilderExt
 @inherits ComputedStateComponent<AppUIHub, ThreadMessageView.Model?>
 @{
@@ -75,7 +75,7 @@
                 var topAuthorIds = m!.TopAuthorIds.Take(displayAuthorsLimit).ToList();
                 var extraAuthorCount = Math.Clamp(m.AuthorCount - topAuthorIds.Count, 0, 99);
                 foreach (var authorId in topAuthorIds) {
-                    <AuthorCircle AuthorId="@authorId" Size="@SquareSize.Size6"/>
+                    <AuthorCircle @key="@authorId" AuthorId="@authorId" Size="@SquareSize.Size6"/>
                 }
                 if (extraAuthorCount > 0) {
                     <div class="author-incut ai-extra">+@extraAuthorCount</div>

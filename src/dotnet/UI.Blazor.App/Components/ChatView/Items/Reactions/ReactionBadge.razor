@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
 @{
     var ownReactionClass = OwnReaction?.Emoji == Reaction.Emoji ? "own" : "";
@@ -14,7 +14,7 @@
     <EmojiIcon Emoji="@Reaction.Emoji" Class="c-emoji" HasPreview="false"/>
     @if (showIcons) {
         @for (int i = 0; i < Reaction.FirstAuthorIds.Count; i++) {
-            <div class="c-author" style="z-index: @(Reaction.FirstAuthorIds.Count - i - 1)">
+            <div @key="@Reaction.FirstAuthorIds[i]" class="c-author" style="z-index: @(Reaction.FirstAuthorIds.Count - i - 1)">
                 <AuthorCircle AuthorId="@Reaction.FirstAuthorIds[i]" Size="authorCircleSize"/>
             </div>
         }

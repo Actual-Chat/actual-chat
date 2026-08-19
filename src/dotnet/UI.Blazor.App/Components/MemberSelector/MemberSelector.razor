@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
 @inherits FusionComponentBase<AppUIHub>
 @implements IDisposable
@@ -54,7 +54,7 @@
                 continue;
 
             var account = contact.Account;
-            <div class="c-contact" @onclick="() => Remove(contact)">
+            <div @key="@userId" class="c-contact" @onclick="() => Remove(contact)">
                 <div class="c-remove">
                     <i class="icon-close c-close"></i>
                 </div>
