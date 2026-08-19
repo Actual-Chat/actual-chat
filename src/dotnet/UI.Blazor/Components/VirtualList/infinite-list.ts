@@ -43,6 +43,13 @@ const RevealTimeoutMs = 1500;
 // An appearance animation on the initial population would grow a whole page out of nothing, so
 // nothing animates until the list has been on screen this long.
 const AppearanceQuietMs = 300;
+// How long an item that leaves the render is remembered as having been on screen. A key that comes back
+// inside this window did not appear - the source dropped it and put it back, which happens while a
+// conversation block materializes around messages that were already there - and growing it from nothing
+// is the one thing that must not happen to something the user was already reading. Long enough to cover
+// the render that drops it plus the one that brings it back, short enough that a genuine return from
+// far outside the window is still an arrival.
+const ReappearanceMs = 1500;
 // A re-pin re-derives its target from the DOM; when already flush that target sits ~1 device px off on
 // fractional-DPI screens, and writing it flips the position by a pixel on every render.
 const RepinEpsilon = 1;
@@ -195,6 +202,9 @@ export class InfiniteList extends VirtualList {
         { id: string; top: number; at: number; isPlaced: boolean; corrected: number } | null = null;
     private isWatchingScreenAnchor = false;
     private stickyShift = 0;
+    // Keys that left a recent render, with the height they had, so an item that comes straight back is
+    // recognised as one that never went away - see applyAppearances.
+    private recentlyRemoved = new Map<string, { height: number; at: number }>();
     private stickyRefs = new Array<StickyItem>();
     // The pinned edge's follow, which is a scroll write on a frame rather than a translation: whether
     // one is already booked for this frame, and where the last one landed, so onScroll can tell that
@@ -347,6 +357,7 @@ export class InfiniteList extends VirtualList {
         }
         this.items = [];
         this.indexByKey = new Map<string, number>();
+        this.recentlyRemoved.clear();
         this.offsets = [0];
         this.visibleKeys.clear();
         this.chainStart = Math.round(this.wrapperSize / 2);
@@ -598,14 +609,22 @@ export class InfiniteList extends VirtualList {
             this.heights?.track(key, itemRef);
         }
 
+        const now = performance.now();
         for (const item of this.items) {
             if (indexByKey.has(item.key))
                 continue;
 
+            this.recentlyRemoved.set(item.key, { height: item.height, at: now });
             this.unobserveItem(item.ref);
             this.visibleKeys.delete(item.key);
             this.heights?.untrack(item.key);
         }
+        // Aged out, and only aged out: the render that brings a key back runs this before the appearances
+        // are decided, so forgetting it here for being present again is forgetting it exactly when it
+        // was about to be needed.
+        for (const [key, removed] of this.recentlyRemoved)
+            if (now - removed.at > ReappearanceMs)
+                this.recentlyRemoved.delete(key);
         this.items = items;
         this.indexByKey = indexByKey;
     }
@@ -1431,6 +1450,13 @@ export class InfiniteList extends VirtualList {
 
             const index = this.indexByKey.get(op.key);
             if (index == null || !this.isKeyOnScreen(op.key))
+                continue;
+
+            // The key was on screen a moment ago, so this is the source having dropped it and put it
+            // back rather than anything arriving. The diff cannot see that: the item is absent from the
+            // render it is diffed against, which is what an insertion looks like.
+            const wasHere = this.recentlyRemoved.get(op.key);
+            if (wasHere != null)
                 continue;
 
             const replacedHeight = typeof op.replacedKey === 'string'

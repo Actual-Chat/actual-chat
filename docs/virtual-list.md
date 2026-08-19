@@ -160,7 +160,11 @@ in a later section looks loaded — most of them are.*
   changes how the list looks without changing where it thinks anything is.
 - **appearance** — *`applyAppearances`, `beginAppearance`, `EdgeSentinel`.* An item parked at a start
   height so it grows in. Which items qualify comes from a text-style key diff, so an item replacing
-  another grows from that one's height and an item genuinely arriving grows from zero.
+  another grows from that one's height and an item genuinely arriving grows from zero. A key the list
+  had on screen moments ago never qualifies — see *reappearance*.
+- **reappearance** — *`recentlyRemoved`, `ReappearanceMs`.* A key that leaves a render and comes back
+  inside 1.5s. It looks exactly like an insertion to the diff, because the render it is diffed against
+  does not contain it, but the user was reading it a moment ago — so it does not animate.
 - **chain fitting** — *`isChainWithinViewport`, `updateChainFitting`.* "Both ends loaded, and the whole
   conversation is shorter than the viewport." A special case with its own resting place and its own
   hysteresis, not a coincidence the general rules happen to handle.
@@ -1323,6 +1327,21 @@ is parked at that edge count as inside the range rather than as an extension. No
 the first `AppearanceQuietMs` (300ms) after the list is revealed, or opening a chat would play the
 whole first screen in; nothing animates on a full replacement, or when a jump is pending — a jump
 has to measure its target against where the content will be, not against items parked at zero.
+
+**And nothing animates that was on screen a moment ago.** The diff can only compare this render with
+the last one, so an item the source *dropped and put back* — which is what a conversation block
+materializing around messages that were already there does — reads as an insertion and would grow from
+nothing under the reader's eyes. So the list keeps the keys that left a recent render, with the height
+they had, and an addition whose key is in that memory is not an appearance at all
+(`recentlyRemoved`, `ReappearanceMs` = 1.5s). The memory is pruned by age only: the render that brings
+a key back rebuilds the item list before appearances are decided, so dropping it there for being
+present again would drop it exactly when it is about to be needed.
+
+The alternative — matching on an *intrinsic* identity the app supplies, so the same content is
+recognised under a different key — is not implemented, because nothing was found that renames a
+message. `ChatMessageKey` is `<lid><suffix-for-kind>`, and a chat entry keeps `Kind = None` whether or
+not it sits inside a conversation, so its key is the bare lid either way. Measured on a live page:
+three collapse/expand cycles and a Summarize off/on cycle produced no renamed key at all.
 
 **At most `MaxAnimatedItems` (3) items animate at once**, in either direction, and everything past that
 is written to its real height on the spot. Expanding a conversation turns one item into a whole thread;
