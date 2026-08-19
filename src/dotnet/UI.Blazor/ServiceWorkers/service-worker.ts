@@ -166,10 +166,10 @@ onBackgroundMessage(messaging, async payload => {
         for (const client of windowClients)
             client.postMessage({ type: 'INCOMING_CALL', chatId: data.chatId });
 
-        await sw.registration.showNotification(payload.notification?.title ?? 'Incoming call', {
+        await sw.registration.showNotification(data.title ?? 'Incoming call', {
             tag: data.tag,
             icon: data.icon,
-            body: payload.notification?.body ?? 'Incoming call',
+            body: data.body ?? 'Incoming call',
             data: { url: data.link },
         });
         return;
@@ -193,12 +193,8 @@ onBackgroundMessage(messaging, async payload => {
         silent: silent,
         // @ts-expect-error renotify is valid per the Notifications spec but missing from lib DOM types
         renotify: !silent,
-        // @ts-expect-error TODO: fix errors
-        body: payload.notification.body,
-        data: {
-            // @ts-expect-error TODO: fix errors
-            url: payload.fcmOptions.link,
-        },
+        body: data.body,
+        data: { url: link },
     };
     // silly hack because notifications get lost or suppressed
     if (typeof sw.registration.getNotifications === 'function') {
@@ -207,8 +203,7 @@ onBackgroundMessage(messaging, async payload => {
             toClose.close();
         }
     }
-    // @ts-expect-error TODO: fix errors
-    await sw.registration.showNotification(payload.notification.title, options);
+    await sw.registration.showNotification(data.title, options);
 });
 
 const imagesCacheStrategy = new CacheFirst({

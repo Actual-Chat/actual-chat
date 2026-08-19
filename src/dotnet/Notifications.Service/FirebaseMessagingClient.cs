@@ -81,6 +81,9 @@ public class FirebaseMessagingClient(
             { Constants.Notification.MessageDataKeys.Kind, kind.ToString() },
             { Constants.Notification.MessageDataKeys.Link, link },
             { Constants.Notification.MessageDataKeys.Silent, isSilent.ToString() },
+            { Constants.Notification.MessageDataKeys.Title, title },
+            { Constants.Notification.MessageDataKeys.Body, content },
+            { Constants.Notification.MessageDataKeys.ImageUrl, absoluteIconUrl },
             {
                 Constants.Notification.MessageDataKeys.Timestamp,
                 ((long)notification.CreatedAt.EpochOffset.TotalMilliseconds).ToString()
@@ -88,33 +91,28 @@ public class FirebaseMessagingClient(
         };
         if (lastEntryLocalId > 0)
             data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString());
-        var androidData = new Dictionary<string, string>() {
-            { Constants.Notification.MessageDataKeys.Title, title },
-            { Constants.Notification.MessageDataKeys.Body, content },
-            { Constants.Notification.MessageDataKeys.ImageUrl, absoluteIconUrl },
-        };
         if (notification is ChatEntryRelatedNotification { RecentMessages.Count: > 0 } coalesced) {
             // FCM rejects messages over 4KB, which would drop the push entirely — so the transcript
             // key gets only the space the other data values leave, and is omitted when even one
             // message can't fit (the Body fallback still renders).
-            var usedBytes = data.Concat(androidData)
+            var usedBytes = data
                 .Sum(kv => Encoding.UTF8.GetByteCount(kv.Key) + Encoding.UTF8.GetByteCount(kv.Value));
             var budget = Math.Min(PushMessage.MaxJsonLength, MaxFcmPayloadBytes - FcmPayloadMargin - usedBytes);
             var json = PushMessage.ToJson(coalesced.RecentMessages, budget);
             if (!json.IsNullOrEmpty())
-                androidData.Add(Constants.Notification.MessageDataKeys.Messages, json);
+                data.Add(Constants.Notification.MessageDataKeys.Messages, json);
         }
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
-            // We do not specify Notification instance, because we use Data messages
-            // to deliver notifications to Android
-            // Notification = default,
+            // Data-only on every platform except APNs: each client renders the banner itself.
+            // A Webpush.Notification here would make the FCM SDK render its own banner *in addition
+            // to* the one our service worker shows - two banners, two alert sounds, and the SDK's
+            // copy ignores the Silent key, so even a silent content update would beep.
             Data = data,
             Android = new AndroidConfig {
-                // We do not specify Notification instance, because we use Data messages
-                // to deliver notifications to Android
-                // Notification = default,
-                Data = androidData,
+                // android.data overrides the top-level data rather than merging into it, so the
+                // full payload is repeated here - the client reads both halves out of one map.
+                Data = data,
                 Priority = Priority.High,
                 // CollapseKey = default, /* We don't use collapsible messages */
                 TimeToLive = TimeSpan.FromDays(10),
@@ -140,21 +138,6 @@ public class FirebaseMessagingClient(
                 },
                 FcmOptions = new ApnsFcmOptions {
                     ImageUrl = absoluteIconUrl,
-                },
-            },
-            Webpush = new WebpushConfig {
-                Notification = new WebpushNotification {
-                    Renotify = !isSilent,
-                    Title = title,
-                    Body = content,
-                    Tag = tag,
-                    RequireInteraction = false,
-                    Icon = absoluteIconUrl,
-                },
-                FcmOptions = new WebpushFcmOptions {
-                    Link = UrlMapper.BaseUri.Host == "localhost"
-                        ? null
-                        : link,
                 },
             },
         };
