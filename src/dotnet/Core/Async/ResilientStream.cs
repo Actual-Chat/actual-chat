@@ -21,10 +21,15 @@ public abstract class ResilientStream
 /// </summary>
 public sealed class ResilientStream<T> : ResilientStream, IAsyncEnumerable<T>
 {
+    private CancellationTokenSource? _attemptCts;
+
     public required Func<CancellationToken, Task<IAsyncEnumerable<T>>> Provider { get; init; }
     public Option<T> ResetItem { get; init; }
     // When set, a normal completion of the source is treated as a transient drop and reconnected.
     public bool IsInfinite { get; init; }
+
+    public void Break()
+        => Volatile.Read(ref _attemptCts)?.CancelSilently();
 
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
@@ -50,9 +55,12 @@ public sealed class ResilientStream<T> : ResilientStream, IAsyncEnumerable<T>
         var failedTryCount = 0;
         try {
             while (true) {
+                var attemptCts = cancellationToken.CreateLinkedTokenSource();
+                // Published so Break() can cancel just this attempt from another thread.
+                Volatile.Write(ref _attemptCts, attemptCts);
                 try {
-                    var source = await Provider.Invoke(cancellationToken).ConfigureAwait(false);
-                    await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                    var source = await Provider.Invoke(attemptCts.Token).ConfigureAwait(false);
+                    await foreach (var item in source.WithCancellation(attemptCts.Token).ConfigureAwait(false)) {
                         failedTryCount = 0;
                         await writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
                     }
@@ -63,11 +71,19 @@ public sealed class ResilientStream<T> : ResilientStream, IAsyncEnumerable<T>
                     // Infinite stream completed - reconnect just as we do on a transient drop
                     ++failedTryCount;
                 }
+                catch (OperationCanceledException)
+                    when (attemptCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested) {
+                    // Break() - reconnect, but don't spend the retry budget on a deliberate one
+                }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     if (!RetryPolicy.MustRetry(e, ref failedTryCount, out _)) {
                         writer.TryComplete(e);
                         return;
                     }
+                }
+                finally {
+                    Volatile.Write(ref _attemptCts, null);
+                    attemptCts.DisposeSilently();
                 }
 
                 if (ResetItem.IsSome(out var resetItem))
