@@ -344,6 +344,8 @@ position, once per frame at most:
 
 - **The pinned edge's follow** — `repinEdge` → `scheduleFollow`. A render, re-layout or viewport
   resize moved the edge in the DOM by no more than `maxOverscroll`, so the view follows it (§3.6).
+  When a render is what moved it, the follow is applied inside that render instead, in the same task as
+  the chain write — see §3.6; the scheduled one remains for everything else.
 - **A screen-anchor hold** — `correctScreenAnchor`, once per frame for the duration of a
   `data-vl-anchor` interaction. Expanding a conversation summary moves the chain by the whole of what
   is still growing — measured at 349px — and this is what holds the tapped header still through it. Its
@@ -611,6 +613,14 @@ asked for, or where nothing is moving and a jump is invisible:
 8. **A follow** — the pinned edge moving with content that grew under it (`scheduleFollow`,
    `ScrollController.followBy`). One write per frame at most, in the frame's write phase, from a
    measurement taken in its read phase; clamped into the limits and read back like every other write.
+   **A render that re-places the chain applies its own follow inline**, at the end of `applyLayout`,
+   for the reason the screen-anchor hold is applied there: while the list follows an edge, the chain
+   write moves it by everything that render added, and the scroll that compensates is what keeps the
+   view still. Waiting for the frame the scheduled follow runs on lets that displacement paint, once,
+   in full — recorded on a live conversation at 200–300px per render, on Chrome and on Android alike,
+   and reproduced at exactly the size of the change. The scheduled follow stays as the fallback for the
+   frames a render may not write on (a finger down, an open band, a scroll still settling), where it
+   defers as before.
 9. **A screen-anchor hold** — the same mechanism holding a tapped conversation header still while the
    block under it expands (`correctScreenAnchor`), once per frame for the length of the animation.
 

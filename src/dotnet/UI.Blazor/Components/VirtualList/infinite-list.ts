@@ -795,6 +795,13 @@ export class InfiniteList extends VirtualList {
         // rather than before the writes above, because the anchor correction is one of them.
         if (scrollShift !== 0)
             this.setScrollOffset(this.scrollOffset + scrollShift, false, false, true);
+        // Same reason as the anchor above: while the list follows an edge, the chain write moves it by
+        // everything this render added, and the scroll that compensates is what keeps the view still.
+        // Left to the frame the follow is scheduled on, that displacement paints once - measured at
+        // 200-300px per render against a live conversation, on Chrome and on Android. The scheduled
+        // follow stays as the fallback for the frames this one may not write.
+        if (this.pinnedEdge != null && this.canCorrectPosition)
+            this.applyFollow(this.measureFollow(), 'layout');
         // Clamping needs the real sizes, and mid-animation the DOM does not have them yet; onceStable
         // re-runs it with the content where it will actually be.
         // Skipped entirely while pinned, because a pinned list is about to correct itself by re-pinning
