@@ -325,6 +325,28 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var clearedReveal = false;
         Moment? wakeAt = null;
         lock (Lock) {
+            // A session everyone has left and then restarted is a new conversation as far as the viewer
+            // is concerned: they watched the block go quiet. Left latched, the template they froze on
+            // leaving keeps its unbounded hidden tail, and every entry the restart produces falls inside
+            // it - so the block sits there frozen while people talk into it. IsClosing going false again
+            // after it was true is that restart; the identity of the session cannot say so, because
+            // resuming keeps the one it was closing.
+            if (raw is { IsClosing: true })
+                chatState.WasQuiet = true;
+            else if (raw != null && chatState.WasQuiet) {
+                chatState.WasQuiet = false;
+                chatState.WasAttending = false;
+                chatState.Template = null;
+                chatState.RevealedBoundaryLid = long.MaxValue;
+                chatState.RevealScrolledInto = false;
+                chatState.IsClosed = false;
+                chatState.DissolveEndsAt = default;
+                chatState.DissolveDone = false;
+                // The fold boundary only ever advances, so the one the last session left behind would
+                // fold the restart's first entries into the card the moment they arrive.
+                chatState.State.Value = LiveBlockState.None;
+            }
+
             chatState.WasAttending |= isJoined;
             if (template != null)
                 chatState.Template = template;
@@ -407,6 +429,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         public MutableState<LiveBlockState> State = null!;
         public bool WasAttending;
         public bool IsClosed;
+        public bool WasQuiet;
         public Moment DissolveEndsAt;
         public bool DissolveDone;
         public FrozenTemplate? Template;

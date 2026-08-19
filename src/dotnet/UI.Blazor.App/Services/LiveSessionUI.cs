@@ -60,7 +60,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                 state.ContextStartLid,
                 state.EndEntryLid,
                 state.IsExpandedByDefault,
-                state.LastSummaryAt.EpochOffsetTicks > 0);
+                state.LastSummaryAt.EpochOffsetTicks > 0,
+                state.IsClosing);
     }
 
     public Task<Conversation?> UseConversationOrLastKnown(ChatId chatId, Task<Conversation?> conversationTask)
@@ -407,4 +408,5 @@ public sealed record LiveBlockSnapshot(
     long ContextStartLid,
     long EndEntryLid,
     bool IsExpandedByDefault,
-    bool HasSummary);
+    bool HasSummary,
+    bool IsClosing = false);

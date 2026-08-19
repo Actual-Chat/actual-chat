@@ -1670,6 +1670,97 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
     // Private methods
 
+    [Fact]
+    public async Task RestartedSessionSurfacesItsEntriesForAViewerWhoLeftTheLastOne()
+    {
+        // Everyone hangs up, and then someone starts talking again while the viewer is not attending.
+        // The viewer was in the session that ended, so the block they are still looking at is a frozen
+        // one - and its hidden tail must not be allowed to swallow what the next session says.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "restart-after-close-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_140);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await CreateSpokenEntry(chat.Id, $"first-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3,
+            }, CancellationToken.None);
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+
+        // Everyone stops, the viewer included - which is what latches the frozen template. No
+        // FinalizeSession: the report restarts "almost instantly", i.e. while the session is still
+        // closing rather than after it has been put away.
+        await chatAudioUI.SetListeningState(chat.Id, false);
+        InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await ComputedTest.When(async ct => {
+            var blockState = await liveBlockUI.GetBlockState(chat.Id, ct);
+            blockState.Overlay.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(10));
+        var afterStop = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
+        var stateAfterStop = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        Out.WriteLine($"after stop: overlay={Describe(afterStop)}");
+        Out.WriteLine($"after stop: session={(stateAfterStop == null ? "<null>" : $"v={stateAfterStop.EffectiveVisibleStartLid}, isClosing={stateAfterStop.IsClosing}, authors={stateAfterStop.AuthorIds.Count}, end={stateAfterStop.EndEntryLid}")}");
+
+        // act - one of them starts talking again, and says something
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var restarted = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        Out.WriteLine($"after restart: session={(restarted == null ? "<null>" : $"v={restarted.EffectiveVisibleStartLid}, isClosing={restarted.IsClosing}, authors={restarted.AuthorIds.Count}, end={restarted.EndEntryLid}")}");
+        var spoken = new List<ChatEntry>();
+        for (var i = 0; i < 3; i++)
+            spoken.Add(await CreateSpokenEntry(chat.Id, $"second-{i}"));
+        var typed = new List<ChatEntry>();
+        for (var i = 0; i < 12; i++)
+            typed.Add(await Tester.CreateTextEntry(chat.Id, $"typed after restart {i}"));
+        await Task.Delay(2000);
+
+        // assert - the block must not still be frozen against the session that ended. A viewer who is
+        // not attending never sees a live block's entries, by design; what they do see is the card's
+        // tail preview, and ConversationMessageView gates that on there being no overlay. Left frozen,
+        // the card shows nothing of what is being said, and its hidden tail runs to long.MaxValue - so
+        // the restart's transcript only surfaces once the conversation ends and materializes.
+        var afterRestart = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
+        Out.WriteLine($"after restart: overlay={Describe(afterRestart)}");
+        afterRestart.Overlay.Should().BeNull();
+        var finalItems = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+        var finalLids = LeafEntryLids(finalItems);
+        Out.WriteLine($"spoken lids: {string.Join(", ", spoken.Select(e => e.Id.LocalId))}");
+        Out.WriteLine($"visible lids: {string.Join(", ", finalLids)}");
+        finalLids.Should().Contain(typed.Select(e => e.Id.LocalId));
+    }
+
+    private static string Describe(LiveBlockState? state)
+    {
+        var overlay = state?.Overlay;
+        return overlay == null
+            ? "<null>"
+            : $"renderId={overlay.RenderId}, cardLid={overlay.CardLid}, hiddenTail={overlay.HiddenTailRange}, "
+                + $"foldRange={overlay.FoldRange}, blockEnd={overlay.BlockEndLid}, "
+                + $"materialized={overlay.MaterializedId}, wasAttending={state!.WasAttending}";
+    }
+
     private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)
     {
         // ChatAudioUI.GetState reads ActiveChatsUI.ActiveChats.Value directly rather than reactively,
