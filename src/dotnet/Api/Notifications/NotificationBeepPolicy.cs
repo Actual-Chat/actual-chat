@@ -11,10 +11,9 @@ public static class NotificationBeepPolicy
 {
     public static bool ShouldBeep(ChatEntryRelatedNotification notification, Moment now)
     {
-        // A spoken message alerts when its voice context changes - the first utterance of a live
-        // session, or a new speaker taking over - and otherwise only once per interval. BeepCount
-        // plays no part: a monologue would walk up the back-off and land on the same 30min tail
-        // whether it ran for two minutes or two hours.
+        // A spoken message alerts when its voice context changes - a new speaker taking over - and
+        // otherwise only once per interval. BeepCount plays no part: a monologue would walk up the
+        // back-off and land on the same 30min tail whether it ran for two minutes or two hours.
         var beepGroup = notification.BeepGroup;
         if (beepGroup.IsNullOrEmpty())
             return ShouldBeep(notification.Kind, notification.BeepCount, notification.LastBeepAt, now);

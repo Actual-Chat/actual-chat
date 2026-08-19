@@ -32,8 +32,8 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
     // The transcript window: last MaxRecentMessages unread messages, oldest -> newest.
     [DataMember(Order = 18), Key(18)]
     public ApiArray<NotificationMessage> RecentMessages { get; init; }
-    // The voice context of the newest message in the window - the live session it belongs to, or
-    // its author when there is none; empty for typed text, which keeps the plain beep back-off.
+    // The voice context of the newest message in the window - its author, for a spoken message;
+    // empty for typed text, which keeps the plain beep back-off.
     // A beep fires when it differs from LastBeepGroup, and then only per VoiceReAlertInterval.
     [DataMember(Order = 19), Key(19)]
     public string BeepGroup { get; init; } = "";
