@@ -48,19 +48,24 @@ public sealed class ChatListeningPlayer : ChatPlayer
             Hub.Services, Session, ChatId,
             ChatAudioUI.GetListeningCatchUp(ChatId),
             cancellationToken.CreateLinkedTokenSource());
-        await using var streamProcessorDisposable = streamProcessor.ConfigureAwait(false);
+        await using var _ = streamProcessor.ConfigureAwait(false);
 
         streamProcessor.StreamStarted +=
             (info, _, frames) => OnStreamStarted(playback, state, info, frames, cancellationToken);
-        _ = BackgroundTask.Run(
-            () => ResubscribeOnSleep(streamProcessor, cancellationToken),
-            Log,
-            $"Sleep watcher failed for #{ChatId}",
-            cancellationToken);
+        StartSleepWatcher(streamProcessor, cancellationToken);
         await streamProcessor.Run().ConfigureAwait(false);
     }
 
     // Private methods
+
+    private void StartSleepWatcher(
+        ListeningStreamProcessor streamProcessor,
+        CancellationToken cancellationToken)
+        => _ = BackgroundTask.Run(
+            () => ResubscribeOnSleep(streamProcessor, cancellationToken),
+            Log,
+            $"Sleep watcher failed for #{ChatId}",
+            cancellationToken);
 
     private async Task ResubscribeOnSleep(
         ListeningStreamProcessor streamProcessor,

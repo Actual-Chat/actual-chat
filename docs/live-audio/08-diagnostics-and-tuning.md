@@ -184,7 +184,6 @@ All in `src/dotnet/Api/Constants.Audio.cs` unless noted.
 | `MaxTrackBacklog` | 2 s | queued audio at which a stale track is dropped |
 | `PlaybackLagStaleAfter` | ~1.5 s | lag sample freshness |
 | `AudioCatchUpDeadband` | 200 ms | sync no-op band |
-| `AudioCatchUpBaselineDelta` | -100 ms | "audio slightly ahead" target |
 | `PacingHeadStartDuration` (`AudioTrackPlayer.cs`) | 30 ms | initial frame burst |
 | `PacingDuration` (`AudioTrackPlayer.cs`) | 200 ms | real-time pacing window |
 | `ReportPlayingMaxIntervalMs` (`audio-player.ts`) | 1000 ms | OnPlaying heartbeat |
