@@ -369,10 +369,64 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
                 queued.Should().AllSatisfy(x => x.Task.IsCompleted.Should().BeTrue());
             },
             TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 20 : 10));
+        // A started translation isn't cancelled on dequeue - it holds its concurrency slot, and so
+        // its queue entry, until it completes, which is why this waits rather than asserting at once
         await TestExt.When(() => {
             ThrottledTranslations.ListQueued().Should().BeEmpty();
             ThrottledTranslations.ListRunning().Should().BeEmpty();
-        }, TimeSpan.FromSeconds(10));
+        }, TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 60 : 30));
+    }
+
+    [Fact]
+    public async Task ShouldDequeueThreadPreviewTranslationsWhenThreadsBecomeInvisible()
+    {
+        // arrange
+        const int threadCount = 8; // x PreviewEntryCount, so the queue holds more than ConcurrencyLevel
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.German, cancellationToken);
+        // Without this GetTranslationVisibilityState stays null and nothing is ever dequeued
+        await TranslationUI.SetIsOn(chatId, true, cancellationToken);
+        await ComputedTest.When(async ct => (await TranslationUI.IsEnabled(chatId, ct)).Should().BeTrue(),
+            TimeSpan.FromSeconds(10).Debuggable());
+
+        var threadStartLids = new List<long>();
+        var previewEntries = new List<ChatEntry>();
+        for (var i = 0; i < threadCount; i++) {
+            var threadStart = (await CreateEntries(chatId, $"Thread start {i}")).Single();
+            var threadChat = await BobTester.Commander.Call(
+                new ChatThreads_Start(BobTester.Session, chatId, $"Thread#{i}", "", [threadStart.Id]),
+                cancellationToken);
+            // Digits only: the server decides these need no translation and keeps returning null, so
+            // an item can only leave the queue by being dequeued - never by completing
+            previewEntries.AddRange(await CreateEntries(threadChat.Id, $"{i}00", $"{i}01"));
+            threadStartLids.Add(threadStart.LocalId);
+        }
+        SetVisibleThreads(chatId, threadStartLids);
+        // Started here, after the cards are visible, so its very first observed state is that one -
+        // the dequeue needs a previous state to diff against. The app starts it from AfterFirstRender,
+        // which BlazorTester never reaches.
+        ThrottledTranslations.Start();
+
+        // act - this is what ThreadMessageView does for the entries its card previews
+        var translations = await GetTranslations(previewEntries, cancellationToken);
+        var queued = ThrottledTranslations.ListQueued();
+
+        // assert
+        translations.Should().AllSatisfy(x => x.Should().BeNull());
+        queued.Should().NotBeEmpty();
+        queued.Should().AllSatisfy(x => x.Id.SourceId.ChatId.IsThread(out _).Should().BeTrue());
+
+        // act
+        ClearVisibleItems(chatId);
+
+        // assert - a thread card's key is the only visible key that maps to these entries
+        await TestExt.When(() => {
+                queued.Should().AllSatisfy(x => ThrottledTranslations.GetWorkItem(x.Id).Should().BeNull());
+                queued.Should().AllSatisfy(x => x.Task.IsCanceled.Should().BeTrue());
+            },
+            TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 20 : 10));
     }
 
     private async Task<ChatId> CreateChat(CancellationToken cancellationToken)
@@ -424,6 +478,11 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
             lids.Select(lid => ChatMessageKey.New(ChatMessageKind.None, lid)).ToHashSet(),
             true));
     }
+
+    private void SetVisibleThreads(ChatId chatId, IEnumerable<long> threadStartLids)
+        => ChatUI.SetItemVisibility(new ChatViewItemVisibility(chatId,
+            threadStartLids.Select(lid => ChatMessageKey.New(ChatMessageKind.Thread, lid)).ToHashSet(),
+            true));
 
     private void ClearVisibleItems(ChatId chatId)
         => ChatUI.SetItemVisibility(new ChatViewItemVisibility(chatId, ReadOnlySet<ChatMessageKey>.Empty, true));

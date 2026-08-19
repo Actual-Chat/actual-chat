@@ -5,6 +5,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IAsyncDisposable
 {
     public const int ConcurrencyLevel = 10;
+    // Bounds a WhenNotNull wait the server may never end, so a slot can't be held for the session
+    private static readonly TimeSpan ProcessCallTimeout = TimeSpan.FromSeconds(60);
     private readonly ConcurrentProcessor<TranslationId, Translation> _translations;
     private readonly ConcurrentProcessor<ChatEntryId, ChatEntryLanguage> _languageDetections;
 
@@ -14,8 +16,12 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
 
     public ThrottledTranslations(AppUIHub hub) : base(hub)
     {
-        _translations = new (ConcurrencyLevel, WhenTranslated, log: hub.LogFor<ConcurrentProcessor<TranslationId, Translation>>());
-        _languageDetections = new (ConcurrencyLevel, WhenLanguageDetected, log: hub.LogFor<ConcurrentProcessor<ChatEntryId, ChatEntryLanguage>>());
+        _translations = new(
+            ConcurrencyLevel, WhenTranslated, ProcessCallTimeout,
+            log: hub.LogFor<ConcurrentProcessor<TranslationId, Translation>>());
+        _languageDetections = new(
+            ConcurrencyLevel, WhenLanguageDetected, ProcessCallTimeout,
+            log: hub.LogFor<ConcurrentProcessor<ChatEntryId, ChatEntryLanguage>>());
     }
 
     public async ValueTask DisposeAsync()
@@ -42,14 +48,13 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
     public Task<Translation?> GetExisting(TranslationId id, CancellationToken cancellationToken)
         => Translations.Get(Session, id, false, cancellationToken);
 
-    public async Task<Translation?> Get(
-        TranslationId id,
-        CancellationToken cancellationToken)
+    public async Task<Translation?> Get(TranslationId id, CancellationToken cancellationToken)
     {
         var session = Session;
         var existingTranslation = await Translations.Get(session, id, false, cancellationToken).ConfigureAwait(false);
         if (existingTranslation is null)
             _translations.Enqueue(id);
+
         return existingTranslation;
     }
 
@@ -62,9 +67,10 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
         return existing;
     }
 
-    // Internal methods (used in tests)
+    // Protected/internal methods
 
 #pragma warning disable RCS1210
+    // These three are internal to be accessible from tests
     internal Task<Translation>? GetWorkItem(TranslationId id)
         => _translations.Get(id)?.ResultTask;
 #pragma warning restore RCS1210
@@ -74,8 +80,6 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
 
     internal IReadOnlyList<(TranslationId Id, Task<Translation> Task)> ListQueued()
         => _translations.Queue.Where(x => !x.IsStarted).Select(x => (x.Key, x.ResultTask)).ToList();
-
-    // Protected methods
 
     [ComputeMethod]
     protected virtual async Task<State?> GetTranslationVisibilityState(CancellationToken cancellationToken)
@@ -88,11 +92,13 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
         var targetLanguage = await TranslationUI
             .GetTranslationLanguage(itemVisibility.ChatId, cancellationToken)
             .ConfigureAwait(false);
+
         return new(itemVisibility, targetLanguage);
     }
 
     [ComputeMethod]
-    protected virtual Task<ChatEntryLanguage?> GetLanguageInternal(ChatEntryId entryId, CancellationToken cancellationToken)
+    protected virtual Task<ChatEntryLanguage?> GetLanguageInternal(
+        ChatEntryId entryId, CancellationToken cancellationToken)
         => Translations.GetLanguage(Session, entryId, cancellationToken);
 
     protected override Task OnRun(CancellationToken cancellationToken)
@@ -106,6 +112,8 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
             .RunIsolated(cancellationToken);
     }
 
+    // Private methods
+
     private async Task SyncRunningTranslations(CancellationToken cancellationToken)
     {
         var cState0 = await Computed
@@ -113,32 +121,63 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
             .ConfigureAwait(false);
         State? last = null;
         await foreach (var (state, _) in cState0.Changes(cancellationToken).ConfigureAwait(false)) {
-            // TODO(FC): dequeue for thread entries - use ChatUI.GetThreadPreviewEntries
-            _translations.RemoveMany(false, GetDisappearedTranslationIds(state).ToArray());
-            _languageDetections.RemoveMany(false, GetDisappearedEntryIds(state).ToArray());
+            var keys = GetDisappearedKeys(state).ToList();
+            var threadEntryIds = await ListThreadPreviewEntryIds(keys).ConfigureAwait(false);
+            _translations.RemoveMany(false, GetDisappearedTranslationIds(keys, threadEntryIds).ToArray());
+            _languageDetections.RemoveMany(false, GetDisappearedEntryIds(state).Concat(threadEntryIds).ToArray());
             last = state;
         }
         return;
 
-        IEnumerable<TranslationId> GetDisappearedTranslationIds(State? state)
-        {
+        IEnumerable<ChatMessageKey> GetDisappearedKeys(State? state) {
             if (last is null)
                 return [];
 
-            var keys = state is not null
+            return state is not null
                 ? last.ItemVisibility.VisibleKeys.Except(state.ItemVisibility.VisibleKeys)
                 : last.ItemVisibility.VisibleKeys;
-            return ToPossibleTranslationIds(keys, last.ItemVisibility.ChatId, last.TargetLanguage);
         }
 
-        IEnumerable<ChatEntryId> GetDisappearedEntryIds(State? state)
-        {
+        IEnumerable<TranslationId> GetDisappearedTranslationIds(
+            IReadOnlyList<ChatMessageKey> keys,
+            IReadOnlyList<ChatEntryId> threadEntryIds) {
+            if (last is null)
+                return [];
+
+            var targetLanguage = last.TargetLanguage;
+            return ToPossibleTranslationIds(keys, last.ItemVisibility.ChatId, targetLanguage)
+                .Concat(threadEntryIds.Select(x => TranslationId.New(x, targetLanguage)));
+        }
+
+        IEnumerable<ChatEntryId> GetDisappearedEntryIds(State? state) {
             if (last is null)
                 return [];
 
             return state is not null
                 ? last.ItemVisibility.VisibleTextEntryIds.Except(state.ItemVisibility.VisibleTextEntryIds)
                 : last.ItemVisibility.VisibleTextEntryIds;
+        }
+
+        // A thread card previews entries of the thread chat, so no visible key of the chat we're
+        // watching maps to them - they have to be resolved the same way the card resolves them.
+        async Task<List<ChatEntryId>> ListThreadPreviewEntryIds(IReadOnlyList<ChatMessageKey> keys) {
+            var result = new List<ChatEntryId>();
+            if (last is null)
+                return result;
+
+            var chatId = last.ItemVisibility.ChatId;
+            foreach (var key in keys) {
+                if (key.Kind != ChatMessageKind.Thread)
+                    continue;
+
+                var threadChatId = chatId.CreateThreadId(key.LocalId);
+                var entries = await ChatUI
+                    .GetThreadPreviewEntries(threadChatId, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                result.AddRange(entries.Select(x => x.Id));
+            }
+
+            return result;
         }
     }
 
@@ -154,13 +193,20 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
             .Capture(taskFactory, cancellationToken)
             .ConfigureAwait(false);
         var cData = await cData0.When(x => x is not null, cancellationToken).ConfigureAwait(false);
+
         return cData.Value!;
     }
 
-    private static IEnumerable<TranslationId> ToPossibleTranslationIds(IEnumerable<ChatMessageKey> keys, ChatId chatId, Language targetLanguage)
+    private static IEnumerable<TranslationId> ToPossibleTranslationIds(
+        IEnumerable<ChatMessageKey> keys,
+        ChatId chatId,
+        Language targetLanguage)
         => keys.SelectMany(x => ToPossibleTranslationIds(x, chatId, targetLanguage));
 
-    private static IEnumerable<TranslationId> ToPossibleTranslationIds(ChatMessageKey key, ChatId chatId, Language targetLanguage)
+    private static IEnumerable<TranslationId> ToPossibleTranslationIds(
+        ChatMessageKey key,
+        ChatId chatId,
+        Language targetLanguage)
         => key.Kind switch {
             ChatMessageKind.None => [TranslationId.New(ChatEntryId.New(chatId, key.LocalId), targetLanguage)],
             ChatMessageKind.ConversationStart => [
@@ -168,7 +214,8 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
                     targetLanguage),
                 TranslationId.New(TranslationSourceId.New(chatId, TranslationIdKind.ConversationSummary, key.LocalId),
                     targetLanguage),
-                TranslationId.New(TranslationSourceId.New(chatId, TranslationIdKind.ConversationDescription, key.LocalId),
+                TranslationId.New(
+                    TranslationSourceId.New(chatId, TranslationIdKind.ConversationDescription, key.LocalId),
                     targetLanguage),
             ],
             ChatMessageKind.Thread => [
