@@ -33,6 +33,12 @@ edited. The reason can be as short as whose decision it was.
   — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
   members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
 
+## src/dotnet/UI.Blazor.App/Components/ChatView/Items/TranscriptUI.cs
+
+- L5 `public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService`
+  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
+  members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
+
 ## src/nodejs/src/scroll-controller.ts
 
 - L452 `switch (this.phase) {`

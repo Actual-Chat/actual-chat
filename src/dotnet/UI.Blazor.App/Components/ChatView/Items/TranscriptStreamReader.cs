@@ -4,20 +4,20 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
+public sealed class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
 {
     // 0.5s to 2s, doubling. The previous ladder reached 9s and 13s cumulative, so a stream that
     // became available a few seconds in was not noticed for another ten - which is what left an
     // ellipsis or a "Transcribing" badge standing over a message that had already been transcribed.
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5, 2, multiplier: 2);
 
+    private readonly MutableState<TranscriptStreamReaderState> _state
+        = hub.StateFactory.NewMutable(TranscriptStreamReaderState.None);
+
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private ILiveAudioStreams LiveAudioStreams => hub.LiveAudioStreams;
     private MomentClockSet Clocks => hub.Clocks;
     private ILogger Log => field ??= hub.LogFor(GetType());
-
-    private readonly MutableState<TranscriptStreamReaderState> _state
-        = hub.StateFactory.NewMutable(TranscriptStreamReaderState.None);
 
     public IState<TranscriptStreamReaderState> State => _state;
 
@@ -48,7 +48,7 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
                     // Log.LogWarning(
                     //     "ProcessStreamingState: Reset state for {MessageId}, State = {State}, OldState = {OldState}, {Hash}, {OldHash}",
                     //     id, cState.Value, last1, cState.Value.GetHashCode(), last1?.GetHashCode() ?? 0);
-                    _state.Value = new (
+                    _state.Value = new(
                         RetainedText: "",
                         ChangedText: "",
                         AnimatedText: "",
@@ -61,9 +61,10 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
                         $"{nameof(ProcessTranscript)} failed",
                         linkedCts.Token);
                 }
-                else
+                else {
                     // No streaming
                     _state.Value = TranscriptStreamReaderState.None;
+                }
                 last = state;
                 lastCts = linkedCts;
             }
@@ -109,10 +110,7 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
         try {
             var transcripts = rpcStream.ToTranscripts();
 
-            // Optimization state:
-            // - stablePrefixLength: length of text that is known to be immutable (based on IsStable snapshots)
             var stablePrefixLength = 0;
-            // Precompute once for translation tail splitting
             var lastWordIndex = isTranslation
                 ? content.LastIndexOf(' ') + 1
                 : 0;
@@ -121,9 +119,7 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
                 var text = transcript.Text;
                 var isStable = transcript.IsStable;
 
-                // Fast retained prefix calc using stable prefix knowledge
                 var retainedLength = GetRetainedLength(lastText, text, stablePrefixLength);
-
                 var changedPart = text[retainedLength..];
 
                 // Animate only the delta growth; if it shrinks or equal, no animation
@@ -136,7 +132,7 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
                     tail = content[tailStartIndex..];
                 }
 
-                _state.Value = new (
+                _state.Value = new(
                     RetainedText: text[..retainedLength],
                     ChangedText: changedPart[..animatedStartIndex],
                     AnimatedText: changedPart[animatedStartIndex..],
@@ -144,7 +140,6 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
                     true,
                     isTranslation);
 
-                // If current snapshot is stable, lock in the known-immutable prefix
                 if (isStable)
                     stablePrefixLength = Math.Max(stablePrefixLength, text.Length);
 
@@ -152,11 +147,14 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
             }
         }
         catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
-            // Intended: suppress cancellation
+            // ProcessStreamingState cancels us right before it publishes the next stream's state,
+            // so a terminal state from here would race it and win with the old stream's text.
+            return true;
         }
-        // Reached on normal completion or cancellation — mark streaming as done.
+
+        // Normal completion — mark streaming as done.
         // Any other error propagates to the retry loop with the state intact.
-        _state.Value = new (
+        _state.Value = new(
             RetainedText: lastText,
             ChangedText: "",
             AnimatedText: "",
@@ -166,10 +164,10 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
         return true;
     }
 
-    // Uses knowledge of an immutable prefix (stablePrefixLength) to avoid re-comparing it.
-    // Also handles fast-paths for pure appends/truncations within the unstable suffix.
     private static int GetRetainedLength(string previous, string current, int stablePrefixLength)
     {
+        // Uses knowledge of an immutable prefix (stablePrefixLength) to avoid re-comparing it.
+        // Also handles fast-paths for pure appends/truncations within the unstable suffix.
         if (previous.Length == 0 || current.Length == 0)
             return 0;
 
@@ -198,6 +196,7 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
         var i = 0;
         while (i < n && a[i] == b[i])
             i++;
+
         return baseLen + i;
     }
 }

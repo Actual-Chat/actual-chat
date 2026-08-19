@@ -486,7 +486,8 @@ public partial class ChatUI
                 continue;
 
             if (tile.Items[0].Equals(prevMessage)) {
-                // Skip the first item if it's the same as the previous tile - e.g., a large conversation that spans across multiple t
+                // Skip the first item if it's the same as the previous tile - e.g. a large
+                // conversation that spans across multiple tiles
                 tile = tile with { Items = tile.Items.Skip(1).ToList() };
                 if (tile.Items.Count == 0)
                     continue;
@@ -561,7 +562,9 @@ public partial class ChatUI
                 direction < 0 ? 0 : LoadLimit);
 
             // use StopToken to cancel the prefetch task because we are not awaiting it
-            _ = Task.Run(() => GetChatItemsInternal(chatId, prefetchDataQuery, shownReadyEntryLid, true, Hub.StopToken), Hub.StopToken);
+            _ = Task.Run(
+                () => GetChatItemsInternal(chatId, prefetchDataQuery, shownReadyEntryLid, true, Hub.StopToken),
+                Hub.StopToken);
         }
 
         var groupedItems = GroupAuthorMessages(items);
@@ -748,8 +751,12 @@ public partial class ChatUI
                 dataQuery1.ExistingLidRange.End,
                 dataQuery1.EndOffset);
 
-            var hasFulfilledStart = (startIdWithOffset != null && HasOffsetReached(dataQuery1.StartOffset, startIdWithOffset.Value.ActualOffset)) || !hasPreviousIdTile;
-            var hasFulfilledEnd = (endIdWithOffset != null && HasOffsetReached(dataQuery1.EndOffset, endIdWithOffset.Value.ActualOffset)) || !hasNextIdTile;
+            var hasFulfilledStart = (startIdWithOffset != null
+                    && HasOffsetReached(dataQuery1.StartOffset, startIdWithOffset.Value.ActualOffset))
+                || !hasPreviousIdTile;
+            var hasFulfilledEnd = (endIdWithOffset != null
+                    && HasOffsetReached(dataQuery1.EndOffset, endIdWithOffset.Value.ActualOffset))
+                || !hasNextIdTile;
             var startEntryLid = startIdWithOffset?.Id ?? 0L;
             var endEntryLid = endIdWithOffset?.Id ?? long.MaxValue;
             // Keep the loaded range covering the visible range even when the scroll-driven offsets would
@@ -769,8 +776,10 @@ public partial class ChatUI
                 .EnsureMonotonic()
                 .ToList();
 
-            hasMoreBefore1 = hasPreviousIdTile || (hasFulfilledStart && idTiles1.Count > 0 && idTiles1[0].Start > resultIdRanges[0].Start);
-            hasMoreAfter1 = hasNextIdTile || (hasFulfilledEnd && idTiles1.Count > 0 && idTiles1[^1].End < resultIdRanges[^1].End);
+            hasMoreBefore1 = hasPreviousIdTile
+                || (hasFulfilledStart && idTiles1.Count > 0 && idTiles1[0].Start > resultIdRanges[0].Start);
+            hasMoreAfter1 = hasNextIdTile
+                || (hasFulfilledEnd && idTiles1.Count > 0 && idTiles1[^1].End < resultIdRanges[^1].End);
             return hasFulfilledStart && hasFulfilledEnd;
 
             static void AddRange(List<Range<long>> list, Range<long> range)
@@ -820,7 +829,8 @@ public partial class ChatUI
         var conversations = Array.Empty<Conversation>();
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         if (showConversations) {
-            var conversationIdTile = ServerIdTileStack.LastLayer.GetTile(lidRange.Start); // Get largest tile that contains the requested range
+            // Largest tile that contains the requested range
+            var conversationIdTile = ServerIdTileStack.LastLayer.GetTile(lidRange.Start);
             var conversationTile = await Conversations
                 .GetTile(Session, chatId, conversationIdTile.Range, cancellationToken)
                 .ConfigureAwait(false);
@@ -1144,7 +1154,10 @@ public partial class ChatUI
             .ConfigureAwait(false);
 
     [ComputeMethod]
-    protected virtual async Task<ChatEntry?> GetAudioRecordingEntry(ChatId chatId, AuthorId ownAuthorId, CancellationToken cancellationToken)
+    protected virtual async Task<ChatEntry?> GetAudioRecordingEntry(
+        ChatId chatId,
+        AuthorId ownAuthorId,
+        CancellationToken cancellationToken)
     {
         var state = await Hub.AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
         // ChatId is the microphone session: set by MarkStarting, cleared by MarkStopped. Deliberately NOT
@@ -1480,7 +1493,10 @@ public partial class ChatUI
         return entry.BeginsAt - prevEndsAt >= BlockStartTimeGap;
     }
 
-    private static (long Id, int ActualOffset)? GetIdWithOffset(ReadOnlySpan<Range<long>> ranges, long anchorId, int requestedOffset)
+    private static (long Id, int ActualOffset)? GetIdWithOffset(
+        ReadOnlySpan<Range<long>> ranges,
+        long anchorId,
+        int requestedOffset)
     {
         if (ranges.IsEmpty)
             return null;
@@ -1555,7 +1571,7 @@ public partial class ChatUI
             }
         }
 
-        int actualOffset = (int)(isForward ? travelled : -travelled);
+        var actualOffset = (int)(isForward ? travelled : -travelled);
         return (currentId, actualOffset);
     }
 
@@ -1565,7 +1581,7 @@ public partial class ChatUI
     // what it pulls, so the verdict is invalidated by the entries that could change it.
     //
     // Null ExpiresAt with IsSuppressed means only a change can lift it - there is nothing to time out.
-    [ComputeMethod(ConsolidationDelay = 0.05)]
+    [ComputeMethod(ConsolidationDelay = 0)]
     protected virtual async Task<StreamingSuppression> GetStreamingSuppression(
         ChatId chatId,
         AuthorId ownAuthorId,
@@ -1605,5 +1621,6 @@ public partial class ChatUI
     }
 
     // Nested types
+
     private record AudioRecordingMessageTag;
 }

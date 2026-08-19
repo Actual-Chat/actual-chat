@@ -4,7 +4,6 @@
 @{
     var m = State.Value;
     var sm = m.Streaming;
-    var message = Message;
     var entry = m.Entry;
     // The server fills a location entry's content with a maps-link fallback for clients that don't
     // understand location entries; here we render the map instead, so that content stays hidden
@@ -19,10 +18,9 @@
     var oldStreaming = _rendered?.Streaming;
     var oldIsStreaming = _rendered?.IsStreaming ?? m.IsStreaming;
     if (oldIsStreaming && !m.IsStreaming && oldStreaming is not null) {
-        // Capture the full text shown while streaming (retained + still-animating parts), not just
-        // RetainedText: otherwise the fade-out overlay is shorter than the final markup and the
-        // streaming→non-streaming transition visibly jumps.
-        _temporaryText = oldStreaming.RetainedText + oldStreaming.ChangedText + oldStreaming.AnimatedText;
+        // The full text shown while streaming, not just RetainedText: otherwise the fade-out overlay
+        // is shorter than the final markup and the streaming→non-streaming transition visibly jumps.
+        _temporaryText = oldStreaming.Text;
     }
 
     _rendered = m;
@@ -35,16 +33,15 @@
         streamingCls = "streaming";
     }
     var translationCls = "";
-    if (oldTranslation is TranslationState.None or TranslationState.Translating && m.Translation == TranslationState.Translated) {
+    if (oldTranslation is TranslationState.None or TranslationState.Translating
+        && m.Translation == TranslationState.Translated) {
         translationCls = "to-translated";
-    } else if (oldTranslation is TranslationState.Translated or TranslationState.Translating && m.Translation == TranslationState.None) {
+    } else if (oldTranslation is TranslationState.Translated or TranslationState.Translating
+        && m.Translation == TranslationState.None) {
         translationCls = "from-translated";
     } else if (m.Translation == TranslationState.Translating) {
         translationCls = "translating";
     }
-
-    // Log.LogInformation("Rendering ChatEntryMessageInternalView for #{EntryId} (IsStreaming: {IsStreaming}, Translation: {TranslationState})",
-    //     message.Entry.Id, m.IsStreaming, m.Translation);
 
     var status = ChatMessageSendingStatus.MessageStatus.Default;
     if (entry.IsSending) {
@@ -76,9 +73,6 @@
     // No visible content (no text, status icon or translation mark) → mark the markup empty so it renders
     // hidden from the first frame. The JS used to add this one frame late, which made attachment-only
     // messages render ~1 text line taller, then collapse — re-anchoring the list (a jump).
-    var hasNoStreamedText = sm.RetainedText.IsNullOrEmpty()
-        && sm.ChangedText.IsNullOrEmpty()
-        && sm.AnimatedText.IsNullOrEmpty();
     var isEmptyMarkup = !m.IsStreaming
         && trimmedContent.IsNullOrEmpty()
         && !entry.HasLocation
@@ -87,14 +81,14 @@
 }
 <div @ref="Ref" class="chat-message-markup @translationCls @streamingCls @(isEmptyMarkup ? "empty" : "")">
     @if (m.IsStreaming) {
-        @if (IsOwnMessage && hasNoStreamedText && !HasNewerStreamingEntry()) {
+        @if (IsOwnMessage && sm.IsTextEmpty && !HasNewerStreamingEntry()) {
             <StreamingEntryBadge
                 ChatId="@ChatContext.Chat.Id"
                 IsVoiceActive="@true"
                 IsLanguageKnown="@m.IsChatLanguageSelected"
                 VoiceStartedAt="@entry.BeginsAt"/>
         }
-        else if (!IsOwnMessage && hasNoStreamedText) {
+        else if (!IsOwnMessage && sm.IsTextEmpty) {
             @* Someone else is speaking and their first words have not arrived. The badge is for our
                own recording; this only has to say that the message is on its way, and it keeps the
                row from being an author header over nothing. *@
@@ -145,37 +139,23 @@
 </div>
 
 @code {
-    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatEntryMessageInternalView.create";
-
+    private static readonly string JSCreateMethod
+        = $"{BlazorUIAppModule.ImportName}.ChatEntryMessageInternalView.create";
     private static readonly double AnimationDurationMs = Constants.Transcription.ThrottlePeriod.TotalMilliseconds;
     private static readonly int AnimationSpanCount = (int)Math.Round(AnimationDurationMs / (1000.0 / 15));
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
-    private static readonly IThreadSafeLruCache<ChatEntryId, TranscriptStreamReader> TranscriptStreamReaderCache
-        = new ThreadSafeLruCache<ChatEntryId, TranscriptStreamReader>(100);
 
     private string? _temporaryText;
     private Model? _rendered;
-    private TranscriptStreamReader _streamReader = null!;
     private ChatEntryId _textEntryId = null!;
+
     private ILogger Log => Hub.LogFor(GetType());
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
     private ChatUI ChatUI => Hub.ChatUI;
+    private TranscriptUI TranscriptUI => Hub.TranscriptUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
-
-    private bool HasNewerStreamingEntry() {
-        var authorId = Message.Entry.AuthorId;
-        var current = Message.NextMessage;
-        for (var i = 0; i < 50 && current != null; i++, current = current.NextMessage) {
-            if (current is ChatEntryMessage em
-                && em.Entry.AuthorId == authorId
-                && em.Entry.IsContentStreaming)
-                return true;
-        }
-        return false;
-    }
-
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
 
@@ -186,50 +166,20 @@
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
     [Parameter] public bool IsOwnMessage { get; set; }
 
-    public override async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose");
-        JSRef = null!;
-
-        // Log.LogInformation("ChatEntryMessageInternalView.DisposeAsync: {Id}", _textEntryId);
-        TranscriptStreamReaderCache.TryGetValue(_textEntryId, out var cached);
-        if (ReferenceEquals(cached, _streamReader)) {
-            var isStreaming = _streamReader.State.ValueOrDefault?.IsStreaming == true;
-            if (!isStreaming) {
-                TranscriptStreamReaderCache.Remove(_textEntryId);
-                await _streamReader.DisposeSilentlyAsync().ConfigureAwait(false);
-            }
-            // If still streaming, keep cached for reuse and do not dispose
-        }
-        else
-            await _streamReader.DisposeSilentlyAsync().ConfigureAwait(false);
-
-        await base.DisposeAsync().ConfigureAwait(false);
-    }
-
     protected override void OnInitialized() {
         var messageEntry = Message.Entry;
         _textEntryId = ChatEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
-        // Log.LogInformation("ChatEntryMessageInternalView.OnInitialized: {Id}", _textEntryId);
+    }
 
-        _streamReader = GetTranscriptStreamReader();
-        if (Message.Entry.IsContentStreaming) {
-            // Add if the entry was created as streaming
-            var added = TranscriptStreamReaderCache.GetOrAdd(_textEntryId, _ => _streamReader);
-            // If the instance in the cache is the newly created _streamer, start streaming.
-            if (ReferenceEquals(added, _streamReader))
-                _streamReader.Start();
-        }
-        else
-            _streamReader.Start();
-        // Log.LogInformation("Created new TranscriptStreamer for {Id}", _textEntryId);
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                JSCreateMethod,
-                Ref);
-        }
+        if (firstRender)
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
     }
 
     protected override bool ShouldRender() {
@@ -251,7 +201,9 @@
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         // Do not use cached options as we need to pass Message and Markup parameters.
-        var initialData = new Model(Markup, Message.Entry, TranslationState.None, TranscriptStreamReaderState.None, IsUnreadByOthers, IsUnreadByOthersBlockStart);
+        var initialData = new Model(
+            Markup, Message.Entry, TranslationState.None, TranscriptStreamReaderState.None,
+            IsUnreadByOthers, IsUnreadByOthersBlockStart);
         return new() {
             InitialValue = initialData, // To show the original text immediately
             Category = GetStateCategory(GetType()),
@@ -264,7 +216,9 @@
         var isUnreadByOthersBlockStart = IsUnreadByOthersBlockStart;
         // When entry isSending, it's a local chat entry. It does not exist on the server side.
         if (message.Entry.IsSending)
-            return new Model(Markup, message.Entry, TranslationState.None, TranscriptStreamReaderState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
+            return new Model(
+                Markup, message.Entry, TranslationState.None, TranscriptStreamReaderState.None,
+                isUnreadByOthers, isUnreadByOthersBlockStart);
 
         var renderedEntry = _rendered?.Entry ?? message.Entry;
         var markup = _rendered?.Markup ?? Markup;
@@ -273,10 +227,14 @@
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
-            return _rendered ?? new Model(markup, message.Entry, TranslationState.None, TranscriptStreamReaderState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
+            return _rendered ?? new Model(
+                markup, message.Entry, TranslationState.None, TranscriptStreamReaderState.None,
+                isUnreadByOthers, isUnreadByOthersBlockStart);
         }
 
-        var streamingState = await _streamReader.State.Use(cancellationToken).ConfigureAwait(false);
+        var streamingState = await TranscriptUI
+            .GetTranscriptState(_textEntryId, cancellationToken)
+            .ConfigureAwait(false);
         // The transcript reader can finish before the server clears Entry.IsContentStreaming.
         // Keep its last state through that gap — it retains the streamed text, so the streaming
         // branch doesn't render empty and collapse to the "Transcribing" badge.
@@ -284,48 +242,62 @@
             var translationState = streamingState.IsTranslating
                 ? TranslationState.Translating
                 : TranslationState.None;
-            var isChatLanguageSelected = await LanguageUI.IsChatLanguageSelected(entry.ChatId, cancellationToken).ConfigureAwait(false);
+            var isChatLanguageSelected = await LanguageUI
+                .IsChatLanguageSelected(entry.ChatId, cancellationToken)
+                .ConfigureAwait(false);
             return new(markup, entry, translationState, streamingState, isUnreadByOthers, isUnreadByOthersBlockStart) {
                 IsChatLanguageSelected = isChatLanguageSelected,
             };
         }
 
-        // If we're not streaming, handle possible translation
+        // If we are not streaming, handle possible translation
         var mustTranslate = await TranslationUI.MustTranslate(entry, false, cancellationToken).ConfigureAwait(false);
         var hasTranslationChanged = isRenderedTranslated != mustTranslate;
         var hasStreamingChanged = isRenderedStreaming != streamingState.IsStreaming;
         if (!renderedEntry.VersionEquals(entry) || hasTranslationChanged || hasStreamingChanged)
-            markup = await ChatMarkupHub.GetMarkup(entry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
+            markup = await ChatMarkupHub
+                .GetMarkup(entry, MarkupConsumer.MessageView, cancellationToken)
+                .ConfigureAwait(false);
 
         if (!mustTranslate)
-            return new(markup, entry, TranslationState.None, TranscriptStreamReaderState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
+            return new(
+                markup, entry, TranslationState.None, TranscriptStreamReaderState.None,
+                isUnreadByOthers, isUnreadByOthersBlockStart);
 
         var translation = await TranslationUI.Get(entry.Id, cancellationToken).ConfigureAwait(false);
         if (translation is null)
-            return new(markup, entry, TranslationState.Translating, TranscriptStreamReaderState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
+            return new(
+                markup, entry, TranslationState.Translating, TranscriptStreamReaderState.None,
+                isUnreadByOthers, isUnreadByOthersBlockStart);
 
         if (translation.MatchesOriginal(entry.Content))
-            return new(markup, entry, translation.IsStreaming ? TranslationState.Translating : TranslationState.None, TranscriptStreamReaderState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
+            return new(
+                markup, entry, translation.IsStreaming ? TranslationState.Translating : TranslationState.None,
+                TranscriptStreamReaderState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
         var translatedMarkup = entry.HasAudio
             ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))
             : MarkupParser.Parse(translation.Content);
 
         var translating = translation.IsStreaming ? TranslationState.Translating : TranslationState.Translated;
-        return new(translatedMarkup, entry, translating, TranscriptStreamReaderState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
+        return new(
+            translatedMarkup, entry, translating, TranscriptStreamReaderState.None,
+            isUnreadByOthers, isUnreadByOthersBlockStart);
     }
 
     // Private methods
 
-    private TranscriptStreamReader GetTranscriptStreamReader() {
-        if (TranscriptStreamReaderCache.TryGetValue(_textEntryId, out var cached)) {
-            var isStreaming = cached.State.ValueOrDefault?.IsStreaming == true;
-            if (isStreaming)
-                return cached;
-
-            TranscriptStreamReaderCache.Remove(_textEntryId);
+    private bool HasNewerStreamingEntry() {
+        var authorId = Message.Entry.AuthorId;
+        var current = Message.NextMessage;
+        for (var i = 0; i < 50 && current != null; i++, current = current.NextMessage) {
+            if (current is ChatEntryMessage em
+                && em.Entry.AuthorId == authorId
+                && em.Entry.IsContentStreaming)
+                return true;
         }
-        return new(_textEntryId, Hub);
+
+        return false;
     }
 
     // Nested types

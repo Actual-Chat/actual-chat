@@ -9,4 +9,7 @@ public sealed record TranscriptStreamReaderState(
     bool IsTranslating)
 {
     public static readonly TranscriptStreamReaderState None = new("", "", "", "", false, false);
+    public string Text => RetainedText + ChangedText + AnimatedText;
+    public bool IsTextEmpty
+        => RetainedText.IsNullOrEmpty() && ChangedText.IsNullOrEmpty() && AnimatedText.IsNullOrEmpty();
 }
