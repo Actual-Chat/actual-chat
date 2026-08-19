@@ -29,14 +29,16 @@
             ? "Not enabled in this chat"
             : m.IsPtt
                 ? "Wakes this device when someone speaks"
-                : "Off";
+                : m.IsAtPttCapacity
+                    ? $"Already on in {UserPttSettings.MaxChatCount} chats"
+                    : "Off";
         <TileItem Click="@OnPttClick">
             <Icon><i class="icon-talking text-2xl"></i></Icon>
             <Content>Push-to-talk</Content>
             <Caption>@pttCaption</Caption>
             <Right>
                 <Toggle
-                    IsDisabled="@(m.PttEnabledAt is null)"
+                    IsDisabled="@(m.PttEnabledAt is null || m.IsAtPttCapacity)"
                     IsChecked="@m.IsPtt"
                     IsCheckedChanged="@(_ => OnPttClick())"/>
             </Right>
@@ -58,7 +60,7 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = new(false, false, false, null, false),
+                InitialValue = new(false, false, false, false, null, false),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -68,15 +70,15 @@
         var settings = await UserSettingsUI.GetChatVoiceMode(chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var pttEnabledAt = chat?.PttEnabledAt;
-        var PTTTalkieSettings = await UserSettingsUI.UserPttSettings()
-            .Get(cancellationToken)
-            .ConfigureAwait(false);
+        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        var isPtt = pttChatIds.Contains(chatId);
         var mustStreamVoice = settings.VoiceMode.HasVoice();
         var isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new (
             mustStreamVoice,
             settings.CanChange,
-            PTTTalkieSettings.IsArmedIn(chatId, pttEnabledAt),
+            isPtt,
+            !isPtt && pttChatIds.Count >= UserPttSettings.MaxChatCount,
             pttEnabledAt,
             isIncompleteUIEnabled);
     }
@@ -97,10 +99,20 @@
             return;
 
         var chatId = ChatId;
+        if (m.IsPtt) {
+            await UserSettingsUI.UserPttSettings()
+                .Update(x => x.WithoutPttChat(chatId), CancellationToken.None);
+            return;
+        }
+
+        if (m.IsAtPttCapacity)
+            return;
+
+        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(CancellationToken.None).ConfigureAwait(true);
         // Never a raw client clock: JoinedAt must land within the current epoch (>= enabledAt).
         var joinedAt = Moment.Max(Clocks.ServerClock.Now, enabledAt);
         await UserSettingsUI.UserPttSettings().Update(
-            x => m.IsPtt ? x.WithoutPttChat(chatId) : x.WithPttChat(chatId, joinedAt),
+            x => x.WithOnlyPttChats(pttChatIds.ToHashSet()).WithPttChat(chatId, joinedAt),
             CancellationToken.None);
     }
 
@@ -110,6 +122,7 @@
         bool MustStreamVoice,
         bool CanChangeMustStreamVoice,
         bool IsPtt,
+        bool IsAtPttCapacity,
         Moment? PttEnabledAt,
         bool EnableIncompleteUI);
 }

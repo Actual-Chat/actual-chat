@@ -97,13 +97,30 @@
         if (error != null)
             return;
 
-        // Flipping the toggle is itself consent: auto-arm the owner with the server-stamped epoch.
-        if (isPttEnabled && newChat?.PttEnabledAt is { } enabledAt)
-            await UserSettingsUI.UserPttSettings()
-                .Update(x => x.WithPttChat(chat.Id, enabledAt), CancellationToken.None);
-        else if (!isPttEnabled)
+        if (!isPttEnabled) {
             await UserSettingsUI.UserPttSettings()
                 .Update(x => x.WithoutPttChat(chat.Id), CancellationToken.None);
+            return;
+        }
+
+        if (newChat?.PttEnabledAt is not { } enabledAt)
+            return;
+
+        // Flipping the toggle is itself consent: auto-arm the owner with the server-stamped epoch.
+        // At capacity that consent can't be honoured, and dropping another chat to make room would
+        // silently cost the owner its wake-ups - so the chat stays on and only the arming waits.
+        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(CancellationToken.None).ConfigureAwait(true);
+        if (pttChatIds.Count >= UserPttSettings.MaxChatCount && !pttChatIds.Contains(chat.Id)) {
+            ToastUI.Show(
+                $"Push-to-talk is on for this chat, but you're already in {UserPttSettings.MaxChatCount} - allow it in Settings.",
+                "icon-alert-circle",
+                ToastDismissDelay.Long);
+            return;
+        }
+
+        await UserSettingsUI.UserPttSettings().Update(
+            x => x.WithOnlyPttChats(pttChatIds.ToHashSet()).WithPttChat(chat.Id, enabledAt),
+            CancellationToken.None);
     }
 
     private static string GetStateCaption(bool isOn, bool isOwner) {

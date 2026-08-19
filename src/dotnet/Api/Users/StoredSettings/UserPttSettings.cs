@@ -69,6 +69,11 @@ public sealed partial record UserPttSettings
     public UserPttSettings WithoutPttChat(ChatId chatId)
         => WithPttChats(AllPttChats.Where(c => c.ChatId != chatId).ToArray());
 
+    public UserPttSettings WithOnlyPttChats(IReadOnlySet<ChatId> chatIds)
+        // Drops entries the caller no longer sees as armed, so a dead one can't consume the
+        // MaxChatCount budget and make WithPttChat evict a live chat in its place.
+        => WithPttChats(AllPttChats.Where(c => chatIds.Contains(c.ChatId)).ToArray());
+
     // Private methods
 
     private UserPttSettings WithPttChats(PttChat[] pttChats)

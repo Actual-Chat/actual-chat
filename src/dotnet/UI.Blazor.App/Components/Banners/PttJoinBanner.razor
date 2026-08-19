@@ -72,15 +72,25 @@
 
     // Event handlers
 
-    private Task OnJoinClick() {
+    private async Task OnJoinClick() {
         var chat = Chat;
         if (chat.PttEnabledAt is not { } enabledAt)
-            return Task.CompletedTask;
+            return;
+
+        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(CancellationToken.None).ConfigureAwait(true);
+        if (pttChatIds.Count >= UserPttSettings.MaxChatCount && !pttChatIds.Contains(chat.Id)) {
+            ToastUI.Show(
+                $"Push-to-talk is already on in {UserPttSettings.MaxChatCount} chats - turn one off in Settings.",
+                "icon-alert-circle",
+                ToastDismissDelay.Long);
+            return;
+        }
 
         // Never a raw client clock: JoinedAt must land within the current epoch (>= enabledAt).
         var joinedAt = Moment.Max(Clocks.ServerClock.Now, enabledAt);
-        return UserSettingsUI.UserPttSettings()
-            .Update(x => x.WithPttChat(chat.Id, joinedAt), CancellationToken.None);
+        await UserSettingsUI.UserPttSettings().Update(
+            x => x.WithOnlyPttChats(pttChatIds.ToHashSet()).WithPttChat(chat.Id, joinedAt),
+            CancellationToken.None);
     }
 
     private void OnDismiss()
