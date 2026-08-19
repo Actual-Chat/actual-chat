@@ -72,9 +72,15 @@ public sealed record ConversationViewState(
 
 public partial class ChatUI
 {
-    // How far back along the chat the streaming verdict looks, in entry ids.
+    // How far back along the chat the streaming verdict looks, in entry ids. It has to outlast one
+    // utterance: measured over a week of 5-speaker standups on dev, at most 7 entries ever landed while
+    // a single utterance was still running (the VAD caps one at 120s), so 20 leaves ~3x headroom.
+    // Bounded so a streaming entry that never closes can't hold the live block's fold open forever.
     private const int StreamingScanDepth = 20;
-    private static readonly TimeSpan StreamingEntryGap = TimeSpan.FromSeconds(5);
+    // Must outlast the dead air between two consecutive transcript entries: the VAD's silence
+    // threshold (MaxConvPauseS = 0.65s once someone else is talking, MaxPauseS = 2.7s solo) plus the
+    // finalize round trip. Sized for a conversation - solo dictation has the thinner margin.
+    private static readonly TimeSpan StreamingEntryGap = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
     // Server-side only: it reaches Google Managed Prometheus via the server's OTel pipeline, and MAUI
     // registers no meter at all - a device reports these numbers through the slow-build log below.
@@ -899,9 +905,9 @@ public partial class ChatUI
             if (audioRecordingEntry is not null) {
                 // Hide "Transcribing..." when a real transcription entry already exists
                 // (i.e., the last entry from this author is streaming content).
-                var suppression = await GetStreamingSuppression(chatId, currentAuthorId!, cancellationToken)
+                var streamingTail = await GetStreamingTail(chatId, currentAuthorId!, cancellationToken)
                     .ConfigureAwait(false);
-                if (!suppression.IsSuppressed)
+                if (!streamingTail.IsSuppressed)
                     entries.Add(audioRecordingEntry);
             }
         }
@@ -1580,44 +1586,67 @@ public partial class ChatUI
     // over every five entries. Reading the tail through ChatEntryReader takes a dependency on exactly
     // what it pulls, so the verdict is invalidated by the entries that could change it.
     //
-    // Null ExpiresAt with IsSuppressed means only a change can lift it - there is nothing to time out.
+    // One pass, two consumers: the recording placeholder asks about its own author, the live block's
+    // fold governor asks for the lowest speaking lid. Consolidating (not the delay, which is 0 so the
+    // placeholder verdict lands at once) is what keeps transcript-rate churn off both - the answer
+    // only propagates when it actually changes.
     [ComputeMethod(ConsolidationDelay = 0)]
-    protected virtual async Task<StreamingSuppression> GetStreamingSuppression(
+    public virtual async Task<StreamingTailState> GetStreamingTail(
         ChatId chatId,
         AuthorId ownAuthorId,
         CancellationToken cancellationToken)
     {
         var lidRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (lidRange.IsEmpty)
-            return StreamingSuppression.None;
+            return StreamingTailState.None;
 
         // Server clock: EndsAt below is server-stamped, and a device clock a few seconds off either
         // way turns the grace period into "always" or "never".
         var now = Clocks.ServerClock.Now;
         var reader = new ChatEntryReader(Chats, Session, chatId);
         var scanRange = new Range<long>(Math.Max(lidRange.Start, lidRange.End - StreamingScanDepth), lidRange.End);
+        var floorLid = long.MaxValue;
+        var isSuppressed = false;
+        Moment? expiresAt = null;
+        Moment? nextExpiresAt = null;
         await foreach (var entry in reader.ReadReverse(scanRange, cancellationToken).ConfigureAwait(false)) {
-            if (entry.AuthorId != ownAuthorId || !IsAudioKind(entry))
+            if (!IsAudioKind(entry))
                 continue;
-            if (entry.IsContentStreaming)
-                return StreamingSuppression.Indefinite;
+
+            var isOwn = entry.AuthorId == ownAuthorId;
+            if (entry.IsContentStreaming) {
+                floorLid = entry.LocalId;
+                if (isOwn) {
+                    // A running transcript outranks any grace window an already-closed entry set below.
+                    isSuppressed = true;
+                    expiresAt = null;
+                }
+                continue;
+            }
 
             // IsContentStreaming goes false the moment recognition closes one entry and stays false
             // until it opens the next, while the client keeps rendering that entry as streaming from
-            // its own reader. Without this grace period "Transcribing..." flashes into every gap,
-            // right next to a transcript the user can see is still running.
+            // its own reader. Without this grace period "Transcribing..." flashes into every gap, and
+            // the live block swallows the row the reader is still on, only to hand it back a beat later.
             if (entry.EndsAt is not { } endsAt || now - endsAt >= StreamingEntryGap)
                 continue;
 
-            // The answer goes stale on its own, so it expires itself rather than making the whole
-            // tile recompute a flat gap later.
-            var delay = endsAt + StreamingEntryGap - now;
-            if (delay > TimeSpan.Zero)
-                Computed.GetCurrent()?.Invalidate(delay);
-            return new StreamingSuppression(true, endsAt + StreamingEntryGap);
+            var entryExpiresAt = endsAt + StreamingEntryGap;
+            floorLid = entry.LocalId;
+            if (isOwn && !isSuppressed) {
+                isSuppressed = true;
+                expiresAt = entryExpiresAt;
+            }
+            nextExpiresAt = nextExpiresAt is { } e ? Moment.Min(e, entryExpiresAt) : entryExpiresAt;
         }
+        // The answer goes stale on its own, so it expires itself rather than making every consumer
+        // poll for a flat gap. The earliest grace wins - that's when the floor next moves.
+        if (nextExpiresAt is { } wakeAt && wakeAt - now is { Ticks: > 0 } delay)
+            Computed.GetCurrent()?.Invalidate(delay);
 
-        return StreamingSuppression.None;
+        return floorLid == long.MaxValue && !isSuppressed
+            ? StreamingTailState.None
+            : new StreamingTailState(floorLid, isSuppressed, expiresAt);
     }
 
     // Nested types

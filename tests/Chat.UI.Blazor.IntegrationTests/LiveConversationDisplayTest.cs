@@ -1368,6 +1368,119 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task StreamingTailSeparatesOwnSuppressionFromTheFold()
+    {
+        // One pass answers two questions: the floor covers whoever is speaking - that's what the live
+        // block must not fold away - while suppression is only about the asking author's own
+        // "Transcribing..." placeholder.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "streaming-tail-test");
+        var ownAuthor = await Tester.GetOwnAuthor(chat.Id).Require();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await Tester.CreateTextEntry(chat.Id, "typed");
+
+        // assert - a chat with no audio at all says nothing
+        var quiet = await chatUI.GetStreamingTail(chat.Id, ownAuthor.Id, CancellationToken.None);
+        quiet.FloorLid.Should().Be(long.MaxValue);
+        quiet.IsSuppressed.Should().BeFalse();
+
+        // act - my own transcript starts running
+        var streaming = await Tester.CreateStreamingEntry(chat.Id, Languages.English);
+        var streamingLid = streaming.ChatEntrySlim.LocalId;
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var s = await chatUI.GetStreamingTail(chat.Id, ownAuthor.Id, ct);
+            s.FloorLid.Should().Be(streamingLid);
+            s.IsSuppressed.Should().BeTrue("the placeholder stands down for my own running transcript");
+            s.ExpiresAt.Should().BeNull("only a change lifts an indefinite suppression");
+        }, TimeSpan.FromSeconds(10));
+
+        // assert - asked on behalf of someone else: same floor, no suppression
+        var forOther = await chatUI
+            .GetStreamingTail(chat.Id, AuthorId.New(chat.Id, 777_430), CancellationToken.None);
+        forOther.FloorLid.Should().Be(streamingLid, "the fold floor covers every speaker, not just me");
+        forOther.IsSuppressed.Should().BeFalse("suppression is about the asking author's own placeholder");
+
+        // act - the transcript closes
+        await Tester.FinalizeStreamingEntry(streaming, "done");
+
+        // assert - the grace window rides over the gap between utterances
+        var graced = await chatUI.GetStreamingTail(chat.Id, ownAuthor.Id, CancellationToken.None);
+        graced.FloorLid.Should().Be(streamingLid,
+            "IsContentStreaming flickers false between utterances, so the answer must not");
+        graced.IsSuppressed.Should().BeTrue();
+
+        // assert - and lapses on its own
+        await ComputedTest.When(async ct => {
+            var s = await chatUI.GetStreamingTail(chat.Id, ownAuthor.Id, ct);
+            s.FloorLid.Should().Be(long.MaxValue);
+            s.IsSuppressed.Should().BeFalse();
+        }, TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
+    public async Task StreamingEntryStaysOutOfTheFold()
+    {
+        // A transcript that's still running must never be swallowed by the collapsed live block: the fold
+        // boundary is held below it while it streams, and re-advances the moment it closes.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "streaming-fold-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_420);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"before-{i}");
+        var streaming = await Tester.CreateStreamingEntry(chat.Id, Languages.English);
+        var streamingLid = streaming.ChatEntrySlim.LocalId;
+        for (var i = 0; i < 10; i++)
+            await Tester.CreateTextEntry(chat.Id, $"after-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await chatAudioUI.SetRecordingChatId(chat.Id);
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        // act - the viewport top sits at the last entry, so the governor would otherwise fold everything above it
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        chatUI.SetItemVisibility(new ChatViewItemVisibility(
+            chat.Id,
+            new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, idRange.End - 1) },
+            false));
+
+        // assert - the fold stops below the streaming entry
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.StreamingFloorLid.Should().Be(streamingLid);
+            s.FoldBoundaryLid.Should().BeLessThanOrEqualTo(streamingLid,
+                "a still-transcribing entry must stay outside the fold");
+        }, TimeSpan.FromSeconds(15));
+
+        // act - the transcript closes
+        await Tester.FinalizeStreamingEntry(streaming, "done");
+
+        // assert - the block re-compacts past it
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.StreamingFloorLid.Should().Be(long.MaxValue);
+            s.FoldBoundaryLid.Should().BeGreaterThan(streamingLid,
+                "closing the transcript releases the fold");
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
     public async Task RevealMoreRetreatsEffectiveFoldAndPersists()
     {
         // §7: RevealMore retreats RevealedBoundaryLid below the governor's monotonic FoldBoundaryLid,

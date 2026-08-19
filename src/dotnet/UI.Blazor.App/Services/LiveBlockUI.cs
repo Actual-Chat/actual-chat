@@ -18,12 +18,18 @@ public sealed record LiveBlockOverlay(
     bool IsExpandedByDefault,
     bool IsDissolving = false);
 
+/// <summary>
+/// The live block's fold state. <see cref="FoldBoundaryLid"/> as returned by
+/// <see cref="LiveBlockUI.GetBlockState"/> is already capped by <see cref="StreamingFloorLid"/>;
+/// the raw monotonic value lives in the governor's own state.
+/// </summary>
 public sealed record LiveBlockState(
     long FoldBoundaryLid,
     LiveBlockOverlay? Overlay,
     bool WasAttending = false,
     bool IsDissolving = false,
-    long RevealedBoundaryLid = long.MaxValue)
+    long RevealedBoundaryLid = long.MaxValue,
+    long StreamingFloorLid = long.MaxValue)
 {
     public static readonly LiveBlockState None = new(0, null);
 }
@@ -42,6 +48,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
 
     void INotifyInitialized.Initialized()
         => this.Start();
@@ -61,8 +68,13 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var amInLive = raw != null
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         lock (Lock) {
-            var effectiveBoundaryLid = Math.Min(baseState.FoldBoundaryLid, chatState.RevealedBoundaryLid);
+            // An entry that's still being transcribed must never fall inside the fold, so the boundary is
+            // reported capped below it. The governed value itself stays monotonic, so the block re-compacts
+            // the moment that entry closes - no second viewport signal needed.
+            var foldBoundaryLid = Math.Min(baseState.FoldBoundaryLid, baseState.StreamingFloorLid);
+            var effectiveBoundaryLid = Math.Min(foldBoundaryLid, chatState.RevealedBoundaryLid);
             return baseState with {
+                FoldBoundaryLid = foldBoundaryLid,
                 Overlay = DeriveOverlay(chatState, effectiveBoundaryLid, raw, amInLive),
                 RevealedBoundaryLid = chatState.RevealedBoundaryLid,
             };
@@ -103,7 +115,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 return;
             chatState = s;
             v = t.V;
-            effectiveBoundary = Math.Min(chatState.State.Value.FoldBoundaryLid, chatState.RevealedBoundaryLid);
+            var governed = chatState.State.Value;
+            effectiveBoundary = Math.Min(
+                Math.Min(governed.FoldBoundaryLid, governed.StreamingFloorLid),
+                chatState.RevealedBoundaryLid);
         }
         if (effectiveBoundary <= v)
             return;
@@ -214,7 +229,13 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var visibility = await Hub.ChatUI.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
         var isJoined = raw != null
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
-        return new GovernorInputs(chatId, raw, visibility, isJoined);
+        // Reactive, not polled: GetStreamingTail consolidates transcript-rate churn away and expires
+        // itself when the last grace period lapses, so the loop wakes exactly when the floor moves.
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var streamingTail = await Hub.ChatUI
+            .GetStreamingTail(chatId, ownAuthor?.Id ?? default, cancellationToken)
+            .ConfigureAwait(false);
+        return new GovernorInputs(chatId, raw, visibility, isJoined, streamingTail.FloorLid);
     }
 
     // Private methods
@@ -312,7 +333,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
     private async Task<Moment?> ProcessChat(ChatId chatId, GovernorInputs inputs, CancellationToken cancellationToken)
     {
-        var (_, raw, visibility, isJoined) = inputs;
+        var (_, raw, visibility, isJoined, rawStreamingFloorLid) = inputs;
         var chatState = await GetOrCreateChatState(chatId, cancellationToken).ConfigureAwait(false);
 
         // While the viewer is attending a live session, keep a frozen template ready - the exact
@@ -321,6 +342,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var template = raw is { IsLatched: true } && isJoined
             ? await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false)
             : null;
+        // A transcript that started before the block latched isn't the block's to hold open.
+        var streamingFloorLid = raw is { IsLatched: true } && rawStreamingFloorLid >= raw.VisibleStartLid
+            ? rawStreamingFloorLid
+            : long.MaxValue;
 
         var clearedReveal = false;
         Moment? wakeAt = null;
@@ -355,7 +380,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             else if (raw != null)
                 chatState.IsClosed = false;
 
-            var state = chatState.State.Value with { WasAttending = chatState.WasAttending };
+            var state = chatState.State.Value with {
+                WasAttending = chatState.WasAttending,
+                StreamingFloorLid = streamingFloorLid,
+            };
 
             // A tier-1 (never-summarized) close leaves no card behind. DeriveOverlay dissolves the
             // block immediately (synchronously) so the animation actually starts; the governor only
@@ -394,7 +422,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                         clearedReveal = true;
                     }
                 }
-                state = new LiveBlockState(boundaryLid, null, chatState.WasAttending);
+                state = new LiveBlockState(boundaryLid, null, chatState.WasAttending,
+                    StreamingFloorLid: streamingFloorLid);
             }
 
             if (!Equals(chatState.State.Value, state))
@@ -450,7 +479,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         ChatId? ChatId,
         LiveBlockSnapshot? Raw,
         ChatViewItemVisibility Visibility,
-        bool IsJoined)
+        bool IsJoined,
+        long StreamingFloorLid = long.MaxValue)
     {
         public static readonly GovernorInputs None = new(null, null, ChatViewItemVisibility.Empty, false);
     }
