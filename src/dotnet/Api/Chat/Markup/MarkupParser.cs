@@ -54,8 +54,9 @@ public sealed partial class MarkupParser : IMarkupParser
         return result.Success ? result.Value : EmptyResult;
     }
 
-    // Picked from real chats: transcribed messages never carry markup and almost all fit under it
-    private const int MaxPlainTextLength = 1024;
+    // Typed messages are the ones the check below can fail on, and past 256 chars only about a
+    // fifth of them are still plain - scanning further almost never buys a hit
+    private const int MaxPlainTextLength = 256;
 
     private static bool IsPlainText(string text)
     {

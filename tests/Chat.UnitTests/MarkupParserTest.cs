@@ -1834,8 +1834,8 @@ code
 
     [Theory]
     [InlineData(40)]
-    [InlineData(1024)]
-    [InlineData(1025)]
+    [InlineData(256)]
+    [InlineData(257)]
     [InlineData(4000)]
     public void PlainTextIsOneParagraphOfOneTextMarkup(int length)
     {
