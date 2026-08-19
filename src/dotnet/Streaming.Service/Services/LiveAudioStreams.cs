@@ -119,6 +119,20 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         return Task.CompletedTask;
     }
 
+    public Task ReportPlaybackLag(
+        Session session,
+        TimeSpan audioPresentationLag,
+        TimeSpan? avSyncError,
+        CancellationToken cancellationToken)
+    {
+        _ = session;
+        _ = cancellationToken;
+        AppMeters.AudioPresentationLag.Record(ClientStats.PlaybackLag(audioPresentationLag).TotalMilliseconds);
+        if (avSyncError is { } error)
+            AppMeters.AvSyncError.Record(ClientStats.PlaybackLag(error).TotalMilliseconds);
+        return Task.CompletedTask;
+    }
+
     public async Task ReportPlayback(
         Session session, ChatId chatId, string streamId, ChatEntryId? entryId,
         CancellationToken cancellationToken)

@@ -13,6 +13,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private static readonly TimeSpan PacingHeadStartDuration = TimeSpan.FromMilliseconds(30);
     private static readonly TimeSpan PacingDuration = TimeSpan.FromMilliseconds(200);
     private const int AudioSyncPolicySamplePeriodFrames = 10;
+    // OnPresentationLag arrives at ~2 Hz per track; report every 5th, so ~1 sample per 2.5 s.
+    private const int LagReportSamplePeriod = 5;
 
     private static bool DebugMode => Constants.DebugMode.AudioTrackPlayer;
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -27,6 +29,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private CpuTimestamp _lastBufferAdjustAt;
     private bool _isOwnStream;
     private int _underrunCount;
+    private int _lagReportSampleIn;
 
     private IServiceProvider Services { get; }
 
@@ -78,6 +81,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             LookaheadMs: targetBufferSizeMs,
             DeviceLatencyMs: outputLatencyMs);
         LagTracker.UpdateAudio(authorId, _id, lag, raw);
+        ReportLag(authorId, lag);
     }
 
     [JSInvokable]
@@ -275,6 +279,26 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         _audioSyncSampleIn = AudioSyncPolicySamplePeriodFrames;
 
         AdjustBufferHold(authorId);
+    }
+
+    // Telemetry only: the A/V error is the difference of two lags taken against the same client
+    // ServerClock, so the clock cancels - unlike app.audio.latency, which carries it in full.
+    private void ReportLag(AuthorId authorId, TimeSpan audioLag)
+    {
+        if (_isOwnStream)
+            return;
+        if (_lagReportSampleIn > 0) {
+            _lagReportSampleIn--;
+            return;
+        }
+
+        _lagReportSampleIn = LagReportSamplePeriod;
+        var videoLag = LagTracker.GetVideoLag(authorId);
+        var avSyncError = videoLag is { } vLag ? audioLag - vLag : (TimeSpan?)null;
+        _ = BackgroundTask.Run(
+            () => Hub.LiveAudioStreams.ReportPlaybackLag(Hub.Session, audioLag, avSyncError, CancellationToken.None),
+            Log,
+            $"[AudioTrackPlayer #{_id}] Failed to report playback lag");
     }
 
     private void UpdateBufferState(bool isBufferLow)

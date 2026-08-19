@@ -34,6 +34,10 @@ public static class ClientStats
         // Signed: a stale-behind client clock reports negative latency — the desync signal this meter surfaces
         => value.Clamp(-MaxAudioLatency, MaxAudioLatency);
 
+    public static TimeSpan PlaybackLag(TimeSpan value)
+        // Signed like AudioLatency: negative is a real reading, not a fault
+        => value.Clamp(-MaxAudioLatency, MaxAudioLatency);
+
     public static ReceiveQuality Quality(ReceiveQuality quality)
         => quality.LayerId <= MaxLayerId
             ? quality

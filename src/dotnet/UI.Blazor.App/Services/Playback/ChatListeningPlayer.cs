@@ -92,7 +92,9 @@ public sealed class ChatListeningPlayer : ChatPlayer
         CancellationToken cancellationToken)
     {
         _ = BackgroundTask.Run(async () => {
-            var serverClock = Clocks.ServerClock;
+            // Read before the awaits below: each is a Fusion compute call that can be a server
+            // round trip, and reading after them charged their cost to the delivery latency.
+            var latency = Clocks.ServerClock.Now - streamInfo.BeginsAt;
             try {
                 if (!Constants.DebugMode.ListenOwnAudio) {
                     var author = await Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(false);
@@ -124,7 +126,6 @@ public sealed class ChatListeningPlayer : ChatPlayer
                 // Off the playback path - awaiting it here would cost a round trip before the
                 // first frame - but no longer silently dropped: 7 days of production yielded 18
                 // samples, which is why the trim's real size had to be inferred.
-                var latency = serverClock.Now - streamInfo.BeginsAt;
                 _ = BackgroundTask.Run(
                     () => Hub.LiveAudioStreams.ReportAudioLatency(Hub.Session, latency, cancellationToken),
                     Log,

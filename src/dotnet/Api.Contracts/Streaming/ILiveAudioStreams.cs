@@ -56,6 +56,14 @@ public interface ILiveAudioStreams : IComputeService
 
     Task ReportAudioLatency(Session session, TimeSpan latency, CancellationToken cancellationToken);
 
+    // avSyncError is null when no fresh video lag exists for the author. Both terms are measured
+    // against the same client ServerClock, so their difference carries no clock error.
+    Task ReportPlaybackLag(
+        Session session,
+        TimeSpan audioPresentationLag,
+        TimeSpan? avSyncError,
+        CancellationToken cancellationToken);
+
     Task ReportPlayback(
         Session session, ChatId chatId, string streamId, ChatEntryId? entryId,
         CancellationToken cancellationToken);
