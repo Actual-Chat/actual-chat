@@ -60,9 +60,7 @@ internal static class MauiApp
             args.Add("-p:UseNativeAot=true");
         switch (settings.Platform) {
         case AppPlatform.Android:
-            if (settings.IsDev)
-                args.Add("-p:EmbedAssembliesIntoApk=true");
-            else
+            if (!settings.IsDev)
                 AddAndroidSigning(plan, args);
             break;
         case AppPlatform.Windows:

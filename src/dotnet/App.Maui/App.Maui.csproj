@@ -304,9 +304,13 @@
     <AndroidEnvironment Include="android-env.txt" />
   </ItemGroup>
 
-  <!-- Android: Debug configuration -->
+  <!-- Android: Debug configuration.
+       EmbedAssembliesIntoApk must stay True here, even though the SDK defaults it to False for Debug:
+       under CoreCLR that False also turns off the assembly store, leaving Fast Deployment as the only
+       assembly source. We deploy via 'adb install', which never populates the FastDev override dir,
+       so the APK would ship with no managed assemblies and CoreCLR init would fail with 0x80070002. -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
-    <EmbedAssembliesIntoApk Condition="'$(EmbedAssembliesIntoApk)' == ''">False</EmbedAssembliesIntoApk>
+    <EmbedAssembliesIntoApk Condition="'$(EmbedAssembliesIntoApk)' == ''">True</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
   <!-- Our own startup profile - the union of on-device Android and on-desktop Windows
