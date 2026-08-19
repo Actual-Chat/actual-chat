@@ -27,10 +27,14 @@
         || (!state.IsExpanded && state.SwallowedCount > 0)
         || state.TailPreview is { Count: > 0 };
     // The wrapper below carries the block's tint, border and context menu, so emitting it around an
-    // omitted card leaves an empty tinted bar in the chat. A live block with nothing to show renders
-    // nothing at all. The non-live branch always has content, so it's exempt.
-    if (state.IsLive && !showLiveCard)
+    // omitted card leaves an empty tinted bar in the chat. A live block with nothing to show renders an
+    // empty element instead: the list requires exactly one per item and keys the item's height state to
+    // it, so rendering nothing at all made it complain and throw that state away on every render. The
+    // non-live branch always has content, so it's exempt.
+    if (state.IsLive && !showLiveCard) {
+        <div class="c-live-card-empty"></div>
         return;
+    }
 }
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
