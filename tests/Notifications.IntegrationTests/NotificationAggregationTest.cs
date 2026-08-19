@@ -389,17 +389,18 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void SpokenMessageBeepsOncePerVoiceContext()
+    public void SpokenMessageBeepsOncePerSpeakerRun()
     {
         // arrange
         var t0 = Moment.Now;
-        var session = "s:" + TestChatId.Value + ":100";
-        var first = NewSpoken(100, AuthorId.New(TestChatId, 1), "hi", session);
+        var author = AuthorId.New(TestChatId, 1);
+        var group = "a:" + author.Value;
+        var first = NewSpoken(100, author, "hi", group);
 
         // act & assert
         NotificationBeepPolicy.ShouldBeep(first, t0).Should().BeTrue();
 
-        var beeped = first with { LastBeepGroup = session, LastBeepAt = t0, BeepCount = 1 };
+        var beeped = first with { LastBeepGroup = group, LastBeepAt = t0, BeepCount = 1 };
         NotificationBeepPolicy.ShouldBeep(beeped, t0 + TimeSpan.FromMinutes(9)).Should().BeFalse();
         NotificationBeepPolicy.ShouldBeep(beeped, t0 + Constants.Notification.VoiceReAlertInterval)
             .Should().BeTrue();

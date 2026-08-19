@@ -48,8 +48,8 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
             Version = 1,
             Title = "Bob @ Good chat",
             Text = "Sent a voice message",
-            BeepGroup = "s:" + TestChatId.Value + ":90",
-            LastBeepGroup = "a:" + authorId.Value,
+            BeepGroup = "a:" + authorId.Value,
+            LastBeepGroup = "a:" + AuthorId.New(TestChatId, 6).Value,
         };
 
         // act

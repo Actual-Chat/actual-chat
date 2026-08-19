@@ -840,13 +840,12 @@ public class NotificationsBackend(IServiceProvider services)
                 userIds = userIds.Where(x => !active.Contains(x)).ToList();
         }
 
-        // The voice context the beep policy groups by: a live session is one conversation however
-        // many utterances it holds, and outside one a single speaker's run is a monologue. The
-        // prefixes keep a session id from ever colliding with an author id.
-        var beepGroup = !isSpoken ? ""
-            : live is { } liveSession && entry.LocalId >= liveSession.StartEntryLid
-                ? "s:" + liveSession.RingConversationId.Value
-                : "a:" + author.Id.Value;
+        // The voice context the beep policy groups by. A latched session's own utterances never
+        // reach here - the guard in OnChatEntryChangedEvent drops them - and an un-latched session
+        // is one speaker whose session is torn down RecordingCloseGrace after they stop, so its id
+        // changes mid-monologue and would alert on every utterance. The author is the one identity
+        // that survives the whole run; the prefix keeps the value self-describing.
+        var beepGroup = isSpoken ? "a:" + author.Id.Value : "";
 
         // Users personally @mentioned in the text get a Mention notification (delivered under
         // ImportantOnly, individually per entry); everyone else gets the plain coalescing Message
