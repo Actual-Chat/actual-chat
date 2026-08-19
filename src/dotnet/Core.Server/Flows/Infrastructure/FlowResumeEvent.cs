@@ -123,12 +123,17 @@ public sealed partial class FlowResumeEvent :
         // Compute delay quanta
         var hub = _hub ?? services?.FlowHub();
         var delayQuanta = DelayQuanta ?? AutoDelayQuanta.For(DelayUntil - hub.Require().SystemNow);
+        var delay = (DelayUntil - hub.Require().SystemNow).Positive();
 
-        // Produce operation event
+        // Produce operation event.
+        // Quantizing an immediate resume would give every immediate resume of this flow one shared
+        // Uuid - a constant "-at-0" when DelayUntil was never set - which FlushEvents skips and the
+        // queue dedups by. Only a resume scheduled ahead has a slot to coalesce into.
         operationEvent = new OperationEvent("", this);
-        if (delayQuanta > TimeSpan.Zero) {
+        if (delayQuanta > TimeSpan.Zero && delay > TimeSpan.Zero) {
             var uuidPrefix = $"{nameof(FlowResumeEvent)}({FlowId.Value})";
             operationEvent.SetDelayUntil(DelayUntil, delayQuanta, uuidPrefix);
+            DelayUntil = operationEvent.DelayUntil; // The slot is the schedule - keep the two in sync
         }
         else {
             operationEvent.Uuid = $"{nameof(FlowResumeEvent)}-{UuidGenerator.Next()}";
