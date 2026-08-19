@@ -24,6 +24,7 @@ interface ItemHeightState {
     contentRef: HTMLElement;
     settleDelayMs: number;
     mustAnimateChanges: boolean;
+    mustAnimateAppearance: boolean;
     intrinsic: number;
     applied: number;
     isControlled: boolean;
@@ -105,7 +106,9 @@ export class ItemHeightController {
             if (existing.ref === itemRef && existing.contentRef === itemRef.firstElementChild) {
                 this.reassertClasses(existing);
                 existing.settleDelayMs = parseDelay(itemRef.dataset.vlHDelay, DefaultSettleDelayMs);
-                existing.mustAnimateChanges = itemRef.dataset.vlHTransition !== 'appearance';
+                const transition = itemRef.dataset.vlHTransition;
+                existing.mustAnimateChanges = mustAnimateChanges(transition);
+                existing.mustAnimateAppearance = mustAnimateAppearance(transition);
                 return;
             }
 
@@ -131,7 +134,8 @@ export class ItemHeightController {
             ref: itemRef,
             contentRef,
             settleDelayMs: parseDelay(itemRef.dataset.vlHDelay, DefaultSettleDelayMs),
-            mustAnimateChanges: itemRef.dataset.vlHTransition !== 'appearance',
+            mustAnimateChanges: mustAnimateChanges(itemRef.dataset.vlHTransition),
+            mustAnimateAppearance: mustAnimateAppearance(itemRef.dataset.vlHTransition),
             intrinsic: -1,
             applied: Number.NaN,
             isControlled: false,
@@ -187,7 +191,7 @@ export class ItemHeightController {
     public beginAppearance(key: string, itemRef: HTMLElement, startHeight: number): boolean {
         this.track(key, itemRef);
         const state = this.states.get(key);
-        if (state == null || this.isSuspended)
+        if (state == null || this.isSuspended || !state.mustAnimateAppearance)
             return false;
         if (!this.hasAnimationSlot(state) && !this.takeSlotFromChange())
             return false;
@@ -536,6 +540,7 @@ export class ItemHeightController {
             void itemRef.offsetHeight;
             itemRef.style.transition = '';
         }
+
         return true;
     }
 
@@ -555,6 +560,7 @@ export class ItemHeightController {
             if (++used >= MaxAnimatedItems)
                 return false;
         }
+
         return true;
     }
 
@@ -700,6 +706,17 @@ function getContentRef(key: string, itemRef: HTMLElement): HTMLElement | null {
 function parseDelay(value: string | undefined, fallback: number): number {
     const parsed = Number.parseInt(value ?? '', 10);
     return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+// `data-vl-h-transition` names the only animation the item wants: "change" for an item that is always
+// there and whose content grows into place, "appearance" for one whose height is the app's to write
+// once it is on screen, "none" for neither. Absent, both run.
+function mustAnimateChanges(transition: string | undefined): boolean {
+    return transition !== 'appearance' && transition !== 'none';
+}
+
+function mustAnimateAppearance(transition: string | undefined): boolean {
+    return transition !== 'change' && transition !== 'none';
 }
 
 function toWritableHeight(height: number): number | null {

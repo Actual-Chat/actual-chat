@@ -90,7 +90,7 @@
                         class="item@(edgeClass)"
                         data-key="@item.Key"
                         data-skip="@item.ShouldSkipKey"
-                        data-vl-h-transition="@(item.MustAnimateHeightChanges ? null : "appearance")"
+                        data-vl-h-transition="@GetHeightTransition(item)"
                         data-vl-h-delay="@(item.HeightSettleDelayMs?.Format())">
                         @Item(item)
                     </li>

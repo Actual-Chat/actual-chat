@@ -36,7 +36,8 @@
         else if (item is ExpandedConversationMessage expandedConversationMessage) {
             foreach (var childItem in expandedConversationMessage.Items) {
                 @if (childItem is ConversationHeader or LiveConversationHeader) {
-                    <div @key="@childItem.Key" class="item expanded" data-key="@childItem.Key" data-skip="true">
+                    <div @key="@childItem.Key" class="item expanded" data-key="@childItem.Key" data-skip="true"
+                         data-vl-h-transition="@(childItem.MustAnimateAppearance ? null : "change")">
                         @RenderChatMessage!((childItem, chatContext))
                     </div>
                 }
@@ -46,7 +47,8 @@
                     </div>
                 }
                 else {
-                    <div @key="@childItem.Key" class="item" data-key="@childItem.Key" data-skip="@childItem.ShouldSkipKey">
+                    <div @key="@childItem.Key" class="item" data-key="@childItem.Key" data-skip="@childItem.ShouldSkipKey"
+                         data-vl-h-transition="@(childItem.MustAnimateAppearance ? null : "change")">
                         @RenderChatMessage!((childItem, chatContext))
                     </div>
                 }

@@ -16,6 +16,7 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     public ChatMessage? NextMessage { get; set; }
     public Conversation? Conversation { get; init; }
     public virtual bool IsGroup => false;
+    public virtual bool MustAnimateAppearance => true;
 
     public bool IsReplacement
         => Kind != ChatMessageKind.None;

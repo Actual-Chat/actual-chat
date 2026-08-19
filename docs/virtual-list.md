@@ -1424,8 +1424,13 @@ lifted, 3 with it in place.** Collapsing the same conversation animates none —
 than shrinking them — so the shrink side of the budget rests on the gate sitting in the one place every
 height change passes through, not on a measurement.
 
-Per item, the markup can turn animation of *changes* off (`data-vl-h-transition="appearance"`: only
-the appearance animates) and set its own settle delay (`data-vl-h-delay`).
+Per item, `data-vl-h-transition` names the only animation the item wants — `"appearance"` for one whose
+height the app writes once it is on screen, `"change"` for one that is always present and grows into
+place, `"none"` for neither. Absent, both run. `data-vl-h-delay` sets the item's own settle delay.
+
+`"change"` exists for items that are never really arriving. A conversation card is one item in both
+forms of its block — collapsing swaps the expanded header's element for the card's under the same key —
+so treating that as an arrival grows the block at the moment it was asked to shrink.
 
 **Stability** is the tracker both use: a height write in the settle delay, a running transition, and a
 recent scroll all count as "in flight", and everything that wants to reposition the list asks here

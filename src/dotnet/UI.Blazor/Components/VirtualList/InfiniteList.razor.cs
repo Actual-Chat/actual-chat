@@ -34,4 +34,12 @@ public sealed partial class InfiniteList<TItem>
             SpacerSize,
             ExpandMultiplier,
             RetainedItemCount);
+
+    // Private methods
+
+    private static string? GetHeightTransition(TItem item)
+        // Null rather than a value for the default, so the common item carries no attribute at all.
+        => item.MustAnimateHeightChanges
+            ? item.MustAnimateAppearance ? null : "change"
+            : item.MustAnimateAppearance ? "appearance" : "none";
 }
