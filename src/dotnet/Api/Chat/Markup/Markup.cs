@@ -65,7 +65,11 @@ public abstract class Markup : ISanitized
 
     public static Markup Join(IEnumerable<Markup> parts)
     {
-        var items = new List<Markup>();
+        // Pidgin's Many hands back its own List, so the count is usually known: this is the
+        // hottest list in the parser and growing it from nothing was showing up in profiles.
+        var items = parts is ICollection<Markup> collection
+            ? new List<Markup>(collection.Count)
+            : new List<Markup>();
         foreach (var markup in parts) {
             if (markup is MarkupSeq seq) {
                 foreach (var item in seq.Items)

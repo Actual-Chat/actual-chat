@@ -33,7 +33,7 @@ public sealed class MarkupSeq : Markup
         if (Items.Length == 1)
             return Items[0].Simplify();
 
-        var items = new List<Markup>();
+        var items = new List<Markup>(Items.Length);
         // Consecutive PlainText merges through a StringBuilder: pairwise concatenation copies
         // the whole run once per element, and a prose paragraph is one element per word.
         var lastPlainText = (PlainTextMarkup?)null;
