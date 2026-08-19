@@ -1832,12 +1832,24 @@ code
         }
     }
 
-    [Fact]
-    public void PlainTextIsOneParagraphOfOneTextMarkup()
+    [Theory]
+    [InlineData(40)]
+    [InlineData(1024)]
+    [InlineData(1025)]
+    [InlineData(4000)]
+    public void PlainTextIsOneParagraphOfOneTextMarkup(int length)
     {
-        var text = "Hello, world - how are you doing (today)?";
-        var m = new MarkupParser().Parse(text).Should().BeOfType<ParagraphMarkup>().Subject;
-        m.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+        // Past MaxPlainTextLength Parse falls back to the grammar, which has to reach the same result.
+        // arrange
+        var text = string.Join(' ', Enumerable.Repeat("hello, world (today)?", 1 + (length / 22)))[..length];
+
+        // act
+        var m = new MarkupParser().Parse(text);
+
+        // assert
+        m.Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be(text);
     }
 
     // Helpers
