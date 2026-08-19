@@ -55,18 +55,22 @@ public sealed partial class MarkupParser : IMarkupParser
 
     // Character classes
 
-    private static readonly Parser<char, char> WhitespaceChar =
-        Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c));
-    private static readonly Parser<char, char> EndOfLineChar =
-        Token(c => c is '\r' or '\n');
-    private static readonly Parser<char, char> NotEndOfLineChar =
-        Token(c => c is not ('\r' or '\n' or '\u2028'));
-    private static readonly Parser<char, char> IdChar =
-        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or ':' or '.' or '%' or '~');
-    private static readonly Parser<char, char> SpecialChar =
-        Token(c => c is '*' or '`' or '@' or '|');
-    private static readonly Parser<char, char> NotSpecialOrWhitespaceChar =
-        Token(c => !(char.IsWhiteSpace(c) || c is '*' or '`' or '@' or '|'));
+    // The predicates are separate from the parsers because CharRun builds its scanners straight
+    // from them - see CharRunParser for why a character run doesn't go through a combinator.
+    private static readonly Func<char, bool> IsWhitespaceChar =
+        c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c);
+    private static readonly Func<char, bool> IsNotEndOfLineChar = c => c is not ('\r' or '\n' or '\u2028');
+    private static readonly Func<char, bool> IsIdChar =
+        c => char.IsLetterOrDigit(c) || c is '_' or '-' or ':' or '.' or '%' or '~';
+    private static readonly Func<char, bool> IsSpecialChar = c => c is '*' or '`' or '@' or '|';
+    private static readonly Func<char, bool> IsNotSpecialOrWhitespaceChar =
+        c => !(char.IsWhiteSpace(c) || c is '*' or '`' or '@' or '|');
+    private static readonly Func<char, bool> IsHashChar = c => c == '#';
+    private static readonly Parser<char, char> WhitespaceChar = Token(IsWhitespaceChar);
+    private static readonly Parser<char, char> EndOfLineChar = Token(c => c is '\r' or '\n');
+    private static readonly Parser<char, char> NotEndOfLineChar = Token(IsNotEndOfLineChar);
+    private static readonly Parser<char, char> IdChar = Token(IsIdChar);
+    private static readonly Parser<char, char> SpecialChar = Token(IsSpecialChar);
 
     // Tokens
 
@@ -95,8 +99,8 @@ public sealed partial class MarkupParser : IMarkupParser
     private static readonly UInt128 FirstUrlCharBits;
     private static readonly Parser<char, char> FirstUrlChar =
         Token(c => FirstUrlCharBits.IsBitSet(c));
-    private static readonly Parser<char, char> UrlChar =
-        Token(c => char.IsLetterOrDigit(c) || @":;/\?&#+=%$@*[](){}_.,\-~'!|".Contains(c));
+    private static readonly Func<char, bool> IsUrlChar =
+        c => char.IsLetterOrDigit(c) || @":;/\?&#+=%$@*[](){}_.,\-~'!|".Contains(c);
 
     private const string UrlProtoRe = @"(http|ftp)s?\:\/\/";
     private const string UrlHostRe = @"[0-9a-zA-Z](?>[-.\w]*[0-9a-zA-Z])*";
@@ -116,8 +120,8 @@ public sealed partial class MarkupParser : IMarkupParser
     private static readonly UInt128 FirstEmailCharBits;
     private static readonly Parser<char, char> FirstEmailChar =
         Token(c => FirstEmailCharBits.IsBitSet(c));
-    private static readonly Parser<char, char> EmailChar =
-        Token(c => char.IsLetterOrDigit(c) || ":;/?&#+=%$_.,\\-~'@".Contains(c));
+    private static readonly Func<char, bool> IsEmailChar =
+        c => char.IsLetterOrDigit(c) || ":;/?&#+=%$_.,\\-~'@".Contains(c);
 
     private const string EmailNameRe = @"[A-Za-z0-9!#$%&'*+\-\/=?\^_`{|}~][A-Za-z0-9!#$%&'*+\-\/=?\^_`{|}~.]*";
     private const string ShortEmailRe = $"{EmailNameRe}@{UrlHostRe}";
@@ -132,21 +136,21 @@ public sealed partial class MarkupParser : IMarkupParser
 
     // Word text & delimiter
     private static readonly Parser<char, Markup> NonWhitespaceText =
-        NotSpecialOrWhitespaceChar.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, false);
+        CharRun.String(IsNotSpecialOrWhitespaceChar, 1).ToTextMarkup(TextMarkupKind.Plain, false);
     internal static readonly Parser<char, Markup> WhitespaceText =
-        WhitespaceChar.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, false);
+        CharRun.String(IsWhitespaceChar, 1).ToTextMarkup(TextMarkupKind.Plain, false);
 
     // Header level: 1 to 3 '#' chars followed by whitespace (lookahead, not consumed)
     private static readonly Parser<char, int> HeaderLevel =
-        Char('#').AtLeastOnceString()
-            .Where(s => s.Length is >= HeaderMarkup.MinLevel and <= HeaderMarkup.MaxLevel)
+        CharRun.String(IsHashChar, 1)
+            .Guard(s => s.Length is >= HeaderMarkup.MinLevel and <= HeaderMarkup.MaxLevel)
             .Select(s => s.Length)
             .Before(Lookahead(WhitespaceChar));
 
     // Table row: a line starting with '|'. That leading '|' is required, unlike in Markdown,
     // because '|' is also the spoiler token here - a pipe-less "a | b" line stays ordinary text.
     private static readonly Parser<char, string> TableRowLine =
-        Lookahead(Char(TableMarkup.CellSeparator)).Then(NotEndOfLineChar.ManyString());
+        Lookahead(Char(TableMarkup.CellSeparator)).Then(CharRun.String(IsNotEndOfLineChar));
     // A table begins only where a row is followed by a delimiter row of matching cell count
     // ("| --- | :-: |"), so any other line starting with '|' (e.g. "||spoiler||") stays text.
     private static readonly Parser<char, char> TableStart = (
@@ -154,7 +158,7 @@ public sealed partial class MarkupParser : IMarkupParser
         from _ in EndOfLine
         from delimiterLine in TableRowLine
         select TryParseTableAlignments(headerLine, delimiterLine) != null)
-        .Where(isTableStart => isTableStart)
+        .Guard(isTableStart => isTableStart)
         .ThenReturn(TableMarkup.CellSeparator);
 
     // Check if next line starts a block element (CodeBlock, ListBlock, Header, BlockQuote, or Table)
@@ -175,7 +179,7 @@ public sealed partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, Markup> InlineNewLine =
         Lookahead(EndOfLineChar)
             .Then(EndOfLine)
-            .Then(Lookahead(Not(InlineBreakAhead)))
+            .Then(Lookahead(InlineBreakAhead.SafeNot()))
             .ThenReturn(NewLineMarkup.Instance as Markup);
 
     // Whitespace or newline (for inline content separators).
@@ -185,11 +189,10 @@ public sealed partial class MarkupParser : IMarkupParser
         SafeTryOneOf(WhitespaceText, InlineNewLine);
 
     // Mentions
-    private static Parser<char, Markup> MentionParserFactory(string name = "") =>
-        from id in Id
-        let mentionId = MentionRef.TryParse(id, true)
-        where mentionId != null
-        select (Markup)MentionMarkup.New(mentionId, name);
+    private static Parser<char, Markup> MentionParserFactory(string name = "")
+        => Id.Select(id => MentionRef.TryParse(id, true))
+            .Guard(mentionId => mentionId != null)
+            .Select(mentionId => (Markup)MentionMarkup.New(mentionId!, name));
     private static readonly Parser<char, Markup> NamedMention =
         // @`User Name`userId
         AtToken.Then(QuotedName).Then(MentionParserFactory).Debug("@`name`");
@@ -207,20 +210,19 @@ public sealed partial class MarkupParser : IMarkupParser
     private const int MaxHashtagLength = 64;
     private static readonly Parser<char, char> HashtagFirstChar =
         Token(c => char.IsLetter(c) || c is '_');
-    private static readonly Parser<char, char> HashtagChar =
-        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-');
+    private static readonly Func<char, bool> IsHashtagChar = c => char.IsLetterOrDigit(c) || c is '_' or '-';
     private static readonly Parser<char, Markup> Hashtag = (
         from head in Char('#').Then(HashtagFirstChar)
-        from tail in HashtagChar.ManyString()
+        from tail in CharRun.String(IsHashtagChar)
         select "#" + head + tail)
-        .Where(s => s.Length <= 1 + MaxHashtagLength)
-        .Before(Lookahead(Not(Char('#'))))
+        .Guard(s => s.Length <= 1 + MaxHashtagLength)
+        .Before(Lookahead(Char('#').SafeNot()))
         .Select(s => (Markup)new HashtagMarkup(s))
         .Debug("#");
 
     // Preformatted text opener - the guard keeps a ``` code block fence out of an inline code span
     private static readonly Parser<char, Pidgin.Unit> PreformattedTextStart =
-        Lookahead(Not(CodeBlockToken.Before(NotPreToken.OrEnd())));
+        Lookahead(CodeBlockToken.Before(NotPreToken.OrEnd()).SafeNot());
     private static readonly Parser<char, string> PreformattedTextBody =
         NotPreToken.Or(DoublePreToken).ManyString();
 
@@ -229,14 +231,14 @@ public sealed partial class MarkupParser : IMarkupParser
     // nothing but the scan: every alphanumeric word starts an e-mail attempt, and materializing
     // it as a string just to fail the regex was the single most expensive thing per word.
     private static readonly Parser<char, Markup> WwwUrl =
-        FirstUrlChar.Then(UrlChar.SkipAtLeastOnce())
+        FirstUrlChar.Then(CharRun.Skip(IsUrlChar, 1))
             .Slice((span, _) => IsUrl(span) ? new string(span) : "")
-            .Where(s => s.Length != 0)
+            .Guard(s => s.Length != 0)
             .Select(s => (Markup)new UrlMarkup(s, UrlMarkupKind.Www));
     private static readonly Parser<char, Markup> Email =
-        FirstEmailChar.Then(EmailChar.SkipAtLeastOnce())
+        FirstEmailChar.Then(CharRun.Skip(IsEmailChar, 1))
             .Slice((span, _) => IsEmail(span) ? new string(span) : "")
-            .Where(s => s.Length != 0)
+            .Guard(s => s.Length != 0)
             .Select(s => (Markup)new UrlMarkup(s, UrlMarkupKind.Email));
     private static readonly Parser<char, Markup> Url =
         SafeTryOneOf(WwwUrl, Email).Debug("Url");
@@ -245,18 +247,18 @@ public sealed partial class MarkupParser : IMarkupParser
     // styled/preformatted/mention/url markup matches. Without it, an unmatched '**' (e.g. the
     // **`a`/`b`** ambiguity) would stall list-item parsing and silently drop the rest of the message.
     private static readonly Parser<char, Markup> StraySpecialText =
-        SpecialChar.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, false);
+        CharRun.String(IsSpecialChar, 1).ToTextMarkup(TextMarkupKind.Plain, false);
 
     // Code block
     private static readonly Parser<char, string> CodeBlockWithLanguageStart =
-        CodeBlockToken.Then(IdChar.ManyString().Before(EndOfLine)); // Language
+        CodeBlockToken.Then(CharRun.String(IsIdChar).Before(EndOfLine)); // Language
     private static readonly Parser<char, string> CodeBlockWithoutLanguageStart =
         CodeBlockToken.ThenReturn(""); // Language
     private static readonly Parser<char, char> CodeBlockEnd =
-        WhitespaceChar.SkipMany().Then(CodeBlockToken).Then(Lookahead(Whitespace.OrEnd()));
+        CharRun.Skip(IsWhitespaceChar).Then(CodeBlockToken).Then(Lookahead(Whitespace.OrEnd()));
     private static readonly Parser<char, string> CodeBlockLine =
-        Lookahead(Not(CodeBlockEnd))
-            .Then(NotEndOfLineChar.ManyString());
+        Lookahead(CodeBlockEnd.SafeNot())
+            .Then(CharRun.String(IsNotEndOfLineChar));
     // End of an unclosed code block: matches end-of-input as a fallback when
     // the closing ``` was not provided. The resulting value is unused.
     private static readonly Parser<char, char> CodeBlockEndOrEof =
@@ -307,7 +309,7 @@ public sealed partial class MarkupParser : IMarkupParser
     // text markup kind does vary, and lives in InternalParsers.Build instead.
 
     // A single paragraph line (can be empty - 0 or more chars)
-    private static readonly Parser<char, string> ParagraphLine = NotEndOfLineChar.ManyString();
+    private static readonly Parser<char, string> ParagraphLine = CharRun.String(IsNotEndOfLineChar);
 
 
     private static readonly Parser<char, string> QuoteContentLine =
@@ -473,7 +475,7 @@ public sealed partial class MarkupParser : IMarkupParser
             // Explicitly typed: the query yields TextMarkup, and SafeTryOneOf below needs Markup
             Parser<char, Markup> unparsedTextBlock = (
                 from whitespace in WhitespaceString
-                from special in SpecialChar.AtLeastOnceString()
+                from special in CharRun.String(IsSpecialChar, 1)
                 select TextMarkup.New(textMarkupKind, whitespace + special, true)
                 ).Debug("<Unparsed>");
 
@@ -487,7 +489,7 @@ public sealed partial class MarkupParser : IMarkupParser
                 from firstLine in ParagraphLine
                 from restParts in Try(
                     from nl in EndOfLine
-                    from _ in Lookahead(Not(InlineBreakAhead)) // not a paragraph break or a block start
+                    from _ in Lookahead(InlineBreakAhead.SafeNot()) // not a paragraph break or a block start
                     from line in ParagraphLine
                     select "\n" + line // preserve newline in content
                 ).Many()
@@ -497,7 +499,7 @@ public sealed partial class MarkupParser : IMarkupParser
             // Header: 1-3 '#' followed by whitespace and a single line of inline content
             var header = (
                 from level in HeaderLevel
-                from _ in WhitespaceChar.AtLeastOnce()
+                from _ in CharRun.Skip(IsWhitespaceChar, 1)
                 from line in ParagraphLine
                 select BuildHeader(level, line.TrimEnd(), inlineParser)
                 ).Debug("<Header>");
@@ -522,7 +524,7 @@ public sealed partial class MarkupParser : IMarkupParser
                 from delimiterLine in TableRowLine
                 from bodyLines in Try(EndOfLine.Then(TableRowLine)).Many()
                 select TryBuildTable(headerLine, delimiterLine, bodyLines, inlineParser))
-                .Where(x => x != null)
+                .Guard(x => x != null)
                 .Select(x => x!)
                 .Debug("<Table>");
 
