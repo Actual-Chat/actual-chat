@@ -69,8 +69,9 @@ buffer hold. The EMAs are maintained whether or not sync is enabled.
 
 Per-track lines, at `Information` so they survive in production: the demuxer logs
 each track's frame count, peak backlog and whether it was dropped; the player
-logs its underrun count. Those two numbers are what size `MaxTrackBacklog` and
-the jitter target.
+logs its underrun count. Nothing acts on either - they exist to show whether a
+listener ever falls far enough behind, or starves often enough, to justify a
+catch-up mechanism the receiver currently doesn't have.
 
 Feeder worklet emits state changes for `playbackState` (`playing` /
 `starving` / `ended` / `paused`) and `bufferState` (`ok` / `low`).
@@ -181,7 +182,6 @@ All in `src/dotnet/Api/Constants.Audio.cs` unless noted.
 | `PlaybackTargetBufferSizeWithVideo` | (a few × 100 ms) | extra buffer for A/V-paired tracks |
 | `AudioSyncMaxHold` | 1 s | max extra A/V hold over the base buffer |
 | `AudioCatchUpBaselineDelta` | 0 | target audio-vs-video lag offset |
-| `MaxTrackBacklog` | 2 s | queued audio at which a stale track is dropped |
 | `PlaybackLagStaleAfter` | ~1.5 s | lag sample freshness |
 | `AudioCatchUpDeadband` | 200 ms | sync no-op band |
 | `PacingHeadStartDuration` (`AudioTrackPlayer.cs`) | 30 ms | initial frame burst |

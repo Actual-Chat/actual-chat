@@ -83,19 +83,23 @@ the same.
 its own playback delay logic. Wall-clock tracking via `CpuTimestamp`
 corrects for sleep and pauses.
 
-### Bounding how far a track may lag
+### The receiver never discards audio
 
-Removing the trim means a track whose wire stalled and then burst stays behind
-for the rest of its life, and the muxer plays authors concurrently - so a track
-seconds behind would be mixed over whoever is speaking now. `AudioStreamDemuxer`
-bounds that at utterance boundaries: when a new stream starts, any other track
-whose queued-but-unplayed audio exceeds `Constants.Audio.MaxTrackBacklog` (2 s)
-is drained and completed.
+There is no trim, no drop and no speed-up anywhere on the receiving side. A track
+whose wire stalled and then burst stays behind for the rest of that utterance and
+is played out in full; the next utterance is a new track that starts at its own
+arrival time, so lag never accumulates across a conversation.
 
-The metric is the demuxer channel's queue depth - no clock, near zero on a
-healthy link, and blind to genuine overlap, since two people talking at once each
-queue nothing. Nothing else in the receiver ever discards audio; a long monologue
-over a bad link stays late until it ends rather than being cut mid-sentence.
+Concurrent tracks are left to overlap. A track running seconds behind can be
+mixed over whoever is speaking now, and that is accepted: the listener hears
+everything, which is strictly better than silently losing a phrase. The demuxer
+records each track's peak queue depth so the size of that lag is measurable in
+production, but it never acts on it.
+
+The cases where a listener would otherwise fall arbitrarily behind - sleep,
+reconnect, a dropped connection - are handled by re-subscribing, which makes the
+server build a new muxer and serve from the live edge. See
+[`06-server-fanout-and-replay.md`](06-server-fanout-and-replay.md).
 
 ## C# side: `AudioTrackPlayer` and `WebAudioPlaybackEngine`
 

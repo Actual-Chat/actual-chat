@@ -115,9 +115,6 @@ public static partial class Constants
         // Sentinel skipTo: "start from the producer's current position". It rides the
         // existing TimeSpan parameter, so no RPC contract changes to request the live edge.
         public static readonly TimeSpan SkipToLive = TimeSpan.MaxValue;
-        // Queued-but-unplayed audio at which a still-playing track is dropped when the next
-        // utterance starts. Generous: it must outrank every benign post-stall burst.
-        public static readonly TimeSpan MaxTrackBacklog = TimeSpan.FromSeconds(2);
         public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(3);
         public static readonly TimeSpan MaxBeginsAtDrift = TimeSpan.FromSeconds(5);
 

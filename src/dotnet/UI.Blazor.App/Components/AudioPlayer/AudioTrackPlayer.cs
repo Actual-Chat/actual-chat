@@ -179,8 +179,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             await base.PlayInternal(cancellationToken).ConfigureAwait(false);
         }
         finally {
-            // Underruns size the jitter target the same way the demuxer's backlog line sizes
-            // MaxTrackBacklog - both are unreadable behind DebugMode, which is off in production.
+            // Diagnostic only, and at Information because DebugMode is off in production:
+            // underruns say whether the fixed jitter target is why a track fell behind.
             if (_underrunCount > 0)
                 Log.LogInformation(
                     "[AudioTrackPlayer #{AudioTrackPlayerId}] Ended after {PlayDuration}, "

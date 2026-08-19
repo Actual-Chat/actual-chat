@@ -7,45 +7,29 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 public sealed class AudioStreamDemuxerTest
 {
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
-    private const int OverBudgetFrameCount = 150; // 3s at 20ms/frame
-    private const int WithinBudgetFrameCount = 50; // 1s
+    private const int HeavyBacklogFrameCount = 500; // 10s at 20ms/frame
 
     [Fact]
-    public async Task ABackloggedTrackIsDroppedWhenTheNextUtteranceStarts()
+    public async Task NoFrameIsDroppedHoweverFarBehindTheTrackIs()
     {
         // arrange
         var items = new List<MuxedAudioStreamItem> { Start(1) };
-        items.AddRange(Frames(1, OverBudgetFrameCount));
+        items.AddRange(Frames(1, HeavyBacklogFrameCount));
         items.Add(Start(2));
 
         // act
         var frames = await RunAndCollect(items, 1);
 
         // assert
-        frames.Should().BeEmpty();
+        frames.Count.Should().Be(HeavyBacklogFrameCount);
     }
 
     [Fact]
-    public async Task ATrackWithinBudgetSurvivesTheNextUtterance()
+    public async Task AnEndedTrackKeepsWhatIsStillQueued()
     {
         // arrange
         var items = new List<MuxedAudioStreamItem> { Start(1) };
-        items.AddRange(Frames(1, WithinBudgetFrameCount));
-        items.Add(Start(2));
-
-        // act
-        var frames = await RunAndCollect(items, 1);
-
-        // assert
-        frames.Count.Should().Be(WithinBudgetFrameCount);
-    }
-
-    [Fact]
-    public async Task AnEndedButUndrainedTrackIsStillDropped()
-    {
-        // arrange
-        var items = new List<MuxedAudioStreamItem> { Start(1) };
-        items.AddRange(Frames(1, OverBudgetFrameCount));
+        items.AddRange(Frames(1, HeavyBacklogFrameCount));
         items.Add(new MuxedAudioStreamEnd { StreamIndex = 1 });
         items.Add(Start(2));
 
@@ -53,23 +37,40 @@ public sealed class AudioStreamDemuxerTest
         var frames = await RunAndCollect(items, 1);
 
         // assert
-        frames.Should().BeEmpty();
+        frames.Count.Should().Be(HeavyBacklogFrameCount);
     }
 
     [Fact]
-    public async Task TheStartingTrackIsNeverDropped()
+    public async Task ConcurrentTracksAreIndependent()
     {
         // arrange
         var items = new List<MuxedAudioStreamItem> { Start(1) };
-        items.AddRange(Frames(1, OverBudgetFrameCount));
+        items.AddRange(Frames(1, 50));
         items.Add(Start(2));
-        items.AddRange(Frames(2, OverBudgetFrameCount));
+        items.AddRange(Frames(2, 30));
 
         // act
-        var frames = await RunAndCollect(items, 2);
+        var first = await RunAndCollect(items, 1);
+        var second = await RunAndCollect(items, 2);
 
         // assert
-        frames.Count.Should().Be(OverBudgetFrameCount);
+        first.Count.Should().Be(50);
+        second.Count.Should().Be(30);
+    }
+
+    [Fact]
+    public async Task FramesArriveInOrderWithTheirOffsets()
+    {
+        // arrange
+        var items = new List<MuxedAudioStreamItem> { Start(1) };
+        items.AddRange(Frames(1, 5));
+
+        // act
+        var frames = await RunAndCollect(items, 1);
+
+        // assert
+        frames.Select(f => f.Offset).Should().Equal(
+            Enumerable.Range(0, 5).Select(i => Constants.Audio.OpusFrameDuration * i));
     }
 
     // Private methods
@@ -90,9 +91,6 @@ public sealed class AudioStreamDemuxerTest
             : await tracked.ToListAsync();
     }
 
-    private static string StreamIdOf(int index)
-        => index.ToString();
-
     private static MuxedAudioStreamStart Start(int index)
         => new() {
             StreamIndex = index,
@@ -110,4 +108,7 @@ public sealed class AudioStreamDemuxerTest
             Data = new byte[] { (byte)i },
             Offset = Constants.Audio.OpusFrameDuration * i,
         });
+
+    private static string StreamIdOf(int index)
+        => index.ToString();
 }
